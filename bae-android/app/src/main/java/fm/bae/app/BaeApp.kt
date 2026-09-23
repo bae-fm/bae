@@ -2,11 +2,11 @@ package fm.bae.app
 
 import android.app.Application
 import io.crates.keyring.Keyring
+import uniffi.bae_bridge.BridgeAppDir
 import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.initKeyring
-import uniffi.bae_bridge.setDataDir
 
 private const val TAG = "bae.BaeApp"
 private val logger = BaeLogger(TAG)
@@ -44,17 +44,15 @@ class BaeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // bae's directory lives under the app's private files dir: Android app
+        // processes have no home directory of their own to put it under.
+        val appDir = BridgeAppDir(filesDir.absolutePath)
         // Telemetry first, from compiled-in values only, so the sink exists for
         // every later launch step (crash reporter, keyring, library open) and
         // any failure it reports.
-        diagnostics = BaeDiagnostics.configure()
+        diagnostics = BaeDiagnostics.configure(appDir)
         BaeCrashReporting.configure(this)
         logger.info("application launched")
-        // Android app processes have no $HOME, which bae-core needs to locate
-        // its data root (`~/.bae`). Point it at our private files dir before any
-        // library access (discover/restore/initApp) so those don't fail with
-        // "could not determine home directory".
-        setDataDir(filesDir.absolutePath)
         // Initialize the Android NDK context for the keyring store.
         // TLS initialization receives the same application context directly;
         // both must finish before any key or network operation.
@@ -70,7 +68,7 @@ class BaeApp : Application() {
         // worker threads; either failure stops the launch at the startup
         // error, and the exception names which one it was.
         try {
-            host = BridgeHost(diagnostics)
+            host = BridgeHost(diagnostics, appDir)
             initKeyring(diagnostics)
         } catch (error: BridgeException) {
             startupError = error

@@ -1,8 +1,5 @@
 use super::*;
-use crate::config::{
-    discover_libraries_from_bae_dir, parse_config_yaml, registered_library_path, CloudProvider,
-    Config, ConfigYaml,
-};
+use crate::config::{parse_config_yaml, AppDir, CloudProvider, Config, ConfigYaml};
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -43,8 +40,8 @@ fn unversioned(config: &Config, source: &str) -> Mapping {
     mapping
 }
 
-fn write_library(bae_dir: &std::path::Path, library_id: &str, mapping: &Mapping) -> PathBuf {
-    let library_dir = registered_library_path(bae_dir, library_id);
+fn write_library(app_dir: &AppDir, library_id: &str, mapping: &Mapping) -> PathBuf {
+    let library_dir = app_dir.registered_library(library_id);
     std::fs::create_dir_all(&library_dir).unwrap();
     let config_path = library_dir.join("config.yaml");
     std::fs::write(&config_path, to_yaml(mapping)).unwrap();
@@ -304,14 +301,14 @@ fn a_config_version_that_is_not_a_version_is_refused() {
 #[test]
 fn a_file_from_a_newer_bae_is_refused_by_version_and_listed_as_broken() {
     let tmp = TempDir::new().unwrap();
-    let bae_dir = tmp.path();
+    let app_dir = AppDir::at(tmp.path());
     let ahead = current_version() + 1;
     let mut mapping = to_mapping(&make_config("lib-future"));
     mapping.insert(Value::from(CONFIG_VERSION_KEY), Value::from(ahead));
-    write_library(bae_dir, "lib-future", &mapping);
+    write_library(&app_dir, "lib-future", &mapping);
 
-    let error = Config::load_registered_library_from_bae_dir(
-        bae_dir,
+    let error = Config::load_registered_library(
+        &app_dir,
         "lib-future",
         &coven::SequentialIdProvider::new("device"),
     )
@@ -328,7 +325,7 @@ fn a_file_from_a_newer_bae_is_refused_by_version_and_listed_as_broken() {
         "{message}"
     );
 
-    let libraries = discover_libraries_from_bae_dir(bae_dir).unwrap();
+    let libraries = Config::discover_libraries(&app_dir).unwrap();
     assert_eq!(libraries.len(), 1);
     assert_eq!(libraries[0].error.as_deref(), Some(message.as_str()));
 }
@@ -338,15 +335,15 @@ fn a_file_from_a_newer_bae_is_refused_by_version_and_listed_as_broken() {
 #[test]
 fn opening_an_unversioned_library_writes_the_upgraded_file_back() {
     let tmp = TempDir::new().unwrap();
-    let bae_dir = tmp.path();
+    let app_dir = AppDir::at(tmp.path());
     let config_path = write_library(
-        bae_dir,
+        &app_dir,
         "lib-v0",
         &unversioned(&make_config("lib-v0"), "file_tags"),
     );
 
-    let loaded = Config::load_registered_library_from_bae_dir(
-        bae_dir,
+    let loaded = Config::load_registered_library(
+        &app_dir,
         "lib-v0",
         &coven::SequentialIdProvider::new("device"),
     )
@@ -366,14 +363,14 @@ fn opening_an_unversioned_library_writes_the_upgraded_file_back() {
 #[test]
 fn listing_an_unversioned_library_leaves_its_file_alone() {
     let tmp = TempDir::new().unwrap();
-    let bae_dir = tmp.path();
+    let app_dir = AppDir::at(tmp.path());
     let mut config = make_config("lib-v0");
     config.store_name = "Shelf".to_string();
     config.cloud_home.provider = Some(CloudProvider::Dropbox);
-    let config_path = write_library(bae_dir, "lib-v0", &unversioned(&config, "none"));
+    let config_path = write_library(&app_dir, "lib-v0", &unversioned(&config, "none"));
     let before = std::fs::read(&config_path).unwrap();
 
-    let libraries = discover_libraries_from_bae_dir(bae_dir).unwrap();
+    let libraries = Config::discover_libraries(&app_dir).unwrap();
 
     assert_eq!(libraries.len(), 1);
     assert_eq!(libraries[0].error, None);

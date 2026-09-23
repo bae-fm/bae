@@ -50,7 +50,7 @@ mod device_pairing_tests;
 #[cfg(test)]
 mod local_lifecycle_tests;
 
-use crate::config::{Config, ConfigError};
+use crate::config::{AppDir, Config, ConfigError};
 use coven::StoreDir;
 use std::sync::Arc;
 use tokio::sync::watch;
@@ -151,32 +151,23 @@ impl From<LibraryCodeOperationError> for RestoreFromCodeError {
 }
 
 /// Create a library under a generated name and establish its device identity.
-pub fn create_library_default(ids: &dyn coven::IdProvider) -> Result<Config, CreateLibraryError> {
-    create_library(crate::library_name::generate_library_name(), ids)
-}
-
-pub fn create_library(
-    name: crate::library_name::LibraryName,
+pub fn create_library_default(
+    app_dir: &AppDir,
     ids: &dyn coven::IdProvider,
 ) -> Result<Config, CreateLibraryError> {
-    let home_dir = dirs::home_dir().ok_or_else(|| {
-        CreateLibraryError::Config(ConfigError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "Failed to get home directory",
-        )))
-    })?;
-    let bae_dir = home_dir.join(".bae");
-    create_library_in_bae_dir(&bae_dir, name, ids)
+    create_library(app_dir, crate::library_name::generate_library_name(), ids)
 }
 
-fn create_library_in_bae_dir(
-    bae_dir: &std::path::Path,
+/// Create a library registered under `app_dir` and establish its device
+/// identity.
+pub fn create_library(
+    app_dir: &AppDir,
     name: crate::library_name::LibraryName,
     ids: &dyn coven::IdProvider,
 ) -> Result<Config, CreateLibraryError> {
     let library_id = ids.new_id();
 
-    let library_dir = StoreDir::new(crate::config::registered_library_path(bae_dir, &library_id));
+    let library_dir = StoreDir::new(app_dir.registered_library(&library_id));
     let device_id = ids.new_id();
     let config = Config::with_defaults(library_id, device_id, &library_dir, name.into_string());
     let creation: Result<Config, CreateLibraryError> = (|| {
@@ -197,30 +188,12 @@ fn create_library_in_bae_dir(
     creation.map_err(|failure| failure.with_rollback(library_dir.remove_tree()))
 }
 
-#[cfg(any(test, feature = "test-utils"))]
-pub fn create_library_in_bae_dir_for_test(
-    bae_dir: &std::path::Path,
-    name: crate::library_name::LibraryName,
-    ids: &dyn coven::IdProvider,
-) -> Result<Config, CreateLibraryError> {
-    create_library_in_bae_dir(bae_dir, name, ids)
-}
-
 /// coven's restore/join returns the recovered Config; wrap it in bae's Config
 /// (which adds Discogs fields) and persist it.
 fn save_coven_library(coven_config: coven::Config, store_dir: StoreDir) -> Result<Config, String> {
     let config = Config::from_coven(coven_config, store_dir.to_path_buf());
     config.save_to_config_yaml().map_err(|e| e.to_string())?;
     Ok(config)
-}
-
-/// bae's on-disk layout for coven stores: libraries live under
-/// `<bae_dir>/libraries/<id>/store.db`, the same place `create_library` and
-/// discovery use. coven's default is `stores/<id>`, so join/restore are told
-/// bae's `libraries/` name here rather than landing in a directory bae never
-/// scans.
-fn library_layout(bae_dir: impl Into<std::path::PathBuf>) -> coven::StoreLayout {
-    coven::StoreLayout::new(bae_dir).stores_dirname("libraries")
 }
 
 /// Bridge bae's `CancellationToken` onto the `watch::Receiver<bool>` that coven's
@@ -283,6 +256,7 @@ fn finish_code_operation(
 
 /// Restore a library from a restore code. Wraps coven's `restore_from_code`.
 pub async fn restore_from_code(
+    app_dir: &AppDir,
     code: &str,
     oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
@@ -290,6 +264,7 @@ pub async fn restore_from_code(
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
     restore_from_code_inner(
+        app_dir,
         code,
         oauth_clients,
         oauth_tokens,
@@ -302,6 +277,7 @@ pub async fn restore_from_code(
 }
 
 pub async fn restore_from_code_cancellable(
+    app_dir: &AppDir,
     code: &str,
     oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
@@ -310,6 +286,7 @@ pub async fn restore_from_code_cancellable(
     on_status: impl Fn(&str),
 ) -> Result<Config, RestoreFromCodeError> {
     restore_from_code_inner(
+        app_dir,
         code,
         oauth_clients,
         oauth_tokens,
@@ -352,9 +329,9 @@ impl From<LibraryCodeOperationError> for JoinDevicePairingError {
     }
 }
 
-/// A join failure with no arm of its own: coven's transport, the config dir, the
-/// OAuth lookup, and the pairing-journal cleanup all end up here under their own
-/// message, so one function carries every `.map_err`.
+/// A join failure with no arm of its own: coven's transport, the OAuth lookup,
+/// and the pairing-journal cleanup all end up here under their own message, so
+/// one function carries every `.map_err`.
 fn join_err<E: std::fmt::Display>(error: E) -> JoinDevicePairingError {
     JoinDevicePairingError::Join(error.to_string())
 }
@@ -378,32 +355,12 @@ impl PreparedDevicePairingJoin {
     }
 }
 
-pub async fn prepare_device_pairing_join(
-    pairing_code: &str,
-    oauth_clients: coven::OAuthClients,
-    oauth_tokens: Option<coven::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-) -> Result<PreparedDevicePairingJoin, JoinDevicePairingError> {
-    let app_dir = crate::config::bae_dir().map_err(join_err)?;
-    prepare_device_pairing_join_at(
-        pairing_code,
-        oauth_clients,
-        oauth_tokens,
-        cloudkit_ops,
-        library_layout(app_dir),
-    )
-    .await
-}
-
+/// The one pairing attempt retained under `app_dir` that can continue without
+/// rescanning the existing device's code.
 pub fn pending_device_pairing_join(
+    app_dir: &AppDir,
 ) -> Result<Option<PendingDevicePairingJoinInfo>, JoinDevicePairingError> {
-    let app_dir = crate::config::bae_dir().map_err(join_err)?;
-    pending_device_pairing_join_at(library_layout(app_dir))
-}
-
-fn pending_device_pairing_join_at(
-    layout: coven::StoreLayout,
-) -> Result<Option<PendingDevicePairingJoinInfo>, JoinDevicePairingError> {
+    let layout = app_dir.store_layout();
     Ok(
         pending_device_pairing_at(&layout)?.map(|pairing| PendingDevicePairingJoinInfo {
             pairing_code: pairing.offer().encode(),
@@ -416,14 +373,10 @@ fn pending_device_pairing_join_at(
     )
 }
 
-pub fn abandon_pending_device_pairing_join() -> Result<(), JoinDevicePairingError> {
-    let app_dir = crate::config::bae_dir().map_err(join_err)?;
-    abandon_pending_device_pairing_join_at(library_layout(app_dir))
-}
-
-fn abandon_pending_device_pairing_join_at(
-    layout: coven::StoreLayout,
-) -> Result<(), JoinDevicePairingError> {
+/// Discard the joining identity and journal of the one pending pairing attempt
+/// under `app_dir`, if there is one.
+pub fn abandon_pending_device_pairing_join(app_dir: &AppDir) -> Result<(), JoinDevicePairingError> {
+    let layout = app_dir.store_layout();
     if let Some(pairing) = pending_device_pairing_at(&layout)? {
         pairing.abandon(&layout).map_err(join_err)?;
     }
@@ -444,6 +397,7 @@ fn pending_device_pairing_at(
 }
 
 async fn restore_from_code_inner(
+    app_dir: &AppDir,
     code: &str,
     oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
@@ -451,13 +405,11 @@ async fn restore_from_code_inner(
     cancel: Option<CancellationToken>,
     on_status: impl Fn(&str),
 ) -> Result<Config, LibraryCodeOperationError> {
-    let app_dir =
-        crate::config::bae_dir().map_err(|e| LibraryCodeOperationError::Failed(e.to_string()))?;
     let (rx, bridge) = cancel_receiver(cancel);
     // The default custody for both the master key and this device's identity —
     // the OS keyring, mirroring what `Coven::builder` itself defaults to for a
     // library opened the ordinary way (bae never overrides either).
-    let layout = library_layout(app_dir);
+    let layout = app_dir.store_layout();
     let result = crate::sync::restore_from_code(
         code,
         &crate::sync::synced_tables(),
@@ -482,13 +434,16 @@ async fn restore_from_code_inner(
     finish_code_operation(result, &layout, bridge)
 }
 
-async fn prepare_device_pairing_join_at(
+/// Open or create the pairing attempt `pairing_code` names, journaled under
+/// `app_dir`.
+pub async fn prepare_device_pairing_join(
+    app_dir: &AppDir,
     pairing_code: &str,
     oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-    layout: coven::StoreLayout,
 ) -> Result<PreparedDevicePairingJoin, JoinDevicePairingError> {
+    let layout = app_dir.store_layout();
     let offer = coven::DevicePairingOffer::decode(pairing_code).map_err(join_err)?;
     let provider_account_email =
         pairing_provider_account_email(offer.cloud_provider().clone(), oauth_tokens.as_ref())

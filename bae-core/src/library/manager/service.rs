@@ -33,6 +33,7 @@ impl LibraryManager {
     /// over the resulting handle.
     #[allow(clippy::too_many_arguments)]
     pub fn open(
+        app_dir: crate::config::AppDir,
         config_handle: Arc<ConfigHandle>,
         clock: ClockRef,
         ids: IdRef,
@@ -76,6 +77,7 @@ impl LibraryManager {
             })?;
         Ok(Self::assemble(
             Database::from_handle(handle, clock.clone(), ids.clone()),
+            app_dir,
             config_handle,
             clock,
             ids,
@@ -96,6 +98,7 @@ impl LibraryManager {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         database: Database,
+        app_dir: crate::config::AppDir,
         config_handle: Arc<ConfigHandle>,
         clock: ClockRef,
         ids: IdRef,
@@ -107,6 +110,7 @@ impl LibraryManager {
     ) -> Self {
         Self::assemble(
             database,
+            app_dir,
             config_handle,
             clock,
             ids,
@@ -126,6 +130,7 @@ impl LibraryManager {
     #[allow(clippy::too_many_arguments)]
     fn assemble(
         database: Database,
+        app_dir: crate::config::AppDir,
         config_handle: Arc<ConfigHandle>,
         clock: ClockRef,
         ids: IdRef,
@@ -150,6 +155,7 @@ impl LibraryManager {
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             preparations: crate::import::CandidatePreparations::new(database.clone()),
             database,
+            app_dir,
             config_handle,
             remote_images,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]

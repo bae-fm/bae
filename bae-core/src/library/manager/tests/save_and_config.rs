@@ -175,8 +175,7 @@ async fn store_test_cover_image_with_blob(
 }
 
 async fn setup_forget_library_manager(library_id: &str, home: &std::path::Path) -> LibraryManager {
-    let bae_dir = home.join(".bae");
-    let library_dir = crate::config::registered_library_path(&bae_dir, library_id);
+    let library_dir = crate::config::AppDir::under_home(home).registered_library(library_id);
     setup_forget_library_manager_at(library_id, library_dir, home).await
 }
 
@@ -205,6 +204,7 @@ async fn setup_forget_library_manager_at(
     let config_handle = Arc::new(ConfigHandle::new(config));
     let manager = LibraryManager::new(
         database,
+        crate::config::AppDir::under_home(home),
         config_handle,
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
@@ -258,8 +258,8 @@ fn assert_forget_material_removed(manager: &LibraryManager) {
 
 fn setup_forget_library_home(library_id: &str) -> (TempDir, std::path::PathBuf) {
     let home = TempDir::new().unwrap();
-    let bae_dir = home.path().join(".bae");
-    let library_dir = crate::config::registered_library_path(&bae_dir, library_id);
+    let library_dir =
+        crate::config::AppDir::under_home(home.path()).registered_library(library_id);
     (home, library_dir)
 }
 
@@ -267,10 +267,10 @@ fn setup_forget_library_home(library_id: &str) -> (TempDir, std::path::PathBuf) 
 async fn forget_library_returns_error_when_registered_path_cannot_be_removed() {
     let library_id = format!("forget-fails-{}", Uuid::new_v4());
     let (home, library_path) = setup_forget_library_home(&library_id);
-    let bae_dir = home.path().join(".bae");
+    let app_dir = crate::config::AppDir::under_home(home.path());
     std::fs::create_dir_all(library_path.parent().unwrap()).unwrap();
     std::fs::write(&library_path, b"not a directory").unwrap();
-    std::fs::write(bae_dir.join("active-library"), &library_id).unwrap();
+    std::fs::write(app_dir.active_library_pointer(), &library_id).unwrap();
     let manager = setup_forget_library_manager(&library_id, home.path()).await;
     let err = manager
         .forget_library()
@@ -282,7 +282,7 @@ async fn forget_library_returns_error_when_registered_path_cannot_be_removed() {
         "error should name the failed library data deletion: {err}"
     );
     assert_eq!(
-        std::fs::read_to_string(bae_dir.join("active-library")).unwrap(),
+        std::fs::read_to_string(app_dir.active_library_pointer()).unwrap(),
         library_id
     );
     assert_forget_material_available(&manager);
@@ -292,15 +292,15 @@ async fn forget_library_returns_error_when_registered_path_cannot_be_removed() {
 async fn forget_library_removes_registered_path_active_pointer_and_key() {
     let library_id = format!("forget-succeeds-{}", Uuid::new_v4());
     let (home, library_path) = setup_forget_library_home(&library_id);
-    let bae_dir = home.path().join(".bae");
+    let app_dir = crate::config::AppDir::under_home(home.path());
     std::fs::create_dir_all(&library_path).unwrap();
     std::fs::write(library_path.join("config.yaml"), b"library data").unwrap();
-    std::fs::write(bae_dir.join("active-library"), &library_id).unwrap();
+    std::fs::write(app_dir.active_library_pointer(), &library_id).unwrap();
     let manager = setup_forget_library_manager(&library_id, home.path()).await;
     manager.forget_library().await.unwrap();
 
     assert!(!library_path.exists());
-    assert!(!bae_dir.join("active-library").exists());
+    assert!(!app_dir.active_library_pointer().exists());
     assert_forget_material_removed(&manager);
 }
 
@@ -308,13 +308,13 @@ async fn forget_library_removes_registered_path_active_pointer_and_key() {
 async fn forget_library_accepts_missing_directory_and_pointer_on_retry() {
     let library_id = format!("forget-retry-{}", Uuid::new_v4());
     let (home, library_path) = setup_forget_library_home(&library_id);
-    let bae_dir = home.path().join(".bae");
-    std::fs::create_dir_all(&bae_dir).unwrap();
+    let app_dir = crate::config::AppDir::under_home(home.path());
+    std::fs::create_dir_all(app_dir.active_library_pointer().parent().unwrap()).unwrap();
     let manager = setup_forget_library_manager(&library_id, home.path()).await;
     manager.forget_library().await.unwrap();
 
     assert!(!library_path.exists());
-    assert!(!bae_dir.join("active-library").exists());
+    assert!(!app_dir.active_library_pointer().exists());
     assert_forget_material_removed(&manager);
 }
 
@@ -322,9 +322,9 @@ async fn forget_library_accepts_missing_directory_and_pointer_on_retry() {
 async fn forget_library_returns_error_when_active_pointer_cannot_be_read() {
     let library_id = format!("forget-pointer-fails-{}", Uuid::new_v4());
     let (home, library_path) = setup_forget_library_home(&library_id);
-    let bae_dir = home.path().join(".bae");
+    let app_dir = crate::config::AppDir::under_home(home.path());
     std::fs::create_dir_all(&library_path).unwrap();
-    std::fs::create_dir(bae_dir.join("active-library")).unwrap();
+    std::fs::create_dir(app_dir.active_library_pointer()).unwrap();
     let manager = setup_forget_library_manager(&library_id, home.path()).await;
     let err = manager
         .forget_library()
@@ -337,7 +337,7 @@ async fn forget_library_returns_error_when_active_pointer_cannot_be_read() {
         "error should name the failed active pointer read: {err}"
     );
     assert!(library_path.exists());
-    assert!(bae_dir.join("active-library").is_dir());
+    assert!(app_dir.active_library_pointer().is_dir());
     assert_forget_material_available(&manager);
 }
 
@@ -345,9 +345,9 @@ async fn forget_library_returns_error_when_active_pointer_cannot_be_read() {
 async fn forget_library_returns_error_when_active_pointer_names_another_library() {
     let library_id = format!("forget-pointer-mismatch-{}", Uuid::new_v4());
     let (home, library_path) = setup_forget_library_home(&library_id);
-    let bae_dir = home.path().join(".bae");
+    let app_dir = crate::config::AppDir::under_home(home.path());
     std::fs::create_dir_all(&library_path).unwrap();
-    std::fs::write(bae_dir.join("active-library"), "different-library").unwrap();
+    std::fs::write(app_dir.active_library_pointer(), "different-library").unwrap();
     let manager = setup_forget_library_manager(&library_id, home.path()).await;
     let err = manager
         .forget_library()
@@ -360,7 +360,7 @@ async fn forget_library_returns_error_when_active_pointer_names_another_library(
     );
     assert!(library_path.exists());
     assert_eq!(
-        std::fs::read_to_string(bae_dir.join("active-library")).unwrap(),
+        std::fs::read_to_string(app_dir.active_library_pointer()).unwrap(),
         "different-library"
     );
     assert_forget_material_available(&manager);

@@ -407,12 +407,12 @@ fn cast_is_off_by_default_and_survives_yaml_roundtrip() {
 #[test]
 fn a_broken_library_is_listed_as_broken() {
     let tmp = TempDir::new().unwrap();
-    let bae_dir = tmp.path();
-    let library_dir = bae_dir.join("libraries").join("lib-broken");
+    let app_dir = AppDir::at(tmp.path());
+    let library_dir = app_dir.libraries().join("lib-broken");
     std::fs::create_dir_all(&library_dir).unwrap();
     std::fs::write(library_dir.join("config.yaml"), "{ this is not: [valid").unwrap();
 
-    let libraries = discover_libraries_from_bae_dir(bae_dir).unwrap();
+    let libraries = Config::discover_libraries(&app_dir).unwrap();
 
     assert_eq!(libraries.len(), 1, "a broken library must not disappear");
     let broken = &libraries[0];
@@ -427,8 +427,8 @@ fn a_broken_library_is_listed_as_broken() {
 #[test]
 fn a_broken_library_does_not_hide_a_working_one() {
     let tmp = TempDir::new().unwrap();
-    let bae_dir = tmp.path();
-    let libraries_dir = bae_dir.join("libraries");
+    let app_dir = AppDir::at(tmp.path());
+    let libraries_dir = app_dir.libraries();
 
     let good_dir = libraries_dir.join("lib-good");
     std::fs::create_dir_all(&good_dir).unwrap();
@@ -440,7 +440,7 @@ fn a_broken_library_does_not_hide_a_working_one() {
     std::fs::create_dir_all(&broken_dir).unwrap();
     std::fs::write(broken_dir.join("config.yaml"), "{ nope: [").unwrap();
 
-    let libraries = discover_libraries_from_bae_dir(bae_dir).unwrap();
+    let libraries = Config::discover_libraries(&app_dir).unwrap();
 
     assert_eq!(libraries.len(), 2);
     assert_eq!(libraries[0].name, "Good");
@@ -598,15 +598,18 @@ fn save_and_load_config_yaml_roundtrip() {
 }
 
 #[test]
-fn load_from_registered_library_dir_rejects_mismatched_config_id() {
+fn load_registered_library_rejects_mismatched_config_id() {
     let tmp = TempDir::new().unwrap();
-    let library_path = tmp.path().join("libraries").join("expected-lib-id");
-    make_test_config("wrong-lib-id", library_path.clone())
-        .save_to_config_yaml()
-        .unwrap();
+    let app_dir = AppDir::at(tmp.path());
+    make_test_config(
+        "wrong-lib-id",
+        app_dir.registered_library("expected-lib-id"),
+    )
+    .save_to_config_yaml()
+    .unwrap();
 
-    let result = Config::load_from_registered_library_dir(
-        library_path,
+    let result = Config::load_registered_library(
+        &app_dir,
         "expected-lib-id",
         &coven::SequentialIdProvider::new("device"),
     );
@@ -615,28 +618,29 @@ fn load_from_registered_library_dir_rejects_mismatched_config_id() {
 }
 
 #[test]
-fn read_active_library_id_errors_when_pointer_is_empty() {
+fn active_library_id_errors_when_pointer_is_empty() {
     let tmp = TempDir::new().unwrap();
-    std::fs::write(tmp.path().join("active-library"), " \n").unwrap();
+    let app_dir = AppDir::at(tmp.path());
+    std::fs::write(app_dir.active_library_pointer(), " \n").unwrap();
 
-    let err = read_active_library_id(tmp.path()).unwrap_err();
+    let err = Config::active_library_id(&app_dir).unwrap_err();
 
     assert!(matches!(err, ConfigError::Config(_)));
     assert!(err.to_string().contains("active-library pointer"));
 }
 
 #[test]
-fn discover_libraries_from_bae_dir_returns_active_pointer_read_error() {
+fn discover_libraries_returns_active_pointer_read_error() {
     let tmp = TempDir::new().unwrap();
-    let bae_dir = tmp.path();
-    let library_path = registered_library_path(bae_dir, "auto-lib");
+    let app_dir = AppDir::at(tmp.path());
+    let library_path = app_dir.registered_library("auto-lib");
 
     make_test_config("auto-lib", library_path)
         .save_to_config_yaml()
         .unwrap();
-    std::fs::create_dir(bae_dir.join("active-library")).unwrap();
+    std::fs::create_dir(app_dir.active_library_pointer()).unwrap();
 
-    assert!(discover_libraries_from_bae_dir(bae_dir).is_err());
+    assert!(Config::discover_libraries(&app_dir).is_err());
 }
 
 /// A library dir whose name isn't valid UTF-8 can't round-trip through the
@@ -655,8 +659,8 @@ fn discovery_skips_non_utf8_library_dir() {
     use std::os::unix::ffi::OsStrExt;
 
     let tmp = TempDir::new().unwrap();
-    let bae_dir = tmp.path();
-    let libraries_dir = bae_dir.join("libraries");
+    let app_dir = AppDir::at(tmp.path());
+    let libraries_dir = app_dir.libraries();
     std::fs::create_dir_all(&libraries_dir).unwrap();
 
     // A valid library: UTF-8 dir name + config.yaml.
@@ -673,7 +677,7 @@ fn discovery_skips_non_utf8_library_dir() {
         return;
     }
 
-    let discovered = discover_all_library_paths(bae_dir);
+    let discovered = discover_all_library_paths(&app_dir);
     assert_eq!(discovered.len(), 1, "non-UTF-8 dir should be skipped");
     assert_eq!(
         discovered[0].1.as_ref().unwrap().identity.library_id,
@@ -697,8 +701,8 @@ fn library_name_roundtrip() {
 #[test]
 fn discover_libraries_finds_dirs_with_config() {
     let tmp = TempDir::new().unwrap();
-    let bae_dir = tmp.path();
-    let libraries_dir = bae_dir.join("libraries");
+    let app_dir = AppDir::at(tmp.path());
+    let libraries_dir = app_dir.libraries();
 
     // Create two libraries
     let lib1_path = libraries_dir.join("lib-1");
@@ -714,7 +718,7 @@ fn discover_libraries_finds_dirs_with_config() {
     // Create an invalid dir (no config.yaml)
     std::fs::create_dir_all(libraries_dir.join("invalid")).unwrap();
 
-    let discovered = discover_all_library_paths(bae_dir);
+    let discovered = discover_all_library_paths(&app_dir);
     assert_eq!(discovered.len(), 2);
 
     let ids: Vec<&str> = discovered
@@ -735,8 +739,8 @@ fn discover_libraries_finds_dirs_with_config() {
 #[test]
 fn find_library_by_id_scans_libraries_dir() {
     let tmp = TempDir::new().unwrap();
-    let bae_dir = tmp.path();
-    let libraries_dir = bae_dir.join("libraries");
+    let app_dir = AppDir::at(tmp.path());
+    let libraries_dir = app_dir.libraries();
 
     let lib1_path = libraries_dir.join("lib-1");
     make_test_config("lib-1", lib1_path.clone())
@@ -748,15 +752,15 @@ fn find_library_by_id_scans_libraries_dir() {
         .save_to_config_yaml()
         .unwrap();
 
-    let found = find_library_by_id(bae_dir, "lib-1");
+    let found = find_library_by_id(&app_dir, "lib-1");
     assert!(found.is_some());
     assert_eq!(&*found.unwrap(), lib1_path.as_path());
 
-    let found = find_library_by_id(bae_dir, "lib-2");
+    let found = find_library_by_id(&app_dir, "lib-2");
     assert!(found.is_some());
     assert_eq!(&*found.unwrap(), lib2_path.as_path());
 
-    assert!(find_library_by_id(bae_dir, "nonexistent").is_none());
+    assert!(find_library_by_id(&app_dir, "nonexistent").is_none());
 }
 
 #[test]

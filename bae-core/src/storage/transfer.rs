@@ -398,6 +398,7 @@ mod tests {
         crate::config::install_test_keyring();
         let manager = LibraryManager::new(
             database,
+            crate::config::AppDir::under_home(home.path()),
             Arc::new(crate::config::ConfigHandle::new(config)),
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),

@@ -77,6 +77,7 @@ async fn setup_browsable_test_manager() -> (LibraryManager, TempDir) {
 async fn assemble_test_manager(temp_dir: TempDir, config: Config) -> (LibraryManager, TempDir) {
     let config_handle = Arc::new(ConfigHandle::new(config));
     let manager = LibraryManager::open(
+        crate::config::AppDir::under_home(temp_dir.path()),
         config_handle,
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),

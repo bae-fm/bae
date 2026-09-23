@@ -68,11 +68,17 @@ final class AppSessionHolder {
     @ObservationIgnored
     private let opener: LibrarySessionOpener<AppHandle, AppService>
 
+    /// The process-lifetime host registrations; launch discovers the libraries
+    /// registered under its directory.
+    @ObservationIgnored
+    private let host: BridgeHost
+
     /// `diagnostics` is the process-lifetime telemetry sink and `host` the
     /// process-lifetime host registrations, both built at launch and shared
     /// across library opens; the opener's closures capture the host for
     /// `init_app` and the sink for each `AppService`.
     init(diagnostics: BridgeDiagnostics, host: BridgeHost) {
+        self.host = host
         opener = LibrarySessionOpener<AppHandle, AppService>(
             makeHandle: { [host] libraryId in
                 try initApp(
@@ -103,7 +109,7 @@ final class AppSessionHolder {
     /// On launch: open the first discovered library, or onboard if none exist.
     func start() {
         do {
-            libraries = try discoverLibraries()
+            libraries = try host.discoverLibraries()
             guard let first = libraries.first else {
                 screen = .onboarding
                 return

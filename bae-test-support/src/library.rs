@@ -73,6 +73,7 @@ pub async fn open_test_library_with(
     let config_handle = test_config(&coven::StoreDir::new(dir.to_path_buf()));
     let library_manager = bae_core::library::LibraryManager::new(
         database.clone(),
+        bae_core::config::AppDir::under_home(dir),
         config_handle,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
@@ -119,9 +120,10 @@ pub fn setup_fresh_library(
     runtime: &tokio::runtime::Runtime,
 ) -> (bae_core::library::LibraryManager, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
+    let app_dir = bae_core::config::AppDir::under_home(tmp.path());
     bae_core::config::install_test_keyring();
-    let config = bae_core::library::create_library_in_bae_dir_for_test(
-        tmp.path(),
+    let config = bae_core::library::create_library(
+        &app_dir,
         bae_core::library_name::LibraryName::parse("Test Library").unwrap(),
         &coven::UuidProvider,
     )
@@ -129,6 +131,7 @@ pub fn setup_fresh_library(
     let config_handle = std::sync::Arc::new(bae_core::config::ConfigHandle::new(config));
     let providers = bae_core::providers::Providers::offline();
     let lm = bae_core::library::LibraryManager::open(
+        app_dir,
         config_handle,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),

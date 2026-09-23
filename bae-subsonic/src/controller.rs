@@ -217,6 +217,7 @@ mod tests {
         let config_handle = support::test_config(&library_dir);
         let manager = LibraryManager::new(
             database,
+            bae_core::config::AppDir::under_home(temp.path()),
             config_handle,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),

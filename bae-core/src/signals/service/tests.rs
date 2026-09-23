@@ -156,6 +156,7 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
     crate::config::install_test_keyring();
     let manager = crate::library::LibraryManager::new(
         database,
+        crate::config::AppDir::under_home(tmp.path()),
         config_handle,
         clock,
         Arc::new(coven::UuidProvider),

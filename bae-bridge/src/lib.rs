@@ -7,6 +7,7 @@ extern crate bae_mirror;
 
 #[cfg(target_os = "android")]
 mod android_tls;
+mod app_dir;
 mod bridge_utils;
 #[cfg(feature = "cloudkit")]
 mod cloudkit;
@@ -22,6 +23,7 @@ mod types;
 #[cfg(feature = "desktop")]
 mod utils;
 
+pub use app_dir::*;
 #[cfg(feature = "cloudkit")]
 pub use cloudkit::*;
 pub use handle::*;

@@ -46,6 +46,7 @@ async fn setup_test_manager_with(http: crate::util::http::Http) -> (LibraryManag
     let config_handle = test_config(&library_dir);
     let manager = LibraryManager::new(
         database,
+        crate::config::AppDir::under_home(temp_dir.path()),
         config_handle,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),

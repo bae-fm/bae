@@ -48,6 +48,7 @@ async fn setup_import_service() -> TestService {
     let preparations = crate::import::CandidatePreparations::new(database.clone());
     let manager = LibraryManager::new(
         database,
+        crate::config::AppDir::under_home(temp_dir.path()),
         Arc::new(ConfigHandle::new(config)),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),

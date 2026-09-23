@@ -39,11 +39,16 @@ fn main() {
             }
         }
     }
-    if let Some(home) = &home {
-        // Reads of ~/.bae (registry, library dirs) resolve under the fixture.
-        // The keychain is user-scoped, not HOME-scoped, so custody still works.
-        std::env::set_var("HOME", home);
-    }
+    // The registry and library dirs are read under the fixture's home. The
+    // keychain is user-scoped, not home-scoped, so custody still works.
+    let home = match home {
+        Some(home) => std::path::PathBuf::from(home),
+        None => dirs::home_dir().unwrap_or_else(|| {
+            eprintln!("could not determine the home directory; pass --home");
+            std::process::exit(2);
+        }),
+    };
+    let app_dir = bae_core::config::AppDir::under_home(&home);
 
     let format = tracing_subscriber::fmt()
         .with_env_filter(
@@ -59,7 +64,7 @@ fn main() {
         std::process::exit(1);
     }
 
-    let library_id = match bae_core::config::Config::active_library_id() {
+    let library_id = match bae_core::config::Config::active_library_id(&app_dir) {
         Ok(Some(id)) => id,
         Ok(None) => {
             eprintln!("no active library under the chosen home");
@@ -71,13 +76,14 @@ fn main() {
         }
     };
     let ids = coven::UuidProvider;
-    let config = match bae_core::config::Config::load_registered_library(&library_id, &ids) {
-        Ok(config) => config,
-        Err(e) => {
-            eprintln!("load config failed: {e}");
-            std::process::exit(1);
-        }
-    };
+    let config =
+        match bae_core::config::Config::load_registered_library(&app_dir, &library_id, &ids) {
+            Ok(config) => config,
+            Err(e) => {
+                eprintln!("load config failed: {e}");
+                std::process::exit(1);
+            }
+        };
     eprintln!(
         "bench library: {} ({}) at {}",
         config.store_name,

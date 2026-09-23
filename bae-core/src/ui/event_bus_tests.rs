@@ -35,6 +35,7 @@ async fn services() -> (AppServices, TempDir) {
     );
     let manager = LibraryManager::new(
         database,
+        crate::config::AppDir::under_home(temp_dir.path()),
         Arc::new(ConfigHandle::new(config)),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),

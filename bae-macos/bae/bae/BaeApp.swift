@@ -63,18 +63,30 @@ enum AppRuntime: Equatable {
 private let appRuntime = AppRuntime(environment: baeAppProcessEnvironment)
 
 private func discoverInitialLibraries(
+    host: BridgeHost,
     environment: [String: String]
 ) throws -> [BridgeLibrary] {
-    var libraries = try discoverLibraries()
+    var libraries = try host.discoverLibraries()
     #if DEBUG
         if libraries.isEmpty,
             AppRuntime.createsLibraryForUITesting(environment: environment)
         {
-            _ = try createLibrary(name: nil)
-            libraries = try discoverLibraries()
+            _ = try host.createLibrary(name: nil)
+            libraries = try host.discoverLibraries()
         }
     #endif
     return libraries
+}
+
+/// bae's directory, under the home directory the process was launched with.
+/// `HOME` is what names it — a UI test launches the app with its own `HOME`
+/// to get a fresh directory — so it is read from the environment rather than
+/// from the account record.
+private func baeAppDir(environment: [String: String]) -> BridgeAppDir {
+    guard let home = environment["HOME"], !home.isEmpty else {
+        preconditionFailure("HOME is unset, so bae's directory has no location")
+    }
+    return BridgeAppDir(home: home)
 }
 
 enum AppScreen {
@@ -99,11 +111,13 @@ final class ApplicationServices {
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
 
     init() {
+        let appDir = baeAppDir(environment: baeAppProcessEnvironment)
         diagnostics = BaeDiagnostics.configure(
             source: "macos",
-            edition: baeAppEdition
+            edition: baeAppEdition,
+            appDir: appDir
         )
-        host = BaeHost.make(diagnostics: diagnostics)
+        host = BaeHost.make(diagnostics: diagnostics, appDir: appDir)
         mediaControlService = MediaControlService()
         librarySetup = LibrarySetup.live(host: host)
         #if DEBUG
@@ -662,6 +676,7 @@ extension AppDelegate {
     func loadInitialState(canOpenLibraries: Bool) {
         do {
             let libraries = try discoverInitialLibraries(
+                host: requiredApplicationServices.host,
                 environment: baeAppProcessEnvironment
             )
             self.libraries = libraries
@@ -829,9 +844,10 @@ extension AppDelegate {
     /// the Open Library submenu. A newer reload cancels an in-flight one; on
     /// failure we log and keep the last good list rather than blanking the menu.
     func reloadLibraries() {
+        let host = requiredApplicationServices.host
         reloadSlot.replace(
             "discoverLibraries",
-            work: { try discoverLibraries() },
+            work: { try host.discoverLibraries() },
             onSuccess: { self.libraries = $0 },
             onError: {
                 baeAppLogger.error(

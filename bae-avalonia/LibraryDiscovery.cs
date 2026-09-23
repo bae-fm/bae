@@ -11,11 +11,11 @@ namespace Bae.Desktop;
 // caller's status surface; a failure yields an empty list / a null id.
 internal static class LibraryDiscovery
 {
-    internal static List<BridgeLibrary> Load(Action<string> reportError)
+    internal static List<BridgeLibrary> Load(BridgeHost host, Action<string> reportError)
     {
         try
         {
-            return NativeBae.Libraries();
+            return NativeBae.Libraries(host);
         }
         catch (BridgeException exception)
         {
@@ -25,11 +25,11 @@ internal static class LibraryDiscovery
         }
     }
 
-    internal static string? Create(Action<string> reportError)
+    internal static string? Create(BridgeHost host, Action<string> reportError)
     {
         try
         {
-            return NativeBae.CreateLibrary();
+            return NativeBae.CreateLibrary(host);
         }
         catch (BridgeException exception)
         {

@@ -50,6 +50,7 @@ async fn setup(tmp: &TempDir) -> LibraryManager {
     let library_dir = StoreDir::new(tmp.path());
     let config_handle = support::test_config(&library_dir);
     LibraryManager::open(
+        bae_core::config::AppDir::under_home(tmp.path()),
         config_handle,
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),

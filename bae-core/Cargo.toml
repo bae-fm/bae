@@ -66,7 +66,6 @@ chacha20poly1305 = "0.10"
 hkdf = "0.12"
 rand_core = "0.6"
 async-trait = "0.1"
-dirs = "5.0"
 axum = "0.7"
 regex = "1.11"
 libc = "0.2"
@@ -153,6 +152,9 @@ ffmpeg-sys-next = { version = "8.1", default-features = false, features = ["avco
 bae-test-support = { path = "../bae-test-support" }
 tokio = { version = "1.0", features = ["test-util"] }
 serial_test = "3.4.0"
+# The examples resolve the running user's home once, at the top, to build the
+# app directory they read.
+dirs = "5.0"
 # coven's deterministic clock/id fakes for bae's tests (off in production builds).
 coven = { workspace = true, features = ["test-utils"] }
 

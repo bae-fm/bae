@@ -18,12 +18,14 @@ internal sealed class LibrariesDialog
 {
     private readonly AppService _app;
     private readonly ModalHost _host;
+    private readonly uniffi.bae_bridge.BridgeHost _bridgeHost;
     private readonly Func<string, Task> _switchLibrary;
 
-    public LibrariesDialog(AppService app, ModalHost host, Func<string, Task> switchLibrary)
+    public LibrariesDialog(AppService app, ModalHost host, uniffi.bae_bridge.BridgeHost bridgeHost, Func<string, Task> switchLibrary)
     {
         _app = app;
         _host = host;
+        _bridgeHost = bridgeHost;
         _switchLibrary = switchLibrary;
     }
 
@@ -43,7 +45,7 @@ internal sealed class LibrariesDialog
         list.Children.Add(status);
         list.Children.Add(copyFeedback);
 
-        foreach (var library in LibraryDiscovery.Load(message =>
+        foreach (var library in LibraryDiscovery.Load(_bridgeHost, message =>
         {
             status.Text = message;
             status.IsVisible = true;
@@ -59,7 +61,7 @@ internal sealed class LibrariesDialog
         };
         newButton.Click += async (_, _) =>
         {
-            var newId = LibraryDiscovery.Create(message =>
+            var newId = LibraryDiscovery.Create(_bridgeHost, message =>
             {
                 status.Text = message;
                 status.IsVisible = true;

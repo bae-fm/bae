@@ -44,6 +44,7 @@ import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeCloudHomeKeyState
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiagnostics
+import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeTelemetryEvent
@@ -388,12 +389,13 @@ object AppSessionHolder {
     private var locked: LockedLibrary? = null
 
     /**
-     * Scan for local libraries off-main, publish the result to [libraries], and
-     * return it. Throws when the scan itself fails, so callers can surface it
-     * rather than mistaking a failed scan for an empty device.
+     * Scan [host]'s directory for local libraries off-main, publish the result
+     * to [libraries], and return it. Throws when the scan itself fails, so
+     * callers can surface it rather than mistaking a failed scan for an empty
+     * device.
      */
-    suspend fun discoverLibraries(): List<BridgeLibrary> {
-        val result = withContext(Dispatchers.IO) { uniffi.bae_bridge.discoverLibraries() }
+    suspend fun discoverLibraries(host: BridgeHost): List<BridgeLibrary> {
+        val result = withContext(Dispatchers.IO) { host.discoverLibraries() }
         discovered.replaceAll(result)
         return result
     }
@@ -445,7 +447,7 @@ object AppSessionHolder {
         onScreen(AppScreen.Loading)
         val remaining =
             try {
-                discoverLibraries()
+                discoverLibraries((context.applicationContext as BaeApp).host)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

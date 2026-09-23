@@ -317,10 +317,11 @@ extension OnboardingView {
     }
 
     private func discoverPendingPairing() async {
+        let host = host
         do {
             guard
                 let pending = try await DetachedWork.run({
-                    try pendingDevicePairingJoin()
+                    try host.pendingDevicePairingJoin()
                 })
             else { return }
             pendingPairing = pending
@@ -351,13 +352,14 @@ extension OnboardingView {
     private func abandonPairingAndReturnToEntry() {
         let activeFlow = linkFlow
         let activeAuthorization = authorizationTask
+        let host = host
         activeAuthorization?.cancel()
         Task {
             await activeAuthorization?.value
             await activeFlow?.cancelAndWait()
             do {
                 try await DetachedWork.run {
-                    try abandonPendingDevicePairingJoin()
+                    try host.abandonPendingDevicePairingJoin()
                 }
                 linkFlow = nil
                 joinProgress = nil
@@ -616,17 +618,31 @@ extension OnboardingView {
 }
 
 #if DEBUG
+/// A host over a throwaway directory, so the preview never reads or writes the
+/// app's real libraries.
+private func previewHost() -> BridgeHost {
+    let appDir = BridgeAppDir(
+        home: FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .path
+    )
+    return BaeHost.make(
+        diagnostics: configureDiagnostics(config: .disabled, appDir: appDir),
+        appDir: appDir
+    )
+}
+
 #Preview {
     #if BAE_OAUTH_PROVIDERS
     OnboardingView(
-        host: BaeHost.make(diagnostics: configureDiagnostics(config: .disabled)),
+        host: previewHost(),
         oauthLinking: nil,
         oauthLinkingError: nil,
         onLinked: { _ in }
     )
     #else
     OnboardingView(
-        host: BaeHost.make(diagnostics: configureDiagnostics(config: .disabled)),
+        host: previewHost(),
         onLinked: { _ in }
     )
     #endif

@@ -364,6 +364,7 @@ impl Fixture {
         // carry seeds one with `use_discogs`.
         let manager = LibraryManager::new(
             database,
+            crate::config::AppDir::under_home(temp.path()),
             Arc::new(ConfigHandle::new(config)),
             clock,
             ids,

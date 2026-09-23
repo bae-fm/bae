@@ -94,7 +94,9 @@ impl LibraryManager {
 
     pub async fn unlock_cloud_home(&self, serialized_master_key: &str) -> Result<(), LibraryError> {
         self.sync.unlock_cloud_home(serialized_master_key).await?;
-        self.config_handle.config().save_active_library()?;
+        self.config_handle
+            .config()
+            .save_active_library(&self.app_dir)?;
         Ok(())
     }
 

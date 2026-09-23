@@ -194,6 +194,7 @@ fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::Pa
     let runtime = tokio::runtime::Runtime::new().expect("create test runtime");
     let config_handle = Arc::new(bae_core::config::ConfigHandle::new(config));
     let manager = bae_core::library::LibraryManager::open(
+        bae_core::config::AppDir::under_home(&root),
         config_handle,
         Arc::new(coven::SystemClock),
         ids,

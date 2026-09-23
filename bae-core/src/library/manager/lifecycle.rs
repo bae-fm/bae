@@ -21,8 +21,7 @@ impl LibraryManager {
             self.config_handle.rename_library(name)?;
             return Ok(());
         }
-        let bae_dir = crate::config::bae_dir()?;
-        crate::config::rename_inactive_library(&bae_dir, library_id, name)?;
+        crate::config::rename_inactive_library(&self.app_dir, library_id, name)?;
         Ok(())
     }
 
@@ -49,9 +48,17 @@ impl LibraryManager {
                 config.cloud_home.provider.is_some(),
             )
         };
-        let bae_dir = registered_bae_dir(&library_path, &library_id)?;
+        let registered_path = self.app_dir.registered_library(&library_id);
+        if library_path != registered_path {
+            return Err(LibraryError::Internal(format!(
+                "library directory {} does not match library id {library_id}'s registered \
+                 directory {}",
+                library_path.display(),
+                registered_path.display()
+            )));
+        }
         let removal = crate::library::local_lifecycle::prepare_local_library_removal(
-            &bae_dir,
+            &self.app_dir,
             &library_id,
             crate::library::local_lifecycle::ActiveLibraryExpectation::MustNotNameAnotherLibrary,
         )?;
@@ -68,39 +75,4 @@ impl LibraryManager {
         self.database.forget_master_key().await?;
         removal.remove()
     }
-}
-
-fn registered_bae_dir(
-    library_dir: &std::path::Path,
-    library_id: &str,
-) -> Result<std::path::PathBuf, LibraryError> {
-    if library_dir.file_name() != Some(std::ffi::OsStr::new(library_id)) {
-        return Err(LibraryError::Internal(format!(
-            "library directory {} does not match library id {library_id}",
-            library_dir.display()
-        )));
-    }
-
-    let libraries_dir = library_dir.parent().ok_or_else(|| {
-        LibraryError::Internal(format!(
-            "library directory {} has no libraries parent",
-            library_dir.display()
-        ))
-    })?;
-    if libraries_dir.file_name() != Some(std::ffi::OsStr::new("libraries")) {
-        return Err(LibraryError::Internal(format!(
-            "library directory {} is not under a libraries directory",
-            library_dir.display()
-        )));
-    }
-
-    libraries_dir
-        .parent()
-        .map(|path| path.to_path_buf())
-        .ok_or_else(|| {
-            LibraryError::Internal(format!(
-                "library directory {} has no bae directory parent",
-                library_dir.display()
-            ))
-        })
 }

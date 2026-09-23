@@ -13,14 +13,8 @@ struct JoinOperation: Sendable {
 
 // The bridge's free functions, bound at file scope where their names are
 // unambiguous — inside `LibrarySetup` the field names shadow them.
-private let bridgeDiscoverLibraries = discoverLibraries
-private let bridgeRemoveLocalLibrary = removeLocalLibrary(libraryId:)
-private let bridgeCreateLibrary = createLibrary(name:)
 private let bridgeDecodeRestoreCode = decodeRestoreCode(code:)
 private let bridgeDecodeDevicePairingOffer = decodeDevicePairingOffer(code:)
-private let bridgePendingDevicePairingJoin = pendingDevicePairingJoin
-private let bridgeAbandonPendingDevicePairingJoin =
-    abandonPendingDevicePairingJoin
 
 /// Pre-library operations the welcome flow drives: on-device discovery,
 /// create, restore, join, the keychain restore codes, and provider OAuth.
@@ -151,14 +145,15 @@ final class LibrarySetup: Sendable, Observable {
             let oauthCancel: @Sendable () -> Void = {}
         #endif
         return LibrarySetup(
-            discoverLibraries: bridgeDiscoverLibraries,
-            removeLocalLibrary: bridgeRemoveLocalLibrary,
-            createLibrary: { try bridgeCreateLibrary(nil) },
+            discoverLibraries: { try host.discoverLibraries() },
+            removeLocalLibrary: { try host.removeLocalLibrary(libraryId: $0) },
+            createLibrary: { try host.createLibrary(name: nil) },
             decodeRestoreCode: bridgeDecodeRestoreCode,
             decodeDevicePairingOffer: bridgeDecodeDevicePairingOffer,
-            pendingDevicePairingJoin: bridgePendingDevicePairingJoin,
-            abandonPendingDevicePairingJoin:
-                bridgeAbandonPendingDevicePairingJoin,
+            pendingDevicePairingJoin: { try host.pendingDevicePairingJoin() },
+            abandonPendingDevicePairingJoin: {
+                try host.abandonPendingDevicePairingJoin()
+            },
             restoreFromCode: { code, oauthTokenJson in
                 try host.restoreFromCode(
                     code: code,

@@ -1,51 +1,44 @@
 #![cfg(feature = "test-utils")]
-//! The durable active-library pointer (`~/.bae/active-library`) must name a
+//! The durable active-library pointer (`<app dir>/active-library`) must name a
 //! library the user actually landed in. `app::bootstrap` writes it only after a
 //! fully-realized open, and never for a library that opened locked (encryption
 //! configured but this device's keyring lacks the key) — so cancelling the
 //! unlock screen leaves the previously-active library in charge.
 //!
-//! These drive `app::bootstrap` end to end and each overrides `HOME`, so they
-//! run in their own process and `#[serial]` to keep the env mutation from
-//! racing sibling tests in this binary.
-
-use std::path::Path;
+//! These drive `app::bootstrap` end to end, each over its own app directory.
 
 use bae_core::app::bootstrap;
-use bae_core::config::{CloudProvider, Config};
+use bae_core::config::{AppDir, CloudProvider, Config};
 use bae_core::library::create_library;
 use coven::{StoreDir, UuidProvider};
-use serial_test::serial;
 use tempfile::TempDir;
 use uuid::Uuid;
 
-/// A `TempDir` standing in for the user's home directory. Bind it for the whole
-/// test — the directory (and thus `~/.bae`) is deleted when it drops.
-fn fake_home() -> TempDir {
-    let tmp = TempDir::new().unwrap();
-    std::env::set_var("HOME", tmp.path());
+/// A temp directory standing in for the user's home, and bae's app directory
+/// under it. Bind it for the whole test — the directory is deleted when it
+/// drops.
+struct Home {
+    _dir: TempDir,
+    app_dir: AppDir,
+}
+
+fn fake_home() -> Home {
+    let dir = TempDir::new().unwrap();
+    let app_dir = AppDir::under_home(dir.path());
     bae_core::config::install_test_keyring();
-    tmp
+    Home { _dir: dir, app_dir }
 }
 
-/// The registered-library directory `~/.bae/libraries/<id>/`. The config layer's
-/// own path helpers (`registered_library_path` / `registered_library_dir`) are
-/// `pub(crate)`, so an integration test can't reach them; the literal layout is
-/// duplicated here.
-fn registered_library_dir(home: &Path, id: &str) -> StoreDir {
-    StoreDir::new(home.join(".bae").join("libraries").join(id))
-}
-
-/// Write a fixture library under `~/.bae/libraries/<id>/` and return its id.
+/// Write a fixture library registered under `app_dir` and return its id.
 /// `configure` mutates the config before it is saved — a plain local library
 /// passes an empty closure; a locked fixture sets its encryption + cloud fields.
 /// Does not touch the active pointer.
-fn write_library(home: &Path, name: &str, configure: impl FnOnce(&mut Config)) -> String {
+fn write_library(app_dir: &AppDir, name: &str, configure: impl FnOnce(&mut Config)) -> String {
     let id = Uuid::new_v4().to_string();
     let mut config = Config::with_defaults(
         id.clone(),
         Uuid::new_v4().to_string(),
-        registered_library_dir(home, &id),
+        StoreDir::new(app_dir.registered_library(&id)),
         name.to_string(),
     );
     configure(&mut config);
@@ -55,8 +48,8 @@ fn write_library(home: &Path, name: &str, configure: impl FnOnce(&mut Config)) -
 
 /// A returning opaque cloud home whose master key is absent from this device's
 /// Coven custody presents as locked. No Bae config flag duplicates that state.
-fn write_locked_library(home: &Path, name: &str) -> String {
-    write_library(home, name, |config| {
+fn write_locked_library(app_dir: &AppDir, name: &str) -> String {
+    write_library(app_dir, name, |config| {
         config.cloud_home.provider = Some(CloudProvider::S3);
         config.cloud_home.s3_bucket = Some("bae-locked-fixture".to_string());
         config.cloud_home.s3_region = Some("us-east-1".to_string());
@@ -64,12 +57,12 @@ fn write_locked_library(home: &Path, name: &str) -> String {
 }
 
 /// A plain local fixture library: no encryption, no cloud home.
-fn write_plain_library(home: &Path, name: &str) -> String {
-    write_library(home, name, |_| {})
+fn write_plain_library(app_dir: &AppDir, name: &str) -> String {
+    write_library(app_dir, name, |_| {})
 }
 
-fn active_pointer() -> Option<String> {
-    Config::active_library_id().unwrap()
+fn active_pointer(app_dir: &AppDir) -> Option<String> {
+    Config::active_library_id(app_dir).unwrap()
 }
 
 struct TestApp {
@@ -92,14 +85,16 @@ impl TestApp {
     }
 }
 
-fn create_and_open_library(name: &str) -> String {
+fn create_and_open_library(app_dir: &AppDir, name: &str) -> String {
     let config = create_library(
+        app_dir,
         bae_core::library_name::LibraryName::parse(name).unwrap(),
         &UuidProvider,
     )
     .unwrap();
     let id = config.store_id.clone();
     let app = bootstrap(
+        app_dir.clone(),
         id.clone(),
         200,
         true,
@@ -116,13 +111,13 @@ fn create_and_open_library(name: &str) -> String {
 /// Bootstrapping a locked library succeeds with sync deferred, but leaves the
 /// active pointer naming the library the user last actually opened.
 #[test]
-#[serial]
 fn bootstrap_of_locked_library_leaves_active_pointer() {
     let home = fake_home();
-    let a_id = create_and_open_library("Library A");
-    let b_id = write_locked_library(home.path(), "Library B");
+    let a_id = create_and_open_library(&home.app_dir, "Library A");
+    let b_id = write_locked_library(&home.app_dir, "Library B");
 
     let app = bootstrap(
+        home.app_dir.clone(),
         b_id,
         200,
         true,
@@ -138,7 +133,7 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
         "the locked library must report Coven custody as locked"
     );
     assert_eq!(
-        active_pointer().as_deref(),
+        active_pointer(&home.app_dir).as_deref(),
         Some(a_id.as_str()),
         "a locked open must not advance the active pointer"
     );
@@ -148,12 +143,12 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
 /// Bootstrapping an unlocked library advances the active pointer to it — the
 /// guard against overshooting into "never advance".
 #[test]
-#[serial]
 fn bootstrap_of_unlocked_library_advances_active_pointer() {
     let home = fake_home();
-    let b_id = write_plain_library(home.path(), "Library B");
+    let b_id = write_plain_library(&home.app_dir, "Library B");
 
     let app = bootstrap(
+        home.app_dir.clone(),
         b_id.clone(),
         200,
         true,
@@ -165,7 +160,7 @@ fn bootstrap_of_unlocked_library_advances_active_pointer() {
     .expect("a plain local open completes");
 
     assert_eq!(
-        active_pointer().as_deref(),
+        active_pointer(&home.app_dir).as_deref(),
         Some(b_id.as_str()),
         "a fully-realized open advances the active pointer"
     );
@@ -175,17 +170,17 @@ fn bootstrap_of_unlocked_library_advances_active_pointer() {
 /// A bootstrap that fails opening the database does not advance the active
 /// pointer — the write is the last step, after every fallible step above.
 #[test]
-#[serial]
 fn bootstrap_that_fails_leaves_active_pointer() {
     let home = fake_home();
-    let a_id = create_and_open_library("Library A");
-    let b_id = write_plain_library(home.path(), "Library B");
+    let a_id = create_and_open_library(&home.app_dir, "Library A");
+    let b_id = write_plain_library(&home.app_dir, "Library B");
 
     // A directory where the SQLite file belongs makes the DB open fail.
-    let db_path = registered_library_dir(home.path(), &b_id).db_path();
+    let db_path = StoreDir::new(home.app_dir.registered_library(&b_id)).db_path();
     std::fs::create_dir(&db_path).unwrap();
 
     let result = bootstrap(
+        home.app_dir.clone(),
         b_id,
         200,
         true,
@@ -199,7 +194,7 @@ fn bootstrap_that_fails_leaves_active_pointer() {
         "a directory at the db path must fail the open"
     );
     assert_eq!(
-        active_pointer().as_deref(),
+        active_pointer(&home.app_dir).as_deref(),
         Some(a_id.as_str()),
         "a failed open must not advance the active pointer"
     );
@@ -208,13 +203,13 @@ fn bootstrap_that_fails_leaves_active_pointer() {
 /// A frontend owner is part of the running application, so failure while
 /// constructing it must not record the library as successfully opened.
 #[test]
-#[serial]
 fn bootstrap_that_cannot_compose_the_frontend_leaves_active_pointer() {
-    let _home = fake_home();
-    let a_id = create_and_open_library("Library A");
-    let b_id = write_plain_library(_home.path(), "Library B");
+    let home = fake_home();
+    let a_id = create_and_open_library(&home.app_dir, "Library A");
+    let b_id = write_plain_library(&home.app_dir, "Library B");
 
     let result: Result<(), _> = bootstrap(
+        home.app_dir.clone(),
         b_id,
         200,
         true,
@@ -233,7 +228,7 @@ fn bootstrap_that_cannot_compose_the_frontend_leaves_active_pointer() {
         "frontend construction failure must surface"
     );
     assert_eq!(
-        active_pointer().as_deref(),
+        active_pointer(&home.app_dir).as_deref(),
         Some(a_id.as_str()),
         "a failed frontend owner must not advance the active pointer"
     );
@@ -242,12 +237,12 @@ fn bootstrap_that_cannot_compose_the_frontend_leaves_active_pointer() {
 /// A frontend panic is contained by the bootstrap thread boundary and returned
 /// to the host as a normal bootstrap failure.
 #[test]
-#[serial]
 fn bootstrap_that_panics_while_composing_the_frontend_returns_an_error() {
     let home = fake_home();
-    let id = write_plain_library(home.path(), "Library A");
+    let id = write_plain_library(&home.app_dir, "Library A");
 
     let result: Result<(), _> = bootstrap(
+        home.app_dir.clone(),
         id,
         200,
         true,
@@ -277,10 +272,10 @@ fn bootstrap_that_panics_while_composing_the_frontend_returns_an_error() {
 /// worker's exit raced the reopen before it was joined, so this passed only
 /// most of the time).
 #[test]
-#[serial]
 fn dropping_running_app_releases_the_store_lock_for_reopen() {
-    let _home = fake_home();
+    let home = fake_home();
     let lib = create_library(
+        &home.app_dir,
         bae_core::library_name::LibraryName::parse("Library A").unwrap(),
         &UuidProvider,
     )
@@ -288,6 +283,7 @@ fn dropping_running_app_releases_the_store_lock_for_reopen() {
     let id = lib.store_id.clone();
 
     let app = bootstrap(
+        home.app_dir.clone(),
         id.clone(),
         200,
         true,
@@ -301,6 +297,7 @@ fn dropping_running_app_releases_the_store_lock_for_reopen() {
 
     // Reopen the same store immediately, with no intervening shutdown().
     bootstrap(
+        home.app_dir.clone(),
         id.clone(),
         200,
         true,
@@ -324,15 +321,15 @@ fn dropping_running_app_releases_the_store_lock_for_reopen() {
 /// itself not connected (no cloud home installed) yet still configured, which is the
 /// state that drives the reconnect banner.
 #[test]
-#[serial]
 fn bootstrapping_offline_opens_the_library_and_reports_not_connected() {
     let home = fake_home();
-    let id = write_library(home.path(), "Offline Library", |config| {
+    let id = write_library(&home.app_dir, "Offline Library", |config| {
         config.cloud_home.provider = Some(CloudProvider::CloudKit);
         config.cloud_home.storage = coven::HomeStorage::Browsable;
     });
 
     let app = bootstrap(
+        home.app_dir.clone(),
         id,
         200,
         true,

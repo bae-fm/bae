@@ -2,19 +2,20 @@
 //!
 //! The host builds a `BridgeHost` right after `configure_diagnostics`, holds it
 //! for the whole run, and passes it to every call that reads one of its
-//! registrations: the OAuth applications, the CloudKit driver, the in-flight
-//! OAuth sign-in, and the runtime the onboarding calls run on.
+//! registrations: bae's directory, the OAuth applications, the CloudKit driver,
+//! the in-flight OAuth sign-in, and the runtime the onboarding calls run on.
 
 use std::sync::{Arc, Mutex};
 
+use crate::app_dir::BridgeAppDir;
 use crate::init::BridgeDiagnostics;
 use crate::setup::{
-    on_worker, parse_oauth_tokens, restore_from_code_config, JoinDevicePairingOperation,
-    RestoreFromCodeOperation,
+    join_error_to_bridge, on_worker, parse_oauth_tokens, restore_from_code_config,
+    JoinDevicePairingOperation, RestoreFromCodeOperation,
 };
 #[cfg(feature = "oauth-providers")]
 use crate::types::BridgeCloudProvider;
-use crate::types::{BridgeError, BridgeLibrary};
+use crate::types::{BridgeError, BridgeLibrary, BridgePendingDevicePairingJoin};
 
 /// Nothing panics while one of the host's registrations is locked, so a
 /// poisoned lock is a bug and fails loudly.
@@ -23,6 +24,10 @@ const HOST_LOCK: &str = "a host registration lock is never held across a panic";
 #[derive(uniffi::Object)]
 pub struct BridgeHost {
     diagnostics: Arc<BridgeDiagnostics>,
+    /// bae's directory: every library this device has registered, the
+    /// active-library pointer, and the journals of pending pairing attempts
+    /// live under it.
+    app_dir: bae_core::config::AppDir,
     /// The runtime the onboarding calls (restore, join, OAuth) and the
     /// telemetry flush run on: they run before any `AppHandle` — and its
     /// runtime — exists. Its workers have 16 MB stacks (like `init`'s), deep
@@ -67,12 +72,15 @@ impl BridgeHost {
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl BridgeHost {
     /// Build the host's registrations around the telemetry sink from
-    /// `configure_diagnostics`. Building the onboarding runtime can fail — the
-    /// OS can refuse to spawn its worker threads under thread, file-descriptor,
-    /// or memory exhaustion — and that failure is returned for the host to
-    /// display.
+    /// `configure_diagnostics` and bae's directory. Building the onboarding
+    /// runtime can fail — the OS can refuse to spawn its worker threads under
+    /// thread, file-descriptor, or memory exhaustion — and that failure is
+    /// returned for the host to display.
     #[uniffi::constructor]
-    pub fn new(diagnostics: Arc<BridgeDiagnostics>) -> Result<Arc<Self>, BridgeError> {
+    pub fn new(
+        diagnostics: Arc<BridgeDiagnostics>,
+        app_dir: Arc<BridgeAppDir>,
+    ) -> Result<Arc<Self>, BridgeError> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
             .thread_stack_size(16 * 1024 * 1024)
@@ -81,6 +89,7 @@ impl BridgeHost {
             .map_err(|e| BridgeError::internal(format!("build onboarding runtime: {e}")))?;
         Ok(Arc::new(Self {
             diagnostics,
+            app_dir: app_dir.core().clone(),
             runtime,
             oauth_clients: Mutex::new(coven::OAuthClients::empty()),
             #[cfg(feature = "cloudkit")]
@@ -105,6 +114,59 @@ impl BridgeHost {
 
 #[uniffi::export]
 impl BridgeHost {
+    /// Discover the libraries registered under bae's directory — the ones
+    /// created on this device or restored from another of the owner's devices.
+    /// Both the welcome flow (no active library yet) and the in-app sidebar /
+    /// quick switcher call this.
+    pub fn discover_libraries(&self) -> Result<Vec<BridgeLibrary>, BridgeError> {
+        bae_core::config::Config::discover_libraries(&self.app_dir)?
+            .into_iter()
+            .map(BridgeLibrary::from_core_info)
+            .collect()
+    }
+
+    /// Remove one library's local data without opening its database. Its cloud
+    /// copy and restore code, if any, are not changed.
+    pub fn remove_local_library(&self, library_id: String) -> Result<(), BridgeError> {
+        bae_core::library::remove_local_library(&self.app_dir, &library_id)
+            .map_err(BridgeError::from)
+    }
+
+    /// Create a new library and establish its device identity. The library
+    /// becomes active after the frontend opens it successfully.
+    pub fn create_library(&self, name: Option<String>) -> Result<BridgeLibrary, BridgeError> {
+        let ids = coven::UuidProvider;
+        let config = match name {
+            Some(n) => {
+                // Trim + non-blank is core policy: parse before creating, so a
+                // blank name is rejected the same way a rename's is.
+                let name = bae_core::library_name::LibraryName::parse(&n)
+                    .map_err(|e| BridgeError::config(e.to_string()))?;
+                bae_core::library::create_library(&self.app_dir, name, &ids)
+            }
+            None => bae_core::library::create_library_default(&self.app_dir, &ids),
+        }
+        .map_err(BridgeError::from)?;
+
+        BridgeLibrary::from_core(&config)
+    }
+
+    /// The pairing attempt retained by coven that can continue without
+    /// rescanning the existing device's code.
+    pub fn pending_device_pairing_join(
+        &self,
+    ) -> Result<Option<BridgePendingDevicePairingJoin>, BridgeError> {
+        bae_core::library::pending_device_pairing_join(&self.app_dir)
+            .map_err(join_error_to_bridge)
+            .map(|pending| pending.map(BridgePendingDevicePairingJoin::from_core))
+    }
+
+    /// Discard the joining identity and journal for the one pending enrollment.
+    pub fn abandon_pending_device_pairing_join(&self) -> Result<(), BridgeError> {
+        bae_core::library::abandon_pending_device_pairing_join(&self.app_dir)
+            .map_err(join_error_to_bridge)
+    }
+
     /// Restore a library from a restore code string.
     ///
     /// For OAuth providers, the caller must first run `oauth_authorize()` and
@@ -114,6 +176,7 @@ impl BridgeHost {
         code: String,
         oauth_token_json: Option<String>,
     ) -> Result<BridgeLibrary, BridgeError> {
+        let app_dir = self.app_dir.clone();
         let oauth_clients = self.oauth_clients.lock().expect(HOST_LOCK).clone();
         let cloudkit_ops = self.cloudkit_ops();
         on_worker(self.runtime.handle(), move || async move {
@@ -121,9 +184,15 @@ impl BridgeHost {
                 .map(|json| parse_oauth_tokens(&json))
                 .transpose()?;
 
-            let config =
-                restore_from_code_config(code, oauth_clients, oauth_tokens, cloudkit_ops, None)
-                    .await?;
+            let config = restore_from_code_config(
+                app_dir,
+                code,
+                oauth_clients,
+                oauth_tokens,
+                cloudkit_ops,
+                None,
+            )
+            .await?;
 
             BridgeLibrary::from_core(&config)
         })
@@ -140,6 +209,7 @@ impl BridgeHost {
             .transpose()?;
         let oauth_clients = self.oauth_clients.lock().expect(HOST_LOCK).clone();
         Ok(Arc::new(RestoreFromCodeOperation::new(
+            self.app_dir.clone(),
             code,
             oauth_clients,
             oauth_tokens,
@@ -161,11 +231,13 @@ impl BridgeHost {
         let oauth_tokens = oauth_token_json
             .map(|json| parse_oauth_tokens(&json))
             .transpose()?;
+        let app_dir = self.app_dir.clone();
         let oauth_clients = self.oauth_clients.lock().expect(HOST_LOCK).clone();
         let cloudkit_ops = self.cloudkit_ops();
         let runtime = self.runtime.handle().clone();
         crate::operation_runtime::run(runtime.clone(), move || async move {
             JoinDevicePairingOperation::prepare(
+                &app_dir,
                 &pairing_code,
                 oauth_clients,
                 oauth_tokens,
@@ -399,6 +471,7 @@ pub fn init_app(
     // arguments would stay held until the whole bootstrap returns.
     let oauth_clients = host.oauth_clients.lock().expect(HOST_LOCK).clone();
     host.diagnostics.open_app(
+        host.app_dir.clone(),
         library_id,
         position_update_interval_ms,
         restore_playback,
@@ -411,12 +484,51 @@ pub fn init_app(
 mod tests {
     use super::*;
 
+    /// A host over a fresh temp home. The `TempDir` owns bae's directory, so it
+    /// must outlive the host.
+    fn test_host() -> (Arc<BridgeHost>, tempfile::TempDir) {
+        let home = tempfile::TempDir::new().expect("create the test home");
+        let app_dir = BridgeAppDir::new(
+            home.path()
+                .to_str()
+                .expect("the temp home path is UTF-8")
+                .to_string(),
+        );
+        let host = BridgeHost::new(BridgeDiagnostics::noop(), app_dir).expect("build the host");
+        (host, home)
+    }
+
+    #[test]
+    fn a_created_library_is_registered_under_the_home_the_host_names() {
+        bae_core::config::install_test_keyring();
+        let (host, home) = test_host();
+
+        let created = host
+            .create_library(Some("Test Library".to_string()))
+            .expect("create a library");
+
+        let registered = home.path().join(".bae").join("libraries").join(&created.id);
+        assert_eq!(created.path, registered.to_str().expect("UTF-8 path"));
+        let discovered = host.discover_libraries().expect("discover libraries");
+        assert_eq!(discovered.len(), 1);
+        assert_eq!(discovered[0].id, created.id);
+        assert_eq!(discovered[0].path, created.path);
+
+        host.remove_local_library(created.id.clone())
+            .expect("remove the library");
+        assert!(!registered.exists());
+        assert!(host
+            .discover_libraries()
+            .expect("discover libraries")
+            .is_empty());
+    }
+
     #[cfg(feature = "oauth-providers")]
     #[test]
     fn host_driven_oauth_flow_holds_at_most_one_pending_exchange() {
         use crate::types::BridgeErrorCategory;
 
-        let host = BridgeHost::new(BridgeDiagnostics::noop()).expect("build the host");
+        let (host, _home) = test_host();
         host.set_oauth_client_creds(
             r#"{ "google_drive": { "client_id": "test-client-id", "client_secret": null } }"#
                 .to_string(),
@@ -468,7 +580,7 @@ mod tests {
     fn begin_fails_on_a_host_with_no_registered_creds() {
         use crate::types::BridgeErrorCategory;
 
-        let host = BridgeHost::new(BridgeDiagnostics::noop()).expect("build the host");
+        let (host, _home) = test_host();
 
         match host.oauth_begin(BridgeCloudProvider::GoogleDrive, "bae://oauth".to_string()) {
             Err(BridgeError::Diagnostic { category, detail }) => {
@@ -482,7 +594,7 @@ mod tests {
 
     #[test]
     fn flush_diagnostics_completes_for_a_caller_on_another_runtime() {
-        let host = BridgeHost::new(BridgeDiagnostics::noop()).expect("build the host");
+        let (host, _home) = test_host();
         let caller = tokio::runtime::Builder::new_current_thread()
             .build()
             .expect("build the caller runtime");

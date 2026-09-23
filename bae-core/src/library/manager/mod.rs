@@ -813,6 +813,10 @@ pub enum LibraryEvent {
 pub struct LibraryManager {
     database: Database,
     config_handle: Arc<ConfigHandle>,
+    /// The app directory this library is registered under: where renaming
+    /// another library finds it, where the active-library pointer is written,
+    /// and where forgetting this library removes it from.
+    app_dir: crate::config::AppDir,
     clock: ClockRef,
     ids: IdRef,
     /// Typed telemetry sink, injected at bootstrap alongside the clock/id

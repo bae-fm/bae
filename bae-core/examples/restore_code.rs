@@ -14,10 +14,19 @@ fn main() {
         std::process::exit(1);
     }
 
-    let library_id = match bae_core::config::Config::active_library_id() {
+    let Some(home) = dirs::home_dir() else {
+        eprintln!("could not determine the home directory");
+        std::process::exit(1);
+    };
+    let app_dir = bae_core::config::AppDir::under_home(&home);
+
+    let library_id = match bae_core::config::Config::active_library_id(&app_dir) {
         Ok(Some(id)) => id,
         Ok(None) => {
-            eprintln!("no active library: ~/.bae/active-library does not exist");
+            eprintln!(
+                "no active library: {} does not exist",
+                app_dir.active_library_pointer().display()
+            );
             std::process::exit(1);
         }
         Err(e) => {
@@ -27,13 +36,14 @@ fn main() {
     };
 
     let ids = coven::UuidProvider;
-    let config = match bae_core::config::Config::load_registered_library(&library_id, &ids) {
-        Ok(config) => config,
-        Err(e) => {
-            eprintln!("load config failed: {e}");
-            std::process::exit(1);
-        }
-    };
+    let config =
+        match bae_core::config::Config::load_registered_library(&app_dir, &library_id, &ids) {
+            Ok(config) => config,
+            Err(e) => {
+                eprintln!("load config failed: {e}");
+                std::process::exit(1);
+            }
+        };
     eprintln!(
         "active library: {} ({})",
         config.store_name, config.store_id,

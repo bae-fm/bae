@@ -117,6 +117,7 @@ async fn new_manager() -> (LibraryManager, TempDir) {
     let config_handle = support::test_config(&library_dir);
     let manager = LibraryManager::new(
         database,
+        bae_core::config::AppDir::under_home(temp.path()),
         config_handle,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),

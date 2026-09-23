@@ -38,12 +38,29 @@ internal static partial class NativeBae
     }
 
     /// <summary>
-    /// Construct the telemetry sink and install the core's tracing subscriber.
-    /// Infallible: the core falls back to the no-op sink (with a local error
-    /// log) rather than let telemetry setup block a launch.
+    /// bae's directory under the user's profile directory — the home directory
+    /// on Windows and Linux alike. Throws when the platform names no profile
+    /// directory, since no library can be found or created without one.
     /// </summary>
-    internal static BridgeDiagnostics ConfigureDiagnostics(BridgeDiagnosticsConfig config) =>
-        BaeBridgeMethods.ConfigureDiagnostics(config);
+    internal static BridgeAppDir UserAppDir()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (string.IsNullOrEmpty(home))
+        {
+            throw new InvalidOperationException("The user profile directory is unknown, so bae's directory has no location.");
+        }
+
+        return new BridgeAppDir(home);
+    }
+
+    /// <summary>
+    /// Construct the telemetry sink and install the core's tracing subscriber,
+    /// with the file log under <paramref name="appDir"/>. Infallible: the core
+    /// falls back to the no-op sink (with a local error log) rather than let
+    /// telemetry setup block a launch.
+    /// </summary>
+    internal static BridgeDiagnostics ConfigureDiagnostics(BridgeDiagnosticsConfig config, BridgeAppDir appDir) =>
+        BaeBridgeMethods.ConfigureDiagnostics(config, appDir);
 
     /// <summary>
     /// Build the Datadog telemetry config the sink is constructed from. Local
@@ -72,12 +89,13 @@ internal static partial class NativeBae
             : new BridgeDiagnosticsConfig.Disabled();
 
     /// <summary>
-    /// Build the process-lifetime host registrations around the telemetry sink.
-    /// Throws when the OS refuses the onboarding runtime's worker threads, which
-    /// leaves the app unable to restore, join, sign in, or open a library.
+    /// Build the process-lifetime host registrations around the telemetry sink
+    /// and bae's directory. Throws when the OS refuses the onboarding runtime's
+    /// worker threads, which leaves the app unable to restore, join, sign in, or
+    /// open a library.
     /// </summary>
-    internal static BridgeHost CreateHost(BridgeDiagnostics diagnostics) =>
-        new BridgeHost(diagnostics);
+    internal static BridgeHost CreateHost(BridgeDiagnostics diagnostics, BridgeAppDir appDir) =>
+        new BridgeHost(diagnostics, appDir);
 
     /// <summary>Flush buffered telemetry through the host's runtime.</summary>
     internal static System.Threading.Tasks.Task<string?> FlushDiagnostics(BridgeHost host) =>
@@ -219,12 +237,12 @@ internal static partial class NativeBae
         };
 
     /// <summary>The libraries discovered on this device.</summary>
-    internal static List<BridgeLibrary> Libraries() =>
-        BaeBridgeMethods.DiscoverLibraries()
+    internal static List<BridgeLibrary> Libraries(BridgeHost host) =>
+        host.DiscoverLibraries()
             .ToList();
 
     /// <summary>Create a new library; returns its id.</summary>
-    internal static string CreateLibrary() => BaeBridgeMethods.CreateLibrary(name: null).Id;
+    internal static string CreateLibrary(BridgeHost host) => host.CreateLibrary(name: null).Id;
 
     /// <summary>
     /// Run the desktop OAuth flow for a provider (google_drive / dropbox / onedrive)

@@ -32,25 +32,28 @@ struct BaeApp: App {
         var loadedOAuthLinking: OAuthLinking?
         var oauthError: String?
         #endif
-        // Telemetry first, from compiled-in values only (no $HOME needed), so the
-        // sink exists for every later launch step and any failure it reports.
+        // bae's directory lives under the Application Support container: iOS
+        // app processes have no home directory of their own to put it under.
+        let dataDirectory = Self.dataDirectory()
+        let appDir = BridgeAppDir(home: dataDirectory.path)
+        // Telemetry first, from compiled-in values only, so the sink exists for
+        // every later launch step and any failure it reports.
         let diagnostics = BaeDiagnostics.configure(
             source: "ios",
-            edition: appEdition
+            edition: appEdition,
+            appDir: appDir
         )
         self.diagnostics = diagnostics
-        let host = BaeHost.make(diagnostics: diagnostics)
+        let host = BaeHost.make(diagnostics: diagnostics, appDir: appDir)
         self.host = host
         var launchError: String?
         do {
             BaeCrashReporting.configure(edition: appEdition)
             Logger.bae("BaeApp").info("application launched")
-            // App processes on iOS have no $HOME, which bae-core needs to locate its
-            // data root (`~/.bae`). Point it at our Application Support container
-            // before any library access (discover/restore/initApp) so those don't
-            // fail with "could not determine home directory". `set_data_dir` sets
-            // HOME, so it must run before `initKeyring`.
-            setDataDir(path: try Self.dataDirectory())
+            try FileManager.default.createDirectory(
+                at: dataDirectory,
+                withIntermediateDirectories: true
+            )
             // No `setCaCertDir` on iOS — the TLS stack uses Apple's trust roots.
             try initKeyring(diagnostics: diagnostics)
             // Hand Rust the CloudKit driver once. It can't build the driver itself
@@ -106,19 +109,13 @@ struct BaeApp: App {
         }
     }
 
-    /// Absolute path to the app's Application Support directory, created if
-    /// absent. bae-core writes its library tree and config under here.
-    private static func dataDirectory() throws -> String {
-        let fileManager = FileManager.default
-        let base =
-            fileManager.urls(
+    /// The app's Application Support directory. bae-core writes its library
+    /// tree and config under here; launch creates it if absent.
+    private static func dataDirectory() -> URL {
+        FileManager.default
+            .urls(
                 for: .applicationSupportDirectory,
                 in: .userDomainMask
             )[0]
-        try fileManager.createDirectory(
-            at: base,
-            withIntermediateDirectories: true
-        )
-        return base.path
     }
 }

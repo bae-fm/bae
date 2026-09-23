@@ -17,12 +17,14 @@ namespace Bae.Desktop;
 internal sealed partial class MainWindow : Window
 {
     private readonly SessionStore _session;
+    private readonly uniffi.bae_bridge.BridgeHost _host;
     private readonly AppService _app;
     private readonly MainShellView _shell;
     private readonly Func<string, Task> _switchLibrary;
 
     public MainWindow(
         SessionStore session,
+        uniffi.bae_bridge.BridgeHost host,
         IMediaControl mediaControl,
         UpdateService updates,
         AppearanceStore appearance,
@@ -32,6 +34,7 @@ internal sealed partial class MainWindow : Window
     {
         _switchLibrary = switchLibrary;
         _session = session;
+        _host = host;
         _app = new AppService(session, Dispatcher.UIThread, mediaControl);
         _session.UiEvent += _app.UiEventRouter.Route;
 
@@ -60,7 +63,7 @@ internal sealed partial class MainWindow : Window
         // The library manager (switch / rename / add) and the settings window's
         // Lock + Remove sections both drive the coordinator's window swap, so the
         // switch and close callbacks are threaded to each.
-        var librariesDialog = new LibrariesDialog(_app, modalHost, switchLibrary);
+        var librariesDialog = new LibrariesDialog(_app, modalHost, host, switchLibrary);
         // The settings window is a real window (like macOS's Settings scene) with
         // its own modal host for its sub-dialogs. Its updates section drives the
         // process-wide update service, and applying a staged update exits the app,
@@ -135,7 +138,7 @@ internal sealed partial class MainWindow : Window
     // to load. A digit past the end names no library and does nothing.
     private async Task SwitchToLibrary(int digit)
     {
-        var libraries = LibraryDiscovery.Load(_ => { })
+        var libraries = LibraryDiscovery.Load(_host, _ => { })
             .Where(library => library.Error is null)
             .Select(library => (library.Id, library.IsActive))
             .ToList();

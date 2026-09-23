@@ -77,8 +77,8 @@ internal sealed class WelcomeWindow : Window
 
         var welcomeView = new WelcomeView(
             SetStatus,
-            () => LibraryDiscovery.Load(SetStatus),
-            reportError => LibraryDiscovery.Create(reportError),
+            () => LibraryDiscovery.Load(host, SetStatus),
+            reportError => LibraryDiscovery.Create(host, reportError),
             openLibrary,
             () => _modalHost.Show(close => _joinDialog.Build(close)),
             () => _modalHost.Show(close => _restoreDialog.Build(close)));
@@ -94,7 +94,7 @@ internal sealed class WelcomeWindow : Window
         {
             try
             {
-                var pending = BaeBridgeMethods.PendingDevicePairingJoin();
+                var pending = host.PendingDevicePairingJoin();
                 if (pending is not null)
                 {
                     await _modalHost.Show(close => _joinDialog.Build(close, pending));

@@ -261,7 +261,7 @@ internal sealed class JoinLibraryDialog
                 {
                     await joinTask;
                 }
-                await Task.Run(BaeBridgeMethods.AbandonPendingDevicePairingJoin);
+                await Task.Run(_host.AbandonPendingDevicePairingJoin);
                 close();
             }
             catch (BridgeException exception)

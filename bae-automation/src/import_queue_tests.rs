@@ -68,6 +68,7 @@ pub(super) async fn automation_over() -> Fixture {
     let tmp = tempfile::TempDir::new().expect("a temp library dir");
     let library_dir = coven::StoreDir::new(tmp.path());
     let manager = LibraryManager::open(
+        bae_core::config::AppDir::under_home(tmp.path()),
         bae_test_support::test_config(&library_dir),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),

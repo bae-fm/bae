@@ -1,3 +1,4 @@
+use crate::config::AppDir;
 use crate::library::LibraryError;
 use std::ffi::OsStr;
 use std::path::{Component, Path};
@@ -16,32 +17,20 @@ pub(crate) struct PreparedLocalLibraryRemoval {
 
 /// Remove a registered library without opening its database first. This is the
 /// welcome screen's path for a library whose database cannot be opened.
-pub fn remove_local_library(library_id: &str) -> Result<(), LibraryError> {
-    let bae_dir = crate::config::bae_dir()?;
-    remove_local_library_from_bae_dir(
-        &bae_dir,
-        library_id,
-        ActiveLibraryExpectation::MayBeInactive,
-    )?;
+pub fn remove_local_library(app_dir: &AppDir, library_id: &str) -> Result<(), LibraryError> {
+    prepare_local_library_removal(app_dir, library_id, ActiveLibraryExpectation::MayBeInactive)?
+        .remove()?;
     coven::Coven::forget_keyring_master_key(library_id)?;
     Ok(())
 }
 
-pub(crate) fn remove_local_library_from_bae_dir(
-    bae_dir: &Path,
-    library_id: &str,
-    active_expectation: ActiveLibraryExpectation,
-) -> Result<(), LibraryError> {
-    prepare_local_library_removal(bae_dir, library_id, active_expectation)?.remove()
-}
-
 pub(crate) fn prepare_local_library_removal(
-    bae_dir: &Path,
+    app_dir: &AppDir,
     library_id: &str,
     active_expectation: ActiveLibraryExpectation,
 ) -> Result<PreparedLocalLibraryRemoval, LibraryError> {
     validate_library_id(library_id)?;
-    let active_pointer = bae_dir.join("active-library");
+    let active_pointer = app_dir.active_library_pointer();
     let active_library_id = read_active_pointer(&active_pointer)?;
     if let Some(active_library_id) = &active_library_id {
         if matches!(
@@ -56,7 +45,7 @@ pub(crate) fn prepare_local_library_removal(
         }
     }
 
-    let library_dir = crate::config::registered_library_path(bae_dir, library_id);
+    let library_dir = app_dir.registered_library(library_id);
     if library_dir.exists() && !library_dir.is_dir() {
         return Err(LibraryError::Internal(format!(
             "Failed to remove library data at {}: path is not a directory",

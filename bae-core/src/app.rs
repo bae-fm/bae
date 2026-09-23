@@ -89,7 +89,8 @@ pub(crate) fn classify_key_state_error(error: crate::library::LibraryError) -> B
     }
 }
 
-/// Build and start the application for `library_id`.
+/// Build and start the application for `library_id`, the library registered
+/// under `app_dir`.
 ///
 /// `position_update_interval_ms` controls how often playback emits a position
 /// tick. Returns once the DB is open and playback (plus the desktop import
@@ -103,6 +104,7 @@ pub(crate) fn classify_key_state_error(error: crate::library::LibraryError) -> B
 /// only once the open fully completes and the library is unlocked on this device;
 /// a locked or failed open leaves the pointer unchanged.
 pub fn bootstrap<T, F>(
+    app_dir: crate::config::AppDir,
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
@@ -126,6 +128,7 @@ where
         .stack_size(32 * 1024 * 1024)
         .spawn(move || {
             bootstrap_inner(
+                app_dir,
                 library_id,
                 position_update_interval_ms,
                 restore_playback,
@@ -152,6 +155,7 @@ where
 }
 
 fn bootstrap_inner<T, F>(
+    app_dir: crate::config::AppDir,
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
@@ -172,7 +176,7 @@ where
 
     let config = timing
         .stage(&library_id, "load config", || {
-            Config::load_registered_library(&library_id, ids.as_ref())
+            Config::load_registered_library(&app_dir, &library_id, ids.as_ref())
         })
         .map_err(|error| match error {
             crate::config::ConfigError::Config(_) => {
@@ -218,6 +222,7 @@ where
     let library_manager = timing
         .stage(&library_id, "open library manager", || {
             crate::library::LibraryManager::open(
+                app_dir.clone(),
                 Arc::clone(&config_handle),
                 Arc::clone(&clock),
                 ids,
@@ -335,7 +340,7 @@ where
     if advance_active_pointer {
         timing
             .stage(&library_id, "save active-library pointer", || {
-                config_handle.config().save_active_library()
+                config_handle.config().save_active_library(&app_dir)
             })
             .map_err(|e| BootstrapError::Config(e.to_string()))?;
     }

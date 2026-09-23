@@ -26,10 +26,8 @@ import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.JoinDevicePairingOperation
 import uniffi.bae_bridge.JoiningDeviceJoinProgressCallback
 import uniffi.bae_bridge.RestoreFromCodeOperation
-import uniffi.bae_bridge.abandonPendingDevicePairingJoin
 import uniffi.bae_bridge.decodeDevicePairingOffer
 import uniffi.bae_bridge.decodeRestoreCode
-import uniffi.bae_bridge.pendingDevicePairingJoin
 
 private const val TAG = "bae.OnboardingLaunchers"
 private val logger = BaeLogger(TAG)
@@ -320,7 +318,7 @@ class JoinLauncher(
     ): Boolean {
         val pending =
             try {
-                withContext(Dispatchers.IO) { pendingDevicePairingJoin() }
+                withContext(Dispatchers.IO) { host.pendingDevicePairingJoin() }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -372,7 +370,7 @@ class JoinLauncher(
         scope.launch {
             try {
                 activeFlow?.job?.join()
-                withContext(Dispatchers.IO) { abandonPendingDevicePairingJoin() }
+                withContext(Dispatchers.IO) { host.abandonPendingDevicePairingJoin() }
                 reset()
                 onAbandoned()
             } catch (e: Exception) {

@@ -3,12 +3,14 @@ use std::num::{NonZeroU32, NonZeroU64, NonZeroUsize};
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
+mod app_dir;
 mod handle;
 mod keyring;
 mod migrations;
 mod save;
 mod server;
 
+pub use app_dir::AppDir;
 pub use handle::ConfigHandle;
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
@@ -289,14 +291,6 @@ pub enum ConfigError {
     Upgrade(String),
 }
 
-/// bae's application directory (`~/.bae`). The base coven's restore/join build
-/// per-library dirs under (`<app_dir>/libraries/<id>`).
-pub fn bae_dir() -> Result<std::path::PathBuf, ConfigError> {
-    Ok(dirs::home_dir()
-        .ok_or_else(|| ConfigError::Config("could not determine home directory".to_string()))?
-        .join(".bae"))
-}
-
 /// Deserialize an `Option<T>` whose key must be present, even when its value is
 /// `null`. A plain `Option<T>` reads a missing key as `None`; this fails the load
 /// instead, so a config file that omits the key is loud rather than silently
@@ -507,7 +501,7 @@ impl From<&Config> for ConfigYaml {
 }
 
 /// Metadata about a discovered library (for the library switcher UI)
-/// A library found under `~/.bae/libraries/`, whether or not it can be opened.
+/// A library registered under the app directory, whether or not it can be opened.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LibraryInfo {
     pub id: String,
@@ -562,29 +556,13 @@ impl Config {
     }
 
     pub fn load_registered_library(
+        app_dir: &AppDir,
         library_id: &str,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
-        let bae_dir = bae_dir()?;
-        Self::load_registered_library_from_bae_dir(&bae_dir, library_id, ids)
-    }
-
-    pub(crate) fn load_registered_library_from_bae_dir(
-        bae_dir: &std::path::Path,
-        library_id: &str,
-        ids: &dyn coven::IdProvider,
-    ) -> Result<Self, ConfigError> {
-        let library_dir = registered_library_path(bae_dir, library_id);
-        Self::load_from_registered_library_dir(library_dir, library_id, ids)
-    }
-
-    fn load_from_registered_library_dir(
-        library_dir: PathBuf,
-        expected_library_id: &str,
-        ids: &dyn coven::IdProvider,
-    ) -> Result<Self, ConfigError> {
+        let library_dir = app_dir.registered_library(library_id);
         let config_path = library_dir.join("config.yaml");
-        let parsed = load_registered_config_yaml(&library_dir, expected_library_id)?;
+        let parsed = load_registered_config_yaml(&library_dir, library_id)?;
         Self::config_from_yaml(parsed, library_dir, &config_path, ids)
     }
 
@@ -629,12 +607,12 @@ impl Config {
         Ok(yaml_config.into_config(device_id, library_dir))
     }
 
-    /// Save the active library UUID to the global pointer file (~/.bae/active-library).
-    pub fn save_active_library(&self) -> Result<(), ConfigError> {
-        let app_dir = bae_dir()?;
-        std::fs::create_dir_all(&app_dir)?;
-        let pointer_path = app_dir.join("active-library");
-        write_atomic(&pointer_path, self.store_id.as_bytes()).map_err(WriteError::into_inner)?;
+    /// Record this library as the one this device last opened, in the app
+    /// directory's active-library pointer.
+    pub fn save_active_library(&self, app_dir: &AppDir) -> Result<(), ConfigError> {
+        app_dir.create()?;
+        write_atomic(&app_dir.active_library_pointer(), self.store_id.as_bytes())
+            .map_err(WriteError::into_inner)?;
         Ok(())
     }
 
@@ -669,66 +647,71 @@ impl Config {
         }
     }
 
-    /// Discover all libraries under ~/.bae/libraries/.
-    pub fn discover_libraries() -> Result<Vec<LibraryInfo>, ConfigError> {
-        let app_dir = bae_dir()?;
-        discover_libraries_from_bae_dir(&app_dir)
-    }
+    /// Discover every library registered under the app directory.
+    pub fn discover_libraries(app_dir: &AppDir) -> Result<Vec<LibraryInfo>, ConfigError> {
+        let active_id = Self::active_library_id(app_dir)?;
 
-    pub fn active_library_id() -> Result<Option<String>, ConfigError> {
-        let app_dir = bae_dir()?;
-        read_active_library_id(&app_dir)
-    }
-}
-
-fn discover_libraries_from_bae_dir(
-    app_dir: &std::path::Path,
-) -> Result<Vec<LibraryInfo>, ConfigError> {
-    let active_id = read_active_library_id(app_dir)?;
-
-    let mut libraries: Vec<LibraryInfo> = discover_all_library_paths(app_dir)
-        .into_iter()
-        .map(|(path, yaml)| match yaml {
-            Ok(yaml) => LibraryInfo {
-                is_active: active_id.as_deref() == Some(&yaml.identity.library_id),
-                id: yaml.identity.library_id,
-                name: yaml.identity.library_name,
-                path,
-                cloud_provider: yaml.cloud_home.provider.clone(),
-                error: None,
-            },
-            // The config is the only thing that knows the library's id and name, and
-            // it is what failed — so the directory name stands in for both. It is a
-            // UUID, which is what the id would have been anyway.
-            Err(e) => {
-                let dir_name = path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or_default()
-                    .to_string();
-                LibraryInfo {
-                    is_active: active_id.as_deref() == Some(dir_name.as_str()),
-                    id: dir_name.clone(),
-                    name: dir_name,
+        let mut libraries: Vec<LibraryInfo> = discover_all_library_paths(app_dir)
+            .into_iter()
+            .map(|(path, yaml)| match yaml {
+                Ok(yaml) => LibraryInfo {
+                    is_active: active_id.as_deref() == Some(&yaml.identity.library_id),
+                    id: yaml.identity.library_id,
+                    name: yaml.identity.library_name,
                     path,
-                    cloud_provider: None,
-                    error: Some(e.to_string()),
+                    cloud_provider: yaml.cloud_home.provider.clone(),
+                    error: None,
+                },
+                // The config is the only thing that knows the library's id and name, and
+                // it is what failed — so the directory name stands in for both. It is a
+                // UUID, which is what the id would have been anyway.
+                Err(e) => {
+                    let dir_name = path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or_default()
+                        .to_string();
+                    LibraryInfo {
+                        is_active: active_id.as_deref() == Some(dir_name.as_str()),
+                        id: dir_name.clone(),
+                        name: dir_name,
+                        path,
+                        cloud_provider: None,
+                        error: Some(e.to_string()),
+                    }
                 }
-            }
-        })
-        .collect();
+            })
+            .collect();
 
-    // Broken libraries sort last: they are visible, but they are not what the user
-    // is looking for.
-    libraries.sort_by(|a, b| {
-        a.error
-            .is_some()
-            .cmp(&b.error.is_some())
-            .then_with(|| b.is_active.cmp(&a.is_active))
-            .then_with(|| a.name.cmp(&b.name))
-    });
+        // Broken libraries sort last: they are visible, but they are not what the user
+        // is looking for.
+        libraries.sort_by(|a, b| {
+            a.error
+                .is_some()
+                .cmp(&b.error.is_some())
+                .then_with(|| b.is_active.cmp(&a.is_active))
+                .then_with(|| a.name.cmp(&b.name))
+        });
 
-    Ok(libraries)
+        Ok(libraries)
+    }
+
+    /// The library this device last opened, from the app directory's
+    /// active-library pointer; `None` when no library has been opened yet.
+    pub fn active_library_id(app_dir: &AppDir) -> Result<Option<String>, ConfigError> {
+        let pointer_path = app_dir.active_library_pointer();
+        let Some(content) = read_optional_file(&pointer_path)? else {
+            return Ok(None);
+        };
+        let id = content.trim().to_string();
+        if id.is_empty() {
+            return Err(ConfigError::Config(format!(
+                "active-library pointer at {} is empty",
+                pointer_path.display()
+            )));
+        }
+        Ok(Some(id))
+    }
 }
 
 /// Rename a library by id without loading it into memory: locate its directory,
@@ -737,11 +720,11 @@ fn discover_libraries_from_bae_dir(
 /// the active one renames through [`ConfigHandle::rename_library`], so its
 /// subscribers see the change.
 pub fn rename_inactive_library(
-    bae_dir: &std::path::Path,
+    app_dir: &AppDir,
     library_id: &str,
     new_name: &crate::library_name::LibraryName,
 ) -> Result<(), ConfigError> {
-    let library_dir = find_library_by_id(bae_dir, library_id)
+    let library_dir = find_library_by_id(app_dir, library_id)
         .ok_or_else(|| ConfigError::Config(format!("library not found: {library_id}")))?;
     let config_path = library_dir.join("config.yaml");
     let mut yaml = parse_config_yaml(&std::fs::read_to_string(&config_path)?)?.config;
@@ -750,10 +733,6 @@ pub fn rename_inactive_library(
         serde_yaml::to_string(&yaml).map_err(|e| ConfigError::Serialization(e.to_string()))?;
     write_atomic(&config_path, serialized.as_bytes()).map_err(WriteError::into_inner)?;
     Ok(())
-}
-
-pub(crate) fn registered_library_path(bae_dir: &std::path::Path, library_id: &str) -> PathBuf {
-    bae_dir.join("libraries").join(library_id)
 }
 
 fn load_registered_config_yaml(
@@ -771,25 +750,10 @@ fn load_registered_config_yaml(
     Ok(parsed)
 }
 
-/// Read the active library UUID from `~/.bae/active-library`, if it exists.
-fn read_active_library_id(bae_dir: &std::path::Path) -> Result<Option<String>, ConfigError> {
-    let pointer_path = bae_dir.join("active-library");
-    let Some(content) = read_optional_file(&pointer_path)? else {
-        return Ok(None);
-    };
-    let id = content.trim().to_string();
-    if id.is_empty() {
-        return Err(ConfigError::Config(format!(
-            "active-library pointer at {} is empty",
-            pointer_path.display()
-        )));
-    }
-    Ok(Some(id))
-}
-
-/// Find a library's directory by its UUID, scanning `~/.bae/libraries/` subdirectories.
-fn find_library_by_id(bae_dir: &std::path::Path, uuid: &str) -> Option<PathBuf> {
-    for (path, yaml) in discover_all_library_paths(bae_dir) {
+/// Find a library's directory by its UUID, scanning the app directory's
+/// registered libraries.
+fn find_library_by_id(app_dir: &AppDir, uuid: &str) -> Option<PathBuf> {
+    for (path, yaml) in discover_all_library_paths(app_dir) {
         // A library whose config will not parse cannot be addressed by id — its id
         // is precisely what we could not read.
         if yaml.is_ok_and(|yaml| yaml.identity.library_id == uuid) {
@@ -799,16 +763,14 @@ fn find_library_by_id(bae_dir: &std::path::Path, uuid: &str) -> Option<PathBuf> 
     None
 }
 
-/// Collect every library directory under ~/.bae/libraries/ with the outcome of
-/// reading its config — `Err` for one that cannot be read.
+/// Collect every library directory registered under the app directory with the
+/// outcome of reading its config — `Err` for one that cannot be read.
 ///
 /// The failure is carried, not dropped, so an unreadable library remains visible
 /// in the picker.
-fn discover_all_library_paths(
-    bae_dir: &std::path::Path,
-) -> Vec<(PathBuf, Result<ConfigYaml, ConfigError>)> {
+fn discover_all_library_paths(app_dir: &AppDir) -> Vec<(PathBuf, Result<ConfigYaml, ConfigError>)> {
     let mut results = Vec::new();
-    let libraries_dir = bae_dir.join("libraries");
+    let libraries_dir = app_dir.libraries();
 
     if libraries_dir.is_dir() {
         let entries = match std::fs::read_dir(&libraries_dir) {
@@ -834,7 +796,7 @@ fn discover_all_library_paths(
                 );
                 continue;
             }
-            // A `.bae/libraries/` dir bae created is UTF-8 by construction
+            // A libraries dir entry bae created is UTF-8 by construction
             // (the id is a UUID). A non-UTF-8 name is foreign or corrupt: its
             // bytes can't round-trip through the `String` path the rest of the
             // app addresses files by, so skip it rather than lossily mangle

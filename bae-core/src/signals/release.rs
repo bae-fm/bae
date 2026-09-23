@@ -234,6 +234,7 @@ mod tests {
         crate::config::install_test_keyring();
         let manager = LibraryManager::new(
             database.clone(),
+            crate::config::AppDir::under_home(temp.path()),
             config_handle,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),
@@ -377,6 +378,7 @@ mod tests {
         crate::config::install_test_keyring();
         let manager = LibraryManager::new(
             database.clone(),
+            crate::config::AppDir::under_home(temp.path()),
             config_handle,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),

@@ -187,10 +187,11 @@ public sealed partial class App : Application
     {
         _pendingLaunchIntent = launchIntent;
 
-        BaeDiagnostics.Configure();
+        var appDir = NativeBae.UserAppDir();
+        BaeDiagnostics.Configure(appDir);
         BaeCrashReporting.Configure();
         BaeDiagnostics.Logger.Info("application launched");
-        _host = NativeBae.CreateHost(BaeDiagnostics.Handle);
+        _host = NativeBae.CreateHost(BaeDiagnostics.Handle, appDir);
 
         _session = new SessionStore(Dispatcher.UIThread);
         // The OS now-playing surface is process-scoped, like the session it reads
@@ -241,7 +242,7 @@ public sealed partial class App : Application
             ProtocolRegistration.Register();
         }
 
-        var libraries = LibraryDiscovery.Load(_ => { }).Where(library => library.Error is null).ToList();
+        var libraries = LibraryDiscovery.Load(Host, _ => { }).Where(library => library.Error is null).ToList();
         var openable = libraries.FirstOrDefault(library => library.IsActive)
             ?? libraries.FirstOrDefault();
         if (openable is null)
@@ -276,7 +277,7 @@ public sealed partial class App : Application
     private void FinishOpenLibrary()
     {
         var main = new MainWindow(
-            Session, MediaControl, Updates, _appearance!, CloseLibrary, SwitchLibrary, ApplyUpdateAndRestart);
+            Session, Host, MediaControl, Updates, _appearance!, CloseLibrary, SwitchLibrary, ApplyUpdateAndRestart);
         _main = main;
         main.Show();
         // Attach from here rather than from the window's own Opened/Closed: a swap

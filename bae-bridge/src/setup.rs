@@ -1,4 +1,6 @@
-//! Pre-AppHandle free functions: library discovery, creation, restore, unlock.
+//! Pre-AppHandle onboarding: decoding setup codes, the restore and join
+//! operations, and the conversions `BridgeHost`'s library discovery, creation,
+//! and pairing methods return through.
 //!
 //! These run before an AppHandle exists (they create or configure the library
 //! that AppHandle will later open).
@@ -112,6 +114,7 @@ fn restore_error_to_bridge(error: RestoreFromCodeError) -> BridgeError {
 }
 
 pub(crate) async fn restore_from_code_config(
+    app_dir: bae_core::config::AppDir,
     code: String,
     oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
@@ -120,6 +123,7 @@ pub(crate) async fn restore_from_code_config(
 ) -> Result<Config, BridgeError> {
     match cancel {
         Some(cancel) => bae_core::library::restore_from_code_cancellable(
+            &app_dir,
             &code,
             oauth_clients,
             oauth_tokens,
@@ -130,6 +134,7 @@ pub(crate) async fn restore_from_code_config(
         .await
         .map_err(restore_error_to_bridge),
         None => bae_core::library::restore_from_code(
+            &app_dir,
             &code,
             oauth_clients,
             oauth_tokens,
@@ -139,21 +144,6 @@ pub(crate) async fn restore_from_code_config(
         .await
         .map_err(|e| restore_error_to_bridge(RestoreFromCodeError::Restore(e))),
     }
-}
-
-/// Point bae's data directory at `path/.bae` by exporting `path` as `$HOME`,
-/// which `dirs::home_dir()` — and so `bae_dir()`, library discovery, restore, and
-/// `init_app` — resolves against. Mobile app processes get no `$HOME`, so the
-/// native app MUST call this once at startup, before `init_keyring`,
-/// `discover_libraries`, restore, or `init_app`, passing its private files
-/// directory (e.g. Android `Context.filesDir`). Without it those calls fail with
-/// "could not determine home directory".
-#[cfg(any(target_os = "ios", target_os = "android"))]
-#[uniffi::export]
-pub fn set_data_dir(path: String) {
-    // Called once at process startup before any worker thread reads the
-    // environment, so the set is race-free.
-    std::env::set_var("HOME", path);
 }
 
 /// Initialize coven's platform keyring. Call once at app startup, after
@@ -171,45 +161,6 @@ pub fn init_keyring(diagnostics: Arc<crate::init::BridgeDiagnostics>) -> Result<
 #[uniffi::export]
 pub fn init_test_keyring() {
     bae_core::config::install_test_keyring();
-}
-
-/// Discover local libraries in ~/.bae/libraries/, returning each as a
-/// `BridgeLibrary` — the libraries created on this device or restored from
-/// another of the owner's devices. Both the welcome flow (no active library
-/// yet) and the in-app sidebar / quick switcher call this.
-#[uniffi::export]
-pub fn discover_libraries() -> Result<Vec<BridgeLibrary>, BridgeError> {
-    Config::discover_libraries()?
-        .into_iter()
-        .map(BridgeLibrary::from_core_info)
-        .collect()
-}
-
-/// Remove one library's local data without opening its database. Its cloud
-/// copy and restore code, if any, are not changed.
-#[uniffi::export]
-pub fn remove_local_library(library_id: String) -> Result<(), BridgeError> {
-    bae_core::library::remove_local_library(&library_id).map_err(BridgeError::from)
-}
-
-/// Create a new library and establish its device identity. The library becomes
-/// active after the frontend opens it successfully.
-#[uniffi::export]
-pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError> {
-    let ids = std::sync::Arc::new(coven::UuidProvider);
-    let config = match name {
-        Some(n) => {
-            // Trim + non-blank is core policy: parse before creating, so a blank
-            // name is rejected the same way a rename's is.
-            let name = bae_core::library_name::LibraryName::parse(&n)
-                .map_err(|e| BridgeError::config(e.to_string()))?;
-            bae_core::library::create_library(name, ids.as_ref())
-        }
-        None => bae_core::library::create_library_default(ids.as_ref()),
-    }
-    .map_err(BridgeError::from)?;
-
-    BridgeLibrary::from_core(&config)
 }
 
 /// Run the future built by `make_fut` on a worker of `runtime`, blocking the
@@ -262,6 +213,7 @@ const OPERATION_LOCK: &str = "an onboarding operation lock is never held across 
 
 #[derive(uniffi::Object)]
 pub struct RestoreFromCodeOperation {
+    app_dir: bae_core::config::AppDir,
     code: String,
     oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
@@ -273,6 +225,7 @@ pub struct RestoreFromCodeOperation {
 
 impl RestoreFromCodeOperation {
     pub(crate) fn new(
+        app_dir: bae_core::config::AppDir,
         code: String,
         oauth_clients: coven::OAuthClients,
         oauth_tokens: Option<coven::OAuthTokens>,
@@ -280,6 +233,7 @@ impl RestoreFromCodeOperation {
         runtime: tokio::runtime::Handle,
     ) -> Self {
         Self {
+            app_dir,
             code,
             oauth_clients,
             oauth_tokens,
@@ -303,6 +257,7 @@ impl RestoreFromCodeOperation {
             }
             *started = true;
         }
+        let app_dir = self.app_dir.clone();
         let code = self.code.clone();
         let oauth_clients = self.oauth_clients.clone();
         let oauth_tokens = self.oauth_tokens.clone();
@@ -310,6 +265,7 @@ impl RestoreFromCodeOperation {
         let cancel = self.cancel.clone();
         on_worker(&self.runtime, move || async move {
             let config = restore_from_code_config(
+                app_dir,
                 code,
                 oauth_clients,
                 oauth_tokens,
@@ -375,7 +331,7 @@ mirror_enum! {
 
 mirror_struct! {
     BridgePendingDevicePairingJoin = bae_core::library::PendingDevicePairingJoinInfo,
-    from_core: fn,
+    from_core: pub(crate) fn,
     fields: {
         pairing_code,
         offer: (BridgeDevicePairingOffer),
@@ -384,23 +340,7 @@ mirror_struct! {
     },
 }
 
-/// The pairing attempt retained by coven that can continue without rescanning
-/// the existing device's code.
-#[uniffi::export]
-pub fn pending_device_pairing_join() -> Result<Option<BridgePendingDevicePairingJoin>, BridgeError>
-{
-    bae_core::library::pending_device_pairing_join()
-        .map_err(join_error_to_bridge)
-        .map(|pending| pending.map(BridgePendingDevicePairingJoin::from_core))
-}
-
-/// Discard the joining identity and journal for the one pending enrollment.
-#[uniffi::export]
-pub fn abandon_pending_device_pairing_join() -> Result<(), BridgeError> {
-    bae_core::library::abandon_pending_device_pairing_join().map_err(join_error_to_bridge)
-}
-
-fn join_error_to_bridge(error: JoinDevicePairingError) -> BridgeError {
+pub(crate) fn join_error_to_bridge(error: JoinDevicePairingError) -> BridgeError {
     use crate::types::{BridgeDeviceJoinFailure, BridgeErrorCategory};
     // Every end a join can come to that the user can act on carries its own
     // line, because the advice differs: get a fresh code, open bae over there,
@@ -456,6 +396,7 @@ enum JoinDevicePairingOperationState {
 
 impl JoinDevicePairingOperation {
     pub(crate) async fn prepare(
+        app_dir: &bae_core::config::AppDir,
         pairing_code: &str,
         oauth_clients: coven::OAuthClients,
         oauth_tokens: Option<coven::OAuthTokens>,
@@ -463,6 +404,7 @@ impl JoinDevicePairingOperation {
         runtime: tokio::runtime::Handle,
     ) -> Result<Self, BridgeError> {
         let prepared = bae_core::library::prepare_device_pairing_join(
+            app_dir,
             pairing_code,
             oauth_clients,
             oauth_tokens,

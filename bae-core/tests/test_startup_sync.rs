@@ -4,25 +4,18 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 
 use bae_core::app::bootstrap;
-use bae_core::config::CloudProvider;
+use bae_core::config::{AppDir, CloudProvider};
 use bae_core::library::create_library;
 use coven::{
     CloudHomeError, CloudKitAcceptedShareRecord, CloudKitAtomicCreateBatch, CloudKitOps,
     CloudKitProviderIdentity, CloudKitRecordCreate, CloudKitRecordVersion, CloudKitScope,
     CloudKitShare, UuidProvider,
 };
-use serial_test::serial;
 use tempfile::TempDir;
 
-fn fake_home() -> TempDir {
-    let home = TempDir::new().expect("create test home");
-    std::env::set_var("HOME", home.path());
-    bae_core::config::install_test_keyring();
-    home
-}
-
-fn write_cloudkit_library() -> String {
+fn write_cloudkit_library(app_dir: &AppDir) -> String {
     let mut config = create_library(
+        app_dir,
         bae_core::library_name::LibraryName::parse("Test Library")
             .expect("valid test library name"),
         &UuidProvider,
@@ -192,10 +185,11 @@ impl CloudKitOps for PendingCloudKit {
 }
 
 #[test]
-#[serial]
 fn local_startup_returns_while_cloud_attachment_is_pending() {
-    let _home = fake_home();
-    let library_id = write_cloudkit_library();
+    let home = TempDir::new().expect("create test home");
+    let app_dir = AppDir::under_home(home.path());
+    bae_core::config::install_test_keyring();
+    let library_id = write_cloudkit_library(&app_dir);
     let (entered_tx, entered_rx) = mpsc::sync_channel(1);
     let (release_tx, release_rx) = mpsc::sync_channel(1);
     let cloudkit = Arc::new(PendingCloudKit::new(entered_tx, release_rx));
@@ -203,6 +197,7 @@ fn local_startup_returns_while_cloud_attachment_is_pending() {
 
     let bootstrap_thread = std::thread::spawn(move || {
         let result = bootstrap(
+            app_dir,
             library_id,
             200,
             true,

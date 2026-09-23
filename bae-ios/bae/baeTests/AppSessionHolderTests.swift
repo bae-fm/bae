@@ -1,11 +1,12 @@
 import BaeKit
+import Foundation
 import Testing
 
 @testable import bae
 
 /// Covers the `AppSessionHolder` transitions that don't require a live library.
-/// Opening a library goes through the global `initApp` / `discoverLibraries`
-/// bridge functions and produces a real `AppService`, so `start`, `openLibrary`,
+/// Opening a library goes through the bridge's `initApp` and the host's
+/// `discoverLibraries` and produces a real `AppService`, so `start`, `openLibrary`,
 /// `retryUnlock`, `onLinked`, and `forgetActiveLibrary` — and the derived
 /// getters once a library is open — need a real opened core and aren't
 /// unit-tested here.
@@ -13,13 +14,18 @@ import Testing
 @Suite("AppSessionHolder")
 struct AppSessionHolderTests {
     /// A holder wired to a no-op telemetry sink and a host with nothing
-    /// registered — these transitions never emit or open a library, so both
-    /// are enough.
+    /// registered, over a throwaway directory — these transitions never emit or
+    /// open a library, so both are enough.
     private func makeHolder() -> AppSessionHolder {
-        let diagnostics = configureDiagnostics(config: .disabled)
+        let appDir = BridgeAppDir(
+            home: FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString)
+                .path
+        )
+        let diagnostics = configureDiagnostics(config: .disabled, appDir: appDir)
         return AppSessionHolder(
             diagnostics: diagnostics,
-            host: BaeHost.make(diagnostics: diagnostics)
+            host: BaeHost.make(diagnostics: diagnostics, appDir: appDir)
         )
     }
 

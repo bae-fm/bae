@@ -15,15 +15,16 @@ fn creation_errors_preserve_their_user_facing_category_through_rollback() {
 #[test]
 fn creating_a_library_establishes_its_identity_without_marking_it_active() {
     let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path());
     crate::config::install_test_keyring();
-    let config = create_library_in_bae_dir(
-        temp.path(),
+    let config = create_library(
+        &app_dir,
         crate::library_name::LibraryName::parse("Created Library").unwrap(),
         &coven::SequentialIdProvider::new("created-library"),
     )
     .expect("create library");
 
-    assert!(!temp.path().join("active-library").exists());
+    assert!(!app_dir.active_library_pointer().exists());
 
     let handle = Arc::new(crate::config::ConfigHandle::new(config))
         .coven_builder()
@@ -40,13 +41,14 @@ fn creating_a_library_establishes_its_identity_without_marking_it_active() {
 #[test]
 fn failed_creation_removes_the_partial_library() {
     let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path());
     crate::config::install_test_keyring();
-    let library_path = crate::config::registered_library_path(temp.path(), "failed-library-0");
+    let library_path = app_dir.registered_library("failed-library-0");
     let database_path = StoreDir::new(library_path.clone()).db_path();
     std::fs::create_dir_all(&database_path).unwrap();
 
-    create_library_in_bae_dir(
-        temp.path(),
+    create_library(
+        &app_dir,
         crate::library_name::LibraryName::parse("Failed Library").unwrap(),
         &coven::SequentialIdProvider::new("failed-library"),
     )

@@ -42,12 +42,13 @@ internal static class SmokeCreate
 
         try
         {
-            BaeDiagnostics.Configure();
-            var host = NativeBae.CreateHost(BaeDiagnostics.Handle);
+            var appDir = NativeBae.UserAppDir();
+            BaeDiagnostics.Configure(appDir);
+            var host = NativeBae.CreateHost(BaeDiagnostics.Handle, appDir);
             NativeBae.Startup(BaeDiagnostics.Handle);
             L("bridge startup ok");
 
-            var libraryId = LibraryDiscovery.Create(error => L($"create error: {error}"));
+            var libraryId = LibraryDiscovery.Create(host, error => L($"create error: {error}"));
             if (libraryId is null)
             {
                 L("create returned null");
