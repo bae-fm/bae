@@ -249,6 +249,17 @@ struct IdentifierBand: View {
                 EmptyView()
             }
             .help("No title to search by")
+        // The words stay where the person left them, not editable, until the
+        // run gets to them.
+        case .waiting(let album, let artist):
+            TitleSearchChip(
+                album: album,
+                artist: artist,
+                isWaiting: true,
+                onCommit: onEditTitleSearch
+            ) {
+                ChipSpinner()
+            }
         case .searched(let album, let artist, let cells):
             TitleSearchChip(
                 album: album,
@@ -300,6 +311,9 @@ struct IdentifierBand: View {
 private struct TitleSearchChip<Trailing: View>: View {
     let album: String
     let artist: String
+    /// The run has not reached the title search yet: the words show, and
+    /// cannot be changed until it does.
+    let isWaiting: Bool
     let onCommit: (_ album: String, _ artist: String) -> Void
     let trailing: Trailing
 
@@ -318,11 +332,13 @@ private struct TitleSearchChip<Trailing: View>: View {
     init(
         album: String,
         artist: String,
+        isWaiting: Bool = false,
         onCommit: @escaping (_ album: String, _ artist: String) -> Void,
         @ViewBuilder trailing: () -> Trailing
     ) {
         self.album = album
         self.artist = artist
+        self.isWaiting = isWaiting
         self.onCommit = onCommit
         self.trailing = trailing()
         _albumText = State(initialValue: album)
@@ -359,6 +375,7 @@ private struct TitleSearchChip<Trailing: View>: View {
             .font(.system(size: 10.5, design: .monospaced))
             .foregroundStyle(.secondary)
             .focused($focused, equals: field)
+            .disabled(isWaiting)
             .onSubmit { focused = nil }
             .frame(minWidth: 60, idealWidth: 140)
             .fixedSize(horizontal: true, vertical: false)

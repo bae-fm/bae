@@ -219,6 +219,9 @@ pub enum SearchStepView {
     NotNeeded,
     /// Nothing to search by: the draft has no title.
     NoTitle,
+    /// The identifiers are still being looked up, so whether these words are
+    /// searched is not decided yet.
+    Waiting { album: String, artist: String },
     /// The words that were searched, and every provider's lookup of them.
     Searched {
         album: String,
@@ -601,8 +604,29 @@ pub(super) fn run_view(
         disc_id: disc_id_step(discid, context),
         barcode: barcode_step(barcode, context, scanning),
         catalog: catalog_step(catalog, context, scanning),
-        search: search_step(search, context),
+        search: search_step(
+            search,
+            identifiers_found_something(discid, barcode, catalog),
+            context,
+        ),
     }
+}
+
+/// Whether any identifier has already found a release, whether or not the
+/// others have finished looking.
+fn identifiers_found_something(
+    discid: &DiscidProgress,
+    barcode: &BarcodeProgress,
+    catalog: &CatalogProgress,
+) -> bool {
+    let disc = matches!(discid, DiscidProgress::Done { results, .. } if !results.is_empty());
+    let code = matches!(barcode, BarcodeProgress::Lookups { providers, .. }
+        if providers.iter().any(|provider| matches!(provider.state, BarcodeLookupState::Matched { .. })));
+    let number = matches!(catalog, CatalogProgress::Lookups { values }
+    if values.iter().flat_map(|lookup| &lookup.providers).any(|provider| {
+        matches!(&provider.state, LookupState::Done { results } if !results.is_empty())
+    }));
+    disc || code || number
 }
 
 /// The title-search step: the words the run searched by, from the context,
@@ -610,15 +634,28 @@ pub(super) fn run_view(
 ///
 /// A step that has not run says which of the two reasons applies: the
 /// candidate's draft states no title, or there was a title and the
-/// identifiers answered before it was needed. A step still waiting on the
-/// identifiers reads the same way — nothing has been asked of it yet, and
-/// what the draft states is already known.
-fn search_step(progress: &SearchProgress, context: &SignalsContext) -> SearchStepView {
-    let SearchProgress::Lookups { providers } = progress else {
-        return match context.search.query {
-            Some(_) => SearchStepView::NotNeeded,
-            None => SearchStepView::NoTitle,
-        };
+/// identifiers answered before it was needed. An identifier that has already
+/// found something while the rest are still looking has answered too: the
+/// search runs only when all of them find nothing, so it is not needed. Only
+/// while nothing has been found yet is the step waiting on them.
+fn search_step(
+    progress: &SearchProgress,
+    identifiers_found_something: bool,
+    context: &SignalsContext,
+) -> SearchStepView {
+    let providers = match (progress, &context.search.query) {
+        (_, None) => return SearchStepView::NoTitle,
+        (SearchProgress::Pending, Some(_)) if identifiers_found_something => {
+            return SearchStepView::NotNeeded
+        }
+        (SearchProgress::Pending, Some(query)) => {
+            return SearchStepView::Waiting {
+                album: query.album.clone(),
+                artist: query.artist.clone(),
+            }
+        }
+        (SearchProgress::Skipped, Some(_)) => return SearchStepView::NotNeeded,
+        (SearchProgress::Lookups { providers }, Some(_)) => providers,
     };
     let query = context
         .search

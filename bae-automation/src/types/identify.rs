@@ -146,6 +146,10 @@ pub struct AutomationCatalogAgreement {
 pub enum AutomationSearchStep {
     NotNeeded,
     NoTitle,
+    Waiting {
+        album: String,
+        artist: String,
+    },
     Searched {
         album: String,
         artist: String,

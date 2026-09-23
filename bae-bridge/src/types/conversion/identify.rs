@@ -312,6 +312,7 @@ mirror_enum! {
     variants: {
         NotNeeded,
         NoTitle,
+        Waiting { album, artist },
         Searched { album, artist, cells: (each BridgeProviderCell) },
     },
 }

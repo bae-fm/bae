@@ -460,6 +460,9 @@ pub enum BridgeSearchStep {
     NotNeeded,
     /// Nothing to search by: the draft has no title.
     NoTitle,
+    /// The identifiers are still being looked up; these words are searched
+    /// if they name nothing.
+    Waiting { album: String, artist: String },
     Searched {
         album: String,
         /// Blank where the draft names no album artist; the title alone was

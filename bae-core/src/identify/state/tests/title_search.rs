@@ -316,3 +316,43 @@ fn a_drafts_title_searches_without_its_bracketed_tails() {
         })
     );
 }
+
+/// While the identifiers are still being looked up, the words the run will
+/// search by are shown as waiting, so a person who just typed them sees them
+/// rather than nothing.
+#[test]
+fn the_words_wait_while_the_identifiers_are_looked_up() {
+    let state = started_searching(vec![MB], "Album Title", "Artist Name");
+    let (state, _) = update(state, one_code("BAR"));
+    let crate::identify::IdentifyStateView::Triangulating { run, .. } =
+        crate::identify::IdentifyStateView::from(state.clone())
+    else {
+        panic!("expected a running view, got {state:?}");
+    };
+    assert_eq!(
+        run.search,
+        crate::identify::SearchStepView::Waiting {
+            album: "Album Title".to_string(),
+            artist: "Artist Name".to_string(),
+        }
+    );
+}
+
+/// Once an identifier has found something the title search cannot run, so
+/// the step reads as not needed even while the other identifiers are still
+/// looking.
+#[test]
+fn the_words_do_not_wait_once_an_identifier_has_found_something() {
+    let state = started_searching(vec![MB, DG], "Album Title", "Artist Name");
+    let (state, _) = update(state, one_code("BAR"));
+    let (state, _) = step(
+        state,
+        barcode_matched(MB, "BAR", vec![pair("mb-1", Some("g-x"))]),
+    );
+    let crate::identify::IdentifyStateView::Triangulating { run, .. } =
+        crate::identify::IdentifyStateView::from(state.clone())
+    else {
+        panic!("Discogs is still looking, so the run is too: {state:?}");
+    };
+    assert_eq!(run.search, crate::identify::SearchStepView::NotNeeded);
+}
