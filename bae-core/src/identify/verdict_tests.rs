@@ -244,12 +244,13 @@ fn a_recorded_discid_failure_derives_and_stores_as_failed() {
     ));
 }
 
-/// Signals that share no result settle as one `Found` over their union, so
-/// what stores is a single match list — not two sections. Both
-/// Neither signal recorded a failure here, so this also stands as the
-/// positive case for a union-shaped `Found`.
+/// Signals that share no result settle as one `Found`, so what stores is a
+/// single match list and not two sections. The disc ID's release is offered
+/// and the barcode's is stored beside it as narrowed out. Neither signal
+/// recorded a failure here, so this also stands as the positive case for a
+/// `Found` the two signals disagreed on.
 #[test]
-fn a_union_of_disagreeing_signals_stores_as_one_match_list() {
+fn signals_that_share_no_result_store_as_one_match_list() {
     let context = SignalsContext {
         disc: DiscIdEvidence {
             signal: crate::signals::DiscIdSignal::Absent { track_count: 9 },
@@ -269,26 +270,23 @@ fn a_union_of_disagreeing_signals_stores_as_one_match_list() {
     assert_eq!(
         verdict,
         TerminalVerdict::Found {
-            matches: vec![mk_result("rel-a"), mk_result("rel-b")],
+            matches: vec![mk_result("rel-a")],
             track_count: 9,
-            provenance: vec![
-                LookupProvenance {
-                    by_disc_id: true,
-                    by_barcode: false,
-                    by_catalog: false,
-                    by_search: false,
-                },
-                LookupProvenance {
-                    by_disc_id: false,
-                    by_barcode: true,
-                    by_catalog: false,
-                    by_search: false,
-                },
-            ],
-            pressings: vec![0, 1],
-            narrowed_out: Vec::new(),
-            narrowed_out_provenance: Vec::new(),
-            narrowed_out_pressings: Vec::new(),
+            provenance: vec![LookupProvenance {
+                by_disc_id: true,
+                by_barcode: false,
+                by_catalog: false,
+                by_search: false,
+            }],
+            pressings: vec![0],
+            narrowed_out: vec![mk_result("rel-b")],
+            narrowed_out_provenance: vec![LookupProvenance {
+                by_disc_id: false,
+                by_barcode: true,
+                by_catalog: false,
+                by_search: false,
+            }],
+            narrowed_out_pressings: vec![0],
             ledger: None,
         }
     );

@@ -760,10 +760,11 @@ fn a_settled_state_lists_what_agreement_narrowed_out() {
     assert!(!narrowed_out.agreements[0].1.barcode);
 }
 
-/// Signals that share nothing already list everything they saw, so there is
-/// nothing behind the disclosure.
+/// Signals that share nothing still rank against each other: the disc ID is
+/// computed from the audio, so its release is the one offered and the
+/// barcode's goes behind the disclosure.
 #[test]
-fn signals_that_agree_on_nothing_narrow_nothing_out() {
+fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
         disc_id: "d".to_string(),
@@ -782,8 +783,8 @@ fn signals_that_agree_on_nothing_narrow_nothing_out() {
     else {
         panic!("both releases are offered");
     };
-    assert_eq!(groups[0].pressings.len(), 2);
-    assert!(narrowed_out.is_empty());
+    assert_eq!(groups[0].pressings.len(), 1);
+    assert_eq!(narrowed_out.groups[0].pressings.len(), 1);
 }
 
 // ── The Catalog # row's agreement chips ─────────────────────────────────────

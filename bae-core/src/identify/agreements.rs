@@ -88,15 +88,21 @@ impl Agreements {
         .count() as u32
     }
 
-    /// Whether this release belongs on the list rather than under "N more".
+    /// Whether there is any reason to show this release on the list rather
+    /// than under "N more".
     ///
     /// Every agreement but the barcode says something about *which* release
-    /// this is: the disc ID is computed from the audio itself, and the catalog
-    /// number, label, year and country are printed in the folder's own text. A
-    /// barcode is read off a photograph of a sleeve, so a barcode lookup that
-    /// comes back naming a release the folder says nothing else about has read
-    /// the wrong digits — a real answer to the wrong question, which is what
-    /// "N more" is for.
+    /// this is: the disc ID is computed from the audio itself, the catalog
+    /// number was either looked up or is printed in the folder's own text,
+    /// and the label, year and country are printed there too. A barcode is
+    /// read off a photograph of a sleeve, so a barcode lookup that comes back
+    /// naming a release nothing else stands behind has read the wrong digits
+    /// — a real answer to the wrong question, which is what "N more" is for.
+    ///
+    /// Read as one value and never field by field, which is what keeps three
+    /// pressings of one album on the list together: a folder states one
+    /// pressing's year and not the other two's, and all three are still the
+    /// album on the desk.
     pub fn offered(&self) -> bool {
         self.disc_id || self.catalog || self.label || self.year || self.country
     }

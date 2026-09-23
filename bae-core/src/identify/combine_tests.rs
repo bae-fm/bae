@@ -140,15 +140,21 @@ fn three_checked_signals_intersect() {
 /// real release, so the set is their union, in signal order, and each row
 /// says which signal produced it.
 #[test]
-fn an_empty_intersection_falls_through_to_the_union() {
+fn lookups_that_named_different_releases_each_keep_their_answer() {
     let discid = vec![pair("rel-a", Some("group-1"))];
     let barcode = vec![pair("rel-b", Some("group-2"))];
     let catalog = vec![pair("rel-c", Some("group-3"))];
-    let (matches, provenance, _) = found(combine(discid, barcode, catalog));
-    assert_eq!(ids(&matches), vec!["rel-a", "rel-b", "rel-c"]);
+    let outcome = combine(discid, barcode, catalog);
+    let (matches, provenance, _) = found(outcome.clone());
+    // The disc ID is computed from the audio, and a chosen catalog number was
+    // typed off the disc, so those two answers are offered. A barcode is read
+    // off a photograph, and here nothing else stands behind its answer.
+    assert_eq!(ids(&matches), vec!["rel-a", "rel-c"]);
     assert!(provenance[0].by_disc_id && !provenance[0].by_barcode);
-    assert!(provenance[1].by_barcode && !provenance[1].by_disc_id);
-    assert!(provenance[2].by_catalog && !provenance[2].by_disc_id);
+    assert!(provenance[1].by_catalog && !provenance[1].by_disc_id);
+    let left_out = narrowed(outcome);
+    assert_eq!(ids(&left_out.matches), vec!["rel-b"]);
+    assert!(left_out.provenance[0].by_barcode);
 }
 
 /// The union names each release once even when two signals both saw it —
@@ -158,9 +164,13 @@ fn the_union_names_each_release_once() {
     let discid = vec![pair("rel-a", None)];
     let barcode = vec![pair("rel-a", None)];
     let catalog = vec![pair("rel-b", None)];
-    let (matches, provenance, _) = found(combine(discid, barcode, catalog));
-    assert_eq!(ids(&matches), vec!["rel-a", "rel-b"]);
+    let outcome = combine(discid, barcode, catalog);
+    let (matches, provenance, _) = found(outcome.clone());
+    // Two lookups returned rel-a, one returned rel-b, so rel-a is offered and
+    // rel-b waits under the disclosure. Each is named once, on one list.
+    assert_eq!(ids(&matches), vec!["rel-a"]);
     assert!(provenance[0].by_disc_id && provenance[0].by_barcode);
+    assert_eq!(ids(&narrowed(outcome).matches), vec!["rel-b"]);
 }
 
 /// A checked signal that found nothing takes no part: the rest still
@@ -178,8 +188,11 @@ fn a_signal_that_found_nothing_does_not_empty_the_set() {
 fn the_same_id_on_two_providers_is_two_releases() {
     let discid = vec![pair_src(Catalog::MusicBrainz, "rel-a", None)];
     let barcode = vec![pair_src(Catalog::Discogs, "rel-a", None)];
-    let (matches, _, _) = found(combine(discid, barcode, vec![]));
-    assert_eq!(matches.len(), 2);
+    let outcome = combine(discid, barcode, vec![]);
+    let (matches, _, _) = found(outcome.clone());
+    // Two releases, never folded into one by their shared id. They are ranked
+    // against each other like any other pair, so they land on the two lists.
+    assert_eq!(matches.len() + narrowed(outcome).matches.len(), 2);
 }
 
 /// What agreement left out comes back beside the matches: every release a
@@ -220,10 +233,7 @@ fn a_narrowed_out_release_two_signals_named_is_named_once() {
 /// Signals that share nothing already list everything they saw, and one
 /// signal answering alone is the whole answer: neither narrowed anything.
 #[test]
-fn a_union_and_a_lone_signal_narrow_nothing() {
-    let disagreeing = combine(vec![pair("rel-a", None)], vec![pair("rel-b", None)], vec![]);
-    assert!(narrowed(disagreeing).is_empty());
-
+fn a_lone_signal_narrows_nothing() {
     let alone = combine(
         vec![pair("rel-a", None), pair("rel-b", None)],
         vec![],
@@ -256,38 +266,38 @@ fn folder(lines: &[&str]) -> CandidateText {
     CandidateText::of(&pool, &[])
 }
 
-/// One pressing of AC/DC's *Dirty Deeds* as MusicBrainz states it: the
-/// folder's catalog number, label, year and country all over it.
-fn dirty_deeds(release_id: &str, year: i32) -> (MetadataResult, LibraryStatus) {
+/// One pressing of an album as MusicBrainz states it, with the folder's
+/// catalog number, label, year and country all matching it.
+fn pressing_of_album_one(release_id: &str, year: i32) -> (MetadataResult, LibraryStatus) {
     (
         MetadataResult {
-            title: "Dirty Deeds Done Dirt Cheap".to_string(),
-            artist: Some("AC/DC".to_string()),
-            label: Some("Atlantic".to_string()),
-            catalog_number: Some("16033-2".to_string()),
+            title: "Album One".to_string(),
+            artist: Some("Artist One".to_string()),
+            label: Some("Label One".to_string()),
+            catalog_number: Some("L1-16033".to_string()),
             country: Some("US".to_string()),
             year: Some(year),
-            source_group_id: Some("rg-dirty-deeds".to_string()),
-            ..mk_result(release_id, Some("rg-dirty-deeds"))
+            source_group_id: Some("rg-album-one".to_string()),
+            ..mk_result(release_id, Some("rg-album-one"))
         },
         LibraryStatus::absent(release_id),
     )
 }
 
 /// Somebody else's record, which a misread barcode came back naming.
-fn manu_chao() -> (MetadataResult, LibraryStatus) {
+fn unrelated_record() -> (MetadataResult, LibraryStatus) {
     (
         MetadataResult {
-            title: "Clandestino".to_string(),
-            artist: Some("Manu Chao".to_string()),
-            label: Some("Virgin".to_string()),
-            catalog_number: Some("724384463328".to_string()),
+            title: "Album Three".to_string(),
+            artist: Some("Artist Three".to_string()),
+            label: Some("Label Three".to_string()),
+            catalog_number: Some("L3-44633".to_string()),
             country: Some("FR".to_string()),
             year: Some(1998),
-            source_group_id: Some("rg-clandestino".to_string()),
-            ..mk_result("rel-clandestino", Some("rg-clandestino"))
+            source_group_id: Some("rg-album-three".to_string()),
+            ..mk_result("rel-album-three", Some("rg-album-three"))
         },
-        LibraryStatus::absent("rel-clandestino"),
+        LibraryStatus::absent("rel-album-three"),
     )
 }
 
@@ -296,14 +306,11 @@ fn manu_chao() -> (MetadataResult, LibraryStatus) {
 /// disc ID alone named follow.
 #[test]
 fn the_pressing_the_folder_describes_leads_the_disc_id_s_others() {
-    let text = folder(&[
-        "AC-DC - Dirty Deeds Done Dirt Cheap [16033-2]",
-        "Atlantic 1976 US",
-    ]);
+    let text = folder(&["Artist One - Album One [L1-16033]", "Label One 1976 US"]);
     let discid = vec![
-        dirty_deeds("rel-1994", 1994),
-        dirty_deeds("rel-2003", 2003),
-        dirty_deeds("rel-1976", 1976),
+        pressing_of_album_one("rel-1994", 1994),
+        pressing_of_album_one("rel-2003", 2003),
+        pressing_of_album_one("rel-1976", 1976),
     ];
     let outcome = combine_results(discid, vec![], vec![], vec![], &text);
     let (matches, provenance, _) = found(outcome);
@@ -316,10 +323,10 @@ fn the_pressing_the_folder_describes_leads_the_disc_id_s_others() {
 /// rest rather than beside them.
 #[test]
 fn a_barcode_naming_a_record_the_folder_never_mentions_folds() {
-    let text = folder(&["AC-DC - Dirty Deeds Done Dirt Cheap [16033-2]"]);
+    let text = folder(&["Artist One - Album One [L1-16033]"]);
     let outcome = combine_results(
-        vec![dirty_deeds("rel-1976", 1976)],
-        vec![manu_chao()],
+        vec![pressing_of_album_one("rel-1976", 1976)],
+        vec![unrelated_record()],
         vec![],
         vec![],
         &text,
@@ -327,7 +334,92 @@ fn a_barcode_naming_a_record_the_folder_never_mentions_folds() {
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-1976"]);
     let left_out = narrowed(outcome).matches;
-    assert_eq!(ids(&left_out), vec!["rel-clandestino"]);
+    assert_eq!(ids(&left_out), vec!["rel-album-three"]);
+}
+
+/// Two pressings of one album that both identifiers name together: one disc
+/// layout, one barcode, one label, and a different catalog number printed on
+/// each. Nothing the lookups did tells them apart.
+///
+/// The folder states one of the two numbers, and a catalog number names a
+/// single pressing, so that row is the answer and the other one waits under
+/// the disclosure. This is the whole point of reading the number: without it
+/// the person is asked to choose between two rows that no identifier
+/// separates.
+#[test]
+fn the_pressing_whose_catalog_number_the_folder_states_folds_the_other() {
+    let text = folder(&["1972 - Album One (Label One, L1-16033, Germany)"]);
+    let stated = pressing_of_album_one("rel-stated", 1989);
+    let mut other = pressing_of_album_one("rel-other", 1990);
+    other.0.catalog_number = Some("L1-99999".to_string());
+    let outcome = combine_results(
+        vec![stated.clone(), other.clone()],
+        vec![stated, other],
+        vec![],
+        vec![],
+        &text,
+    );
+    let (matches, _, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-stated"]);
+    assert_eq!(ids(&narrowed(outcome).matches), vec!["rel-other"]);
+}
+
+/// Two pressings the folder states neither number of stay side by side: the
+/// number folds a row only when it stands behind one of them.
+#[test]
+fn two_pressings_the_folder_names_no_number_of_both_stay() {
+    let text = folder(&["1972 - Album One (Label One, Germany)"]);
+    let first = pressing_of_album_one("rel-first", 1989);
+    let mut second = pressing_of_album_one("rel-second", 1990);
+    second.0.catalog_number = Some("L1-99999".to_string());
+    let outcome = combine_results(
+        vec![first.clone(), second.clone()],
+        vec![first, second],
+        vec![],
+        vec![],
+        &text,
+    );
+    let (matches, _, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-first", "rel-second"]);
+    assert!(narrowed(outcome).is_empty());
+}
+
+/// Three pressings of one album the disc ID named together, differing only
+/// by the year each was pressed. The folder states one of the three years,
+/// and a year names an album rather than a pressing, so all three stay on
+/// the list with the stated one first.
+///
+/// This is why the text is read as one value: counting matched fields would
+/// leave the other two pressings behind the disclosure, and a folder named
+/// after the album's year would fold away the pressing on the desk.
+#[test]
+fn pressings_that_differ_only_by_year_all_stay_on_the_list() {
+    let text = folder(&["Artist One - Album One [L1-16033]", "Label One 1976 US"]);
+    let discid = vec![
+        pressing_of_album_one("rel-1994", 1994),
+        pressing_of_album_one("rel-2003", 2003),
+        pressing_of_album_one("rel-1976", 1976),
+    ];
+    let outcome = combine_results(discid, vec![], vec![], vec![], &text);
+    let (matches, _, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-1976", "rel-1994", "rel-2003"]);
+    assert!(narrowed(outcome).is_empty());
+}
+
+/// A pressing the disc ID named whose label the folder spells differently
+/// stays on the list beside the ones it matches: the disc ID is computed
+/// from the audio, so nothing the text says folds it away.
+#[test]
+fn a_disc_id_s_pressing_stays_however_the_folder_spells_its_label() {
+    let text = folder(&["Artist One - Album One (Label One)"]);
+    let matched = pressing_of_album_one("rel-matched", 1976);
+    let mut reissue = pressing_of_album_one("rel-reissue", 1994);
+    reissue.0.label = Some("Label Four".to_string());
+    reissue.0.catalog_number = None;
+    let outcome = combine_results(vec![matched, reissue], vec![], vec![], vec![], &text);
+    let (matches, _, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-matched", "rel-reissue"]);
+    assert!(narrowed(outcome).is_empty());
 }
 
 /// Folding shortens the list; it never empties it. A barcode answering on
@@ -338,21 +430,23 @@ fn a_barcode_answering_alone_is_offered_however_little_the_folder_says() {
     let text = folder(&["CD1"]);
     let (matches, _, _) = found(combine_results(
         vec![],
-        vec![manu_chao()],
+        vec![unrelated_record()],
         vec![],
         vec![],
         &text,
     ));
-    assert_eq!(ids(&matches), vec!["rel-clandestino"]);
+    assert_eq!(ids(&matches), vec!["rel-album-three"]);
 }
 
-/// A candidate carrying no text at all was never asked, so nothing it
-/// found is set aside on its silence.
+/// A candidate carrying no text at all was never asked about its answers,
+/// so nothing it found is set aside for the text saying nothing.
 #[test]
 fn a_candidate_with_no_text_narrows_nothing_on_it() {
+    // Both releases came back from the one lookup, so only the folder's text
+    // could tell them apart, and there is none to read.
     let outcome = combine_results(
-        vec![dirty_deeds("rel-1976", 1976)],
-        vec![manu_chao()],
+        vec![],
+        vec![pressing_of_album_one("rel-1976", 1976), unrelated_record()],
         vec![],
         vec![],
         &CandidateText::default(),
@@ -366,16 +460,19 @@ fn a_candidate_with_no_text_narrows_nothing_on_it() {
 /// are one list.
 #[test]
 fn the_intersection_s_leftovers_and_the_folder_s_are_one_list() {
-    let text = folder(&["AC-DC - Dirty Deeds Done Dirt Cheap [16033-2]"]);
-    let discid = vec![dirty_deeds("rel-1976", 1976), dirty_deeds("rel-1994", 1994)];
-    let barcode = vec![dirty_deeds("rel-1976", 1976), manu_chao()];
+    let text = folder(&["Artist One - Album One [L1-16033]"]);
+    let discid = vec![
+        pressing_of_album_one("rel-1976", 1976),
+        pressing_of_album_one("rel-1994", 1994),
+    ];
+    let barcode = vec![pressing_of_album_one("rel-1976", 1976), unrelated_record()];
     let outcome = combine_results(discid, barcode, vec![], vec![], &text);
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-1976"]);
     let left_out = narrowed(outcome).matches;
     let mut left_out = ids(&left_out);
     left_out.sort_unstable();
-    assert_eq!(left_out, vec!["rel-1994", "rel-clandestino"]);
+    assert_eq!(left_out, vec!["rel-1994", "rel-album-three"]);
 }
 
 // MARK: - The pressing is what is offered or set aside
@@ -424,45 +521,45 @@ fn badges(agreements: &crate::identify::agreements::Agreements) -> Vec<&'static 
     .collect()
 }
 
-/// The Japanese pressing of *Van Halen II* the disc ID names, as
-/// MusicBrainz has it: the folder's catalog number and label, its country
+/// The Japanese pressing of an album as MusicBrainz has it, which is the
+/// one the disc ID names: the folder's catalog number and label, its country
 /// as a code, and the barcode the sleeve prints.
-fn van_halen_musicbrainz() -> (MetadataResult, LibraryStatus) {
+fn album_two_musicbrainz() -> (MetadataResult, LibraryStatus) {
     (
         MetadataResult {
-            title: "Van Halen II".to_string(),
-            artist: Some("Van Halen".to_string()),
-            label: Some("Warner Bros.".to_string()),
-            catalog_number: Some("20P2-2031".to_string()),
+            title: "Album Two".to_string(),
+            artist: Some("Artist Two".to_string()),
+            label: Some("Label Two".to_string()),
+            catalog_number: Some("L2-2031".to_string()),
             country: Some("JP".to_string()),
             barcodes: vec!["4988014720311".to_string()],
             media: crate::import::search::StatedMedia::Undescribed,
             links: Vec::new(),
             year: Some(1988),
-            source_group_id: Some("rg-van-halen-ii".to_string()),
-            ..mk_result("mb-van-halen-ii", Some("rg-van-halen-ii"))
+            source_group_id: Some("rg-album-two".to_string()),
+            ..mk_result("mb-album-two", Some("rg-album-two"))
         },
-        LibraryStatus::absent("mb-van-halen-ii"),
+        LibraryStatus::absent("mb-album-two"),
     )
 }
 
 /// One of the four Discogs records of that same catalog number, all of
-/// which the barcode lookup came back with.
-fn van_halen_discogs(release_id: &str, year: Option<i32>) -> (MetadataResult, LibraryStatus) {
+/// which the barcode lookup returned.
+fn album_two_discogs(release_id: &str, year: Option<i32>) -> (MetadataResult, LibraryStatus) {
     (
         MetadataResult {
             source: Catalog::Discogs,
-            title: "Van Halen II".to_string(),
-            artist: Some("Van Halen".to_string()),
-            label: Some("Warner Bros.".to_string()),
-            catalog_number: Some("20P2-2031".to_string()),
+            title: "Album Two".to_string(),
+            artist: Some("Artist Two".to_string()),
+            label: Some("Label Two".to_string()),
+            catalog_number: Some("L2-2031".to_string()),
             country: Some("Japan".to_string()),
             barcodes: vec!["4988014720311".to_string()],
             media: crate::import::search::StatedMedia::Undescribed,
             links: Vec::new(),
             year,
-            source_group_id: Some("master-van-halen-ii".to_string()),
-            ..mk_result(release_id, Some("master-van-halen-ii"))
+            source_group_id: Some("master-album-two".to_string()),
+            ..mk_result(release_id, Some("master-album-two"))
         },
         LibraryStatus::absent(release_id),
     )
@@ -476,15 +573,15 @@ fn van_halen_discogs(release_id: &str, year: Option<i32>) -> (MetadataResult, Li
 /// the disclosure whole.
 #[test]
 fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
-    let text = folder(&["1979 - Van Halen II (Warner Bros., 20P2-2031, Japan)"]);
+    let text = folder(&["1979 - Album Two (Label Two, L2-2031, Japan)"]);
     let outcome = combine_results(
-        vec![van_halen_musicbrainz()],
+        vec![album_two_musicbrainz()],
         vec![
-            van_halen_musicbrainz(),
-            van_halen_discogs("dg-1991", Some(1991)),
-            van_halen_discogs("dg-1988", Some(1988)),
-            van_halen_discogs("dg-undated-a", None),
-            van_halen_discogs("dg-undated-b", None),
+            album_two_musicbrainz(),
+            album_two_discogs("dg-1991", Some(1991)),
+            album_two_discogs("dg-1988", Some(1988)),
+            album_two_discogs("dg-undated-a", None),
+            album_two_discogs("dg-undated-b", None),
         ],
         vec![],
         vec![],
@@ -495,7 +592,7 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
     assert_eq!(offered.len(), 1, "one row, not two: {offered:?}");
     assert_eq!(
         ids(&offered[0].0.releases),
-        vec!["mb-van-halen-ii", "dg-1988"],
+        vec!["mb-album-two", "dg-1988"],
         "the Discogs record of the same pressing rides with it"
     );
     assert_eq!(
@@ -507,7 +604,7 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
         crate::import::MetadataProvenance::ExternalRelease {
             record: crate::import::MetadataRef::new(
                 Catalog::MusicBrainz,
-                "mb-van-halen-ii".to_string()
+                "mb-album-two".to_string()
             ),
             partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-1988")],
         },
@@ -555,13 +652,13 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
 /// queue's pressing count both read.
 #[test]
 fn a_pressing_never_splits_across_the_two_lists() {
-    let text = folder(&["1979 - Van Halen II (Warner Bros., 20P2-2031, Japan)"]);
+    let text = folder(&["1979 - Album Two (Label Two, L2-2031, Japan)"]);
     let outcome = combine_results(
-        vec![van_halen_musicbrainz()],
+        vec![album_two_musicbrainz()],
         vec![
-            van_halen_musicbrainz(),
-            van_halen_discogs("dg-1988", Some(1988)),
-            van_halen_discogs("dg-1991", Some(1991)),
+            album_two_musicbrainz(),
+            album_two_discogs("dg-1988", Some(1988)),
+            album_two_discogs("dg-1991", Some(1991)),
         ],
         vec![],
         vec![],
@@ -581,10 +678,10 @@ fn a_pressing_never_splits_across_the_two_lists() {
 /// a barcode came back naming somebody else.
 #[test]
 fn a_lone_pressing_the_folder_describes_is_the_sole_match() {
-    let text = folder(&["AC-DC - Dirty Deeds Done Dirt Cheap [16033-2]"]);
+    let text = folder(&["Artist One - Album One [L1-16033]"]);
     let outcome = combine_results(
-        vec![dirty_deeds("rel-1976", 1976)],
-        vec![manu_chao()],
+        vec![pressing_of_album_one("rel-1976", 1976)],
+        vec![unrelated_record()],
         vec![],
         vec![],
         &text,

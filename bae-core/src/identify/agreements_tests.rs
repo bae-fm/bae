@@ -131,8 +131,8 @@ fn a_catalog_lookup_agrees_whether_or_not_the_text_states_the_number() {
     assert!(judged.catalog);
 }
 
-/// A barcode that came back naming a release the folder says nothing else
-/// about read the wrong digits.
+/// A barcode that came back naming a release nothing else stands behind read
+/// the wrong digits.
 #[test]
 fn a_barcode_is_the_one_agreement_that_does_not_stand_alone() {
     let barcode_only = Agreements {

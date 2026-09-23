@@ -498,8 +498,12 @@ fn both_signals_intersect_to_found_combined() {
     }
 }
 
+/// The disc ID and the barcode named different releases. The disc ID is
+/// computed from the audio itself, so its answer is offered and the
+/// barcode's waits under the disclosure. Each lookup's own results stay in
+/// the context, so switching one off ranks the rest again.
 #[test]
-fn empty_intersection_is_conflict() {
+fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
     let (state, _) = update(started(), disc_and_codes("d", &["BAR"]));
     let (state, _) = step(
         state,
@@ -523,12 +527,8 @@ fn empty_intersection_is_conflict() {
             context,
             ..
         } => {
-            // Neither signal is wrong about having seen a release, so both are
-            // offered — and each signal's own results stay in the context, so
-            // toggling one off re-combines over the rest.
-            assert_eq!(matches.len(), 2);
+            assert_eq!(matches.len(), 1);
             assert!(provenance[0].by_disc_id && !provenance[0].by_barcode);
-            assert!(!provenance[1].by_disc_id && provenance[1].by_barcode);
             assert_eq!(context.disc.results.len(), 1);
             assert_eq!(context.barcode.results.len(), 1);
             assert_eq!(context.barcode.matched.as_deref(), Some("BAR"));

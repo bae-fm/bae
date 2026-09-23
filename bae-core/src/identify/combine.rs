@@ -1,29 +1,29 @@
 //! Combine logic for the triangulation pipeline.
 //!
 //! Once the checked signals settle, the reducer hands their result sets to
-//! `combine_results`, which intersects them. Pure: no I/O, no state.
-//!
-//! Every checked signal is a claim about the same disc, so a release has to
-//! satisfy all of them — an intersection is what agreement looks like. Signals
-//! the user left unchecked are not in the intersection at all: they arrive here
-//! as an empty set and drop out. Signals that do not intersect are not a
-//! failure to identify: each saw something, and the union of what they saw is
-//! the set the user picks from, each row carrying which signal produced it.
+//! `combine_results`, which ranks them and offers the best-supported rows.
+//! Pure: no I/O, no state.
 //!
 //! **The pressing is what is offered or set aside, not the release.** Two
 //! sources' records of one physical object are one row a person picks whole,
 //! and the two rarely arrive by the same route: a disc ID answers on
-//! MusicBrainz alone, so the Discogs record of that same pressing can only ever
-//! be a barcode's answer and never the intersection's. So every answer the run
-//! returned is paired first — [`group_results`] — and agreement is then read
-//! off whole rows: a row survives the intersection when any of its records is
-//! in it, and what the candidate's text agrees with about the row is what its
-//! records agree with together.
+//! MusicBrainz alone, so the Discogs record of that same pressing can only
+//! ever be a barcode's answer. So every answer the run returned is paired
+//! first — [`group_results`] — and the ranking then reads whole rows.
 //!
-//! The candidate's own text is the second narrowing. Each row is judged
-//! against it — see [`super::agreements`] — the rows are ordered by how much of
-//! the folder agrees with them, and a pressing the folder says nothing about
-//! joins what the intersection left out.
+//! **Every row is scored, and the rows tied at the top are offered.** The
+//! score is `Support`: how many lookups returned the row, then how many of
+//! the two facts that name one pressing hold, then whether the folder's text
+//! mentions the row at all. Every other row is set aside under "N more
+//! releases", which a person can open.
+//!
+//! Taking the highest score is what used to be three separate rules. Two
+//! lookups naming one release outrank one lookup naming another, which is the
+//! intersection of the answering lookups. A row nothing else tells apart but
+//! the folder's catalog number is the pressing on the desk. A row the folder
+//! never mentions, beside rows it does, came from a misread barcode. And a
+//! score always has a highest value, so the list is shortened and never
+//! emptied.
 
 use super::agreements::{agreements_of, CandidateText};
 use crate::db::LibraryStatus;
@@ -50,16 +50,16 @@ pub struct LookupProvenance {
     pub by_search: bool,
 }
 
-/// The pressings agreement left out, as the releases they are made of — every
-/// row a checked signal named that the intersection does not hold.
+/// The rows the ranking did not offer, as the releases they are made of.
 ///
-/// Agreement is what makes a short list: a disc ID that named three releases
-/// and a barcode that named two settle on the one they share, and the other
-/// four never reach the person. Each of those four is a real answer from a real
-/// lookup, and one of them may be the disc on the desk, so combine hands them
-/// back beside the matches instead of dropping them.
+/// A short list is what makes identification worth having: a disc ID that
+/// named three releases and a barcode that named two settle on the one they
+/// share, and the other four never reach the person. Each of those four is a
+/// real answer from a real lookup, and one of them may be the disc on the
+/// desk, so combine hands them back beside the matches instead of dropping
+/// them.
 ///
-/// The rows the folder's own text says nothing about are here too: a barcode
+/// The rows the folder's own text never mentions are here too: a barcode
 /// lookup that comes back naming somebody else's record answered a question
 /// the folder never asked.
 ///
@@ -68,9 +68,9 @@ pub struct LookupProvenance {
 /// belongs to, so a reader reads the rows the run built rather than forming
 /// its own from a list that no longer holds what they were decided against.
 ///
-/// Empty when nothing was narrowed: one signal answering alone is the whole
-/// answer, signals that shared nothing already list their union, and a set the
-/// text agrees with nowhere is offered whole rather than emptied.
+/// Empty when every row tied at the highest score: one lookup answering alone
+/// with nothing to tell its answers apart, or a candidate carrying no text to
+/// read them against.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct NarrowedOut {
     /// In signal order, each release once.
@@ -113,31 +113,25 @@ type ReleaseKey = (Catalog, String);
 
 /// Settle the checked signals' results into a `CombineOutcome`.
 ///
-/// A signal the user left unchecked arrives empty and takes no part. So does a
-/// checked signal whose lookup found nothing — which lands on the same answer
-/// either way, since an intersection it emptied would fall through to the
-/// union of the rest.
+/// A signal the user left unchecked arrives empty and takes no part. So does
+/// a checked signal whose lookup found nothing: it returned no row, so it
+/// raises no row's score.
 ///
 /// The title search is a fourth set on the same footing. It never meets the
-/// other three: it is asked only when all of them came back empty, so it
-/// narrows nothing and nothing narrows it, and a run that reaches it offers
-/// what it found whole.
+/// other three: it is asked only when all of them came back empty, so a run
+/// that reaches it ranks what the search alone returned.
 ///
-/// Every answer the run returned is paired into pressing rows first, and the
-/// two narrowings then read those rows:
+/// Every answer the run returned is paired into pressing rows first, then:
 ///
 /// 1. **Nothing.** Every set empty: `NotFoundAnywhere`.
-/// 2. **Agreement.** With more than one set answering, the releases every set
-///    names are what agreement holds; a row holding none of them is set aside.
-///    One set alone is the whole answer, and sets that share nothing named
-///    different releases — neither narrows anything, and every row stands.
-/// 3. **The candidate's own text.** A row the folder says nothing about joins
-///    what agreement left out.
+/// 2. **Every row is scored** by `Support`, and the rows tied at the
+///    highest score are offered. Every other row is set aside, and a person
+///    can open the list it is on.
 ///
-/// The rows come back most-agreed-with first, as records, each carrying the
-/// row of its list it belongs to: a row is offered whole or set aside whole,
-/// and which rows those are is this run's answer, stored with its releases
-/// rather than re-derived from either list alone.
+/// The offered rows come back most-agreed-with first, as records, each
+/// carrying the row of its list it belongs to: a row is offered whole or set
+/// aside whole, and which rows those are is this run's answer, stored with
+/// its releases rather than re-derived from either list alone.
 pub fn combine_results(
     discid_results: Results,
     barcode_results: Results,
@@ -157,22 +151,14 @@ pub fn combine_results(
         .into_iter()
         .filter(|set| !set.is_empty())
         .collect();
-    let Some((first, rest)) = present.split_first() else {
+    if present.is_empty() {
         return CombineOutcome::NotFoundAnywhere;
-    };
+    }
 
     // Every answer the run returned, each release once, in signal order.
     // Pairing runs over all of them, so two sources' records of one pressing
-    // meet however the intersection falls between them.
+    // are one row whichever lookup returned each of them.
     let all = union_all(&present);
-
-    // What every answering signal named. Empty when nothing narrows: one set
-    // alone is the whole answer, and sets that share nothing already list
-    // their union.
-    let agreed: HashSet<ReleaseKey> = match rest.is_empty() {
-        true => HashSet::new(),
-        false => release_keys(&intersect_all(first, rest)),
-    };
 
     let lookup_of = |result: &MetadataResult| {
         let key = (result.source, result.release_id.clone());
@@ -191,11 +177,20 @@ pub fn combine_results(
         })
         .collect();
     let judgements = Judgements::of(&judged);
+    let returned_by: HashMap<ReleaseKey, LookupProvenance> = all
+        .iter()
+        .map(|(result, _)| {
+            (
+                (result.source, result.release_id.clone()),
+                lookup_of(result),
+            )
+        })
+        .collect();
     let rows: Vec<Pressing> = group_results(judged)
         .into_iter()
         .flat_map(|group| group.pressings)
         .collect();
-    let (offered, set_aside) = split_rows(rows, &judgements, &agreed, text.is_empty());
+    let (offered, set_aside) = split_rows(rows, &judgements, &returned_by);
 
     let statuses: HashMap<ReleaseKey, LibraryStatus> = all
         .into_iter()
@@ -242,46 +237,103 @@ pub fn combine_results(
     }
 }
 
+/// How much of what the run found stands behind one row. Rows are compared
+/// field by field in declaration order, and the rows tied at the highest
+/// value are the ones offered.
+///
+/// Each field answers a different question, and a lower one is read only
+/// between rows the field above it cannot tell apart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+struct Support {
+    /// How many of the run's lookups returned this row: the disc ID, the
+    /// barcodes, the chosen catalog numbers, the title search. A lookup that
+    /// returned nothing counts for no row, so an unchecked lookup and one
+    /// that found nothing both change the ranking in no way.
+    ///
+    /// Two lookups returning one release outrank one lookup returning
+    /// another. Where no row was returned twice, every row ties here and the
+    /// fields below decide.
+    lookups: u32,
+    /// How many of the two facts that name a single pressing hold: the disc
+    /// ID returned this row, and the folder's text states this row's catalog
+    /// number.
+    ///
+    /// A disc ID is computed from the audio on disk, and a catalog number is
+    /// printed on the disc itself. Each names one pressing rather than one
+    /// album, which is why they are read above the fields below and why the
+    /// disc ID counts here as well as above.
+    pressing: u32,
+    /// Whether there is any reason to show this row at all — see
+    /// [`super::agreements::Agreements::offered`].
+    ///
+    /// One value rather than a count of the fields behind it, and that is
+    /// what keeps three pressings of one album on the list together: the
+    /// folder states one pressing's year and not the other two's, and a
+    /// folder is usually named by the year the album came out rather than the
+    /// year the disc was pressed. A label covers every pressing of an album
+    /// and a country covers most of them, so none of the three may separate
+    /// one row from another. They separate a row the folder describes from a
+    /// row nothing stands behind.
+    offered: bool,
+}
+
+/// What stands behind one row: its records' lookups taken together, and what
+/// the folder's text states about the row as a whole.
+fn support_of(
+    row: &Pressing,
+    judgements: &Judgements,
+    provenance: &HashMap<ReleaseKey, LookupProvenance>,
+) -> Support {
+    let mut returned = LookupProvenance {
+        by_disc_id: false,
+        by_barcode: false,
+        by_catalog: false,
+        by_search: false,
+    };
+    for release in &row.releases {
+        let found = provenance
+            .get(&(release.source, release.release_id.clone()))
+            .expect("a pressing is built from the run's own answers");
+        returned.by_disc_id |= found.by_disc_id;
+        returned.by_barcode |= found.by_barcode;
+        returned.by_catalog |= found.by_catalog;
+        returned.by_search |= found.by_search;
+    }
+    let agreements = row.agreements(judgements);
+    Support {
+        lookups: [
+            returned.by_disc_id,
+            returned.by_barcode,
+            returned.by_catalog,
+            returned.by_search,
+        ]
+        .into_iter()
+        .filter(|returned| *returned)
+        .count() as u32,
+        pressing: u32::from(returned.by_disc_id) + u32::from(agreements.catalog),
+        offered: agreements.offered(),
+    }
+}
+
 /// Split the ranked rows into the ones offered and the ones set aside, each
-/// keeping the ranked order.
-///
-/// A row is set aside when agreement left it out — `agreed` names releases and
-/// none of the row's is among them — or when the candidate's text states
-/// nothing about it.
-///
-/// Nothing is set aside on the text unless the text is evidence. `speechless`
-/// is a candidate that carries no text at all — a library release being
-/// re-identified before its artwork is read — and nothing was consulted about
-/// its answers. Neither is anything set aside when the text stands behind none
-/// of the rows agreement kept: folding shortens the list, it never empties it.
+/// keeping the ranked order: the rows tied at the highest [`Support`] are
+/// offered, and every other row is set aside.
 fn split_rows(
     rows: Vec<Pressing>,
     judgements: &Judgements,
-    agreed: &HashSet<ReleaseKey>,
-    speechless: bool,
+    provenance: &HashMap<ReleaseKey, LookupProvenance>,
 ) -> (Vec<Pressing>, Vec<Pressing>) {
-    let held: Vec<bool> =
-        rows.iter()
-            .map(|row| {
-                agreed.is_empty()
-                    || row.releases.iter().any(|release| {
-                        agreed.contains(&(release.source, release.release_id.clone()))
-                    })
-            })
-            .collect();
-    let stated: Vec<bool> = rows
+    let support: Vec<Support> = rows
         .iter()
-        .map(|row| row.agreements(judgements).offered())
+        .map(|row| support_of(row, judgements, provenance))
         .collect();
-    let kept_rows = || held.iter().zip(&stated).filter(|(held, _)| **held);
-    let fold_on_text = !speechless
-        && kept_rows().any(|(_, stated)| *stated)
-        && kept_rows().any(|(_, stated)| !*stated);
-
+    let Some(best) = support.iter().copied().max() else {
+        return (Vec::new(), Vec::new());
+    };
     let mut offered = Vec::new();
     let mut set_aside = Vec::new();
-    for ((row, held), stated) in rows.into_iter().zip(&held).zip(&stated) {
-        match *held && (!fold_on_text || *stated) {
+    for (row, support) in rows.into_iter().zip(&support) {
+        match *support == best {
             true => offered.push(row),
             false => set_aside.push(row),
         }
@@ -293,19 +345,6 @@ fn release_keys(results: &Results) -> HashSet<ReleaseKey> {
     results
         .iter()
         .map(|(r, _)| (r.source, r.release_id.clone()))
-        .collect()
-}
-
-/// The releases every set names, in the first set's order.
-fn intersect_all(first: &Results, rest: &[&Results]) -> Results {
-    let rest_keys: Vec<HashSet<ReleaseKey>> = rest.iter().map(|set| release_keys(set)).collect();
-    first
-        .iter()
-        .filter(|(r, _)| {
-            let key = (r.source, r.release_id.clone());
-            rest_keys.iter().all(|keys| keys.contains(&key))
-        })
-        .cloned()
         .collect()
 }
 
