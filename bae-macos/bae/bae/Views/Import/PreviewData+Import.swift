@@ -254,6 +254,7 @@
                 combineAncestorKey: nil,
                 actionable: true,
                 placement: .ready,
+                attention: nil,
                 identification: nil,
                 skipAction: .skip,
                 actions: [

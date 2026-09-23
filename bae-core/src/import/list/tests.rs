@@ -15,6 +15,7 @@ use crate::import::{FolderScanStatus, ImportedRelease};
 use crate::import::{IdentificationStatus, TriageImportStatus, TriagePlacement};
 
 mod actions;
+mod attention;
 mod dates;
 mod flatten;
 mod flatten_groups;
@@ -104,18 +105,51 @@ fn lead(release_id: &str) -> LeadMatch {
     }
 }
 
+/// `summary` as a result the person has already seen, stored over audio
+/// that adds up to the lead's own total.
+fn read(summary: VerdictSummary) -> crate::db::ListedVerdict {
+    crate::db::ListedVerdict {
+        summary,
+        probed_total_duration_ms: 2_400_000,
+        unread: false,
+    }
+}
+
+/// `state` with its result not yet seen by the person.
+fn unread(state: CandidateStateListRow) -> CandidateStateListRow {
+    CandidateStateListRow {
+        verdict: state.verdict.map(|verdict| crate::db::ListedVerdict {
+            unread: true,
+            ..verdict
+        }),
+        ..state
+    }
+}
+
+/// `state` with `change` made to its stored verdict.
+fn with_verdict(
+    state: CandidateStateListRow,
+    change: impl FnOnce(&mut crate::db::ListedVerdict),
+) -> CandidateStateListRow {
+    let mut verdict = state.verdict.clone().expect("the state has a verdict");
+    change(&mut verdict);
+    CandidateStateListRow {
+        verdict: Some(verdict),
+        ..state
+    }
+}
+
 /// A stored verdict that classifies Ready: one match, counts and lengths
 /// agreeing, and identification's seed for that match.
 fn ready_state(release_id: &str) -> CandidateStateListRow {
     CandidateStateListRow {
         edit_revision: 0,
-        verdict: Some(VerdictSummary {
+        verdict: Some(read(VerdictSummary {
             kind: VerdictKind::Found,
             track_count: Some(11),
             pressing_count: 1,
             lead: Some(lead(release_id)),
-        }),
-        probed_total_duration_ms: 2_400_000,
+        })),
         metadata_provenance: Some(MetadataProvenance::ExternalRelease {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id.to_string()),
             partners: vec![],
@@ -131,13 +165,12 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
 fn several_matches_state() -> CandidateStateListRow {
     CandidateStateListRow {
         edit_revision: 0,
-        verdict: Some(VerdictSummary {
+        verdict: Some(read(VerdictSummary {
             kind: VerdictKind::Found,
             track_count: Some(11),
             pressing_count: 3,
             lead: Some(lead("mb-1")),
-        }),
-        probed_total_duration_ms: 2_400_000,
+        })),
         metadata_provenance: None,
         metadata_author: crate::import::MetadataAuthor::Nobody,
         metadata_draft_valid: false,
@@ -150,13 +183,12 @@ fn several_matches_state() -> CandidateStateListRow {
 fn not_found_state() -> CandidateStateListRow {
     CandidateStateListRow {
         edit_revision: 0,
-        verdict: Some(VerdictSummary {
+        verdict: Some(read(VerdictSummary {
             kind: VerdictKind::NotFound,
             track_count: None,
             pressing_count: 0,
             lead: None,
-        }),
-        probed_total_duration_ms: 2_400_000,
+        })),
         metadata_provenance: None,
         metadata_author: crate::import::MetadataAuthor::Nobody,
         metadata_draft_valid: false,
@@ -171,7 +203,6 @@ fn prefilled_from_tags_state() -> CandidateStateListRow {
     CandidateStateListRow {
         edit_revision: 0,
         verdict: None,
-        probed_total_duration_ms: 0,
         metadata_provenance: Some(MetadataProvenance::FileMetadata),
         metadata_author: crate::import::MetadataAuthor::Prefill,
         metadata_draft_valid: true,

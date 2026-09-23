@@ -21,8 +21,8 @@ pub(super) use pane_rows::{
     insert_draft, load_authors_on, load_covers_on, load_drafts_on, load_pane_rows_on,
 };
 pub(crate) use preparation_rows::{
-    CandidateLookupUpdate, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
-    CandidateScanExpectation, ScannedCandidateKey,
+    CandidateLookupUpdate, CandidateResultWrite, CandidateSaveExpectation, CandidateSaveExtras,
+    CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
 };
 pub(super) use rows::{load_matches_on, load_provenance_on, load_states_on};
 use session_rows::load_session_on;

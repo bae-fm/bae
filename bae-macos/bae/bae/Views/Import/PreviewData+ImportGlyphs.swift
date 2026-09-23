@@ -23,11 +23,12 @@
         private static func glyphRow(
             _ folder: String,
             readFromRecord: Bool,
-            placement: BridgeTriagePlacement = .ready
+            attention: BridgeNeedsYou? = nil
         ) -> BridgeTriageRow {
             triageRow(
                 for: glyphCandidate(folder),
-                placement: placement,
+                placement: .ready,
+                attention: attention,
                 skipAction: .skip,
                 actions: [
                     .importReady, .identify, .resetToFileMetadata,
@@ -64,12 +65,13 @@
             readFromRecord: false
         )
 
-        /// Several pressings are still in question, so no record is chosen
-        /// and the row draws the question's chip instead.
+        /// The draft came off the files' tags, and a run found several
+        /// pressings the person has not looked at yet: the row is ready and
+        /// flags what the run found.
         static let triageRowSeveralMatches = glyphRow(
             "Release Folder Nineteen",
             readFromRecord: false,
-            placement: .needsYou(reason: .severalMatches(count: 3))
+            attention: .severalMatches(count: 3)
         )
     }
 #endif

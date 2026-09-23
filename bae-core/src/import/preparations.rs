@@ -11,9 +11,9 @@ mod pane_edits;
 mod reset;
 
 use crate::db::{
-    CandidateLookupUpdate, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
-    CandidateScanExpectation, Database, DbCandidateIdentifyResult, NewImportCandidateVerdict,
-    ScannedCandidateKey,
+    CandidateLookupUpdate, CandidateResultWrite, CandidateSaveExpectation, CandidateSaveExtras,
+    CandidateSaved, CandidateScanExpectation, Database, DbCandidateIdentifyResult,
+    NewImportCandidateVerdict, ScannedCandidateKey,
 };
 use crate::import::folder_scanner::CandidateFileEdits;
 use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
@@ -27,11 +27,35 @@ use std::collections::HashMap;
 #[derive(Clone)]
 pub struct CandidatePreparations {
     database: Database,
+    /// The candidates a person has open, which a result identification
+    /// stores for is read on arrival.
+    open: crate::import::OpenCandidates,
 }
 
 impl CandidatePreparations {
     pub fn new(database: Database) -> Self {
-        Self { database }
+        Self {
+            database,
+            open: crate::import::OpenCandidates::default(),
+        }
+    }
+
+    /// Hold `candidate_key`'s pane open: the result it has now is marked read,
+    /// and every result identification stores for it while the returned
+    /// guard lives is stored read.
+    ///
+    /// The key is registered before the mark is written, so a result stored
+    /// in between is one the mark clears. A mark that fails lets go of the
+    /// key again and says so.
+    pub(crate) async fn open_candidate(
+        &self,
+        candidate_key: &str,
+    ) -> Result<crate::import::OpenCandidate, LibraryError> {
+        let opened = self.open.open(candidate_key);
+        self.database
+            .mark_candidate_result_read(candidate_key)
+            .await?;
+        Ok(opened)
     }
 
     /// Record one candidate's terminal identify verdict, keyed by the
@@ -90,11 +114,12 @@ impl CandidatePreparations {
         // that release carries the same way a person's pick does.
         let extras = CandidateSaveExtras {
             lookup_update: CandidateLookupUpdate::ConfirmPick,
+            result: CandidateResultWrite::Identified,
             ..CandidateSaveExtras::default()
         };
         Ok(matches!(
             self.database
-                .save_candidate_preparation(prep, expected, extras)
+                .save_identified_preparation(prep, expected, extras, self.open.clone())
                 .await?,
             CandidateSaved::Landed(_)
         ))
@@ -189,6 +214,7 @@ impl CandidatePreparations {
             file_tag_snapshot: None,
             reshaped_files: Some(settled_candidates.to_vec()),
             lookup_update: CandidateLookupUpdate::Keep,
+            result: CandidateResultWrite::Keep,
         };
         match self
             .database
@@ -236,8 +262,15 @@ impl CandidatePreparations {
             cover: None,
             assets: crate::import::CandidatePreparedAssets::default(),
         };
-        self.apply_metadata(prep, None, folder_path, metadata, None)
-            .await
+        self.apply_metadata(
+            prep,
+            None,
+            folder_path,
+            metadata,
+            None,
+            CandidateResultWrite::Keep,
+        )
+        .await
     }
 
     pub async fn apply_source(
@@ -252,8 +285,15 @@ impl CandidatePreparations {
             watched_folder_path: watched_folder_path.to_string(),
             candidate_path: folder_path.to_string(),
         };
-        self.apply_metadata(prep, Some(scanned), folder_path, metadata.clone(), None)
-            .await
+        self.apply_metadata(
+            prep,
+            Some(scanned),
+            folder_path,
+            metadata.clone(),
+            None,
+            CandidateResultWrite::Keep,
+        )
+        .await
     }
 
     /// A source projection becomes the candidate's metadata, and — where the
@@ -280,7 +320,7 @@ impl CandidatePreparations {
             watched_folder_path: watched_folder_path.to_string(),
             candidate_path: folder_path.to_string(),
         };
-        if prep.identification.is_none() {
+        let result = if prep.identification.is_none() {
             prep.identification = Some(DbCandidateIdentifyResult {
                 probed_total_duration_ms: prep
                     .signals
@@ -289,9 +329,21 @@ impl CandidatePreparations {
                 verdict: settled_by_choice,
                 identified_at: self.database.now(),
             });
-        }
-        self.apply_metadata(prep, Some(scanned), folder_path, metadata.clone(), None)
-            .await
+            // The person reached this result themselves: there is nothing
+            // in it for them to read.
+            CandidateResultWrite::Chosen
+        } else {
+            CandidateResultWrite::Keep
+        };
+        self.apply_metadata(
+            prep,
+            Some(scanned),
+            folder_path,
+            metadata.clone(),
+            None,
+            result,
+        )
+        .await
     }
 
     /// Store the exact file metadata reading and replace the candidate metadata it
@@ -325,6 +377,7 @@ impl CandidatePreparations {
             candidate_path,
             metadata,
             Some(snapshot.clone()),
+            CandidateResultWrite::Keep,
         )
         .await
     }
@@ -356,6 +409,7 @@ impl CandidatePreparations {
         folder_path: &str,
         mut metadata: crate::import::CandidateMetadataDraft,
         file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
+        result: CandidateResultWrite,
     ) -> Result<u64, LibraryError> {
         settle_cover(&mut metadata, &mut prep.metadata);
         let expected = CandidateSaveExpectation {
@@ -373,6 +427,7 @@ impl CandidatePreparations {
             file_tag_snapshot,
             reshaped_files: None,
             lookup_update: CandidateLookupUpdate::ConfirmPick,
+            result,
         };
         match self
             .database

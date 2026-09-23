@@ -63,17 +63,32 @@ struct TriageRowIdentifiedTests {
         )
     }
 
-    /// A row still being asked which pressing it is has settled on no record,
-    /// so it draws no arrow and keeps the question's chip.
+    /// A row flagging pressings a run found has settled on no record, so it
+    /// draws no arrow and draws the unread question's chip.
     @MainActor
-    @Test("a row asked which pressing draws no arrow")
-    func aRowAskedWhichPressingDrawsNoArrow() async throws {
+    @Test("a row flagging several pressings draws no arrow")
+    func aRowFlaggingSeveralPressingsDrawsNoArrow() async throws {
         let row = PreviewData.triageRowSeveralMatches
         #expect(try await renderedLines(row).carrying("3 matches"))
         #expect(
             try await pixels(of: row)
                 != pixels(of: PreviewData.triageRowReadFromRecord)
         )
+    }
+
+    /// The chip is the unread marker and nothing else: a row whose question
+    /// has been read draws none, whatever its placement asks.
+    @MainActor
+    @Test("the chip is drawn from the unread question alone")
+    func theChipIsDrawnFromTheUnreadQuestionAlone() async throws {
+        var read = PreviewData.triageRowPickAPressing
+        read.attention = nil
+        let readLines = try await renderedLines(read)
+        #expect(!readLines.carrying("2 matches"))
+
+        var unread = PreviewData.triageRowNotReadFromRecord
+        unread.attention = .severalMatches(count: 2)
+        #expect(try await renderedLines(unread).carrying("2 matches"))
     }
 
     /// On a selected row the whole text column goes white, and the arrow

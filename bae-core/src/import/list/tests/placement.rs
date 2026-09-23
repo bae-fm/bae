@@ -332,7 +332,6 @@ fn a_valid_draft_a_person_typed_is_ready_and_bulk_importable() {
         CandidateStateListRow {
             edit_revision: 0,
             verdict: None,
-            probed_total_duration_ms: 0,
             metadata_provenance: None,
             metadata_author: MetadataAuthor::Person,
             metadata_draft_valid: true,
@@ -417,13 +416,9 @@ fn identification_s_own_pick_is_judged_by_the_ready_rule() {
     let cases = [
         (
             queue(),
-            CandidateStateListRow {
-                verdict: Some(VerdictSummary {
-                    track_count: Some(10),
-                    ..ready_state("mb-1").verdict.expect("a verdict")
-                }),
-                ..ready_state("mb-1")
-            },
+            with_verdict(ready_state("mb-1"), |verdict| {
+                verdict.summary.track_count = Some(10);
+            }),
             NeedsYou::TrackCountDisagrees {
                 local: 10,
                 source: 11,
@@ -431,10 +426,9 @@ fn identification_s_own_pick_is_judged_by_the_ready_rule() {
         ),
         (
             queue(),
-            CandidateStateListRow {
-                probed_total_duration_ms: 1_200_000,
-                ..ready_state("mb-1")
-            },
+            with_verdict(ready_state("mb-1"), |verdict| {
+                verdict.probed_total_duration_ms = 1_200_000;
+            }),
             NeedsYou::DurationsDisagree {
                 probed_ms: 1_200_000,
                 source_ms: 2_400_000,
@@ -444,24 +438,19 @@ fn identification_s_own_pick_is_judged_by_the_ready_rule() {
         ),
         (
             queue(),
-            CandidateStateListRow {
-                verdict: Some(VerdictSummary {
-                    lead: Some(LeadMatch {
-                        source_tracks: None,
-                        ..lead("mb-1")
-                    }),
-                    ..ready_state("mb-1").verdict.expect("a verdict")
-                }),
-                ..ready_state("mb-1")
-            },
+            with_verdict(ready_state("mb-1"), |verdict| {
+                verdict.summary.lead = Some(LeadMatch {
+                    source_tracks: None,
+                    ..lead("mb-1")
+                });
+            }),
             NeedsYou::SourceLengthsUnknown,
         ),
         (
             queue(),
-            CandidateStateListRow {
-                probed_total_duration_ms: 0,
-                ..ready_state("mb-1")
-            },
+            with_verdict(ready_state("mb-1"), |verdict| {
+                verdict.probed_total_duration_ms = 0;
+            }),
             NeedsYou::LocalDurationUnknown,
         ),
         (in_library, ready_state("mb-1"), NeedsYou::AlreadyInLibrary),

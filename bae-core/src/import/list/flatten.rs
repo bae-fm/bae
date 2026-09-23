@@ -362,12 +362,13 @@ fn place_row(
     );
     let answer = verdict.map(|verdict| {
         let lead_status = verdict
+            .summary
             .lead
             .as_ref()
             .and_then(|lead| rows.lead_statuses.get(&lead.release_id));
         classify_summary(
-            verdict,
-            state.map_or(0, |state| state.probed_total_duration_ms),
+            &verdict.summary,
+            verdict.probed_total_duration_ms,
             lead_status,
         )
     });
@@ -396,6 +397,11 @@ fn place_row(
         facts.identification.as_ref(),
         answer.as_ref(),
     );
+    let attention = crate::import::triage::attention(
+        &placement,
+        verdict.is_some_and(|verdict| verdict.unread),
+        answer.as_ref(),
+    );
     Ok(TriageRow {
         candidate_key: row.path.clone(),
         folder_name: row.name.clone(),
@@ -420,7 +426,7 @@ fn place_row(
         selectable: actions.contains(&crate::import::triage::CandidateAction::ImportReady),
         actions,
         identification: facts.identification.clone(),
-        matched: verdict.and_then(MatchedRelease::of_summary),
+        matched: verdict.and_then(|verdict| MatchedRelease::of_summary(&verdict.summary)),
         // The records are read off the pick's archived documents, which the
         // queue never opens: the window that materialises the row reads them
         // and builds the reading over again.
@@ -432,6 +438,7 @@ fn place_row(
         metadata_summary: state.and_then(|state| state.metadata_summary.clone()),
         cover_thumbnail: None,
         placement,
+        attention,
         import_status,
         metadata_provenance,
     })

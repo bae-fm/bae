@@ -6,6 +6,10 @@ import Testing
 private final class ImportSelectionHandle: AppHandle, @unchecked Sendable {
     private var candidateCallback: (any ImportCandidateCallback)?
     private(set) var identifyCalls: [String] = []
+    /// Every candidate held open, in order, with the subscription holding it.
+    private(set) var openings:
+        [(key: String, subscription: RecordedSubscription)] =
+            []
 
     init() {
         super.init(noHandle: AppHandle.NoHandle())
@@ -21,6 +25,20 @@ private final class ImportSelectionHandle: AppHandle, @unchecked Sendable {
     ) -> LiveSubscription {
         candidateCallback = callback
         return ImportSelectionSubscription()
+    }
+
+    override func openImportCandidate(
+        candidateKey: String,
+        callback _: any OpenImportCandidateCallback
+    ) -> LiveSubscription {
+        let subscription = RecordedSubscription()
+        openings.append((candidateKey, subscription))
+        return subscription
+    }
+
+    /// The candidates held open right now.
+    var heldOpen: [String] {
+        openings.filter { !$0.subscription.cancelled }.map(\.key)
     }
 
     override func rerunIdentifyForCandidate(candidateKey: String) {
@@ -51,6 +69,24 @@ private final class ImportSelectionSubscription: LiveSubscription,
     override func cancel() {}
 }
 
+private final class RecordedSubscription: LiveSubscription,
+    @unchecked Sendable
+{
+    private(set) var cancelled = false
+
+    init() {
+        super.init(noHandle: LiveSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func cancel() {
+        cancelled = true
+    }
+}
+
 @MainActor
 @Suite("Import candidate selection")
 struct DesktopSubscriptionsTests {
@@ -78,6 +114,37 @@ struct DesktopSubscriptionsTests {
 
         #expect(store.selectedCandidates.count == 1)
         #expect(handle.identifyCalls.isEmpty)
+    }
+
+    /// The one candidate whose pane shows is held open in core, so its
+    /// result reads as seen; several selected show no one pane and hold none,
+    /// and moving the selection lets go of the one before.
+    @Test("a lone selected candidate is held open")
+    func aLoneSelectedCandidateIsHeldOpen() {
+        let handle = ImportSelectionHandle()
+        let observations = ImportSelectionObservations(
+            appHandle: handle,
+            importStore: ImportStore(),
+            uiStore: UiStore()
+        )
+
+        observations.selectionChanged(["first"])
+        #expect(handle.heldOpen == ["first"])
+
+        observations.selectionChanged(["first", "second"])
+        #expect(handle.heldOpen.isEmpty)
+
+        observations.selectionChanged(["second"])
+        #expect(handle.heldOpen == ["second"])
+
+        observations.selectionChanged(["second"])
+        #expect(
+            handle.openings.count == 2,
+            "a selection that stays is held once"
+        )
+
+        observations.selectionChanged([])
+        #expect(handle.heldOpen.isEmpty)
     }
 
     /// A pick is about a folder. When the read says there is no such folder

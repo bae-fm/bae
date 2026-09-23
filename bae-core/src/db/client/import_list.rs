@@ -75,14 +75,25 @@ impl CandidateListSource {
     }
 }
 
+/// One candidate's stored result, as the list reads it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ListedVerdict {
+    pub summary: VerdictSummary,
+    /// What the folder's audio added up to when the result was reached — the
+    /// total the Ready rule compares the source's against.
+    pub probed_total_duration_ms: u64,
+    /// Whether the person has yet to see this result: identification stored
+    /// it while its candidate was not open, and nobody has opened it since.
+    pub unread: bool,
+}
+
 /// One candidate, as the list reads it: the revision it describes, what
 /// identification concluded, and what was decided.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateStateListRow {
     pub edit_revision: u64,
     /// `None` when nothing has identified this candidate.
-    pub verdict: Option<VerdictSummary>,
-    pub probed_total_duration_ms: u64,
+    pub verdict: Option<ListedVerdict>,
     pub metadata_provenance: Option<MetadataProvenance>,
     /// Who wrote the draft, which decides whether a valid one is the answer.
     pub metadata_author: crate::import::MetadataAuthor,
@@ -194,7 +205,7 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
     let states = state_rows(sql)?;
     let mut checks = Vec::new();
     for state in states.values() {
-        let Some(verdict) = state.verdict.as_ref() else {
+        let Some(verdict) = state.verdict.as_ref().map(|verdict| &verdict.summary) else {
             continue;
         };
         // The Ready rule consults the lead and only when the verdict named one
@@ -392,9 +403,9 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     let mut matches = load_matches_on(sql, None)?;
     let mut provenances = load_provenance_on(sql, None)?;
     let mut authors = super::import_state::load_authors_on(sql, None)?;
-    let mut verdicts: HashMap<String, (VerdictSummary, u64)> = HashMap::new();
+    let mut verdicts: HashMap<String, ListedVerdict> = HashMap::new();
     for row in sql.query(
-        "SELECT content_hash, kind, track_count, probed_total_duration_ms \
+        "SELECT content_hash, kind, track_count, probed_total_duration_ms, unread \
          FROM import_candidate_verdict",
         [],
         |row| {
@@ -403,10 +414,11 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<i64>>(2)?,
                 row.get::<_, i64>(3)?,
+                row.get::<_, bool>(4)?,
             ))
         },
     )? {
-        let (content_hash, kind, track_count, probed) = row;
+        let (content_hash, kind, track_count, probed, unread) = row;
         // Read the lead off the first row, then spend the rest on the count:
         // both come from the one read of this candidate's matches.
         // The releases agreement narrowed out are not what the verdict
@@ -438,7 +450,11 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         };
         verdicts.insert(
             content_hash,
-            (summary, to_u64(probed, "a verdict's probed total")?),
+            ListedVerdict {
+                summary,
+                probed_total_duration_ms: to_u64(probed, "a verdict's probed total")?,
+                unread,
+            },
         );
     }
 
@@ -472,8 +488,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
             content_hash,
             CandidateStateListRow {
                 edit_revision: to_u64(edit_revision, "a candidate's edit revision")?,
-                probed_total_duration_ms: verdict.as_ref().map_or(0, |(_, probed)| *probed),
-                verdict: verdict.map(|(summary, _)| summary),
+                verdict,
                 metadata_provenance,
                 metadata_author,
                 metadata_draft_valid,

@@ -343,6 +343,13 @@ pub struct TriageRow {
     pub combine_ancestor_key: Option<FolderReleaseDecisionKey>,
     pub actionable: bool,
     pub placement: TriagePlacement,
+    /// The question an identification result asks that the person has not
+    /// seen yet: the result landed while the candidate was not open, and
+    /// nobody has opened it since. What the row flags as unread, wherever the
+    /// placement puts it in Pending — a Ready row whose tags answered it can
+    /// still carry the several pressings a run found. `None` once the
+    /// candidate is opened, and for a result that asks nothing.
+    pub attention: Option<NeedsYou>,
     /// What identification is doing for this candidate right now, beside
     /// wherever the placement puts it. `None` when no run is queued, running
     /// or settling and the last one's write did not fail.

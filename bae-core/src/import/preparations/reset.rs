@@ -52,6 +52,7 @@ impl CandidatePreparations {
             lookup_update: CandidateLookupUpdate::Reset {
                 expected: lookup_choices,
             },
+            result: CandidateResultWrite::Keep,
         };
         match self
             .database

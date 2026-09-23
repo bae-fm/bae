@@ -154,6 +154,7 @@ private func readyRow(
         combineAncestorKey: nil,
         actionable: true,
         placement: .ready,
+        attention: nil,
         identification: nil,
         skipAction: .skip,
         actions: [
@@ -194,6 +195,7 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         combineAncestorKey: nil,
         actionable: true,
         placement: .done,
+        attention: nil,
         identification: nil,
         skipAction: nil,
         actions: [],
@@ -217,6 +219,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         combineAncestorKey: nil,
         actionable: true,
         placement: .skipped,
+        attention: nil,
         identification: nil,
         skipAction: .unskip,
         actions: [.restore],

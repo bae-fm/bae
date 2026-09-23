@@ -320,9 +320,10 @@ pub struct ImportCandidateDetailProjection {
     /// The identify state the stored verdict stands back up as — the answer a
     /// row shows when no run is in flight.
     pub resumed_identify_state: IdentifyState,
-    /// What the stored verdict classified to. `None` with no stored verdict
-    /// for the candidate's current file shape.
-    pub answer: Option<QueueClassification>,
+    /// What the stored verdict classified to, and whether the person has
+    /// seen it. `None` with no stored verdict for the candidate's current
+    /// file shape.
+    pub answer: Option<StoredAnswer>,
     /// The identity the row leads with: the pick's archived documents where
     /// there is a pick, the verdict's lead otherwise.
     pub matched: Option<MatchedRelease>,
@@ -359,6 +360,16 @@ pub struct ImportCandidateDetailProjection {
     /// Where the pane was when the person last left this candidate. `None`
     /// before the pane has been touched.
     pub session: Option<CandidateSession>,
+}
+
+/// What a candidate's stored result classified to, and whether the person
+/// has seen it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredAnswer {
+    pub classification: QueueClassification,
+    /// Identification stored the result while the candidate was not open,
+    /// and nobody has opened it since.
+    pub unread: bool,
 }
 
 impl ImportCandidateDetailProjection {
@@ -418,19 +429,25 @@ impl ImportCandidateDetailProjection {
             failure
         };
         let known = answer.filter(|_| actionable);
+        let classification = known.as_ref().map(|answer| &answer.classification);
         let placement = place(
             skipped,
             is_added,
             import_status.as_ref(),
             metadata_author,
             metadata_draft.clone().shape().is_ok(),
-            known.as_ref(),
+            classification,
         );
         let actions = super::triage::candidate_actions(
             actionable,
             &placement,
             facts.identification.as_ref(),
-            known.as_ref(),
+            classification,
+        );
+        let attention = super::triage::attention(
+            &placement,
+            known.as_ref().is_some_and(|answer| answer.unread),
+            classification,
         );
         // The pick and the draft summary the row leads with, read once: its
         // reading, its summary and its provenance all state the same fact.
@@ -457,6 +474,7 @@ impl ImportCandidateDetailProjection {
             metadata_summary,
             cover_thumbnail: None,
             placement,
+            attention,
             import_status,
             metadata_provenance: picked,
         };

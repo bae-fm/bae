@@ -238,15 +238,18 @@ extension TriageRowView {
     /// gets. What the row states about its release is the title line's arrow,
     /// not a column of its own.
     ///
-    /// A run in flight takes the column from the placement rather than sitting
-    /// beside it. The placement's trailing is what the row is asking of the
-    /// person — which pressing, which of two signals — and while a run is going
-    /// there is nothing to answer: the row offers no command but Skip, and the
-    /// answer being written is about to replace the question.
+    /// A run in flight takes the column rather than sitting beside it: while a
+    /// run is going there is nothing to answer, and the answer being written
+    /// is about to replace whatever the column said. Otherwise an unread
+    /// result's question takes it — the row's unread marker, gone once the
+    /// candidate is opened — and then what the import says.
     private var trailing: some View {
         Group {
             if let identification = row.identification {
                 identificationTrailing(identification)
+            }
+            else if let attention = row.attention {
+                attentionTrailing(attention)
             }
             else {
                 placementTrailing
@@ -262,8 +265,9 @@ extension TriageRowView {
             EmptyView()
         case .ready:
             EmptyView()
-        case .needsYou(let reason):
-            needsYouTrailing(reason)
+        case .needsYou:
+            // The question is the group's and, while unread, the marker's.
+            EmptyView()
         case .importing:
             // The line under the title carries the bar; nothing trails it.
             EmptyView()
@@ -297,21 +301,24 @@ extension TriageRowView {
         }
     }
 
+    /// The unread marker: the question the result asks that the person has
+    /// not opened the row to see. A short question is its own chip; a
+    /// sentence-long one is a mark whose tooltip says it.
     @ViewBuilder
-    private func needsYouTrailing(_ reason: BridgeNeedsYou) -> some View {
+    private func attentionTrailing(_ reason: BridgeNeedsYou) -> some View {
         switch reason {
         case .severalMatches, .foundByTitle:
             chip(reason.localizedText, tint: .orange)
         case .alreadyInLibrary:
             chip(reason.localizedText, tint: .blue)
         case .trackCountDisagrees, .durationsDisagree,
-            .sourceLengthsUnknown, .localDurationUnknown:
+            .sourceLengthsUnknown, .localDurationUnknown, .noMatch,
+            .nothingToLookUp:
             trailingIcon("questionmark.circle", tint: .orange)
+                .help(reason.localizedText)
         case .lookupFailed:
             trailingIcon("exclamationmark.triangle.fill", tint: .orange)
                 .help(reason.localizedText)
-        case .noMatch, .nothingToLookUp:
-            EmptyView()
         }
     }
 

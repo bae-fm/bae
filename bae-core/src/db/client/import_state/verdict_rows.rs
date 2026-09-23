@@ -31,12 +31,49 @@ pub(super) fn delete_verdict(sql: &SqlContext<'_, '_>, content_hash: &str) -> Re
     Ok(())
 }
 
-/// Write one whole verdict and the matches it found. The caller has already
-/// cleared whatever stood under this hash.
+/// Whether the result stored under `content_hash` is still unread, or `None`
+/// with no result stored.
+pub(super) fn stored_unread(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+) -> Result<Option<bool>, DbError> {
+    Ok(sql
+        .query_row(
+            "SELECT unread FROM import_candidate_verdict WHERE content_hash = ?",
+            [content_hash],
+            |row| row.get::<_, bool>(0),
+        )
+        .optional()?)
+}
+
+impl Database {
+    /// Mark the result stored for the candidate at `candidate_key` read: the
+    /// person has opened it.
+    pub(crate) async fn mark_candidate_result_read(
+        &self,
+        candidate_key: &str,
+    ) -> Result<(), DbError> {
+        let candidate_key = candidate_key.to_string();
+        self.call(move |sql| {
+            sql.execute(
+                "UPDATE import_candidate_verdict SET unread = 0 \
+                 WHERE unread = 1 AND content_hash IN \
+                     (SELECT content_hash FROM scan_candidate WHERE path = ?)",
+                [candidate_key],
+            )?;
+            Ok(())
+        })
+        .await
+    }
+}
+
+/// Write one whole verdict and the matches it found, `unread` or not. The
+/// caller has already cleared whatever stood under this hash.
 pub(super) fn insert_verdict(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     identification: &DbCandidateIdentifyResult,
+    unread: bool,
 ) -> Result<(), DbError> {
     let verdict = &identification.verdict;
     let (kind, track_count) = match verdict {
@@ -82,8 +119,8 @@ pub(super) fn insert_verdict(
     sql.execute(
         "INSERT INTO import_candidate_verdict \
              (content_hash, kind, track_count, failures_json, \
-              ledger_json, probed_total_duration_ms, identified_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?)",
+              ledger_json, probed_total_duration_ms, identified_at, unread) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             kind,
@@ -92,6 +129,7 @@ pub(super) fn insert_verdict(
             ledger_json,
             probed,
             identification.identified_at.to_rfc3339(),
+            unread,
         ],
     )?;
     insert_matches(sql, content_hash, verdict)

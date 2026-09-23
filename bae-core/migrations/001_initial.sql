@@ -1244,6 +1244,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     ),
     probed_total_duration_ms INTEGER NOT NULL CHECK (probed_total_duration_ms >= 0),
     identified_at            TEXT NOT NULL,
+    -- 1 while the person has not seen this result: identification stored it
+    -- while its candidate was not open, and nobody has opened it since. A
+    -- result a person picked, or one that landed on the open candidate, is 0.
+    unread                   INTEGER NOT NULL CHECK (unread IN (0, 1)),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((kind = 'not_found') = (track_count IS NULL)),
     CHECK ((kind = 'failed') = (failures_json IS NOT NULL))

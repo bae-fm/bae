@@ -194,6 +194,7 @@ impl crate::types::BridgeTriageRow {
             combine_ancestor_key,
             actionable,
             placement,
+            attention,
             identification,
             skip_action,
             actions,
@@ -218,6 +219,7 @@ impl crate::types::BridgeTriageRow {
                 .map(crate::types::BridgeFolderReleaseDecisionKey::from_core),
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
+            attention: attention.map(crate::types::BridgeNeedsYou::from_core),
             identification: identification.map(crate::types::BridgeIdentificationStatus::from_core),
             skip_action: skip_action.map(crate::types::BridgeTriageSkipAction::from_core),
             actions: actions

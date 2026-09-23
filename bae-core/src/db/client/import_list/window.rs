@@ -378,6 +378,15 @@ pub(super) fn load_candidate_detail_on(
     let statuses = identify
         .map(|identify| library_statuses(sql, &identify.verdict))
         .transpose()?;
+    let unread = identify
+        .map(|_| {
+            sql.query_row(
+                "SELECT unread FROM import_candidate_verdict WHERE content_hash = ?",
+                params![content_hash],
+                |row| row.get::<_, bool>(0),
+            )
+        })
+        .transpose()?;
     // Only identity keys are needed for the next SQL query. Track and artwork
     // processing runs after the snapshot ends.
     let claimed = claimed_payloads_on(sql, &candidate, picked.as_ref())?;
@@ -462,11 +471,14 @@ pub(super) fn load_candidate_detail_on(
                     .expect("the library check covers every release the verdict names")
                     .clone()
             };
-            answer = Some(classify(
-                &identify.verdict,
-                identify.probed_total_duration_ms,
-                statuses,
-            ));
+            answer = Some(crate::import::StoredAnswer {
+                classification: classify(
+                    &identify.verdict,
+                    identify.probed_total_duration_ms,
+                    statuses,
+                ),
+                unread: unread.expect("a stored verdict has read its unread column"),
+            });
             matched = MatchedRelease::of_summary(&VerdictSummary::of(&identify.verdict));
             // The candidate's own text is what the rows are judged and ordered
             // against, live or resumed, with the numbers the person struck out

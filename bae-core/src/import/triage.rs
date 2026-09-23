@@ -112,6 +112,26 @@ pub fn place(
     }
 }
 
+/// The question a row flags as unread: the one its stored result asks, while
+/// the person has not seen that result.
+///
+/// Only Pending rows carry one. A Done or Skipped row asks nothing whatever
+/// its result would have — an import that landed puts its own release in the
+/// library, which is what the result then reads as.
+pub fn attention(
+    placement: &TriagePlacement,
+    unread: bool,
+    answer: Option<&QueueClassification>,
+) -> Option<NeedsYou> {
+    if !unread || placement.tab() != TriageTab::Pending {
+        return None;
+    }
+    match answer {
+        Some(QueueClassification::NeedsYou(reason)) => Some(reason.clone()),
+        Some(QueueClassification::Ready) | None => None,
+    }
+}
+
 /// Where a candidate's import stands, from the three places that can say so.
 ///
 /// A running import is the only live fact, so it outranks both stored ones. Of

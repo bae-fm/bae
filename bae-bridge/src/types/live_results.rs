@@ -103,4 +103,8 @@ callbacks! {
     CandidateRuntimeCallback: on_change(change: BridgeCandidateRuntimeChange);
     #[cfg(feature = "desktop")]
     ReleaseLibraryStatusCallback: on_value(value: BridgeLibraryStatus) + on_error;
+    /// A candidate held open that could not be opened: marking its result
+    /// read failed, so it is not held open.
+    #[cfg(feature = "desktop")]
+    OpenImportCandidateCallback: on_failure(error: BridgeError);
 }
