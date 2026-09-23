@@ -60,6 +60,41 @@ struct ImportCandidateSelectionTests {
         #expect(host.fittingSize.height > 0)
     }
 
+    /// The foot bar offers importing only the selected rows read from a
+    /// catalog's release beside importing every selected Ready row, each with
+    /// its own count.
+    @MainActor
+    @Test("the foot bar offers Import identified beside Import ready")
+    func footBarOffersImportIdentified() async throws {
+        let size = NSSize(width: 460, height: 48)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            TriageFootBar(
+                selectedCount: 3,
+                selectedIdentifiedCount: 2,
+                readyCount: 5,
+                onSelectAll: {},
+                onSelectNone: {},
+                onImport: {},
+                onImportIdentified: {}
+            )
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+        defer {
+            window.contentView = nil
+            window.orderOut(nil)
+        }
+        await SnapshotTestSupport.settle(host)
+        let lines =
+            try await SnapshotTestSupport.recognizedText(
+                in: SnapshotTestSupport.capturePNG(host, size: size),
+                languages: ["en-US"]
+            )
+            .map(\.text)
+        #expect(lines.carrying("Import identified (2)"))
+        #expect(lines.carrying("Import ready (3)"))
+    }
+
     @MainActor
     @Test("native row selection is the bulk-action selection")
     func candidateCanBeSelected() async throws {
@@ -106,7 +141,8 @@ struct ImportCandidateSelectionTests {
                 onReleaseDecision: { _, _ in },
                 onSkip: { _, _ in },
                 onReveal: { _ in },
-                onImportSelected: {}
+                onImportSelected: {},
+                onImportIdentified: {}
             )
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
             .environment(uiStore)

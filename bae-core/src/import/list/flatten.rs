@@ -15,8 +15,8 @@ use super::{
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::classify_summary;
 use crate::import::triage::{
-    import_status_of, place, MatchedRelease, TriageGroup, TriageImportStatus, TriageRow,
-    TriageRuntimeFacts, TriageTab, TriageTabCounts,
+    import_status_of, place, MatchedRelease, TriageGroup, TriageImportStatus, TriageReading,
+    TriageRow, TriageRuntimeFacts, TriageTab, TriageTabCounts,
 };
 use crate::import::watched_folder::candidate_relative_path;
 use crate::import::FolderReleaseDecisionKey;
@@ -567,6 +567,7 @@ fn summarise(
     let mut group_keys = Vec::new();
     let mut seen_groups = HashSet::new();
     let mut ready = Vec::new();
+    let mut identified = Vec::new();
     let mut first_unidentified = None;
     for entry in ordered {
         if let Some(group) = &entry.group {
@@ -587,13 +588,17 @@ fn summarise(
             });
         }
         if entry.matches_filter && row.selectable {
-            ready.push(ReadyRowRef {
+            let reference = ReadyRowRef {
                 candidate_key: row.candidate_key.clone(),
                 cover_thumbnail_url: row
                     .matched
                     .as_ref()
                     .and_then(|matched| matched.cover_thumbnail_url.clone()),
-            });
+            };
+            if matches!(row.reading, TriageReading::Identified { .. }) {
+                identified.push(reference.clone());
+            }
+            ready.push(reference);
         }
     }
     let active_scans: Vec<ActiveFolderScan> = rows
@@ -620,6 +625,7 @@ fn summarise(
         folder_scan_activity,
         group_keys,
         ready,
+        identified,
         first_unidentified,
     }
 }

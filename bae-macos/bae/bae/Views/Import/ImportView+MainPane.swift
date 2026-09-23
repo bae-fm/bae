@@ -20,6 +20,7 @@ extension ImportView {
             onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
             onReveal: revealCandidateSources,
             onImportSelected: importReadyCandidates,
+            onImportIdentified: importIdentifiedCandidates,
         )
     }
 

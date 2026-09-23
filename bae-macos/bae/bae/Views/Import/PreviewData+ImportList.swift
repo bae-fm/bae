@@ -95,6 +95,7 @@
             folderScanActivity: BridgeFolderScanActivity? = nil,
             groupKeys: [BridgeFolderReleaseDecisionKey] = [],
             ready: [BridgeReadyRowRef] = [],
+            identified: [BridgeReadyRowRef] = [],
             firstUnidentified: BridgeFirstUnidentifiedRowRef? = nil
         ) -> BridgeImportQueueSummary {
             BridgeImportQueueSummary(
@@ -108,6 +109,7 @@
                 folderScanActivity: folderScanActivity,
                 groupKeys: groupKeys,
                 ready: ready,
+                identified: identified,
                 firstUnidentified: firstUnidentified
             )
         }

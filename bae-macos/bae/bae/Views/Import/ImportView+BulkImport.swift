@@ -16,6 +16,24 @@ extension ImportView {
         )
     }
 
+    /// Import the selected Ready candidates whose draft was read from a
+    /// catalog's release, through the same import every Ready row takes.
+    func importIdentifiedCandidates() {
+        let identified = Set(importStore.summary.identified.map(\.candidateKey))
+        let candidates = ImportCandidateSelection(
+            importStore: importStore,
+            uiStore: uiStore
+        )
+        .candidates(for: .importReady)
+        .filter { identified.contains($0.key) }
+        performCandidateAction(
+            ImportCandidateActionOffer(
+                action: .importReady,
+                candidates: candidates
+            )
+        )
+    }
+
     func performCandidateAction(_ offer: ImportCandidateActionOffer) {
         let storageMode = configStore.config.importStorageMode(
             cloud: storageCloud

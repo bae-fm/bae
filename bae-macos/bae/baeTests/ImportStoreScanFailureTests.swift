@@ -36,6 +36,7 @@ struct ImportStoreScanFailureTests {
             folderScanActivity: nil,
             groupKeys: [],
             ready: [],
+            identified: [],
             firstUnidentified: nil
         )
     }

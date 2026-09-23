@@ -1,14 +1,18 @@
 import BaeKit
 import SwiftUI
 
-/// Pending's foot bar: the selection count and the bulk-import button. Only
-/// rows core marks selectable contribute to it.
+/// Pending's foot bar: the selection count and the bulk-import buttons. Only
+/// rows core marks selectable contribute to it. Import identified takes the
+/// selected rows whose draft was read from a catalog's release; Import ready
+/// takes every selected Ready row, tag drafts included.
 struct TriageFootBar: View {
     let selectedCount: Int
+    let selectedIdentifiedCount: Int
     let readyCount: Int
     let onSelectAll: () -> Void
     let onSelectNone: () -> Void
     let onImport: () -> Void
+    let onImportIdentified: () -> Void
 
     /// Every selectable row is already selected, so the control has nothing
     /// left to add and becomes the way to clear.
@@ -31,26 +35,42 @@ struct TriageFootBar: View {
             .foregroundStyle(.secondary)
             .disabled(readyCount == 0)
             Spacer()
-            Button(action: onImport) {
-                Text(
-                    BridgeCandidateAction.importReady.label(
-                        count: selectedCount
-                    )
-                )
-                .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(
-                    selectedCount == 0
-                        ? AnyShapeStyle(.tertiary)
-                        : AnyShapeStyle(Theme.accent)
-                )
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(selectedCount == 0)
+            importButton(
+                String(
+                    localized:
+                        "\(String(localized: "Import identified")) (\(selectedIdentifiedCount))"
+                ),
+                count: selectedIdentifiedCount,
+                action: onImportIdentified
+            )
+            importButton(
+                BridgeCandidateAction.importReady.label(count: selectedCount),
+                count: selectedCount,
+                action: onImport
+            )
         }
         .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
         .padding(.vertical, 12)
         .background(Theme.surface)
+    }
+
+    private func importButton(
+        _ label: String,
+        count: Int,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(
+                    count == 0
+                        ? AnyShapeStyle(.tertiary)
+                        : AnyShapeStyle(Theme.accent)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(count == 0)
     }
 }
 
@@ -60,10 +80,12 @@ struct TriageFootBar: View {
     #Preview("Foot bar") {
         TriageFootBar(
             selectedCount: 3,
+            selectedIdentifiedCount: 2,
             readyCount: 18,
             onSelectAll: {},
             onSelectNone: {},
-            onImport: {}
+            onImport: {},
+            onImportIdentified: {}
         )
         .frame(width: 320)
         .windowBackground()

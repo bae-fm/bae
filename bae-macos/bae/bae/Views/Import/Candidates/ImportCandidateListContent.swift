@@ -198,6 +198,9 @@ struct ImportCandidateListContent: View {
     let onReveal: (_ key: String) -> Void
     /// Import the highlighted Ready candidates.
     let onImportSelected: () -> Void
+    /// Import the highlighted Ready candidates whose draft was read from a
+    /// catalog's release.
+    let onImportIdentified: () -> Void
 
     @Environment(UiStore.self)
     private var uiStore
@@ -437,6 +440,8 @@ struct ImportCandidateListContent: View {
                         Divider()
                         TriageFootBar(
                             selectedCount: selectedReadyKeys.count,
+                            selectedIdentifiedCount: selectedIdentifiedKeys
+                                .count,
                             readyCount: summary.ready.count,
                             onSelectAll: {
                                 selectedKeys = Set(
@@ -446,6 +451,9 @@ struct ImportCandidateListContent: View {
                             onSelectNone: { selectedKeys = [] },
                             onImport: {
                                 onImportSelected()
+                            },
+                            onImportIdentified: {
+                                onImportIdentified()
                             }
                         )
                     }
@@ -463,6 +471,10 @@ extension ImportCandidateListContent {
     private var selectedReadyKeys: Set<String> {
         let currentReady = Set(summary.ready.map(\.candidateKey))
         return selectedKeys.intersection(currentReady)
+    }
+
+    private var selectedIdentifiedKeys: Set<String> {
+        selectedKeys.intersection(summary.identified.map(\.candidateKey))
     }
 
     /// Virtualized rows over the paged list: each visible position loads the
@@ -792,7 +804,8 @@ extension ImportCandidateListContent {
             onReleaseDecision: { _, _ in },
             onSkip: { _, _ in },
             onReveal: { _ in },
-            onImportSelected: {}
+            onImportSelected: {},
+            onImportIdentified: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)
@@ -818,7 +831,8 @@ extension ImportCandidateListContent {
             onReleaseDecision: { _, _ in },
             onSkip: { _, _ in },
             onReveal: { _ in },
-            onImportSelected: {}
+            onImportSelected: {},
+            onImportIdentified: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)

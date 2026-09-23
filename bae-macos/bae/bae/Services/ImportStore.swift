@@ -42,6 +42,7 @@ class ImportStore {
         folderScanActivity: nil,
         groupKeys: [],
         ready: [],
+        identified: [],
         firstUnidentified: nil
     )
 

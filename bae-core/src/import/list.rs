@@ -265,6 +265,10 @@ pub struct ImportQueueSummary {
     pub group_keys: Vec<FolderReleaseDecisionKey>,
     /// The Ready rows matching the view's filter, in queue order.
     pub ready: Vec<ReadyRowRef>,
+    /// The Ready rows among `ready` whose draft was read from a catalog's
+    /// release, in the same order — what importing only identified rows
+    /// acts on, leaving the ones drafted from tags or typed in.
+    pub identified: Vec<ReadyRowRef>,
     /// The first row the identify count is still waiting on, unfiltered, plus
     /// its position when the current view contains it.
     pub first_unidentified: Option<FirstUnidentifiedRowRef>,

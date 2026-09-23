@@ -548,6 +548,7 @@ struct ImportListPageSourceTests {
                 folderScanActivity: nil,
                 groupKeys: [],
                 ready: [],
+                identified: [],
                 firstUnidentified: firstUnidentifiedCandidateKey.map {
                     BridgeFirstUnidentifiedRowRef(
                         candidateKey: $0,

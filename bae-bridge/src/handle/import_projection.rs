@@ -450,6 +450,7 @@ mirror_struct! {
         folder_scan_activity: (opt crate::types::BridgeFolderScanActivity),
         group_keys: (each crate::types::BridgeFolderReleaseDecisionKey),
         ready: (each crate::types::BridgeReadyRowRef),
+        identified: (each crate::types::BridgeReadyRowRef),
         first_unidentified: (opt crate::types::BridgeFirstUnidentifiedRowRef),
     },
 }
