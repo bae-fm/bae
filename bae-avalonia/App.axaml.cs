@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
@@ -16,6 +17,7 @@ namespace Bae.Desktop;
 public sealed partial class App : Application
 {
     private SessionStore? _session;
+    private BridgeHost? _host;
     private IMediaControl? _mediaControl;
     private UpdateService? _updateService;
     private MainWindow? _main;
@@ -36,6 +38,7 @@ public sealed partial class App : Application
     private bool _quitting;
 
     private SessionStore Session => _session!;
+    private BridgeHost Host => _host!;
     private IMediaControl MediaControl => _mediaControl!;
     private UpdateService Updates => _updateService!;
 
@@ -159,7 +162,7 @@ public sealed partial class App : Application
         MediaControl.Deactivate();
         // Flush buffered telemetry through the process-lifetime sink before the
         // library handle it was carrying events for is freed below.
-        await BaeDiagnostics.Flush();
+        await BaeDiagnostics.Flush(Host);
         // The handle's graceful shutdown is what persists playback state for the
         // next launch. A no-op when no library is open.
         await Session.ShutdownAndFreeCurrentHandle();
@@ -172,7 +175,9 @@ public sealed partial class App : Application
     }
 
     // Telemetry first (so the sink exists for every later step and any failure it
-    // reports), then crash reporting, then the OS credential store before any
+    // reports), then crash reporting, then the host that restore, join, sign-in,
+    // and every library open run over (a failure to build it stops the launch,
+    // since none of those can run), then the OS credential store before any
     // library key is read, then the OAuth client credentials. Decide the first
     // window: straight to the main window when an openable library exists, else
     // the welcome window. This launch's own intent latches until that decision
@@ -185,6 +190,7 @@ public sealed partial class App : Application
         BaeDiagnostics.Configure();
         BaeCrashReporting.Configure();
         BaeDiagnostics.Logger.Info("application launched");
+        _host = NativeBae.CreateHost(BaeDiagnostics.Handle);
 
         _session = new SessionStore(Dispatcher.UIThread);
         // The OS now-playing surface is process-scoped, like the session it reads
@@ -223,7 +229,7 @@ public sealed partial class App : Application
                 BridgeDisplay.FaultSummary(keyringFailure));
             return;
         }
-        OAuthCreds.Register();
+        OAuthCreds.Register(Host);
 
         // Assert this app as the OS handler for bae:// links and folders, gated to
         // a real Velopack install so a dev run or a loose copy never points the
@@ -252,7 +258,7 @@ public sealed partial class App : Application
     // a successful open constructs the main window and closes the welcome window.
     private void OpenLibrary(string libraryId)
     {
-        switch (Session.OpenHandle(libraryId))
+        switch (Session.OpenHandle(libraryId, Host))
         {
             case OpenHandleResult.Failed failed:
                 GoToWelcome(failed.Line, failed.Detail);
@@ -355,6 +361,7 @@ public sealed partial class App : Application
         }
 
         var welcome = new WelcomeWindow(
+            Host,
             OpenLibrary,
             Session.Unlock,
             FinishOpenLibrary,

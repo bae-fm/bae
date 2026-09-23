@@ -20,6 +20,7 @@ import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDevicePairingOffer
 import uniffi.bae_bridge.BridgeDevicePairingPhase
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeJoiningDeviceJoinProgress
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.JoinDevicePairingOperation
@@ -28,15 +29,14 @@ import uniffi.bae_bridge.RestoreFromCodeOperation
 import uniffi.bae_bridge.abandonPendingDevicePairingJoin
 import uniffi.bae_bridge.decodeDevicePairingOffer
 import uniffi.bae_bridge.decodeRestoreCode
-import uniffi.bae_bridge.joinDevicePairingOperation
 import uniffi.bae_bridge.pendingDevicePairingJoin
-import uniffi.bae_bridge.restoreFromCodeOperation
 
 private const val TAG = "bae.OnboardingLaunchers"
 private val logger = BaeLogger(TAG)
 
 private class LinkFlow(
     val job: Job,
+    private val host: BridgeHost,
 ) {
     var restoreOperation: RestoreFromCodeOperation? = null
 
@@ -50,11 +50,11 @@ private class LinkFlow(
         val info = decodeRestoreCode(code)
         val oauthTokenJson =
             if (info.needsOauth) {
-                resolveOauthToken(oauthLinking, oauthLinkingError, context, info.cloudProvider)
+                resolveOauthToken(oauthLinking, oauthLinkingError, context, host, info.cloudProvider)
             } else {
                 null
             }
-        val operation = restoreFromCodeOperation(code = code, oauthTokenJson = oauthTokenJson)
+        val operation = host.restoreFromCodeOperation(code = code, oauthTokenJson = oauthTokenJson)
         restoreOperation = operation
         onLinked(withContext(Dispatchers.IO) { operation.restore() })
     }
@@ -67,6 +67,7 @@ private class LinkFlow(
 
 private class JoinFlow(
     val job: Job,
+    private val host: BridgeHost,
 ) {
     var operation: JoinDevicePairingOperation? = null
 
@@ -78,7 +79,7 @@ private class JoinFlow(
         onJoined: (BridgeLibrary) -> Unit,
     ) {
         val started =
-            joinDevicePairingOperation(
+            host.joinDevicePairingOperation(
                 pairingCode = pairingCode,
                 oauthTokenJson = oauthTokenJson,
             )
@@ -107,18 +108,20 @@ private suspend fun resolveOauthToken(
     oauthLinking: OAuthLinker?,
     oauthLinkingError: String?,
     context: Context,
+    host: BridgeHost,
     provider: BridgeCloudProvider,
 ): String {
     val oauthError =
         oauthLinkingError
             ?: if (oauthLinking == null) context.getString(R.string.onboarding_oauth_unconfigured) else null
     if (oauthError != null) throw IllegalStateException(oauthError)
-    return oauthLinking!!.authorize(context, provider)
+    return oauthLinking!!.authorize(context, host, provider)
 }
 
 internal class LinkLauncher(
     private val scope: CoroutineScope,
     private val context: Context,
+    private val host: BridgeHost,
     private val onLinked: (BridgeLibrary) -> Unit,
 ) {
     var error by mutableStateOf<String?>(null)
@@ -148,7 +151,7 @@ internal class LinkLauncher(
                     if (flow === started) flow = null
                 }
             }
-        started = LinkFlow(launched)
+        started = LinkFlow(launched, host)
         flow = started
         launched.start()
     }
@@ -163,6 +166,7 @@ internal class LinkLauncher(
 class JoinLauncher(
     private val scope: CoroutineScope,
     private val context: Context,
+    private val host: BridgeHost,
     private val onJoined: (BridgeLibrary) -> Unit,
 ) {
     var error by mutableStateOf<String?>(null)
@@ -223,6 +227,7 @@ class JoinLauncher(
                                     oauthLinking,
                                     oauthLinkingError,
                                     context,
+                                    host,
                                     offer.cloudProvider,
                                 )
                             isAuthorizing = false
@@ -304,7 +309,7 @@ class JoinLauncher(
                     if (flow === started) flow = null
                 }
             }
-        started = JoinFlow(launched)
+        started = JoinFlow(launched, host)
         flow = started
         launched.start()
     }
@@ -343,6 +348,7 @@ class JoinLauncher(
                         oauthLinking,
                         oauthLinkingError,
                         context,
+                        host,
                         pending.offer.cloudProvider,
                     )
             } catch (e: CancellationException) {

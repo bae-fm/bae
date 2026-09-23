@@ -50,7 +50,7 @@ internal sealed class SessionStore
 
     // Open the library's handle. A locked handle remains owned here so the
     // unlock operation completes that same Coven owner.
-    public OpenHandleResult OpenHandle(string libraryId)
+    public OpenHandleResult OpenHandle(string libraryId, BridgeHost host)
     {
         // The restore-on-launch preference gates the startup restore in the core;
         // the resume row itself is written continuously either way.
@@ -58,9 +58,10 @@ internal sealed class SessionStore
             libraryId,
             PositionUpdateIntervalMs,
             PersistPlaybackStore.Load(),
-            // The telemetry sink built at startup; init_app requires it, so
-            // telemetry is guaranteed up before the library opens.
-            BaeDiagnostics.Handle);
+            // The host built at startup around the telemetry sink; init_app
+            // requires it, so telemetry is guaranteed up before the library
+            // opens.
+            host);
         if (handle == null)
         {
             return Failed(openFailure);

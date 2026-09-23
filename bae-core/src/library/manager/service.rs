@@ -39,6 +39,7 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+        oauth_clients: coven::OAuthClients,
         remote_images: crate::import::cover_art::RemoteImageCache,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         providers: crate::providers::Providers,
@@ -62,7 +63,7 @@ impl LibraryManager {
             .coven_builder()
             .synced_tables(crate::sync::synced_tables())
             .clock(clock.clone())
-            .oauth_clients(crate::oauth::clients())
+            .oauth_clients(oauth_clients)
             .apply_cloudkit_ops(cloudkit_ops.clone())
             .observer(weak_observer as Arc<dyn coven::BlobTransitionObserver>)
             .migrations(crate::migrations::all())

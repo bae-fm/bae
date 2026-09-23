@@ -157,7 +157,7 @@ fn artwork_request_conditions_remain_expected_at_the_bridge() {
 async fn actual_artwork_data_failure_reaches_the_bridge_with_its_detail() {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let url = format!("http://{}/cover", listener.local_addr().unwrap());
+    let origin = format!("http://{}", listener.local_addr().unwrap());
     let server = tokio::spawn(async move {
         let (mut stream, _) = listener.accept().await.unwrap();
         let mut request = [0; 4096];
@@ -174,10 +174,12 @@ async fn actual_artwork_data_failure_reaches_the_bridge_with_its_detail() {
         stream.write_all(response.as_bytes()).await.unwrap();
         stream.shutdown().await.unwrap();
     });
-    let error = bae_core::import::cover_art::RemoteImageCache::for_test()
-        .fetch(&url)
-        .await
-        .unwrap_err();
+    let error = bae_core::import::cover_art::RemoteImageCache::for_test(
+        bae_core::util::http::Http::for_test().serve("images.example", &origin),
+    )
+    .fetch("https://images.example/cover")
+    .await
+    .unwrap_err();
     let detail = error.to_string();
     assert!(detail.contains("not a valid image"), "{detail}");
     assert_eq!(

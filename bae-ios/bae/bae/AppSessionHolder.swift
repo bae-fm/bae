@@ -68,12 +68,13 @@ final class AppSessionHolder {
     @ObservationIgnored
     private let opener: LibrarySessionOpener<AppHandle, AppService>
 
-    /// `diagnostics` is the process-lifetime telemetry sink, built at launch
-    /// and shared across library opens; the opener's closures capture it for
-    /// `init_app` and each `AppService`.
-    init(diagnostics: BridgeDiagnostics) {
+    /// `diagnostics` is the process-lifetime telemetry sink and `host` the
+    /// process-lifetime host registrations, both built at launch and shared
+    /// across library opens; the opener's closures capture the host for
+    /// `init_app` and the sink for each `AppService`.
+    init(diagnostics: BridgeDiagnostics, host: BridgeHost) {
         opener = LibrarySessionOpener<AppHandle, AppService>(
-            makeHandle: { [diagnostics] libraryId in
+            makeHandle: { [host] libraryId in
                 try initApp(
                     libraryId: libraryId,
                     positionUpdateIntervalMs: positionUpdateIntervalMs,
@@ -82,8 +83,8 @@ final class AppSessionHolder {
                     // resume row current either way.
                     restorePlayback: UserDefaults.standard.object(forKey: "persistPlayback") == nil
                         || UserDefaults.standard.bool(forKey: "persistPlayback"),
-                    // The telemetry sink built at launch; `init_app` requires it.
-                    diagnostics: diagnostics
+                    // The host built at launch; `init_app` requires it.
+                    host: host
                 )
             },
             makeService: { [diagnostics] handle, config, initialOutbox in

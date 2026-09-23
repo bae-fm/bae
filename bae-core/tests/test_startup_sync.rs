@@ -208,6 +208,7 @@ fn local_startup_returns_while_cloud_attachment_is_pending() {
             true,
             bae_core::diagnostics::Diagnostics::noop(),
             Some(cloudkit),
+            coven::OAuthClients::empty(),
             TestApp::start,
         );
         app_tx.send(result).expect("test receives bootstrap result");

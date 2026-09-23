@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
@@ -37,7 +38,7 @@ internal static class OAuthCreds
     /// core. Call once at launch, before any OAuth flow. An absent file leaves cloud
     /// sign-in unavailable without an error (the developer didn't bundle credentials).
     /// </summary>
-    internal static void Register()
+    internal static void Register(BridgeHost host)
     {
         // The available-provider set is the gate: an S3-only build has no
         // OAuth flow to configure, regardless of whether a creds file happens
@@ -68,7 +69,7 @@ internal static class OAuthCreds
             return;
         }
 
-        RegistrationError = NativeBae.SetOauthClientCreds(json);
+        RegistrationError = NativeBae.SetOauthClientCreds(host, json);
         Available = RegistrationError is null;
     }
 }

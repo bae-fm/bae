@@ -243,7 +243,6 @@ mod tests {
         .synced_tables(synced_tables())
         .coven_migration_policy(coven::CovenMigrationPolicy::ApplyPending)
         .clock(std::sync::Arc::new(coven::SystemClock))
-        .oauth_clients(crate::oauth::clients())
         .migrations(crate::migrations::all())
         .open()
         .expect("open the migrated library with its real sync declarations");

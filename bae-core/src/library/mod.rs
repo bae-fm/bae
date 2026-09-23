@@ -185,7 +185,6 @@ fn create_library_in_bae_dir(
         let handle = config_handle
             .coven_builder()
             .synced_tables(crate::sync::synced_tables())
-            .oauth_clients(crate::oauth::clients())
             .migrations(crate::migrations::all())
             .open()
             .map_err(|error| CreateLibraryError::Open(Box::new(error)))?;
@@ -285,25 +284,41 @@ fn finish_code_operation(
 /// Restore a library from a restore code. Wraps coven's `restore_from_code`.
 pub async fn restore_from_code(
     code: &str,
+    oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
-    restore_from_code_inner(code, oauth_tokens, cloudkit_ops, None, on_status)
-        .await
-        .map_err(|e| e.to_string())
+    restore_from_code_inner(
+        code,
+        oauth_clients,
+        oauth_tokens,
+        cloudkit_ops,
+        None,
+        on_status,
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 pub async fn restore_from_code_cancellable(
     code: &str,
+    oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: CancellationToken,
     on_status: impl Fn(&str),
 ) -> Result<Config, RestoreFromCodeError> {
-    restore_from_code_inner(code, oauth_tokens, cloudkit_ops, Some(cancel), on_status)
-        .await
-        .map_err(RestoreFromCodeError::from)
+    restore_from_code_inner(
+        code,
+        oauth_clients,
+        oauth_tokens,
+        cloudkit_ops,
+        Some(cancel),
+        on_status,
+    )
+    .await
+    .map_err(RestoreFromCodeError::from)
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -348,6 +363,7 @@ fn join_err<E: std::fmt::Display>(error: E) -> JoinDevicePairingError {
 pub struct PreparedDevicePairingJoin {
     pairing: coven::PreparedDevicePairing,
     layout: coven::StoreLayout,
+    oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
 }
@@ -364,12 +380,14 @@ impl PreparedDevicePairingJoin {
 
 pub async fn prepare_device_pairing_join(
     pairing_code: &str,
+    oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
 ) -> Result<PreparedDevicePairingJoin, JoinDevicePairingError> {
     let app_dir = crate::config::bae_dir().map_err(join_err)?;
     prepare_device_pairing_join_at(
         pairing_code,
+        oauth_clients,
         oauth_tokens,
         cloudkit_ops,
         library_layout(app_dir),
@@ -427,6 +445,7 @@ fn pending_device_pairing_at(
 
 async fn restore_from_code_inner(
     code: &str,
+    oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: Option<CancellationToken>,
@@ -450,7 +469,7 @@ async fn restore_from_code_inner(
         crate::config::default_transfer_limits(),
         coven::KeyCustody::Keyring,
         coven::IdentityCustody::Keyring,
-        crate::oauth::clients(),
+        oauth_clients,
         oauth_tokens,
         cloudkit_ops,
         &layout,
@@ -465,6 +484,7 @@ async fn restore_from_code_inner(
 
 async fn prepare_device_pairing_join_at(
     pairing_code: &str,
+    oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     layout: coven::StoreLayout,
@@ -479,6 +499,7 @@ async fn prepare_device_pairing_join_at(
     Ok(PreparedDevicePairingJoin {
         pairing,
         layout,
+        oauth_clients,
         oauth_tokens,
         cloudkit_ops,
     })
@@ -492,6 +513,7 @@ pub async fn join_prepared_device_pairing_cancellable(
     let PreparedDevicePairingJoin {
         pairing,
         layout,
+        oauth_clients,
         oauth_tokens,
         cloudkit_ops,
     } = prepared;
@@ -509,7 +531,7 @@ pub async fn join_prepared_device_pairing_cancellable(
         crate::config::default_transfer_limits(),
         coven::KeyCustody::Keyring,
         coven::IdentityCustody::Keyring,
-        crate::oauth::clients(),
+        oauth_clients,
         oauth_tokens,
         cloudkit_ops,
         std::sync::Arc::new(coven::SystemClock),

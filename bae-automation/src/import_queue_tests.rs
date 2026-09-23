@@ -74,6 +74,7 @@ pub(super) async fn automation_over() -> Fixture {
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         None,
+        coven::OAuthClients::empty(),
         bae_core::import::cover_art::RemoteImageCache::for_test(
             bae_core::util::http::Http::for_test(),
         ),

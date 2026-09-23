@@ -200,6 +200,7 @@ fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::Pa
         bae_core::diagnostics::Diagnostics::noop(),
         runtime.handle().clone(),
         None,
+        coven::OAuthClients::empty(),
         bae_core::import::cover_art::RemoteImageCache::for_test(
             bae_core::util::http::Http::for_test(),
         ),

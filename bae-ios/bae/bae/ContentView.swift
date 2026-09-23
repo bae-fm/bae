@@ -13,6 +13,7 @@ struct ContentView: View {
     let oauthLinkingError: String?
     #endif
     let startupError: String?
+    let host: BridgeHost
 
     @State
     private var holder: AppSessionHolder
@@ -27,18 +28,29 @@ struct ContentView: View {
         oauthLinking: OAuthLinking?,
         oauthLinkingError: String?,
         startupError: String?,
-        diagnostics: BridgeDiagnostics
+        diagnostics: BridgeDiagnostics,
+        host: BridgeHost
     ) {
         self.oauthLinking = oauthLinking
         self.oauthLinkingError = oauthLinkingError
         self.startupError = startupError
-        _holder = State(initialValue: AppSessionHolder(diagnostics: diagnostics))
+        self.host = host
+        _holder = State(
+            initialValue: AppSessionHolder(diagnostics: diagnostics, host: host)
+        )
     }
     #else
     @MainActor
-    init(startupError: String?, diagnostics: BridgeDiagnostics) {
+    init(
+        startupError: String?,
+        diagnostics: BridgeDiagnostics,
+        host: BridgeHost
+    ) {
         self.startupError = startupError
-        _holder = State(initialValue: AppSessionHolder(diagnostics: diagnostics))
+        self.host = host
+        _holder = State(
+            initialValue: AppSessionHolder(diagnostics: diagnostics, host: host)
+        )
     }
     #endif
 
@@ -56,12 +68,13 @@ struct ContentView: View {
                 case .onboarding:
                     #if BAE_OAUTH_PROVIDERS
                     OnboardingView(
+                        host: host,
                         oauthLinking: oauthLinking,
                         oauthLinkingError: oauthLinkingError,
                         onLinked: holder.onLinked
                     )
                     #else
-                    OnboardingView(onLinked: holder.onLinked)
+                    OnboardingView(host: host, onLinked: holder.onLinked)
                     #endif
 
                 case .unlock(let lockedLibrary):

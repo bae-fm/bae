@@ -15,11 +15,13 @@ namespace Bae.Desktop;
 // Presented in the window's modal host.
 internal sealed class RestoreFromCloudDialog
 {
+    private readonly BridgeHost _host;
     private readonly Action _dismissWelcome;
     private readonly Action<string> _openLibrary;
 
-    public RestoreFromCloudDialog(Action dismissWelcome, Action<string> openLibrary)
+    public RestoreFromCloudDialog(BridgeHost host, Action dismissWelcome, Action<string> openLibrary)
     {
+        _host = host;
         _dismissWelcome = dismissWelcome;
         _openLibrary = openLibrary;
     }
@@ -105,7 +107,7 @@ internal sealed class RestoreFromCloudDialog
             string restoredLibraryId;
             try
             {
-                restoredLibraryId = await Task.Run(() => NativeBae.RestoreFromCode(code, null));
+                restoredLibraryId = await Task.Run(() => NativeBae.RestoreFromCode(_host, code, null));
             }
             catch (BridgeException exception)
             {

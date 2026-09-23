@@ -21,29 +21,12 @@ private let bridgeDecodeDevicePairingOffer = decodeDevicePairingOffer(code:)
 private let bridgePendingDevicePairingJoin = pendingDevicePairingJoin
 private let bridgeAbandonPendingDevicePairingJoin =
     abandonPendingDevicePairingJoin
-private let bridgeRestoreFromCode = restoreFromCode(code:oauthTokenJson:)
-private let bridgeJoinDevicePairingOperation =
-    joinDevicePairingOperation(pairingCode:oauthTokenJson:)
-
-// The OAuth functions exist only in builds whose bridge compiles the OAuth
-// providers (the S3-only build omits them entirely); elsewhere the bindings
-// fall back to the same not-implemented stubs the initializer defaults to,
-// and the BAE_OAUTH_PROVIDERS-gated UI never calls them.
-#if BAE_OAUTH_PROVIDERS
-    private let bridgeOauthAuthorize = oauthAuthorize(provider:)
-    private let bridgeOauthCancel = oauthCancel
-#else
-    private let bridgeOauthAuthorize:
-        @Sendable (BridgeCloudProvider) throws -> String = { _ in
-            throw StubError.notImplemented
-        }
-    private let bridgeOauthCancel: @Sendable () -> Void = {}
-#endif
 
 /// Pre-library operations the welcome flow drives: on-device discovery,
 /// create, restore, join, the keychain restore codes, and provider OAuth.
-/// Wraps the bridge's free functions and `KeychainService` behind one
-/// injectable seam so previews never read or write real application data.
+/// Wraps the bridge's free functions, the `BridgeHost` operations, and
+/// `KeychainService` behind one injectable seam so previews never read or
+/// write real application data.
 /// The code decoders ride along because previews hand out fixture codes only
 /// this seam can "decode"; `availableCloudProviders` stays a free function — it
 /// touches no state.
@@ -147,11 +130,27 @@ final class LibrarySetup: Sendable, Observable {
         self.revealInFinder = revealInFinder
     }
 
-    /// The production wiring: the bridge's free functions plus the keychain.
-    /// The OAuth closures are wired in every build — the bridge always exports
-    /// them — while the `BAE_OAUTH_PROVIDERS` flag gates the UI that calls.
-    static func live() -> LibrarySetup {
-        LibrarySetup(
+    /// The production wiring: the bridge's free functions, the host's
+    /// operations, and the keychain. The OAuth operations exist only in builds
+    /// whose bridge compiles the OAuth providers (the S3-only build omits them
+    /// entirely); elsewhere they are the same not-implemented stubs the
+    /// initializer defaults to, and the `BAE_OAUTH_PROVIDERS`-gated UI never
+    /// calls them.
+    static func live(host: BridgeHost) -> LibrarySetup {
+        #if BAE_OAUTH_PROVIDERS
+            let oauthAuthorize:
+                @Sendable (BridgeCloudProvider) throws -> String = {
+                    try host.oauthAuthorize(provider: $0)
+                }
+            let oauthCancel: @Sendable () -> Void = { host.oauthCancel() }
+        #else
+            let oauthAuthorize:
+                @Sendable (BridgeCloudProvider) throws -> String = { _ in
+                    throw StubError.notImplemented
+                }
+            let oauthCancel: @Sendable () -> Void = {}
+        #endif
+        return LibrarySetup(
             discoverLibraries: bridgeDiscoverLibraries,
             removeLocalLibrary: bridgeRemoveLocalLibrary,
             createLibrary: { try bridgeCreateLibrary(nil) },
@@ -160,11 +159,16 @@ final class LibrarySetup: Sendable, Observable {
             pendingDevicePairingJoin: bridgePendingDevicePairingJoin,
             abandonPendingDevicePairingJoin:
                 bridgeAbandonPendingDevicePairingJoin,
-            restoreFromCode: bridgeRestoreFromCode,
+            restoreFromCode: { code, oauthTokenJson in
+                try host.restoreFromCode(
+                    code: code,
+                    oauthTokenJson: oauthTokenJson
+                )
+            },
             joinDevicePairing: { code, oauthTokenJson in
-                let operation = try await bridgeJoinDevicePairingOperation(
-                    code,
-                    oauthTokenJson
+                let operation = try await host.joinDevicePairingOperation(
+                    pairingCode: code,
+                    oauthTokenJson: oauthTokenJson
                 )
                 return JoinOperation(
                     fingerprint: operation.fingerprint(),
@@ -176,8 +180,8 @@ final class LibrarySetup: Sendable, Observable {
             },
             fetchRestoreCodes: KeychainService.fetchAllRestoreCodes,
             deleteRestoreCode: KeychainService.deleteRestoreCode(libraryId:),
-            oauthAuthorize: bridgeOauthAuthorize,
-            oauthCancel: bridgeOauthCancel,
+            oauthAuthorize: oauthAuthorize,
+            oauthCancel: oauthCancel,
             revealInFinder: { SystemActions.revealInFinder(path: $0) }
         )
     }

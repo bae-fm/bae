@@ -43,6 +43,7 @@ internal static class SmokeCreate
         try
         {
             BaeDiagnostics.Configure();
+            var host = NativeBae.CreateHost(BaeDiagnostics.Handle);
             NativeBae.Startup(BaeDiagnostics.Handle);
             L("bridge startup ok");
 
@@ -55,7 +56,7 @@ internal static class SmokeCreate
             L($"created library {libraryId}");
 
             var session = new SessionStore(Dispatcher.UIThread);
-            var opened = session.OpenHandle(libraryId);
+            var opened = session.OpenHandle(libraryId, host);
             L($"open handle: {opened}");
             if (opened is not OpenHandleResult.Opened)
             {

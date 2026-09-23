@@ -3,7 +3,7 @@
 //! These run before an AppHandle exists (they create or configure the library
 //! that AppHandle will later open).
 
-fn parse_oauth_tokens(json: &str) -> Result<coven::OAuthTokens, BridgeError> {
+pub(crate) fn parse_oauth_tokens(json: &str) -> Result<coven::OAuthTokens, BridgeError> {
     serde_json::from_str(json)
         .map_err(|e| BridgeError::config(format!("Invalid OAuth token JSON: {e}")))
 }
@@ -61,7 +61,7 @@ impl BridgeLibrary {
     /// Always active (the operation just made it the active one). The `Config`
     /// it reads is coven's (external crate) via `Deref`, so its fields stay
     /// dotted reads rather than an exhaustive destructure.
-    fn from_core(config: &bae_core::config::Config) -> Result<Self, BridgeError> {
+    pub(crate) fn from_core(config: &bae_core::config::Config) -> Result<Self, BridgeError> {
         local_library(
             config.store_id.clone(),
             config.store_name.clone(),
@@ -96,7 +96,6 @@ use tracing::info;
 use bae_core::config::Config;
 use bae_core::library::{CancellationToken, JoinDevicePairingError, RestoreFromCodeError};
 
-use crate::get_cloudkit_ops;
 use crate::types::{
     BridgeCloudProvider, BridgeDevicePairingOffer, BridgeError, BridgeJoiningDeviceJoinProgress,
     BridgeLibrary, BridgePendingDevicePairingJoin, BridgeRestoreCodeInfo,
@@ -112,8 +111,9 @@ fn restore_error_to_bridge(error: RestoreFromCodeError) -> BridgeError {
     }
 }
 
-async fn restore_from_code_config(
+pub(crate) async fn restore_from_code_config(
     code: String,
+    oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: Option<CancellationToken>,
@@ -121,6 +121,7 @@ async fn restore_from_code_config(
     match cancel {
         Some(cancel) => bae_core::library::restore_from_code_cancellable(
             &code,
+            oauth_clients,
             oauth_tokens,
             cloudkit_ops,
             cancel,
@@ -128,31 +129,16 @@ async fn restore_from_code_config(
         )
         .await
         .map_err(restore_error_to_bridge),
-        None => bae_core::library::restore_from_code(&code, oauth_tokens, cloudkit_ops, |status| {
-            info!("{}", status)
-        })
+        None => bae_core::library::restore_from_code(
+            &code,
+            oauth_clients,
+            oauth_tokens,
+            cloudkit_ops,
+            |status| info!("{}", status),
+        )
         .await
         .map_err(|e| restore_error_to_bridge(RestoreFromCodeError::Restore(e))),
     }
-}
-
-/// The cancel sender for the one in-flight OAuth flow. `oauth_cancel` flips it;
-/// the matching receiver rides into `coven::authorize_provider`, which watches it
-/// alongside the callback wait and tears the listener down.
-#[cfg(feature = "oauth-providers")]
-static OAUTH_CANCEL_TX: Mutex<Option<tokio::sync::watch::Sender<bool>>> = Mutex::new(None);
-/// The pending host-driven OAuth requests, keyed by the request id
-/// [`oauth_begin`] hands out and [`oauth_complete`] passes back. Each carries
-/// the PKCE verifier and callback state the exchange must present.
-#[cfg(feature = "oauth-providers")]
-static OAUTH_REQUESTS: std::sync::LazyLock<
-    Mutex<std::collections::HashMap<String, coven::AuthorizeRequest>>,
-> = std::sync::LazyLock::new(|| Mutex::new(std::collections::HashMap::new()));
-
-fn lock_bridge_mutex<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    mutex
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// Point bae's data directory at `path/.bae` by exporting `path` as `$HOME`,
@@ -226,56 +212,26 @@ pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError
     BridgeLibrary::from_core(&config)
 }
 
-/// Run the future built by `make_fut` on a worker of a shared onboarding runtime,
-/// blocking the calling thread until it completes.
+/// Run the future built by `make_fut` on a worker of `runtime`, blocking the
+/// calling thread until it completes.
 ///
-/// The onboarding exports (restore, OAuth) run before any `AppHandle` — and its
-/// tokio runtime — exists, so they share this process-wide one. Its workers have
-/// 16 MB stacks (like `init`'s), deep enough for coven's pull descents; `spawn`
-/// moves the work onto a worker, so the foreign caller only `block_on`s the
-/// shallow `JoinHandle` and nothing deep is ever polled on its ~0.5 MB stack.
-/// (The AWS-SDK S3 endpoint descent runs on coven's own big-stack S3 runtime
-/// regardless of who awaits it.)
+/// `spawn` moves the work onto a worker, so the foreign caller only
+/// `block_on`s the shallow `JoinHandle` and nothing deep is ever polled on its
+/// ~0.5 MB stack. (The AWS-SDK S3 endpoint descent runs on coven's own
+/// big-stack S3 runtime regardless of who awaits it.)
 ///
 /// That requires the futures to be `Send` + `'static`. They are: coven's pull
 /// path carries the database handle as a `Send`-able `SendDbPtr`, so no
 /// non-`Send` `*mut sqlite3` is held across the download await.
-/// The shared onboarding runtime, built once on first use. `Runtime::build` is
-/// fallible — the OS can refuse to spawn the worker threads under thread, file-
-/// descriptor, or memory exhaustion — so a build failure crosses the boundary as
-/// a `BridgeError` like every other fallible onboarding step, rather than
-/// panicking on the foreign caller's thread.
-fn onboarding_runtime() -> Result<&'static tokio::runtime::Runtime, BridgeError> {
-    static RT: std::sync::OnceLock<tokio::runtime::Runtime> = std::sync::OnceLock::new();
-    if let Some(rt) = RT.get() {
-        return Ok(rt);
-    }
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(2)
-        .thread_stack_size(16 * 1024 * 1024)
-        .enable_all()
-        .build()
-        .map_err(|e| BridgeError::internal(format!("build onboarding runtime: {e}")))?;
-    // A concurrent caller may have won the init race; `get_or_init` keeps the
-    // stored runtime and drops ours. Harmless — the loser's runtime was never
-    // entered.
-    Ok(RT.get_or_init(|| rt))
-}
-
-pub(crate) fn onboarding_runtime_handle() -> Result<tokio::runtime::Handle, BridgeError> {
-    Ok(onboarding_runtime()?.handle().clone())
-}
-
-fn on_worker<T, Fut>(make_fut: impl FnOnce() -> Fut + Send + 'static) -> Result<T, BridgeError>
+pub(crate) fn on_worker<T, Fut>(
+    runtime: &tokio::runtime::Handle,
+    make_fut: impl FnOnce() -> Fut + Send + 'static,
+) -> Result<T, BridgeError>
 where
     Fut: std::future::Future<Output = Result<T, BridgeError>> + Send + 'static,
     T: Send + 'static,
 {
-    let rt = onboarding_runtime()?;
-    match rt.block_on(crate::operation_runtime::spawn(
-        rt.handle().clone(),
-        make_fut,
-    )) {
+    match runtime.block_on(crate::operation_runtime::spawn(runtime.clone(), make_fut)) {
         Ok(result) => result,
         Err(join_err) => Err(BridgeError::internal(format!(
             "onboarding worker task panicked: {join_err}"
@@ -300,57 +256,46 @@ pub fn decode_restore_code(code: String) -> Result<BridgeRestoreCodeInfo, Bridge
     })
 }
 
-/// Restore a library from a restore code string.
-///
-/// For OAuth providers, the caller must first run `oauth_authorize()` and pass the
-/// token JSON as `oauth_token_json`.
-#[uniffi::export]
-pub fn restore_from_code(
-    code: String,
-    oauth_token_json: Option<String>,
-) -> Result<BridgeLibrary, BridgeError> {
-    on_worker(move || async move {
-        let oauth_tokens = oauth_token_json
-            .map(|json| parse_oauth_tokens(&json))
-            .transpose()?;
-
-        let config = restore_from_code_config(code, oauth_tokens, get_cloudkit_ops(), None).await?;
-
-        BridgeLibrary::from_core(&config)
-    })
-}
+/// Nothing panics while an onboarding operation's state is locked, so a
+/// poisoned lock is a bug and fails loudly.
+const OPERATION_LOCK: &str = "an onboarding operation lock is never held across a panic";
 
 #[derive(uniffi::Object)]
 pub struct RestoreFromCodeOperation {
     code: String,
+    oauth_clients: coven::OAuthClients,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+    runtime: tokio::runtime::Handle,
     cancel: CancellationToken,
     started: Mutex<bool>,
 }
 
-#[uniffi::export]
-pub fn restore_from_code_operation(
-    code: String,
-    oauth_token_json: Option<String>,
-) -> Result<Arc<RestoreFromCodeOperation>, BridgeError> {
-    let oauth_tokens = oauth_token_json
-        .map(|json| parse_oauth_tokens(&json))
-        .transpose()?;
-    Ok(Arc::new(RestoreFromCodeOperation {
-        code,
-        oauth_tokens,
-        cloudkit_ops: get_cloudkit_ops(),
-        cancel: CancellationToken::new(),
-        started: Mutex::new(false),
-    }))
+impl RestoreFromCodeOperation {
+    pub(crate) fn new(
+        code: String,
+        oauth_clients: coven::OAuthClients,
+        oauth_tokens: Option<coven::OAuthTokens>,
+        cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+        runtime: tokio::runtime::Handle,
+    ) -> Self {
+        Self {
+            code,
+            oauth_clients,
+            oauth_tokens,
+            cloudkit_ops,
+            runtime,
+            cancel: CancellationToken::new(),
+            started: Mutex::new(false),
+        }
+    }
 }
 
 #[uniffi::export]
 impl RestoreFromCodeOperation {
     pub fn restore(&self) -> Result<BridgeLibrary, BridgeError> {
         {
-            let mut started = lock_bridge_mutex(&self.started);
+            let mut started = self.started.lock().expect(OPERATION_LOCK);
             if *started {
                 return Err(BridgeError::internal(
                     "restore operation already started".to_string(),
@@ -359,12 +304,19 @@ impl RestoreFromCodeOperation {
             *started = true;
         }
         let code = self.code.clone();
+        let oauth_clients = self.oauth_clients.clone();
         let oauth_tokens = self.oauth_tokens.clone();
         let cloudkit_ops = self.cloudkit_ops.clone();
         let cancel = self.cancel.clone();
-        on_worker(move || async move {
-            let config =
-                restore_from_code_config(code, oauth_tokens, cloudkit_ops, Some(cancel)).await?;
+        on_worker(&self.runtime, move || async move {
+            let config = restore_from_code_config(
+                code,
+                oauth_clients,
+                oauth_tokens,
+                cloudkit_ops,
+                Some(cancel),
+            )
+            .await?;
 
             BridgeLibrary::from_core(&config)
         })
@@ -492,6 +444,7 @@ async fn join_device_pairing_config(
 pub struct JoinDevicePairingOperation {
     fingerprint: String,
     state: Mutex<JoinDevicePairingOperationState>,
+    runtime: tokio::runtime::Handle,
     cancel: CancellationToken,
 }
 
@@ -501,27 +454,29 @@ enum JoinDevicePairingOperationState {
     Abandoned,
 }
 
-#[uniffi::export(async_runtime = "tokio")]
-pub async fn join_device_pairing_operation(
-    pairing_code: String,
-    oauth_token_json: Option<String>,
-) -> Result<Arc<JoinDevicePairingOperation>, BridgeError> {
-    let oauth_tokens = oauth_token_json
-        .map(|json| parse_oauth_tokens(&json))
-        .transpose()?;
-    let prepared = bae_core::library::prepare_device_pairing_join(
-        &pairing_code,
-        oauth_tokens,
-        get_cloudkit_ops(),
-    )
-    .await
-    .map_err(join_error_to_bridge)?;
-    let fingerprint = prepared.fingerprint();
-    Ok(Arc::new(JoinDevicePairingOperation {
-        fingerprint,
-        state: Mutex::new(JoinDevicePairingOperationState::Prepared(prepared)),
-        cancel: CancellationToken::new(),
-    }))
+impl JoinDevicePairingOperation {
+    pub(crate) async fn prepare(
+        pairing_code: &str,
+        oauth_clients: coven::OAuthClients,
+        oauth_tokens: Option<coven::OAuthTokens>,
+        cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+        runtime: tokio::runtime::Handle,
+    ) -> Result<Self, BridgeError> {
+        let prepared = bae_core::library::prepare_device_pairing_join(
+            pairing_code,
+            oauth_clients,
+            oauth_tokens,
+            cloudkit_ops,
+        )
+        .await
+        .map_err(join_error_to_bridge)?;
+        Ok(Self {
+            fingerprint: prepared.fingerprint(),
+            state: Mutex::new(JoinDevicePairingOperationState::Prepared(prepared)),
+            runtime,
+            cancel: CancellationToken::new(),
+        })
+    }
 }
 
 #[uniffi::export]
@@ -535,7 +490,7 @@ impl JoinDevicePairingOperation {
         progress: Box<dyn JoiningDeviceJoinProgressCallback>,
     ) -> Result<BridgeLibrary, BridgeError> {
         let prepared = {
-            let mut state = lock_bridge_mutex(&self.state);
+            let mut state = self.state.lock().expect(OPERATION_LOCK);
             match std::mem::replace(&mut *state, JoinDevicePairingOperationState::Started) {
                 JoinDevicePairingOperationState::Prepared(prepared) => prepared,
                 previous @ JoinDevicePairingOperationState::Started => {
@@ -552,7 +507,7 @@ impl JoinDevicePairingOperation {
         };
         let cancel = self.cancel.clone();
         let progress = Arc::from(progress);
-        on_worker(move || async move {
+        on_worker(&self.runtime, move || async move {
             let config = join_device_pairing_config(prepared, cancel, progress).await?;
 
             BridgeLibrary::from_core(&config)
@@ -560,7 +515,7 @@ impl JoinDevicePairingOperation {
     }
 
     pub fn cancel(&self) -> Result<(), BridgeError> {
-        let mut state = lock_bridge_mutex(&self.state);
+        let mut state = self.state.lock().expect(OPERATION_LOCK);
         match &*state {
             JoinDevicePairingOperationState::Prepared(prepared) => {
                 prepared.abandon().map_err(join_error_to_bridge)?;
@@ -571,191 +526,6 @@ impl JoinDevicePairingOperation {
         }
         Ok(())
     }
-}
-
-#[cfg(feature = "oauth-providers")]
-pub(crate) fn new_oauth_cancel() -> tokio::sync::watch::Receiver<bool> {
-    let (tx, rx) = tokio::sync::watch::channel(false);
-    *lock_bridge_mutex(&OAUTH_CANCEL_TX) = Some(tx);
-    rx
-}
-
-/// Run an OAuth flow for the given provider and return the raw token JSON.
-///
-/// Spawns a localhost callback server that lives until the browser redirects back
-/// or `oauth_cancel()` is called. Only one flow can run at a time.
-#[cfg(feature = "oauth-providers")]
-#[uniffi::export]
-pub fn oauth_authorize(provider: BridgeCloudProvider) -> Result<String, BridgeError> {
-    oauth_cancel();
-
-    let cancel = new_oauth_cancel();
-
-    let result = on_worker(move || async move {
-        let core_provider = provider.into_core();
-        let clock = std::sync::Arc::new(coven::SystemClock);
-        let tokens = bae_core::oauth::clients()
-            .authorize(core_provider, cancel, clock.as_ref())
-            .await
-            .map_err(|e| BridgeError::config(format!("OAuth authorization failed: {e}")))?;
-
-        serde_json::to_string(&tokens)
-            .map_err(|e| BridgeError::internal(format!("Failed to serialize tokens: {e}")))
-    });
-
-    *lock_bridge_mutex(&OAUTH_CANCEL_TX) = None;
-
-    result
-}
-
-/// One step of the host-driven (mobile) OAuth flow: the URL to open and the
-/// opaque request id to pass back to [`oauth_complete`].
-#[cfg(feature = "oauth-providers")]
-#[derive(uniffi::Record)]
-pub struct BridgeOAuthRequest {
-    pub auth_url: String,
-    pub request_id: String,
-}
-
-/// Register the host's OAuth client credentials, keyed by provider name
-/// (`"google_drive"`, `"dropbox"`, `"onedrive"`). Call once at startup, before
-/// any OAuth flow and before opening a library whose cloud home is one of those
-/// providers — a library opens over the set registered at that moment.
-/// `creds_json` is an object of
-/// `{ "<provider>": { "client_id": "...", "client_secret": null } }`. coven
-/// ships no credentials of its own — the consuming app registers its own.
-/// Registering again replaces the previous set.
-#[cfg(feature = "oauth-providers")]
-#[uniffi::export]
-pub fn set_oauth_client_creds(creds_json: String) -> Result<(), BridgeError> {
-    let parsed: std::collections::HashMap<String, serde_json::Value> =
-        serde_json::from_str(&creds_json)
-            .map_err(|e| BridgeError::config(format!("Invalid OAuth creds JSON: {e}")))?;
-    let mut creds = std::collections::HashMap::new();
-    for (provider, value) in parsed {
-        let core_provider = oauth_provider_by_name(&provider)?;
-        let client_id = value
-            .get("client_id")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                BridgeError::config(format!("OAuth creds for {provider} missing client_id"))
-            })?
-            .to_string();
-        let client_secret = value
-            .get("client_secret")
-            .and_then(|v| v.as_str())
-            .map(str::to_string);
-        creds.insert(
-            core_provider,
-            coven::OAuthClientCreds {
-                client_id,
-                client_secret,
-            },
-        );
-    }
-    bae_core::oauth::set_client_creds(creds)
-        .map_err(|e| BridgeError::config(format!("OAuth client credentials rejected: {e}")))?;
-    Ok(())
-}
-
-/// The provider a `set_oauth_client_creds` JSON key names. Only the three
-/// account-based clouds run an OAuth flow, so any other key is a host mistake
-/// worth naming rather than silently dropping.
-#[cfg(feature = "oauth-providers")]
-fn oauth_provider_by_name(name: &str) -> Result<coven::CloudProvider, BridgeError> {
-    match name {
-        "google_drive" => Ok(coven::CloudProvider::GoogleDrive),
-        "dropbox" => Ok(coven::CloudProvider::Dropbox),
-        "onedrive" => Ok(coven::CloudProvider::OneDrive),
-        other => Err(BridgeError::config(format!(
-            "OAuth creds name a provider that uses no OAuth flow: {other}"
-        ))),
-    }
-}
-
-/// Begin a host-driven OAuth flow: build the authorization URL for `provider`,
-/// redirecting to `redirect_uri` (a custom scheme the mobile OS auth session
-/// captures). The host opens `auth_url`, captures the `code` and `state` from
-/// the redirect, and calls [`oauth_complete`]. Unlike [`oauth_authorize`] this
-/// binds no localhost port and opens no browser — it works in the iOS/Android
-/// sandbox.
-#[cfg(feature = "oauth-providers")]
-#[uniffi::export]
-pub fn oauth_begin(
-    provider: BridgeCloudProvider,
-    redirect_uri: String,
-) -> Result<BridgeOAuthRequest, BridgeError> {
-    let core_provider = provider.into_core();
-    let request = bae_core::oauth::clients()
-        .build_authorize_request(core_provider, &redirect_uri)
-        .map_err(|e| BridgeError::config(format!("OAuth begin failed: {e}")))?;
-    let auth_url = request.auth_url.clone();
-    // An opaque handle correlating this begin with its later complete; not a
-    // PKCE value (coven holds the real verifier inside `request`).
-    let request_id = coven::IdProvider::new_id(&coven::UuidProvider);
-    // At most one host-driven exchange is ever pending: a fresh begin supersedes
-    // any earlier un-completed one, so a host that restarts the flow without an
-    // intervening cancel doesn't strand the prior entry. Hold the lock across the
-    // clear and insert so the two are atomic.
-    {
-        let mut requests = lock_bridge_mutex(&OAUTH_REQUESTS);
-        requests.clear();
-        requests.insert(request_id.clone(), request);
-    }
-    Ok(BridgeOAuthRequest {
-        auth_url,
-        request_id,
-    })
-}
-
-/// Complete a host-driven OAuth flow: exchange the captured `code` for tokens
-/// and return the token JSON to pass to [`restore_from_code`]. `redirect_uri`,
-/// `state`, and `request_id` must match the originating [`oauth_begin`].
-#[cfg(feature = "oauth-providers")]
-#[uniffi::export]
-pub fn oauth_complete(
-    provider: BridgeCloudProvider,
-    code: String,
-    state: String,
-    request_id: String,
-    redirect_uri: String,
-) -> Result<String, BridgeError> {
-    let core_provider = provider.into_core();
-    let request = lock_bridge_mutex(&OAUTH_REQUESTS)
-        .remove(&request_id)
-        .ok_or_else(|| {
-            BridgeError::config("OAuth request not found or already used".to_string())
-        })?;
-    let tokens = on_worker(move || async move {
-        let clock = std::sync::Arc::new(coven::SystemClock);
-        bae_core::oauth::clients()
-            .exchange_code(
-                core_provider,
-                &code,
-                Some(&state),
-                &request,
-                &redirect_uri,
-                clock.as_ref(),
-            )
-            .await
-            .map_err(|e| BridgeError::config(format!("OAuth token exchange failed: {e}")))
-    })?;
-    serde_json::to_string(&tokens)
-        .map_err(|e| BridgeError::internal(format!("Failed to serialize tokens: {e}")))
-}
-
-/// Cancel an in-progress OAuth flow. Signals the callback server to shut down
-/// and frees the port.
-#[cfg(feature = "oauth-providers")]
-#[uniffi::export]
-pub fn oauth_cancel() {
-    if let Some(tx) = lock_bridge_mutex(&OAUTH_CANCEL_TX).take() {
-        let _ = tx.send(true);
-    }
-    // Reclaim any pending host-driven exchange from an abandoned `oauth_begin`; a
-    // cancel ends every in-progress flow, and a fresh flow starts with a new
-    // `oauth_begin`.
-    lock_bridge_mutex(&OAUTH_REQUESTS).clear();
 }
 
 #[cfg(test)]
@@ -788,71 +558,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "oauth-providers")]
-    #[test]
-    fn host_driven_oauth_flow_holds_at_most_one_pending_exchange() {
-        // Serialize against the process-global OAUTH_REQUESTS: this is the only
-        // test that touches it, and it drives every phase in order.
-        lock_bridge_mutex(&OAUTH_REQUESTS).clear();
-
-        let mut creds = std::collections::HashMap::new();
-        creds.insert(
-            coven::CloudProvider::GoogleDrive,
-            coven::OAuthClientCreds {
-                client_id: "test-client-id".to_string(),
-                client_secret: None,
-            },
-        );
-        bae_core::oauth::set_client_creds(creds).expect("register test OAuth client creds");
-
-        let redirect_uri = "bae://oauth".to_string();
-
-        // A second begin supersedes the first: at most one pending exchange.
-        oauth_begin(BridgeCloudProvider::GoogleDrive, redirect_uri.clone())
-            .expect("first begin builds an authorize request");
-        let second = oauth_begin(BridgeCloudProvider::GoogleDrive, redirect_uri.clone())
-            .expect("second begin builds an authorize request");
-        assert_eq!(
-            lock_bridge_mutex(&OAUTH_REQUESTS).len(),
-            1,
-            "a fresh begin supersedes the prior un-completed one"
-        );
-
-        // Cancel reclaims the pending host-driven exchange.
-        oauth_cancel();
-        assert!(
-            lock_bridge_mutex(&OAUTH_REQUESTS).is_empty(),
-            "cancel clears the pending host-driven exchange"
-        );
-
-        // Completing the cancelled flow's request finds nothing to exchange.
-        let err = oauth_complete(
-            BridgeCloudProvider::GoogleDrive,
-            "auth-code".to_string(),
-            "callback-state".to_string(),
-            second.request_id,
-            redirect_uri,
-        )
-        .expect_err("a cancelled request has no pending exchange to complete");
-        match err {
-            BridgeError::Diagnostic { category, detail } => {
-                assert_eq!(category, BridgeErrorCategory::Config);
-                assert!(detail.contains("not found or already used"));
-            }
-            other => panic!("expected config bridge error, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn onboarding_runtime_is_ok_and_idempotent() {
-        let first = onboarding_runtime().expect("onboarding runtime builds on the normal path");
-        let second = onboarding_runtime().expect("onboarding runtime is reused");
-        assert!(
-            std::ptr::eq(first, second),
-            "repeated calls return the same runtime"
-        );
-    }
-
     #[test]
     fn scanned_pairing_code_is_classified_by_its_envelope() {
         assert!(is_device_pairing_code(
@@ -863,7 +568,12 @@ mod tests {
 
     #[test]
     fn on_worker_returns_bridge_error_for_panicked_task() {
-        let result: Result<(), BridgeError> = on_worker(|| async {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_all()
+            .build()
+            .expect("build worker runtime");
+        let result: Result<(), BridgeError> = on_worker(runtime.handle(), || async {
             panic!("onboarding test panic");
         });
 
@@ -879,8 +589,13 @@ mod tests {
 
     #[test]
     fn on_worker_constructs_the_future_on_its_runtime() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_all()
+            .build()
+            .expect("build worker runtime");
         let caller = std::thread::current().id();
-        let constructed = on_worker(move || {
+        let constructed = on_worker(runtime.handle(), move || {
             let construction_thread = std::thread::current().id();
             async move { Ok::<_, BridgeError>(construction_thread) }
         })

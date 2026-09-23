@@ -92,6 +92,7 @@ enum AppScreen {
 @MainActor
 final class ApplicationServices {
     let diagnostics: BridgeDiagnostics
+    let host: BridgeHost
     let mediaControlService: MediaControlService
     let librarySetup: LibrarySetup
     let updaterController: SPUStandardUpdaterController
@@ -102,8 +103,9 @@ final class ApplicationServices {
             source: "macos",
             edition: baeAppEdition
         )
+        host = BaeHost.make(diagnostics: diagnostics)
         mediaControlService = MediaControlService()
-        librarySetup = LibrarySetup.live()
+        librarySetup = LibrarySetup.live(host: host)
         #if DEBUG
             let updaterController = SPUStandardUpdaterController(
                 startingUpdater: false,
@@ -537,10 +539,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// each open to an `Outcome` this delegate lands on `screen`/`appService`.
     @ObservationIgnored
     private lazy var opener = LibrarySessionOpener<AppHandle, AppService>(
-        // Capture the sink by value so the `@Sendable` makeHandle doesn't read
+        // Capture the host by value so the `@Sendable` makeHandle doesn't read
         // the main-actor property from off the main actor.
         makeHandle: {
-            [diagnostics = requiredApplicationServices.diagnostics] libraryId in
+            [host = requiredApplicationServices.host] libraryId in
             try initApp(
                 libraryId: libraryId,
                 positionUpdateIntervalMs: 200,
@@ -549,9 +551,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 restorePlayback: UserDefaults.standard.bool(
                     forKey: "persistPlayback"
                 ),
-                // The telemetry sink built at launch; `init_app` requires it, so
-                // telemetry is guaranteed up before the library opens.
-                diagnostics: diagnostics
+                // The host built at launch around the telemetry sink; `init_app`
+                // requires it, so telemetry is guaranteed up before the library
+                // opens.
+                host: host
             )
         },
         makeService: { [weak self] handle, config, initialOutbox in

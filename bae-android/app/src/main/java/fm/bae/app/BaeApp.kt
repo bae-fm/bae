@@ -4,6 +4,7 @@ import android.app.Application
 import io.crates.keyring.Keyring
 import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.initKeyring
 import uniffi.bae_bridge.setDataDir
 
@@ -17,6 +18,16 @@ class BaeApp : Application() {
      * session reaches it via `applicationContext as BaeApp`.
      */
     lateinit var diagnostics: BridgeDiagnostics
+        private set
+
+    /**
+     * The process-lifetime host registrations, built at startup and held for
+     * the whole app run. Every library open, restore, join, and OAuth sign-in
+     * requires it; they reach it the same way as [diagnostics]. Unset only when
+     * [platformStartupError] or [startupError] stopped the launch first, and
+     * then nothing past the startup error screen runs.
+     */
+    lateinit var host: BridgeHost
         private set
 
     var oauthLinking: OAuthLinker? = null
@@ -55,11 +66,15 @@ class BaeApp : Application() {
             logger.error("Failed to initialize Android TLS", error)
             return
         }
+        // The host's one failure is the OS refusing its onboarding runtime's
+        // worker threads; either failure stops the launch at the startup
+        // error, and the exception names which one it was.
         try {
+            host = BridgeHost(diagnostics)
             initKeyring(diagnostics)
         } catch (error: BridgeException) {
             startupError = error
-            logger.error("Failed to initialize secure storage", error)
+            logger.error("Failed to start the bridge host or secure storage", error)
             return
         }
         // Register the host's OAuth client creds (if a creds file is bundled) so
@@ -68,7 +83,7 @@ class BaeApp : Application() {
         // bundled (full) → cloud providers that need OAuth stay unavailable.
         try {
             oauthLinking = OAuthLinker.load(this)
-            oauthLinking?.register()
+            oauthLinking?.register(host)
         } catch (e: Exception) {
             oauthLinkingError = e.toString()
             logger.error("Failed to register OAuth client creds", e)

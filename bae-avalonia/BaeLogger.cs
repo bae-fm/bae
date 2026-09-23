@@ -42,8 +42,7 @@ internal static class BaeDiagnostics
     /// <summary>
     /// The process-lifetime telemetry sink, built once at startup by
     /// <see cref="Configure"/> and held for the whole app run. Keyring init and
-    /// every library open require it, and it outlives any one library so
-    /// exit-flush uses it directly.
+    /// the host require it, and it outlives any one library.
     /// </summary>
     internal static BridgeDiagnostics Handle { get; private set; } = null!;
 
@@ -86,9 +85,9 @@ internal static class BaeDiagnostics
             AppMetadata.ConfiguredString("BaeGitCommit"));
     }
 
-    internal static async System.Threading.Tasks.Task Flush()
+    internal static async System.Threading.Tasks.Task Flush(BridgeHost host)
     {
-        var error = await NativeBae.FlushDiagnostics(Handle);
+        var error = await NativeBae.FlushDiagnostics(host);
         if (error is not null)
         {
             Trace.TraceError($"Failed to flush diagnostics: {error}");

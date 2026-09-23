@@ -12,10 +12,15 @@ import Testing
 @MainActor
 @Suite("AppSessionHolder")
 struct AppSessionHolderTests {
-    /// A holder wired to a no-op telemetry sink — these transitions never emit,
-    /// so the disabled sink (which cannot fail to construct) is enough.
+    /// A holder wired to a no-op telemetry sink and a host with nothing
+    /// registered — these transitions never emit or open a library, so both
+    /// are enough.
     private func makeHolder() -> AppSessionHolder {
-        AppSessionHolder(diagnostics: configureDiagnostics(config: .disabled))
+        let diagnostics = configureDiagnostics(config: .disabled)
+        return AppSessionHolder(
+            diagnostics: diagnostics,
+            host: BaeHost.make(diagnostics: diagnostics)
+        )
     }
 
     private func makeLibrary(id: String, isActive: Bool = false) -> BridgeLibrary {

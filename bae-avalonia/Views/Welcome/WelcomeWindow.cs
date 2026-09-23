@@ -30,6 +30,7 @@ internal sealed class WelcomeWindow : Window
     // the chooser, create, restore, join, and unlock — hands it a library id and
     // lets the coordinator swap to the main window.
     public WelcomeWindow(
+        BridgeHost host,
         Action<string> openLibrary,
         Func<string, Task<string?>> unlock,
         Action onUnlocked,
@@ -70,8 +71,8 @@ internal sealed class WelcomeWindow : Window
 
         void SetStatus(string text) => SetStatusLines(text, null);
 
-        _joinDialog = new JoinLibraryDialog(dismissWelcome: () => { }, openLibrary);
-        _restoreDialog = new RestoreFromCloudDialog(dismissWelcome: () => { }, openLibrary);
+        _joinDialog = new JoinLibraryDialog(host, dismissWelcome: () => { }, openLibrary);
+        _restoreDialog = new RestoreFromCloudDialog(host, dismissWelcome: () => { }, openLibrary);
         _unlockDialog = new UnlockDialog(SetStatus, unlock, onUnlocked, cancelUnlock);
 
         var welcomeView = new WelcomeView(

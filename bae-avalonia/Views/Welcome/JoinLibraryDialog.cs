@@ -11,11 +11,13 @@ namespace Bae.Desktop;
 /// <summary>Join by scanning or pasting the one pairing code shown on an existing device.</summary>
 internal sealed class JoinLibraryDialog
 {
+    private readonly BridgeHost _host;
     private readonly Action _dismissWelcome;
     private readonly Action<string> _openLibrary;
 
-    public JoinLibraryDialog(Action dismissWelcome, Action<string> openLibrary)
+    public JoinLibraryDialog(BridgeHost host, Action dismissWelcome, Action<string> openLibrary)
     {
+        _host = host;
         _dismissWelcome = dismissWelcome;
         _openLibrary = openLibrary;
     }
@@ -111,6 +113,7 @@ internal sealed class JoinLibraryDialog
             try
             {
                 var operation = await NativeBae.PrepareJoinDevicePairing(
+                    _host,
                     codeBox.Text?.Trim() ?? string.Empty,
                     oauthTokenJson);
                 joinOperation = operation;
@@ -219,7 +222,7 @@ internal sealed class JoinLibraryDialog
             ShowProgress(Loc.Chrome("cloud.signin.in_progress", "provider", BridgeDisplay.ProviderDisplayName(offer.CloudProvider)));
             try
             {
-                var token = await Task.Run(() => NativeBae.OAuthAuthorize(offer.CloudProvider));
+                var token = await Task.Run(() => NativeBae.OAuthAuthorize(_host, offer.CloudProvider));
                 if (ownRevision != revision)
                 {
                     return;

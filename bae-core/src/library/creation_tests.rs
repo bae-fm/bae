@@ -30,7 +30,6 @@ fn creating_a_library_establishes_its_identity_without_marking_it_active() {
     let handle = Arc::new(crate::config::ConfigHandle::new(config))
         .coven_builder()
         .synced_tables(crate::sync::synced_tables())
-        .oauth_clients(crate::oauth::clients())
         .migrations(crate::migrations::all())
         .open()
         .expect("reopen created library");

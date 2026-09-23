@@ -71,7 +71,9 @@ extension AppDelegate {
         // idempotent and harmless for libraries that sync elsewhere, so it
         // belongs here at the composition root rather than at each open.
         #if BAE_CLOUDKIT
-            setCloudkitDriver(driver: CloudKitService.bae())
+            requiredApplicationServices.host.setCloudkitDriver(
+                driver: CloudKitService.bae()
+            )
         #endif
         startWatchingForKeychainUnlock()
         loadInitialState(canOpenLibraries: keyringReady)

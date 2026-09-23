@@ -232,8 +232,7 @@ impl Database {
         let mut builder = Coven::builder(store_dir, config)
             .synced_tables(synced_tables)
             .coven_migration_policy(coven::CovenMigrationPolicy::ApplyPending)
-            .clock(clock.clone())
-            .oauth_clients(crate::oauth::clients());
+            .clock(clock.clone());
         if let Some(observer) = observer {
             builder = builder.observer(observer);
         }

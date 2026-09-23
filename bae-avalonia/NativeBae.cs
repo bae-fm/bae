@@ -71,10 +71,17 @@ internal static partial class NativeBae
                     gitCommit ?? string.Empty)))
             : new BridgeDiagnosticsConfig.Disabled();
 
-    /// <summary>Flush buffered telemetry through the standalone sink.</summary>
-    internal static System.Threading.Tasks.Task<string?> FlushDiagnostics(
-        BridgeDiagnostics diagnostics) =>
-        CaptureError(() => diagnostics.Flush());
+    /// <summary>
+    /// Build the process-lifetime host registrations around the telemetry sink.
+    /// Throws when the OS refuses the onboarding runtime's worker threads, which
+    /// leaves the app unable to restore, join, sign in, or open a library.
+    /// </summary>
+    internal static BridgeHost CreateHost(BridgeDiagnostics diagnostics) =>
+        new BridgeHost(diagnostics);
+
+    /// <summary>Flush buffered telemetry through the host's runtime.</summary>
+    internal static System.Threading.Tasks.Task<string?> FlushDiagnostics(BridgeHost host) =>
+        CaptureError(() => host.FlushDiagnostics());
 
     /// <summary>Report a host UI screen open as a typed telemetry event through
     /// the standalone sink. Infallible; the core owns every other event.</summary>
@@ -82,10 +89,11 @@ internal static partial class NativeBae
         diagnostics.Event(new BridgeTelemetryEvent.ScreenOpened(screen));
 
 #if BAE_FULL_BRIDGE
-    internal static string? SetOauthClientCreds(string credsJson) =>
-        CaptureError(() => BaeBridgeMethods.SetOauthClientCreds(credsJson));
+    internal static string? SetOauthClientCreds(BridgeHost host, string credsJson) =>
+        CaptureError(() => host.SetOauthClientCreds(credsJson));
 #else
-    internal static string? SetOauthClientCreds(string credsJson) => throw new InvalidOperationException();
+    internal static string? SetOauthClientCreds(BridgeHost host, string credsJson) =>
+        throw new InvalidOperationException();
 #endif
 
     /// <summary>
@@ -225,24 +233,21 @@ internal static partial class NativeBae
     /// so call off the UI thread.
     /// </summary>
 #if BAE_FULL_BRIDGE
-    internal static string OAuthAuthorize(string provider) =>
-        BaeBridgeMethods.OauthAuthorize(CloudProvider(provider));
-
-    internal static string OAuthAuthorize(BridgeCloudProvider provider) =>
-        BaeBridgeMethods.OauthAuthorize(provider);
+    internal static string OAuthAuthorize(BridgeHost host, BridgeCloudProvider provider) =>
+        host.OauthAuthorize(provider);
 #else
-    internal static string OAuthAuthorize(string provider) => throw new InvalidOperationException();
-
-    internal static string OAuthAuthorize(BridgeCloudProvider provider) => throw new InvalidOperationException();
+    internal static string OAuthAuthorize(BridgeHost host, BridgeCloudProvider provider) =>
+        throw new InvalidOperationException();
 #endif
 
     internal static BridgeDevicePairingOffer DecodeDevicePairingOffer(string code) =>
         BaeBridgeMethods.DecodeDevicePairingOffer(code);
 
     internal static Task<JoinDevicePairingOperation> PrepareJoinDevicePairing(
+        BridgeHost host,
         string code,
         string? oauthTokenJson) =>
-        BaeBridgeMethods.JoinDevicePairingOperation(code, oauthTokenJson);
+        host.JoinDevicePairingOperation(code, oauthTokenJson);
 
     internal sealed class JoiningDeviceJoinProgressSink(
         Action<BridgeJoiningDeviceJoinProgress> apply) : JoiningDeviceJoinProgressCallback
@@ -275,8 +280,8 @@ internal static partial class NativeBae
     /// credential provider passes null. Blocks on a cloud pull — call off the UI
     /// thread.
     /// </summary>
-    internal static string RestoreFromCode(string code, string? oauthTokenJson) =>
-        BaeBridgeMethods.RestoreFromCode(code, oauthTokenJson).Id;
+    internal static string RestoreFromCode(BridgeHost host, string code, string? oauthTokenJson) =>
+        host.RestoreFromCode(code, oauthTokenJson).Id;
 
     internal sealed class UiEventSink(Action<BridgeUiEvent> onEvent) : UiEventCallback
     {
@@ -293,11 +298,11 @@ internal static partial class NativeBae
         string libraryId,
         uint positionUpdateIntervalMs,
         bool restorePlayback,
-        BridgeDiagnostics diagnostics)
+        BridgeHost host)
     {
         try
         {
-            return (BaeBridgeMethods.InitApp(libraryId, positionUpdateIntervalMs, restorePlayback, diagnostics), null);
+            return (BaeBridgeMethods.InitApp(libraryId, positionUpdateIntervalMs, restorePlayback, host), null);
         }
         catch (BridgeException.Cancelled)
         {

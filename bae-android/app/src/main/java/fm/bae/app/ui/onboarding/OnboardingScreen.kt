@@ -37,6 +37,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import fm.bae.app.BaeApp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OAuthLinker
 import fm.bae.app.R
@@ -148,8 +149,11 @@ fun OnboardingScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val launcher = remember { LinkLauncher(scope, context, onLinked) }
-    val joinLauncher = remember { JoinLauncher(scope, context, onLinked) }
+    // The process-lifetime host built at app launch; restore, join, and cloud
+    // sign-in run over it.
+    val host = (context.applicationContext as BaeApp).host
+    val launcher = remember { LinkLauncher(scope, context, host, onLinked) }
+    val joinLauncher = remember { JoinLauncher(scope, context, host, onLinked) }
     var showJoin by remember { mutableStateOf(false) }
     LaunchedEffect(joinLauncher) { showJoin = joinLauncher.resumePending(oauthLinking, oauthLinkingError) }
     // Non-null while the scanner is open, identifying which code it captures.

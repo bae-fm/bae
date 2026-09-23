@@ -131,7 +131,7 @@ struct OAuthLinking {
     /// Register the client ids with the bridge so coven can build authorization
     /// URLs and refresh tokens during sync. Call once at launch; registering
     /// again replaces the previous set.
-    func register() throws {
+    func register(host: BridgeHost) throws {
         var credsForBridge: [String: [String: String]] = [:]
         for (provider, config) in providers {
             var entry = ["client_id": config.clientId]
@@ -144,13 +144,14 @@ struct OAuthLinking {
         guard let jsonString = String(bytes: json, encoding: .utf8) else {
             preconditionFailure("JSONSerialization produced non-UTF-8 data")
         }
-        try setOauthClientCreds(credsJson: jsonString)
+        try host.setOauthClientCreds(credsJson: jsonString)
     }
 
     /// Run the OAuth flow for `provider` and return the token JSON to hand to
     /// `restoreFromCode`. Opens the system auth session; throws on cancel/fail.
     @MainActor
     func authorize(
+        host: BridgeHost,
         provider: BridgeCloudProvider,
         presentationAnchor: ASPresentationAnchor
     ) async throws -> String {
@@ -159,7 +160,10 @@ struct OAuthLinking {
         else {
             throw OAuthLinkingError.notConfigured
         }
-        let request = try oauthBegin(provider: provider, redirectUri: config.redirectUri)
+        let request = try host.oauthBegin(
+            provider: provider,
+            redirectUri: config.redirectUri
+        )
         guard let authUrl = URL(string: request.authUrl) else {
             throw OAuthLinkingError.badAuthUrl
         }
@@ -172,7 +176,7 @@ struct OAuthLinking {
             url: authUrl,
             callbackScheme: callbackScheme
         )
-        return try oauthComplete(
+        return try host.oauthComplete(
             provider: provider,
             code: callback.code,
             state: callback.state,

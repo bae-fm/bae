@@ -7,7 +7,6 @@ use bae_core::diagnostics::{
     DiagnosticsConfig, DiagnosticsError, Screen, TelemetryEvent,
 };
 
-use crate::get_cloudkit_ops;
 use crate::handle::AppHandle;
 use crate::types::BridgeError;
 
@@ -53,9 +52,9 @@ pub enum BridgeScreen {
 
 /// The process-lifetime telemetry sink, built once at startup and held by the
 /// host for the whole app run. Wraps core's `Diagnostics`; it is the one
-/// host-facing telemetry object (host events, exit flush), and `init_app` /
-/// `init_keyring` require it as a parameter so telemetry is guaranteed set up
-/// before anything that could fail.
+/// host-facing telemetry object for host events. `init_keyring` and
+/// `BridgeHost` (which `init_app` requires) take it as a parameter so telemetry
+/// is guaranteed set up before anything that could fail.
 #[derive(uniffi::Object)]
 pub struct BridgeDiagnostics {
     inner: Diagnostics,
@@ -69,39 +68,65 @@ impl BridgeDiagnostics {
         })
     }
 
+    /// Flush any buffered telemetry now.
+    pub(crate) async fn flush(&self) -> Result<(), BridgeError> {
+        self.inner
+            .flush()
+            .await
+            .map_err(diagnostics_error_to_bridge)
+    }
+
+    /// Bootstrap the library `library_id` with this sink. A bootstrap failure
+    /// ships `app_start_failed` through it before the error returns.
+    pub(crate) fn open_app(
+        &self,
+        library_id: String,
+        position_update_interval_ms: u32,
+        restore_playback: bool,
+        cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+        oauth_clients: coven::OAuthClients,
+    ) -> Result<Arc<AppHandle>, BridgeError> {
+        bootstrap(
+            library_id,
+            position_update_interval_ms,
+            restore_playback,
+            self.inner.clone(),
+            cloudkit_ops,
+            oauth_clients,
+            AppHandle::start,
+        )
+        .map(Arc::new)
+        .map_err(|error| {
+            self.emit_app_start_failed(&error);
+            bootstrap_error_to_bridge(error)
+        })
+    }
+
     fn emit_app_start_failed(&self, error: &BootstrapError) {
         self.inner.event(TelemetryEvent::AppStartFailed {
             kind: app_start_failure_kind(error),
         });
     }
+
+    #[cfg(test)]
+    pub(crate) fn noop() -> Arc<Self> {
+        Arc::new(Self {
+            inner: Diagnostics::noop(),
+        })
+    }
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export]
 impl BridgeDiagnostics {
     /// Ship a host-originated telemetry event. Infallible — telemetry must never
     /// break the host UI; a stopped worker drops the event.
     pub fn event(&self, event: BridgeTelemetryEvent) {
         self.inner.event(event.into_core());
     }
-
-    /// Flush any buffered telemetry now. Hosts call this at exit so the last
-    /// events reach Datadog before the process ends.
-    pub async fn flush(self: Arc<Self>) -> Result<(), BridgeError> {
-        crate::operation_runtime::run(
-            crate::setup::onboarding_runtime_handle()?,
-            move || async move {
-                self.inner
-                    .flush()
-                    .await
-                    .map_err(diagnostics_error_to_bridge)
-            },
-        )
-        .await
-    }
 }
 
 /// Build the telemetry sink and install the tracing subscriber. Called once at
-/// process start, before `init_keyring` / `init_app` (both require the returned
+/// process start, before `init_keyring` / `BridgeHost` (both require the returned
 /// handle), so the sink exists for every launch step that could fail.
 ///
 /// Infallible by contract: telemetry setup must never block a launch. Sink
@@ -151,39 +176,6 @@ fn install_panic_logging() {
             previous(panic);
         }));
     });
-}
-
-#[uniffi::export]
-/// `restore_playback` is the platform's "Restore on launch" preference: `true`
-/// restores the saved queue/current track/position at startup, `false` starts
-/// with nothing in playback. Platforms without the preference pass `true`
-/// (mobile always resumes where playback left off).
-///
-/// `diagnostics` is the sink from `configure_diagnostics`, built at process
-/// start. Requiring it here makes "telemetry set up first" unrepresentable to
-/// skip. A bootstrap failure ships `app_start_failed` through it before the
-/// error returns.
-pub fn init_app(
-    library_id: String,
-    position_update_interval_ms: u32,
-    restore_playback: bool,
-    diagnostics: Arc<BridgeDiagnostics>,
-) -> Result<Arc<AppHandle>, BridgeError> {
-    let core = diagnostics.inner.clone();
-
-    bootstrap(
-        library_id,
-        position_update_interval_ms,
-        restore_playback,
-        core,
-        get_cloudkit_ops(),
-        AppHandle::start,
-    )
-    .map(Arc::new)
-    .map_err(|error| {
-        diagnostics.emit_app_start_failed(&error);
-        bootstrap_error_to_bridge(error)
-    })
 }
 
 fn app_start_failure_kind(error: &BootstrapError) -> AppStartFailureKind {

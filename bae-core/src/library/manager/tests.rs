@@ -83,6 +83,7 @@ async fn assemble_test_manager(temp_dir: TempDir, config: Config) -> (LibraryMan
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         None,
+        coven::OAuthClients::empty(),
         crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
         crate::providers::Providers::offline(),
     )

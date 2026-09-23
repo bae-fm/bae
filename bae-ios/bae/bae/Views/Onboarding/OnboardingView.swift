@@ -42,6 +42,9 @@ private final class LinkFlow {
 /// approve. On submit each decodes its code, runs cloud sign-in when the
 /// provider needs it, then runs the bridge restore/join.
 struct OnboardingView: View {
+    /// The process-lifetime host registrations restore, join, and cloud
+    /// sign-in run over.
+    let host: BridgeHost
     // The host's OAuth client config. Present only in a full build; baeium
     // (S3-only) compiles out the OAuth branch of the link flow.
     #if BAE_OAUTH_PROVIDERS
@@ -433,7 +436,7 @@ extension OnboardingView {
         tokenJson: String?,
         flow: LinkFlow
     ) async throws {
-        let operation = try await joinDevicePairingOperation(
+        let operation = try await host.joinDevicePairingOperation(
             pairingCode: code,
             oauthTokenJson: tokenJson
         )
@@ -562,6 +565,7 @@ extension OnboardingView {
             throw OAuthLinkingError.noPresentationAnchor
         }
         return try await linking.authorize(
+            host: host,
             provider: provider,
             presentationAnchor: presentationAnchor
         )
@@ -581,7 +585,7 @@ extension OnboardingView {
         tokenJson: String?,
         flow: LinkFlow
     ) async throws {
-        let bridgeOperation = try restoreFromCodeOperation(
+        let bridgeOperation = try host.restoreFromCodeOperation(
             code: code,
             oauthTokenJson: tokenJson
         )
@@ -615,12 +619,16 @@ extension OnboardingView {
 #Preview {
     #if BAE_OAUTH_PROVIDERS
     OnboardingView(
+        host: BaeHost.make(diagnostics: configureDiagnostics(config: .disabled)),
         oauthLinking: nil,
         oauthLinkingError: nil,
         onLinked: { _ in }
     )
     #else
-    OnboardingView(onLinked: { _ in })
+    OnboardingView(
+        host: BaeHost.make(diagnostics: configureDiagnostics(config: .disabled)),
+        onLinked: { _ in }
+    )
     #endif
 }
 #endif

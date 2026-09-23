@@ -485,9 +485,12 @@ object AppSessionHolder {
         onScreen(AppScreen.Loading)
         locked?.handle?.close()
         locked = null
-        // The process-lifetime telemetry sink, built at app launch. `init_app`
-        // requires it, and the library-open event ships through it below.
-        val diagnostics = (context.applicationContext as BaeApp).diagnostics
+        // The process-lifetime host and telemetry sink, built at app launch.
+        // `init_app` requires the host, and the library-open event ships
+        // through the sink below.
+        val app = context.applicationContext as BaeApp
+        val host = app.host
+        val diagnostics = app.diagnostics
         try {
             val handle =
                 withContext(Dispatchers.IO) {
@@ -498,7 +501,7 @@ object AppSessionHolder {
                         libraryId,
                         POSITION_UPDATE_INTERVAL_MS,
                         RestorePlaybackPref.load(context),
-                        diagnostics,
+                        host,
                     )
                 }
             val config: BridgeConfig = handle.getConfig()

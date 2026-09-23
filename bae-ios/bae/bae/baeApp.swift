@@ -21,8 +21,11 @@ struct BaeApp: App {
     #endif
     private let startupError: String?
     /// The process-lifetime telemetry sink, built first at launch and held for
-    /// the whole app run. `initKeyring` and every library open require it.
+    /// the whole app run. `initKeyring` and the host require it.
     private let diagnostics: BridgeDiagnostics
+    /// The process-lifetime host registrations, built right after the telemetry
+    /// sink. Every library open, restore, join, and OAuth sign-in requires it.
+    private let host: BridgeHost
 
     init() {
         #if BAE_OAUTH_PROVIDERS
@@ -36,6 +39,8 @@ struct BaeApp: App {
             edition: appEdition
         )
         self.diagnostics = diagnostics
+        let host = BaeHost.make(diagnostics: diagnostics)
+        self.host = host
         var launchError: String?
         do {
             BaeCrashReporting.configure(edition: appEdition)
@@ -53,7 +58,7 @@ struct BaeApp: App {
             // harmless for libraries that sync elsewhere, so it belongs here at the
             // composition root rather than at each library open.
             #if BAE_CLOUDKIT
-            setCloudkitDriver(driver: CloudKitService.bae())
+            host.setCloudkitDriver(driver: CloudKitService.bae())
             #endif
         }
         catch {
@@ -67,7 +72,7 @@ struct BaeApp: App {
             // sync. Absent file → cloud providers that need OAuth stay unavailable.
             do {
                 loadedOAuthLinking = try OAuthLinking.load()
-                try loadedOAuthLinking?.register()
+                try loadedOAuthLinking?.register(host: host)
             }
             catch {
                 oauthError = error.displayLine
@@ -86,12 +91,17 @@ struct BaeApp: App {
                 oauthLinking: oauthLinking,
                 oauthLinkingError: oauthLinkingError,
                 startupError: startupError,
-                diagnostics: diagnostics
+                diagnostics: diagnostics,
+                host: host
             )
             .appAppearance()
             #else
-            ContentView(startupError: startupError, diagnostics: diagnostics)
-                .appAppearance()
+            ContentView(
+                startupError: startupError,
+                diagnostics: diagnostics,
+                host: host
+            )
+            .appAppearance()
             #endif
         }
     }

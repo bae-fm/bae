@@ -96,6 +96,9 @@ pub(crate) fn classify_key_state_error(error: crate::library::LibraryError) -> B
 /// pipeline) is running. For an unlocked cloud library, sync attachment starts
 /// on the returned runtime and reports readiness or failure through sync status.
 ///
+/// `oauth_clients` are the OAuth applications the library's cloud home signs in
+/// with when that home is an account-based provider.
+///
 /// Opening by registered id records the library as this device's active library
 /// only once the open fully completes and the library is unlocked on this device;
 /// a locked or failed open leaves the pointer unchanged.
@@ -105,6 +108,7 @@ pub fn bootstrap<T, F>(
     restore_playback: bool,
     diagnostics: Diagnostics,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
+    oauth_clients: coven::OAuthClients,
     compose: F,
 ) -> Result<T, BootstrapError>
 where
@@ -127,6 +131,7 @@ where
                 restore_playback,
                 diagnostics,
                 cloudkit_ops,
+                oauth_clients,
                 compose,
             )
         })
@@ -152,6 +157,7 @@ fn bootstrap_inner<T, F>(
     restore_playback: bool,
     diagnostics: Diagnostics,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
+    oauth_clients: coven::OAuthClients,
     compose: F,
 ) -> Result<T, BootstrapError>
 where
@@ -218,6 +224,7 @@ where
                 diagnostics.clone(),
                 runtime.handle().clone(),
                 cloudkit_ops,
+                oauth_clients,
                 crate::import::cover_art::RemoteImageCache::new(
                     config_handle.config().library_path(),
                     http,

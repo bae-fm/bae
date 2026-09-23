@@ -148,6 +148,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         None,
+        coven::OAuthClients::empty(),
         bae_core::import::cover_art::RemoteImageCache::for_test(bae_core::util::http::Http::for_test()),
         bae_core::providers::Providers::offline(),
     )

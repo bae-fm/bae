@@ -83,9 +83,15 @@ async fn joining_device_can_display_the_exact_identity_it_submits() {
     let app = tempfile::tempdir().expect("pairing app directory");
     let layout = coven::StoreLayout::new(app.path());
 
-    let prepared = prepare_device_pairing_join_at(&offer.encode(), None, None, layout)
-        .await
-        .expect("prepare pairing join");
+    let prepared = prepare_device_pairing_join_at(
+        &offer.encode(),
+        coven::OAuthClients::empty(),
+        None,
+        None,
+        layout,
+    )
+    .await
+    .expect("prepare pairing join");
 
     assert_eq!(
         prepared.fingerprint(),
@@ -107,9 +113,15 @@ async fn a_pending_pairing_is_discoverable_after_the_operation_object_is_gone() 
     .expect("pairing offer");
     let app = tempfile::tempdir().expect("pairing app directory");
     let layout = coven::StoreLayout::new(app.path());
-    let prepared = prepare_device_pairing_join_at(&offer.encode(), None, None, layout.clone())
-        .await
-        .expect("prepare pairing join");
+    let prepared = prepare_device_pairing_join_at(
+        &offer.encode(),
+        coven::OAuthClients::empty(),
+        None,
+        None,
+        layout.clone(),
+    )
+    .await
+    .expect("prepare pairing join");
     let expected_fingerprint = prepared.fingerprint();
     drop(prepared);
 
@@ -137,9 +149,15 @@ async fn abandoning_a_pending_pairing_removes_its_durable_attempt() {
     .expect("pairing offer");
     let app = tempfile::tempdir().expect("pairing app directory");
     let layout = coven::StoreLayout::new(app.path());
-    let prepared = prepare_device_pairing_join_at(&offer.encode(), None, None, layout.clone())
-        .await
-        .expect("prepare pairing join");
+    let prepared = prepare_device_pairing_join_at(
+        &offer.encode(),
+        coven::OAuthClients::empty(),
+        None,
+        None,
+        layout.clone(),
+    )
+    .await
+    .expect("prepare pairing join");
     drop(prepared);
 
     abandon_pending_device_pairing_join_at(layout.clone()).expect("abandon pending pairing");

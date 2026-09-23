@@ -135,6 +135,7 @@ pub fn setup_fresh_library(
         bae_core::diagnostics::Diagnostics::noop(),
         runtime.handle().clone(),
         None,
+        coven::OAuthClients::empty(),
         bae_core::import::cover_art::RemoteImageCache::for_test(providers.http().clone()),
         providers,
     )

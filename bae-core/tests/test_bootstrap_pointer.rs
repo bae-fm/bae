@@ -105,6 +105,7 @@ fn create_and_open_library(name: &str) -> String {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        coven::OAuthClients::empty(),
         TestApp::start,
     )
     .expect("created library opens");
@@ -127,6 +128,7 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        coven::OAuthClients::empty(),
         TestApp::start,
     )
     .expect("a locked open completes with sync deferred");
@@ -157,6 +159,7 @@ fn bootstrap_of_unlocked_library_advances_active_pointer() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        coven::OAuthClients::empty(),
         TestApp::start,
     )
     .expect("a plain local open completes");
@@ -188,6 +191,7 @@ fn bootstrap_that_fails_leaves_active_pointer() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        coven::OAuthClients::empty(),
         TestApp::start,
     );
     assert!(
@@ -216,6 +220,7 @@ fn bootstrap_that_cannot_compose_the_frontend_leaves_active_pointer() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        coven::OAuthClients::empty(),
         |_services, _ui_event_bus, _runtime| {
             Err(bae_core::app::BootstrapError::Internal(
                 "frontend owner failed to start".to_string(),
@@ -248,6 +253,7 @@ fn bootstrap_that_panics_while_composing_the_frontend_returns_an_error() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        coven::OAuthClients::empty(),
         |_services, _ui_event_bus, _runtime| panic!("frontend owner panicked"),
     );
 
@@ -287,6 +293,7 @@ fn dropping_running_app_releases_the_store_lock_for_reopen() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        coven::OAuthClients::empty(),
         TestApp::start,
     )
     .expect("first open succeeds");
@@ -299,6 +306,7 @@ fn dropping_running_app_releases_the_store_lock_for_reopen() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        coven::OAuthClients::empty(),
         TestApp::start,
     )
     .expect("reopening the store after dropping the app owner must succeed");
@@ -330,6 +338,7 @@ fn bootstrapping_offline_opens_the_library_and_reports_not_connected() {
         true,
         bae_core::diagnostics::Diagnostics::noop(),
         None,
+        coven::OAuthClients::empty(),
         TestApp::start,
     )
     .expect("launching offline must open the library, not abort bootstrap");

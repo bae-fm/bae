@@ -9,9 +9,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
 import uniffi.bae_bridge.BridgeCloudProvider
-import uniffi.bae_bridge.oauthBegin
-import uniffi.bae_bridge.oauthComplete
-import uniffi.bae_bridge.setOauthClientCreds
+import uniffi.bae_bridge.BridgeHost
 import java.io.FileNotFoundException
 import java.io.IOException
 
@@ -48,14 +46,14 @@ class OAuthLinking private constructor(
      * URLs and refresh provider tokens during sync. Call at launch; registering
      * again replaces the previous set.
      */
-    override fun register() {
+    override fun register(host: BridgeHost) {
         val json = JSONObject()
         for ((provider, config) in providers) {
             val entry = JSONObject().put("client_id", config.clientId)
             config.clientSecret?.let { entry.put("client_secret", it) }
             json.put(provider, entry)
         }
-        setOauthClientCreds(json.toString())
+        host.setOauthClientCreds(json.toString())
     }
 
     /**
@@ -65,6 +63,7 @@ class OAuthLinking private constructor(
      */
     override suspend fun authorize(
         context: Context,
+        host: BridgeHost,
         provider: BridgeCloudProvider,
     ): String {
         val key =
@@ -74,7 +73,7 @@ class OAuthLinking private constructor(
             providers[key]
                 ?: throw IllegalStateException("Cloud sign-in isn't configured for this provider.")
 
-        val request = oauthBegin(provider, config.redirectUri)
+        val request = host.oauthBegin(provider, config.redirectUri)
 
         val deferred = CompletableDeferred<Uri>()
         pendingRedirect = deferred
@@ -90,7 +89,7 @@ class OAuthLinking private constructor(
             // The token exchange is a blocking network call (block_on in the
             // bridge), so keep it off the main thread.
             return withContext(Dispatchers.IO) {
-                oauthComplete(provider, code, state, request.requestId, config.redirectUri)
+                host.oauthComplete(provider, code, state, request.requestId, config.redirectUri)
             }
         } finally {
             pendingRedirect = null
