@@ -105,30 +105,13 @@ struct ImportMappingPane: View {
         }
         return ImportCommitControls(
             unansweredCount: mapping.unansweredCount,
-            readyCheck: readyCheck,
+            readyCheck: candidate.row?.readyCheck,
             candidateKey: candidate.key,
             importStatus: candidate.row?.importStatus,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             actions: commitActions,
         )
-    }
-
-    /// The Ready check the candidate did not pass, when that is why it is
-    /// waiting on the person. The other questions a row can ask — which
-    /// release, whether a lookup should be retried — are the Find online
-    /// pane's.
-    private var readyCheck: BridgeNeedsYou? {
-        guard case .needsYou(let reason) = candidate.row?.placement else {
-            return nil
-        }
-        switch reason {
-        case .trackCountDisagrees, .sourceTracksUnknown:
-            return reason
-        case .alreadyInLibrary, .severalMatches, .foundByTitle, .noMatch,
-            .nothingToLookUp, .lookupFailed:
-            return nil
-        }
     }
 
     private var metadataSourceSection: some View {

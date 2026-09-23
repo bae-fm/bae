@@ -255,6 +255,7 @@
                 actionable: true,
                 placement: .ready,
                 attention: nil,
+                readyCheck: nil,
                 identification: nil,
                 skipAction: .skip,
                 actions: [

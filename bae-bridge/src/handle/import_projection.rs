@@ -195,6 +195,7 @@ impl crate::types::BridgeTriageRow {
             actionable,
             placement,
             attention,
+            ready_check,
             identification,
             skip_action,
             actions,
@@ -220,6 +221,7 @@ impl crate::types::BridgeTriageRow {
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
             attention: attention.map(crate::types::BridgeNeedsYou::from_core),
+            ready_check: ready_check.map(crate::types::BridgeNeedsYou::from_core),
             identification: identification.map(crate::types::BridgeIdentificationStatus::from_core),
             skip_action: skip_action.map(crate::types::BridgeTriageSkipAction::from_core),
             actions: actions

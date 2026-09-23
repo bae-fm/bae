@@ -784,6 +784,7 @@ struct ImportCommitControlsTests {
         row.placement = .needsYou(
             reason: .trackCountDisagrees(local: 13, source: 12)
         )
+        row.readyCheck = .trackCountDisagrees(local: 13, source: 12)
         candidate.row = row
         let disagreeing =
             try await SnapshotTestSupport.recognizedText(
@@ -794,6 +795,7 @@ struct ImportCommitControlsTests {
         #expect(disagreeing.carrying("13 in the folder, 12 on the release"))
 
         row.placement = .ready
+        row.readyCheck = nil
         candidate.row = row
         let ready =
             try await SnapshotTestSupport.recognizedText(

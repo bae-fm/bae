@@ -477,6 +477,7 @@ impl ImportCandidateDetailProjection {
             ),
             metadata_summary,
             cover_thumbnail: None,
+            ready_check: super::triage::ready_check(&placement),
             placement,
             attention,
             import_status,

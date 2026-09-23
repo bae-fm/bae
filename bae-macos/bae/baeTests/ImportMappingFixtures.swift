@@ -507,6 +507,7 @@ extension MappingFixtures {
             actionable: true,
             placement: undecided ? .pending : .ready,
             attention: nil,
+            readyCheck: nil,
             identification: nil,
             skipAction: .skip,
             actions: (undecided ? [] : [.importReady])

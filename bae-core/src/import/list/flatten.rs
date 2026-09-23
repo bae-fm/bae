@@ -433,6 +433,7 @@ fn place_row(
         ),
         metadata_summary: state.and_then(|state| state.metadata_summary.clone()),
         cover_thumbnail: None,
+        ready_check: crate::import::triage::ready_check(&placement),
         placement,
         attention,
         import_status,

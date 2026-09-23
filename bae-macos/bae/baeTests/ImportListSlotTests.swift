@@ -135,6 +135,7 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             actionable: true,
             placement: .skipped,
             attention: nil,
+            readyCheck: nil,
             identification: nil,
             skipAction: .unskip,
             actions: [.restore],

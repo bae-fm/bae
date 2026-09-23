@@ -155,6 +155,7 @@ private func readyRow(
         actionable: true,
         placement: .ready,
         attention: nil,
+        readyCheck: nil,
         identification: nil,
         skipAction: .skip,
         actions: [
@@ -196,6 +197,7 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         actionable: true,
         placement: .done,
         attention: nil,
+        readyCheck: nil,
         identification: nil,
         skipAction: nil,
         actions: [],
@@ -220,6 +222,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         actionable: true,
         placement: .skipped,
         attention: nil,
+        readyCheck: nil,
         identification: nil,
         skipAction: .unskip,
         actions: [.restore],

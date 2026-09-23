@@ -350,6 +350,9 @@ pub struct TriageRow {
     /// still carry the several pressings a run found. `None` once the
     /// candidate is opened, and for a result that asks nothing.
     pub attention: Option<NeedsYou>,
+    /// The Ready check this row did not pass, stated beside its Import:
+    /// [`crate::import::triage::ready_check`] of its placement.
+    pub ready_check: Option<NeedsYou>,
     /// What identification is doing for this candidate right now, beside
     /// wherever the placement puts it. `None` when no run is queued, running
     /// or settling and the last one's write did not fail.

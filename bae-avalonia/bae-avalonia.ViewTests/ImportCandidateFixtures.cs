@@ -125,6 +125,7 @@ internal static class ImportCandidateFixtures
         Actionable: true,
         Placement: new BridgeTriagePlacement.Ready(),
         Attention: null,
+        ReadyCheck: null,
         Identification: null,
         SkipAction: BridgeTriageSkipAction.Skip,
         Actions: [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],

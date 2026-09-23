@@ -726,6 +726,7 @@ public sealed class ImportSectionViewTests
                 Actionable: true,
                 Placement: placement,
                 Attention: null,
+                ReadyCheck: null,
                 Identification: identification,
                 SkipAction: skipAction,
                 Actions: identification is not null

@@ -112,6 +112,27 @@ pub fn place(
     }
 }
 
+/// The Ready check a row waits on the person for: its release's tracklist
+/// disagrees with the folder, or there is no tracklist to compare. Stated
+/// beside the Import it bears on; the other questions a row can ask — which
+/// release, whether to retry a lookup — are answered in Find online.
+pub fn ready_check(placement: &TriagePlacement) -> Option<NeedsYou> {
+    let TriagePlacement::NeedsYou { reason } = placement else {
+        return None;
+    };
+    match reason {
+        NeedsYou::TrackCountDisagrees { .. } | NeedsYou::SourceTracksUnknown => {
+            Some(reason.clone())
+        }
+        NeedsYou::AlreadyInLibrary
+        | NeedsYou::FoundByTitle
+        | NeedsYou::SeveralMatches { .. }
+        | NeedsYou::NoMatch
+        | NeedsYou::NothingToLookUp
+        | NeedsYou::LookupFailed => None,
+    }
+}
+
 /// The question a row flags as unread: the one its stored result asks, while
 /// the person has not seen that result.
 ///
@@ -210,6 +231,29 @@ mod tests {
             place(false, false, None, MetadataAuthor::Nobody, false, None),
             TriagePlacement::Pending
         );
+    }
+
+    /// Only a tracklist that disagrees with the folder, or is missing, is a
+    /// Ready check stated beside Import; which release, or retrying a lookup,
+    /// is Find online's question.
+    #[test]
+    fn a_ready_check_is_a_tracklist_question() {
+        let waiting = |reason| TriagePlacement::NeedsYou { reason };
+        let disagrees = NeedsYou::TrackCountDisagrees {
+            local: 13,
+            source: 12,
+        };
+        assert_eq!(ready_check(&waiting(disagrees.clone())), Some(disagrees));
+        assert_eq!(
+            ready_check(&waiting(NeedsYou::SourceTracksUnknown)),
+            Some(NeedsYou::SourceTracksUnknown)
+        );
+        assert_eq!(
+            ready_check(&waiting(NeedsYou::SeveralMatches { count: 2 })),
+            None
+        );
+        assert_eq!(ready_check(&waiting(NeedsYou::LookupFailed)), None);
+        assert_eq!(ready_check(&TriagePlacement::Ready), None);
     }
 
     fn a_draft() -> TriageMetadataSummary {
