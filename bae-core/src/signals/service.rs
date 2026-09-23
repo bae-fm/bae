@@ -52,6 +52,7 @@ use crate::signals::{
     TextSignal,
 };
 use crate::util::rate_limiter::CallPriority;
+use crate::util::session_cache::SessionCache;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
@@ -102,6 +103,11 @@ struct ExtractionServiceInner {
     analyzer: Mutex<Option<Arc<dyn ArtworkAnalyzer>>>,
     /// Resolves a release's library files for the `Release` re-identify path.
     library_manager: LibraryManager,
+    /// The settled snapshot of every folder read this session, by the content
+    /// hash of its files. The same files read the same way, so a later run
+    /// over an unchanged folder — a person changing what it looks up, say —
+    /// takes this rather than reading every image again.
+    settled: SessionCache<SignalsSnapshot>,
     /// Per-candidate cancellation. `start` registers a new entry (cancelling any
     /// prior one for the key); a task releases its own entry on the way out only
     /// when the generation still matches. `ExtractionService::start` also spawns
@@ -135,6 +141,10 @@ impl Drop for ExtractionRelease {
     }
 }
 
+/// How many folders' settled snapshots a session keeps. One per candidate a
+/// person works through; eviction costs one more read of that folder.
+const SETTLED_CAPACITY: usize = 1024;
+
 /// Builder / entry point for constructing the service.
 pub struct ExtractionService;
 
@@ -149,6 +159,7 @@ impl ExtractionService {
             event_tx,
             analyzer: Mutex::new(None),
             library_manager,
+            settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
             cancellation: CancellationRegistry::default(),
         });
 
@@ -281,6 +292,15 @@ async fn run_extraction(
         // One scan derives every non-OCR signal in a single blocking hop, then
         // the artwork OCR streams.
         ExtractionSource::Candidate { candidate } => {
+            let content_hash = candidate.files().content_hash();
+            if let Some(settled) = inner.settled.get_cloned(&content_hash) {
+                debug!(
+                    "signals: {} was read before with these files; reusing that reading",
+                    extraction.key
+                );
+                emit_signals(&inner, &extraction, settled.signals, settled.artwork);
+                return;
+            }
             let fast = match run_fast_pass_blocking(&inner.runtime_handle, move || {
                 gather_non_ocr_sources(&candidate.source_folders(), candidate.files())
             })
@@ -309,8 +329,8 @@ async fn run_extraction(
                 pool.push_bracket(catalog);
             }
             let artwork = ArtworkPass::new(inner.has_artwork_analyzer(), fast.artwork);
-            stream_extraction(
-                inner,
+            let settled = stream_extraction(
+                inner.clone(),
                 extraction,
                 token,
                 ExtractionInputs {
@@ -324,6 +344,9 @@ async fn run_extraction(
                 },
             )
             .await;
+            if let Some(settled) = settled {
+                inner.settled.put(content_hash, settled);
+            }
         }
 
         // Re-identify: the rip artifacts and artwork come from the library, not
@@ -486,13 +509,14 @@ impl ArtworkPass {
 
 /// Stream `Signals` over the artwork OCR pass: emit the fast-pass snapshot,
 /// then one cumulative snapshot per image that adds a barcode or text line,
-/// then a final settled snapshot.
+/// then a final settled snapshot, which it also returns. `None` when the pass
+/// was cancelled or an image failed to read: there is no settled reading.
 async fn stream_extraction(
     inner: Arc<ExtractionServiceInner>,
     extraction: RunningExtraction,
     token: CancellationToken,
     inputs: ExtractionInputs,
-) {
+) -> Option<SignalsSnapshot> {
     let ExtractionInputs {
         mut gathered,
         artwork,
@@ -506,7 +530,7 @@ async fn stream_extraction(
     };
 
     if token.is_cancelled() {
-        return;
+        return None;
     }
 
     // First snapshot, only when there is artwork to read: disc ID and CUE
@@ -528,7 +552,7 @@ async fn stream_extraction(
     if let Some(ArtworkPass { images }) = artwork {
         for (index, ArtworkImage { path, file_id }) in images.iter().enumerate() {
             if token.is_cancelled() {
-                return;
+                return None;
             }
 
             let analysis = match inner.analyze_artwork(path.clone()).await {
@@ -545,12 +569,12 @@ async fn stream_extraction(
                         },
                         failure,
                     );
-                    return;
+                    return None;
                 }
             };
 
             if token.is_cancelled() {
-                return;
+                return None;
             }
 
             // Accumulate barcodes — one sighting per image a code was read
@@ -600,7 +624,7 @@ async fn stream_extraction(
             // Re-check cancellation before emitting; a successor's `start()` can
             // flip the token during the synchronous push/classify window.
             if token.is_cancelled() {
-                return;
+                return None;
             }
 
             // Every image read is a snapshot, whether or not it added anything:
@@ -617,7 +641,7 @@ async fn stream_extraction(
     }
 
     if token.is_cancelled() {
-        return;
+        return None;
     }
 
     let classification = gathered.pool.classify();
@@ -628,10 +652,8 @@ async fn stream_extraction(
     } else {
         BarcodeSignal::Absent
     };
-    emit_signals(
-        &inner,
-        &extraction,
-        Signals {
+    let settled = SignalsSnapshot {
+        signals: Signals {
             disc_id: gathered.disc_id,
             barcode,
             text: TextSignal::Settled {
@@ -641,12 +663,19 @@ async fn stream_extraction(
             text_pool: gathered.pool.text_lines(),
             durations: gathered.durations,
         },
-        if has_artwork {
+        artwork: if has_artwork {
             ArtworkScan::Done { total }
         } else {
             ArtworkScan::Absent
         },
+    };
+    emit_signals(
+        &inner,
+        &extraction,
+        settled.signals.clone(),
+        settled.artwork.clone(),
     );
+    Some(settled)
 }
 
 fn emit_failed_ocr_signals(

@@ -18,6 +18,7 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
         event_tx: tx,
         analyzer: std::sync::Mutex::new(None),
         library_manager,
+        settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
         cancellation: CancellationRegistry::default(),
     };
 
@@ -91,6 +92,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         event_tx: tx,
         analyzer: std::sync::Mutex::new(None),
         library_manager,
+        settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
         cancellation: CancellationRegistry::default(),
     };
     let generation = inner

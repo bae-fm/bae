@@ -717,3 +717,30 @@ async fn a_line_read_twice_off_one_surface_is_pooled_once() {
         "got {pool:?}",
     );
 }
+
+/// A second run over a folder whose files have not changed takes the first
+/// run's settled reading: one settled snapshot, and no image read again. A
+/// person changing what a candidate looks up waits on the lookup, not on the
+/// artwork.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_unchanged_folder_is_not_read_again() {
+    let tmp = TempDir::new().unwrap();
+    let folder = build_release(&tmp, "Album Title [XX34b]", &["Cover.jpg"], &[]);
+    let analyzer = Arc::new(StubAnalyzer::new().with("Cover.jpg", vec!["Line One".to_string()]));
+    let (handle, mut rx, _lib_tmp) = start_signals(folder.clone(), analyzer.clone()).await;
+    let first = collect_snapshots(&mut rx, 2).await;
+    assert!(matches!(first[1].1, ArtworkScan::Done { total: 1 }));
+    assert_eq!(analyzer.calls(), 1);
+
+    handle.start(
+        IdentifyRunId::for_test(2),
+        "cand-1".to_string(),
+        folder_source(folder),
+        CallPriority::Interactive,
+    );
+    let second = collect_snapshots(&mut rx, 1).await;
+    assert_eq!(second[0].0, first[1].0);
+    assert!(matches!(second[0].1, ArtworkScan::Done { total: 1 }));
+    assert_no_more_snapshots(&mut rx, "the reused reading").await;
+    assert_eq!(analyzer.calls(), 1, "no image is read again");
+}
