@@ -37,7 +37,7 @@ struct AppearanceRenderingTests {
                 environment.surfaceTone = tone
                 let expected = try #require(
                     NSColor(Theme.background.resolve(in: environment))
-                        .usingColorSpace(.sRGB)
+                        .usingColorSpace(image.colorSpace)
                 )
                 #expect(
                     distance(actual, expected) < 0.02,
@@ -85,10 +85,12 @@ struct AppearanceRenderingTests {
         }
         let image = try await bitmap(host, size: size)
         let fill = try #require(
-            NSColor(AccentChoice.blue.buttonColor).usingColorSpace(.sRGB)
+            NSColor(AccentChoice.blue.buttonColor)
+                .usingColorSpace(image.colorSpace)
         )
         let text = try #require(
-            NSColor(AccentChoice.blue.color(in: .dark)).usingColorSpace(.sRGB)
+            NSColor(AccentChoice.blue.color(in: .dark))
+                .usingColorSpace(image.colorSpace)
         )
         var fillPixels = 0
         var textPixels = 0
@@ -125,7 +127,8 @@ struct AppearanceRenderingTests {
             image.colorAt(x: image.pixelsWide / 4, y: image.pixelsHigh / 2)
         )
         let expected = try #require(
-            NSColor(AccentChoice.teal.color(in: .dark)).usingColorSpace(.sRGB)
+            NSColor(AccentChoice.teal.color(in: .dark))
+                .usingColorSpace(image.colorSpace)
         )
         #expect(distance(actual, expected) < 0.03)
     }
@@ -138,6 +141,9 @@ struct AppearanceRenderingTests {
         return try SnapshotTestSupport.bitmap(of: host, size: size)
     }
 
+    /// How far apart two colours' components are. Both must be in the
+    /// capture's colour space: a capture keeps the display's space, and the
+    /// same colour has other components in sRGB than in Display P3.
     private func distance(_ a: NSColor, _ b: NSColor) -> CGFloat {
         max(
             abs(a.redComponent - b.redComponent),
