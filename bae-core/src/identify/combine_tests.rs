@@ -569,8 +569,8 @@ fn album_two_discogs(release_id: &str, year: Option<i32>) -> (MetadataResult, Li
 /// pressing it names can only ever be the barcode's answer — never the
 /// intersection's. Pairing before the narrowing is what keeps the two
 /// together: the row the folder describes is offered carrying both
-/// sources, and the reissues that merely print the same barcode go under
-/// the disclosure whole.
+/// sources, and the other Discogs records that print the same barcode go
+/// under the disclosure, one row each.
 #[test]
 fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
     let text = folder(&["1979 - Album Two (Label Two, L2-2031, Japan)"]);
@@ -633,9 +633,8 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
     );
     assert_eq!(
         crate::import::release_group::form_rows(&narrowed.matches),
-        vec![0, 0, 0],
-        "forming rows over the set-aside list alone rolls all three into \
-         one, because what told them apart is in the other list"
+        vec![0, 1, 2],
+        "three records of one catalog stay three rows"
     );
     for (pressing, agreements) in &set_aside {
         assert_eq!(

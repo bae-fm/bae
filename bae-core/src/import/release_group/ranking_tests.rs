@@ -25,7 +25,10 @@ fn rows_the_text_says_most_about_lead() {
         (mb("rel-early", Some("group-x"), Some(1976)), agreed(1)),
         (mb("rel-late", Some("group-x"), Some(2003)), agreed(4)),
     ]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["rel-late"], vec!["rel-early"]]);
+    assert_eq!(
+        lead_ids(&groups[0]),
+        vec![vec!["rel-late"], vec!["rel-early"]]
+    );
 }
 
 /// Rows the text says as much about keep the pressing-year order.
@@ -35,7 +38,10 @@ fn rows_the_text_says_as_much_about_keep_the_year_order() {
         (mb("rel-late", Some("group-x"), Some(2003)), agreed(2)),
         (mb("rel-early", Some("group-x"), Some(1976)), agreed(2)),
     ]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["rel-early"], vec!["rel-late"]]);
+    assert_eq!(
+        lead_ids(&groups[0]),
+        vec![vec!["rel-early"], vec!["rel-late"]]
+    );
 }
 
 /// A row is picked whole, so what the text says about the row is what it
@@ -101,7 +107,10 @@ fn a_shared_barcode_pairs_with_the_record_pressed_the_same_year() {
         .into_iter()
         .map(|year| {
             let mut release = discogs(
-                &format!("dg-{}", year.map_or("undated".to_string(), |y| y.to_string())),
+                &format!(
+                    "dg-{}",
+                    year.map_or("undated".to_string(), |y| y.to_string())
+                ),
                 Some("master-7"),
                 year,
             );
@@ -121,11 +130,12 @@ fn a_shared_barcode_pairs_with_the_record_pressed_the_same_year() {
     );
 }
 
-/// Two Discogs records print the barcode and nothing tells them apart from
-/// each other: a catalog listing one object twice. They are one pressing
-/// with the MusicBrainz record, which claims the first of them for Discogs.
+/// Two Discogs records print the MusicBrainz record's barcode and nothing
+/// else tells them apart. They are two records of one catalog, so they stay
+/// two rows, and which of them the MusicBrainz record is cannot be said: it
+/// settles alone.
 #[test]
-fn records_nothing_tells_apart_are_one_pressing() {
+fn two_records_of_one_catalog_leave_their_common_match_alone() {
     let mut lead = mb("mb-1", Some("group-x"), None);
     lead.barcodes = vec!["4988014720311".to_string()];
     let mut first = discogs("dg-first", Some("master-7"), None);
@@ -134,18 +144,13 @@ fn records_nothing_tells_apart_are_one_pressing() {
     second.barcodes = vec!["4988014720311".to_string()];
 
     let groups = grouped(vec![lead.clone(), first.clone(), second.clone()]);
+    let mut rows = lead_ids(&groups[0]);
+    rows.sort();
     assert_eq!(
-        lead_ids(&groups[0]),
-        vec![vec!["mb-1", "dg-first", "dg-second"]]
+        rows,
+        vec![vec!["dg-first"], vec!["dg-second"], vec!["mb-1"]]
     );
-    assert_eq!(
-        groups[0].pressings[0].pick(),
-        crate::import::MetadataProvenance::ExternalRelease {
-            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
-            partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-first")],
-        }
-    );
-    assert_eq!(pressing_count(vec![second, lead, first]), 1);
+    assert_eq!(pressing_count(vec![second, lead, first]), 3);
 }
 
 /// Two Discogs records print the barcode but contradict each other on the
@@ -178,7 +183,10 @@ fn cards_are_ordered_by_their_best_row() {
         (mb("rel-named", Some("group-named"), None), agreed(4)),
     ]);
     assert_eq!(
-        groups.iter().map(|group| group.id.as_str()).collect::<Vec<_>>(),
+        groups
+            .iter()
+            .map(|group| group.id.as_str())
+            .collect::<Vec<_>>(),
         vec!["group-named", "group-stranger"],
     );
 }
@@ -217,7 +225,10 @@ fn the_record_the_text_says_most_about_leads_its_pressing() {
         groups[0].pressings[0].pick(),
         crate::import::MetadataProvenance::ExternalRelease {
             record: crate::import::MetadataRef::new(Catalog::Discogs, "dg-1".to_string()),
-            partners: vec![crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1")],
+            partners: vec![crate::import::MetadataRef::new(
+                Catalog::MusicBrainz,
+                "mb-1"
+            )],
         }
     );
 }

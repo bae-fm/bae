@@ -29,7 +29,11 @@ pub(super) fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) ->
 
 /// The same album on Discogs, whose group is a master and whose card URL
 /// therefore differs from MusicBrainz's.
-pub(super) fn discogs(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataResult {
+pub(super) fn discogs(
+    release_id: &str,
+    group_id: Option<&str>,
+    year: Option<i32>,
+) -> MetadataResult {
     MetadataResult {
         source: Catalog::Discogs,
         ..mb(release_id, group_id, year)
@@ -244,14 +248,17 @@ fn a_stated_link_pairs_despite_the_text_and_the_facts() {
     );
 }
 
-/// Two Discogs records print the barcode and nothing tells them apart, so
-/// they are one pressing with the MusicBrainz record — and the one the
-/// document names stands for Discogs in the claim, over the one it does not.
+/// Two Discogs records print the MusicBrainz record's barcode, and the
+/// MusicBrainz document links one of them. The linked one is its pressing;
+/// the other is a separate Discogs record and stays its own row.
 #[test]
 fn a_stated_link_names_the_record_that_stands_for_its_catalog() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.barcodes = vec!["012345678905".to_string()];
-    one.links = vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-linked")];
+    one.links = vec![crate::import::MetadataRef::new(
+        Catalog::Discogs,
+        "dg-linked",
+    )];
     let mut linked = discogs("dg-linked", Some("master-7"), Some(1992));
     linked.barcodes = vec!["012345678905".to_string()];
     let mut barcoded = discogs("dg-barcoded", Some("master-7"), Some(1992));
@@ -260,13 +267,16 @@ fn a_stated_link_names_the_record_that_stands_for_its_catalog() {
     let groups = grouped(vec![barcoded, one, linked]);
     assert_eq!(
         lead_ids(&groups[0]),
-        vec![vec!["mb-1", "dg-linked", "dg-barcoded"]]
+        vec![vec!["mb-1", "dg-linked"], vec!["dg-barcoded"]]
     );
     assert_eq!(
         groups[0].pressings[0].pick(),
         crate::import::MetadataProvenance::ExternalRelease {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
-            partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-linked")],
+            partners: vec![crate::import::MetadataRef::new(
+                Catalog::Discogs,
+                "dg-linked"
+            )],
         },
         "one record per catalog is claimed"
     );
@@ -301,16 +311,13 @@ fn label_spelling_neither_blocks_nor_fabricates_identity() {
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
     assert_eq!(groups[0].label.as_deref(), Some("Label Name Records"));
 
-    // The label agreeing is what corroborates a shared catalog number.
+    // An agreeing label does not make a shared catalog number a pair.
     let mut one = mb("mb-2", Some("group-y"), None);
     one.catalog_number = Some("CAT-7".to_string());
     one.label = Some("Label Name Records".to_string());
     let mut other = discogs("dg-2", Some("master-8"), None);
     other.catalog_number = Some("CAT-7".to_string());
     other.label = Some("Label Name".to_string());
-    let groups = grouped(vec![one.clone(), other.clone()]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-2", "dg-2"]]);
-    other.label = Some("LN".to_string());
     let groups = grouped(vec![one, other]);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-2"], vec!["dg-2"]]);
 }
@@ -327,7 +334,11 @@ fn equivalent_representations_pair_and_distinct_identifiers_do_not() {
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
     other.barcodes = vec!["0012345678905".to_string()];
     other.country = Some("Japan".to_string());
-    other.media = StatedMedia::Descriptors(vec!["CD".to_string(), "Album".to_string(), "Reissue".to_string()]);
+    other.media = StatedMedia::Descriptors(vec![
+        "CD".to_string(),
+        "Album".to_string(),
+        "Reissue".to_string(),
+    ]);
     let groups = grouped(vec![one, other]);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
 
@@ -341,25 +352,6 @@ fn equivalent_representations_pair_and_distinct_identifiers_do_not() {
     other.catalog_number = Some("CAT-7 2".to_string());
     let groups = grouped(vec![one, other]);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-2"], vec!["dg-2"]]);
-}
-
-/// A missing barcode is nothing to compare, so the catalog number and year
-/// still pair; two known, different barcodes are two objects.
-#[test]
-fn a_missing_barcode_differs_from_an_incompatible_one() {
-    let mut one = mb("mb-1", Some("group-x"), Some(1992));
-    one.catalog_number = Some("CAT-7".to_string());
-    one.barcodes = vec!["012345678905".to_string()];
-    let mut unbarcoded = discogs("dg-1", Some("master-7"), Some(1992));
-    unbarcoded.catalog_number = Some("CAT-7".to_string());
-    let groups = grouped(vec![one.clone(), unbarcoded]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
-
-    let mut another_code = discogs("dg-2", Some("master-7"), Some(1992));
-    another_code.catalog_number = Some("CAT-7".to_string());
-    another_code.barcodes = vec!["5051961234567".to_string()];
-    let groups = grouped(vec![one, another_code]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-2"]]);
 }
 
 /// A different country or a different year is a contradiction that an
@@ -454,20 +446,28 @@ fn reissues_pair_by_what_tells_them_apart_whatever_the_order() {
 fn an_ambiguous_member_settles_alone_but_its_rivals_stay_open() {
     let mut first = mb("mb-first", Some("group-x"), Some(1992));
     first.barcodes = vec!["012345678905".to_string()];
+    first.catalog_number = Some("CAT-7".to_string());
     let mut second = mb("mb-second", Some("group-x"), Some(1993));
-    second.barcodes = vec!["012345678905".to_string()];
+    second.barcodes = vec!["012345678905".to_string(), "5051961234567".to_string()];
+    second.catalog_number = Some("CAT-7".to_string());
     let mut contested = discogs("dg-contested", Some("master-7"), None);
     contested.barcodes = vec!["012345678905".to_string()];
-    let mut by_catalog = discogs("dg-catalog", Some("master-7"), Some(1993));
-    by_catalog.catalog_number = Some("CAT-7".to_string());
-    second.catalog_number = Some("CAT-7".to_string());
+    contested.catalog_number = Some("CAT-7".to_string());
+    // Shares only the second's other barcode, and less else than the
+    // contested record does, so its pair is taken at a level below.
+    let mut below = discogs("dg-below", Some("master-7"), Some(1993));
+    below.barcodes = vec!["5051961234567".to_string()];
 
-    let groups = grouped(vec![first, second, contested, by_catalog]);
+    let groups = grouped(vec![first, second, contested, below]);
     let mut rows = lead_ids(&groups[0]);
     rows.sort();
     assert_eq!(
         rows,
-        vec![vec!["dg-contested"], vec!["mb-first"], vec!["mb-second", "dg-catalog"]]
+        vec![
+            vec!["dg-contested"],
+            vec!["mb-first"],
+            vec!["mb-second", "dg-below"]
+        ]
     );
 }
 
@@ -551,33 +551,25 @@ fn releases_sharing_a_barcode_are_one_pressing() {
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
 }
 
+/// A label can keep one catalog number on every reissue for decades, so a
+/// shared number pairs nothing, even with the year, country and label
+/// agreeing.
 #[test]
-fn releases_sharing_a_catalog_number_are_one_pressing() {
+fn releases_sharing_a_catalog_number_are_not_one_pressing() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.catalog_number = Some("CAT-7 ".to_string());
+    one.country = Some("JP".to_string());
+    one.label = Some("Label Name".to_string());
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
     other.catalog_number = Some("cat-7".to_string());
+    other.country = Some("Japan".to_string());
+    other.label = Some("Label Name".to_string());
 
     let groups = grouped(vec![one, other]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]]);
 }
 
-/// The sources punctuate multi-disc catalog numbers differently: "CAT 2 2"
-/// and "CAT 2-2" are one number, and pressed the same year they are one
-/// pressing.
-#[test]
-fn a_formatting_difference_in_the_catalog_number_still_pairs() {
-    let mut one = mb("mb-1", Some("group-x"), Some(1992));
-    one.catalog_number = Some("CAT 2 2".to_string());
-    let mut other = discogs("dg-1", Some("master-7"), Some(1992));
-    other.catalog_number = Some("CAT 2-2".to_string());
-
-    let groups = grouped(vec![one, other]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
-}
-
-/// A catalog number is not globally unique, so on its own it pairs nothing:
-/// the year, country, label or medium has to agree too.
+/// A catalog number with nothing else stated pairs nothing either.
 #[test]
 fn a_catalog_number_alone_pairs_nothing() {
     let mut one = mb("mb-1", Some("group-x"), None);
@@ -630,7 +622,16 @@ fn a_title_spelling_difference_does_not_block_a_barcode_pair() {
             .collect::<Vec<_>>(),
         vec![Catalog::MusicBrainz, Catalog::Discogs]
     );
-    assert_eq!(pressing_count(groups.iter().flat_map(|group| group.pressings.iter()).flat_map(|pressing| pressing.releases.clone()).collect()), 1);
+    assert_eq!(
+        pressing_count(
+            groups
+                .iter()
+                .flat_map(|group| group.pressings.iter())
+                .flat_map(|pressing| pressing.releases.clone())
+                .collect()
+        ),
+        1
+    );
 }
 
 /// A barcode is stronger evidence than a catalog number, so the barcode

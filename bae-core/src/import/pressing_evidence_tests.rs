@@ -37,7 +37,11 @@ fn an_unusable_barcode_leaves_the_comparison_unknown() {
 
     b.barcodes = vec!["5051961234567".to_string(), "012345678905".to_string()];
     a.barcodes = vec!["0 01234 56789 05".to_string()];
-    assert_eq!(evidence(&a, &b).barcode, Comparison::Same, "any usable key on either side");
+    assert_eq!(
+        evidence(&a, &b).barcode,
+        Comparison::Same,
+        "any usable key on either side"
+    );
 }
 
 /// A country as its code or its name is one country; MusicBrainz's regions
@@ -57,10 +61,18 @@ fn countries_and_regions_compare_by_what_they_name() {
     b.country = Some("Worldwide".to_string());
     assert_eq!(evidence(&a, &b).country, Comparison::Different);
     b.country = Some("DE".to_string());
-    assert_eq!(evidence(&a, &b).country, Comparison::Unknown, "a region against a country");
+    assert_eq!(
+        evidence(&a, &b).country,
+        Comparison::Unknown,
+        "a region against a country"
+    );
     a.country = Some("Atlantis".to_string());
     b.country = Some("Atlantis".to_string());
-    assert_eq!(evidence(&a, &b).country, Comparison::Unknown, "two unresolved values");
+    assert_eq!(
+        evidence(&a, &b).country,
+        Comparison::Unknown,
+        "two unresolved values"
+    );
 }
 
 /// The trade word a label trails is dropped; anything else different is
@@ -175,11 +187,17 @@ fn a_format_name_is_the_same_name_in_any_case() {
 fn a_word_outside_the_vocabulary_is_logged_and_settles_by_catalog() {
     let logs = crate::test_logs::capture_warn_logs(|| {
         assert_eq!(
-            media(per_medium(&["CD"]), descriptors(&["CD", "Album", "Zorblax"])),
+            media(
+                per_medium(&["CD"]),
+                descriptors(&["CD", "Album", "Zorblax"])
+            ),
             Comparison::Same
         );
     });
-    assert!(logs.contains("Zorblax"), "the unknown word is logged: {logs}");
+    assert!(
+        logs.contains("Zorblax"),
+        "the unknown word is logged: {logs}"
+    );
 
     let logs = crate::test_logs::capture_warn_logs(|| {
         assert_eq!(
@@ -230,27 +248,42 @@ fn a_medium_left_unstated_is_weighed_against_a_complete_account() {
     );
 }
 
-/// A shared catalog number is a candidate only with corroboration, and a
-/// contradiction removes an inferred candidate but not a linked one.
+/// A shared catalog number is never a candidate, however much else agrees:
+/// a label can keep one number on every reissue. A contradiction removes an
+/// inferred candidate but not a linked one.
 #[test]
 fn support_needs_identity_evidence_and_no_contradiction() {
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
     a.catalog_number = Some("CAT-7".to_string());
     b.catalog_number = Some("CAT-7".to_string());
-    assert_eq!(evidence(&a, &b).support(), None);
     a.year = Some(1992);
     b.year = Some(1992);
-    assert!(evidence(&a, &b).support().is_some());
-    b.year = Some(1993);
     assert_eq!(evidence(&a, &b).support(), None);
+    b.year = Some(1993);
 
     a.links = vec![MetadataRef::new(Catalog::Discogs, "dg-1")];
-    let linked = evidence(&a, &b).support().expect("a link stands despite the year");
+    let linked = evidence(&a, &b)
+        .support()
+        .expect("a link stands despite the year");
     a.links.clear();
     a.barcodes = vec!["012345678905".to_string()];
     b.barcodes = vec!["012345678905".to_string()];
     b.year = Some(1992);
     let barcoded = evidence(&a, &b).support().expect("a shared barcode");
     assert!(linked > barcoded, "a stated link outranks an inferred pair");
+}
+
+/// Two records of one catalog are never one pressing, even sharing a
+/// barcode: the catalog's editors kept them apart for a difference these
+/// facts do not read, such as a matrix or a pressing plant.
+#[test]
+fn two_records_of_one_catalog_are_never_one_pressing() {
+    let mut a = release(Catalog::Discogs, "dg-1");
+    let mut b = release(Catalog::Discogs, "dg-2");
+    a.barcodes = vec!["012345678905".to_string()];
+    b.barcodes = vec!["012345678905".to_string()];
+    a.catalog_number = Some("CAT-7".to_string());
+    b.catalog_number = Some("CAT-7".to_string());
+    assert_eq!(evidence(&a, &b).support(), None);
 }

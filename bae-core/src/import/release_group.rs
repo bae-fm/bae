@@ -6,11 +6,11 @@
 //! group, and one row per physical pressing beneath it.
 //!
 //! The two providers answer independently, so the same album and the same
-//! pressing arrive twice — and one provider lists one pressing twice as
-//! readily, under two of its own records. Both collapses happen here,
-//! pressings first: releases become one row when the evidence their records
-//! carry says they name the same physical object — what `pressing_evidence`
-//! weighs — whichever catalogs they come from, and groups become one card
+//! pressing arrive twice. Both collapses happen here, pressings first: a
+//! record from each catalog becomes one row when the evidence they carry
+//! says they name the same physical object — what `pressing_evidence`
+//! weighs. Two records of one catalog stay two rows, because the catalog's
+//! editors separated them. Groups become one card
 //! when a row joins them or when they name the same album. A row is then a
 //! pressing under however many records name it, and picking it claims one
 //! record per catalog — [`Pressing::pick`] says exactly what.
@@ -412,9 +412,10 @@ fn formed_pressings(rows: &[u32]) -> Vec<Vec<usize>> {
 /// each in the order its records arrived. Only the sets of two or more: a
 /// record no other names is a row of its own without one here.
 ///
-/// Every record is weighed against every other, records of one catalog
-/// included: a catalog lists one object twice as readily as two catalogs
-/// list it once. Candidates are taken from the best-supported level down. At
+/// Every record is weighed against every other, and only records of two
+/// different catalogs can name one pressing — see
+/// [`PressingEvidence::support`]. Candidates are taken from the
+/// best-supported level down. At
 /// each level, the candidate edges between distinct sets that are still open
 /// are read together: the sets an edge chain connects become one when every
 /// record across them supports every other; where they do not, a set that

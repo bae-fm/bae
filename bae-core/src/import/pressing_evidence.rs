@@ -259,6 +259,11 @@ fn compare_stated<T: PartialEq>(a: Option<T>, b: Option<T>) -> Comparison {
 /// What two records say about one pressing, fact by fact.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct PressingEvidence {
+    /// Both records are from one catalog. A catalog's editors keep two
+    /// records apart because the pressings differ in something — a matrix, a
+    /// plant, a sleeve variant — that these facts do not read, so two
+    /// records of one catalog are never one pressing here.
+    pub(crate) same_catalog: bool,
     /// One record's own document names the other as the same release.
     pub(crate) link: bool,
     pub(crate) barcode: Comparison,
@@ -271,11 +276,7 @@ pub(crate) struct PressingEvidence {
 
 impl PressingEvidence {
     pub(crate) fn between(a: &PressingFacts<'_>, b: &PressingFacts<'_>) -> Self {
-        let barcode = if a
-            .barcodes
-            .iter()
-            .any(|key| b.barcodes.contains(key))
-        {
+        let barcode = if a.barcodes.iter().any(|key| b.barcodes.contains(key)) {
             Comparison::Same
         } else if !a.barcodes.is_empty() && !b.barcodes.is_empty() {
             Comparison::Different
@@ -301,6 +302,7 @@ impl PressingEvidence {
             _ => Comparison::Unknown,
         };
         Self {
+            same_catalog: a.record.catalog == b.record.catalog,
             link: a.links.contains(&b.record) || b.links.contains(&a.record),
             barcode,
             catalog,
@@ -314,22 +316,29 @@ impl PressingEvidence {
     /// How well the claim that the two records name one pressing is
     /// supported, or `None` when they are not candidates for one.
     ///
-    /// A link, a shared barcode, or a shared catalog number corroborated by
-    /// another agreeing fact makes them candidates. A different barcode,
-    /// year, country or medium is a contradiction that removes an inferred
-    /// candidate; a linked pair is stated rather than inferred, and stands.
+    /// Only records from two different catalogs are candidates, and only on
+    /// a link or a shared barcode. A catalog number is never enough: a label
+    /// can keep one number on every reissue for decades, so a shared number
+    /// with an unstated year joins an original to its represses. A different
+    /// barcode, year, country or medium is a contradiction that removes an
+    /// inferred candidate; a linked pair is stated rather than inferred, and
+    /// stands. A shared catalog number still ranks candidates found another
+    /// way.
     pub(crate) fn support(&self) -> Option<Support> {
+        if self.same_catalog {
+            return None;
+        }
         let agreed = [self.year, self.country, self.label, self.medium]
             .iter()
             .filter(|comparison| **comparison == Comparison::Same)
             .count() as u8;
         let barcode = self.barcode == Comparison::Same;
         let catalog = self.catalog == Comparison::Same;
-        if !(self.link || barcode || (catalog && agreed >= 1)) {
+        if !(self.link || barcode) {
             return None;
         }
-        let contradicted = [self.barcode, self.year, self.country, self.medium]
-            .contains(&Comparison::Different);
+        let contradicted =
+            [self.barcode, self.year, self.country, self.medium].contains(&Comparison::Different);
         if contradicted && !self.link {
             return None;
         }
