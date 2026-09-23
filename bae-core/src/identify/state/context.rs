@@ -331,6 +331,17 @@ impl TitleSearch {
             artist: artist.trim().to_string(),
         })
     }
+
+    /// What a draft's own title offers a search: its bracketed tails —
+    /// the catalog number, the edition — taken off, since a catalog files
+    /// the release under its words and a phrase carrying `[MR2002]` matches
+    /// nothing. A title that is nothing but brackets searches as it is.
+    /// Words a person typed are never read this way; see [`Self::of`].
+    pub fn of_draft(album: &str, artist: &str) -> Option<Self> {
+        let words = crate::signals::candidate_text::strip_trailing_brackets(album);
+        let album = if words.is_empty() { album } else { &words };
+        Self::of(album, artist)
+    }
 }
 
 /// The title the run can search by, and what asking every provider about it

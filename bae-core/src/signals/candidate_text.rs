@@ -274,23 +274,17 @@ fn is_catalog_shaped_bracket(s: &str) -> bool {
     letters >= 1 && digits >= 2
 }
 
-/// Normalize a path component for the free-text pool: strip a leading year
-/// (`1989 - `) or track number (`01. `), and trailing bracketed tails (which
-/// `extract_folder_brackets` already routed to the catalog pool).
-///
-/// `None` when what's left is too short (under 2 chars) or all digits.
-pub(crate) fn strip_path_component(raw: &str) -> Option<String> {
-    static YEAR_PREFIX: OnceLock<Regex> = OnceLock::new();
-    static TRACK_PREFIX: OnceLock<Regex> = OnceLock::new();
+/// A name without the bracketed tails a person hangs off it — the catalog
+/// number, the edition, the year: `Album Title [XX34b] (2020)` is
+/// `Album Title`. Every trailing group goes, so a name that is nothing but
+/// brackets comes back empty. What a folder name and an album tag are read
+/// as when the words alone are wanted.
+pub(crate) fn strip_trailing_brackets(raw: &str) -> String {
     static TRAILING_BRACKET: OnceLock<Regex> = OnceLock::new();
-
-    let year = YEAR_PREFIX.get_or_init(|| Regex::new(r"^\s*\d{4}\s*[.\-)]?\s*").unwrap());
-    let track = TRACK_PREFIX.get_or_init(|| Regex::new(r"^\s*\d{1,3}\s*[.\-)]\s*").unwrap());
     let bracket =
         TRAILING_BRACKET.get_or_init(|| Regex::new(r"\s*[\[\(][^\]\)]*[\]\)]\s*$").unwrap());
-
     let mut s = raw.trim().to_string();
-    // Repeatedly — a component may carry several (`Album Title [Deluxe] (2020)`).
+    // Repeatedly — a name may carry several (`Album Title [Deluxe] (2020)`).
     loop {
         let stripped = bracket.replace(&s, "").into_owned();
         let stripped = stripped.trim_end().to_string();
@@ -299,6 +293,22 @@ pub(crate) fn strip_path_component(raw: &str) -> Option<String> {
         }
         s = stripped;
     }
+    s
+}
+
+/// Normalize a path component for the free-text pool: strip a leading year
+/// (`1989 - `) or track number (`01. `), and trailing bracketed tails (which
+/// `extract_folder_brackets` already routed to the catalog pool).
+///
+/// `None` when what's left is too short (under 2 chars) or all digits.
+pub(crate) fn strip_path_component(raw: &str) -> Option<String> {
+    static YEAR_PREFIX: OnceLock<Regex> = OnceLock::new();
+    static TRACK_PREFIX: OnceLock<Regex> = OnceLock::new();
+
+    let year = YEAR_PREFIX.get_or_init(|| Regex::new(r"^\s*\d{4}\s*[.\-)]?\s*").unwrap());
+    let track = TRACK_PREFIX.get_or_init(|| Regex::new(r"^\s*\d{1,3}\s*[.\-)]\s*").unwrap());
+
+    let mut s = strip_trailing_brackets(raw);
     // Both prefixes only strip when something non-empty is left behind.
     if let Some(m) = year.find(&s) {
         let rest = &s[m.end()..];

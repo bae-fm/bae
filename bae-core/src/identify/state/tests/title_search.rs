@@ -287,3 +287,32 @@ fn a_ledger_says_why_no_search_ran() {
         crate::identify::SearchStepView::NoTitle
     ));
 }
+
+/// A draft's title searches by its words: the catalog number and edition a
+/// tag hangs off the end in brackets are not part of what the catalogs file
+/// the release under. A title that is nothing but a bracket searches as it
+/// is, and words a person typed are taken as typed.
+#[test]
+fn a_drafts_title_searches_without_its_bracketed_tails() {
+    assert_eq!(
+        TitleSearch::of_draft("Album Title [XX34b]", "Artist Name"),
+        Some(TitleSearch {
+            album: "Album Title".to_string(),
+            artist: "Artist Name".to_string(),
+        })
+    );
+    assert_eq!(
+        TitleSearch::of_draft("[XX34b]", ""),
+        Some(TitleSearch {
+            album: "[XX34b]".to_string(),
+            artist: String::new(),
+        })
+    );
+    assert_eq!(
+        TitleSearch::of("Album Title [XX34b]", ""),
+        Some(TitleSearch {
+            album: "Album Title [XX34b]".to_string(),
+            artist: String::new(),
+        })
+    );
+}

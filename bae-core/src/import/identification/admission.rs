@@ -93,7 +93,7 @@ pub(super) async fn candidate_run_start(
     // Words the person typed stand in for the draft's own.
     let title_search = match &state.lookup_choices.search_words {
         Some(words) => TitleSearch::of(&words.album, &words.artist),
-        None => TitleSearch::of(&draft.album_title, artist),
+        None => TitleSearch::of_draft(&draft.album_title, artist),
     };
     Ok(CandidateRunStart {
         metadata_revision: state.metadata_revision,

@@ -6,9 +6,14 @@ use super::*;
 fn cats(lines: &[String]) -> Vec<String> {
     let sourced: Vec<SourcedLine> = lines
         .iter()
-        .map(|t| SourcedLine::new(Source::CueField {
-        file_id: "Album.cue".to_string(),
-    }, t.clone()))
+        .map(|t| {
+            SourcedLine::new(
+                Source::CueField {
+                    file_id: "Album.cue".to_string(),
+                },
+                t.clone(),
+            )
+        })
         .collect();
     catalog_numbers_sourced(&sourced)
         .into_iter()
@@ -294,6 +299,20 @@ fn path_iteratively_strips_multiple_trailing_brackets() {
 }
 
 #[test]
+fn trailing_brackets_leave_the_words() {
+    assert_eq!(
+        strip_trailing_brackets("Album Title [XX34b]"),
+        "Album Title"
+    );
+    assert_eq!(
+        strip_trailing_brackets("Album Title (Deluxe) [2020]"),
+        "Album Title"
+    );
+    assert_eq!(strip_trailing_brackets("[XX34b]"), "");
+    assert_eq!(strip_trailing_brackets("Album Title"), "Album Title");
+}
+
+#[test]
 fn path_returns_none_when_empty() {
     assert_eq!(strip_path_component("[XX34b]"), None);
     assert_eq!(strip_path_component("1989"), None);
@@ -511,9 +530,12 @@ fn path_line(text: &str) -> SourcedLine {
 }
 
 fn cue_line(text: &str) -> SourcedLine {
-    SourcedLine::new(Source::CueField {
-        file_id: "Album.cue".to_string(),
-    }, text.to_string())
+    SourcedLine::new(
+        Source::CueField {
+            file_id: "Album.cue".to_string(),
+        },
+        text.to_string(),
+    )
 }
 
 fn cluster_lines(lines: Vec<SourcedLine>) -> Vec<Cluster> {
