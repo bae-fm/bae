@@ -139,6 +139,7 @@ internal sealed partial class ImportStore : IDisposable
         FolderScanActivity: null,
         GroupKeys: Array.Empty<BridgeFolderReleaseDecisionKey>(),
         Ready: Array.Empty<BridgeReadyRowRef>(),
+        Identified: Array.Empty<BridgeReadyRowRef>(),
         FirstUnidentified: null);
 
     private BridgeImportListView BuildView() => new(

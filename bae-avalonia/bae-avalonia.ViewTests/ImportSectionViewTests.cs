@@ -725,6 +725,7 @@ public sealed class ImportSectionViewTests
                 CombineAncestorKey: null,
                 Actionable: true,
                 Placement: placement,
+                Attention: null,
                 Identification: identification,
                 SkipAction: skipAction,
                 Actions: identification is not null
@@ -782,6 +783,7 @@ public sealed class ImportSectionViewTests
                     null),
             }
             : Array.Empty<BridgeReadyRowRef>(),
+        Identified: Array.Empty<BridgeReadyRowRef>(),
         FirstUnidentified: null);
 
     // A window carrying one of each item kind, with the group header core emits
@@ -821,6 +823,7 @@ public sealed class ImportSectionViewTests
         FolderScanActivity: null,
         GroupKeys: new[] { PreviewData.ImportGroupKey },
         Ready: Array.Empty<BridgeReadyRowRef>(),
+        Identified: Array.Empty<BridgeReadyRowRef>(),
         FirstUnidentified: null);
 
     private static BridgeOutboxSnapshot Outbox(

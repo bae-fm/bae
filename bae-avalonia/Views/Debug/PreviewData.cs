@@ -142,6 +142,7 @@ internal static class PreviewData
                 CombineAncestorKey: null,
                 Actionable: true,
                 Placement: new BridgeTriagePlacement.Ready(),
+                Attention: null,
                 Identification: null,
                 SkipAction: BridgeTriageSkipAction.Skip,
                 Actions: [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
@@ -193,6 +194,7 @@ internal static class PreviewData
         FolderScanActivity: null,
         GroupKeys: groupKeys.ToArray(),
         Ready: ready.ToArray(),
+        Identified: Array.Empty<BridgeReadyRowRef>(),
         FirstUnidentified: null);
 
     private static BridgeTriageRow ImportRow(string name, string displayPath) =>
@@ -205,6 +207,7 @@ internal static class PreviewData
             CombineAncestorKey: null,
             Actionable: true,
             Placement: new BridgeTriagePlacement.Ready(),
+            Attention: null,
             Identification: null,
             SkipAction: BridgeTriageSkipAction.Skip,
             Actions: [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
