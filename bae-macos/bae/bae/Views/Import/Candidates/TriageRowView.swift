@@ -186,35 +186,17 @@ struct TriageRowView: View {
 /// The row's metadata and trailing column. In an extension so the view's body
 /// and the layout it composes stay readable as one piece.
 extension TriageRowView {
-    /// State that belongs below the release summary: a disagreement or an
-    /// import failure. Identification activity belongs to its trailing
-    /// indicator's tooltip — except a write that failed, which is an error
-    /// about the row and leads whatever the placement would have said.
+    /// State that belongs below the release summary: an import failure, or a
+    /// write of an identification result that failed. What a Ready check found
+    /// is the pane's to state, beside the Import it bears on; identification
+    /// activity belongs to the trailing indicator's tooltip.
     private var statusLine: String? {
         if case .finalizationFailed(let error) = row.identification {
             return error.displayLine
         }
         switch row.placement {
-        case .pending:
+        case .pending, .ready, .skipped, .needsYou:
             return nil
-        case .ready:
-            return nil
-        case .skipped:
-            return nil
-        case .needsYou(let reason):
-            switch reason {
-            case .alreadyInLibrary:
-                return nil
-            case .severalMatches, .foundByTitle:
-                return nil
-            case .noMatch, .nothingToLookUp:
-                return nil
-            case .lookupFailed:
-                return nil
-            case .trackCountDisagrees, .durationsDisagree,
-                .sourceLengthsUnknown, .localDurationUnknown:
-                return reason.localizedText
-            }
         case .importing, .failed, .done:
             return importStatusLine
         }

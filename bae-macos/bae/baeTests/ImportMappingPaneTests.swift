@@ -766,3 +766,41 @@ extension ImportMappingPaneTests {
         )
     }
 }
+
+/// What the pane states beside Import.
+@Suite("Import commit controls")
+struct ImportCommitControlsTests {
+    // What a Ready check found is stated beside the Import it bears on, and
+    // only when the candidate failed one: a Ready candidate states nothing.
+    @MainActor
+    @Test("the Ready check a candidate failed is stated beside Import")
+    func theFailedReadyCheckIsStatedBesideImport() async throws {
+        var candidate = Candidate(
+            detail: MappingFixtures.detail(
+                mapping: MappingFixtures.thirteenFileTable
+            )
+        )
+        var row = PreviewData.triageRowReadFromRecord
+        row.placement = .needsYou(
+            reason: .trackCountDisagrees(local: 13, source: 12)
+        )
+        candidate.row = row
+        let disagreeing =
+            try await SnapshotTestSupport.recognizedText(
+                in: captureMappingPane(candidate: candidate, runtime: nil),
+                languages: ["en-US"]
+            )
+            .map(\.text)
+        #expect(disagreeing.carrying("13 in the folder, 12 on the release"))
+
+        row.placement = .ready
+        candidate.row = row
+        let ready =
+            try await SnapshotTestSupport.recognizedText(
+                in: captureMappingPane(candidate: candidate, runtime: nil),
+                languages: ["en-US"]
+            )
+            .map(\.text)
+        #expect(!ready.carrying("in the folder"))
+    }
+}

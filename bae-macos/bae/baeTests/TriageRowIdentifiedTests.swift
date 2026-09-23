@@ -91,6 +91,21 @@ struct TriageRowIdentifiedTests {
         #expect(try await renderedLines(unread).carrying("2 matches"))
     }
 
+    /// What a Ready check found is the mapping pane's to state, beside the
+    /// Import it bears on; the row draws the same whichever check it failed.
+    @MainActor
+    @Test("a row does not state the Ready check it failed")
+    func aRowDoesNotStateTheReadyCheckItFailed() async throws {
+        var ready = PreviewData.triageRowReadFromRecord
+        ready.placement = .ready
+        var disagreeing = ready
+        disagreeing.placement = .needsYou(
+            reason: .trackCountDisagrees(local: 13, source: 12)
+        )
+        #expect(!(try await renderedLines(disagreeing)).carrying("Tracks"))
+        #expect(try await pixels(of: disagreeing) == pixels(of: ready))
+    }
+
     /// On a selected row the whole text column goes white, and the arrow
     /// follows it rather than keeping its own colour.
     @MainActor

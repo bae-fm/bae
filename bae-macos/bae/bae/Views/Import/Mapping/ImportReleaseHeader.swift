@@ -7,6 +7,11 @@ import SwiftUI
 /// in the whole import is audio that will not decode, which core raises.
 struct ImportCommitControls {
     let unansweredCount: Int
+    /// What the Ready rule found that keeps this candidate out of a bulk
+    /// import — the tracklist or its lengths disagreeing with the folder, or
+    /// a length nobody could measure. Stated beside the Import it bears on,
+    /// which stays available: importing it anyway is the person's call.
+    let readyCheck: BridgeNeedsYou?
     /// Routes the running import's progress to the leaf line that draws it.
     let candidateKey: String
     /// Where the candidate's import stands, as its row places it.
@@ -162,7 +167,8 @@ struct ImportReleaseHeader: View {
 
     /// The card's one row of actions: the two ways into identification on the
     /// left and, once there is something to commit, the commit on the right —
-    /// storage, the unanswered tally, and the Import action.
+    /// the Ready check the candidate did not pass, the unanswered tally,
+    /// storage, and the Import action.
     ///
     /// The two entries differ in what they start, not in where they go: both
     /// open the same pane, and only the first asks for a run. Commands that
@@ -184,6 +190,14 @@ struct ImportReleaseHeader: View {
             .disabled(isReading)
             Spacer(minLength: 12)
             if let commit {
+                if let readyCheck = commit.readyCheck {
+                    Text(readyCheck.localizedText)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.orange)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .help(readyCheck.localizedText)
+                }
                 if commit.unansweredCount > 0 {
                     Text(
                         coreString(
