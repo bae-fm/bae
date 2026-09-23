@@ -43,6 +43,8 @@ desktop_only! {
     /// The carriers MusicBrainz and Discogs name, in each catalog's own
     /// closed list of format names.
     pub(crate) mod medium;
+    /// Which of a release's mediums a folder's audio is a rip of.
+    pub(crate) mod medium_coverage;
     pub mod musicbrainz_mapper;
     // The payload store's projections build the picker detail and the commit's
     // `ParsedAlbum` from archived documents — both desktop-only import shapes.

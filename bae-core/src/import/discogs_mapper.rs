@@ -4,6 +4,7 @@ use super::assemble::{
 use super::ParsedAlbum;
 use crate::db::{is_various_artists, Pressing};
 use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist};
+use crate::import::medium_coverage::MediumCoverage;
 use crate::import::{Catalog, ImportError, MetadataRef};
 use coven::Clock;
 use coven::IdProvider;
@@ -103,12 +104,14 @@ pub(crate) fn pressing(release: &DiscogsRelease) -> Pressing {
 
 pub(crate) fn map_with_metadata(
     release: &DiscogsRelease,
+    coverage: &MediumCoverage,
     mut metadata: super::release_metadata::ReleaseMetadata,
     audio_durations_ms: Option<&[u64]>,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
-    let processed = process_tracklist(&release.tracklist, audio_durations_ms);
+    let tracklist = covered_tracklist(&release.tracklist, coverage);
+    let processed = process_tracklist(&tracklist, audio_durations_ms);
     let primary_artist = metadata.album.take_primary(Catalog::Discogs, &release.id)?;
     let is_compilation = is_various_artists(&primary_artist.name);
 
@@ -597,6 +600,74 @@ pub(crate) fn parse_duration_to_ms(duration: &str) -> Option<u64> {
         ),
         _ => None,
     }
+}
+
+/// A Discogs tracklist's mediums: the runs of rows whose positions name one
+/// disc (`1-1`, `1-2`, then `2-1`). A tracklist that numbers no discs is one
+/// medium, and a row naming no disc — a heading, an index — belongs with the
+/// disc of the first numbered row after it.
+pub(crate) fn medium_tracklists(
+    tracklist: &[crate::discogs::DiscogsTrack],
+) -> Vec<Vec<crate::discogs::DiscogsTrack>> {
+    let disc_of = |track: &crate::discogs::DiscogsTrack| -> Option<i32> {
+        let (disc, _) = track.position.split_once('-')?;
+        disc.parse::<i32>().ok().filter(|disc| *disc > 0)
+    };
+    if !tracklist.iter().any(|track| disc_of(track).is_some()) {
+        return vec![tracklist.to_vec()];
+    }
+    let mut mediums: Vec<(i32, Vec<crate::discogs::DiscogsTrack>)> = Vec::new();
+    let mut unnumbered: Vec<crate::discogs::DiscogsTrack> = Vec::new();
+    for track in tracklist {
+        match disc_of(track) {
+            Some(disc) => {
+                match mediums.last_mut() {
+                    Some((current, rows)) if *current == disc => rows.append(&mut unnumbered),
+                    _ => mediums.push((disc, std::mem::take(&mut unnumbered))),
+                }
+                mediums
+                    .last_mut()
+                    .expect("a numbered row has a medium")
+                    .1
+                    .push(track.clone());
+            }
+            None => unnumbered.push(track.clone()),
+        }
+    }
+    mediums
+        .last_mut()
+        .expect("a numbered row has a medium")
+        .1
+        .append(&mut unnumbered);
+    mediums.into_iter().map(|(_, rows)| rows).collect()
+}
+
+/// Each medium's stated track lengths, read the way a tracklist with no
+/// audio to fit is read — what a folder's measured lengths choose their
+/// coverage from.
+pub(crate) fn medium_lengths(tracklist: &[crate::discogs::DiscogsTrack]) -> Vec<Vec<Option<u64>>> {
+    medium_tracklists(tracklist)
+        .iter()
+        .map(|rows| {
+            process_tracklist(rows, None)
+                .iter()
+                .map(|track| track.duration_ms)
+                .collect()
+        })
+        .collect()
+}
+
+/// The rows of the mediums the coverage names, in tracklist order.
+pub(crate) fn covered_tracklist(
+    tracklist: &[crate::discogs::DiscogsTrack],
+    coverage: &MediumCoverage,
+) -> Vec<crate::discogs::DiscogsTrack> {
+    medium_tracklists(tracklist)
+        .into_iter()
+        .enumerate()
+        .filter(|(position, _)| coverage.covers(*position))
+        .flat_map(|(_, rows)| rows)
+        .collect()
 }
 
 /// A known CD contains one side even when its track positions omit a disc.

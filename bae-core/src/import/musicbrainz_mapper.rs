@@ -14,6 +14,7 @@ use super::assemble::{
 };
 use super::ParsedAlbum;
 use crate::db::{is_various_artists, Pressing};
+use crate::import::medium_coverage::MediumCoverage;
 use crate::import::{Catalog, ImportError, MetadataRef};
 use crate::musicbrainz::{
     label_and_catno, MbArtistRef, MbMedium, MbRelation, MbReleaseResponse, MbTrack, MbWork,
@@ -301,8 +302,34 @@ pub(crate) fn metadata(
     })
 }
 
+/// Each medium's stated track lengths, in track order — what a folder's
+/// measured lengths choose their coverage from.
+pub(crate) fn medium_lengths(response: &MbReleaseResponse) -> Vec<Vec<Option<u64>>> {
+    response
+        .media
+        .iter()
+        .map(|medium| medium.tracks.iter().map(|track| track.length).collect())
+        .collect()
+}
+
+/// The mediums of a release the coverage names, in release order.
+pub(crate) fn covered_media<'a>(
+    response: &'a MbReleaseResponse,
+    coverage: &'a MediumCoverage,
+) -> impl Iterator<Item = &'a MbMedium> + 'a {
+    response
+        .media
+        .iter()
+        .enumerate()
+        .filter(move |(position, _)| coverage.covers(*position))
+        .map(|(_, medium)| medium)
+}
+
+/// The album the covered mediums of a release describe: their tracks in
+/// release order, sides numbered from the first covered medium.
 pub(crate) fn map_with_metadata(
     response: &MbReleaseResponse,
+    coverage: &MediumCoverage,
     mut metadata: super::release_metadata::ReleaseMetadata,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
@@ -318,7 +345,7 @@ pub(crate) fn map_with_metadata(
     // Release-scoped: each work's relations are converted (and its skip lines
     // logged) at most once, no matter how many tracks reference it.
     let mut converted_works: HashSet<String> = HashSet::new();
-    for medium in &response.media {
+    for medium in covered_media(response, coverage) {
         let sides = medium_sides(&response.id, medium)?;
 
         for (track, &side_offset) in medium.tracks.iter().zip(&sides.offsets) {

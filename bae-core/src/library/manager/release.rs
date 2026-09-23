@@ -802,12 +802,15 @@ fn parsed_for_existing_release(
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
 ) -> Result<crate::import::ParsedAlbum, LibraryError> {
-    // Only a Discogs tracklist is laid out against what the audio measures, so
-    // it alone reads the stored durations — and it alone refuses a release
-    // whose files were never measured. A MusicBrainz document states its own
-    // track times.
+    // The stored durations say which of the release's mediums these tracks
+    // are: one disc of a box, the CD layer of a hybrid SACD. A Discogs
+    // tracklist is also laid out against them, and reads none of its own, so
+    // it alone refuses a release whose files were never measured. A
+    // MusicBrainz document states its own track times, so a release with a
+    // track nothing measured is read as the whole release, which is what a
+    // single-medium release is either way.
     let audio_durations = match source {
-        crate::import::Catalog::MusicBrainz => Vec::new(),
+        crate::import::Catalog::MusicBrainz => stored_track_durations(tracks).unwrap_or_default(),
         crate::import::Catalog::Discogs => stored_track_durations(tracks)?,
         other => unreachable!("nothing fetches documents from {}", other.as_str()),
     };

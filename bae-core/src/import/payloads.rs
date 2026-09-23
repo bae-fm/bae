@@ -20,6 +20,7 @@ use crate::db::{Database, DbSourceReleasePayload};
 use crate::discogs::client::DiscogsClient;
 use crate::discogs::DiscogsRelease;
 use crate::import::cover_art::RemoteCover;
+use crate::import::medium_coverage::MediumCoverage;
 use crate::import::search::{ImportSearchReleaseDetail, SourceTracks};
 use crate::import::{
     parse_catalog_url, Catalog, CatalogPage, ImportError, MetadataRef, ParsedAlbum, PayloadSource,
@@ -179,18 +180,45 @@ impl ReleasePayloads {
         self.projected_records()
     }
 
+    /// The mediums of this release the audio is a rip of — the CD layer of a
+    /// hybrid SACD, one disc of a box. Every projection below reads those
+    /// mediums' tracks and no others, so the draft, the picker's tracklist,
+    /// and the Ready rule all describe the same discs. Chosen from the
+    /// measured lengths alone, so an applied source replays to the same
+    /// mediums from its stored durations.
+    fn coverage(&self, audio_durations_ms: &[u64]) -> Result<MediumCoverage, ImportError> {
+        // The documents are parsed here, which is the only thing that can
+        // fail; choosing itself always answers.
+        let mediums = match self.release.catalog {
+            Catalog::MusicBrainz => {
+                crate::import::musicbrainz_mapper::medium_lengths(&self.musicbrainz_anchor()?)
+            }
+            Catalog::Discogs => {
+                crate::import::discogs_mapper::medium_lengths(&self.discogs_anchor()?.tracklist)
+            }
+            other => not_fetched(other),
+        };
+        Ok(crate::import::medium_coverage::choose(
+            &mediums,
+            audio_durations_ms,
+        ))
+    }
+
     /// What the source says about this release's own tracklist — the half of the
     /// Ready rule the folder's probed durations are checked against.
     pub fn source_tracks_for_audio(
         &self,
         audio_durations_ms: &[u64],
     ) -> Result<SourceTracks, ImportError> {
+        let coverage = self.coverage(audio_durations_ms)?;
         match self.release.catalog {
             Catalog::MusicBrainz => Ok(crate::import::search::mb_source_tracks(
                 &self.musicbrainz_anchor()?,
+                &coverage,
             )),
             Catalog::Discogs => Ok(crate::import::search::discogs_source_tracks(
                 &self.discogs_anchor()?,
+                &coverage,
                 Some(audio_durations_ms),
             )),
             other => not_fetched(other),
@@ -214,7 +242,9 @@ impl ReleasePayloads {
             Catalog::Discogs => {
                 covers.extend(self.discogs_anchor()?.covers);
                 if let Some(release) = self.musicbrainz_xref()? {
-                    covers.extend(crate::import::cover_art::musicbrainz_release_cover(&release));
+                    covers.extend(crate::import::cover_art::musicbrainz_release_cover(
+                        &release,
+                    ));
                 }
             }
             other => not_fetched(other),
@@ -259,7 +289,11 @@ impl ReleasePayloads {
     /// than this one.
     fn covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
         let mut unique = Vec::new();
-        for cover in self.release_covers()?.into_iter().chain(self.album_covers()?) {
+        for cover in self
+            .release_covers()?
+            .into_iter()
+            .chain(self.album_covers()?)
+        {
             crate::import::cover_art::push_unique_cover(&mut unique, cover);
         }
         Ok(unique)
@@ -340,14 +374,17 @@ impl ReleasePayloads {
         partners: &[ReleasePayloads],
     ) -> Result<ImportSearchReleaseDetail, ImportError> {
         let covers = pick_covers(self, partners)?;
+        let coverage = self.coverage(audio_durations_ms)?;
         let mut detail = match self.release.catalog {
             Catalog::MusicBrainz => crate::import::search::build_mb_detail(
                 &self.release.key,
                 &self.musicbrainz_anchor()?,
+                &coverage,
                 covers,
             ),
             Catalog::Discogs => Ok(crate::import::search::build_discogs_detail(
                 &self.discogs_anchor()?,
+                &coverage,
                 covers,
                 Some(audio_durations_ms),
             )),
@@ -376,9 +413,11 @@ impl ReleasePayloads {
     /// The DB-shape album the commit writes, and the editor's seed is projected
     /// from — the same mapping the fetch path runs, over the same documents.
     ///
-    /// `audio_durations_ms` is what the release's audio actually measures, which
-    /// is how a Discogs tracklist's index/sub-track layout is chosen. A
-    /// MusicBrainz document states its own track times and ignores them.
+    /// `audio_durations_ms` is what the release's audio actually measures. It
+    /// chooses which of the release's mediums are read and, for a Discogs
+    /// tracklist, its index/sub-track layout; a MusicBrainz document states
+    /// its own track times. Empty means unmeasured, and reads the whole
+    /// release.
     pub fn parsed(
         &self,
         audio_durations_ms: &[u64],
@@ -386,15 +425,18 @@ impl ReleasePayloads {
         ids: &dyn coven::IdProvider,
     ) -> Result<ParsedAlbum, ImportError> {
         let metadata = self.projected_metadata()?;
+        let coverage = self.coverage(audio_durations_ms)?;
         match self.release.catalog {
             Catalog::MusicBrainz => crate::import::musicbrainz_mapper::map_with_metadata(
                 &self.musicbrainz_anchor()?,
+                &coverage,
                 metadata,
                 clock,
                 ids,
             ),
             Catalog::Discogs => crate::import::discogs_mapper::map_with_metadata(
                 &self.discogs_anchor()?,
+                &coverage,
                 metadata,
                 Some(audio_durations_ms),
                 clock,

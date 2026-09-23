@@ -6,6 +6,19 @@ use crate::musicbrainz::{
 };
 use coven::{FixedClock, SequentialIdProvider};
 
+/// Every medium of a release: what a test with no folder to fit reads.
+fn all_media(response: &MbReleaseResponse) -> crate::import::medium_coverage::MediumCoverage {
+    crate::import::medium_coverage::MediumCoverage::all(response.media.len())
+}
+
+fn all_discs(
+    release: &crate::discogs::DiscogsRelease,
+) -> crate::import::medium_coverage::MediumCoverage {
+    crate::import::medium_coverage::MediumCoverage::all(
+        crate::import::discogs_mapper::medium_tracklists(&release.tracklist).len(),
+    )
+}
+
 fn test_clock() -> FixedClock {
     FixedClock(
         chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
@@ -89,9 +102,11 @@ fn discogs_search_result_keeps_every_barcode_for_pairing() {
     musicbrainz.year = Some(1992);
     musicbrainz.barcodes = vec!["5051961234567".to_string()];
 
-    let groups = crate::import::release_group::group_results(
-        crate::import::release_group::unranked(vec![musicbrainz, discogs]),
-    );
+    let groups =
+        crate::import::release_group::group_results(crate::import::release_group::unranked(vec![
+            musicbrainz,
+            discogs,
+        ]));
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0].pressings.len(), 1);
     assert_eq!(
@@ -117,7 +132,9 @@ fn a_zero_master_id_is_no_group() {
         .into_iter()
         .map(discogs_search_result_to_metadata)
         .collect();
-    assert!(converted.iter().all(|result| result.source_group_id.is_none()));
+    assert!(converted
+        .iter()
+        .all(|result| result.source_group_id.is_none()));
 
     let groups = crate::import::release_group::group_results(
         crate::import::release_group::unranked(converted),
@@ -414,7 +431,13 @@ fn mb_detail_uses_supplied_cover_art_archive_candidates() {
         source: Catalog::MusicBrainz,
     }];
 
-    let detail = build_mb_detail("mb-release-1", &response, cover_art.clone()).unwrap();
+    let detail = build_mb_detail(
+        "mb-release-1",
+        &response,
+        &all_media(&response),
+        cover_art.clone(),
+    )
+    .unwrap();
 
     assert_eq!(detail.cover_art, cover_art);
 }
@@ -443,7 +466,7 @@ fn mb_detail_numbers_vinyl_sides_across_media() {
         },
     ]);
 
-    let detail = build_mb_detail("mb-release-1", &response, vec![]).unwrap();
+    let detail = build_mb_detail("mb-release-1", &response, &all_media(&response), vec![]).unwrap();
     let sides: Vec<Option<u32>> = detail.tracks.iter().map(|t| t.side).collect();
     assert_eq!(sides, vec![Some(1), Some(2), Some(3), Some(4)]);
 }
@@ -480,7 +503,7 @@ fn mb_detail_preserves_unknown_sides() {
         ],
     }]);
 
-    let detail = build_mb_detail("mb-release-1", &response, vec![]).unwrap();
+    let detail = build_mb_detail("mb-release-1", &response, &all_media(&response), vec![]).unwrap();
     assert_eq!(detail.tracks[0].side, Some(1));
     assert_eq!(detail.tracks[1].side, None);
 }
@@ -504,7 +527,7 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
         catalog_number: Some("TOCP-8556".to_string()),
     }];
 
-    let detail = build_mb_detail("mb-release-1", &response, vec![]).unwrap();
+    let detail = build_mb_detail("mb-release-1", &response, &all_media(&response), vec![]).unwrap();
     let parsed = serde_json::from_value::<crate::import::payloads::ReleasePayloads>(serde_json::json!({
         "release": crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, &response.id),
         "anchor": serde_json::to_string(&response).expect("MusicBrainz fixture serializes"),
@@ -555,7 +578,7 @@ fn mb_detail_track_title_prefers_the_recording_title() {
         tracks: vec![track, fallback],
     }]);
 
-    let detail = build_mb_detail("mb-release-1", &response, vec![]).unwrap();
+    let detail = build_mb_detail("mb-release-1", &response, &all_media(&response), vec![]).unwrap();
     let titles: Vec<&str> = detail.tracks.iter().map(|t| t.title.as_str()).collect();
     assert_eq!(titles, vec!["Recording Title", "Only A Track Title"]);
 
@@ -598,7 +621,7 @@ fn mb_detail_errors_on_track_without_any_title() {
         }],
     }]);
 
-    let err = build_mb_detail("mb-release-1", &response, vec![])
+    let err = build_mb_detail("mb-release-1", &response, &all_media(&response), vec![])
         .expect_err("expected error for a title-less track");
     assert!(
         matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no track title")),
@@ -650,7 +673,12 @@ fn nested_discogs_release() -> crate::discogs::DiscogsRelease {
 fn discogs_detail_collapses_an_index_for_one_matching_audio_file() {
     let release = nested_discogs_release();
 
-    let detail = build_discogs_detail(&release, Vec::new(), Some(&[300_000, 240_000]));
+    let detail = build_discogs_detail(
+        &release,
+        &all_discs(&release),
+        Vec::new(),
+        Some(&[300_000, 240_000]),
+    );
     let titles: Vec<&str> = detail
         .tracks
         .iter()
@@ -694,7 +722,12 @@ fn discogs_detail_selects_each_index_layout_from_ordered_durations() {
     )
     .expect("two nested Discogs indexes parse");
 
-    let detail = build_discogs_detail(&release, Vec::new(), Some(&[60_000, 120_000, 540_000]));
+    let detail = build_discogs_detail(
+        &release,
+        &all_discs(&release),
+        Vec::new(),
+        Some(&[60_000, 120_000, 540_000]),
+    );
     let titles: Vec<&str> = detail
         .tracks
         .iter()
@@ -751,6 +784,7 @@ fn nested_index_durations_align_after_preceding_tracks() {
 
     let detail = build_discogs_detail(
         &release,
+        &all_discs(&release),
         Vec::new(),
         Some(&[600_000, 60_000, 120_000, 540_000]),
     );

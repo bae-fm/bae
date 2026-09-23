@@ -388,7 +388,10 @@ fn totals_decide_not_per_track_lengths() {
 
     let source_response: MbReleaseResponse =
         serde_json::from_str(&release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000])).unwrap();
-    let source = crate::import::search::mb_source_tracks(&source_response);
+    let source = crate::import::search::mb_source_tracks(
+        &source_response,
+        &crate::import::medium_coverage::MediumCoverage::all(source_response.media.len()),
+    );
     assert_eq!(
         source,
         SourceTracks::Listed {

@@ -209,7 +209,13 @@ fn release_barcode_reaches_pressing_metadata() {
     .unwrap();
     assert_eq!(release.barcode.as_deref(), Some("0 12345 67890 5"));
     assert_eq!(
-        crate::import::search::build_discogs_detail(&release, Vec::new(), None).barcode,
+        crate::import::search::build_discogs_detail(
+            &release,
+            &crate::import::medium_coverage::MediumCoverage::all(1),
+            Vec::new(),
+            None
+        )
+        .barcode,
         release.barcode
     );
     assert_eq!(

@@ -266,8 +266,14 @@ pub fn discogs_search_result_to_metadata(
 
 /// A MusicBrainz release's tracklist, as an `inc=recordings` response carries
 /// it.
-pub(crate) fn mb_source_tracks(r: &MbReleaseResponse) -> SourceTracks {
-    source_tracks_from_mb_tracks(r.media.iter().flat_map(|medium| &medium.tracks))
+pub(crate) fn mb_source_tracks(
+    r: &MbReleaseResponse,
+    coverage: &crate::import::medium_coverage::MediumCoverage,
+) -> SourceTracks {
+    source_tracks_from_mb_tracks(
+        crate::import::musicbrainz_mapper::covered_media(r, coverage)
+            .flat_map(|medium| &medium.tracks),
+    )
 }
 
 fn source_tracks_from_mb_tracks<'a>(
@@ -583,10 +589,11 @@ pub async fn lookup_by_discid(
 /// parseable duration leaves the total unknown while the count still stands.
 pub(crate) fn discogs_source_tracks(
     release: &crate::discogs::DiscogsRelease,
+    coverage: &crate::import::medium_coverage::MediumCoverage,
     audio_durations_ms: Option<&[u64]>,
 ) -> SourceTracks {
-    let tracks =
-        crate::import::discogs_mapper::process_tracklist(&release.tracklist, audio_durations_ms);
+    let tracklist = crate::import::discogs_mapper::covered_tracklist(&release.tracklist, coverage);
+    let tracks = crate::import::discogs_mapper::process_tracklist(&tracklist, audio_durations_ms);
     if tracks.is_empty() {
         return SourceTracks::Nothing;
     }
@@ -601,12 +608,13 @@ pub(crate) fn discogs_source_tracks(
 pub(crate) fn build_mb_detail(
     release_id: &str,
     mb_response: &crate::musicbrainz::MbReleaseResponse,
+    coverage: &crate::import::medium_coverage::MediumCoverage,
     cover_art: Vec<RemoteCover>,
 ) -> Result<ImportSearchReleaseDetail, ImportError> {
     let mut side_base: u32 = 0;
     let mut tracks: Vec<ReleaseTrack> = Vec::new();
 
-    for medium in &mb_response.media {
+    for medium in crate::import::musicbrainz_mapper::covered_media(mb_response, coverage) {
         let sides = crate::import::musicbrainz_mapper::medium_sides(release_id, medium)?;
 
         for (t, &side_offset) in medium.tracks.iter().zip(&sides.offsets) {
@@ -654,11 +662,13 @@ pub(crate) fn build_mb_detail(
 
 pub(crate) fn build_discogs_detail(
     release: &crate::discogs::DiscogsRelease,
+    coverage: &crate::import::medium_coverage::MediumCoverage,
     cover_art: Vec<RemoteCover>,
     audio_durations_ms: Option<&[u64]>,
 ) -> ImportSearchReleaseDetail {
+    let tracklist = crate::import::discogs_mapper::covered_tracklist(&release.tracklist, coverage);
     let processed =
-        crate::import::discogs_mapper::process_tracklist(&release.tracklist, audio_durations_ms);
+        crate::import::discogs_mapper::process_tracklist(&tracklist, audio_durations_ms);
     let pressing = crate::import::discogs_mapper::pressing(release);
 
     let tracks: Vec<ReleaseTrack> = processed

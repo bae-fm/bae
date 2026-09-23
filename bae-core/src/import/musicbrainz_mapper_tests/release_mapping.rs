@@ -87,6 +87,129 @@ fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
     }
 }
 
+/// [`map`] with a folder to fit: the measured lengths choose which mediums
+/// the draft is read from.
+fn map_for_audio(
+    response: &MbReleaseResponse,
+    audio_durations_ms: &[u64],
+) -> Result<ParsedAlbum, ImportError> {
+    let payloads: crate::import::payloads::ReleasePayloads =
+        serde_json::from_value(serde_json::json!({
+            "release": MetadataRef::new(Catalog::MusicBrainz, &response.id),
+            "anchor": serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
+            "supporting": [],
+        }))
+        .expect("archived fixture deserializes");
+    let clock = FixedClock(
+        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc),
+    );
+    let ids = SequentialIdProvider::new("mb");
+    payloads.parsed(audio_durations_ms, &clock, &ids)
+}
+
+fn timed_mb_track(number: &str, title: &str, length_ms: u64) -> MbTrack {
+    MbTrack {
+        length: Some(length_ms),
+        ..make_mb_track(number, title)
+    }
+}
+
+/// A hybrid SACD is one disc MusicBrainz lists as two mediums, a CD layer
+/// and an SACD layer of the same tracks. A rip of it is the CD layer: the
+/// draft is that medium's tracks, all on side 1, not both layers' twelve.
+#[test]
+fn a_hybrid_sacd_rip_is_read_from_its_cd_layer() {
+    let layer = |format: &str| MbMedium {
+        discs: vec![],
+        format: Some(format.to_string()),
+        tracks: vec![
+            timed_mb_track("1", "Track 1", 527_000),
+            timed_mb_track("2", "Track 2", 284_000),
+            timed_mb_track("3", "Track 3", 333_000),
+        ],
+    };
+    let response = make_response(vec![
+        layer("Hybrid SACD (CD layer)"),
+        layer("Hybrid SACD (SACD layer, 2 channels)"),
+    ]);
+
+    let parsed = map_for_audio(&response, &[527_200, 284_000, 332_900]).unwrap();
+
+    assert_eq!(parsed.tracks.len(), 3);
+    assert!(parsed.tracks.iter().all(|track| track.side == Some(1)));
+    assert_eq!(
+        parsed
+            .tracks
+            .iter()
+            .map(|track| track.track_number)
+            .collect::<Vec<_>>(),
+        vec![Some(1), Some(2), Some(3)]
+    );
+}
+
+/// One disc of a box is read from the medium its lengths match, and the
+/// draft's sides start at 1 there rather than at that disc's position.
+#[test]
+fn one_disc_of_a_box_is_read_from_its_own_medium() {
+    let disc = |titles: [&str; 2], lengths: [u64; 2]| MbMedium {
+        discs: vec![],
+        format: Some("CD".to_string()),
+        tracks: vec![
+            timed_mb_track("1", titles[0], lengths[0]),
+            timed_mb_track("2", titles[1], lengths[1]),
+        ],
+    };
+    let response = make_response(vec![
+        disc(["Track 1", "Track 2"], [300_000, 300_000]),
+        disc(["Track 3", "Track 4"], [200_000, 400_000]),
+        disc(["Track 5", "Track 6"], [250_000, 350_000]),
+    ]);
+
+    let parsed = map_for_audio(&response, &[250_100, 349_800]).unwrap();
+
+    assert_eq!(
+        parsed
+            .tracks
+            .iter()
+            .map(|track| track.title.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Track 5", "Track 6"]
+    );
+    assert!(parsed.tracks.iter().all(|track| track.side == Some(1)));
+}
+
+/// Audio no set of mediums adds up to is read as the whole release. The
+/// refusal stays where it always was, when the metadata is applied to a
+/// draft, where both counts are named.
+#[test]
+fn audio_no_mediums_hold_is_read_as_the_whole_release() {
+    let response = make_response(vec![
+        MbMedium {
+            discs: vec![],
+            format: Some("CD".to_string()),
+            tracks: vec![timed_mb_track("1", "Track 1", 300_000)],
+        },
+        MbMedium {
+            discs: vec![],
+            format: Some("CD".to_string()),
+            tracks: vec![timed_mb_track("1", "Track 2", 300_000)],
+        },
+    ]);
+
+    let parsed = map_for_audio(&response, &[100_000, 100_000, 100_000]).unwrap();
+
+    assert_eq!(
+        parsed
+            .tracks
+            .iter()
+            .map(|track| track.title.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Track 1", "Track 2"]
+    );
+}
+
 #[test]
 fn test_cd_two_media_each_one_side() {
     let response = make_response(vec![

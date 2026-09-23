@@ -4,6 +4,11 @@ use coven::FixedClock;
 use coven::SequentialIdProvider;
 
 /// Exercise track and credit mapping with the release's own metadata.
+/// Every disc of a release: what a test with no folder to fit reads.
+fn all_discs(release: &DiscogsRelease) -> MediumCoverage {
+    MediumCoverage::all(medium_tracklists(&release.tracklist).len())
+}
+
 fn map(release: &DiscogsRelease) -> Result<ParsedAlbum, ImportError> {
     let clock = FixedClock(
         chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
@@ -11,7 +16,14 @@ fn map(release: &DiscogsRelease) -> Result<ParsedAlbum, ImportError> {
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("d");
-    map_with_metadata(release, metadata(release), None, &clock, &ids)
+    map_with_metadata(
+        release,
+        &all_discs(release),
+        metadata(release),
+        None,
+        &clock,
+        &ids,
+    )
 }
 
 fn map_for_audio(
@@ -26,6 +38,7 @@ fn map_for_audio(
     let ids = SequentialIdProvider::new("d");
     map_with_metadata(
         release,
+        &all_discs(release),
         metadata(release),
         Some(audio_durations_ms),
         &clock,
