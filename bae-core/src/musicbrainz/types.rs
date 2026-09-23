@@ -301,11 +301,11 @@ struct UrlLookupRelation {
 enum UrlLookupTarget {
     #[serde(rename = "release")]
     Release { release: UrlLookupEntity },
-    #[serde(rename = "release-group")]
-    Group {
-        #[serde(rename = "release-group")]
-        release_group: UrlLookupEntity,
-    },
+    /// MusicBrainz spells this target with an underscore in URL lookups —
+    /// `"target-type": "release_group"` beside a `"release_group"` object —
+    /// where every other document it serves says `release-group`.
+    #[serde(rename = "release_group")]
+    Group { release_group: UrlLookupEntity },
     #[serde(other)]
     Other,
 }

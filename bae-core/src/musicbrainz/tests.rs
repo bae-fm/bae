@@ -381,7 +381,7 @@ async fn release_lookup_fetches_only_the_requested_document() {
 fn discogs_url_answers_keep_all_matching_targets_and_their_entity_kind() {
     let raw = serde_json::json!({"relations": [
         {"type": "discogs", "target-type": "release", "release": {"id": "release-b"}},
-        {"type": "discogs", "target-type": "release-group", "release-group": {"id": "group-a"}},
+        {"type": "discogs", "target-type": "release_group", "release_group": {"id": "group-a"}},
         {"type": "discogs", "target-type": "release", "release": {"id": "release-a"}},
         {"type": "discogs", "target-type": "release", "release": {"id": "release-b"}},
         {"type": "discogs", "target-type": "artist", "artist": {"id": "artist-a"}},
@@ -417,14 +417,14 @@ fn discogs_url_answers_keep_all_matching_targets_and_their_entity_kind() {
         .is_empty());
     assert!(parse_discogs_release_lookup("{}").is_err());
     assert!(parse_discogs_master_lookup(
-        r#"{"relations":[{"type":"discogs","target-type":"release-group","release-group":{}}]}"#
+        r#"{"relations":[{"type":"discogs","target-type":"release_group","release_group":{}}]}"#
     )
     .is_err());
 }
 
 #[tokio::test]
 async fn reverse_release_and_master_lookups_preserve_raw_answers() {
-    for (master, target) in [(false, "release"), (true, "release-group")] {
+    for (master, target) in [(false, "release"), (true, "release_group")] {
         let raw = serde_json::json!({"relations": [{
             "type": "discogs", "target-type": target, target: {"id": "linked-id"}
         }]})
@@ -690,5 +690,20 @@ async fn invalid_request_is_diagnostic_not_a_network_outage() {
     assert!(
         error.to_string().contains("RelativeUrlWithoutBase"),
         "{error}"
+    );
+}
+
+/// A Discogs master's URL document as MusicBrainz serves it: the target type
+/// and its object are spelled `release_group`, not `release-group`.
+#[test]
+fn a_master_lookup_reads_the_group_musicbrainz_names() {
+    let served = r#"{"resource":"https://www.discogs.com/master/269277","relations":[{"target-credit":"","end":null,"type-id":"99e550f3-5ab4-3110-b5b9-fe01d970b126","begin":null,"release_group":{"title":"Album","first-release-date":"1965","disambiguation":"","id":"30c2eb28-a463-38ab-9f34-018cef8a5cfc","secondary-types":[],"primary-type":null,"secondary-type-ids":[],"primary-type-id":null},"attribute-values":{},"attribute-ids":{},"ended":false,"target-type":"release_group","direction":"backward","type":"discogs","attributes":[],"source-credit":""}],"id":"c7bc7064-875b-447f-a01b-039e316e0f26"}"#;
+
+    assert_eq!(
+        parse_discogs_master_lookup(served).unwrap(),
+        vec![crate::import::CatalogPage::Group {
+            catalog: crate::import::Catalog::MusicBrainz,
+            key: "30c2eb28-a463-38ab-9f34-018cef8a5cfc".to_string(),
+        }]
     );
 }

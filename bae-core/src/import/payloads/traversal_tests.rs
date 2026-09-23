@@ -163,7 +163,7 @@ async fn cyclic_release_and_album_links_fetch_each_document_once_and_replay() {
             {"type":"discogs","target-type":"release","release":{"id":"cycle-release"}}
         ]}).to_string())),
         ("url:https://www.discogs.com/master/920002".into(), (200, serde_json::json!({"relations":[
-            {"type":"discogs","target-type":"release-group","release-group":{"id":"cycle-group"}}
+            {"type":"discogs","target-type":"release_group","release_group":{"id":"cycle-group"}}
         ]}).to_string())),
     ]);
     let expected: HashMap<_, _> = answers.keys().cloned().map(|key| (key, 1)).collect();
@@ -213,8 +213,8 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
         (
             200,
             serde_json::json!({"relations":[
-                {"type":"discogs","target-type":"release-group","release-group":{"id":"group-a"}},
-                {"type":"discogs","target-type":"release-group","release-group":{"id":"group-b"}}
+                {"type":"discogs","target-type":"release_group","release_group":{"id":"group-a"}},
+                {"type":"discogs","target-type":"release_group","release_group":{"id":"group-b"}}
             ]})
             .to_string(),
         ),

@@ -542,7 +542,7 @@ impl MusicBrainz {
                 &url,
                 200,
                 serde_json::json!({"relations": [
-                    {"type": "discogs", "target-type": "release-group", "release-group": {"id": id}}
+                    {"type": "discogs", "target-type": "release_group", "release_group": {"id": id}}
                 ]})
                 .to_string(),
             ),
