@@ -83,6 +83,37 @@ pub(super) fn load_session_on(
     .transpose()
 }
 
+/// Show `presentation` in the candidate's pane, leaving the rest of its
+/// session as it is. A candidate with no session yet gets a fresh one with
+/// this surface showing; one with no state row gets nothing.
+pub(super) fn present_on(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    presentation: MetadataPresentation,
+) -> Result<(), DbError> {
+    let search = SearchForm::default();
+    sql.execute(
+        "INSERT INTO import_candidate_session (\
+             content_hash, presentation, search_tab, search_artist, \
+             search_album, search_catalog, search_barcode, error) \
+         SELECT ?, ?, ?, ?, ?, ?, ?, NULL \
+         WHERE EXISTS (SELECT 1 FROM import_candidate_state WHERE content_hash = ?) \
+         ON CONFLICT (content_hash) DO UPDATE SET \
+             presentation = excluded.presentation",
+        params![
+            content_hash,
+            presentation_column(presentation),
+            tab_column(search.tab),
+            search.artist,
+            search.album,
+            search.catalog,
+            search.barcode,
+            content_hash,
+        ],
+    )?;
+    Ok(())
+}
+
 impl Database {
     /// Open the pane on Find online for every one of these candidates, leaving
     /// the rest of each session as it is. A candidate with no session yet gets
@@ -98,33 +129,9 @@ impl Database {
         if content_hashes.is_empty() {
             return Ok(());
         }
-        let opened = CandidateSession {
-            presentation: MetadataPresentation::FindOnline,
-            search: SearchForm::default(),
-            error: None,
-        };
         self.call(move |sql| {
             for content_hash in &content_hashes {
-                sql.execute(
-                    "INSERT INTO import_candidate_session (\
-                         content_hash, presentation, search_tab, search_artist, \
-                         search_album, search_catalog, search_barcode, error) \
-                     SELECT ?, ?, ?, ?, ?, ?, ?, ? \
-                     WHERE EXISTS (SELECT 1 FROM import_candidate_state WHERE content_hash = ?) \
-                     ON CONFLICT (content_hash) DO UPDATE SET \
-                         presentation = excluded.presentation",
-                    params![
-                        content_hash,
-                        presentation_column(opened.presentation),
-                        tab_column(opened.search.tab),
-                        opened.search.artist,
-                        opened.search.album,
-                        opened.search.catalog,
-                        opened.search.barcode,
-                        opened.error,
-                        content_hash,
-                    ],
-                )?;
+                present_on(sql, content_hash, MetadataPresentation::FindOnline)?;
             }
             Ok(())
         })

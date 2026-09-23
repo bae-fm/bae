@@ -11,7 +11,7 @@ mod pane_edits;
 mod reset;
 
 use crate::db::{
-    CandidateLookupUpdate, CandidateResultWrite, CandidateSaveExpectation, CandidateSaveExtras,
+    CandidateLookupUpdate, CandidatePaneWrite, CandidateResultWrite, CandidateSaveExpectation, CandidateSaveExtras,
     CandidateSaved, CandidateScanExpectation, Database, DbCandidateIdentifyResult,
     NewImportCandidateVerdict, ScannedCandidateKey,
 };
@@ -110,11 +110,20 @@ impl CandidatePreparations {
             prep.metadata = metadata;
             prep.metadata_revision += 1;
         }
+        // A run that applied its own pick and whose result asks nothing has
+        // left only the draft and its Import to see, so the pane opens there.
+        // A result that asks something leaves the pane where it was.
+        let pane = if verdict.metadata.is_some() {
+            CandidatePaneWrite::OpenOnDraftIfReady
+        } else {
+            CandidatePaneWrite::Keep
+        };
         // A run that settled on a release is a pick, and confirms the number
         // that release carries the same way a person's pick does.
         let extras = CandidateSaveExtras {
             lookup_update: CandidateLookupUpdate::ConfirmPick,
             result: CandidateResultWrite::Identified,
+            pane,
             ..CandidateSaveExtras::default()
         };
         Ok(matches!(
@@ -215,6 +224,7 @@ impl CandidatePreparations {
             reshaped_files: Some(settled_candidates.to_vec()),
             lookup_update: CandidateLookupUpdate::Keep,
             result: CandidateResultWrite::Keep,
+            pane: CandidatePaneWrite::Keep,
         };
         match self
             .database
@@ -428,6 +438,7 @@ impl CandidatePreparations {
             reshaped_files: None,
             lookup_update: CandidateLookupUpdate::ConfirmPick,
             result,
+            pane: CandidatePaneWrite::Keep,
         };
         match self
             .database

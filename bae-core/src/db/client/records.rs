@@ -336,7 +336,7 @@ fn find_album_by_record_pairs<T>(
 }
 
 pub(super) fn check_releases_in_library_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl super::query::QueryOne,
     checks: &[LibraryCheck],
 ) -> Result<Vec<LibraryStatus>, DbError> {
     let mut statuses = Vec::with_capacity(checks.len());

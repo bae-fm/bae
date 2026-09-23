@@ -98,24 +98,6 @@ extension ImportSearchFlow {
             },
             onSelect: onSelect,
         )
-        // The draft saying identification wrote it leaves nothing here to do:
-        // it already carries the claim the person's click would make. Leave
-        // Find online the way a pick by hand leaves it — that one goes back to
-        // the draft through core when its own read lands.
-        //
-        // Only on the transition, and inside `.id(key)` so it is this
-        // candidate's: a candidate whose draft identification had already
-        // written when Find online opened stays open, because being here is
-        // then something the person asked for.
-        //
-        // The re-identify sheet is untouched twice over — it hands the pane no
-        // way back, and its candidate has no row to write an author on, so its
-        // author never leaves `.nobody`.
-        .onChange(of: input.candidate.metadataAuthor) { _, now in
-            if now == .identification {
-                onBack?()
-            }
-        }
         // Which section is open is this candidate's: another candidate's
         // pane starts on its own.
         .id(key)

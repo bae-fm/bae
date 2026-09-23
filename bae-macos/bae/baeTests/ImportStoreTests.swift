@@ -336,6 +336,43 @@ struct ImportStoreCandidateDetailTests {
         #expect(merged.displayName == "A-renamed")
         #expect(merged.files.files.isEmpty)
     }
+
+    /// Identification storing a pick that asks nothing moves the stored pane
+    /// to the draft in the same write; the open pane follows the read that
+    /// write produces, off Find online and onto the draft.
+    @MainActor
+    @Test("a read that stores the pane on the draft moves it there")
+    func aReadOnTheDraftMovesThePane() throws {
+        let store = ImportStore()
+        store.applyCandidateDetail(
+            key: "/w1/a",
+            detail: detail(
+                folderPath: "/w1/a",
+                watchedFolderPath: "/w1",
+                name: "A",
+                presentation: .findOnline
+            )
+        )
+        #expect(
+            try #require(store.selectedCandidates["/w1/a"])
+                .metadataPresentation == .findOnline
+        )
+
+        store.applyCandidateDetail(
+            key: "/w1/a",
+            detail: detail(
+                folderPath: "/w1/a",
+                watchedFolderPath: "/w1",
+                name: "A",
+                presentation: .draft
+            )
+        )
+
+        #expect(
+            try #require(store.selectedCandidates["/w1/a"])
+                .metadataPresentation == .draft
+        )
+    }
 }
 
 @Suite("ImportStore sidebar covers")

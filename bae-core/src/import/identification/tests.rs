@@ -831,6 +831,7 @@ include!("tests/metadata_modes.rs");
 include!("tests/imports_and_progress.rs");
 include!("tests/persistence.rs");
 include!("tests/stored_picks.rs");
+include!("tests/settled_panes.rs");
 include!("tests/persistence_late.rs");
 include!("tests/candidate_decisions.rs");
 include!("tests/cancellation.rs");

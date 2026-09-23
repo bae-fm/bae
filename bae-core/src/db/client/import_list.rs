@@ -12,6 +12,8 @@
 
 mod window;
 
+pub(super) use window::library_statuses;
+
 use super::records::check_releases_in_library_on;
 use super::import_state::{load_matches_on, load_provenance_on};
 use super::*;

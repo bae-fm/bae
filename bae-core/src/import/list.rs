@@ -551,9 +551,8 @@ pub struct ImportCandidateDetail {
     pub metadata_draft: RawReleaseEdit,
     pub metadata_draft_is_blank: bool,
     pub metadata_provenance: Option<MetadataProvenance>,
-    /// Who wrote the draft. The pane returns to the draft when this becomes
-    /// `Identification`: the run wrote the pick a click here would have
-    /// written, so there is nothing left on Find online to do.
+    /// Who wrote the draft: nobody, the tag prefill, identification's own
+    /// pick, or the person.
     pub metadata_author: crate::import::MetadataAuthor,
     /// Revision of the exact metadata draft and selected cover in this value.
     pub metadata_revision: u64,

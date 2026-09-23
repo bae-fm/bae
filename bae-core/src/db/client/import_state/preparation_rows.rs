@@ -85,6 +85,19 @@ pub(crate) struct CandidateSaveExtras {
     pub reshaped_files: Option<Vec<(String, CategorizedFiles)>>,
     pub lookup_update: CandidateLookupUpdate,
     pub result: CandidateResultWrite,
+    pub pane: CandidatePaneWrite,
+}
+
+/// What this save does to where the candidate's pane stands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CandidatePaneWrite {
+    /// The pane stays where the person left it.
+    Keep,
+    /// The pane opens on the draft when the result this save stores asks
+    /// nothing: identification applied its own pick, and the draft and its
+    /// Import are all there is left to see. Classified inside the save, so
+    /// the library it is checked against is the one the result lands in.
+    OpenOnDraftIfReady,
 }
 
 /// Whether the candidate's result is new in this save, and so whether the
@@ -126,6 +139,7 @@ impl Default for CandidateSaveExtras {
             reshaped_files: None,
             lookup_update: CandidateLookupUpdate::Keep,
             result: CandidateResultWrite::Keep,
+            pane: CandidatePaneWrite::Keep,
         }
     }
 }
@@ -287,6 +301,29 @@ pub(super) fn save_preparation_on(
                 content_hash,
                 &crate::import::LookupChoices::default(),
             )?;
+        }
+    }
+
+    match extras.pane {
+        CandidatePaneWrite::Keep => {}
+        CandidatePaneWrite::OpenOnDraftIfReady => {
+            let identification = prep.identification.as_ref().ok_or_else(|| {
+                DbError::Message(format!(
+                    "candidate {content_hash} opens on a result it stores none of"
+                ))
+            })?;
+            let classification = crate::identify::classify(
+                &identification.verdict,
+                identification.probed_total_duration_ms,
+                &super::super::import_list::library_statuses(sql, &identification.verdict)?,
+            );
+            if classification == crate::identify::QueueClassification::Ready {
+                super::session_rows::present_on(
+                    sql,
+                    content_hash,
+                    crate::import::MetadataPresentation::Draft,
+                )?;
+            }
         }
     }
 

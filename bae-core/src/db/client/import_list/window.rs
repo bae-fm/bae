@@ -635,8 +635,8 @@ fn chosen_cover(
 /// The live library status of every release the verdict names. A release the
 /// check does not answer for is a read that must fail rather than a release
 /// silently resumed as "not in the library".
-fn library_statuses(
-    sql: &SqlReadContext<'_>,
+pub(crate) fn library_statuses(
+    sql: &impl super::super::query::QueryOne,
     verdict: &TerminalVerdict,
 ) -> Result<Vec<LibraryStatus>, DbError> {
     let mut seen = HashSet::new();
