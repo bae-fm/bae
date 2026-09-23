@@ -90,11 +90,6 @@ pub enum ImportError {
         audio_tracks: usize,
     },
 
-    /// Both sources assign groups, but their boundaries contradict each other.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    #[error("release disc or side boundaries disagree with the draft")]
-    MetadataGrouping,
-
     /// Local file-tag evidence can't seed a file-metadata import (no audio files,
     /// a file failed to open / parse, embedded-cover read failure).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

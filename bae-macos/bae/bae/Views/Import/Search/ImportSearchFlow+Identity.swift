@@ -85,8 +85,7 @@ extension ImportSearchFlow {
             default:
                 detail = nil
             }
-            if category == .metadataTrackCount || category == .metadataGrouping
-            {
+            if category == .metadataTrackCount {
                 return DisplayError(line: displayed.line)
             }
         }

@@ -100,6 +100,11 @@ pub(crate) fn candidate_draft_from_source(
 }
 
 /// Applying metadata preserves the included audio and the identity of every row.
+///
+/// The discs and sides are the metadata's, whatever the draft grouped the
+/// audio into: an LP ripped as one tagged disc takes the record's two sides,
+/// and a release that states one disc where the files were tagged two takes
+/// one.
 pub(crate) fn apply_metadata_tracks(
     proposed: &mut CandidateDraft,
     current: &CandidateDraft,
@@ -109,22 +114,6 @@ pub(crate) fn apply_metadata_tracks(
             metadata_tracks: proposed.tracks.len(),
             audio_tracks: current.tracks.len(),
         });
-    }
-    let mut forward = std::collections::HashMap::new();
-    let mut reverse = std::collections::HashMap::new();
-    for (metadata, existing) in proposed.tracks.iter().zip(&current.tracks) {
-        if let (Some(proposed_side), Some(current_side)) = (metadata.edit.side, existing.edit.side)
-        {
-            if forward
-                .insert(current_side, proposed_side)
-                .is_some_and(|side| side != proposed_side)
-                || reverse
-                    .insert(proposed_side, current_side)
-                    .is_some_and(|side| side != current_side)
-            {
-                return Err(ImportError::MetadataGrouping);
-            }
-        }
     }
     for (metadata, existing) in proposed.tracks.iter_mut().zip(&current.tracks) {
         metadata.edit.id.clone_from(&existing.edit.id);

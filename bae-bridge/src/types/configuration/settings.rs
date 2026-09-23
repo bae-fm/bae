@@ -205,7 +205,6 @@ pub enum BridgeErrorCategory {
     CandidateImportInProgress,
     CandidateAlreadyImported,
     MetadataTrackCount,
-    MetadataGrouping,
     Export,
     Save,
     CloudSetup {
@@ -353,7 +352,6 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             "core.import.error.candidate_already_imported"
         }
         BridgeErrorCategory::MetadataTrackCount => "core.import.error.metadata_track_count",
-        BridgeErrorCategory::MetadataGrouping => "core.import.error.metadata_grouping",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
         BridgeErrorCategory::CloudSetup { failure } => match failure {
@@ -580,7 +578,6 @@ impl From<bae_core::import::ImportError> for BridgeError {
             }
             ImportError::CandidateAlreadyImported => BridgeErrorCategory::CandidateAlreadyImported,
             ImportError::MetadataTrackCount { .. } => BridgeErrorCategory::MetadataTrackCount,
-            ImportError::MetadataGrouping => BridgeErrorCategory::MetadataGrouping,
             ImportError::SourceData { .. } | ImportError::CoverArt { .. } => {
                 BridgeErrorCategory::ImportData
             }

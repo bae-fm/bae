@@ -106,10 +106,6 @@ fn expected_local_and_draft_failures_keep_their_presentation() {
             BridgeErrorCategory::MetadataTrackCount,
         ),
         (
-            ImportError::MetadataGrouping,
-            BridgeErrorCategory::MetadataGrouping,
-        ),
-        (
             ImportError::CandidateImportInProgress,
             BridgeErrorCategory::CandidateImportInProgress,
         ),
