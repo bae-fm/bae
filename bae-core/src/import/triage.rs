@@ -57,8 +57,8 @@ pub use model::*;
 ///    from. Either way nothing is left to ask.
 /// 6. **Then what its stored verdict classified to.** This is where a draft
 ///    identification wrote lands: a run applying its own pick is not an
-///    answer, so the Ready rule's checks — track counts, lengths, the library
-///    — decide whether it is Ready or which question it asks.
+///    answer, so the Ready rule's checks — the track count, the library —
+///    decide whether it is Ready or which question it asks.
 ///
 /// An invalid draft is never Ready, whoever wrote it and whatever the verdict
 /// says: Ready means a bulk import can commit it. With no verdict, or with one

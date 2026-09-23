@@ -185,7 +185,7 @@ fn discid_metadata_links_the_releases_its_document_names() {
 }
 
 /// A disc ID names one medium of a release that has several. The matching
-/// medium's tracks are what the Ready rule checks, but the pressing is made of
+/// medium's tracks are what the Ready rule counts, but the pressing is made of
 /// every medium the response lists: the Discogs record of the same two media
 /// is this object and one naming a cassette is not, whichever medium the
 /// response lists first.
@@ -210,21 +210,18 @@ fn discid_metadata_carries_every_medium_into_pairing() {
             .expect("the release contains the queried disc")
     };
     let vinyl_then_cd = discid_release(serde_json::json!([
-        { "format": "12\" Vinyl", "discs": [], "tracks": [{ "number": "A1", "length": 180000, "title": "Vinyl Track" }] },
+        { "format": "12\" Vinyl", "discs": [], "tracks": [{ "number": "A1", "length": 180000, "title": "Vinyl Track" }, { "number": "A2", "length": 180000, "title": "Vinyl Track" }] },
         { "format": "CD", "discs": [{ "id": "disc-1" }], "tracks": [{ "number": "1", "length": 240000, "title": "CD Track" }] }
     ]));
     let cd_then_vinyl = discid_release(serde_json::json!([
         { "format": "CD", "discs": [{ "id": "disc-1" }], "tracks": [{ "number": "1", "length": 240000, "title": "CD Track" }] },
-        { "format": "12\" Vinyl", "discs": [], "tracks": [{ "number": "A1", "length": 180000, "title": "Vinyl Track" }] }
+        { "format": "12\" Vinyl", "discs": [], "tracks": [{ "number": "A1", "length": 180000, "title": "Vinyl Track" }, { "number": "A2", "length": 180000, "title": "Vinyl Track" }] }
     ]));
     for release in [&vinyl_then_cd, &cd_then_vinyl] {
         assert_eq!(release.format.as_deref(), Some("CD"));
         assert_eq!(
             release.source_tracks,
-            Some(SourceTracks::Listed {
-                count: 1,
-                total_duration_ms: Some(240_000),
-            })
+            Some(SourceTracks::Listed { count: 1 })
         );
     }
 
@@ -352,7 +349,8 @@ fn discid_metadata_uses_the_medium_that_contains_the_disc() {
                 "format": "12\" Vinyl",
                 "discs": [],
                 "tracks": [
-                    { "number": "A1", "length": 180000, "title": "Vinyl Track" }
+                    { "number": "A1", "length": 180000, "title": "Vinyl Track" },
+                    { "number": "A2", "length": 180000, "title": "Vinyl Track" }
                 ]
             },
             {
@@ -374,10 +372,7 @@ fn discid_metadata_uses_the_medium_that_contains_the_disc() {
     assert_eq!(metadata.format.as_deref(), Some("CD"));
     assert_eq!(
         metadata.source_tracks,
-        Some(SourceTracks::Listed {
-            count: 1,
-            total_duration_ms: Some(240_000),
-        })
+        Some(SourceTracks::Listed { count: 1 })
     );
 }
 

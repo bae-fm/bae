@@ -14,7 +14,6 @@ async fn a_verdict_that_picks_names_identification_as_the_author() {
             &hash,
             &host_root("/music/Some Album"),
             &sample_verdict(),
-            2_700_000,
         ),
         "rel-1",
     );
@@ -47,7 +46,6 @@ async fn a_verdict_that_picks_nothing_leaves_the_draft_unclaimed() {
         &hash,
         &host_root("/music/Some Album"),
         &sample_verdict(),
-        2_700_000,
     );
     assert!(row.metadata.is_none(), "it settled on no release to write");
     store_candidate_state(&db, &candidate, &row.folder_path).await;
@@ -97,7 +95,6 @@ async fn an_edit_to_identification_s_draft_makes_the_person_its_author() {
             &hash,
             &host_root("/music/Some Album"),
             &sample_verdict(),
-            2_700_000,
         ),
         "rel-1",
     );

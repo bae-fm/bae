@@ -98,7 +98,6 @@ impl CandidatePreparations {
         prep.folder_path = verdict.folder_path.clone();
         prep.identification = Some(DbCandidateIdentifyResult {
             verdict: verdict.verdict.clone(),
-            probed_total_duration_ms: verdict.signals.probed_total_duration_ms(),
             identified_at: self.database.now(),
         });
         prep.signals = Some(verdict.signals.clone());
@@ -332,10 +331,6 @@ impl CandidatePreparations {
         };
         let result = if prep.identification.is_none() {
             prep.identification = Some(DbCandidateIdentifyResult {
-                probed_total_duration_ms: prep
-                    .signals
-                    .as_ref()
-                    .map_or(0, |signals| signals.probed_total_duration_ms()),
                 verdict: settled_by_choice,
                 identified_at: self.database.now(),
             });

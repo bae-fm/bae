@@ -1,15 +1,14 @@
 //! What the folder's audio plays for, derived from the scan's stored facts.
 //!
 //! The scan opens each physical audio file and stores its facts on the
-//! candidate. The mapping table, slot table, and Ready rule project their
-//! per-file and per-sheet-entry durations from that one stored shape.
+//! candidate. The mapping table and slot table project their per-file and
+//! per-sheet-entry durations from that one stored shape.
 //!
 //! Two kinds of row, matching the two kinds of [`AudioFile`]:
 //!
 //! * **file** — one per audio file the folder holds, whatever job it does.
 //!   A standalone track's own length, and a container's whole length where a
-//!   track sheet carves it. Summing these is the candidate's total playing
-//!   time, which is why a container counts once and its slices not at all.
+//!   track sheet carves it.
 //! * **slice** — one per track a bound sheet carves, timed by the sheet, with
 //!   the container's total closing the last one.
 //!
@@ -50,29 +49,16 @@ impl SourceDurations {
             .map(|unit| unit.duration_ms)
     }
 
-    /// The candidate's total playing time, summed over its audio files — each
-    /// file once, whether it holds one track or a whole disc a sheet carves.
-    pub fn total_ms(&self) -> u64 {
-        self.units
-            .iter()
-            .filter(|unit| matches!(unit.audio, AudioFile::Standalone { .. }))
-            .fold(0u64, |total, unit| {
-                total
-                    .checked_add(unit.duration_ms)
-                    .expect("a candidate's total audio duration fits u64")
-            })
-    }
-
-    /// One file's worth of duration, totalling `total_ms` — for a test
-    /// that cares only about the sum and has no folder behind it.
+    /// One file playing for `duration_ms` — for a test that needs some
+    /// durations and has no folder behind them.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn totalling(total_ms: u64) -> Self {
+    pub fn totalling(duration_ms: u64) -> Self {
         Self {
             units: vec![SourceDuration {
                 audio: AudioFile::Standalone {
                     file_id: "audio".to_string(),
                 },
-                duration_ms: total_ms,
+                duration_ms,
             }],
         }
     }

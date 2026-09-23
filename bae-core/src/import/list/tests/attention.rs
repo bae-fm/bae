@@ -50,9 +50,12 @@ fn the_flag_is_the_question_the_unread_result_asks() {
         (not_found_state(), Some(NeedsYou::NoMatch)),
         (
             with_verdict(ready_state("mb-1"), |verdict| {
-                verdict.probed_total_duration_ms = 0;
+                verdict.summary.track_count = Some(10);
             }),
-            Some(NeedsYou::LocalDurationUnknown),
+            Some(NeedsYou::TrackCountDisagrees {
+                local: 10,
+                source: 11,
+            }),
         ),
         (ready_state("mb-1"), None),
     ];

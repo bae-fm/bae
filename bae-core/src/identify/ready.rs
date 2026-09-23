@@ -17,34 +17,13 @@ use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::Catalog;
 
-/// How much the candidate's probed total may differ from the source's own
-/// total and still count as agreement.
-///
-/// `500 ms × track_count`, with a `5 s` floor. What each part absorbs:
-///
-/// - **500 ms per track** is exactly the worst case when a source rounds each
-///   track to whole seconds, which MusicBrainz entries transcribed from a
-///   sleeve and every Discogs `duration` string do. Twelve tracks then permit
-///   6 s; twenty permit 10 s.
-/// - **The 5 s floor** covers what does not scale with track count: the
-///   pre-gap of track one counted on one side and not the other (2 s on a
-///   Red Book disc), and lossy encoder delay and padding.
-///
-/// What it deliberately does *not* absorb is a different edition. Editions
-/// differ by whole tracks — a bonus track, a hidden track, a different mix —
-/// and the shortest of those is tens of seconds, several times the widest
-/// tolerance this yields for any realistic tracklist.
-fn duration_tolerance_ms(track_count: u32) -> u64 {
-    (500 * track_count as u64).max(5_000)
-}
-
 /// What the queue needs from the user for one candidate, derived from its
 /// stored verdict. `Ready` is the only bulk-importable answer; every other
 /// variant names the question being asked, which is what the sidebar groups by.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QueueClassification {
-    /// Exactly one pressing, not in the library, and the source agrees with
-    /// the files on both track count and total length.
+    /// Exactly one pressing, not in the library, found by an exact signal,
+    /// and the source lists as many tracks as the folder holds.
     Ready,
     NeedsYou(NeedsYou),
 }
@@ -72,19 +51,9 @@ pub enum NeedsYou {
     LookupFailed,
     /// The source's track count differs from the folder's.
     TrackCountDisagrees { local: u32, source: u32 },
-    /// Both counts agree but the totals do not, beyond
-    /// `duration_tolerance_ms`.
-    DurationsDisagree {
-        probed_ms: u64,
-        source_ms: u64,
-        tolerance_ms: u64,
-    },
-    /// The counts agree, but the source states no track lengths to check the
-    /// total against. Not admitted unverified.
-    SourceLengthsUnknown,
-    /// The counts agree, but the candidate's own audio would not probe, so
-    /// there is no local total to compare. Not admitted unverified.
-    LocalDurationUnknown,
+    /// The release lists no tracks, so its count cannot be checked against
+    /// the folder's. Not admitted unverified.
+    SourceTracksUnknown,
 }
 
 /// Which shape a stored verdict has. The first three mirror the normal verdict
@@ -211,8 +180,6 @@ impl VerdictSummary {
 
 /// Classify one candidate.
 ///
-/// `probed_total_duration_ms` is [`crate::signals::Signals`]' probed total, as
-/// stored alongside the verdict; `0` means nothing was probed.
 /// `library_statuses` is a **live** check of the verdict's matches, matched
 /// back to them by release id (see `in_library`) — never a copy stored with
 /// the verdict, which is the whole reason this is computed on read. Order and
@@ -220,7 +187,6 @@ impl VerdictSummary {
 /// across a whole queue hands over what it resolved.
 pub fn classify(
     verdict: &TerminalVerdict,
-    probed_total_duration_ms: u64,
     library_statuses: &[LibraryStatus],
 ) -> QueueClassification {
     let summary = VerdictSummary::of(verdict);
@@ -229,7 +195,7 @@ pub fn classify(
             .iter()
             .find(|status| status.release_id == lead.release_id)
     });
-    classify_summary(&summary, probed_total_duration_ms, lead_status)
+    classify_summary(&summary, lead_status)
 }
 
 /// Classify one candidate from the columns its stored row holds.
@@ -240,7 +206,6 @@ pub fn classify(
 /// cannot answer for the lead must fail its read rather than hand over `None`.
 pub fn classify_summary(
     summary: &VerdictSummary,
-    probed_total_duration_ms: u64,
     lead_status: Option<&LibraryStatus>,
 ) -> QueueClassification {
     let track_count = match summary.kind {
@@ -273,40 +238,19 @@ pub fn classify_summary(
     // listed no tracks) are different facts about the queue — one is waiting on
     // a lookup, the other is finished — but they ask the user the same
     // question, so they classify alike.
-    let Some(SourceTracks::Listed {
-        count,
-        total_duration_ms,
-    }) = &lead.source_tracks
-    else {
-        return QueueClassification::NeedsYou(NeedsYou::SourceLengthsUnknown);
+    let Some(SourceTracks::Listed { count }) = &lead.source_tracks else {
+        return QueueClassification::NeedsYou(NeedsYou::SourceTracksUnknown);
     };
 
+    // The count, never the lengths. A source's lengths are whatever it
+    // transcribed — rounded to whole seconds, counted with or without a
+    // pre-gap, missing for some tracks — so disagreeing lengths say more about
+    // the source than about the match. The mapping pane shows both durations
+    // per row for a person who wants to read them.
     if *count != track_count {
         return QueueClassification::NeedsYou(NeedsYou::TrackCountDisagrees {
             local: track_count,
             source: *count,
-        });
-    }
-
-    // Totals, never per track. A continuous piece split differently between the
-    // rip and the source, or a pre-gap counted into the previous track, changes
-    // where the boundaries fall without changing how long the record plays —
-    // and those are exactly the correct matches a per-track comparison would
-    // wrongly demote. The mapping pane still shows both durations per row, so a
-    // person reading the slots sees the divergence this ignores.
-    let Some(source_ms) = *total_duration_ms else {
-        return QueueClassification::NeedsYou(NeedsYou::SourceLengthsUnknown);
-    };
-    let probed_ms = probed_total_duration_ms;
-    if probed_ms == 0 {
-        return QueueClassification::NeedsYou(NeedsYou::LocalDurationUnknown);
-    }
-    let tolerance_ms = duration_tolerance_ms(track_count);
-    if probed_ms.abs_diff(source_ms) > tolerance_ms {
-        return QueueClassification::NeedsYou(NeedsYou::DurationsDisagree {
-            probed_ms,
-            source_ms,
-            tolerance_ms,
         });
     }
 

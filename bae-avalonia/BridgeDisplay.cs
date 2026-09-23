@@ -283,11 +283,7 @@ internal static class BridgeDisplay
     /// A triage row's disagreement sentence, resolved from the <c>Core</c>
     /// catalog via the key bae-core owns for this variant. Every number crosses
     /// raw — the enum's own operands — so this is the one place they're
-    /// interpolated for the current locale. Durations go through
-    /// <see cref="Clock(ulong)"/> first, matching every other duration in the
-    /// app; <c>ToleranceMs</c> never appears in the sentence even though
-    /// <c>DurationsDisagree</c> carries it — bae-core's own doc on the variant
-    /// explains why.
+    /// interpolated for the current locale.
     /// </summary>
     internal static string LocalizedLine(BridgeNeedsYou needsYou)
     {
@@ -298,13 +294,6 @@ internal static class BridgeDisplay
             BridgeNeedsYou.TrackCountDisagrees counts => Loc.Core(
                 key,
                 new Dictionary<string, object?> { ["local"] = (long)counts.Local, ["source"] = (long)counts.Source }),
-            BridgeNeedsYou.DurationsDisagree durations => Loc.Core(
-                key,
-                new Dictionary<string, object?>
-                {
-                    ["probed"] = Clock(durations.ProbedMs),
-                    ["source"] = Clock(durations.SourceMs),
-                }),
             _ => Loc.Core(key),
         };
     }

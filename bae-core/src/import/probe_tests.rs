@@ -15,8 +15,7 @@ fn categorize(dir: &Path) -> CategorizedFiles {
     .unwrap()
 }
 
-/// A folder of loose tracks yields one file row per track, and the total is
-/// their sum.
+/// A folder of loose tracks yields one file row per track.
 #[test]
 fn loose_tracks_yield_one_file_row_each() {
     let tmp = TempDir::new().unwrap();
@@ -32,8 +31,6 @@ fn loose_tracks_yield_one_file_row_each() {
         .units
         .iter()
         .all(|unit| matches!(unit.audio, AudioFile::Standalone { .. })));
-    let sum: u64 = probed.units.iter().map(|unit| unit.duration_ms).sum();
-    assert_eq!(probed.total_ms(), sum);
 }
 
 /// Durations describe the bytes accepted by the scan. A later disk mutation
@@ -57,7 +54,6 @@ fn changed_file_bytes_do_not_replace_scanned_durations() {
         })
         .expect("the scanned file has a duration");
     assert!(scanned > 0);
-    assert!(probed.total_ms() > 0);
 }
 
 /// A CUE-carved container yields one file row for the container itself and one
@@ -104,21 +100,6 @@ fn a_cue_carved_container_yields_a_row_per_slice() {
     assert!(
         carved <= container,
         "the carved tracks fit in the container: {carved} vs {container}"
-    );
-    let every_file: u64 = files
-        .audio()
-        .map(|file| {
-            probed
-                .duration_of(&AudioFile::Standalone {
-                    file_id: file.relative_path.clone(),
-                })
-                .expect("every fixture file has a duration")
-        })
-        .sum();
-    assert_eq!(
-        probed.total_ms(),
-        every_file,
-        "the container counts once and its slices not at all"
     );
 }
 

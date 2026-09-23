@@ -1,9 +1,9 @@
 /// The whole point of the task: nothing is selected, no view is open, and the
 /// candidate still ends up with a stored verdict that classifies as Ready.
 ///
-/// The provider answers the disc-ID lookup with exactly one release whose track
-/// lengths are the fixture audio's own, so the Ready rule's every clause is
-/// exercised for real: one match, not in the library, counts agreeing, totals
+/// The provider answers the disc-ID lookup with exactly one release listing as
+/// many tracks as the fixture holds, so the Ready rule's every clause is
+/// exercised for real: one match, not in the library, found by disc ID, counts
 /// agreeing.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_candidate_nobody_selected_acquires_a_verdict() {
@@ -41,10 +41,6 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
     );
     let identify = identify_result(&row);
     assert_eq!(
-        identify.probed_total_duration_ms as u64, probed,
-        "the probed total rode the fast pass into the row"
-    );
-    assert_eq!(
         identify.identified_at,
         fixed_now(),
         "the row is stamped from the injected clock"
@@ -52,7 +48,7 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
     assert_eq!(
         fixture.classification_for(&dir).await,
         QueueClassification::Ready,
-        "one match, not in the library, counts and totals agreeing"
+        "one match, not in the library, counts agreeing"
     );
 }
 
@@ -332,7 +328,7 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
     );
 }
 
-// ── 5. Totals decide, not per-track lengths ─────────────────────────────────
+// ── 5. The track count decides, never the lengths ───────────────────────────
 
 fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerdict {
     TerminalVerdict::Found {
@@ -368,18 +364,11 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
     }
 }
 
-/// The gate is total against total. A rip that splits a continuous piece
-/// differently from the source has per-track lengths that disagree everywhere
-/// and a total that agrees exactly — and it is a correct match, so it is Ready.
-/// A release that is genuinely a different edition differs in the total, and is
-/// not.
-///
-/// The per-track half is enforced by the type, not by the comparison: what the
-/// source contributes is one summed total, parsed out of its response by
-/// `mb_source_tracks`, so there are no per-track lengths for a future gate to
-/// reach for. This drives that parse rather than hand-building the total.
+/// A source's lengths never keep a match out of Ready. The release parsed here
+/// states lengths that match nothing about the rip, and all the rule reads off
+/// it is the count: three tracks, as the folder holds.
 #[test]
-fn totals_decide_not_per_track_lengths() {
+fn the_lengths_a_source_states_do_not_decide() {
     use crate::musicbrainz::MbReleaseResponse;
 
     let source_response: MbReleaseResponse =
@@ -388,68 +377,22 @@ fn totals_decide_not_per_track_lengths() {
         &source_response,
         &crate::import::medium_coverage::MediumCoverage::all(source_response.media.len()),
     );
+    assert_eq!(source, SourceTracks::Listed { count: 3 });
     assert_eq!(
-        source,
-        SourceTracks::Listed {
-            count: 3,
-            total_duration_ms: Some(600_000)
-        }
-    );
-
-    // The rip splits the same 600 s across three tracks differently. Every
-    // per-track length disagrees; the total does not.
-    let rip_total = 100_000 + 300_000 + 200_000;
-    assert_eq!(
-        classify(&found_verdict(3, Some(source.clone())), rip_total, &[]),
+        classify(&found_verdict(3, Some(source)), &[]),
         QueueClassification::Ready,
-        "a different split of the same running time is the same record"
-    );
-
-    // A different edition — one track longer by a minute — is not absorbed.
-    let different_edition = rip_total + 60_000;
-    let QueueClassification::NeedsYou(NeedsYou::DurationsDisagree { tolerance_ms, .. }) = classify(
-        &found_verdict(3, Some(source.clone())),
-        different_edition,
-        &[],
-    ) else {
-        panic!("a minute of difference must not be admitted");
-    };
-
-    // The tolerance's own edges, so a change to it fails here rather than
-    // silently widening what gets imported unattended.
-    assert_eq!(tolerance_ms, 5_000, "3 tracks sit on the floor");
-    assert_eq!(
-        classify(
-            &found_verdict(3, Some(source.clone())),
-            600_000 + tolerance_ms,
-            &[]
-        ),
-        QueueClassification::Ready,
-        "exactly at the tolerance still agrees"
-    );
-    assert!(
-        matches!(
-            classify(
-                &found_verdict(3, Some(source)),
-                600_000 + tolerance_ms + 1,
-                &[]
-            ),
-            QueueClassification::NeedsYou(NeedsYou::DurationsDisagree { .. })
-        ),
-        "one millisecond past it does not"
+        "the counts agree, whatever the lengths"
     );
 }
 
-/// The count is checked before the totals, and separately: two different
-/// tracklists can add up to the same running time.
+/// A count disagreement is named as one, with both counts.
 #[test]
 fn a_count_disagreement_is_named_as_one() {
-    let source = SourceTracks::Listed {
-        count: 12,
-        total_duration_ms: Some(600_000),
-    };
     assert_eq!(
-        classify(&found_verdict(11, Some(source)), 600_000, &[]),
+        classify(
+            &found_verdict(11, Some(SourceTracks::Listed { count: 12 })),
+            &[]
+        ),
         QueueClassification::NeedsYou(NeedsYou::TrackCountDisagrees {
             local: 11,
             source: 12

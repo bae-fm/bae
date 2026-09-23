@@ -69,11 +69,8 @@ fn discogs(release_id: &str, barcode: &str) -> MetadataResult {
     }
 }
 
-fn agreeing(count: u32, total_ms: u64) -> Option<SourceTracks> {
-    Some(SourceTracks::Listed {
-        count,
-        total_duration_ms: Some(total_ms),
-    })
+fn listing(count: u32) -> Option<SourceTracks> {
+    Some(SourceTracks::Listed { count })
 }
 
 fn status(release_id: &str, release_in_library: bool, album_in_library: bool) -> LibraryStatus {
@@ -89,9 +86,9 @@ fn status(release_id: &str, release_in_library: bool, album_in_library: bool) ->
 /// Every clause of the rule holding at once is the only way to Ready.
 #[test]
 fn one_verified_match_not_in_the_library_is_ready() {
-    let verdict = found(vec![result("mb-1", agreeing(11, 2_400_000))], 11);
+    let verdict = found(vec![result("mb-1", listing(11))], 11);
     assert_eq!(
-        classify(&verdict, 2_400_000, &[status("mb-1", false, false)]),
+        classify(&verdict, &[status("mb-1", false, false)]),
         QueueClassification::Ready
     );
 }
@@ -100,7 +97,7 @@ fn one_verified_match_not_in_the_library_is_ready() {
 /// its tracklist agrees: a name also names every reissue filed under it.
 #[test]
 fn a_lone_match_found_by_title_is_the_persons_to_confirm() {
-    let mut verdict = found(vec![result("mb-1", agreeing(11, 2_400_000))], 11);
+    let mut verdict = found(vec![result("mb-1", listing(11))], 11);
     let TerminalVerdict::Found { provenance, .. } = &mut verdict else {
         unreachable!("the fixture is a found verdict");
     };
@@ -111,7 +108,7 @@ fn a_lone_match_found_by_title_is_the_persons_to_confirm() {
         by_search: true,
     };
     assert_eq!(
-        classify(&verdict, 2_400_000, &[status("mb-1", false, false)]),
+        classify(&verdict, &[status("mb-1", false, false)]),
         QueueClassification::NeedsYou(NeedsYou::FoundByTitle)
     );
 }
@@ -127,7 +124,7 @@ fn what_agreement_narrowed_out_is_not_a_match() {
         provenance,
         pressings,
         ..
-    } = found(vec![result("mb-1", agreeing(11, 2_400_000))], 11)
+    } = found(vec![result("mb-1", listing(11))], 11)
     else {
         panic!("a found verdict");
     };
@@ -136,7 +133,7 @@ fn what_agreement_narrowed_out_is_not_a_match() {
         track_count,
         provenance,
         pressings,
-        narrowed_out: vec![result("mb-2", agreeing(11, 2_400_000))],
+        narrowed_out: vec![result("mb-2", listing(11))],
         narrowed_out_provenance: vec![LookupProvenance {
             by_disc_id: true,
             by_barcode: false,
@@ -147,7 +144,7 @@ fn what_agreement_narrowed_out_is_not_a_match() {
         ledger: None,
     };
     assert_eq!(
-        classify(&verdict, 2_400_000, &[status("mb-1", false, false)]),
+        classify(&verdict, &[status("mb-1", false, false)]),
         QueueClassification::Ready
     );
 }
@@ -161,13 +158,13 @@ fn what_agreement_narrowed_out_is_not_a_match() {
 fn two_sources_agreeing_on_a_barcode_are_one_pressing() {
     let verdict = found(
         vec![
-            barcoded(result("mb-1", agreeing(11, 2_400_000)), BARCODE),
+            barcoded(result("mb-1", listing(11)), BARCODE),
             discogs("d-1", BARCODE),
         ],
         11,
     );
     assert_eq!(
-        classify(&verdict, 2_400_000, &[status("mb-1", false, false)]),
+        classify(&verdict, &[status("mb-1", false, false)]),
         QueueClassification::Ready
     );
 }
@@ -178,7 +175,7 @@ fn two_sources_agreeing_on_a_barcode_are_one_pressing() {
 #[test]
 fn the_pressing_count_is_the_rows_the_run_recorded() {
     let matches = vec![
-        barcoded(result("mb-1", agreeing(11, 2_400_000)), BARCODE),
+        barcoded(result("mb-1", listing(11)), BARCODE),
         discogs("d-1", BARCODE),
     ];
     assert_eq!(
@@ -206,7 +203,7 @@ fn the_pressing_count_is_the_rows_the_run_recorded() {
     };
     assert_eq!(VerdictSummary::of(&verdict).pressing_count, 2);
     assert_eq!(
-        classify(&verdict, 2_400_000, &[]),
+        classify(&verdict, &[]),
         QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
     );
 }
@@ -217,13 +214,13 @@ fn the_pressing_count_is_the_rows_the_run_recorded() {
 fn two_sources_naming_different_pressings_stay_a_choice() {
     let verdict = found(
         vec![
-            barcoded(result("mb-1", agreeing(11, 2_400_000)), BARCODE),
+            barcoded(result("mb-1", listing(11)), BARCODE),
             discogs("d-1", "9876543210987"),
         ],
         11,
     );
     assert_eq!(
-        classify(&verdict, 2_400_000, &[]),
+        classify(&verdict, &[]),
         QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
     );
 }
@@ -234,14 +231,11 @@ fn two_sources_naming_different_pressings_stay_a_choice() {
 #[test]
 fn several_matches_are_a_choice_for_the_user() {
     let verdict = found(
-        vec![
-            result("mb-1", agreeing(11, 2_400_000)),
-            result("mb-2", agreeing(11, 2_400_000)),
-        ],
+        vec![result("mb-1", listing(11)), result("mb-2", listing(11))],
         11,
     );
     assert_eq!(
-        classify(&verdict, 2_400_000, &[]),
+        classify(&verdict, &[]),
         QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
     );
 }
@@ -251,51 +245,41 @@ fn several_matches_are_a_choice_for_the_user() {
 /// live rather than read out of the row.
 #[test]
 fn library_status_is_read_live_at_both_levels() {
-    let verdict = found(vec![result("mb-1", agreeing(11, 2_400_000))], 11);
+    let verdict = found(vec![result("mb-1", listing(11))], 11);
     for (release, album) in [(true, false), (false, true), (true, true)] {
         assert_eq!(
-            classify(&verdict, 2_400_000, &[status("mb-1", release, album)]),
+            classify(&verdict, &[status("mb-1", release, album)]),
             QueueClassification::NeedsYou(NeedsYou::AlreadyInLibrary),
             "release_in_library={release}, album_in_library={album}"
         );
     }
 }
 
-/// Nothing to compare against is not the same as agreement. A single match the
-/// sources cannot corroborate goes to Needs you rather than being admitted.
+/// A release that lists no tracks has no count to check the folder's against,
+/// whether nobody has asked the source yet or it answered with nothing. A
+/// single match the source cannot corroborate goes to Needs you rather than
+/// being admitted.
 #[test]
-fn an_unverifiable_match_is_never_admitted() {
+fn a_match_listing_no_tracks_is_never_admitted() {
+    for source_tracks in [None, Some(SourceTracks::Nothing)] {
+        assert_eq!(
+            classify(&found(vec![result("mb-1", source_tracks.clone())], 11), &[]),
+            QueueClassification::NeedsYou(NeedsYou::SourceTracksUnknown),
+            "{source_tracks:?}"
+        );
+    }
+}
+
+/// The count is the whole check: a release listing a different number of
+/// tracks names both counts.
+#[test]
+fn a_count_mismatch_names_both_counts() {
     assert_eq!(
-        classify(&found(vec![result("mb-1", None)], 11), 2_400_000, &[]),
-        QueueClassification::NeedsYou(NeedsYou::SourceLengthsUnknown),
-        "the source describes no tracklist at all"
-    );
-    assert_eq!(
-        classify(
-            &found(
-                vec![result(
-                    "mb-1",
-                    Some(SourceTracks::Listed {
-                        count: 11,
-                        total_duration_ms: None,
-                    })
-                )],
-                11
-            ),
-            2_400_000,
-            &[]
-        ),
-        QueueClassification::NeedsYou(NeedsYou::SourceLengthsUnknown),
-        "the source counts its tracks but does not time them"
-    );
-    assert_eq!(
-        classify(
-            &found(vec![result("mb-1", agreeing(11, 2_400_000))], 11),
-            0,
-            &[]
-        ),
-        QueueClassification::NeedsYou(NeedsYou::LocalDurationUnknown),
-        "the candidate's own audio would not probe"
+        classify(&found(vec![result("mb-1", listing(12))], 11), &[]),
+        QueueClassification::NeedsYou(NeedsYou::TrackCountDisagrees {
+            local: 11,
+            source: 12
+        })
     );
 }
 
@@ -304,11 +288,7 @@ fn an_unverifiable_match_is_never_admitted() {
 #[test]
 fn every_other_verdict_names_its_own_question() {
     assert_eq!(
-        classify(
-            &TerminalVerdict::NotFoundAnywhere { ledger: None },
-            2_400_000,
-            &[]
-        ),
+        classify(&TerminalVerdict::NotFoundAnywhere { ledger: None }, &[]),
         QueueClassification::NeedsYou(NeedsYou::NoMatch)
     );
     assert_eq!(
@@ -317,29 +297,10 @@ fn every_other_verdict_names_its_own_question() {
                 track_count: 11,
                 ledger: None,
             },
-            2_400_000,
             &[]
         ),
         QueueClassification::NeedsYou(NeedsYou::NothingToLookUp)
     );
-}
-
-/// The tolerance grows with the tracklist because per-track rounding does, and
-/// stops at nothing else — so the number a change to it would move is pinned.
-#[test]
-fn the_tolerance_is_per_track_rounding_with_a_floor() {
-    assert_eq!(
-        duration_tolerance_ms(1),
-        5_000,
-        "the floor holds for a single"
-    );
-    assert_eq!(duration_tolerance_ms(10), 5_000, "and up to ten tracks");
-    assert_eq!(
-        duration_tolerance_ms(11),
-        5_500,
-        "past which rounding leads"
-    );
-    assert_eq!(duration_tolerance_ms(20), 10_000);
 }
 
 /// [`VerdictSummary`] is what the list classifies from, read off stored
@@ -351,13 +312,10 @@ fn the_tolerance_is_per_track_rounding_with_a_floor() {
 #[test]
 fn a_summary_keeps_every_fact_the_rule_consults() {
     let verdicts = [
-        (found(vec![result("rel-a", agreeing(11, 2_400_000))], 11), 1),
+        (found(vec![result("rel-a", listing(11))], 11), 1),
         (
             found(
-                vec![
-                    result("rel-a", agreeing(11, 2_400_000)),
-                    result("rel-b", agreeing(11, 2_400_000)),
-                ],
+                vec![result("rel-a", listing(11)), result("rel-b", listing(11))],
                 11,
             ),
             2,
@@ -365,7 +323,7 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
         (
             found(
                 vec![
-                    barcoded(result("rel-a", agreeing(11, 2_400_000)), BARCODE),
+                    barcoded(result("rel-a", listing(11)), BARCODE),
                     discogs("rel-b", BARCODE),
                 ],
                 11,
@@ -430,8 +388,8 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
             .as_ref()
             .and_then(|lead| statuses.iter().find(|s| s.release_id == lead.release_id));
         assert_eq!(
-            classify_summary(&summary, 2_400_000, lead_status),
-            classify(&verdict, 2_400_000, &statuses)
+            classify_summary(&summary, lead_status),
+            classify(&verdict, &statuses)
         );
     }
 }

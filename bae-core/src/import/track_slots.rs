@@ -77,9 +77,8 @@ pub struct SlotFile {
 /// What it deliberately does not absorb is a wrong pairing. Two different
 /// tracks off one album differ by tens of seconds far more often than by three,
 /// and the row shows both numbers regardless — this only decides whether to
-/// point at them. The same reasoning as `identify::ready`'s tolerance, one
-/// track wide instead of a whole release, and with no consequence beyond a
-/// mark: nothing here disables the commit.
+/// point at them, with no consequence beyond a mark: nothing here disables the
+/// commit.
 pub const LENGTH_DISAGREEMENT_MS: u64 = 3_000;
 
 /// Whether a row's two lengths are far enough apart to be worth pointing at.

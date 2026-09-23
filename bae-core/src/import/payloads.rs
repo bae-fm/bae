@@ -205,7 +205,7 @@ impl ReleasePayloads {
     }
 
     /// What the source says about this release's own tracklist — the half of the
-    /// Ready rule the folder's probed durations are checked against.
+    /// Ready rule the folder's track count is checked against.
     pub fn source_tracks_for_audio(
         &self,
         audio_durations_ms: &[u64],

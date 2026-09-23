@@ -6,10 +6,7 @@ extension BridgeNeedsYou {
     /// string table via the key bae-core owns for this variant
     /// (`bridgeNeedsYouKey`). Every number crosses raw — the enum's own
     /// operands — so this is the one place they're interpolated for the
-    /// current locale. Durations go through `DurationClock` first, matching
-    /// how every other duration in the app renders; `tolerance_ms` never
-    /// appears in the sentence even though `durationsDisagree` carries it —
-    /// bae-core's own doc on the variant explains why.
+    /// current locale.
     var localizedText: String {
         let template = NSLocalizedString(
             bridgeNeedsYouKey(needsYou: self),
@@ -26,14 +23,8 @@ extension BridgeNeedsYou {
                 Int(local),
                 Int(source)
             )
-        case .durationsDisagree(let probedMs, let sourceMs, _):
-            return String.localizedStringWithFormat(
-                template,
-                DurationClock.text(Int64(probedMs)),
-                DurationClock.text(Int64(sourceMs))
-            )
         case .alreadyInLibrary, .foundByTitle, .noMatch, .nothingToLookUp,
-            .lookupFailed, .sourceLengthsUnknown, .localDurationUnknown:
+            .lookupFailed, .sourceTracksUnknown:
             return template
         }
     }

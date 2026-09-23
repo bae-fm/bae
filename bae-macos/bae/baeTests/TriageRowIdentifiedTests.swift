@@ -106,6 +106,23 @@ struct TriageRowIdentifiedTests {
         #expect(try await pixels(of: disagreeing) == pixels(of: ready))
     }
 
+    /// Every question a row can ask resolves to a sentence from the app's
+    /// `Core` table rather than falling back to its key.
+    @Test(
+        "every question resolves to its own sentence",
+        arguments: [
+            BridgeNeedsYou.alreadyInLibrary, .foundByTitle,
+            .severalMatches(count: 2), .noMatch, .nothingToLookUp,
+            .lookupFailed, .trackCountDisagrees(local: 13, source: 12),
+            .sourceTracksUnknown,
+        ]
+    )
+    func everyQuestionResolvesToItsOwnSentence(_ reason: BridgeNeedsYou) {
+        let text = reason.localizedText
+        #expect(!text.isEmpty)
+        #expect(text != bridgeNeedsYouKey(needsYou: reason))
+    }
+
     /// On a selected row the whole text column goes white, and the arrow
     /// follows it rather than keeping its own colour.
     @MainActor

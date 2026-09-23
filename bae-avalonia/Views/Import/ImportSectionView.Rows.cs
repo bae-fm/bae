@@ -495,9 +495,7 @@ internal sealed partial class ImportSectionView
             BridgeNeedsYou.AlreadyInLibrary =>
                 Chip(BridgeDisplay.LocalizedLine(reason), "BaeInfoBrush"),
             BridgeNeedsYou.TrackCountDisagrees
-                or BridgeNeedsYou.DurationsDisagree
-                or BridgeNeedsYou.SourceLengthsUnknown
-                or BridgeNeedsYou.LocalDurationUnknown => DotIcon("BaeWarningBrush"),
+                or BridgeNeedsYou.SourceTracksUnknown => DotIcon("BaeWarningBrush"),
             BridgeNeedsYou.LookupFailed => LookupFailedIcon(reason),
             BridgeNeedsYou.NoMatch or BridgeNeedsYou.NothingToLookUp =>
                 SearchManuallyChip(row),

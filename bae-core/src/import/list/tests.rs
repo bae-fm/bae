@@ -96,22 +96,17 @@ fn lead(release_id: &str) -> LeadMatch {
         year: Some(1999),
         format: Some("CD".to_string()),
         cover_thumbnail_url: Some("https://example.test/thumb.jpg".to_string()),
-        source_tracks: Some(SourceTracks::Listed {
-            count: 11,
-            total_duration_ms: Some(2_400_000),
-        }),
+        source_tracks: Some(SourceTracks::Listed { count: 11 }),
         by_disc_id: true,
         by_barcode: false,
         by_search: false,
     }
 }
 
-/// `summary` as a result the person has already seen, stored over audio
-/// that adds up to the lead's own total.
+/// `summary` as a result the person has already seen.
 fn read(summary: VerdictSummary) -> crate::db::ListedVerdict {
     crate::db::ListedVerdict {
         summary,
-        probed_total_duration_ms: 2_400_000,
         unread: false,
     }
 }

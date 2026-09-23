@@ -366,11 +366,7 @@ fn place_row(
             .lead
             .as_ref()
             .and_then(|lead| rows.lead_statuses.get(&lead.release_id));
-        classify_summary(
-            &verdict.summary,
-            verdict.probed_total_duration_ms,
-            lead_status,
-        )
+        classify_summary(&verdict.summary, lead_status)
     });
     let skipped = match &row.source {
         crate::db::CandidateListSource::Combination { skipped, .. } => *skipped,

@@ -394,7 +394,7 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
     assert_eq!(
         fixture.classification_for(&dir).await,
         QueueClassification::Ready,
-        "one pressing, not in the library, counts and totals agreeing — the two \
+        "one pressing, not in the library, counts agreeing — the two \
          records are one row, so nothing is left to ask"
     );
 }
@@ -492,7 +492,7 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
     assert_eq!(
         fixture.classification_for(&dir).await,
         QueueClassification::Ready,
-        "one pressing, counts and totals agreeing — nothing is left to ask"
+        "one pressing, counts agreeing — nothing is left to ask"
     );
 }
 

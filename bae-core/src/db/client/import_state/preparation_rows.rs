@@ -314,7 +314,6 @@ pub(super) fn save_preparation_on(
             })?;
             let classification = crate::identify::classify(
                 &identification.verdict,
-                identification.probed_total_duration_ms,
                 &super::super::import_list::library_statuses(sql, &identification.verdict)?,
             );
             if classification == crate::identify::QueueClassification::Ready {

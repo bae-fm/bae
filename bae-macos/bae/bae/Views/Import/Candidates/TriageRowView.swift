@@ -293,8 +293,7 @@ extension TriageRowView {
             chip(reason.localizedText, tint: .orange)
         case .alreadyInLibrary:
             chip(reason.localizedText, tint: .blue)
-        case .trackCountDisagrees, .durationsDisagree,
-            .sourceLengthsUnknown, .localDurationUnknown, .noMatch,
+        case .trackCountDisagrees, .sourceTracksUnknown, .noMatch,
             .nothingToLookUp:
             trailingIcon("questionmark.circle", tint: .orange)
                 .help(reason.localizedText)

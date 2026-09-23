@@ -81,9 +81,6 @@ impl CandidateListSource {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ListedVerdict {
     pub summary: VerdictSummary,
-    /// What the folder's audio added up to when the result was reached — the
-    /// total the Ready rule compares the source's against.
-    pub probed_total_duration_ms: u64,
     /// Whether the person has yet to see this result: identification stored
     /// it while its candidate was not open, and nobody has opened it since.
     pub unread: bool,
@@ -407,7 +404,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     let mut authors = super::import_state::load_authors_on(sql, None)?;
     let mut verdicts: HashMap<String, ListedVerdict> = HashMap::new();
     for row in sql.query(
-        "SELECT content_hash, kind, track_count, probed_total_duration_ms, unread \
+        "SELECT content_hash, kind, track_count, unread \
          FROM import_candidate_verdict",
         [],
         |row| {
@@ -415,12 +412,11 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<i64>>(2)?,
-                row.get::<_, i64>(3)?,
-                row.get::<_, bool>(4)?,
+                row.get::<_, bool>(3)?,
             ))
         },
     )? {
-        let (content_hash, kind, track_count, probed, unread) = row;
+        let (content_hash, kind, track_count, unread) = row;
         // Read the lead off the first row, then spend the rest on the count:
         // both come from the one read of this candidate's matches.
         // The releases agreement narrowed out are not what the verdict
@@ -452,11 +448,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         };
         verdicts.insert(
             content_hash,
-            ListedVerdict {
-                summary,
-                probed_total_duration_ms: to_u64(probed, "a verdict's probed total")?,
-                unread,
-            },
+            ListedVerdict { summary, unread },
         );
     }
 

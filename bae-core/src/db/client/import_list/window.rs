@@ -472,11 +472,7 @@ pub(super) fn load_candidate_detail_on(
                     .clone()
             };
             answer = Some(crate::import::StoredAnswer {
-                classification: classify(
-                    &identify.verdict,
-                    identify.probed_total_duration_ms,
-                    statuses,
-                ),
+                classification: classify(&identify.verdict, statuses),
                 unread: unread.expect("a stored verdict has read its unread column"),
             });
             matched = MatchedRelease::of_summary(&VerdictSummary::of(&identify.verdict));

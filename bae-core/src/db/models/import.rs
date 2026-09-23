@@ -41,8 +41,7 @@ pub struct NewImportCandidateVerdict {
     /// The settled signals the run reached this verdict on: the disc ID, the
     /// barcodes, the classified text, and what every audio unit plays for.
     /// Stored beside the verdict so the pane and the queue read them back
-    /// instead of extracting them again, and the `probed_total_duration_ms`
-    /// column is summed from the durations by the write itself.
+    /// instead of extracting them again.
     pub signals: crate::signals::Signals,
     /// The draft this verdict concludes, or `None` where it concludes no
     /// draft at all. Only a run that settled on one release concludes one:
@@ -59,7 +58,6 @@ pub struct NewImportCandidateVerdict {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbCandidateIdentifyResult {
     pub verdict: crate::identify::TerminalVerdict,
-    pub probed_total_duration_ms: u64,
     pub identified_at: DateTime<Utc>,
 }
 

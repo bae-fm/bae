@@ -13167,179 +13167,6 @@
         }
       }
     },
-    "core.import.triage.durations_disagree": {
-      "comment": "Import triage row: the folder and the release disagree on total length. Both values are durations the UI formatted for its own locale first.",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "المدة: %1$@ في المجلد، %2$@ في الإصدار"
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Времетраене: %1$@ в папката, %2$@ в изданието"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Délka: %1$@ ve složce, %2$@ ve vydání"
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Længde: %1$@ i mappen, %2$@ på udgivelsen"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Länge: %1$@ im Ordner, %2$@ auf der Veröffentlichung"
-          }
-        },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Διάρκεια: %1$@ στον φάκελο, %2$@ στην κυκλοφορία"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Length: %1$@ in the folder, %2$@ on the release"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Duración: %1$@ en la carpeta, %2$@ en la edición"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kesto: %1$@ kansiossa, %2$@ julkaisussa"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Durée : %1$@ dans le dossier, %2$@ sur l’édition"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "אורך: %1$@ בתיקייה, %2$@ במהדורה"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Trajanje: %1$@ u mapi, %2$@ na izdanju"
-          }
-        },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hossz: %1$@ a mappában, %2$@ a kiadáson"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Durata: %1$@ nella cartella, %2$@ nell’edizione"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "長さ: フォルダ %1$@、リリース %2$@"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "길이: 폴더 %1$@, 릴리스 %2$@"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lengde: %1$@ i mappen, %2$@ på utgivelsen"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lengte: %1$@ in de map, %2$@ op de uitgave"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Długość: %1$@ w folderze, %2$@ w wydaniu"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Duração: %1$@ na pasta, %2$@ na edição"
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Duração: %1$@ na pasta, %2$@ na edição"
-          }
-        },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Durată: %1$@ în dosar, %2$@ pe ediție"
-          }
-        },
-        "sk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dĺžka: %1$@ v priečinku, %2$@ na vydaní"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Längd: %1$@ i mappen, %2$@ på utgåvan"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Süre: klasörde %1$@, sürümde %2$@"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Тривалість: %1$@ у теці, %2$@ у виданні"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "时长：文件夹 %1$@，版本 %2$@"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "長度：資料夾 %1$@，版本 %2$@"
-          }
-        }
-      }
-    },
     "core.import.triage.found_by_title": {
       "comment": "Import triage row: one release matched, but only by searching the album title and artist, so the user confirms it.",
       "localizations": {
@@ -13509,179 +13336,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "依標題找到"
-          }
-        }
-      }
-    },
-    "core.import.triage.local_duration_unknown": {
-      "comment": "Import triage row: the folder audio would not probe, so there is no local total to compare.",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تعذّرت قراءة مدد مسارات المجلد"
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Времетраенето на записите в папката не можа да бъде прочетено"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Délky stop ve složce se nepodařilo přečíst"
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sporlængderne i mappen kunne ikke læses"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Titellängen im Ordner konnten nicht gelesen werden"
-          }
-        },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Δεν ήταν δυνατή η ανάγνωση των διαρκειών των κομματιών στον φάκελο"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Could not read the track lengths in the folder"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se pudo leer la duración de las pistas de la carpeta"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kansion raitojen kestoja ei voitu lukea"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Impossible de lire la durée des pistes du dossier"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "לא ניתן היה לקרוא את אורכי הרצועות בתיקייה"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Trajanja pjesama u mapi nije bilo moguće pročitati"
-          }
-        },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nem sikerült beolvasni a számok hosszát a mappában"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Impossibile leggere la durata delle tracce nella cartella"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "フォルダ内のトラックの長さを読み取れませんでした"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "폴더의 트랙 길이를 읽을 수 없습니다"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kunne ikke lese sporlengdene i mappen"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "De nummerlengtes in de map konden niet worden gelezen"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nie udało się odczytać długości ścieżek w folderze"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Não foi possível ler a duração das faixas da pasta"
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Não foi possível ler as durações das faixas na pasta"
-          }
-        },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nu s-au putut citi duratele pieselor din dosar"
-          }
-        },
-        "sk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nepodarilo sa prečítať dĺžky skladieb v priečinku"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kunde inte läsa spårlängderna i mappen"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Klasördeki parça süreleri okunamadı"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Не вдалося прочитати тривалість треків у теці"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无法读取文件夹中音轨的时长"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "無法讀取資料夾中音軌的長度"
           }
         }
       }
@@ -14792,175 +14446,175 @@
         }
       }
     },
-    "core.import.triage.source_lengths_unknown": {
-      "comment": "Import triage row: the release lists no track lengths, so the total cannot be checked.",
+    "core.import.triage.source_tracks_unknown": {
+      "comment": "Import triage row: the release lists no tracks, so its track count cannot be checked against the folder.",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الإصدار لا يذكر مدد المسارات"
+            "value": "الإصدار لا يذكر أي مسارات"
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "Изданието не посочва времетраене на записите"
+            "value": "Изданието не посочва записи"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vydání neuvádí délky stop"
+            "value": "Vydání neuvádí žádné stopy"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Udgivelsen angiver ingen sporlængder"
+            "value": "Udgivelsen angiver ingen spor"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Veröffentlichung nennt keine Titellängen"
+            "value": "Die Veröffentlichung nennt keine Titel"
           }
         },
         "el": {
           "stringUnit": {
             "state": "translated",
-            "value": "Η κυκλοφορία δεν αναφέρει διάρκειες κομματιών"
+            "value": "Η κυκλοφορία δεν αναφέρει κομμάτια"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The release states no track lengths"
+            "value": "The release lists no tracks"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La edición no indica la duración de las pistas"
+            "value": "La edición no lista ninguna pista"
           }
         },
         "fi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Julkaisu ei ilmoita raitojen kestoja"
+            "value": "Julkaisu ei luettele raitoja"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L’édition n’indique aucune durée de piste"
+            "value": "L’édition ne liste aucune piste"
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "המהדורה לא מציינת אורכי רצועות"
+            "value": "המהדורה לא מפרטת רצועות"
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Izdanje ne navodi trajanja pjesama"
+            "value": "Izdanje ne navodi pjesme"
           }
         },
         "hu": {
           "stringUnit": {
             "state": "translated",
-            "value": "A kiadás nem ad meg számhosszakat"
+            "value": "A kiadás nem sorol fel számokat"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "L’edizione non indica la durata delle tracce"
+            "value": "L’edizione non elenca alcuna traccia"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このリリースはトラックの長さを記載していません"
+            "value": "このリリースにはトラックが記載されていません"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 릴리스에는 트랙 길이가 없습니다"
+            "value": "이 릴리스에는 트랙 목록이 없습니다"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "Utgivelsen oppgir ingen sporlengder"
+            "value": "Utgivelsen oppgir ingen spor"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "De uitgave vermeldt geen nummerlengtes"
+            "value": "De uitgave vermeldt geen nummers"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wydanie nie podaje długości ścieżek"
+            "value": "Wydanie nie podaje ścieżek"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A edição não informa a duração das faixas"
+            "value": "A edição não lista nenhuma faixa"
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "A edição não indica durações das faixas"
+            "value": "A edição não indica faixas"
           }
         },
         "ro": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ediția nu indică durate ale pieselor"
+            "value": "Ediția nu listează nicio piesă"
           }
         },
         "sk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vydanie neuvádza dĺžky skladieb"
+            "value": "Vydanie neuvádza žiadne skladby"
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Utgåvan anger inga spårlängder"
+            "value": "Utgåvan listar inga spår"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sürüm parça sürelerini belirtmiyor"
+            "value": "Sürüm hiçbir parça listelemiyor"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Видання не вказує тривалості треків"
+            "value": "Видання не містить списку треків"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "该版本未标注音轨时长"
+            "value": "该版本未列出音轨"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "此版本未標示音軌長度"
+            "value": "此版本未列出音軌"
           }
         }
       }

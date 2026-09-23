@@ -46,7 +46,7 @@ pub struct MetadataResult {
     pub source_group_id: Option<String>,
     /// What the source says about this release's own tracklist — the other half
     /// of the Ready rule, which admits a single match only when the source's
-    /// count and total length agree with the candidate's.
+    /// track count agrees with the candidate's.
     ///
     /// **`None` means nobody has asked yet** — not that the source has
     /// nothing. Search endpoints return results this way because they carry no
@@ -69,11 +69,6 @@ impl MetadataResult {
     /// about a signal. Its tracklist is listed because choosing a release is
     /// what archives its documents.
     pub(crate) fn of_pick(detail: &ImportSearchReleaseDetail) -> Self {
-        let total_duration_ms = detail
-            .tracks
-            .iter()
-            .map(|track| track.duration_ms)
-            .sum::<Option<u64>>();
         Self {
             source: detail.source,
             release_id: detail.release_id.clone(),
@@ -91,7 +86,6 @@ impl MetadataResult {
             source_group_id: detail.source_group_id.clone(),
             source_tracks: Some(SourceTracks::Listed {
                 count: detail.track_count,
-                total_duration_ms,
             }),
         }
     }
@@ -147,16 +141,7 @@ impl MetadataResult {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SourceTracks {
     /// It listed its tracks.
-    Listed {
-        count: u32,
-        /// Sum of the tracks' lengths in milliseconds. `None` when any of them
-        /// has no length: a partial sum understates the total and would read as
-        /// a duration disagreement, which is a wrong answer where the honest
-        /// one is "not known". A MusicBrainz release states lengths only when
-        /// asked with `inc=recordings`, and a Discogs tracklist can carry
-        /// untimed entries, so a count with no total is ordinary.
-        total_duration_ms: Option<u64>,
-    },
+    Listed { count: u32 },
     /// It answered and listed nothing — a release id it has since merged away,
     /// or one with no media. There is nothing left to ask, so a verdict
     /// carrying this is finished rather than waiting on a top-up.
@@ -285,7 +270,6 @@ fn source_tracks_from_mb_tracks<'a>(
     }
     SourceTracks::Listed {
         count: tracks.len() as u32,
-        total_duration_ms: tracks.iter().map(|t| t.length).sum::<Option<u64>>(),
     }
 }
 
@@ -595,8 +579,7 @@ pub(crate) async fn lookup_by_discid(
 
 /// A Discogs release's tracklist. Headings and index entries are not tracks;
 /// nested index rows are expanded to their playable leaves when
-/// `audio_durations_ms` offers no layout to fit. A playable row with no
-/// parseable duration leaves the total unknown while the count still stands.
+/// `audio_durations_ms` offers no layout to fit.
 pub(crate) fn discogs_source_tracks(
     release: &crate::discogs::DiscogsRelease,
     coverage: &crate::import::medium_coverage::MediumCoverage,
@@ -609,7 +592,6 @@ pub(crate) fn discogs_source_tracks(
     }
     SourceTracks::Listed {
         count: tracks.len() as u32,
-        total_duration_ms: tracks.iter().map(|track| track.duration_ms).sum(),
     }
 }
 

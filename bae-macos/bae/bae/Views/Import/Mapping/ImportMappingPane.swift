@@ -123,8 +123,7 @@ struct ImportMappingPane: View {
             return nil
         }
         switch reason {
-        case .trackCountDisagrees, .durationsDisagree, .sourceLengthsUnknown,
-            .localDurationUnknown:
+        case .trackCountDisagrees, .sourceTracksUnknown:
             return reason
         case .alreadyInLibrary, .severalMatches, .foundByTitle, .noMatch,
             .nothingToLookUp, .lookupFailed:

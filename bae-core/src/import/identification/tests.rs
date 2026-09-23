@@ -214,8 +214,7 @@ include!("tests/provider.rs");
 // ── The fixture ─────────────────────────────────────────────────────────────
 
 /// Where the candidate audio comes from. The two FLACs are real files with real
-/// durations, so the probe in the fast pass has something to measure and the
-/// Ready rule has a total to compare.
+/// durations, so the probe in the fast pass has something to measure.
 const FLAC_FIXTURES: [&str; 2] = ["01 Test Track 1.flac", "02 Test Track 2.flac"];
 
 /// A barcode-only analyzer: the folder gets a barcode signal without a LOG or
@@ -677,12 +676,32 @@ impl Fixture {
     }
 
     /// Store the verdict a settled lead produces, without running the pipeline.
+    /// The lead lists as many tracks as the fixture folder holds.
     async fn store_settled_verdict(
         &self,
         dir: &Path,
         release_id: &str,
         group_id: &str,
         probed_total_ms: u64,
+    ) {
+        self.store_settled_verdict_listing(
+            dir,
+            release_id,
+            group_id,
+            probed_total_ms,
+            SourceTracks::Listed { count: 2 },
+        )
+        .await;
+    }
+
+    /// `store_settled_verdict`, with the lead stating `source_tracks`.
+    async fn store_settled_verdict_listing(
+        &self,
+        dir: &Path,
+        release_id: &str,
+        group_id: &str,
+        probed_total_ms: u64,
+        source_tracks: SourceTracks,
     ) {
         let candidate = self
             .import
@@ -719,10 +738,7 @@ impl Fixture {
                 links: Vec::new(),
                 cover_art: None,
                 source_group_id: Some(group_id.to_string()),
-                source_tracks: Some(SourceTracks::Listed {
-                    count: 2,
-                    total_duration_ms: Some(probed_total_ms),
-                }),
+                source_tracks: Some(source_tracks),
             }],
             track_count: 2,
             provenance: vec![crate::identify::combine::LookupProvenance {
@@ -800,7 +816,7 @@ impl Fixture {
             .check_releases_in_library(&checks)
             .await
             .unwrap();
-        classify(&verdict, identify.probed_total_duration_ms, &statuses)
+        classify(&verdict, &statuses)
     }
 }
 

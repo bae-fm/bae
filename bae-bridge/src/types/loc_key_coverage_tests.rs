@@ -265,13 +265,7 @@ fn produced_keys() -> Vec<String> {
             local: 0,
             source: 0,
         },
-        BridgeNeedsYou::DurationsDisagree {
-            probed_ms: 0,
-            source_ms: 0,
-            tolerance_ms: 0,
-        },
-        BridgeNeedsYou::SourceLengthsUnknown,
-        BridgeNeedsYou::LocalDurationUnknown,
+        BridgeNeedsYou::SourceTracksUnknown,
     ] {
         keys.push(bridge_needs_you_key(&needs_you));
     }

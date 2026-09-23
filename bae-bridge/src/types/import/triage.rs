@@ -277,26 +277,12 @@ pub enum BridgeIdentificationStatus {
 pub enum BridgeNeedsYou {
     AlreadyInLibrary,
     FoundByTitle,
-    SeveralMatches {
-        count: u32,
-    },
+    SeveralMatches { count: u32 },
     NoMatch,
     NothingToLookUp,
     LookupFailed,
-    TrackCountDisagrees {
-        local: u32,
-        source: u32,
-    },
-    /// All three numbers cross even though the line names two: the tolerance is
-    /// what makes the other two a disagreement rather than a rounding, and a
-    /// surface that wants to show it should not have to re-derive it.
-    DurationsDisagree {
-        probed_ms: u64,
-        source_ms: u64,
-        tolerance_ms: u64,
-    },
-    SourceLengthsUnknown,
-    LocalDurationUnknown,
+    TrackCountDisagrees { local: u32, source: u32 },
+    SourceTracksUnknown,
 }
 
 impl BridgeNeedsYou {
@@ -309,16 +295,14 @@ impl BridgeNeedsYou {
             Self::NothingToLookUp => "core.import.triage.nothing_to_look_up",
             Self::LookupFailed => "core.import.triage.lookup_failed",
             Self::TrackCountDisagrees { .. } => "core.import.triage.track_count_disagrees",
-            Self::DurationsDisagree { .. } => "core.import.triage.durations_disagree",
-            Self::SourceLengthsUnknown => "core.import.triage.source_lengths_unknown",
-            Self::LocalDurationUnknown => "core.import.triage.local_duration_unknown",
+            Self::SourceTracksUnknown => "core.import.triage.source_tracks_unknown",
         }
     }
 }
 
 /// Localization key for the line a Needs-you row states its disagreement with —
 /// resolved by the UI against the `Core` string table, which interpolates the
-/// variant's own operands (durations formatted by the platform first).
+/// variant's own operands.
 #[uniffi::export]
 pub fn bridge_needs_you_key(needs_you: &BridgeNeedsYou) -> String {
     needs_you.loc_key().to_string()

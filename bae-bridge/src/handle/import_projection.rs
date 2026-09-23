@@ -305,9 +305,7 @@ mirror_enum! {
         NothingToLookUp,
         LookupFailed,
         TrackCountDisagrees { local, source },
-        DurationsDisagree { probed_ms, source_ms, tolerance_ms },
-        SourceLengthsUnknown,
-        LocalDurationUnknown,
+        SourceTracksUnknown,
     },
 }
 

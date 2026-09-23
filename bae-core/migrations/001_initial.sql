@@ -1221,16 +1221,16 @@ CREATE TABLE IF NOT EXISTS import_candidate_excluded_barcode (
 
 -- What an identify run concluded, and the ledger it recorded as it ended.
 CREATE TABLE IF NOT EXISTS import_candidate_verdict (
-    content_hash             TEXT PRIMARY KEY,
-    kind                     TEXT NOT NULL
+    content_hash  TEXT PRIMARY KEY,
+    kind          TEXT NOT NULL
         CHECK (kind IN ('found', 'not_found', 'manual_only', 'failed')),
     -- The tracks the folder played when the verdict was reached. Only a verdict
     -- that found nothing anywhere counts none.
-    track_count              INTEGER CHECK (track_count IS NULL OR track_count >= 0),
+    track_count   INTEGER CHECK (track_count IS NULL OR track_count >= 0),
     -- The typed lookup failures of a failed verdict, serialized as one value
     -- because no query dispatches on their internals; queue placement needs only
     -- the verdict's kind.
-    failures_json            TEXT CHECK (
+    failures_json TEXT CHECK (
         failures_json IS NULL
         OR (json_valid(failures_json)
             AND json_type(failures_json) = 'array'
@@ -1238,16 +1238,15 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     ),
     -- The ledger the run recorded as it ended, stored whole: no query reads into
     -- it. NULL is "no ledger recorded".
-    ledger_json              TEXT CHECK (
+    ledger_json   TEXT CHECK (
         ledger_json IS NULL
         OR (json_valid(ledger_json) AND json_type(ledger_json) = 'object')
     ),
-    probed_total_duration_ms INTEGER NOT NULL CHECK (probed_total_duration_ms >= 0),
-    identified_at            TEXT NOT NULL,
+    identified_at TEXT NOT NULL,
     -- 1 while the person has not seen this result: identification stored it
     -- while its candidate was not open, and nobody has opened it since. A
     -- result a person picked, or one that landed on the open candidate, is 0.
-    unread                   INTEGER NOT NULL CHECK (unread IN (0, 1)),
+    unread        INTEGER NOT NULL CHECK (unread IN (0, 1)),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((kind = 'not_found') = (track_count IS NULL)),
     CHECK ((kind = 'failed') = (failures_json IS NOT NULL))
@@ -1256,59 +1255,57 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
 -- Every release a run's lookups returned, in the order it listed them, with
 -- what the record said and which lookup found it.
 CREATE TABLE IF NOT EXISTS import_candidate_match (
-    content_hash           TEXT NOT NULL,
-    position               INTEGER NOT NULL CHECK (position >= 0),
+    content_hash        TEXT NOT NULL,
+    position            INTEGER NOT NULL CHECK (position >= 0),
     -- The pressing row this release belongs to, numbered from zero within its
     -- own list: the matches number their rows and the narrowed-out releases
     -- number theirs, each in the order the run listed them.
-    pressing               INTEGER NOT NULL CHECK (pressing >= 0),
-    source                 TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
-    release_id             TEXT NOT NULL,
-    title                  TEXT NOT NULL,
-    artist                 TEXT,
-    year                   INTEGER,
-    format                 TEXT,
-    label                  TEXT,
-    catalog_number         TEXT,
-    country                TEXT,
+    pressing            INTEGER NOT NULL CHECK (pressing >= 0),
+    source              TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
+    release_id          TEXT NOT NULL,
+    title               TEXT NOT NULL,
+    artist              TEXT,
+    year                INTEGER,
+    format              TEXT,
+    label               TEXT,
+    catalog_number      TEXT,
+    country             TEXT,
     -- What the record said the pressing is made of. 'undescribed': the
     -- response described no media, and there are no medium rows.
     -- 'per_medium': one medium row per medium the record listed, its format
     -- NULL where the record stated none. 'descriptors': one medium row per
     -- format name or qualifier, each stating its text; which medium each
     -- describes is not said.
-    media_kind             TEXT NOT NULL
+    media_kind          TEXT NOT NULL
         CHECK (media_kind IN ('undescribed', 'per_medium', 'descriptors')),
-    cover_url              TEXT,
-    cover_thumbnail_url    TEXT,
-    cover_label            TEXT,
-    cover_source           TEXT CHECK (cover_source IS NULL OR cover_source IN ('musicbrainz', 'discogs')),
-    source_group_id        TEXT,
+    cover_url           TEXT,
+    cover_thumbnail_url TEXT,
+    cover_label         TEXT,
+    cover_source        TEXT CHECK (cover_source IS NULL OR cover_source IN ('musicbrainz', 'discogs')),
+    source_group_id     TEXT,
     -- NULL: nobody asked the source for its tracklist yet. 'listed' /
-    -- 'nothing': asked. The total is NULL when any listed track has no length.
-    source_tracks_kind     TEXT CHECK (source_tracks_kind IS NULL OR source_tracks_kind IN ('listed', 'nothing')),
-    source_tracks_count    INTEGER CHECK (source_tracks_count IS NULL OR source_tracks_count >= 0),
-    source_tracks_total_ms INTEGER CHECK (source_tracks_total_ms IS NULL OR source_tracks_total_ms >= 0),
+    -- 'nothing': asked.
+    source_tracks_kind  TEXT CHECK (source_tracks_kind IS NULL OR source_tracks_kind IN ('listed', 'nothing')),
+    source_tracks_count INTEGER CHECK (source_tracks_count IS NULL OR source_tracks_count >= 0),
     -- Which lookup returned this release. What the folder's own text says about
     -- it is not here: that is read out of the text lines every time the
     -- verdict is read, so changing what the text is taken to state re-ranks the
     -- rows without re-running anything.
-    by_disc_id             INTEGER NOT NULL CHECK (by_disc_id IN (0, 1)),
-    by_barcode             INTEGER NOT NULL CHECK (by_barcode IN (0, 1)),
-    by_catalog             INTEGER NOT NULL CHECK (by_catalog IN (0, 1)),
+    by_disc_id          INTEGER NOT NULL CHECK (by_disc_id IN (0, 1)),
+    by_barcode          INTEGER NOT NULL CHECK (by_barcode IN (0, 1)),
+    by_catalog          INTEGER NOT NULL CHECK (by_catalog IN (0, 1)),
     -- The title search the run falls back on when no identifier named
     -- anything. Never set beside the three above: the search is asked only
     -- once they have all come back empty.
-    by_search              INTEGER NOT NULL CHECK (by_search IN (0, 1)),
-    narrowed_out           INTEGER NOT NULL DEFAULT 0 CHECK (narrowed_out IN (0, 1)),
+    by_search           INTEGER NOT NULL CHECK (by_search IN (0, 1)),
+    narrowed_out        INTEGER NOT NULL DEFAULT 0 CHECK (narrowed_out IN (0, 1)),
     PRIMARY KEY (content_hash, position),
     -- The medium rows reference the match together with its media kind, so a
     -- row can only ever belong to a match of the kind it was written for.
     UNIQUE (content_hash, position, media_kind),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
     CHECK ((cover_url IS NULL) = (cover_thumbnail_url IS NULL) AND (cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL)),
-    CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
-    CHECK (source_tracks_total_ms IS NULL OR source_tracks_kind = 'listed')
+    CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL))
 ) STRICT;
 
 -- Every barcode a matched record states.

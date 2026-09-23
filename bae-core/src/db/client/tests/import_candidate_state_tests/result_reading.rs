@@ -23,9 +23,9 @@ async fn unpicked_candidate(db: &Database) -> (String, String) {
     (key, hash)
 }
 
-/// A run's result asking a question: the lone match states no track lengths.
+/// A run's result asking a question: the lone match lists no tracks.
 fn asking(hash: &str, key: &str) -> NewImportCandidateVerdict {
-    new_candidate_row(hash, key, &sample_verdict(), 2_700_000)
+    new_candidate_row(hash, key, &sample_verdict())
 }
 
 /// A result stored while nobody has the candidate open is unread, and the
@@ -39,7 +39,7 @@ async fn a_result_nobody_has_open_is_unread_until_the_candidate_is_opened() {
     assert!(preparations.store_verdict(&asking(&hash, &key)).await.unwrap());
     assert_eq!(
         attention(&db, &key).await,
-        Some(crate::identify::NeedsYou::SourceLengthsUnknown)
+        Some(crate::identify::NeedsYou::SourceTracksUnknown)
     );
 
     let opened = preparations.open_candidate(&key).await.unwrap();
@@ -69,7 +69,7 @@ async fn a_result_landing_on_the_open_candidate_arrives_read() {
     assert!(preparations.store_verdict(&asking(&hash, &key)).await.unwrap());
     assert_eq!(
         attention(&db, &key).await,
-        Some(crate::identify::NeedsYou::SourceLengthsUnknown),
+        Some(crate::identify::NeedsYou::SourceTracksUnknown),
         "the next run's result, landing with the candidate closed, is unread"
     );
 }
@@ -90,7 +90,7 @@ async fn a_draft_edit_leaves_the_result_as_read_as_it_stood() {
         .unwrap();
     assert_eq!(
         attention(&db, &key).await,
-        Some(crate::identify::NeedsYou::SourceLengthsUnknown),
+        Some(crate::identify::NeedsYou::SourceTracksUnknown),
         "still unread"
     );
 

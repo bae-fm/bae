@@ -207,9 +207,9 @@ async fn a_verdict_cannot_create_state_for_an_absent_candidate() {
         .is_none());
 }
 
-/// The verdict stores its derived total without duplicating per-file scan facts.
+/// The verdict does not duplicate the per-file durations the scan stored.
 #[tokio::test]
-async fn verdict_stores_only_the_derived_total() {
+async fn a_verdict_does_not_duplicate_the_scanned_durations() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let durations = SourceDurations::new(vec![
@@ -227,14 +227,6 @@ async fn verdict_stores_only_the_derived_total() {
         .unwrap()
         .expect("the verdict wrote a row");
     assert!(state.signals.unwrap().durations.units.is_empty());
-    assert_eq!(
-        state
-            .identify
-            .expect("the verdict reads back")
-            .probed_total_duration_ms,
-        780_000,
-        "the column is the sum the same write derived"
-    );
 }
 
 /// Every settled shape of every signal comes back as it went in, including

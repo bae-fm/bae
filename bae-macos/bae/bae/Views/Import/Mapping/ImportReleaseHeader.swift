@@ -8,8 +8,8 @@ import SwiftUI
 struct ImportCommitControls {
     let unansweredCount: Int
     /// What the Ready rule found that keeps this candidate out of a bulk
-    /// import — the tracklist or its lengths disagreeing with the folder, or
-    /// a length nobody could measure. Stated beside the Import it bears on,
+    /// import — the release listing a different number of tracks than the
+    /// folder holds, or none at all. Stated beside the Import it bears on,
     /// which stays available: importing it anyway is the person's call.
     let readyCheck: BridgeNeedsYou?
     /// Routes the running import's progress to the leaf line that draws it.

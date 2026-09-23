@@ -111,23 +111,17 @@ pub(super) fn insert_verdict(
         | TerminalVerdict::NotFoundAnywhere { .. }
         | TerminalVerdict::ManualOnly { .. } => None,
     };
-    let probed = i64::try_from(identification.probed_total_duration_ms).map_err(|_| {
-        DbError::Message(format!(
-            "candidate {content_hash} probed total exceeds SQLite's integer range"
-        ))
-    })?;
     sql.execute(
         "INSERT INTO import_candidate_verdict \
              (content_hash, kind, track_count, failures_json, \
-              ledger_json, probed_total_duration_ms, identified_at, unread) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+              ledger_json, identified_at, unread) \
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             kind,
             track_count,
             failures_json,
             ledger_json,
-            probed,
             identification.identified_at.to_rfc3339(),
             unread,
         ],
@@ -232,25 +226,10 @@ fn insert_match(
     let position = i64::try_from(position)
         .map_err(|_| DbError::Message("a match list is longer than SQLite counts".to_string()))?;
     let cover = result.cover_art.as_ref();
-    let (tracks_kind, tracks_count, tracks_total_ms) = match &result.source_tracks {
-        None => (None, None, None),
-        Some(SourceTracks::Nothing) => (Some("nothing"), None, None),
-        Some(SourceTracks::Listed {
-            count,
-            total_duration_ms,
-        }) => (
-            Some("listed"),
-            Some(i64::from(*count)),
-            total_duration_ms
-                .map(|total| {
-                    i64::try_from(total).map_err(|_| {
-                        DbError::Message(
-                            "a source tracklist's total exceeds SQLite's integer range".to_string(),
-                        )
-                    })
-                })
-                .transpose()?,
-        ),
+    let (tracks_kind, tracks_count) = match &result.source_tracks {
+        None => (None, None),
+        Some(SourceTracks::Nothing) => (Some("nothing"), None),
+        Some(SourceTracks::Listed { count }) => (Some("listed"), Some(i64::from(*count))),
     };
     let (media_kind, media_entries): (&str, Vec<Option<&str>>) = match &result.media {
         StatedMedia::Undescribed => (MEDIA_UNDESCRIBED, Vec::new()),
@@ -268,9 +247,8 @@ fn insert_match(
              (content_hash, position, pressing, source, release_id, title, artist, year, format, \
               label, catalog_number, country, media_kind, cover_url, cover_thumbnail_url, \
               cover_label, cover_source, source_group_id, source_tracks_kind, \
-              source_tracks_count, source_tracks_total_ms, by_disc_id, by_barcode, by_catalog, \
-              by_search, narrowed_out) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              source_tracks_count, by_disc_id, by_barcode, by_catalog, by_search, narrowed_out) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -292,7 +270,6 @@ fn insert_match(
             result.source_group_id,
             tracks_kind,
             tracks_count,
-            tracks_total_ms,
             provenance.by_disc_id,
             provenance.by_barcode,
             provenance.by_catalog,
@@ -497,18 +474,10 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
                 .ok_or_else(|| {
                     DbError::Message("a listed source tracklist states no count".to_string())
                 })?;
-            let total: Option<i64> = row.get("source_tracks_total_ms")?;
             Some(SourceTracks::Listed {
                 count: u32::try_from(count).map_err(|_| {
                     DbError::Message("a source tracklist's count is out of range".to_string())
                 })?,
-                total_duration_ms: total
-                    .map(|total| {
-                        u64::try_from(total).map_err(|_| {
-                            DbError::Message("a source tracklist's total is negative".to_string())
-                        })
-                    })
-                    .transpose()?,
             })
         }
         Some(other) => return Err(unreadable("source_tracks_kind", other)),
@@ -553,12 +522,11 @@ pub(super) struct VerdictRow {
     pub(super) track_count: Option<i64>,
     pub(super) failures_json: Option<String>,
     pub(super) ledger_json: Option<String>,
-    pub(super) probed_total_duration_ms: i64,
     pub(super) identified_at: DateTime<Utc>,
 }
 
 pub(super) const VERDICT_COLUMNS: &str = "content_hash, kind, track_count, \
-     failures_json, ledger_json, probed_total_duration_ms, identified_at";
+     failures_json, ledger_json, identified_at";
 
 pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
     Ok(VerdictRow {
@@ -567,7 +535,6 @@ pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
         track_count: row.get("track_count")?,
         failures_json: row.get("failures_json")?,
         ledger_json: row.get("ledger_json")?,
-        probed_total_duration_ms: row.get("probed_total_duration_ms")?,
         identified_at: super::rfc3339_column(row, "identified_at")?,
     })
 }
@@ -583,7 +550,6 @@ pub(super) fn identification_of(
         track_count,
         failures_json,
         ledger_json,
-        probed_total_duration_ms,
         identified_at,
     } = row;
     let ledger: Option<IdentifyRunView> = ledger_json
@@ -657,11 +623,6 @@ pub(super) fn identification_of(
     };
     Ok(DbCandidateIdentifyResult {
         verdict,
-        probed_total_duration_ms: u64::try_from(probed_total_duration_ms).map_err(|_| {
-            DbError::Message(format!(
-                "import candidate {content_hash} holds a negative probed total"
-            ))
-        })?,
         identified_at,
     })
 }

@@ -196,10 +196,7 @@ fn cards_are_ordered_by_their_best_row() {
 /// A tracklist as a source states it. What it says does not matter here; that
 /// it was said is the tie-break.
 fn listed() -> crate::import::search::SourceTracks {
-    crate::import::search::SourceTracks::Listed {
-        count: 9,
-        total_duration_ms: Some(2_400_000),
-    }
+    crate::import::search::SourceTracks::Listed { count: 9 }
 }
 
 /// One pressing as both sources state it, paired by the barcode they share.

@@ -427,31 +427,22 @@ fn identification_s_own_pick_is_judged_by_the_ready_rule() {
         (
             queue(),
             with_verdict(ready_state("mb-1"), |verdict| {
-                verdict.probed_total_duration_ms = 1_200_000;
-            }),
-            NeedsYou::DurationsDisagree {
-                probed_ms: 1_200_000,
-                source_ms: 2_400_000,
-                // Half a second per track, eleven tracks.
-                tolerance_ms: 5_500,
-            },
-        ),
-        (
-            queue(),
-            with_verdict(ready_state("mb-1"), |verdict| {
                 verdict.summary.lead = Some(LeadMatch {
                     source_tracks: None,
                     ..lead("mb-1")
                 });
             }),
-            NeedsYou::SourceLengthsUnknown,
+            NeedsYou::SourceTracksUnknown,
         ),
         (
             queue(),
             with_verdict(ready_state("mb-1"), |verdict| {
-                verdict.probed_total_duration_ms = 0;
+                verdict.summary.lead = Some(LeadMatch {
+                    source_tracks: Some(SourceTracks::Nothing),
+                    ..lead("mb-1")
+                });
             }),
-            NeedsYou::LocalDurationUnknown,
+            NeedsYou::SourceTracksUnknown,
         ),
         (in_library, ready_state("mb-1"), NeedsYou::AlreadyInLibrary),
     ];

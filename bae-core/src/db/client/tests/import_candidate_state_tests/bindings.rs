@@ -158,7 +158,6 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
             &hash,
             &folder.path().to_string_lossy(),
             &sample_verdict(),
-            2_700_000,
         ))
         .await
         .unwrap();
