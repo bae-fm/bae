@@ -39,10 +39,9 @@ impl CandidatePreparations {
         prep.metadata_revision = read.metadata_revision.checked_add(1).ok_or_else(|| {
             LibraryError::Import("candidate metadata revision exhausted the u64 range".into())
         })?;
-        prep.author = match metadata.provenance {
-            Some(_) => MetadataAuthor::User,
-            None => MetadataAuthor::Nobody,
-        };
+        // The person asked for the setup back: what it starts from now is
+        // theirs, whether the folder's tags or a blank draft.
+        prep.author = MetadataAuthor::Person;
         prep.metadata = metadata;
         prep.assets_prepared = true;
         prep.identification = None;

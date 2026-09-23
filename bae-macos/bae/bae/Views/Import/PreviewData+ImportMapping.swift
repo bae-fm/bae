@@ -476,7 +476,7 @@
                     metadataDraftIsBlank: edit.albumTitle.isEmpty,
                     metadataProvenance: metadataProvenance,
                     metadataAuthor: metadataProvenance == nil
-                        ? .nobody : .user,
+                        ? .nobody : .person,
                     metadataRevision: 1,
                     mapping: mapping,
                     cover: cover,

@@ -75,7 +75,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
     );
     assert_eq!(
         resumed.metadata_author,
-        crate::import::MetadataAuthor::User,
+        crate::import::MetadataAuthor::Person,
         "and the person is now the author of the draft"
     );
     assert!(

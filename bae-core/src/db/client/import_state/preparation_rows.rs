@@ -11,7 +11,6 @@ use super::*;
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::preparation::CandidatePreparation;
 use crate::import::release_candidate::ReleaseCandidate;
-use crate::import::MetadataAuthor;
 
 /// The revisions a save was prepared against, and — for a write that must
 /// not land on a folder the scan has since re-read — where the scan lists it.
@@ -126,9 +125,6 @@ pub(super) fn load_preparation_on(
     let Some(state) = load_states_on(sql, Some(content_hash))?.remove(content_hash) else {
         return Ok(None);
     };
-    let author = load_provenance_on(sql, Some(content_hash))?
-        .remove(content_hash)
-        .map_or(MetadataAuthor::Nobody, |(_, author)| author);
     let rows = load_pane_rows_on(sql, content_hash)?;
     let source_discogs_artist_ids =
         prepared_asset_rows::load_source_artist_ids_on(sql, content_hash)?;
@@ -138,7 +134,7 @@ pub(super) fn load_preparation_on(
         folder_path: state.folder_path,
         file_edits: state.file_edits,
         metadata_revision: state.metadata_revision,
-        author,
+        author: state.metadata_author,
         metadata: crate::import::CandidateMetadataDraft {
             draft: rows.draft,
             source_discogs_artist_ids,
@@ -214,14 +210,10 @@ pub(super) fn save_preparation_on(
         insert_signals(sql, content_hash, signals)?;
     }
     // Replacing the draft row cascades the provenance and its partners away;
-    // `validate` has already refused a provenance without an author or an
-    // author without one, so the pair below is present or absent together.
-    pane_rows::replace_draft(sql, content_hash, &prep.metadata.draft)?;
-    if let (Some(provenance), Some(author)) = (
-        prep.metadata.provenance.as_ref(),
-        author_column(prep.author),
-    ) {
-        insert_provenance(sql, content_hash, provenance, author)?;
+    // `validate` has already refused an author the provenance cannot have.
+    pane_rows::replace_draft(sql, content_hash, &prep.metadata.draft, prep.author)?;
+    if let Some(provenance) = prep.metadata.provenance.as_ref() {
+        insert_provenance(sql, content_hash, provenance)?;
     }
     pane_rows::delete_cover(sql, content_hash)?;
     if let Some(cover) = &prep.metadata.cover {

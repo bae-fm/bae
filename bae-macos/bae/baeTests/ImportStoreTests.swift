@@ -257,7 +257,7 @@ private func detail(
         metadataDraft: MappingFixtures.albumEdit,
         metadataDraftIsBlank: false,
         metadataProvenance: MappingFixtures.provenance,
-        metadataAuthor: .user,
+        metadataAuthor: .person,
         metadataRevision: 1,
         mapping: BridgeMappingTable(
             images: [],

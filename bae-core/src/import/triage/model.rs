@@ -19,8 +19,8 @@ pub enum TriageTab {
 /// wherever the row sits, so it is [`TriageRow::identification`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriagePlacement {
-    /// Pending with nothing yet known about the release: no verdict, no pick,
-    /// no draft that would import.
+    /// Pending with nothing to import and nothing to ask: no verdict, or a
+    /// verdict with nothing to ask over a draft that would not import.
     Pending,
     /// Metadata is prepared for import. Offered actions also account for live
     /// identification, which can temporarily prevent a bulk import.

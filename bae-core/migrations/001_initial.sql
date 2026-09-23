@@ -869,6 +869,12 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit (
     catalog_number TEXT NOT NULL,
     country        TEXT NOT NULL,
     barcode        TEXT NOT NULL,
+    -- Who wrote the draft: nobody (the blank one discovery creates), discovery
+    -- seeding it from the folder's tags, an identification run applying its
+    -- pick, or a person. Which provenance each may carry is checked where the
+    -- draft is saved: it spans this row and the provenance row.
+    author         TEXT NOT NULL
+        CHECK (author IN ('nobody', 'prefill', 'identification', 'person')),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
 ) STRICT;
 
@@ -1017,20 +1023,16 @@ CREATE TABLE IF NOT EXISTS import_candidate_asset_preparation (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
 ) STRICT;
 
--- Where the draft was read from, and who asked for that reading.
+-- Where the draft was read from. Who wrote it is the draft row's `author`.
 CREATE TABLE IF NOT EXISTS import_candidate_draft_provenance (
     content_hash TEXT PRIMARY KEY,
     kind         TEXT NOT NULL CHECK (kind IN ('external_release', 'file_tags')),
     source       TEXT CHECK (source IS NULL OR source IN ('musicbrainz', 'discogs')),
     release_id   TEXT,
-    author       TEXT NOT NULL CHECK (author IN ('user', 'identification')),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE,
     -- Only a release names a release; File Tags names the candidate's own files.
     CHECK ((kind = 'external_release') = (source IS NOT NULL)),
-    CHECK ((kind = 'external_release') = (release_id IS NOT NULL)),
-    -- Identification only ever concludes a release. Reading a folder's own tags
-    -- is something a person asks for.
-    CHECK (author != 'identification' OR kind = 'external_release')
+    CHECK ((kind = 'external_release') = (release_id IS NOT NULL))
 ) STRICT;
 
 -- The releases in the other catalogs that the draft's own record links to.

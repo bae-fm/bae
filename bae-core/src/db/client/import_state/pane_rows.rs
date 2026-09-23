@@ -15,7 +15,7 @@ use super::*;
 use crate::db::client::candidate_state_rows::COVER_COLUMNS;
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, ExistingArtist,
-    NewArtistSeed, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
+    MetadataAuthor, NewArtistSeed, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
 };
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, format, \
@@ -33,6 +33,26 @@ pub(super) fn delete_cover(sql: &SqlContext<'_, '_>, content_hash: &str) -> Resu
     Ok(())
 }
 
+/// The column a draft's author is stored as.
+fn author_column(author: MetadataAuthor) -> &'static str {
+    match author {
+        MetadataAuthor::Nobody => "nobody",
+        MetadataAuthor::Prefill => "prefill",
+        MetadataAuthor::Identification => "identification",
+        MetadataAuthor::Person => "person",
+    }
+}
+
+fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
+    match stored {
+        "nobody" => Ok(MetadataAuthor::Nobody),
+        "prefill" => Ok(MetadataAuthor::Prefill),
+        "identification" => Ok(MetadataAuthor::Identification),
+        "person" => Ok(MetadataAuthor::Person),
+        other => Err(unreadable("draft author", other)),
+    }
+}
+
 /// Replace the draft row and everything hanging off it: its tracks and their
 /// artist assignments, and the provenance with the partner releases the same
 /// pick claimed. The caller writes the new provenance after this returns.
@@ -40,23 +60,25 @@ pub(super) fn replace_draft(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     draft: &CandidateDraft,
+    author: MetadataAuthor,
 ) -> Result<(), DbError> {
     sql.execute(
         "DELETE FROM import_candidate_edit WHERE content_hash = ?",
         [content_hash],
     )?;
-    insert_draft(sql, content_hash, draft)
+    insert_draft(sql, content_hash, draft, author)
 }
 
 pub(crate) fn insert_draft(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     draft: &CandidateDraft,
+    author: MetadataAuthor,
 ) -> Result<(), DbError> {
     sql.execute(
         &format!(
-            "INSERT INTO import_candidate_edit ({EDIT_COLUMNS}) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO import_candidate_edit ({EDIT_COLUMNS}, author) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
@@ -68,6 +90,7 @@ pub(crate) fn insert_draft(
             draft.pressing.catalog_number,
             draft.pressing.country,
             draft.pressing.barcode,
+            author_column(author),
         ],
     )?;
     insert_album_artist_assignments(sql, content_hash, &draft.album_artist_assignments)?;
@@ -187,6 +210,22 @@ pub(crate) fn load_covers_on(
         out.insert(content_hash, cover);
     }
     Ok(out)
+}
+
+/// Who wrote every candidate's draft, or the one `only` names.
+pub(crate) fn load_authors_on(
+    sql: &SqlReadContext<'_>,
+    only: Option<&str>,
+) -> Result<HashMap<String, MetadataAuthor>, DbError> {
+    sql.query(
+        "SELECT content_hash, author FROM import_candidate_edit \
+         WHERE :only IS NULL OR content_hash = :only",
+        named_params! { ":only": only },
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+    )?
+    .into_iter()
+    .map(|(content_hash, author)| Ok((content_hash, author_of(&author)?)))
+    .collect()
 }
 
 /// Every candidate's complete stored draft, or the one `only` names.

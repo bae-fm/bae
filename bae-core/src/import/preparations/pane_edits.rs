@@ -291,7 +291,7 @@ impl CandidatePreparations {
     }
 
     /// Load one candidate, change its metadata, and save it whole under the
-    /// next metadata revision.
+    /// next metadata revision, as the person's draft.
     ///
     /// `scanned` names where the scan must still list the candidate at the
     /// expected file revision; the revision expectations are checked against
@@ -335,6 +335,10 @@ impl CandidatePreparations {
             scanned: scanned.map(CandidateScanExpectation::Current),
         };
         change(&mut prep)?;
+        // An edit is the person working on the draft, whoever wrote it before:
+        // after it, the draft is their answer rather than what identification
+        // or the folder's tags proposed.
+        prep.author = crate::import::MetadataAuthor::Person;
         prep.metadata_revision += 1;
         let revision = prep.metadata_revision;
         match self

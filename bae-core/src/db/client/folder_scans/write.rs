@@ -294,7 +294,12 @@ pub(crate) fn ensure_candidate_state(
     if !has_draft {
         match seed {
             CandidateStateSeed::Blank(source) => {
-                super::super::import_state::insert_draft(sql, &content_hash, &source.draft)?;
+                super::super::import_state::insert_draft(
+                    sql,
+                    &content_hash,
+                    &source.draft,
+                    crate::import::MetadataAuthor::Nobody,
+                )?;
             }
             CandidateStateSeed::FileMetadata(seed) => {
                 super::super::import_state::insert_file_tags_draft(

@@ -9,61 +9,36 @@ use super::verdict_rows::{
     StoredMatches, VERDICT_COLUMNS,
 };
 use super::*;
-use crate::import::{Catalog, MetadataAuthor, MetadataProvenance, MetadataRef};
+use crate::import::{Catalog, MetadataProvenance, MetadataRef};
 use std::str::FromStr;
 
-type CandidateProvenances = HashMap<String, (MetadataProvenance, MetadataAuthor)>;
+type CandidateProvenances = HashMap<String, MetadataProvenance>;
 
 /// The provenance as its columns. Only an external release names a source and
-/// a release; `author` is never absent, because a provenance nobody put there
-/// has no row at all.
+/// a release.
 struct ProvenanceColumns<'a> {
     kind: &'static str,
     source: Option<&'static str>,
     release_id: Option<&'a str>,
-    author: &'static str,
 }
 
-fn provenance_columns<'a>(
-    provenance: &'a MetadataProvenance,
-    author: &'static str,
-) -> ProvenanceColumns<'a> {
+fn provenance_columns(provenance: &MetadataProvenance) -> ProvenanceColumns<'_> {
     match provenance {
         MetadataProvenance::FileMetadata => ProvenanceColumns {
             kind: "file_tags",
             source: None,
             release_id: None,
-            author,
         },
         MetadataProvenance::ExternalRelease { record, .. } => ProvenanceColumns {
             kind: "external_release",
             source: Some(record.catalog.as_str()),
             release_id: Some(record.key.as_str()),
-            author,
         },
     }
 }
 
-/// The column an author is stored as, or `None` for a draft nobody chose —
-/// which has no provenance row, so nothing is written for it.
-pub(super) fn author_column(author: MetadataAuthor) -> Option<&'static str> {
-    match author {
-        MetadataAuthor::Nobody => None,
-        MetadataAuthor::Identification => Some("identification"),
-        MetadataAuthor::User => Some("user"),
-    }
-}
-
-fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
-    match stored {
-        "identification" => Ok(MetadataAuthor::Identification),
-        "user" => Ok(MetadataAuthor::User),
-        other => Err(unreadable("provenance author", other)),
-    }
-}
-
-/// Write the draft's provenance, its author, and the partner releases the same
-/// pick claimed.
+/// Write the draft's provenance and the partner releases the same pick
+/// claimed.
 ///
 /// Called after the draft row is replaced, which cascades the previous
 /// provenance and its partners away, so this only ever inserts.
@@ -71,19 +46,17 @@ pub(super) fn insert_provenance(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     provenance: &MetadataProvenance,
-    author: &'static str,
 ) -> Result<(), DbError> {
-    let columns = provenance_columns(provenance, author);
+    let columns = provenance_columns(provenance);
     sql.execute(
         "INSERT INTO import_candidate_draft_provenance \
-             (content_hash, kind, source, release_id, author) \
-         VALUES (?, ?, ?, ?, ?)",
+             (content_hash, kind, source, release_id) \
+         VALUES (?, ?, ?, ?)",
         params![
             content_hash,
             columns.kind,
             columns.source,
-            columns.release_id,
-            columns.author
+            columns.release_id
         ],
     )?;
     let MetadataProvenance::ExternalRelease { partners, .. } = provenance else {
@@ -99,8 +72,7 @@ pub(super) fn insert_provenance(
     Ok(())
 }
 
-/// Every candidate's draft provenance with its author, or the one `only`
-/// names. The partner rows are read in the same pass, since only the
+/// Every candidate's draft provenance, or the one `only` names. The partner rows are read in the same pass, since only the
 /// provenance they belong to explains them.
 pub(crate) fn load_provenance_on(
     sql: &SqlReadContext<'_>,
@@ -128,7 +100,7 @@ pub(crate) fn load_provenance_rows_on(
     )?;
 
     let rows = sql.query(
-        "SELECT content_hash, kind, source, release_id, author \
+        "SELECT content_hash, kind, source, release_id \
          FROM import_candidate_draft_provenance \
          WHERE :only IS NULL OR content_hash = :only",
         named_params! { ":only": only },
@@ -138,7 +110,6 @@ pub(crate) fn load_provenance_rows_on(
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<String>>(2)?,
                 row.get::<_, Option<String>>(3)?,
-                row.get::<_, String>(4)?,
             ))
         },
     )?;
@@ -152,7 +123,7 @@ pub(crate) fn load_provenance_rows_on(
                 .push(MetadataRef::new(source, release_id));
         }
         let mut out = HashMap::with_capacity(rows.len());
-        for (content_hash, kind, source, release_id, author) in rows {
+        for (content_hash, kind, source, release_id) in rows {
             let partners = partners.remove(&content_hash).unwrap_or_default();
             let provenance = match kind.as_str() {
                 "file_tags" => MetadataProvenance::FileMetadata,
@@ -173,7 +144,7 @@ pub(crate) fn load_provenance_rows_on(
                 }
                 other => return Err(unreadable("provenance kind", other)),
             };
-            out.insert(content_hash, (provenance, author_of(&author)?));
+            out.insert(content_hash, provenance);
         }
         Ok(out)
     })
@@ -380,9 +351,11 @@ pub(crate) fn load_states_rows_on(
     let edits = load_edits_on(sql, only)?;
     let signals = load_signals_on(sql, only)?;
     let provenances = load_provenance_rows_on(sql, only)?;
+    let authors = super::pane_rows::load_authors_on(sql, only)?;
     let lookup_choices = load_lookup_choices_on(sql, only)?;
 
     Ok(move || {
+        let mut authors = authors;
         let mut verdicts = verdicts()?;
         let mut edits = edits()?;
         let mut signals = signals()?;
@@ -405,6 +378,17 @@ pub(crate) fn load_states_rows_on(
                 ))
             })?;
             let provenance = provenances.remove(&state.content_hash);
+            let author = authors.remove(&state.content_hash).ok_or_else(|| {
+                DbError::Message(format!(
+                    "candidate {} has no editable metadata draft",
+                    state.content_hash
+                ))
+            })?;
+            author
+                .check_provenance(provenance.as_ref())
+                .map_err(|error| {
+                    DbError::Message(format!("candidate {}: {error}", state.content_hash))
+                })?;
             out.insert(
                 state.content_hash.clone(),
                 DbImportCandidateState {
@@ -413,10 +397,8 @@ pub(crate) fn load_states_rows_on(
                         .remove(&state.content_hash)
                         .unwrap_or_default(),
                     identify: verdicts.remove(&state.content_hash),
-                    metadata_author: provenance
-                        .as_ref()
-                        .map_or(MetadataAuthor::Nobody, |(_, author)| *author),
-                    metadata_provenance: provenance.map(|(provenance, _)| provenance),
+                    metadata_author: author,
+                    metadata_provenance: provenance,
                     content_hash: state.content_hash,
                     folder_path: state.folder_path,
                     file_edits,

@@ -470,7 +470,7 @@ extension MappingFixtures {
             metadataDraftIsBlank: edit.albumTitle.isEmpty,
             metadataProvenance: metadataProvenance,
             metadataAuthor: metadataAuthor
-                ?? (metadataProvenance == nil ? .nobody : .user),
+                ?? (metadataProvenance == nil ? .nobody : .person),
             metadataRevision: metadataRevision,
             mapping: mapping
                 ?? BridgeMappingTable(

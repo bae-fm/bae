@@ -134,17 +134,19 @@ mod conversion_roundtrip {
         }
     }
 
-    /// Who wrote the candidate's draft crosses as itself. The pane returns to
-    /// the draft on `Identification` alone, so a variant landing as another
-    /// would either strand the person on Find online or bounce them off it.
+    /// Who wrote the candidate's draft crosses as itself: the pane and the
+    /// row read it to tell a person's answer from what the tags or a run
+    /// proposed, so a variant landing as another would misstate whose draft
+    /// it is.
     #[cfg(feature = "desktop")]
     #[test]
     fn the_draft_s_author_crosses_the_bridge_as_itself() {
         use bae_core::import::MetadataAuthor;
         let crossed: Vec<_> = [
             MetadataAuthor::Nobody,
+            MetadataAuthor::Prefill,
             MetadataAuthor::Identification,
-            MetadataAuthor::User,
+            MetadataAuthor::Person,
         ]
         .into_iter()
         .map(BridgeMetadataAuthor::from_core)
@@ -153,8 +155,9 @@ mod conversion_roundtrip {
             crossed,
             vec![
                 BridgeMetadataAuthor::Nobody,
+                BridgeMetadataAuthor::Prefill,
                 BridgeMetadataAuthor::Identification,
-                BridgeMetadataAuthor::User,
+                BridgeMetadataAuthor::Person,
             ]
         );
     }

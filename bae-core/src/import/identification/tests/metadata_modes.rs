@@ -51,14 +51,23 @@ async fn a_file_tags_draft_is_still_run() {
                 .await
                 .unwrap();
         }
+        let stored = fixture
+            .stored_for(&dir)
+            .await
+            .expect("the candidate is stored");
         assert_eq!(
-            fixture
-                .stored_for(&dir)
-                .await
-                .expect("the candidate is stored")
-                .metadata_provenance,
+            stored.metadata_provenance,
             Some(crate::import::MetadataProvenance::FileMetadata),
             "{name} starts from its file tags"
+        );
+        assert_eq!(
+            stored.metadata_author,
+            if reset_by_hand {
+                crate::import::MetadataAuthor::Person
+            } else {
+                crate::import::MetadataAuthor::Prefill
+            },
+            "{name}: the draft says who read the tags into it"
         );
 
         fixture.sweep_once().await;

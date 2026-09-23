@@ -17,7 +17,9 @@ use super::folder_scans::{delete_entry, stored_entries, StoredEntry};
 use edit_rows::{delete_file_edits, insert_file_edits};
 use failure_rows::load_failure_on;
 pub(super) use import_commit::require_import_commit_guard;
-pub(super) use pane_rows::{insert_draft, load_covers_on, load_drafts_on, load_pane_rows_on};
+pub(super) use pane_rows::{
+    insert_draft, load_authors_on, load_covers_on, load_drafts_on, load_pane_rows_on,
+};
 pub(crate) use preparation_rows::{
     CandidateLookupUpdate, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
     CandidateScanExpectation, ScannedCandidateKey,
@@ -30,7 +32,7 @@ use crate::import::folder_scanner::{
     CandidateFileEdits, FolderReleaseDecision, FolderReleaseDecisionAuthor,
     FolderReleaseDecisionKey, FolderReleaseDecisions, StoredCandidateEdits,
 };
-use rows::{author_column, insert_provenance, load_candidate_file_edits_on, load_states_rows_on};
+use rows::{insert_provenance, load_candidate_file_edits_on, load_states_rows_on};
 use std::collections::HashSet;
 use verdict_rows::{delete_verdict, insert_verdict};
 
@@ -55,23 +57,24 @@ impl Database {
 }
 
 /// Seed a candidate's stored draft from the folder's own file tags: the draft
-/// they project and the provenance naming them as its source. The author is
-/// the same one a person's "Reset to tags" writes — identification never
-/// concludes a folder's own files. The cover the tags embed is stored with
-/// the folder's own cover, beside this.
+/// they project and the provenance naming them as its source, written by
+/// discovery rather than by anyone who looked at it. The cover the tags embed
+/// is stored with the folder's own cover, beside this.
 pub(crate) fn insert_file_tags_draft(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     draft: &crate::import::CandidateDraft,
 ) -> Result<(), DbError> {
-    pane_rows::insert_draft(sql, content_hash, draft)?;
-    let author = author_column(crate::import::MetadataAuthor::User)
-        .ok_or_else(|| DbError::Message("a stored provenance names an author".to_string()))?;
+    pane_rows::insert_draft(
+        sql,
+        content_hash,
+        draft,
+        crate::import::MetadataAuthor::Prefill,
+    )?;
     insert_provenance(
         sql,
         content_hash,
         &crate::import::MetadataProvenance::FileMetadata,
-        author,
     )?;
     Ok(())
 }

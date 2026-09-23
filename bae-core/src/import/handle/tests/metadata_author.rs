@@ -28,26 +28,25 @@ async fn a_pick_the_person_made_names_them_as_the_author() {
 
     assert_eq!(
         pane(&handle, &key).await.metadata_author,
-        MetadataAuthor::User
+        MetadataAuthor::Person
     );
     shut_down(handle).await;
 }
 
-/// Clearing the draft takes the pick away, and the author with it: the blank
-/// draft is anybody's to fill again.
+/// Clearing the draft is the person's act on it like a pick is: the blank
+/// draft it leaves is theirs, not a draft nobody has touched.
 #[tokio::test(flavor = "multi_thread")]
-async fn clearing_the_draft_leaves_it_unclaimed() {
+async fn clearing_the_draft_leaves_the_person_its_author() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     assert_eq!(
         pane(&handle, &key).await.metadata_author,
-        MetadataAuthor::User
+        MetadataAuthor::Person
     );
 
     handle.clear_candidate_metadata(key.clone()).await.unwrap();
 
-    assert_eq!(
-        pane(&handle, &key).await.metadata_author,
-        MetadataAuthor::Nobody
-    );
+    let cleared = pane(&handle, &key).await;
+    assert_eq!(cleared.metadata_author, MetadataAuthor::Person);
+    assert_eq!(cleared.metadata_provenance, None);
     shut_down(handle).await;
 }

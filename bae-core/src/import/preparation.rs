@@ -96,16 +96,43 @@ impl CandidateAsRead {
     }
 }
 
-/// Who last wrote the candidate's metadata.
+/// Who wrote the candidate's draft.
 ///
-/// Who last wrote the draft: the person, a finished identification run, or —
-/// for the blank draft discovery creates and the one "Clear metadata" leaves
-/// — nobody. A stored provenance always names one of the first two.
+/// Stored on the draft rather than on its provenance: a person can write a
+/// draft read from nowhere — typed in, or cleared — and it is still theirs.
+/// Which author a draft can have depends on where it was read from; see
+/// [`MetadataAuthor::check_provenance`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MetadataAuthor {
+    /// The blank draft discovery creates when it has no tags to read.
     Nobody,
+    /// Discovery, seeding the draft from the folder's own file tags.
+    Prefill,
+    /// A finished identification run, applying the one pressing it settled
+    /// on.
     Identification,
-    User,
+    /// A person: a pick, applying file metadata, a reset, a clear, or any
+    /// edit to the draft's fields, tracks or cover.
+    Person,
+}
+
+impl MetadataAuthor {
+    /// `Ok` when a draft written by this author may carry `provenance`.
+    ///
+    /// Nobody reads a blank draft from anywhere, discovery only ever seeds
+    /// from the folder's own tags, and identification only ever concludes a
+    /// release. A person may have read the draft from anywhere or nowhere.
+    pub fn check_provenance(self, provenance: Option<&MetadataProvenance>) -> Result<(), String> {
+        match (self, provenance) {
+            (Self::Nobody, None)
+            | (Self::Prefill, Some(MetadataProvenance::FileMetadata))
+            | (Self::Identification, Some(MetadataProvenance::ExternalRelease { .. }))
+            | (Self::Person, _) => Ok(()),
+            (author, provenance) => Err(format!(
+                "a draft written by {author:?} cannot be read from {provenance:?}"
+            )),
+        }
+    }
 }
 
 /// The stored candidate as a library import finds it at commit time: what
@@ -221,22 +248,9 @@ impl CandidatePreparation {
     /// The contradictions no stored candidate may hold, named so a save can
     /// refuse them before any row moves.
     pub fn validate(&self) -> Result<(), String> {
-        match (&self.metadata.provenance, self.author) {
-            (None, MetadataAuthor::Nobody)
-            | (Some(_), MetadataAuthor::User | MetadataAuthor::Identification) => {}
-            (None, author) => {
-                return Err(format!(
-                    "candidate {} has no metadata provenance but names {author:?} as its author",
-                    self.content_hash
-                ))
-            }
-            (Some(_), MetadataAuthor::Nobody) => {
-                return Err(format!(
-                    "candidate {} has metadata provenance but no author",
-                    self.content_hash
-                ))
-            }
-        }
+        self.author
+            .check_provenance(self.metadata.provenance.as_ref())
+            .map_err(|error| format!("candidate {}: {error}", self.content_hash))?;
         if let (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) =
             (&self.metadata.cover, &self.metadata.assets.remote_cover)
         {

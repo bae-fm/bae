@@ -22,6 +22,7 @@
 use super::folder_scanner::{FolderReleaseDecisionKey, ResolvedFolderReleaseBoundary};
 use super::search::{ImportSearchReleaseDetail, SourceTracks};
 use super::types::{Catalog, MetadataProvenance};
+use super::MetadataAuthor;
 use super::{CandidateRuntimeSnapshot, ImportedRelease};
 use crate::identify::{LeadMatch, NeedsYou, QueueClassification, VerdictSummary};
 
@@ -34,7 +35,7 @@ pub use model::*;
 
 /// Which tab a candidate belongs to, and why a Pending row still needs input.
 ///
-/// A total function of four facts core already holds, checked in one order:
+/// A total function of the facts core already holds, checked in one order:
 ///
 /// 1. **An import in flight outranks everything**, including the library
 ///    check: the release row lands partway through an import, so `is_added`
@@ -46,16 +47,22 @@ pub use model::*;
 /// 3. **Then Skipped**, which is a decision the user already made.
 /// 4. **Then a failed attempt**, which is Pending work: the folder is not in
 ///    the library and the only thing standing between it and being there is
-///    another attempt. It comes before the pick because a failed candidate
-///    always has one — read the pick first and the row would say Ready, and
+///    another attempt. It comes before the draft because a failed candidate
+///    always has one — read the draft first and the row would say Ready, and
 ///    join the set a bulk import sweeps up, on the strength of the attempt
 ///    that just failed.
-/// 5. **Then a stored pick**, which is the user answering whatever the verdict
-///    was going to ask. Nothing is left to ask, so the row is Ready.
-/// 6. **Then what its stored verdict classified to**, for a candidate nobody
-///    has answered.
+/// 5. **Then a valid draft a person or the tags wrote**, which is Ready. A
+///    person's draft is their answer to whatever the verdict was going to
+///    ask; a draft the folder's tags seeded is what the person chose to start
+///    from. Either way nothing is left to ask.
+/// 6. **Then what its stored verdict classified to.** This is where a draft
+///    identification wrote lands: a run applying its own pick is not an
+///    answer, so the Ready rule's checks — track counts, lengths, the library
+///    — decide whether it is Ready or which question it asks.
 ///
-/// A candidate with no verdict and no valid draft is not Ready.
+/// An invalid draft is never Ready, whoever wrote it and whatever the verdict
+/// says: Ready means a bulk import can commit it. With no verdict, or with one
+/// classified Ready over a draft that would not import, the row is Pending.
 ///
 /// Live identification is not one of these facts. A run is true of a candidate
 /// wherever that candidate is placed — a Ready row somebody asked to identify
@@ -65,8 +72,8 @@ pub fn place(
     skipped: bool,
     is_added: bool,
     import_status: Option<&TriageImportStatus>,
-    picked: Option<&MetadataProvenance>,
-    metadata_draft_valid: bool,
+    author: MetadataAuthor,
+    draft_valid: bool,
     answer: Option<&QueueClassification>,
 ) -> TriagePlacement {
     // Spelled out rather than `is_some()`: each variant places the row
@@ -87,20 +94,21 @@ pub fn place(
     if failed {
         return TriagePlacement::Failed;
     }
-    // The pick is the answer. Whatever the verdict was going to ask — which of
-    // three pressings, which of two signals, a release already in the library
-    // — the user has said which release this is, or that it reads as its own
-    // tags, and the only thing left is to import it. Without this the row
-    // keeps the question's tag forever after it was answered.
-    if picked.is_some() || metadata_draft_valid {
+    // Spelled out for the same reason: who wrote the draft decides whether it
+    // answers the verdict or is judged by it.
+    let answered = match author {
+        MetadataAuthor::Person | MetadataAuthor::Prefill => draft_valid,
+        MetadataAuthor::Identification | MetadataAuthor::Nobody => false,
+    };
+    if answered {
         return TriagePlacement::Ready;
     }
     match answer {
-        Some(QueueClassification::Ready) => TriagePlacement::Ready,
+        Some(QueueClassification::Ready) if draft_valid => TriagePlacement::Ready,
+        Some(QueueClassification::Ready) | None => TriagePlacement::Pending,
         Some(QueueClassification::NeedsYou(reason)) => TriagePlacement::NeedsYou {
             reason: reason.clone(),
         },
-        None => TriagePlacement::Pending,
     }
 }
 
@@ -179,7 +187,7 @@ mod tests {
     #[test]
     fn an_unanswered_candidate_is_pending() {
         assert_eq!(
-            place(false, false, None, None, false, None),
+            place(false, false, None, MetadataAuthor::Nobody, false, None),
             TriagePlacement::Pending
         );
     }

@@ -127,7 +127,7 @@ extension Candidate {
 
     /// The person picked the same pressing themselves.
     static var writtenByTheUser: Candidate {
-        soleMatch(pick: PreviewData.exactPressings[1].pick, author: .user)
+        soleMatch(pick: PreviewData.exactPressings[1].pick, author: .person)
     }
 
     private static func soleMatch(

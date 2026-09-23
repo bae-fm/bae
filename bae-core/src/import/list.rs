@@ -327,7 +327,7 @@ pub struct ImportCandidateDetailProjection {
     /// there is a pick, the verdict's lead otherwise.
     pub matched: Option<MatchedRelease>,
     pub metadata_provenance: Option<MetadataProvenance>,
-    /// Who decided that identity: the person, identification, or nobody yet.
+    /// Who wrote the draft, which decides whether a valid one is the answer.
     pub metadata_author: crate::import::MetadataAuthor,
     pub metadata_revision: u64,
     /// The library release this candidate's bytes were imported as.
@@ -418,13 +418,12 @@ impl ImportCandidateDetailProjection {
             failure
         };
         let known = answer.filter(|_| actionable);
-        let metadata_draft_valid = metadata_draft.clone().shape().is_ok();
         let placement = place(
             skipped,
             is_added,
             import_status.as_ref(),
-            metadata_provenance.as_ref().filter(|_| actionable),
-            metadata_draft_valid,
+            metadata_author,
+            metadata_draft.clone().shape().is_ok(),
             known.as_ref(),
         );
         let actions = super::triage::candidate_actions(
@@ -530,9 +529,9 @@ pub struct ImportCandidateDetail {
     pub metadata_draft: RawReleaseEdit,
     pub metadata_draft_is_blank: bool,
     pub metadata_provenance: Option<MetadataProvenance>,
-    /// Who decided that identity. The pane returns to the draft when this
-    /// becomes `Identification`: the run wrote the pick a click here would
-    /// have written, so there is nothing left on Find online to do.
+    /// Who wrote the draft. The pane returns to the draft when this becomes
+    /// `Identification`: the run wrote the pick a click here would have
+    /// written, so there is nothing left on Find online to do.
     pub metadata_author: crate::import::MetadataAuthor,
     /// Revision of the exact metadata draft and selected cover in this value.
     pub metadata_revision: u64,

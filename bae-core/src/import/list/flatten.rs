@@ -384,7 +384,9 @@ fn place_row(
         skipped,
         imported.is_some(),
         import_status.as_ref(),
-        metadata_provenance.as_ref(),
+        state.map_or(crate::import::MetadataAuthor::Nobody, |state| {
+            state.metadata_author
+        }),
         state.is_some_and(|state| state.metadata_draft_valid),
         answer.as_ref(),
     );

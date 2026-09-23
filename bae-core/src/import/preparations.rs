@@ -79,7 +79,7 @@ impl CandidatePreparations {
         });
         prep.signals = Some(verdict.signals.clone());
         if let Some(metadata) = &verdict.metadata {
-            prep.author = crate::import::MetadataAuthor::Identification;
+            prep.author = MetadataAuthor::Identification;
             let mut metadata = metadata.clone();
             settle_cover(&mut metadata, &mut prep.metadata);
             prep.assets_prepared = assets_are_prepared(&metadata);
@@ -110,8 +110,12 @@ impl CandidatePreparations {
     /// decision without clearing it would leave the queue believing an answer
     /// to a question that changed.
     ///
-    /// Applied metadata and its provenance remain. The caller replaces only
-    /// tracks whose audio changed, using the current prefill preference.
+    /// Applied metadata, its provenance and its author remain. The caller
+    /// replaces only tracks whose audio changed, using the current prefill
+    /// preference: which tracks exist is the decision, not what the release is
+    /// called. A draft identification wrote stays identification's, so with
+    /// its verdict cleared it waits for the next run's checks rather than
+    /// passing as the person's answer.
     ///
     /// The content hash covers files, never role decisions, so this addresses
     /// the same row the verdict lived in rather than orphaning it — and the
@@ -343,7 +347,8 @@ impl CandidatePreparations {
     }
 
     /// A source's projection becomes the candidate's metadata: the person
-    /// applied it, so they are its author, and its answers are complete.
+    /// applied it — a pick, their files' tags, or a cleared draft — so they
+    /// are its author, and its answers are complete.
     async fn apply_metadata(
         &self,
         mut prep: CandidatePreparation,
@@ -359,10 +364,7 @@ impl CandidatePreparations {
             scanned: scanned.map(CandidateScanExpectation::Current),
         };
         prep.folder_path = folder_path.to_string();
-        prep.author = match metadata.provenance {
-            Some(_) => MetadataAuthor::User,
-            None => MetadataAuthor::Nobody,
-        };
+        prep.author = MetadataAuthor::Person;
         prep.assets_prepared = assets_are_prepared(&metadata);
         prep.metadata = metadata;
         prep.metadata_revision += 1;

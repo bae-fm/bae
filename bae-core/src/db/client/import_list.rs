@@ -84,6 +84,8 @@ pub struct CandidateStateListRow {
     pub verdict: Option<VerdictSummary>,
     pub probed_total_duration_ms: u64,
     pub metadata_provenance: Option<MetadataProvenance>,
+    /// Who wrote the draft, which decides whether a valid one is the answer.
+    pub metadata_author: crate::import::MetadataAuthor,
     pub metadata_draft_valid: bool,
     pub metadata_summary: Option<crate::import::TriageMetadataSummary>,
     pub selected_cover: Option<crate::import::CoverSelection>,
@@ -389,6 +391,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     // belongs to is what its own run decided.
     let mut matches = load_matches_on(sql, None)?;
     let mut provenances = load_provenance_on(sql, None)?;
+    let mut authors = super::import_state::load_authors_on(sql, None)?;
     let mut verdicts: HashMap<String, (VerdictSummary, u64)> = HashMap::new();
     for row in sql.query(
         "SELECT content_hash, kind, track_count, probed_total_duration_ms \
@@ -446,14 +449,20 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
     )? {
         let verdict = verdicts.remove(&content_hash);
-        let metadata_provenance = provenances
-            .remove(&content_hash)
-            .map(|(provenance, _)| provenance);
+        let metadata_provenance = provenances.remove(&content_hash);
         let metadata_draft = drafts.remove(&content_hash).ok_or_else(|| {
             DbError::Message(format!(
                 "candidate {content_hash} has no editable metadata draft"
             ))
         })?;
+        let metadata_author = authors.remove(&content_hash).ok_or_else(|| {
+            DbError::Message(format!(
+                "candidate {content_hash} has no editable metadata draft"
+            ))
+        })?;
+        metadata_author
+            .check_provenance(metadata_provenance.as_ref())
+            .map_err(|error| DbError::Message(format!("candidate {content_hash}: {error}")))?;
         let release_edit = metadata_draft.release_edit();
         let metadata_draft_valid = release_edit.shape().is_ok();
         let metadata_summary =
@@ -466,6 +475,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 probed_total_duration_ms: verdict.as_ref().map_or(0, |(_, probed)| *probed),
                 verdict: verdict.map(|(summary, _)| summary),
                 metadata_provenance,
+                metadata_author,
                 metadata_draft_valid,
                 metadata_summary,
                 selected_cover,

@@ -6,6 +6,8 @@
 //! and in which order they outrank one another.
 
 use super::*;
+use crate::identify::NeedsYou;
+use crate::import::MetadataAuthor;
 
 #[test]
 fn a_stored_verdict_that_classifies_ready_makes_a_selectable_row() {
@@ -319,8 +321,10 @@ fn an_idle_candidate_is_not_queued_by_the_current_automatic_setting() {
         TriagePlacement::Pending
     );
 }
+/// A draft a person typed in, read from no catalog and no tags, is their
+/// answer as soon as it would import.
 #[test]
-fn a_valid_source_less_draft_is_ready_and_bulk_importable() {
+fn a_valid_draft_a_person_typed_is_ready_and_bulk_importable() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states.insert(
@@ -330,6 +334,7 @@ fn a_valid_source_less_draft_is_ready_and_bulk_importable() {
             verdict: None,
             probed_total_duration_ms: 0,
             metadata_provenance: None,
+            metadata_author: MetadataAuthor::Person,
             metadata_draft_valid: true,
             metadata_summary: None,
             selected_cover: None,
@@ -348,17 +353,18 @@ fn a_valid_source_less_draft_is_ready_and_bulk_importable() {
         }]
     );
 }
-/// Whatever question the verdict was going to put, stored provenance has answered
-/// it: the row is Ready and takes a bulk-import checkbox, rather than keeping
-/// the question's tag forever after it was answered.
+
+/// Whatever question the verdict was going to put, a person's pick has
+/// answered it: the row is Ready and takes a bulk-import checkbox, rather than
+/// keeping the question's tag forever after it was answered.
 #[test]
-fn a_metadata_provenance_answers_whatever_the_verdict_asked() {
+fn a_person_s_pick_answers_whatever_the_verdict_asked() {
     let cases = [
         ("several pressings matched", several_matches_state()),
         ("nothing matched anywhere", not_found_state()),
     ];
-    for (name, mut state) in cases {
-        // Without a seed the row states the question.
+    for (name, state) in cases {
+        // Without an answer the row states the question.
         let mut rows = queue();
         rows.candidates = vec![candidate("Release")];
         rows.states
@@ -371,11 +377,11 @@ fn a_metadata_provenance_answers_whatever_the_verdict_asked() {
             "{name}: unanswered, the row asks"
         );
 
-        // The user chooses an external release seed; the row is Ready.
-        state.metadata_provenance = Some(external_release_seed("mb-picked"));
+        // The person picks a release; the row is Ready.
         let mut rows = queue();
         rows.candidates = vec![candidate("Release")];
-        rows.states.insert("hash-Release".to_string(), state);
+        rows.states
+            .insert("hash-Release".to_string(), picked_by_the_person(state));
 
         let flat = flattened(&rows, &view(TriageTab::Pending));
         let row = row_for(&flat, "Release");
@@ -394,16 +400,104 @@ fn a_metadata_provenance_answers_whatever_the_verdict_asked() {
         );
     }
 }
-/// Reading the folder as its own tags is an answer too — there is no release
-/// to name, and nothing left to ask.
+
+/// Identification applying its own pick is not an answer: the Ready rule's
+/// checks decide the row, so every disagreement they find lands it in Needs
+/// you with that disagreement as its reason.
 #[test]
-fn a_file_tags_seed_answers_the_row() {
+fn identification_s_own_pick_is_judged_by_the_ready_rule() {
+    let mut in_library = queue();
+    in_library.lead_statuses.insert(
+        "mb-1".to_string(),
+        crate::db::LibraryStatus {
+            release_in_library: true,
+            ..crate::db::LibraryStatus::absent("mb-1")
+        },
+    );
+    let cases = [
+        (
+            queue(),
+            CandidateStateListRow {
+                verdict: Some(VerdictSummary {
+                    track_count: Some(10),
+                    ..ready_state("mb-1").verdict.expect("a verdict")
+                }),
+                ..ready_state("mb-1")
+            },
+            NeedsYou::TrackCountDisagrees {
+                local: 10,
+                source: 11,
+            },
+        ),
+        (
+            queue(),
+            CandidateStateListRow {
+                probed_total_duration_ms: 1_200_000,
+                ..ready_state("mb-1")
+            },
+            NeedsYou::DurationsDisagree {
+                probed_ms: 1_200_000,
+                source_ms: 2_400_000,
+                // Half a second per track, eleven tracks.
+                tolerance_ms: 5_500,
+            },
+        ),
+        (
+            queue(),
+            CandidateStateListRow {
+                verdict: Some(VerdictSummary {
+                    lead: Some(LeadMatch {
+                        source_tracks: None,
+                        ..lead("mb-1")
+                    }),
+                    ..ready_state("mb-1").verdict.expect("a verdict")
+                }),
+                ..ready_state("mb-1")
+            },
+            NeedsYou::SourceLengthsUnknown,
+        ),
+        (
+            queue(),
+            CandidateStateListRow {
+                probed_total_duration_ms: 0,
+                ..ready_state("mb-1")
+            },
+            NeedsYou::LocalDurationUnknown,
+        ),
+        (in_library, ready_state("mb-1"), NeedsYou::AlreadyInLibrary),
+    ];
+    for (mut rows, state, reason) in cases {
+        assert_eq!(state.metadata_author, MetadataAuthor::Identification);
+        assert!(state.metadata_draft_valid);
+        rows.candidates = vec![candidate("Release")];
+        rows.states.insert("hash-Release".to_string(), state);
+
+        let flat = flattened(&rows, &view(TriageTab::Pending));
+        let row = row_for(&flat, "Release");
+        assert_eq!(
+            row.placement,
+            TriagePlacement::NeedsYou {
+                reason: reason.clone()
+            },
+            "{reason:?}"
+        );
+        assert!(!row.selectable, "{reason:?}: a question is not swept up");
+        assert!(flat.summary.ready.is_empty(), "{reason:?}");
+    }
+}
+
+/// A draft the folder's tags seeded is what the person chose to start from:
+/// once it would import, it is Ready whatever the verdict asks.
+#[test]
+fn a_valid_draft_the_tags_seeded_answers_the_row() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states.insert(
         "hash-Release".to_string(),
         CandidateStateListRow {
             metadata_provenance: Some(MetadataProvenance::FileMetadata),
+            metadata_author: MetadataAuthor::Prefill,
+            metadata_draft_valid: true,
             ..several_matches_state()
         },
     );
@@ -411,16 +505,79 @@ fn a_file_tags_seed_answers_the_row() {
     let flat = flattened(&rows, &view(TriageTab::Pending));
     let row = row_for(&flat, "Release");
     assert_eq!(row.placement, TriagePlacement::Ready);
+    assert!(row.selectable);
     assert_eq!(
         row.metadata_provenance,
         Some(MetadataProvenance::FileMetadata)
     );
 }
-/// A seed belongs to the file shape it was chosen against. Editing the folder
-/// moves the candidate past that shape, so the seed is not its answer any more
+
+/// Ready means a bulk import can commit the row. A tag-seeded draft that
+/// would not import is not Ready: the verdict's question stands, and with no
+/// verdict the row is Pending.
+#[test]
+fn a_draft_the_tags_seeded_that_would_not_import_is_not_ready() {
+    let invalid = CandidateStateListRow {
+        metadata_provenance: Some(MetadataProvenance::FileMetadata),
+        metadata_author: MetadataAuthor::Prefill,
+        metadata_draft_valid: false,
+        ..several_matches_state()
+    };
+    let cases = [
+        (
+            invalid.clone(),
+            TriagePlacement::NeedsYou {
+                reason: NeedsYou::SeveralMatches { count: 3 },
+            },
+        ),
+        (
+            CandidateStateListRow {
+                verdict: None,
+                ..invalid
+            },
+            TriagePlacement::Pending,
+        ),
+    ];
+    for (state, expected) in cases {
+        let mut rows = queue();
+        rows.candidates = vec![candidate("Release")];
+        rows.states.insert("hash-Release".to_string(), state);
+
+        let flat = flattened(&rows, &view(TriageTab::Pending));
+        let row = row_for(&flat, "Release");
+        assert_eq!(row.placement, expected);
+        assert!(!row.selectable);
+        assert!(flat.summary.ready.is_empty());
+    }
+}
+
+/// Not even a verdict with nothing to ask makes an invalid draft Ready: a
+/// person's draft that would not import leaves the row Pending.
+#[test]
+fn a_verdict_with_nothing_to_ask_does_not_make_an_invalid_draft_ready() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Release")];
+    rows.states.insert(
+        "hash-Release".to_string(),
+        CandidateStateListRow {
+            metadata_author: MetadataAuthor::Person,
+            metadata_draft_valid: false,
+            ..ready_state("mb-1")
+        },
+    );
+
+    let flat = flattened(&rows, &view(TriageTab::Pending));
+    assert_eq!(
+        row_for(&flat, "Release").placement,
+        TriagePlacement::Pending
+    );
+}
+
+/// A pick belongs to the file shape it was chosen against. Editing the folder
+/// moves the candidate past that shape, so the pick is not its answer any more
 /// and the row falls back to Pending with its queued work beside it.
 #[test]
-fn a_seed_at_a_stale_edit_revision_does_not_answer_the_row() {
+fn a_pick_at_a_stale_edit_revision_does_not_answer_the_row() {
     let mut rows = queue();
     rows.candidates = vec![ScanCandidateListRow {
         file_edit_revision: 2,
@@ -428,10 +585,7 @@ fn a_seed_at_a_stale_edit_revision_does_not_answer_the_row() {
     }];
     rows.states.insert(
         "hash-Release".to_string(),
-        CandidateStateListRow {
-            metadata_provenance: Some(external_release_seed("mb-picked")),
-            ..several_matches_state()
-        },
+        picked_by_the_person(several_matches_state()),
     );
 
     let flat = flattened_queued(&rows, view(TriageTab::Pending), &["Release"]);
@@ -440,19 +594,17 @@ fn a_seed_at_a_stale_edit_revision_does_not_answer_the_row() {
     assert_eq!(row.identification, Some(IdentificationStatus::Queued));
     assert_eq!(row.metadata_provenance, None);
 }
-/// A seed does not outrank the three facts above it: a skipped candidate stays
+
+/// A pick does not outrank the three facts above it: a skipped candidate stays
 /// skipped, an imported one stays done, and a running import keeps the row.
 #[test]
-fn a_seed_does_not_outrank_skipped_done_or_importing() {
-    let seeded = CandidateStateListRow {
-        metadata_provenance: Some(external_release_seed("mb-picked")),
-        ..several_matches_state()
-    };
+fn a_pick_does_not_outrank_skipped_done_or_importing() {
+    let picked = picked_by_the_person(several_matches_state());
 
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
-        .insert("hash-Release".to_string(), seeded.clone());
+        .insert("hash-Release".to_string(), picked.clone());
     rows.skipped
         .insert((rows.watched_folders[0].path.clone(), "Release".to_string()));
     assert_eq!(
@@ -463,7 +615,7 @@ fn a_seed_does_not_outrank_skipped_done_or_importing() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
-        .insert("hash-Release".to_string(), seeded.clone());
+        .insert("hash-Release".to_string(), picked.clone());
     rows.imported.insert(
         "hash-Release".to_string(),
         ImportedRelease {
@@ -478,7 +630,7 @@ fn a_seed_does_not_outrank_skipped_done_or_importing() {
 
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
-    rows.states.insert("hash-Release".to_string(), seeded);
+    rows.states.insert("hash-Release".to_string(), picked);
     let running = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
@@ -499,4 +651,15 @@ fn a_seed_does_not_outrank_skipped_done_or_importing() {
         row_for(&flat, "Release").placement,
         TriagePlacement::Importing
     );
+}
+
+/// `state` after the person picked `mb-picked` for it: a valid draft read
+/// from that release, written by them.
+fn picked_by_the_person(state: CandidateStateListRow) -> CandidateStateListRow {
+    CandidateStateListRow {
+        metadata_provenance: Some(external_release_seed("mb-picked")),
+        metadata_author: MetadataAuthor::Person,
+        metadata_draft_valid: true,
+        ..state
+    }
 }
