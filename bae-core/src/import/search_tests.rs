@@ -267,7 +267,11 @@ fn a_general_query_builds_both_providers_requests() {
     assert_eq!(musicbrainz.artist.as_deref(), Some("Artist Name"));
     assert_eq!(musicbrainz.album.as_deref(), Some("Album Title"));
     let discogs = query.discogs_params();
-    assert_eq!(discogs.artist.as_deref(), Some("Artist Name"));
+    assert_eq!(
+        discogs.text.as_deref(),
+        Some("Artist Name"),
+        "the artist is matched as words, not as Discogs's main artist name"
+    );
     assert_eq!(discogs.release_title.as_deref(), Some("Album Title"));
 }
 

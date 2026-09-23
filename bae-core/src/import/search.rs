@@ -521,7 +521,7 @@ impl SearchQuery {
     pub fn discogs_params(&self) -> DiscogsSearchParams {
         match self {
             SearchQuery::General { artist, album } => DiscogsSearchParams {
-                artist: Some(artist.clone()),
+                text: (!artist.trim().is_empty()).then(|| artist.clone()),
                 release_title: Some(album.clone()),
                 ..Default::default()
             },

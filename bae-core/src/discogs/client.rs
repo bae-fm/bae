@@ -151,7 +151,12 @@ struct SearchResponse {
 }
 #[derive(Debug, Clone, Default)]
 pub struct DiscogsSearchParams {
-    pub artist: Option<String>,
+    /// Words matched anywhere on a release, sent as Discogs's `q`. An artist
+    /// goes here rather than in Discogs's `artist` filter, which matches only
+    /// the artist's main name: a record credited as "The Wailing Wailers" is
+    /// filed under "The Wailers", and one tagged "The Melvins" under
+    /// "Melvins", so the filter finds neither by the name on the record.
+    pub text: Option<String>,
     pub release_title: Option<String>,
     pub year: Option<String>,
     pub label: Option<String>,
@@ -638,8 +643,8 @@ impl DiscogsClient {
         use tracing::{debug, warn};
         let url = format!("{}/database/search", self.base_url);
         let mut query_params: Vec<(&str, &str)> = vec![("type", "release")];
-        if let Some(ref artist) = params.artist {
-            query_params.push(("artist", artist));
+        if let Some(ref text) = params.text {
+            query_params.push(("q", text));
         }
         if let Some(ref title) = params.release_title {
             query_params.push(("release_title", title));
