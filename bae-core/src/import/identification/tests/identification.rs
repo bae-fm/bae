@@ -646,6 +646,10 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
 /// ID — is still found: once the identifiers come back empty the run asks the
 /// providers for the candidate's own album title, and what comes back is the
 /// verdict.
+///
+/// A name also names every reissue filed under it, so even a lone row found
+/// this way is offered rather than settled: its documents are not fetched and
+/// the draft is left as the folder's own.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn a_release_no_identifier_names_is_found_by_its_title() {
@@ -706,5 +710,10 @@ async fn a_release_no_identifier_names_is_found_by_its_title() {
         fixture.provider.count_containing("query=release%3A"),
         1,
         "the title was asked once, after it"
+    );
+    assert_eq!(
+        fixture.provider.count_containing("/release/mb-by-title?"),
+        0,
+        "a row the title search found is not settled into the draft"
     );
 }

@@ -96,6 +96,26 @@ fn one_verified_match_not_in_the_library_is_ready() {
     );
 }
 
+/// A lone match the title search found is offered, not admitted, however well
+/// its tracklist agrees: a name also names every reissue filed under it.
+#[test]
+fn a_lone_match_found_by_title_is_the_persons_to_confirm() {
+    let mut verdict = found(vec![result("mb-1", agreeing(11, 2_400_000))], 11);
+    let TerminalVerdict::Found { provenance, .. } = &mut verdict else {
+        unreachable!("the fixture is a found verdict");
+    };
+    provenance[0] = LookupProvenance {
+        by_disc_id: false,
+        by_barcode: false,
+        by_catalog: false,
+        by_search: true,
+    };
+    assert_eq!(
+        classify(&verdict, 2_400_000, &[status("mb-1", false, false)]),
+        QueueClassification::NeedsYou(NeedsYou::FoundByTitle)
+    );
+}
+
 /// The releases agreement narrowed out are not answers: the rule counts the
 /// matches alone, so a sole verified match is still Ready however many the
 /// agreement discarded on the way to it.

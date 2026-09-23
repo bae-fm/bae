@@ -55,6 +55,10 @@ pub enum QueueClassification {
 pub enum NeedsYou {
     /// One match, but it (or its album) is already in the library.
     AlreadyInLibrary,
+    /// One match, found only by searching the album's title and artist. A
+    /// title search returns every release filed under that name, originals and
+    /// reissues alike, so a lone row from it is the person's to confirm.
+    FoundByTitle,
     /// Several pressings matched; which one is on disk is the user's call.
     /// `count` is pressings, not result rows — the number of rows the list
     /// shows.
@@ -259,6 +263,10 @@ pub fn classify_summary(
 
     if lead_status.is_some_and(|status| status.release_in_library || status.album_in_library) {
         return QueueClassification::NeedsYou(NeedsYou::AlreadyInLibrary);
+    }
+
+    if lead.by_search {
+        return QueueClassification::NeedsYou(NeedsYou::FoundByTitle);
     }
 
     // `None` (nobody has asked the source yet) and `Nothing` (it answered and

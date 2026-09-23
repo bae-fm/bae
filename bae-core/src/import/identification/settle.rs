@@ -335,10 +335,11 @@ fn sole_pressing(
 /// partner that will not prepare fails the lead exactly as the primary does:
 /// the candidate stores an explicit failure and no verdict names the pressing.
 ///
-/// Only a `Found` that groups into one pressing has a lead. Several pressings
-/// and a conflict are questions for a person, answered from the result rows the
-/// verdict already carries, and a full fetch of every pressing on the list would
-/// buy a classification that cannot change.
+/// Only a `Found` that groups into one pressing, and that an identifier rather
+/// than the title search found, has a lead. Several pressings and a conflict
+/// are questions for a person, answered from the result rows the verdict
+/// already carries, and a full fetch of every pressing on the list would buy a
+/// classification that cannot change.
 ///
 /// A release some other candidate already settled costs nothing: its documents
 /// are read back and the tracklist re-derived from them.
@@ -366,6 +367,12 @@ async fn settle_lead(
     else {
         return Ok(SettledLead::NoExternalRelease);
     };
+    // A title search names releases by name alone, so a lone row from it is
+    // offered for a person to confirm: its documents are fetched when they
+    // pick it, and the draft stays as it is until then.
+    if provenance.iter().any(|lookup| lookup.by_search) {
+        return Ok(SettledLead::NoExternalRelease);
+    }
     let Some(pressing) = sole_pressing(matches, provenance, pressings, text) else {
         return Ok(SettledLead::NoExternalRelease);
     };

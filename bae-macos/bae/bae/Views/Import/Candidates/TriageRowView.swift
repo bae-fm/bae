@@ -205,7 +205,7 @@ extension TriageRowView {
             switch reason {
             case .alreadyInLibrary:
                 return nil
-            case .severalMatches:
+            case .severalMatches, .foundByTitle:
                 return nil
             case .noMatch, .nothingToLookUp:
                 return nil
@@ -300,7 +300,7 @@ extension TriageRowView {
     @ViewBuilder
     private func needsYouTrailing(_ reason: BridgeNeedsYou) -> some View {
         switch reason {
-        case .severalMatches:
+        case .severalMatches, .foundByTitle:
             chip(reason.localizedText, tint: .orange)
         case .alreadyInLibrary:
             chip(reason.localizedText, tint: .blue)
