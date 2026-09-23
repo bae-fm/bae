@@ -374,21 +374,23 @@ fn mb_discid_releases_to_metadata(
 
 fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) -> MetadataResult {
     let (label, catalog_number) = musicbrainz::label_and_catno(&r.label_info);
+    // The first medium's format, as a looked-up release's pressing reads it.
+    let format = r.media.first().and_then(|medium| medium.format.clone());
+    let media = StatedMedia::PerMedium(r.media.into_iter().map(|medium| medium.format).collect());
     MetadataResult {
         source: Catalog::MusicBrainz,
         release_id: r.id,
         title: r.title,
         artist: r.artist_credit.first().map(|ac| ac.name.clone()),
         year: parse_year(r.date.as_deref()),
-        format: None,
+        format,
         label,
         catalog_number,
         country: r.country,
         barcodes: r.barcode.into_iter().collect(),
-        // `ws/2/release?query=…` takes no `inc`, so its response describes no
-        // media, states no relations, and carries no `tracks` array to read a
-        // count or a length from.
-        media: StatedMedia::Undescribed,
+        // `ws/2/release?query=…` takes no `inc`, so its response states no
+        // relations and no tracks to read a length from.
+        media,
         links: Vec::new(),
         cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),

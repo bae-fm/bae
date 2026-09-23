@@ -240,6 +240,20 @@ pub struct SearchRelease {
     pub release_group: Option<MbReleaseGroupRef>,
     #[serde(rename = "label-info", default)]
     pub label_info: Vec<MbLabelInfo>,
+    /// Each medium's format, in medium order. The search response states the
+    /// format and a track count per medium, and no tracks.
+    #[serde(default)]
+    pub media: Vec<MbSearchMedium>,
+}
+
+/// One medium as `ws/2/release?query=` states it.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MbSearchMedium {
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub format: Option<String>,
 }
 
 /// Release group response (for separate fetch with url-rels)

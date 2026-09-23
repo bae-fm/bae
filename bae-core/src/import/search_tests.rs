@@ -804,3 +804,27 @@ fn nested_index_durations_align_after_preceding_tracks() {
         ]
     );
 }
+
+/// A MusicBrainz search response states each medium's format, and the result
+/// carries it: the row shows the format, and pairing reads the medium.
+#[test]
+fn a_musicbrainz_search_result_states_its_media() {
+    let release: crate::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
+        "id": "mb-release-1",
+        "title": "Album Title",
+        "date": "1970",
+        "country": "JM",
+        "label-info": [],
+        "media": [
+            { "format": "Vinyl", "disc-count": 0, "track-count": 12 },
+            { "format": "", "disc-count": 0, "track-count": 1 }
+        ]
+    }))
+    .expect("search release parses");
+    let result = search_release_to_metadata(release, None);
+    assert_eq!(result.format.as_deref(), Some("Vinyl"));
+    assert_eq!(
+        result.media,
+        StatedMedia::PerMedium(vec![Some("Vinyl".to_string()), None])
+    );
+}
