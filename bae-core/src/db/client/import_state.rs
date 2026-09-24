@@ -180,9 +180,7 @@ impl Database {
         Ok(paths.into_iter().collect())
     }
 
-    /// Every watched root, in the order they were added. Read by both entry
-    /// points below to answer "is this folder already watched?" before either
-    /// opens a write.
+    /// Every watched root, in the order they were added.
     async fn watched_import_roots(&self) -> Result<Vec<String>, DbError> {
         self.read(move |sql| {
             Ok(sql.query(
@@ -196,34 +194,51 @@ impl Database {
 
     /// Watch the folder `path` names, keyed by its canonical spelling. `false`
     /// when that folder is already watched, however it was spelled this time.
+    ///
+    /// The overlap check reads the roots inside the write that inserts, so
+    /// the check and the insert are one decision: two overlapping folders
+    /// added at once cannot both pass a check that saw neither. The answer
+    /// that the folder is already watched writes nothing, so it is read
+    /// first; a folder watched in between refuses the write instead, and
+    /// asking again answers `false`.
     pub async fn add_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
         // Keyed by the one spelling this host stores, so two spellings of one
         // folder can never become two rows.
         let path = crate::import::watched_folder::canonical_absolute_root(path)?;
-        let roots = self.watched_import_roots().await?;
-        if roots.iter().any(|root| root == &path) {
+        if self.watched_import_roots().await?.contains(&path) {
             return Ok(false);
         }
-        if let Some(conflict) = roots.iter().find(|root| {
-            crate::import::watched_folder::paths_overlap(
-                std::path::Path::new(&path),
-                std::path::Path::new(root),
-            )
-        }) {
-            return Err(DbError::Message(format!(
-                "watched folders cannot overlap: {path} conflicts with {conflict}"
-            )));
-        }
         self.call(move |sql| {
+            let roots: Vec<String> = sql.query(
+                "SELECT path FROM watched_import_folders ORDER BY position",
+                [],
+                |row| row.get(0),
+            )?;
+            if roots.iter().any(|root| root == &path) {
+                return Err(DbError::Message(format!(
+                    "watched folder {path} was added while this add was deciding"
+                )));
+            }
+            if let Some(conflict) = roots.iter().find(|root| {
+                crate::import::watched_folder::paths_overlap(
+                    std::path::Path::new(&path),
+                    std::path::Path::new(root),
+                )
+            }) {
+                return Err(DbError::Message(format!(
+                    "watched folders cannot overlap: {path} conflicts with {conflict}"
+                )));
+            }
             let position: i64 = sql.query_row(
                 "SELECT COALESCE(MAX(position) + 1, 0) FROM watched_import_folders",
                 [],
                 |row| row.get(0),
             )?;
-            Ok(sql.execute(
+            sql.execute(
                 "INSERT INTO watched_import_folders (path, position) VALUES (?, ?)",
                 params![path, position],
-            )? == 1)
+            )?;
+            Ok(true)
         })
         .await
     }

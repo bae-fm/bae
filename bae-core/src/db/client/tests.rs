@@ -259,3 +259,6 @@ mod file_tag_snapshot_tests;
 
 #[cfg(test)]
 mod source_release_tests;
+
+#[cfg(test)]
+mod watched_folder_tests;
