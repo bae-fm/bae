@@ -63,47 +63,27 @@ struct TriageRowIdentifiedTests {
         )
     }
 
-    /// A row flagging pressings a run found has settled on no record, so it
-    /// draws no arrow and draws the unread question's chip.
+    /// What a result asks is the pane's to state: a row draws the same
+    /// whichever question its placement carries, and the same as a row that
+    /// asks nothing.
     @MainActor
-    @Test("a row flagging several pressings draws no arrow")
-    func aRowFlaggingSeveralPressingsDrawsNoArrow() async throws {
-        let row = PreviewData.triageRowSeveralMatches
-        #expect(try await renderedLines(row).carrying("3 matches"))
-        #expect(
-            try await pixels(of: row)
-                != pixels(of: PreviewData.triageRowReadFromRecord)
-        )
-    }
-
-    /// The chip is the unread marker and nothing else: a row whose question
-    /// has been read draws none, whatever its placement asks.
-    @MainActor
-    @Test("the chip is drawn from the unread question alone")
-    func theChipIsDrawnFromTheUnreadQuestionAlone() async throws {
-        var read = PreviewData.triageRowPickAPressing
-        read.attention = nil
-        let readLines = try await renderedLines(read)
-        #expect(!readLines.carrying("2 matches"))
-
-        var unread = PreviewData.triageRowNotReadFromRecord
-        unread.attention = .severalMatches(count: 2)
-        #expect(try await renderedLines(unread).carrying("2 matches"))
-    }
-
-    /// What a Ready check found is the mapping pane's to state, beside the
-    /// Import it bears on; the row draws the same whichever check it failed.
-    @MainActor
-    @Test("a row does not state the Ready check it failed")
-    func aRowDoesNotStateTheReadyCheckItFailed() async throws {
+    @Test(
+        "a row draws no badge for what its result asks",
+        arguments: [
+            BridgeNeedsYou.alreadyInLibrary, .foundByTitle,
+            .severalMatches(count: 2), .noMatch, .nothingToLookUp,
+            .lookupFailed, .trackCountDisagrees(local: 13, source: 12),
+            .sourceTracksUnknown,
+        ]
+    )
+    func aRowDrawsNoBadgeForWhatItsResultAsks(_ reason: BridgeNeedsYou)
+        async throws
+    {
         var ready = PreviewData.triageRowReadFromRecord
         ready.placement = .ready
-        var disagreeing = ready
-        disagreeing.placement = .needsYou(
-            reason: .trackCountDisagrees(local: 13, source: 12)
-        )
-        #expect(!(try await renderedLines(disagreeing)).carrying("Tracks"))
-        #expect(try await pixels(of: disagreeing) == pixels(of: ready))
+        var asking = ready
+        asking.placement = .needsYou(reason: reason)
+        #expect(try await pixels(of: asking) == pixels(of: ready))
     }
 
     /// Every question a row can ask resolves to a sentence from the app's

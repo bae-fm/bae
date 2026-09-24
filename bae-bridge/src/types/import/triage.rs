@@ -469,10 +469,6 @@ pub struct BridgeTriageRow {
     pub combine_ancestor_key: Option<BridgeFolderReleaseDecisionKey>,
     pub actionable: bool,
     pub placement: BridgeTriagePlacement,
-    /// The question an identification result asks that the person has not
-    /// seen yet — the row's unread marker. Absent once the candidate is
-    /// opened, and for a result that asks nothing.
-    pub attention: Option<BridgeNeedsYou>,
     /// The Ready check this row did not pass — its release's tracklist
     /// disagrees with the folder, or there is none — stated beside Import.
     pub ready_check: Option<BridgeNeedsYou>,

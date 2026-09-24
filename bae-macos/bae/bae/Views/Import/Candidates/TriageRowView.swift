@@ -222,16 +222,13 @@ extension TriageRowView {
     ///
     /// A run in flight takes the column rather than sitting beside it: while a
     /// run is going there is nothing to answer, and the answer being written
-    /// is about to replace whatever the column said. Otherwise an unread
-    /// result's question takes it — the row's unread marker, gone once the
-    /// candidate is opened — and then what the import says.
+    /// is about to replace whatever the column said. Otherwise the import
+    /// says what it has to. What an identification result asks is the pane's
+    /// to state, never the row's.
     private var trailing: some View {
         Group {
             if let identification = row.identification {
                 identificationTrailing(identification)
-            }
-            else if let attention = row.attention {
-                attentionTrailing(attention)
             }
             else {
                 placementTrailing
@@ -248,7 +245,7 @@ extension TriageRowView {
         case .ready:
             EmptyView()
         case .needsYou:
-            // The question is the group's and, while unread, the marker's.
+            // The question is the pane's to state.
             EmptyView()
         case .importing:
             // The line under the title carries the bar; nothing trails it.
@@ -280,26 +277,6 @@ extension TriageRowView {
             else {
                 trailingIcon("exclamationmark.triangle.fill", tint: .orange)
             }
-        }
-    }
-
-    /// The unread marker: the question the result asks that the person has
-    /// not opened the row to see. A short question is its own chip; a
-    /// sentence-long one is a mark whose tooltip says it.
-    @ViewBuilder
-    private func attentionTrailing(_ reason: BridgeNeedsYou) -> some View {
-        switch reason {
-        case .severalMatches, .foundByTitle:
-            chip(reason.localizedText, tint: .orange)
-        case .alreadyInLibrary:
-            chip(reason.localizedText, tint: .blue)
-        case .trackCountDisagrees, .sourceTracksUnknown, .noMatch,
-            .nothingToLookUp:
-            trailingIcon("questionmark.circle", tint: .orange)
-                .help(reason.localizedText)
-        case .lookupFailed:
-            trailingIcon("exclamationmark.triangle.fill", tint: .orange)
-                .help(reason.localizedText)
         }
     }
 
@@ -491,7 +468,6 @@ extension TriageRowView {
         let rows = [
             PreviewData.triageRowReadFromRecord,
             PreviewData.triageRowNotReadFromRecord,
-            PreviewData.triageRowSeveralMatches,
         ]
         return VStack(alignment: .leading, spacing: 0) {
             ForEach(rows, id: \.candidateKey) { row in

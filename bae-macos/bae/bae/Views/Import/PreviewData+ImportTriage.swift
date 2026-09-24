@@ -41,7 +41,6 @@
         static func triageRow(
             for candidate: Candidate,
             placement: BridgeTriagePlacement,
-            attention: BridgeNeedsYou? = nil,
             readyCheck: BridgeNeedsYou? = nil,
             identification: BridgeIdentificationStatus? = nil,
             skipAction: BridgeTriageSkipAction?,
@@ -62,7 +61,6 @@
                 combineAncestorKey: nil,
                 actionable: true,
                 placement: placement,
-                attention: attention,
                 readyCheck: readyCheck,
                 identification: identification,
                 skipAction: skipAction,
@@ -366,7 +364,6 @@
             placement: .needsYou(
                 reason: .severalMatches(count: 2)
             ),
-            attention: .severalMatches(count: 2),
             skipAction: .skip,
             actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: nil,
@@ -422,7 +419,6 @@
             placement: .needsYou(
                 reason: .severalMatches(count: 2)
             ),
-            attention: .severalMatches(count: 2),
             skipAction: .skip,
             actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             // Several matches — the pressing is exactly what's unsettled, so
@@ -450,7 +446,6 @@
             placement: .needsYou(
                 reason: .severalMatches(count: 2)
             ),
-            attention: .severalMatches(count: 2),
             skipAction: .skip,
             actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: nil,
@@ -462,7 +457,6 @@
             placement: .needsYou(
                 reason: .trackCountDisagrees(local: 1, source: 10)
             ),
-            attention: .trackCountDisagrees(local: 1, source: 10),
             skipAction: .skip,
             actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: triageMatch(
@@ -479,7 +473,6 @@
             placement: .needsYou(
                 reason: .alreadyInLibrary
             ),
-            attention: .alreadyInLibrary,
             skipAction: .skip,
             actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: triageMatch(
@@ -497,7 +490,6 @@
             placement: .needsYou(
                 reason: .noMatch
             ),
-            attention: .noMatch,
             skipAction: .skip,
             actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: nil,
@@ -619,7 +611,6 @@
                 placement: .needsYou(
                     reason: .noMatch
                 ),
-                attention: .noMatch,
                 skipAction: .skip,
                 actions: [
                     .identify, .resetToFileMetadata, .clearMetadata, .skip,

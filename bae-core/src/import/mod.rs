@@ -47,7 +47,6 @@ desktop_only! {
     /// Which of a release's mediums a folder's audio is a rip of.
     pub(crate) mod medium_coverage;
     pub mod musicbrainz_mapper;
-    pub(crate) mod open_candidates;
     // The payload store's projections build the picker detail and the commit's
     // `ParsedAlbum` from archived documents — both desktop-only import shapes.
     pub mod pane;
@@ -191,7 +190,7 @@ desktop_only! {
         ImportCandidateDetailProjection, ImportCandidateListLocation, ImportListItem,
         ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
         ImportListSubscription, ImportListSubscriptionError, ImportListView, ImportListWindow,
-        ImportQueueSummary, ReadyRowRef, StoredAnswer,
+        ImportQueueSummary, ReadyRowRef,
     };
     pub use mapping::{
         mapping_table, mapping_tracks, MappingBecomes,
@@ -199,7 +198,6 @@ desktop_only! {
         MappingSource, MappingTable, MappingTrackSection, MappingTrackSectionContent,
         PickedTracklist, SheetBound, SheetGroup, TrackMapping, TracklistSource,
     };
-    pub use open_candidates::{OpenCandidate, OpenCandidates};
     pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
     pub use preparations::CandidatePreparations;
     pub use search::{SearchQuery, SourceFailure, SourceLookup};

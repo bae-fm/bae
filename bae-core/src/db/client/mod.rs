@@ -58,11 +58,11 @@ desktop_only! {
     mod import_list;
     mod import_state;
     pub use import_list::{
-        CandidateListSource, CandidateStateListRow, ImportQueueRows, ListedVerdict, ScanCandidateKind,
+        CandidateListSource, CandidateStateListRow, ImportQueueRows, ScanCandidateKind,
         ScanCandidateListRow,
     };
     pub(crate) use import_state::{
-        CandidateLookupUpdate, CandidatePaneWrite, CandidateResultWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
+        CandidateLookupUpdate, CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
     };
     mod payloads;
 }

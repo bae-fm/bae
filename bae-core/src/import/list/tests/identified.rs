@@ -62,7 +62,7 @@ fn only_ready_rows_read_from_a_release_are_identified() {
         CandidateStateListRow {
             metadata_summary: summary(),
             ..with_verdict(ready_state("mb-2"), |verdict| {
-                verdict.summary.track_count = Some(10);
+                verdict.track_count = Some(10);
             })
         },
     );

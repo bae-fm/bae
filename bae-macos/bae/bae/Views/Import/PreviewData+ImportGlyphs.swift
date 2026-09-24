@@ -3,8 +3,7 @@
     import Foundation
 
     /// Preview fixtures for what a candidate row states about its release:
-    /// whether its draft was read from a catalog record, and the row still
-    /// being asked which pressing it is.
+    /// whether its draft was read from a catalog record.
     extension PreviewData {
         private static func glyphCandidate(_ name: String) -> Candidate {
             importTabFolder(
@@ -22,13 +21,11 @@
         /// A settled row whose draft was read from a record, or was not.
         private static func glyphRow(
             _ folder: String,
-            readFromRecord: Bool,
-            attention: BridgeNeedsYou? = nil
+            readFromRecord: Bool
         ) -> BridgeTriageRow {
             triageRow(
                 for: glyphCandidate(folder),
                 placement: .ready,
-                attention: attention,
                 skipAction: .skip,
                 actions: [
                     .importReady, .identify, .resetToFileMetadata,
@@ -63,15 +60,6 @@
         static let triageRowNotReadFromRecord = glyphRow(
             "Release Folder Sixteen",
             readFromRecord: false
-        )
-
-        /// The draft came off the files' tags, and a run found several
-        /// pressings the person has not looked at yet: the row is ready and
-        /// flags what the run found.
-        static let triageRowSeveralMatches = glyphRow(
-            "Release Folder Nineteen",
-            readFromRecord: false,
-            attention: .severalMatches(count: 3)
         )
     }
 #endif

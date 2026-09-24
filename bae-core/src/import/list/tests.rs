@@ -15,7 +15,6 @@ use crate::import::ImportedRelease;
 use crate::import::{IdentificationStatus, TriageImportStatus, TriagePlacement};
 
 mod actions;
-mod attention;
 mod dates;
 mod flatten;
 mod flatten_groups;
@@ -97,29 +96,10 @@ fn lead(release_id: &str) -> LeadMatch {
     }
 }
 
-/// `summary` as a result the person has already seen.
-fn read(summary: VerdictSummary) -> crate::db::ListedVerdict {
-    crate::db::ListedVerdict {
-        summary,
-        unread: false,
-    }
-}
-
-/// `state` with its result not yet seen by the person.
-fn unread(state: CandidateStateListRow) -> CandidateStateListRow {
-    CandidateStateListRow {
-        verdict: state.verdict.map(|verdict| crate::db::ListedVerdict {
-            unread: true,
-            ..verdict
-        }),
-        ..state
-    }
-}
-
 /// `state` with `change` made to its stored verdict.
 fn with_verdict(
     state: CandidateStateListRow,
-    change: impl FnOnce(&mut crate::db::ListedVerdict),
+    change: impl FnOnce(&mut VerdictSummary),
 ) -> CandidateStateListRow {
     let mut verdict = state.verdict.clone().expect("the state has a verdict");
     change(&mut verdict);
@@ -134,12 +114,12 @@ fn with_verdict(
 fn ready_state(release_id: &str) -> CandidateStateListRow {
     CandidateStateListRow {
         edit_revision: 0,
-        verdict: Some(read(VerdictSummary {
+        verdict: Some(VerdictSummary {
             kind: VerdictKind::Found,
             track_count: Some(11),
             pressing_count: 1,
             lead: Some(lead(release_id)),
-        })),
+        }),
         metadata_provenance: Some(MetadataProvenance::ExternalRelease {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id.to_string()),
             partners: vec![],
@@ -155,12 +135,12 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
 fn several_matches_state() -> CandidateStateListRow {
     CandidateStateListRow {
         edit_revision: 0,
-        verdict: Some(read(VerdictSummary {
+        verdict: Some(VerdictSummary {
             kind: VerdictKind::Found,
             track_count: Some(11),
             pressing_count: 3,
             lead: Some(lead("mb-1")),
-        })),
+        }),
         metadata_provenance: None,
         metadata_author: crate::import::MetadataAuthor::Nobody,
         metadata_draft_valid: false,
@@ -173,12 +153,12 @@ fn several_matches_state() -> CandidateStateListRow {
 fn not_found_state() -> CandidateStateListRow {
     CandidateStateListRow {
         edit_revision: 0,
-        verdict: Some(read(VerdictSummary {
+        verdict: Some(VerdictSummary {
             kind: VerdictKind::NotFound,
             track_count: None,
             pressing_count: 0,
             lead: None,
-        })),
+        }),
         metadata_provenance: None,
         metadata_author: crate::import::MetadataAuthor::Nobody,
         metadata_draft_valid: false,

@@ -52,7 +52,6 @@ impl CandidatePreparations {
             lookup_update: CandidateLookupUpdate::Reset {
                 expected: lookup_choices,
             },
-            result: CandidateResultWrite::Keep,
             pane: CandidatePaneWrite::Keep,
         };
         match self

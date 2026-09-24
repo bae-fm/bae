@@ -362,11 +362,10 @@ fn place_row(
     );
     let answer = verdict.map(|verdict| {
         let lead_status = verdict
-            .summary
             .lead
             .as_ref()
             .and_then(|lead| rows.lead_statuses.get(&lead.release_id));
-        classify_summary(&verdict.summary, lead_status)
+        classify_summary(verdict, lead_status)
     });
     let skipped = match &row.source {
         crate::db::CandidateListSource::Combination { skipped, .. } => *skipped,
@@ -393,11 +392,6 @@ fn place_row(
         facts.identification.as_ref(),
         answer.as_ref(),
     );
-    let attention = crate::import::triage::attention(
-        &placement,
-        verdict.is_some_and(|verdict| verdict.unread),
-        answer.as_ref(),
-    );
     Ok(TriageRow {
         candidate_key: row.path.clone(),
         folder_name: row.name.clone(),
@@ -422,7 +416,7 @@ fn place_row(
         selectable: actions.contains(&crate::import::triage::CandidateAction::ImportReady),
         actions,
         identification: facts.identification.clone(),
-        matched: verdict.and_then(|verdict| MatchedRelease::of_summary(&verdict.summary)),
+        matched: verdict.and_then(MatchedRelease::of_summary),
         // The records are read off the pick's archived documents, which the
         // queue never opens: the window that materialises the row reads them
         // and builds the reading over again.
@@ -435,7 +429,6 @@ fn place_row(
         cover_thumbnail: None,
         ready_check: crate::import::triage::ready_check(&placement),
         placement,
-        attention,
         import_status,
         metadata_provenance,
     })

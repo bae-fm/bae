@@ -70,21 +70,6 @@ impl AppHandle {
         )
     }
 
-    /// Hold one candidate's pane open while the returned subscription lives:
-    /// the result it has now is marked read, and every result stored for it
-    /// meanwhile arrives read. `callback` hears only the failure that kept it
-    /// from opening.
-    pub fn open_import_candidate(
-        &self,
-        candidate_key: String,
-        callback: Box<dyn crate::types::OpenImportCandidateCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services, _| async move {
-            let error = services.hold_import_candidate_open(&candidate_key).await;
-            callback.on_failure(BridgeError::from(error));
-        })
-    }
-
     /// What is in flight for one key right now — the read a view does once
     /// when it appears, after it has subscribed to the changes.
     pub fn candidate_runtime(

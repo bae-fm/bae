@@ -84,7 +84,6 @@ pub(crate) struct CandidateSaveExtras {
     /// and stamped with the saved file revision.
     pub reshaped_files: Option<Vec<(String, CategorizedFiles)>>,
     pub lookup_update: CandidateLookupUpdate,
-    pub result: CandidateResultWrite,
     pub pane: CandidatePaneWrite,
 }
 
@@ -98,26 +97,6 @@ pub(crate) enum CandidatePaneWrite {
     /// Import are all there is left to see. Classified inside the save, so
     /// the library it is checked against is the one the result lands in.
     OpenOnDraftIfReady,
-}
-
-/// Whether the candidate's result is new in this save, and so whether the
-/// person has seen it.
-///
-/// Read-ness is decided here, inside the save's transaction, rather than
-/// carried on the loaded candidate: a writer that loaded the result before the
-/// person opened the candidate would otherwise write it back unread.
-#[derive(Debug, Clone)]
-pub(crate) enum CandidateResultWrite {
-    /// The stored result, if the save keeps one, stays as read or unread as it
-    /// stands.
-    Keep,
-    /// Identification's new result: unread unless its candidate is one the
-    /// person has open. Saved through
-    /// [`Database::save_identified_preparation`], which reads which are open
-    /// inside the transaction.
-    Identified,
-    /// A result the person reached by picking: read.
-    Chosen,
 }
 
 /// How this save affects the candidate's identification choices.
@@ -138,7 +117,6 @@ impl Default for CandidateSaveExtras {
             file_tag_snapshot: None,
             reshaped_files: None,
             lookup_update: CandidateLookupUpdate::Keep,
-            result: CandidateResultWrite::Keep,
             pane: CandidatePaneWrite::Keep,
         }
     }
@@ -190,7 +168,6 @@ pub(super) fn save_preparation_on(
     prep: &CandidatePreparation,
     expected: &CandidateSaveExpectation,
     extras: &CandidateSaveExtras,
-    open_keys: &[String],
 ) -> Result<CandidateSaved, DbError> {
     prep.validate().map_err(DbError::Message)?;
     let content_hash = prep.content_hash.as_str();
@@ -237,20 +214,10 @@ pub(super) fn save_preparation_on(
         .map(|scanned| scanned.verify(sql, content_hash, expected.edit_revision))
         .transpose()?;
 
-    let unread = match &extras.result {
-        CandidateResultWrite::Keep => verdict_rows::stored_unread(sql, content_hash)?,
-        CandidateResultWrite::Identified => Some(!is_open(sql, content_hash, open_keys)?),
-        CandidateResultWrite::Chosen => Some(false),
-    };
     // The matches hang off the verdict row, so this clears them too.
     delete_verdict(sql, content_hash)?;
     if let Some(identification) = &prep.identification {
-        let unread = unread.ok_or_else(|| {
-            DbError::Message(format!(
-                "candidate {content_hash} keeps a result it has none stored for"
-            ))
-        })?;
-        insert_verdict(sql, content_hash, identification, unread)?;
+        insert_verdict(sql, content_hash, identification)?;
     }
     delete_signals(sql, content_hash)?;
     if let Some(signals) = &prep.signals {
@@ -382,28 +349,6 @@ pub(super) fn save_preparation_on(
     Ok(CandidateSaved::Landed(reshaped))
 }
 
-/// Whether any of the open candidate keys is listed under `content_hash`.
-fn is_open(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    open_keys: &[String],
-) -> Result<bool, DbError> {
-    for key in open_keys {
-        let listed = sql
-            .query_row(
-                "SELECT 1 FROM scan_candidate WHERE path = ? AND content_hash = ?",
-                params![key, content_hash],
-                |_| Ok(()),
-            )
-            .optional()?
-            .is_some();
-        if listed {
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-
 fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
     i64::try_from(value)
         .map_err(|_| DbError::Message(format!("{what} {value} exceeds SQLite's integer range")))
@@ -429,32 +374,7 @@ impl Database {
         expected: CandidateSaveExpectation,
         extras: CandidateSaveExtras,
     ) -> Result<CandidateSaved, DbError> {
-        if matches!(extras.result, CandidateResultWrite::Identified) {
-            return Err(DbError::Message(
-                "identification's result is saved with the candidates open".into(),
-            ));
-        }
-        self.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras, &[]))
-            .await
-    }
-
-    /// Write one candidate's whole state with identification's new result,
-    /// stored unread unless its candidate is one of `open`. Which are open is
-    /// read inside the write, so a candidate opened while the save waited is
-    /// either seen as open here or has its mark land after this write.
-    pub(crate) async fn save_identified_preparation(
-        &self,
-        prep: CandidatePreparation,
-        expected: CandidateSaveExpectation,
-        extras: CandidateSaveExtras,
-        open: crate::import::OpenCandidates,
-    ) -> Result<CandidateSaved, DbError> {
-        if !matches!(extras.result, CandidateResultWrite::Identified) {
-            return Err(DbError::Message(
-                "only identification's result is saved with the candidates open".into(),
-            ));
-        }
-        self.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras, &open.keys()))
+        self.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras))
             .await
     }
 

@@ -4,16 +4,6 @@ use super::ImportServiceHandle;
 use crate::import::{CandidateSession, MetadataPresentation, SearchForm};
 
 impl ImportServiceHandle {
-    /// Hold this candidate's pane open until the returned guard drops: its
-    /// result is marked read now, and every result identification stores for
-    /// it meanwhile is stored read.
-    pub async fn open_candidate(
-        &self,
-        candidate_key: &str,
-    ) -> Result<crate::import::OpenCandidate, crate::import::ImportError> {
-        Ok(self.preparations.open_candidate(candidate_key).await?)
-    }
-
     /// Which surface the pane's metadata slot shows for this candidate.
     pub async fn set_candidate_presentation(
         &self,

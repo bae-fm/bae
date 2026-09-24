@@ -725,7 +725,6 @@ public sealed class ImportSectionViewTests
                 CombineAncestorKey: null,
                 Actionable: true,
                 Placement: placement,
-                Attention: null,
                 ReadyCheck: null,
                 Identification: identification,
                 SkipAction: skipAction,

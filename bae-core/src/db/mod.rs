@@ -9,13 +9,13 @@ pub use client::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use client::{
-    CandidateListSource, CandidateStateListRow, ImportQueueRows, ListedVerdict, ScanCandidateKind,
+    CandidateListSource, CandidateStateListRow, ImportQueueRows, ScanCandidateKind,
     ScanCandidateListRow, ScanItemWrite,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{
-    CandidateLookupUpdate, CandidatePaneWrite, CandidateResultWrite, CandidateSaveExpectation,
-    CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ImportRows, ScannedCandidateKey,
+    CandidateLookupUpdate, CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras,
+    CandidateSaved, CandidateScanExpectation, ImportRows, ScannedCandidateKey,
 };
 pub use client::{Database, DeleteCleanupPlan, ImportReplacementDelete, ImportReplacementOutcome};
 pub use models::*;

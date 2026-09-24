@@ -343,13 +343,6 @@ pub struct TriageRow {
     pub combine_ancestor_key: Option<FolderReleaseDecisionKey>,
     pub actionable: bool,
     pub placement: TriagePlacement,
-    /// The question an identification result asks that the person has not
-    /// seen yet: the result landed while the candidate was not open, and
-    /// nobody has opened it since. What the row flags as unread, wherever the
-    /// placement puts it in Pending — a Ready row whose tags answered it can
-    /// still carry the several pressings a run found. `None` once the
-    /// candidate is opened, and for a result that asks nothing.
-    pub attention: Option<NeedsYou>,
     /// The Ready check this row did not pass, stated beside its Import:
     /// [`crate::import::triage::ready_check`] of its placement.
     pub ready_check: Option<NeedsYou>,

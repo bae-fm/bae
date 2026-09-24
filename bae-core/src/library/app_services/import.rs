@@ -51,20 +51,6 @@ impl AppServices {
     delegate_async!(import, import_add_candidate_track => add_candidate_track(candidate_key: &str, audio: crate::import::AudioFile, read: crate::import::CandidateAsRead) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_drop_candidate_track => drop_candidate_track(candidate_key: &str, track_id: String) -> Result<(), crate::import::ImportError>);
 
-    /// Hold one candidate's pane open for as long as the returned future
-    /// runs: its result is marked read now, and every result stored for it
-    /// meanwhile arrives read. Dropping the future closes it. It finishes only
-    /// with the failure that kept the candidate from opening.
-    pub async fn hold_import_candidate_open(
-        &self,
-        candidate_key: &str,
-    ) -> crate::import::ImportError {
-        match self.inner.import.open_candidate(candidate_key).await {
-            Ok(_open) => std::future::pending().await,
-            Err(error) => error,
-        }
-    }
-
     /// Register the platform's artwork analyzer, which extraction reads
     /// barcodes and text off a candidate's images with.
     pub fn extraction_register_analyzer(

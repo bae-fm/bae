@@ -60,27 +60,10 @@ private final class ImportCandidateSink: ImportCandidateCallback,
     }
 }
 
-private final class OpenImportCandidateSink: OpenImportCandidateCallback,
-    @unchecked Sendable
-{
-    private let fail: @MainActor @Sendable (BridgeError) -> Void
-
-    init(fail: @escaping @MainActor @Sendable (BridgeError) -> Void) {
-        self.fail = fail
-    }
-
-    func onFailure(error: BridgeError) {
-        Task { @MainActor in fail(error) }
-    }
-}
-
 /// The reads behind the selected import candidates: one per selected key,
 /// opened when the key is selected and closed when it leaves the selection.
 /// A read that says the folder is gone drops the key from the selection, which
 /// is what clears a row the scan removed.
-///
-/// A lone selected candidate is also held open in core while its pane shows
-/// it: its identification result is read, so its row flags nothing unread.
 @MainActor
 final class ImportSelectionObservations {
     private struct Observation {
@@ -88,16 +71,10 @@ final class ImportSelectionObservations {
         let subscription: LiveSubscription
     }
 
-    private struct Opening {
-        let key: String
-        let subscription: LiveSubscription
-    }
-
     private let appHandle: AppHandle
     private let importStore: ImportStore
     private let uiStore: UiStore
     private var observations: [String: Observation] = [:]
-    private var opening: Opening?
 
     init(
         appHandle: AppHandle,
@@ -116,26 +93,6 @@ final class ImportSelectionObservations {
         }
         for key in keys where observations[key] == nil {
             observe(key)
-        }
-        holdOpen(keys.count == 1 ? keys.first : nil)
-    }
-
-    /// Hold the candidate whose pane shows open in core, and let go of the
-    /// one before it. Several selected candidates show no one pane, so none
-    /// is held open.
-    private func holdOpen(_ key: String?) {
-        guard opening?.key != key else { return }
-        opening?.subscription.cancel()
-        opening = key.map { key in
-            Opening(
-                key: key,
-                subscription: appHandle.openImportCandidate(
-                    candidateKey: key,
-                    callback: OpenImportCandidateSink { [weak self] error in
-                        self?.uiStore.showError(error)
-                    }
-                )
-            )
         }
     }
 
@@ -179,7 +136,6 @@ final class ImportSelectionObservations {
         for observation in observations.values {
             observation.subscription.cancel()
         }
-        opening?.subscription.cancel()
     }
 }
 

@@ -417,7 +417,7 @@ fn identification_s_own_pick_is_judged_by_the_ready_rule() {
         (
             queue(),
             with_verdict(ready_state("mb-1"), |verdict| {
-                verdict.summary.track_count = Some(10);
+                verdict.track_count = Some(10);
             }),
             NeedsYou::TrackCountDisagrees {
                 local: 10,
@@ -427,7 +427,7 @@ fn identification_s_own_pick_is_judged_by_the_ready_rule() {
         (
             queue(),
             with_verdict(ready_state("mb-1"), |verdict| {
-                verdict.summary.lead = Some(LeadMatch {
+                verdict.lead = Some(LeadMatch {
                     source_tracks: None,
                     ..lead("mb-1")
                 });
@@ -437,7 +437,7 @@ fn identification_s_own_pick_is_judged_by_the_ready_rule() {
         (
             queue(),
             with_verdict(ready_state("mb-1"), |verdict| {
-                verdict.summary.lead = Some(LeadMatch {
+                verdict.lead = Some(LeadMatch {
                     source_tracks: Some(SourceTracks::Nothing),
                     ..lead("mb-1")
                 });
