@@ -8,7 +8,9 @@ fn parse(payloads: &ReleasePayloads) -> Result<ParsedAlbum, ImportError> {
             .unwrap()
             .with_timezone(&Utc),
     );
-    payloads.parsed(&[], &clock, &SequentialIdProvider::new("supplemental"))
+    payloads
+        .extract()
+        .and_then(|release| release.parsed(&[], &clock, &SequentialIdProvider::new("supplemental")))
 }
 
 fn selected_release() -> ReleasePayloads {
@@ -160,10 +162,10 @@ fn malformed_optional_documents_do_not_block_snapshot_projections() {
         assert_eq!(parsed.album.title, "Selected Album");
         assert_eq!(parsed.album.year, Some(1979));
         assert_eq!(parsed.tracks.len(), 2);
-        assert_eq!(payloads.records().unwrap().len(), 1);
-        assert!(payloads.covers().unwrap().is_empty());
+        assert_eq!(payloads.extract().unwrap().records().len(), 1);
+        assert!(payloads.extract().unwrap().covers().is_empty());
         assert_eq!(
-            payloads.detail_for_audio(&[], &[]).unwrap().title,
+            payloads.extract().unwrap().detail_for_audio(&[], &[]).unwrap().title,
             "Selected Album"
         );
         assert_eq!(

@@ -1,13 +1,11 @@
-//! The documents one source release's lookups returned, and the projections
-//! replayed from them.
+//! The documents one source release's lookups returned, and the extraction
+//! that reads them into a [`SourceRelease`].
 //!
 //! A release is described by more than its own document: MusicBrainz adds a
 //! release group, the Wikidata item that group names, and — where an editor
 //! linked one — a Discogs cross-reference with its master. [`ReleasePayloads`]
-//! is that whole set, and every shape the import surfaces need — the picker's
-//! detail, the editor's seed, the commit's `ParsedAlbum`, the tracklist the
-//! Ready rule checks, the cover options the archive serves — is projected from
-//! it without touching the network.
+//! is that whole set, and [`ReleasePayloads::extract`] reads every fact the
+//! import surfaces need out of it at once.
 //!
 //! Each document is stored under the entity it describes, so two releases that
 //! share a release group or a Discogs master share its row. The set is
@@ -20,8 +18,9 @@ use crate::db::{Database, DbSourceReleasePayload};
 use crate::discogs::client::DiscogsClient;
 use crate::discogs::DiscogsRelease;
 use crate::import::cover_art::RemoteCover;
-use crate::import::medium_coverage::MediumCoverage;
-use crate::import::search::{ImportSearchReleaseDetail, SourceTracks};
+use crate::import::source_release::{
+    not_fetched, ArchiveRelease, CatalogFacts, ReleaseCovers, SourceRelease,
+};
 use crate::import::{
     parse_catalog_url, Catalog, CatalogPage, ImportError, MetadataRef, ParsedAlbum, PayloadSource,
     ReleaseRecord, SourcePayload,
@@ -33,12 +32,6 @@ use tracing::warn;
 mod projection;
 mod relationships;
 mod traversal;
-
-/// The catalogs whose documents bae fetches and archives are exactly the ones
-/// it asks, so a set of payloads cannot exist for any other.
-fn not_fetched(catalog: Catalog) -> ! {
-    unreachable!("nothing fetches documents from {}", catalog.as_str())
-}
 
 /// Every document one catalog release's lookups produced, anchored on the
 /// release itself.
@@ -95,7 +88,22 @@ impl AppliedSource {
         clock: &dyn coven::Clock,
         ids: &dyn coven::IdProvider,
     ) -> Result<ParsedAlbum, ImportError> {
-        self.payloads.parsed(&self.audio_durations_ms, clock, ids)
+        self.payloads
+            .extract()?
+            .parsed(&self.audio_durations_ms, clock, ids)
+    }
+
+    /// The records the applied pick claims.
+    pub fn records(&self) -> Result<Vec<ReleaseRecord>, ImportError> {
+        let primary = self.payloads.extract()?;
+        let partners = self
+            .partners
+            .iter()
+            .map(ReleasePayloads::extract)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(crate::import::service::records_for_commit(
+            &primary, &partners,
+        ))
     }
 }
 
@@ -175,56 +183,6 @@ impl ReleasePayloads {
         })
     }
 
-    /// Catalog identities explicitly known at pressing or album level.
-    pub fn records(&self) -> Result<Vec<ReleaseRecord>, ImportError> {
-        self.projected_records()
-    }
-
-    /// The mediums of this release the audio is a rip of — the CD layer of a
-    /// hybrid SACD, one disc of a box. Every projection below reads those
-    /// mediums' tracks and no others, so the draft, the picker's tracklist,
-    /// and the Ready rule all describe the same discs. Chosen from the
-    /// measured lengths alone, so an applied source replays to the same
-    /// mediums from its stored durations.
-    fn coverage(&self, audio_durations_ms: &[u64]) -> Result<MediumCoverage, ImportError> {
-        // The documents are parsed here, which is the only thing that can
-        // fail; choosing itself always answers.
-        let mediums = match self.release.catalog {
-            Catalog::MusicBrainz => {
-                crate::import::musicbrainz_mapper::medium_lengths(&self.musicbrainz_anchor()?)
-            }
-            Catalog::Discogs => {
-                crate::import::discogs_mapper::medium_lengths(&self.discogs_anchor()?.tracklist)
-            }
-            other => not_fetched(other),
-        };
-        Ok(crate::import::medium_coverage::choose(
-            &mediums,
-            audio_durations_ms,
-        ))
-    }
-
-    /// What the source says about this release's own tracklist — the half of the
-    /// Ready rule the folder's track count is checked against.
-    pub fn source_tracks_for_audio(
-        &self,
-        audio_durations_ms: &[u64],
-    ) -> Result<SourceTracks, ImportError> {
-        let coverage = self.coverage(audio_durations_ms)?;
-        match self.release.catalog {
-            Catalog::MusicBrainz => Ok(crate::import::search::mb_source_tracks(
-                &self.musicbrainz_anchor()?,
-                &coverage,
-            )),
-            Catalog::Discogs => Ok(crate::import::search::discogs_source_tracks(
-                &self.discogs_anchor()?,
-                &coverage,
-                Some(audio_durations_ms),
-            )),
-            other => not_fetched(other),
-        }
-    }
-
     /// The images the release documents in this set publish: the anchor's own
     /// front image, and every image of the release an editor cross-linked to
     /// it. These are this pressing's artwork, whichever catalog printed it.
@@ -282,266 +240,68 @@ impl ReleasePayloads {
         Ok(covers)
     }
 
-    /// The cover options this one release's documents offer, in the order a
-    /// picker shows them: its pressing's images, then its album's.
-    ///
-    /// What a pick offers is [`pick_covers`] — a pick claims more releases
-    /// than this one.
-    fn covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
-        let mut unique = Vec::new();
-        for cover in self
-            .release_covers()?
+    /// Read every fact the import surfaces use out of this set: the
+    /// release's resolved album and pressing facts, the records its documents
+    /// state, its cover options, and its full tracklist.
+    pub fn extract(&self) -> Result<SourceRelease, ImportError> {
+        let metadata = self.projected_metadata()?;
+        let mut other_records = self.projected_records()?;
+        other_records.retain(|record| record.catalog() != self.release.catalog);
+        let covers = ReleaseCovers {
+            release: self.release_covers()?,
+            album: self.album_covers()?,
+        };
+        let archive_groups = self
+            .album_documents()?
             .into_iter()
-            .chain(self.album_covers()?)
-        {
-            crate::import::cover_art::push_unique_cover(&mut unique, cover);
-        }
-        Ok(unique)
-    }
-
-    /// On-demand picker artwork. The archived documents supply Discogs images;
-    /// the archive supplies the MusicBrainz release and release-group galleries.
-    /// This does not change the offline metadata projection or automatic cover.
-    async fn gallery_covers(&self, http: &crate::util::http::Http) -> Result<Vec<RemoteCover>, ImportError> {
-        let mut covers = self.covers()?;
-        covers.retain(|cover| cover.source != Catalog::MusicBrainz);
-        let musicbrainz = match self.release.catalog {
+            .filter(|(catalog, _, _)| *catalog == Catalog::MusicBrainz)
+            .map(|(_, key, _)| key.to_string())
+            .collect();
+        let archived_musicbrainz = match self.release.catalog {
             Catalog::MusicBrainz => Some(self.musicbrainz_anchor()?),
             Catalog::Discogs => self.musicbrainz_xref()?,
             other => not_fetched(other),
         };
-        let covered_group = musicbrainz
-            .as_ref()
-            .and_then(|release| release.release_group.as_ref())
-            .map(|group| group.id.clone());
-        if let Some(release) = musicbrainz {
-            let mut gallery = crate::import::cover_art::musicbrainz_gallery(
-                http,
-                &release.id,
-                release
-                    .release_group
-                    .as_ref()
-                    .map(|group| group.id.as_str()),
-            )
-            .await?;
-            match self.release.catalog {
-                Catalog::MusicBrainz => {
-                    gallery.extend(covers);
-                    covers = gallery;
-                }
-                Catalog::Discogs => covers.extend(gallery),
-                other => not_fetched(other),
-            }
-        }
-        for (catalog, key, _) in self.album_documents()? {
-            if catalog != Catalog::MusicBrainz || covered_group.as_deref() == Some(key) {
-                continue;
-            }
-            for cover in crate::import::cover_art::musicbrainz_group_gallery(http, key).await? {
-                crate::import::cover_art::push_unique_cover(&mut covers, cover);
-            }
-        }
-        Ok(covers)
-    }
-
-    /// The keys the pane checks against the library, without building its
-    /// tracks or artwork. A source that names no group leaves it absent.
-    pub(crate) fn library_check(&self) -> Result<crate::db::LibraryCheck, ImportError> {
-        let (release_id, source_group_id) = match self.release.catalog {
+        let archive_release = archived_musicbrainz.map(|release| ArchiveRelease {
+            group_id: release.release_group.map(|group| group.id),
+            release_id: release.id,
+        });
+        let (source_group_id, mediums, catalog) = match self.release.catalog {
             Catalog::MusicBrainz => {
-                let release = self.musicbrainz_anchor()?;
-                (release.id, release.release_group.map(|group| group.id))
+                let anchor = self.musicbrainz_anchor()?;
+                (
+                    anchor.release_group.as_ref().map(|group| group.id.clone()),
+                    crate::import::musicbrainz_mapper::mediums(&anchor),
+                    CatalogFacts::MusicBrainz {
+                        links: crate::import::search::mb_release_links(&anchor),
+                    },
+                )
             }
             Catalog::Discogs => {
-                let release = self.discogs_anchor()?;
-                (release.id, release.master_id)
+                let anchor = self.discogs_anchor()?;
+                (
+                    anchor.master_id.clone(),
+                    crate::import::discogs_mapper::mediums(&anchor),
+                    CatalogFacts::Discogs {
+                        formats: anchor.format.clone(),
+                        release_roles: crate::import::discogs_mapper::release_roles(&anchor),
+                    },
+                )
             }
             other => not_fetched(other),
         };
-        Ok(crate::db::LibraryCheck {
-            source: self.release.catalog,
-            release_id,
+        Ok(SourceRelease {
+            release: self.release.clone(),
             source_group_id,
+            metadata,
+            other_records,
+            covers,
+            archive_release,
+            archive_groups,
+            mediums,
+            catalog,
         })
     }
-
-    /// The picker's detail for this release as the primary of a pick.
-    ///
-    /// `partners` are the pick's other claimed releases, because the cover
-    /// options the detail carries are the pick's, not this document's alone.
-    pub fn detail_for_audio(
-        &self,
-        audio_durations_ms: &[u64],
-        partners: &[ReleasePayloads],
-    ) -> Result<ImportSearchReleaseDetail, ImportError> {
-        let covers = pick_covers(self, partners)?;
-        let coverage = self.coverage(audio_durations_ms)?;
-        let mut detail = match self.release.catalog {
-            Catalog::MusicBrainz => crate::import::search::build_mb_detail(
-                &self.release.key,
-                &self.musicbrainz_anchor()?,
-                &coverage,
-                covers,
-            ),
-            Catalog::Discogs => Ok(crate::import::search::build_discogs_detail(
-                &self.discogs_anchor()?,
-                &coverage,
-                covers,
-                Some(audio_durations_ms),
-            )),
-            other => not_fetched(other),
-        }?;
-        let metadata = self.projected_metadata()?;
-        detail.title = metadata.album.title;
-        detail.artist = (!metadata.album.artists.is_empty()).then(|| {
-            metadata
-                .album
-                .artists
-                .iter()
-                .map(|artist| artist.name.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        });
-        detail.year = metadata.pressing.year;
-        detail.format = metadata.pressing.format;
-        detail.label = metadata.pressing.label;
-        detail.catalog_number = metadata.pressing.catalog_number;
-        detail.country = metadata.pressing.country;
-        detail.barcode = metadata.pressing.barcode;
-        Ok(detail)
-    }
-
-    /// The DB-shape album the commit writes, and the editor's seed is projected
-    /// from — the same mapping the fetch path runs, over the same documents.
-    ///
-    /// `audio_durations_ms` is what the release's audio actually measures. It
-    /// chooses which of the release's mediums are read and, for a Discogs
-    /// tracklist, its index/sub-track layout; a MusicBrainz document states
-    /// its own track times. Empty means unmeasured, and reads the whole
-    /// release.
-    pub fn parsed(
-        &self,
-        audio_durations_ms: &[u64],
-        clock: &dyn coven::Clock,
-        ids: &dyn coven::IdProvider,
-    ) -> Result<ParsedAlbum, ImportError> {
-        let metadata = self.projected_metadata()?;
-        let coverage = self.coverage(audio_durations_ms)?;
-        match self.release.catalog {
-            Catalog::MusicBrainz => crate::import::musicbrainz_mapper::map_with_metadata(
-                &self.musicbrainz_anchor()?,
-                &coverage,
-                metadata,
-                clock,
-                ids,
-            ),
-            Catalog::Discogs => crate::import::discogs_mapper::map_with_metadata(
-                &self.discogs_anchor()?,
-                &coverage,
-                metadata,
-                Some(audio_durations_ms),
-                clock,
-                ids,
-            ),
-            other => not_fetched(other),
-        }
-    }
-}
-
-/// The cover options a pick offers, in the order a surface shows them and so
-/// the order the default is the first of.
-///
-/// A pick claims a primary release and, where it names one, that release on
-/// each other catalog, and it is picked whole — so its artwork is every
-/// claimed document's artwork, not the primary's alone. Every claimed
-/// release's own images come first, the primary's first among them, because
-/// a pressing's own cover is the one this import wants; the albums' images
-/// follow in the same order, each of them being some release of the album's
-/// and possibly not this one. An image reachable twice — the release an
-/// editor cross-linked to the primary also claimed as a partner, two
-/// partners under one master — is offered once.
-pub fn pick_covers(
-    primary: &ReleasePayloads,
-    partners: &[ReleasePayloads],
-) -> Result<Vec<RemoteCover>, ImportError> {
-    let claimed = || std::iter::once(primary).chain(partners);
-    let mut covers = Vec::new();
-    for release in claimed() {
-        for cover in release.release_covers()? {
-            crate::import::cover_art::push_unique_cover(&mut covers, cover);
-        }
-    }
-    for release in claimed() {
-        for cover in release.album_covers()? {
-            crate::import::cover_art::push_unique_cover(&mut covers, cover);
-        }
-    }
-    Ok(covers)
-}
-
-/// The complete galleries behind [`pick_covers`], for the picker: the same
-/// claimed documents, each asked what the Cover Art Archive holds for it.
-pub(crate) async fn pick_gallery_covers(
-    http: &crate::util::http::Http,
-    primary: &ReleasePayloads,
-    partners: &[ReleasePayloads],
-) -> Result<Vec<RemoteCover>, ImportError> {
-    let mut covers = Vec::new();
-    for release in std::iter::once(primary).chain(partners) {
-        for cover in release.gallery_covers(http).await? {
-            crate::import::cover_art::push_unique_cover(&mut covers, cover);
-        }
-    }
-    Ok(covers)
-}
-
-/// The records the releases one pick claims describe together.
-///
-/// `claimed` is the primary first — the release the draft is read from — then
-/// each partner, paired with whatever documents are archived for it. A claimed
-/// release nothing archived documents for still contributes its own record: the
-/// pick claims it either way.
-///
-/// The primary's documents are read first, so what they say about another
-/// catalog stands unless that catalog is one the person themselves claimed — a
-/// claimed release's own document outranks what an editor cross-linked to it.
-/// Only the primary's anchor reads the draft.
-pub fn claimed_records(
-    claimed: &[(MetadataRef, Option<ReleasePayloads>)],
-) -> Result<Vec<ReleaseRecord>, ImportError> {
-    let mut records: Vec<ReleaseRecord> = Vec::new();
-    for (index, (release, payloads)) in claimed.iter().enumerate() {
-        let reads_draft = index == 0;
-        let described = match payloads {
-            Some(payloads) => payloads.records()?,
-            None => vec![ReleaseRecord::new(release, None, reads_draft)],
-        };
-        for mut record in described {
-            let claimed_by_the_person = record.catalog() == release.catalog;
-            if let ReleaseRecord::Pressing {
-                reads_draft: record_reads,
-                ..
-            } = &mut record
-            {
-                *record_reads = reads_draft && claimed_by_the_person;
-            }
-            match records
-                .iter_mut()
-                .find(|existing| existing.catalog() == record.catalog())
-            {
-                Some(existing) if claimed_by_the_person => *existing = record,
-                Some(_) => {}
-                None => records.push(record),
-            }
-        }
-    }
-    records.sort_by_key(|record| {
-        Catalog::ALL
-            .iter()
-            .position(|catalog| *catalog == record.catalog())
-            .expect("a record names one of the catalogs")
-    });
-    Ok(records)
 }
 
 pub(crate) use traversal::fetch_documents;

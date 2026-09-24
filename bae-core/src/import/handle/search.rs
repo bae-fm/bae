@@ -219,7 +219,8 @@ impl ImportServiceHandle {
                             claimed.catalog.as_str(),
                             claimed.key
                         ),
-                    })?,
+                    })?
+                    .extract()?,
             );
         }
         let (primary, partners) = claimed_payloads

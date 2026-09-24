@@ -2,7 +2,7 @@
 //!
 //! Reads embedded ID3v1/ID3v2/Vorbis-comment/MP4-ilst tags from a rip's audio
 //! files and projects them into the same `ParsedAlbum` shape that
-//! `ReleasePayloads::parsed` produces from external sources. The editable
+//! `SourceRelease::parsed` produces from external sources. The editable
 //! confirmation page lets the user correct anything the tags got wrong.
 //!
 //! File tags name no catalog, so a release seeded from them carries no

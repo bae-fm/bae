@@ -3,8 +3,12 @@ use super::assemble::{
 };
 use super::ParsedAlbum;
 use crate::db::{is_various_artists, Pressing};
-use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist};
+use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use crate::import::medium_coverage::MediumCoverage;
+use crate::import::search::ReleaseTrack;
+use crate::import::source_release::{
+    ArtistCredit, CatalogFacts, EntryKind, RoleCredit, SourceMedium, SourceRelease, TracklistEntry,
+};
 use crate::import::{Catalog, ImportError, MetadataRef};
 use coven::Clock;
 use coven::IdProvider;
@@ -102,31 +106,23 @@ pub(crate) fn pressing(release: &DiscogsRelease) -> Pressing {
     }
 }
 
-pub(crate) fn map_with_metadata(
-    release: &DiscogsRelease,
-    coverage: &MediumCoverage,
-    mut metadata: super::release_metadata::ReleaseMetadata,
-    audio_durations_ms: Option<&[u64]>,
-    clock: &dyn Clock,
-    ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, ImportError> {
-    let tracklist = covered_tracklist(&release.tracklist, coverage);
-    let processed = process_tracklist(&tracklist, audio_durations_ms);
-    let primary_artist = metadata.album.take_primary(Catalog::Discogs, &release.id)?;
-    let is_compilation = is_various_artists(&primary_artist.name);
-
-    // Positions come from source order, and non-composer roles are skipped — so
-    // the positions keep holes.
-    let mut release_roles: Vec<ReleaseRole> = Vec::new();
-    if let Some(extraartists) = release.extraartists.as_ref() {
-        for (position, credit) in extraartists.iter().enumerate() {
+/// The composer credits a Discogs release states for itself rather than for
+/// one track. Positions come from source order, and non-composer roles are
+/// skipped — so the positions keep holes.
+pub(crate) fn release_roles(release: &DiscogsRelease) -> Vec<RoleCredit> {
+    let Some(extraartists) = release.extraartists.as_ref() else {
+        return Vec::new();
+    };
+    extraartists
+        .iter()
+        .enumerate()
+        .filter_map(|(position, credit)| {
             if discogs_role_is_composer(&credit.role) {
-                release_roles.push(ReleaseRole {
+                Some(RoleCredit {
                     position: position as i32,
                     artist: discogs_role_artist_ref(credit),
-                    source: Catalog::Discogs,
-                    source_credit: Some(credit.role.clone()),
-                });
+                    role: Some(credit.role.clone()),
+                })
             } else {
                 debug!(
                     discogs_release_id = %release.id,
@@ -134,13 +130,178 @@ pub(crate) fn map_with_metadata(
                     role = %credit.role,
                     "Skipping Discogs release-level extraartist with non-composer role"
                 );
+                None
             }
+        })
+        .collect()
+}
+
+/// A Discogs release's mediums as bae keeps them: the tracklist split into the
+/// runs of rows each disc's positions name, every row with its sub-tracks.
+pub(crate) fn mediums(release: &DiscogsRelease) -> Vec<SourceMedium> {
+    medium_tracklists(&release.tracklist)
+        .iter()
+        .map(|rows| SourceMedium {
+            format: None,
+            entries: tracklist_entries(&release.id, rows),
+        })
+        .collect()
+}
+
+fn tracklist_entries(release_id: &str, rows: &[DiscogsTrack]) -> Vec<TracklistEntry> {
+    rows.iter()
+        .filter_map(|row| {
+            let Some(kind) = EntryKind::parse(&row.type_) else {
+                debug!(
+                    discogs_release_id = %release_id,
+                    discogs_track_position = %row.position,
+                    row_type = %row.type_,
+                    "Skipping Discogs tracklist row of an unknown type"
+                );
+                return None;
+            };
+            Some(tracklist_entry(release_id, row, kind))
+        })
+        .collect()
+}
+
+fn tracklist_entry(release_id: &str, row: &DiscogsTrack, kind: EntryKind) -> TracklistEntry {
+    let roles = match row.extraartists.as_ref() {
+        Some(extraartists) => extraartists
+            .iter()
+            .enumerate()
+            .filter_map(|(position, credit)| {
+                if discogs_role_is_composer(&credit.role) {
+                    Some(RoleCredit {
+                        position: position as i32,
+                        artist: discogs_role_artist_ref(credit),
+                        role: Some(credit.role.clone()),
+                    })
+                } else {
+                    debug!(
+                        discogs_release_id = %release_id,
+                        discogs_track_position = %row.position,
+                        track_title = %row.title,
+                        artist_name = %credit.name,
+                        role = %credit.role,
+                        "Skipping Discogs track-level extraartist with non-composer role"
+                    );
+                    None
+                }
+            })
+            .collect(),
+        None => {
+            debug!(
+                discogs_release_id = %release_id,
+                discogs_track_position = %row.position,
+                track_title = %row.title,
+                "Discogs track has no extraartists field; skipping per-track role credits"
+            );
+            Vec::new()
+        }
+    };
+    TracklistEntry {
+        kind,
+        // Discogs prints an unstated position as the empty string.
+        position: (!row.position.is_empty()).then(|| row.position.clone()),
+        number: None,
+        title: Some(row.title.clone()),
+        duration_ms: row.duration.as_deref().and_then(parse_duration_to_ms),
+        credits: row
+            .artists
+            .iter()
+            .enumerate()
+            .map(|(position, artist)| ArtistCredit {
+                position: position as i32,
+                credited_name: artist.name.clone(),
+                artist: Some(discogs_track_artist_ref(artist)),
+            })
+            .collect(),
+        roles,
+        works: Vec::new(),
+        children: tracklist_entries(release_id, &row.sub_tracks),
+    }
+}
+
+/// The position a Discogs row prints, the empty string where it prints none.
+fn position_of(entry: &TracklistEntry) -> &str {
+    entry.position.as_deref().unwrap_or("")
+}
+
+/// The title a Discogs row prints; every Discogs row states one.
+fn title_of(entry: &TracklistEntry) -> &str {
+    entry
+        .title
+        .as_deref()
+        .expect("a Discogs tracklist row states its title")
+}
+
+/// The release formats of a stored Discogs release.
+fn formats(release: &SourceRelease) -> &[String] {
+    match &release.catalog {
+        CatalogFacts::Discogs { formats, .. } => formats,
+        CatalogFacts::MusicBrainz { .. } => {
+            unreachable!("a Discogs reading is asked only of a Discogs release")
         }
     }
+}
+
+/// The picker's tracklist for the covered mediums of a Discogs release, laid
+/// out against the measured lengths.
+pub(crate) fn detail_tracks(
+    release: &SourceRelease,
+    coverage: &MediumCoverage,
+    audio_durations_ms: &[u64],
+) -> Vec<ReleaseTrack> {
+    let entries = release.covered_entries(coverage);
+    process_tracklist(&entries, Some(audio_durations_ms))
+        .iter()
+        .map(|pt| ReleaseTrack {
+            title: pt.title.clone(),
+            artist: pt
+                .source_tracks
+                .iter()
+                .find_map(|track| track.credits.first())
+                .map(|credit| credit.credited_name.clone()),
+            duration_ms: pt.duration_ms,
+            position: pt.position.clone(),
+            side: release_track_side(formats(release), pt).map(|side| side as u32),
+        })
+        .collect()
+}
+
+pub(crate) fn map(
+    release: &SourceRelease,
+    coverage: &MediumCoverage,
+    audio_durations_ms: Option<&[u64]>,
+    clock: &dyn Clock,
+    ids: &dyn IdProvider,
+) -> Result<ParsedAlbum, ImportError> {
+    let release_id = &release.release.key;
+    let entries = release.covered_entries(coverage);
+    let processed = process_tracklist(&entries, audio_durations_ms);
+    let mut metadata = release.metadata.clone();
+    let primary_artist = metadata.album.take_primary(Catalog::Discogs, release_id)?;
+    let is_compilation = is_various_artists(&primary_artist.name);
+
+    let release_roles = match &release.catalog {
+        CatalogFacts::Discogs { release_roles, .. } => release_roles
+            .iter()
+            .map(|role| ReleaseRole {
+                position: role.position,
+                artist: role.artist.clone(),
+                source: Catalog::Discogs,
+                source_credit: role.role.clone(),
+            })
+            .collect(),
+        CatalogFacts::MusicBrainz { .. } => {
+            unreachable!("a Discogs reading is asked only of a Discogs release")
+        }
+    };
 
     let tracks: Vec<TrackIr> = processed
         .iter()
-        .map(|pt| discogs_track_ir(release, pt))
+        .map(|pt| discogs_track_ir(formats(release), pt))
         .collect();
 
     let ir = ReleaseIr {
@@ -151,8 +312,8 @@ pub(crate) fn map_with_metadata(
         is_compilation,
         pressing: metadata.pressing,
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
-            record: MetadataRef::new(Catalog::Discogs, release.id.clone()),
-            // The mapper reads one document; what else the pick claimed is
+            record: MetadataRef::new(Catalog::Discogs, release_id.clone()),
+            // The mapper reads one release; what else the pick claimed is
             // the picker's to say, and reaches the library as records.
             partners: Vec::new(),
         }),
@@ -168,49 +329,30 @@ pub(crate) fn map_with_metadata(
 /// display credits per source row (preserving the artist-pool discovery order);
 /// display credits are deduped across a collapsed track's source rows by Discogs
 /// artist id, first occurrence wins, with positions compacted `0..n`.
-fn discogs_track_ir(release: &DiscogsRelease, pt: &ProcessedTrack) -> TrackIr {
+fn discogs_track_ir(formats: &[String], pt: &ProcessedTrack) -> TrackIr {
     let mut events: Vec<TrackEvent> = Vec::new();
-    let mut seen_credit_ids: HashSet<String> = HashSet::new();
+    let mut seen_credit_ids: HashSet<Option<String>> = HashSet::new();
     let mut credit_position = 0i32;
 
     for discogs_track in &pt.source_tracks {
-        match discogs_track.extraartists.as_ref() {
-            Some(extraartists) => {
-                for (role_position, credit) in extraartists.iter().enumerate() {
-                    if discogs_role_is_composer(&credit.role) {
-                        events.push(TrackEvent::Role {
-                            position: role_position as i32,
-                            artist: discogs_role_artist_ref(credit),
-                            source: Catalog::Discogs,
-                            source_credit: Some(credit.role.clone()),
-                        });
-                    } else {
-                        debug!(
-                            discogs_release_id = %release.id,
-                            discogs_track_position = %discogs_track.position,
-                            track_title = %discogs_track.title,
-                            artist_name = %credit.name,
-                            role = %credit.role,
-                            "Skipping Discogs track-level extraartist with non-composer role"
-                        );
-                    }
-                }
-            }
-            None => {
-                debug!(
-                    discogs_release_id = %release.id,
-                    discogs_track_position = %discogs_track.position,
-                    track_title = %discogs_track.title,
-                    "Discogs track has no extraartists field; skipping per-track role credits"
-                );
-            }
+        for role in &discogs_track.roles {
+            events.push(TrackEvent::Role {
+                position: role.position,
+                artist: role.artist.clone(),
+                source: Catalog::Discogs,
+                source_credit: role.role.clone(),
+            });
         }
 
-        for discogs_artist in &discogs_track.artists {
-            if seen_credit_ids.insert(discogs_artist.id.clone()) {
+        for artist in discogs_track
+            .credits
+            .iter()
+            .filter_map(|credit| credit.artist.as_ref())
+        {
+            if seen_credit_ids.insert(artist.discogs_artist_id.clone()) {
                 events.push(TrackEvent::Credit {
                     position: credit_position,
-                    artist: discogs_track_artist_ref(discogs_artist),
+                    artist: artist.clone(),
                 });
                 credit_position += 1;
             }
@@ -219,7 +361,7 @@ fn discogs_track_ir(release: &DiscogsRelease, pt: &ProcessedTrack) -> TrackIr {
 
     TrackIr {
         title: pt.title.clone(),
-        side: release_track_side(release, pt),
+        side: release_track_side(formats, pt),
         number: super::assemble::position_number(&pt.position),
         source_position: Some(pt.position.clone()),
         events,
@@ -233,7 +375,7 @@ pub(crate) struct ProcessedTrack<'a> {
     pub title: String,
     pub position: String,
     pub duration_ms: Option<u64>,
-    pub source_tracks: Vec<&'a crate::discogs::DiscogsTrack>,
+    pub source_tracks: Vec<&'a TracklistEntry>,
     pub side: Option<i32>,
 }
 
@@ -248,7 +390,7 @@ struct CandidateLayout<'a> {
 /// layouts, and an unresolved tie keeps the more expanded source description.
 /// `None` — no folder to fit — takes the source's leaf tracks.
 pub(crate) fn process_tracklist<'a>(
-    tracklist: &'a [crate::discogs::DiscogsTrack],
+    tracklist: &'a [TracklistEntry],
     audio_durations_ms: Option<&[u64]>,
 ) -> Vec<ProcessedTrack<'a>> {
     let layouts = candidate_layouts(tracklist, audio_durations_ms, 0);
@@ -268,12 +410,12 @@ fn audio_from(audio: Option<&[u64]>, offset: usize) -> &[u64] {
 }
 
 enum LayoutEntry<'a> {
-    Index(&'a crate::discogs::DiscogsTrack),
+    Index(&'a TracklistEntry),
     Heading {
-        heading: &'a crate::discogs::DiscogsTrack,
-        children: &'a [crate::discogs::DiscogsTrack],
+        heading: &'a TracklistEntry,
+        children: &'a [TracklistEntry],
     },
-    Track(&'a crate::discogs::DiscogsTrack),
+    Track(&'a TracklistEntry),
 }
 
 impl<'a> LayoutEntry<'a> {
@@ -345,7 +487,7 @@ fn compare_duration_fit(
 }
 
 fn candidate_layouts<'a>(
-    entries: &'a [crate::discogs::DiscogsTrack],
+    entries: &'a [TracklistEntry],
     audio: Option<&[u64]>,
     audio_offset: usize,
 ) -> std::collections::BTreeMap<usize, CandidateLayout<'a>> {
@@ -360,13 +502,13 @@ fn candidate_layouts<'a>(
     let mut entry_index = 0;
     while entry_index < entries.len() {
         let entry = &entries[entry_index];
-        let (layout_entry, consumed) = if entry.type_ == "index" && !entry.sub_tracks.is_empty() {
+        let (layout_entry, consumed) = if entry.kind == EntryKind::Index && !entry.children.is_empty() {
             (LayoutEntry::Index(entry), 1)
-        } else if entry.type_ == "heading" && entry.title != "-" {
+        } else if entry.kind == EntryKind::Heading && title_of(entry) != "-" {
             let mut end = entry_index + 1;
             while end < entries.len()
-                && entries[end].type_ == "track"
-                && is_sub_track_position(&entries[end].position)
+                && entries[end].kind == EntryKind::Track
+                && is_sub_track_position(position_of(&entries[end]))
             {
                 end += 1;
             }
@@ -381,7 +523,7 @@ fn candidate_layouts<'a>(
                 },
                 end - entry_index,
             )
-        } else if entry.type_ == "track" {
+        } else if entry.kind == EntryKind::Track {
             (LayoutEntry::Track(entry), 1)
         } else {
             entry_index += 1;
@@ -409,46 +551,46 @@ fn candidate_layouts<'a>(
     layouts
 }
 
-fn fixed_track_layout(entry: &crate::discogs::DiscogsTrack) -> CandidateLayout<'_> {
+fn fixed_track_layout(entry: &TracklistEntry) -> CandidateLayout<'_> {
     CandidateLayout {
         tracks: vec![ProcessedTrack {
-            title: entry.title.clone(),
-            position: entry.position.clone(),
-            duration_ms: entry.duration.as_deref().and_then(parse_duration_to_ms),
+            title: title_of(entry).to_string(),
+            position: position_of(entry).to_string(),
+            duration_ms: entry.duration_ms,
             source_tracks: vec![entry],
-            side: parse_side_from_position(&entry.position),
+            side: parse_side_from_position(position_of(entry)),
         }],
         expanded_groups: 0,
     }
 }
 
 fn heading_layouts<'a>(
-    heading: &'a crate::discogs::DiscogsTrack,
-    children: &'a [crate::discogs::DiscogsTrack],
+    heading: &'a TracklistEntry,
+    children: &'a [TracklistEntry],
 ) -> Vec<CandidateLayout<'a>> {
     let expanded = CandidateLayout {
         tracks: children
             .iter()
             .map(|child| ProcessedTrack {
-                title: format!("{}: {}", heading.title, child.title),
-                position: child.position.clone(),
-                duration_ms: child.duration.as_deref().and_then(parse_duration_to_ms),
+                title: format!("{}: {}", title_of(heading), title_of(child)),
+                position: position_of(child).to_string(),
+                duration_ms: child.duration_ms,
                 source_tracks: vec![child],
-                side: parse_side_from_position(&child.position),
+                side: parse_side_from_position(position_of(child)),
             })
             .collect(),
         expanded_groups: 1,
     };
-    let position = extract_base_position(&children[0].position);
-    let sources: Vec<&crate::discogs::DiscogsTrack> = children.iter().collect();
+    let position = extract_base_position(position_of(&children[0]));
+    let sources: Vec<&TracklistEntry> = children.iter().collect();
     let collapsed = CandidateLayout {
         tracks: vec![ProcessedTrack {
             title: format!(
                 "{}: {}",
-                heading.title,
+                title_of(heading),
                 children
                     .iter()
-                    .map(|track| track.title.as_str())
+                    .map(title_of)
                     .collect::<Vec<_>>()
                     .join(" \u{2013} ")
             ),
@@ -485,45 +627,43 @@ fn keep_better_layout<'a>(
 }
 
 fn index_layouts<'a>(
-    index: &'a crate::discogs::DiscogsTrack,
+    index: &'a TracklistEntry,
     audio: Option<&[u64]>,
     audio_offset: usize,
 ) -> Vec<CandidateLayout<'a>> {
-    let child_layouts = candidate_layouts(&index.sub_tracks, audio, audio_offset);
+    let child_layouts = candidate_layouts(&index.children, audio, audio_offset);
     let expanded = child_layouts
         .into_values()
         .map(|mut layout| {
             for track in &mut layout.tracks {
-                track.title = format!("{}: {}", index.title, track.title);
+                track.title = format!("{}: {}", title_of(index), track.title);
                 track.source_tracks.insert(0, index);
             }
             layout.expanded_groups += 1;
             layout
         })
         .collect::<Vec<_>>();
-    let source_tracks = leaf_tracks(&index.sub_tracks);
+    let source_tracks = leaf_tracks(&index.children);
     if source_tracks.is_empty() {
         return expanded;
     }
-    let position = if index.position.is_empty() {
+    let position = if position_of(index).is_empty() {
         source_tracks
             .first()
-            .map(|track| extract_base_position(&track.position))
+            .map(|track| extract_base_position(position_of(track)))
             .expect("a grouped Discogs index with playable leaves has a first leaf")
     } else {
-        index.position.clone()
+        position_of(index).to_string()
     };
     let duration_ms = index
-        .duration
-        .as_deref()
-        .and_then(parse_duration_to_ms)
+        .duration_ms
         .or_else(|| sum_track_durations(&source_tracks));
     let mut collapsed_sources = Vec::with_capacity(source_tracks.len() + 1);
     collapsed_sources.push(index);
     collapsed_sources.extend(source_tracks);
     let collapsed = CandidateLayout {
         tracks: vec![ProcessedTrack {
-            title: index.title.clone(),
+            title: title_of(index).to_string(),
             side: parse_side_from_position(&position),
             position,
             duration_ms,
@@ -534,13 +674,13 @@ fn index_layouts<'a>(
     std::iter::once(collapsed).chain(expanded).collect()
 }
 
-fn leaf_tracks(entries: &[crate::discogs::DiscogsTrack]) -> Vec<&crate::discogs::DiscogsTrack> {
+fn leaf_tracks(entries: &[TracklistEntry]) -> Vec<&TracklistEntry> {
     entries
         .iter()
         .flat_map(|entry| {
-            if entry.type_ == "index" && !entry.sub_tracks.is_empty() {
-                leaf_tracks(&entry.sub_tracks)
-            } else if entry.type_ == "track" {
+            if entry.kind == EntryKind::Index && !entry.children.is_empty() {
+                leaf_tracks(&entry.children)
+            } else if entry.kind == EntryKind::Track {
                 vec![entry]
             } else {
                 Vec::new()
@@ -549,10 +689,10 @@ fn leaf_tracks(entries: &[crate::discogs::DiscogsTrack]) -> Vec<&crate::discogs:
         .collect()
 }
 
-fn sum_track_durations(tracks: &[&crate::discogs::DiscogsTrack]) -> Option<u64> {
+fn sum_track_durations(tracks: &[&TracklistEntry]) -> Option<u64> {
     tracks
         .iter()
-        .map(|track| track.duration.as_deref().and_then(parse_duration_to_ms))
+        .map(|track| track.duration_ms)
         .sum()
 }
 
@@ -607,17 +747,17 @@ pub(crate) fn parse_duration_to_ms(duration: &str) -> Option<u64> {
 /// medium, and a row naming no disc — a heading, an index — belongs with the
 /// disc of the first numbered row after it.
 pub(crate) fn medium_tracklists(
-    tracklist: &[crate::discogs::DiscogsTrack],
-) -> Vec<Vec<crate::discogs::DiscogsTrack>> {
-    let disc_of = |track: &crate::discogs::DiscogsTrack| -> Option<i32> {
+    tracklist: &[DiscogsTrack],
+) -> Vec<Vec<DiscogsTrack>> {
+    let disc_of = |track: &DiscogsTrack| -> Option<i32> {
         let (disc, _) = track.position.split_once('-')?;
         disc.parse::<i32>().ok().filter(|disc| *disc > 0)
     };
     if !tracklist.iter().any(|track| disc_of(track).is_some()) {
         return vec![tracklist.to_vec()];
     }
-    let mut mediums: Vec<(i32, Vec<crate::discogs::DiscogsTrack>)> = Vec::new();
-    let mut unnumbered: Vec<crate::discogs::DiscogsTrack> = Vec::new();
+    let mut mediums: Vec<(i32, Vec<DiscogsTrack>)> = Vec::new();
+    let mut unnumbered: Vec<DiscogsTrack> = Vec::new();
     for track in tracklist {
         match disc_of(track) {
             Some(disc) => {
@@ -642,39 +782,10 @@ pub(crate) fn medium_tracklists(
     mediums.into_iter().map(|(_, rows)| rows).collect()
 }
 
-/// Each medium's stated track lengths, read the way a tracklist with no
-/// audio to fit is read — what a folder's measured lengths choose their
-/// coverage from.
-pub(crate) fn medium_lengths(tracklist: &[crate::discogs::DiscogsTrack]) -> Vec<Vec<Option<u64>>> {
-    medium_tracklists(tracklist)
-        .iter()
-        .map(|rows| {
-            process_tracklist(rows, None)
-                .iter()
-                .map(|track| track.duration_ms)
-                .collect()
-        })
-        .collect()
-}
-
-/// The rows of the mediums the coverage names, in tracklist order.
-pub(crate) fn covered_tracklist(
-    tracklist: &[crate::discogs::DiscogsTrack],
-    coverage: &MediumCoverage,
-) -> Vec<crate::discogs::DiscogsTrack> {
-    medium_tracklists(tracklist)
-        .into_iter()
-        .enumerate()
-        .filter(|(position, _)| coverage.covers(*position))
-        .flat_map(|(_, rows)| rows)
-        .collect()
-}
-
 /// A known CD contains one side even when its track positions omit a disc.
-pub(crate) fn release_track_side(release: &DiscogsRelease, track: &ProcessedTrack) -> Option<i32> {
+pub(crate) fn release_track_side(formats: &[String], track: &ProcessedTrack) -> Option<i32> {
     track.side.or_else(|| {
-        release
-            .format
+        formats
             .iter()
             .any(|format| format.contains("CD"))
             .then_some(1)

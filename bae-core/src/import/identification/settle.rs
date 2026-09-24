@@ -416,7 +416,10 @@ async fn settle_lead(
                 return Err(FinalizationError::Failed(error.to_string()));
             }
         };
-    match payloads.source_tracks_for_audio(&audio_durations) {
+    match payloads
+        .extract()
+        .map(|release| release.source_tracks_for_audio(&audio_durations))
+    {
         Ok(source_tracks) => {
             // `SourceTracks::Nothing` is an answer — this release states no
             // tracklist — so the verdict stores with the match unverifiable, and

@@ -301,7 +301,10 @@ impl ImportServiceHandle {
         current: &crate::import::CandidateDraft,
     ) -> Result<crate::import::pane::CandidateSourceDraft, crate::import::ImportError> {
         let audio_durations = current.audio_durations(durations)?;
-        let parsed = payloads.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
+        let parsed =
+            payloads
+                .extract()?
+                .parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
         let mut edit = crate::import::RawReleaseEdit::from_user_edit(
             crate::import::parsed_album_to_user_edit(&parsed),
             crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
@@ -351,9 +354,14 @@ impl ImportServiceHandle {
             .library_manager
             .prepare_discogs_artist_images(required_artist_ids)
             .await?;
-        let default_cover = crate::import::payloads::pick_covers(payloads, &partners)?
-            .into_iter()
-            .next();
+        let extracted_partners = partners
+            .iter()
+            .map(crate::import::payloads::ReleasePayloads::extract)
+            .collect::<Result<Vec<_>, _>>()?;
+        let default_cover =
+            crate::import::source_release::pick_covers(&payloads.extract()?, &extracted_partners)
+                .into_iter()
+                .next();
         let (cover, remote_cover) = match default_cover {
             Some(remote) => match self.library_manager.fetch_remote_image(&remote.url).await? {
                 Some(image) => (
@@ -464,7 +472,13 @@ impl ImportServiceHandle {
                 // asking.
                 let audio_durations =
                     crate::import::track_slots::audio_durations(candidate.files(), &durations)?;
-                let detail = payloads.detail_for_audio(&audio_durations, &prepared_partners)?;
+                let extracted_partners = prepared_partners
+                    .iter()
+                    .map(crate::import::payloads::ReleasePayloads::extract)
+                    .collect::<Result<Vec<_>, _>>()?;
+                let detail = payloads
+                    .extract()?
+                    .detail_for_audio(&audio_durations, &extracted_partners)?;
                 let metadata = self
                     .external_candidate_metadata(
                         &payloads,

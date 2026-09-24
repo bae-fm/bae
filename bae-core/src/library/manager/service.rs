@@ -357,8 +357,8 @@ impl LibraryManager {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn pick_gallery_covers(
         &self,
-        primary: &crate::import::payloads::ReleasePayloads,
-        partners: &[crate::import::payloads::ReleasePayloads],
+        primary: &crate::import::source_release::SourceRelease,
+        partners: &[crate::import::source_release::SourceRelease],
     ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
         self.providers.pick_gallery_covers(primary, partners).await
     }

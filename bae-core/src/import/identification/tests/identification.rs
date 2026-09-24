@@ -369,14 +369,14 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
 /// it is the count: three tracks, as the folder holds.
 #[test]
 fn the_lengths_a_source_states_do_not_decide() {
-    use crate::musicbrainz::MbReleaseResponse;
-
-    let source_response: MbReleaseResponse =
-        serde_json::from_str(&release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000])).unwrap();
-    let source = crate::import::search::mb_source_tracks(
-        &source_response,
-        &crate::import::medium_coverage::MediumCoverage::all(source_response.media.len()),
-    );
+    let payloads: crate::import::payloads::ReleasePayloads =
+        serde_json::from_value(serde_json::json!({
+            "release": crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-1"),
+            "anchor": release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
+            "supporting": [],
+        }))
+        .unwrap();
+    let source = payloads.extract().unwrap().source_tracks_for_audio(&[]);
     assert_eq!(source, SourceTracks::Listed { count: 3 });
     assert_eq!(
         classify(&found_verdict(3, Some(source))),

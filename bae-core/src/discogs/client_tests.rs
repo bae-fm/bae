@@ -199,24 +199,28 @@ fn release_without_master_has_no_album_identity() {
 
 #[test]
 fn release_barcode_reaches_pressing_metadata() {
-    let release = parse_discogs_release_json(
-        r#"{"id":123,"title":"Album Title","identifiers":[
+    let json = r#"{"id":123,"title":"Album Title","identifiers":[
             {"type":"Matrix / Runout","value":"MATRIX-7"},
             {"type":"Barcode","value":" \t"},
             {"type":"Barcode","value":"0 12345 67890 5","description":"Text"},
             {"type":"Barcode","value":"012345678905","description":"Scanned"}
-        ]}"#,
-    )
-    .unwrap();
+        ]}"#;
+    let release = parse_discogs_release_json(json).unwrap();
     assert_eq!(release.barcode.as_deref(), Some("0 12345 67890 5"));
+    let payloads: crate::import::payloads::ReleasePayloads =
+        serde_json::from_value(serde_json::json!({
+            "release": crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "123"),
+            "anchor": json,
+            "supporting": [],
+        }))
+        .unwrap();
     assert_eq!(
-        crate::import::search::build_discogs_detail(
-            &release,
-            &crate::import::medium_coverage::MediumCoverage::all(1),
-            Vec::new(),
-            None
-        )
-        .barcode,
+        payloads
+            .extract()
+            .unwrap()
+            .detail_for_audio(&[], &[])
+            .unwrap()
+            .barcode,
         release.barcode
     );
     assert_eq!(

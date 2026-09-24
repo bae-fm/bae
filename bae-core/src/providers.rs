@@ -153,10 +153,10 @@ impl Providers {
     /// Every image one pick's releases offer, the primary's first.
     pub(crate) async fn pick_gallery_covers(
         &self,
-        primary: &ReleasePayloads,
-        partners: &[ReleasePayloads],
+        primary: &crate::import::source_release::SourceRelease,
+        partners: &[crate::import::source_release::SourceRelease],
     ) -> Result<Vec<RemoteCover>, ImportError> {
-        crate::import::payloads::pick_gallery_covers(&self.http, primary, partners).await
+        crate::import::source_release::pick_gallery_covers(&self.http, primary, partners).await
     }
 }
 

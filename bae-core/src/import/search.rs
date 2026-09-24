@@ -259,18 +259,6 @@ pub fn discogs_search_result_to_metadata(
     }
 }
 
-/// A MusicBrainz release's tracklist, as an `inc=recordings` response carries
-/// it.
-pub(crate) fn mb_source_tracks(
-    r: &MbReleaseResponse,
-    coverage: &crate::import::medium_coverage::MediumCoverage,
-) -> SourceTracks {
-    source_tracks_from_mb_tracks(
-        crate::import::musicbrainz_mapper::covered_media(r, coverage)
-            .flat_map(|medium| &medium.tracks),
-    )
-}
-
 fn source_tracks_from_mb_tracks<'a>(
     tracks: impl Iterator<Item = &'a crate::musicbrainz::MbTrack>,
 ) -> SourceTracks {
@@ -347,7 +335,7 @@ fn mb_stated_media(r: &MbReleaseResponse) -> StatedMedia {
 /// The releases on other catalogs a MusicBrainz release document names as
 /// the same release, in relation order. A link to an album page names an
 /// album, not this pressing, and is not one of them.
-fn mb_release_links(r: &MbReleaseResponse) -> Vec<MetadataRef> {
+pub(crate) fn mb_release_links(r: &MbReleaseResponse) -> Vec<MetadataRef> {
     crate::musicbrainz::relation_urls(&r.relations)
         .filter_map(parse_catalog_url)
         .filter_map(|page| match page {
@@ -591,149 +579,6 @@ pub(crate) async fn lookup_by_discid(
     };
 
     Ok(mb_discid_releases_to_metadata(discid, releases))
-}
-
-/// A Discogs release's tracklist. Headings and index entries are not tracks;
-/// nested index rows are expanded to their playable leaves when
-/// `audio_durations_ms` offers no layout to fit.
-pub(crate) fn discogs_source_tracks(
-    release: &crate::discogs::DiscogsRelease,
-    coverage: &crate::import::medium_coverage::MediumCoverage,
-    audio_durations_ms: Option<&[u64]>,
-) -> SourceTracks {
-    let tracklist = crate::import::discogs_mapper::covered_tracklist(&release.tracklist, coverage);
-    let tracks = crate::import::discogs_mapper::process_tracklist(&tracklist, audio_durations_ms);
-    if tracks.is_empty() {
-        return SourceTracks::Nothing;
-    }
-    SourceTracks::Listed {
-        count: tracks.len() as u32,
-    }
-}
-
-/// Build the UI-shaped `ImportSearchReleaseDetail` from a parsed MB response,
-/// for the picker and the confirmation pane.
-pub(crate) fn build_mb_detail(
-    release_id: &str,
-    mb_response: &crate::musicbrainz::MbReleaseResponse,
-    coverage: &crate::import::medium_coverage::MediumCoverage,
-    cover_art: Vec<RemoteCover>,
-) -> Result<ImportSearchReleaseDetail, ImportError> {
-    let mut side_base: u32 = 0;
-    let mut tracks: Vec<ReleaseTrack> = Vec::new();
-
-    for medium in crate::import::musicbrainz_mapper::covered_media(mb_response, coverage) {
-        let sides = crate::import::musicbrainz_mapper::medium_sides(release_id, medium)?;
-
-        for (t, &side_offset) in medium.tracks.iter().zip(&sides.offsets) {
-            let side = side_offset.map(|offset| side_base + offset + 1);
-
-            tracks.push(ReleaseTrack {
-                title: crate::import::musicbrainz_mapper::track_title(release_id, t)?,
-                artist: t.artist_credit.first().map(|ac| ac.name.clone()),
-                duration_ms: t.length,
-                position: t
-                    .number
-                    .clone()
-                    .unwrap_or_else(|| t.position.map(|p| p.to_string()).unwrap_or_default()),
-                side,
-            });
-        }
-
-        side_base += sides.side_span;
-    }
-
-    // The detail's pressing fields are the release's pressing, read through the
-    // same projection the commit maps — the picker shows what the import stores.
-    let pressing = crate::import::musicbrainz_mapper::pressing(mb_response);
-    let artist = mb_response.artist_credit.first().map(|ac| ac.name.clone());
-
-    Ok(ImportSearchReleaseDetail {
-        release_id: mb_response.id.clone(),
-        source: Catalog::MusicBrainz,
-        source_group_id: mb_response.release_group.as_ref().map(|rg| rg.id.clone()),
-        title: mb_response.title.clone(),
-        artist,
-        year: pressing.year,
-        format: pressing.format,
-        label: pressing.label,
-        catalog_number: pressing.catalog_number,
-        country: pressing.country,
-        barcode: pressing.barcode,
-        media: mb_stated_media(mb_response),
-        links: mb_release_links(mb_response),
-        track_count: tracks.len() as u32,
-        tracks,
-        cover_art,
-    })
-}
-
-pub(crate) fn build_discogs_detail(
-    release: &crate::discogs::DiscogsRelease,
-    coverage: &crate::import::medium_coverage::MediumCoverage,
-    cover_art: Vec<RemoteCover>,
-    audio_durations_ms: Option<&[u64]>,
-) -> ImportSearchReleaseDetail {
-    let tracklist = crate::import::discogs_mapper::covered_tracklist(&release.tracklist, coverage);
-    let processed =
-        crate::import::discogs_mapper::process_tracklist(&tracklist, audio_durations_ms);
-    let pressing = crate::import::discogs_mapper::pressing(release);
-
-    let tracks: Vec<ReleaseTrack> = processed
-        .iter()
-        .map(|pt| {
-            let artist = pt
-                .source_tracks
-                .iter()
-                .find_map(|track| track.artists.first())
-                .map(|artist| artist.name.clone());
-            ReleaseTrack {
-                title: pt.title.clone(),
-                artist,
-                duration_ms: pt.duration_ms,
-                position: pt.position.clone(),
-                side: crate::import::discogs_mapper::release_track_side(release, pt)
-                    .map(|side| side as u32),
-            }
-        })
-        .collect();
-
-    let artist = release
-        .artists
-        .iter()
-        .map(|a| a.name.clone())
-        .collect::<Vec<_>>()
-        .join(", ");
-    let artist = if artist.is_empty() {
-        None
-    } else {
-        Some(artist)
-    };
-
-    ImportSearchReleaseDetail {
-        release_id: release.id.clone(),
-        source: Catalog::Discogs,
-        source_group_id: release.master_id.clone(),
-        title: release.title.clone(),
-        artist,
-        year: pressing.year,
-        format: pressing.format,
-        label: pressing.label,
-        catalog_number: pressing.catalog_number,
-        country: pressing.country,
-        barcode: pressing.barcode,
-        // The document's format names are one flat list, as the search
-        // result's are, and a Discogs document names no counterpart.
-        media: if release.format.is_empty() {
-            StatedMedia::Undescribed
-        } else {
-            StatedMedia::Descriptors(release.format.clone())
-        },
-        links: Vec::new(),
-        track_count: tracks.len() as u32,
-        tracks,
-        cover_art,
-    }
 }
 
 #[cfg(test)]

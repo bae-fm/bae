@@ -545,10 +545,9 @@ fn work_composer_relation_without_artist_payload_is_logged_and_skipped() {
     );
 }
 
-/// A work reached from two tracks is converted once per release: its
-/// malformed composer relation is logged a single time, and its sub-graph is
-/// walked once, no matter how many tracks reference it. (Locks `mb_work_ref`'s
-/// per-release memoization.)
+/// A work reached from two tracks is read once per release: its malformed
+/// composer relation is logged a single time, and its row lands once, no
+/// matter how many tracks reference it.
 #[test]
 fn work_referenced_by_two_tracks_logs_skip_once() {
     let work = MbWork {

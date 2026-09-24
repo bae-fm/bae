@@ -150,6 +150,8 @@ fn seed_for(response: &crate::musicbrainz::MbReleaseResponse) -> crate::import::
         "supporting": [],
     }))
     .expect("archived fixture deserializes")
+    .extract()
+    .unwrap()
     .parsed(
         &[],
         &coven::SystemClock,

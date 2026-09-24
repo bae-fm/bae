@@ -81,7 +81,7 @@ async fn master_backlink_enriches_an_archived_release_and_replays_offline() {
     let enriched = providers.enrich_payloads(Some(&client), &stored, CallPriority::Interactive)
         .await
         .unwrap();
-    let records = enriched.records().unwrap();
+    let records = enriched.extract().unwrap().records();
     assert!(records
         .iter()
         .any(|record| record.url() == "https://musicbrainz.org/release-group/album-group"));
@@ -92,6 +92,8 @@ async fn master_backlink_enriches_an_archived_release_and_replays_offline() {
         .iter()
         .any(|record| record.catalog() == Catalog::MusicBrainz && record.release_ref().is_some()));
     let parsed = enriched
+        .extract()
+        .unwrap()
         .parsed(
             &[],
             &FixedClock(instant()),
@@ -116,8 +118,10 @@ async fn master_backlink_enriches_an_archived_release_and_replays_offline() {
     let (db, _temp) = database().await;
     store(&db, &enriched, instant()).await.unwrap();
     let replay = load(&db, &stored.release).await.unwrap().unwrap();
-    assert_eq!(replay.records().unwrap(), records);
+    assert_eq!(replay.extract().unwrap().records(), records);
     let replayed = replay
+        .extract()
+        .unwrap()
         .parsed(
             &[],
             &FixedClock(instant()),
@@ -157,6 +161,8 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
         ],
     };
     let parsed = payloads
+        .extract()
+        .unwrap()
         .parsed(
             &[],
             &FixedClock(instant()),
@@ -179,7 +185,7 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[1].title, "Second Track");
     assert_eq!(parsed.tracks[1].side, Some(2));
-    let detail = payloads.detail_for_audio(&[], &[]).unwrap();
+    let detail = payloads.extract().unwrap().detail_for_audio(&[], &[]).unwrap();
     assert_eq!(detail.label, parsed.release.pressing.label);
     assert_eq!(detail.country, parsed.release.pressing.country);
     assert_eq!(detail.year, parsed.release.pressing.year);
@@ -201,6 +207,8 @@ fn linked_album_fills_missing_title_and_artists_without_setting_pressing_year() 
         )],
     };
     let parsed = payloads
+        .extract()
+        .unwrap()
         .parsed(
             &[],
             &FixedClock(instant()),
@@ -230,8 +238,8 @@ async fn replacing_a_reverse_answer_removes_an_obsolete_pressing_alias_atomicall
         .await
         .unwrap()
         .unwrap()
+        .extract().unwrap()
         .records()
-        .unwrap()
         .iter()
         .any(|record| record.catalog() == Catalog::MusicBrainz && record.release_ref().is_some()));
     payloads.supporting.clear();
@@ -240,8 +248,8 @@ async fn replacing_a_reverse_answer_removes_an_obsolete_pressing_alias_atomicall
         .await
         .unwrap()
         .unwrap()
+        .extract().unwrap()
         .records()
-        .unwrap()
         .iter()
         .any(|record| record.catalog() == Catalog::MusicBrainz));
 }
@@ -258,6 +266,8 @@ fn linked_release_album_date_survives_an_unavailable_parent_document() {
         )],
     };
     let parsed = payloads
+        .extract()
+        .unwrap()
         .parsed(
             &[],
             &FixedClock(instant()),
@@ -283,10 +293,12 @@ fn selected_album_credits_keep_every_artist_in_detail_and_import() {
         )],
     };
     assert_eq!(
-        payloads.detail_for_audio(&[], &[]).unwrap().artist.as_deref(),
+        payloads.extract().unwrap().detail_for_audio(&[], &[]).unwrap().artist.as_deref(),
         Some("Selected Artist, Second Artist")
     );
     let parsed = payloads
+        .extract()
+        .unwrap()
         .parsed(
             &[],
             &FixedClock(instant()),

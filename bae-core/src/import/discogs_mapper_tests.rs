@@ -1,34 +1,39 @@
 use super::*;
+use crate::import::source_release::SourceRelease;
 use crate::discogs::models::{DiscogsArtist, DiscogsRoleArtist, DiscogsTrack};
 use coven::FixedClock;
 use coven::SequentialIdProvider;
 
-/// Exercise track and credit mapping with the release's own metadata.
+/// A lone Discogs release document as bae keeps it: its own facts and
+/// tracklist, no other document behind it.
+fn stored(release: &DiscogsRelease) -> SourceRelease {
+    SourceRelease {
+        release: MetadataRef::new(Catalog::Discogs, &release.id),
+        source_group_id: release.master_id.clone(),
+        metadata: metadata(release),
+        other_records: Vec::new(),
+        covers: crate::import::source_release::ReleaseCovers {
+            release: Vec::new(),
+            album: Vec::new(),
+        },
+        archive_release: None,
+        archive_groups: Vec::new(),
+        mediums: mediums(release),
+        catalog: CatalogFacts::Discogs {
+            formats: release.format.clone(),
+            release_roles: release_roles(release),
+        },
+    }
+}
+
 /// Every disc of a release: what a test with no folder to fit reads.
-fn all_discs(release: &DiscogsRelease) -> MediumCoverage {
-    MediumCoverage::all(medium_tracklists(&release.tracklist).len())
+fn all_discs(release: &SourceRelease) -> MediumCoverage {
+    MediumCoverage::all(release.mediums.len())
 }
 
-fn map(release: &DiscogsRelease) -> Result<ParsedAlbum, ImportError> {
-    let clock = FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc),
-    );
-    let ids = SequentialIdProvider::new("d");
-    map_with_metadata(
-        release,
-        &all_discs(release),
-        metadata(release),
-        None,
-        &clock,
-        &ids,
-    )
-}
-
-fn map_for_audio(
+fn map_with(
     release: &DiscogsRelease,
-    audio_durations_ms: &[u64],
+    audio_durations_ms: Option<&[u64]>,
 ) -> Result<ParsedAlbum, ImportError> {
     let clock = FixedClock(
         chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
@@ -36,14 +41,25 @@ fn map_for_audio(
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("d");
-    map_with_metadata(
-        release,
-        &all_discs(release),
-        metadata(release),
-        Some(audio_durations_ms),
-        &clock,
-        &ids,
-    )
+    let stored = stored(release);
+    super::map(&stored, &all_discs(&stored), audio_durations_ms, &clock, &ids)
+}
+
+/// Exercise track and credit mapping with the release's own metadata.
+fn map(release: &DiscogsRelease) -> Result<ParsedAlbum, ImportError> {
+    map_with(release, None)
+}
+
+fn map_for_audio(
+    release: &DiscogsRelease,
+    audio_durations_ms: &[u64],
+) -> Result<ParsedAlbum, ImportError> {
+    map_with(release, Some(audio_durations_ms))
+}
+
+/// A tracklist's rows as a stored medium holds them.
+fn entries(rows: &[DiscogsTrack]) -> Vec<TracklistEntry> {
+    tracklist_entries("1", rows)
 }
 
 #[test]
@@ -468,7 +484,7 @@ fn process_tracklist_drops_headings_with_no_subtracks() {
     // Headings only contribute a track once sub-tracks accumulate under
     // them. Headings with nothing beneath (here, back-to-back) are dropped.
     let tracklist = vec![make_heading("Disc One"), make_heading("Disc Two")];
-    assert!(process_tracklist(&tracklist, None).is_empty());
+    assert!(process_tracklist(&entries(&tracklist), None).is_empty());
 }
 
 #[test]
@@ -479,7 +495,8 @@ fn heading_subtracks_expand_to_matching_audio_rows() {
     second.duration = Some("2:00".to_string());
     let tracklist = vec![make_heading("Suite Title"), first, second];
 
-    let tracks = process_tracklist(&tracklist, Some(&[60_000, 120_000]));
+    let rows = entries(&tracklist);
+    let tracks = process_tracklist(&rows, Some(&[60_000, 120_000]));
 
     assert_eq!(tracks.len(), 2);
     assert_eq!(tracks[0].title, "Suite Title: Part One");
@@ -499,7 +516,8 @@ fn process_tracklist_filters_index_entries() {
         sub_tracks: vec![],
     };
     let tracklist = [index, make_track("A1", "Real Track")];
-    let result = process_tracklist(&tracklist, None);
+    let rows = entries(&tracklist);
+    let result = process_tracklist(&rows, None);
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].title, "Real Track");
 }

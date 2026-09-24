@@ -24,7 +24,7 @@ fn map(
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("mb");
-    payloads.parsed(&[], &clock, &ids)
+    payloads.extract().unwrap().parsed(&[], &clock, &ids)
 }
 
 /// The id of the `works` row the parsed release minted for a MusicBrainz
@@ -106,7 +106,7 @@ fn map_for_audio(
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("mb");
-    payloads.parsed(audio_durations_ms, &clock, &ids)
+    payloads.extract().unwrap().parsed(audio_durations_ms, &clock, &ids)
 }
 
 fn timed_mb_track(number: &str, title: &str, length_ms: u64) -> MbTrack {

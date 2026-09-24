@@ -286,10 +286,7 @@ impl ImportService {
                     });
                 }
                 let parsed = applied.parsed(self.clock.as_ref(), self.ids.as_ref())?;
-                records = crate::import::service::records_for_commit(
-                    &applied.payloads,
-                    &applied.partners,
-                )?;
+                records = applied.records()?;
                 parsed
             }
             Some(crate::import::MetadataProvenance::FileMetadata) => {

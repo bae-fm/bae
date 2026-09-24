@@ -122,8 +122,8 @@ async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
         .all(|document| document.source == PayloadSource::DiscogsMaster));
     assert_eq!(
         payloads
+            .extract().unwrap()
             .records()
-            .unwrap()
             .iter()
             .filter(|record| record.catalog() == Catalog::MusicBrainz)
             .count(),
@@ -242,8 +242,8 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
     assert_eq!(payloads.supporting.len(), 1);
     assert_eq!(payloads.supporting[0].source, PayloadSource::DiscogsMaster);
     assert!(payloads
+        .extract().unwrap()
         .records()
-        .unwrap()
         .iter()
         .all(|record| record.catalog() == Catalog::Discogs));
 }
@@ -337,7 +337,7 @@ async fn malformed_archived_reverse_alias_does_not_block_enrichment() {
     .await
     .unwrap();
     assert!(enriched.supporting.is_empty());
-    assert_eq!(enriched.records().unwrap().len(), 1);
+    assert_eq!(enriched.extract().unwrap().records().len(), 1);
     assert!(server.requests().is_empty());
 }
 

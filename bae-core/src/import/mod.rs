@@ -47,8 +47,6 @@ desktop_only! {
     /// Which of a release's mediums a folder's audio is a rip of.
     pub(crate) mod medium_coverage;
     pub mod musicbrainz_mapper;
-    // The payload store's projections build the picker detail and the commit's
-    // `ParsedAlbum` from archived documents — both desktop-only import shapes.
     pub mod pane;
     pub mod payloads;
     pub mod preparation;
@@ -59,6 +57,7 @@ desktop_only! {
     pub mod release_group;
     pub mod search;
     pub(crate) mod service;
+    pub mod source_release;
 }
 pub mod lookup_choices;
 pub mod session;

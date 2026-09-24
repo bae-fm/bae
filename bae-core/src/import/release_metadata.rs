@@ -4,6 +4,7 @@ use crate::db::Pressing;
 
 /// Album facts can come from a release or its parent without claiming a
 /// particular pressing or borrowing that parent's tracklist.
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct AlbumMetadata {
     pub title: String,
     pub artists: Vec<ArtistRef>,
@@ -56,6 +57,7 @@ impl AlbumMetadata {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ReleaseMetadata {
     pub album: AlbumMetadata,
     pub pressing: Pressing,

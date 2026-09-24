@@ -275,7 +275,11 @@ impl LibraryManager {
                     )));
                 }
 
-                crate::import::service::records_for_commit(&payloads, &prepared_partners)?
+                let prepared_partners = prepared_partners
+                    .iter()
+                    .map(crate::import::payloads::ReleasePayloads::extract)
+                    .collect::<Result<Vec<_>, _>>()?;
+                crate::import::service::records_for_commit(&payloads.extract()?, &prepared_partners)
             }
             ReleaseReseed::FileMetadata => Vec::new(),
         };
@@ -815,6 +819,7 @@ fn parsed_for_existing_release(
         other => unreachable!("nothing fetches documents from {}", other.as_str()),
     };
     payloads
+        .extract()?
         .parsed(&audio_durations, clock, ids)
         .map_err(LibraryError::from)
 }

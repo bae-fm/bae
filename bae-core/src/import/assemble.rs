@@ -24,6 +24,7 @@ use std::collections::{HashMap, HashSet};
 use tracing::debug;
 
 /// A reference to an artist as a source credits it, before any DB id exists.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ArtistRef {
     pub name: String,
     pub sort_name: Option<String>,
@@ -47,6 +48,7 @@ pub(crate) fn position_number(position: &str) -> Option<i32> {
     number.parse::<i32>().ok().filter(|number| *number > 0)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum PartDirection {
     Forward,
     Backward,

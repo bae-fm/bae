@@ -44,6 +44,8 @@ fn parsed(payloads: &ReleasePayloads) -> ParsedAlbum {
         .unwrap()
         .with_timezone(&Utc);
     payloads
+        .extract()
+        .unwrap()
         .parsed(
             &[],
             &FixedClock(now),
@@ -85,7 +87,7 @@ fn assert_permutation(payloads: &ReleasePayloads, check: impl Fn(&ReleasePayload
     anchor["relations"].as_array_mut().unwrap().reverse();
     reversed.anchor = anchor.to_string();
     check(&reversed);
-    assert_eq!(payloads.records().unwrap(), reversed.records().unwrap());
+    assert_eq!(payloads.extract().unwrap().records(), reversed.extract().unwrap().records());
     assert_eq!(parsed(payloads).album.year, parsed(&reversed).album.year);
 }
 
@@ -112,7 +114,7 @@ fn ambiguous_pressings_contribute_only_a_proven_common_parent() {
                 parsed(payloads).album.year,
                 Some(if same { 1971 } else { 2005 })
             );
-            let records = payloads.records().unwrap();
+            let records = payloads.extract().unwrap().records();
             let discogs = records
                 .iter()
                 .find(|record| record.catalog() == Catalog::Discogs);
@@ -121,7 +123,7 @@ fn ambiguous_pressings_contribute_only_a_proven_common_parent() {
                 same.then(|| "https://www.discogs.com/master/101".to_string())
             );
             assert!(discogs.is_none_or(|record| record.release_ref().is_none()));
-            assert_eq!(payloads.covers().unwrap().len(), usize::from(same));
+            assert_eq!(payloads.extract().unwrap().covers().len(), usize::from(same));
             let parsed = parsed(payloads);
             assert_eq!(parsed.tracks[1].side, Some(2));
             assert_eq!(parsed.tracks[1].title, "Second Track");
@@ -138,8 +140,8 @@ fn missing_ambiguous_pressing_does_not_prove_a_common_parent() {
     payloads.supporting = vec![pressing(11, Some(101)), master(101, 1971)];
     assert_permutation(&payloads, |payloads| {
         assert_eq!(parsed(payloads).album.year, Some(2005));
-        assert_eq!(payloads.records().unwrap().len(), 1);
-        assert!(payloads.covers().unwrap().is_empty());
+        assert_eq!(payloads.extract().unwrap().records().len(), 1);
+        assert!(payloads.extract().unwrap().covers().is_empty());
     });
 }
 
@@ -152,8 +154,8 @@ fn competing_direct_album_links_do_not_choose_by_key_or_order() {
     payloads.supporting = vec![master(101, 1971), master(102, 1982)];
     assert_permutation(&payloads, |payloads| {
         assert_eq!(parsed(payloads).album.year, Some(2005));
-        assert_eq!(payloads.records().unwrap().len(), 1);
-        assert!(payloads.covers().unwrap().is_empty());
+        assert_eq!(payloads.extract().unwrap().records().len(), 1);
+        assert!(payloads.extract().unwrap().covers().is_empty());
     });
 }
 
@@ -174,8 +176,8 @@ fn competing_direct_catalog_claims_are_not_resolved_by_weaker_wikidata_claims() 
     ));
     assert_permutation(&payloads, |payloads| {
         assert!(!payloads
+            .extract().unwrap()
             .records()
-            .unwrap()
             .iter()
             .any(|record| record.catalog() == Catalog::AllMusic));
     });
@@ -201,7 +203,7 @@ fn competing_wikidata_values_are_unclaimed_and_stronger_direct_identity_wins() {
             .to_string(),
         ));
         assert_permutation(&payloads, |payloads| {
-            let records = payloads.records().unwrap();
+            let records = payloads.extract().unwrap().records();
             assert_eq!(
                 records
                     .iter()
@@ -228,11 +230,11 @@ fn an_admitted_wikidata_item_cannot_restore_a_conflicting_album() {
     assert_permutation(&payloads, |payloads| {
         assert_eq!(parsed(payloads).album.year, Some(2005));
         assert!(!payloads
+            .extract().unwrap()
             .records()
-            .unwrap()
             .iter()
             .any(|record| record.catalog() == Catalog::Discogs));
-        assert!(payloads.covers().unwrap().is_empty());
+        assert!(payloads.extract().unwrap().covers().is_empty());
     });
 }
 
@@ -259,7 +261,7 @@ fn selected_parent_wins_over_conflicting_album_links() {
     assert_permutation(&payloads, |payloads| {
         assert_eq!(parsed(payloads).album.year, Some(1980));
         assert_eq!(
-            payloads.records().unwrap()[0].album_ref().unwrap().key,
+            payloads.extract().unwrap().records()[0].album_ref().unwrap().key,
             "selected-group"
         );
     });
@@ -289,7 +291,7 @@ fn selected_album_url_precedes_counterpart_parent_inference() {
                 payloads.album_links().unwrap(),
                 vec![MetadataRef::new(Catalog::Discogs, "102")]
             );
-            let records = payloads.records().unwrap();
+            let records = payloads.extract().unwrap().records();
             let discogs = records
                 .iter()
                 .find(|record| record.catalog() == Catalog::Discogs)
@@ -328,11 +330,11 @@ fn conflicting_counterpart_parents_block_weaker_wikidata_parent() {
         assert_permutation(&payloads, |payloads| {
             assert_eq!(parsed(payloads).album.year, Some(2005));
             assert!(!payloads
+                .extract().unwrap()
                 .records()
-                .unwrap()
                 .iter()
                 .any(|record| record.catalog() == Catalog::Discogs));
-            assert!(payloads.covers().unwrap().is_empty());
+            assert!(payloads.extract().unwrap().covers().is_empty());
         });
     }
 }

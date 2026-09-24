@@ -202,17 +202,34 @@ impl PickedReleaseRows {
             .map_err(|error| DbError::Message(error.to_string()))?;
         let audio_durations = crate::import::track_slots::audio_durations(&self.files, &durations)
             .map_err(|error| DbError::Message(error.to_string()))?;
-        let records = crate::import::payloads::claimed_records(&self.claimed)
-            .map_err(|error| DbError::Message(error.to_string()))?;
+        let claimed = self
+            .claimed
+            .into_iter()
+            .map(|(release, payloads)| {
+                Ok((
+                    release,
+                    payloads
+                        .map(|payloads| payloads.extract())
+                        .transpose()
+                        .map_err(|error| DbError::Message(error.to_string()))?,
+                ))
+            })
+            .collect::<Result<Vec<_>, DbError>>()?;
+        let records = crate::import::source_release::claimed_records(
+            &claimed
+                .iter()
+                .map(|(release, fetched)| (release.clone(), fetched.as_ref()))
+                .collect::<Vec<_>>(),
+        );
         // Only the release the draft was read from states the row's facts; a
-        // partner's own document is not a second set of them. Its artwork is
+        // partner's own release is not a second set of them. Its artwork is
         // another matter: a row's cover is the pick's, so the partners go to
         // the detail that carries the cover options.
-        let mut claimed = self.claimed.into_iter();
-        let (primary, payloads) = claimed.next().expect("a pick claims at least its primary");
-        let partners: Vec<_> = claimed.filter_map(|(_, payloads)| payloads).collect();
-        let matched = payloads
-            .map(|payloads| payloads.detail_for_audio(&audio_durations, &partners))
+        let mut claimed = claimed.into_iter();
+        let (primary, fetched) = claimed.next().expect("a pick claims at least its primary");
+        let partners: Vec<_> = claimed.filter_map(|(_, fetched)| fetched).collect();
+        let matched = fetched
+            .map(|fetched| fetched.detail_for_audio(&audio_durations, &partners))
             .transpose()
             .map_err(|error| DbError::Message(error.to_string()))?
             .map(|detail| MatchedRelease::of_pick(primary.catalog, &detail));
@@ -380,24 +397,25 @@ pub(super) fn load_candidate_detail_on(
         .transpose()?;
     // Only identity keys are needed for the next SQL query. Track and artwork
     // processing runs after the snapshot ends.
-    let claimed = claimed_payloads_on(sql, &candidate, picked.as_ref())?;
-    // Every catalog record named by the picked source documents.
-    let records = crate::import::payloads::claimed_records(
+    let claimed = claimed_payloads_on(sql, &candidate, picked.as_ref())?
+        .iter()
+        .map(|payloads| {
+            payloads
+                .extract()
+                .map_err(|error| DbError::Message(error.to_string()))
+        })
+        .collect::<Result<Vec<_>, DbError>>()?;
+    // Every catalog record named by the picked releases.
+    let records = crate::import::source_release::claimed_records(
         &claimed
             .iter()
-            .map(|payloads| (payloads.release().clone(), Some(payloads.clone())))
+            .map(|release| (release.release().clone(), Some(release)))
             .collect::<Vec<_>>(),
-    )
-    .map_err(|error| DbError::Message(error.to_string()))?;
+    );
     let picked_library_status = match claimed.first() {
-        Some(payloads) => {
-            let check = payloads
-                .library_check()
-                .map_err(|error| DbError::Message(error.to_string()))?;
-            check_releases_in_library_on(sql, &[check])?
-                .into_iter()
-                .next()
-        }
+        Some(release) => check_releases_in_library_on(sql, &[release.library_check()])?
+            .into_iter()
+            .next(),
         None => None,
     };
     let embedded_cover = match pane_rows.cover.as_ref() {

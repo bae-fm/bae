@@ -726,17 +726,18 @@ pub(crate) async fn prepare_partners(
     Ok(prepared)
 }
 
-/// Derive committed identities from the exact documents prepared for a pick.
-/// No mutable archive is read after selection has captured these sets.
+/// The records a pick of fetched releases commits: the primary's and every
+/// partner's, each claimed release's own record outranking what another says
+/// about its catalog.
 pub(crate) fn records_for_commit(
-    primary: &crate::import::payloads::ReleasePayloads,
-    partners: &[crate::import::payloads::ReleasePayloads],
-) -> Result<Vec<crate::import::ReleaseRecord>, crate::import::ImportError> {
+    primary: &crate::import::source_release::SourceRelease,
+    partners: &[crate::import::source_release::SourceRelease],
+) -> Vec<crate::import::ReleaseRecord> {
     let claimed: Vec<_> = std::iter::once(primary)
         .chain(partners)
-        .map(|payloads| (payloads.release().clone(), Some(payloads.clone())))
+        .map(|release| (release.release().clone(), Some(release)))
         .collect();
-    crate::import::payloads::claimed_records(&claimed)
+    crate::import::source_release::claimed_records(&claimed)
 }
 
 #[cfg(test)]
