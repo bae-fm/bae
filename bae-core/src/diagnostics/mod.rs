@@ -8,8 +8,9 @@
 //! payload by construction. There is no scrubbing pass and no allowlist because
 //! there is nothing untyped to scrub.
 //!
-//! Local `tracing` (console/oslog/logcat) and the host platform logs keep the
-//! full, unredacted detail for debugging; they are no longer forwarded here.
+//! Local `tracing` (the platform's native log, plus the terminal on the
+//! desktop) and the host platform logs keep the full, unredacted detail for
+//! debugging; they are no longer forwarded here.
 //! Crash reporting stays in the platform apps (native crash capture and symbol
 //! upload are platform-specific).
 //!

@@ -627,7 +627,7 @@ private func previewHost() -> BridgeHost {
             .path
     )
     return BaeHost.make(
-        diagnostics: configureDiagnostics(config: .disabled, appDir: appDir),
+        diagnostics: configureDiagnostics(config: .disabled),
         appDir: appDir
     )
 }

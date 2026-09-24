@@ -2,7 +2,6 @@ package fm.bae.app
 
 import android.util.Log
 import uniffi.bae_bridge.BridgeAppDiagnosticMetadata
-import uniffi.bae_bridge.BridgeAppDir
 import uniffi.bae_bridge.BridgeDatadogDiagnosticsConfig
 import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeDiagnosticsConfig
@@ -15,7 +14,7 @@ object BaeDiagnostics {
      * `initApp`. Infallible: the core falls back to the no-op sink (with a
      * local error log) rather than let telemetry setup block a launch.
      */
-    fun configure(appDir: BridgeAppDir): BridgeDiagnostics = configureDiagnostics(bridgeConfig(), appDir)
+    fun configure(): BridgeDiagnostics = configureDiagnostics(bridgeConfig())
 
     /**
      * Builds the Datadog telemetry config the sink is constructed from. Local

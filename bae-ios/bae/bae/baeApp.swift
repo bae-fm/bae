@@ -40,8 +40,7 @@ struct BaeApp: App {
         // every later launch step and any failure it reports.
         let diagnostics = BaeDiagnostics.configure(
             source: "ios",
-            edition: appEdition,
-            appDir: appDir
+            edition: appEdition
         )
         self.diagnostics = diagnostics
         let host = BaeHost.make(diagnostics: diagnostics, appDir: appDir)

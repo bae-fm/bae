@@ -129,8 +129,8 @@ impl BridgeDiagnostics {
 
 /// Build the telemetry sink and install the tracing subscriber. Called once at
 /// process start, before `init_keyring` / `BridgeHost` (both require the returned
-/// handle), so the sink exists for every launch step that could fail. The
-/// desktop file log is written under `app_dir`.
+/// handle), so the sink exists for every launch step that could fail. Local
+/// logs go to the platform's native log (plus the terminal on the desktop).
 ///
 /// Infallible by contract: telemetry setup must never block a launch. Sink
 /// construction from an `Enabled` config can fail (incomplete config, worker
@@ -139,11 +139,8 @@ impl BridgeDiagnostics {
 /// it here keeps the bailout in one place instead of a catch-and-retry in every
 /// host language.
 #[uniffi::export]
-pub fn configure_diagnostics(
-    config: BridgeDiagnosticsConfig,
-    app_dir: Arc<crate::app_dir::BridgeAppDir>,
-) -> Arc<BridgeDiagnostics> {
-    configure_logging(app_dir.core());
+pub fn configure_diagnostics(config: BridgeDiagnosticsConfig) -> Arc<BridgeDiagnostics> {
+    configure_logging();
     install_panic_logging();
     let clock = Arc::new(coven::SystemClock);
     let ids = Arc::new(coven::UuidProvider);
@@ -271,110 +268,108 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
     }
 }
 
-/// The log filter from `RUST_LOG`, plus a complaint to emit once the subscriber
-/// is installed. `RUST_LOG` is a local debugging knob; a bad value degrades to
-/// the default level instead of failing, because every host's telemetry
+/// One local log sink and the level it records at when `RUST_LOG` is unset.
+/// Levels are per sink because the sinks keep different amounts: the unified
+/// log and ETW discard what no one is capturing, so they take `debug`; logcat,
+/// the journal, and a terminal keep or show every line, so they take `info`.
+struct LogSink {
+    layer: Box<dyn tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync>,
+    default_level: &'static str,
+}
+
+impl LogSink {
+    fn new(
+        layer: impl tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync + 'static,
+        default_level: &'static str,
+    ) -> Self {
+        Self {
+            layer: Box::new(layer),
+            default_level,
+        }
+    }
+}
+
+/// The filter directives `RUST_LOG` sets for every sink, plus a complaint to
+/// emit once the subscriber is installed. `None` leaves each sink at its own
+/// default level. `RUST_LOG` is a local debugging knob; a bad value degrades to
+/// the default levels instead of failing, because every host's telemetry
 /// fallback relies on subscriber installation never failing — a launch must
 /// never die over a malformed env var.
-fn env_filter() -> (tracing_subscriber::EnvFilter, Option<String>) {
-    let default = || tracing_subscriber::EnvFilter::new("info");
+fn rust_log() -> (Option<String>, Option<String>) {
     match std::env::var("RUST_LOG") {
-        Err(std::env::VarError::NotPresent) => (default(), None),
+        Err(std::env::VarError::NotPresent) => (None, None),
         Err(std::env::VarError::NotUnicode(raw)) => (
-            default(),
+            None,
             Some(format!(
-                "RUST_LOG {raw:?} is not valid Unicode; logging at the default level"
+                "RUST_LOG {raw:?} is not valid Unicode; logging at the default levels"
             )),
         ),
         Ok(value) => match tracing_subscriber::EnvFilter::try_new(&value) {
-            Ok(filter) => (filter, None),
+            Ok(_) => (Some(value), None),
             Err(e) => (
-                default(),
+                None,
                 Some(format!(
-                    "RUST_LOG={value:?} is malformed: {e}; logging at the default level"
+                    "RUST_LOG={value:?} is malformed: {e}; logging at the default levels"
                 )),
             ),
         },
     }
 }
 
-// Install the global subscriber. Ignores the "already initialized" error,
-// which is the documented use-case for `try_init`.
-fn install_subscriber(subscriber: impl tracing_subscriber::util::SubscriberInitExt) {
-    if let Err(error) = subscriber.try_init() {
+/// Install the global subscriber over `sinks`, each behind its own level
+/// filter. Ignores the "already initialized" error, which is the documented
+/// use-case for `try_init`.
+fn install_logging(sinks: Vec<LogSink>) {
+    use tracing_subscriber::prelude::*;
+    let (rust_log, complaint) = rust_log();
+    let layers: Vec<_> = sinks
+        .into_iter()
+        .map(|sink| {
+            // `rust_log` already parsed, so `new` sees only valid directives.
+            let filter = tracing_subscriber::EnvFilter::new(
+                rust_log.as_deref().unwrap_or(sink.default_level),
+            );
+            sink.layer.with_filter(filter).boxed()
+        })
+        .collect();
+    if let Err(error) = tracing_subscriber::registry().with(layers).try_init() {
         tracing::debug!(%error, "tracing subscriber already installed");
+    }
+    // Emitted after install so it lands in the just-installed sinks.
+    if let Some(complaint) = complaint {
+        tracing::warn!("{complaint}");
     }
 }
 
-macro_rules! install_logging_subscriber {
-    ($($layer:expr),+ $(,)?) => {{
-        use tracing_subscriber::prelude::*;
-        let (filter, filter_complaint) = env_filter();
-        install_subscriber(
-            tracing_subscriber::registry()
-                .with(filter)
-                $(.with($layer))+,
-        );
-        // Emitted after install so it lands in the just-installed sinks.
-        if let Some(complaint) = filter_complaint {
-            tracing::warn!("{complaint}");
-        }
-    }};
-}
-
-#[cfg(any(
-    target_os = "macos",
-    not(any(target_os = "macos", target_os = "android", target_os = "ios"))
-))]
-fn fmt_log_layer<S>() -> impl tracing_subscriber::Layer<S>
-where
-    S: tracing::Subscriber,
-    for<'a> S: tracing_subscriber::registry::LookupSpan<'a>,
-{
-    tracing_subscriber::fmt::layer()
-        .with_line_number(true)
-        .with_target(false)
-        .with_file(true)
-}
-
-/// Rolling file log under the app directory's `logs/` (daily files,
-/// `bae.log.YYYY-MM-DD`), kept alongside the console and system sinks so a
-/// desktop app launched from the Finder or Dock — where stdout and stderr go
-/// nowhere — still leaves a readable trace.
+/// The terminal sink of the desktop apps: every line printed to stdout when
+/// bae runs from a terminal. Mobile has no terminal.
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-fn file_log_layer<S>(app_dir: &bae_core::config::AppDir) -> impl tracing_subscriber::Layer<S>
-where
-    S: tracing::Subscriber,
-    for<'a> S: tracing_subscriber::registry::LookupSpan<'a>,
-{
-    // The non-blocking writer flushes from a worker thread that lives as long
-    // as this guard; process-lifetime static, dropped never — the OS closes
-    // the file at exit.
-    static GUARD: std::sync::OnceLock<tracing_appender::non_blocking::WorkerGuard> =
-        std::sync::OnceLock::new();
-    let (writer, guard) =
-        tracing_appender::non_blocking(tracing_appender::rolling::daily(app_dir.logs(), "bae.log"));
-    let _ = GUARD.set(guard);
-    tracing_subscriber::fmt::layer()
-        .with_line_number(true)
-        .with_target(false)
-        .with_file(true)
-        .with_ansi(false)
-        .with_writer(writer)
-}
-
-#[cfg(target_os = "macos")]
-fn configure_logging(app_dir: &bae_core::config::AppDir) {
-    install_logging_subscriber!(
-        fmt_log_layer(),
-        file_log_layer(app_dir),
-        tracing_oslog::OsLogger::new("fm.bae.desktop", "default"),
+fn terminal_log_sink() -> LogSink {
+    LogSink::new(
+        tracing_subscriber::fmt::layer()
+            .with_line_number(true)
+            .with_target(false)
+            .with_file(true),
+        "info",
     )
 }
 
-/// Mobile keeps no file log: logcat and the unified log are its local sinks.
+/// The unified log, read with
+/// `log stream --level debug --predicate 'subsystem == "fm.bae.desktop"'`.
+#[cfg(target_os = "macos")]
+fn configure_logging() {
+    install_logging(vec![
+        terminal_log_sink(),
+        LogSink::new(
+            tracing_oslog::OsLogger::new("fm.bae.desktop", "default"),
+            "debug",
+        ),
+    ])
+}
+
+/// logcat, read with `adb logcat -s bae`.
 #[cfg(target_os = "android")]
-fn configure_logging(_app_dir: &bae_core::config::AppDir) {
+fn configure_logging() {
     let android_layer = match tracing_android::layer("bae") {
         Ok(layer) => layer,
         Err(error) => {
@@ -386,43 +381,61 @@ fn configure_logging(_app_dir: &bae_core::config::AppDir) {
             return;
         }
     };
-    install_logging_subscriber!(android_layer)
+    install_logging(vec![LogSink::new(android_layer, "info")])
 }
 
-/// Mobile keeps no file log: logcat and the unified log are its local sinks.
+/// The unified log, read with
+/// `log stream --level debug --predicate 'subsystem == "fm.bae.app"'`.
 #[cfg(target_os = "ios")]
-fn configure_logging(_app_dir: &bae_core::config::AppDir) {
-    install_logging_subscriber!(tracing_oslog::OsLogger::new("fm.bae.app", "default"))
+fn configure_logging() {
+    install_logging(vec![LogSink::new(
+        tracing_oslog::OsLogger::new("fm.bae.app", "default"),
+        "debug",
+    )])
 }
 
 #[cfg(target_os = "windows")]
-fn configure_logging(app_dir: &bae_core::config::AppDir) {
+fn configure_logging() {
     // ETW is Windows' unified logging: a TraceLogging provider named
     // "bae-core" (GUID derived from the name), captured with
-    // `logman start ... -p "*bae-core"` — the `log stream` equivalent. The
-    // fmt layer stays for console-attached runs.
+    // `logman start ... -p "*bae-core"` — the `log stream` equivalent.
     match tracing_etw::LayerBuilder::new("bae-core").build() {
         Ok(etw_layer) => {
-            install_logging_subscriber!(fmt_log_layer(), file_log_layer(app_dir), etw_layer)
+            install_logging(vec![terminal_log_sink(), LogSink::new(etw_layer, "debug")])
         }
         Err(error) => {
-            // Nowhere structured to report this: ETW is the local sink and
-            // building its layer is what failed. Console logging still works;
-            // launch must not die over it.
-            eprintln!("ETW tracing layer initialization failed: {error}");
-            install_logging_subscriber!(fmt_log_layer(), file_log_layer(app_dir))
+            // The terminal is the only sink left to report this in; launch
+            // must not die over it.
+            install_logging(vec![terminal_log_sink()]);
+            tracing::error!("ETW tracing layer initialization failed: {error}");
         }
     }
 }
 
+/// The systemd journal, read with `journalctl --user -t bae`.
 #[cfg(not(any(
     target_os = "macos",
     target_os = "android",
     target_os = "ios",
     target_os = "windows",
 )))]
-fn configure_logging(app_dir: &bae_core::config::AppDir) {
-    install_logging_subscriber!(fmt_log_layer(), file_log_layer(app_dir))
+fn configure_logging() {
+    match tracing_journald::layer() {
+        Ok(journald_layer) => install_logging(vec![
+            terminal_log_sink(),
+            LogSink::new(
+                journald_layer.with_syslog_identifier("bae".to_string()),
+                "info",
+            ),
+        ]),
+        Err(error) => {
+            // No journald socket (a system without systemd, or a container):
+            // the terminal is the only sink left to report this in; launch
+            // must not die over it.
+            install_logging(vec![terminal_log_sink()]);
+            tracing::error!("journald tracing layer initialization failed: {error}");
+        }
+    }
 }
 
 #[cfg(test)]
@@ -513,15 +526,8 @@ mod tests {
                 .without_time()
                 .with_writer(std::io::stdout)
                 .finish();
-            let home = tempfile::TempDir::new().expect("create the child's home directory");
-            let app_dir = crate::app_dir::BridgeAppDir::new(
-                home.path()
-                    .to_str()
-                    .expect("the temp home path is UTF-8")
-                    .to_string(),
-            );
             tracing::subscriber::with_default(subscriber, || {
-                configure_diagnostics(BridgeDiagnosticsConfig::Disabled, app_dir);
+                configure_diagnostics(BridgeDiagnosticsConfig::Disabled);
                 panic!("detached panic test");
             });
         }

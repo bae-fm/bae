@@ -50,7 +50,7 @@ class BaeApp : Application() {
         // Telemetry first, from compiled-in values only, so the sink exists for
         // every later launch step (crash reporter, keyring, library open) and
         // any failure it reports.
-        diagnostics = BaeDiagnostics.configure(appDir)
+        diagnostics = BaeDiagnostics.configure()
         BaeCrashReporting.configure(this)
         logger.info("application launched")
         // Initialize the Android NDK context for the keyring store.

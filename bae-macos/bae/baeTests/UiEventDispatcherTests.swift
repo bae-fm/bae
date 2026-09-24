@@ -191,14 +191,7 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
     bae.AppService(
         appHandle: handle,
         mediaControlService: MediaControlService(),
-        diagnostics: configureDiagnostics(
-            config: .disabled,
-            appDir: BridgeAppDir(
-                home: FileManager.default.temporaryDirectory
-                    .appendingPathComponent(UUID().uuidString)
-                    .path
-            )
-        ),
+        diagnostics: configureDiagnostics(config: .disabled),
         uiStore: UiStore(),
         config: BridgeConfig(
             libraryId: "lib-test",

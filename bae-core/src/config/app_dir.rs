@@ -6,8 +6,7 @@ use std::path::{Path, PathBuf};
 const LIBRARIES_DIRNAME: &str = "libraries";
 
 /// bae's own directory: `.bae` under the home directory the host passes in.
-/// Every registered library, the active-library pointer, and the desktop log
-/// live under it. Built once at process start and passed to whatever reads or
+/// Every registered library and the active-library pointer live under it. Built once at process start and passed to whatever reads or
 /// writes under it.
 #[derive(Debug, Clone)]
 pub struct AppDir {
@@ -42,11 +41,6 @@ impl AppDir {
     /// The file naming the library this device last opened.
     pub fn active_library_pointer(&self) -> PathBuf {
         self.path.join("active-library")
-    }
-
-    /// The directory the desktop apps' rolling file log is written to.
-    pub fn logs(&self) -> PathBuf {
-        self.path.join("logs")
     }
 
     /// coven's layout for bae's stores: a store restored or joined through it

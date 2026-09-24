@@ -22,7 +22,7 @@ struct AppSessionHolderTests {
                 .appendingPathComponent(UUID().uuidString)
                 .path
         )
-        let diagnostics = configureDiagnostics(config: .disabled, appDir: appDir)
+        let diagnostics = configureDiagnostics(config: .disabled)
         return AppSessionHolder(
             diagnostics: diagnostics,
             host: BaeHost.make(diagnostics: diagnostics, appDir: appDir)

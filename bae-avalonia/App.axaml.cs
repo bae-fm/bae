@@ -188,7 +188,7 @@ public sealed partial class App : Application
         _pendingLaunchIntent = launchIntent;
 
         var appDir = NativeBae.UserAppDir();
-        BaeDiagnostics.Configure(appDir);
+        BaeDiagnostics.Configure();
         BaeCrashReporting.Configure();
         BaeDiagnostics.Logger.Info("application launched");
         _host = NativeBae.CreateHost(BaeDiagnostics.Handle, appDir);

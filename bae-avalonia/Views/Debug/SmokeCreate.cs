@@ -43,7 +43,7 @@ internal static class SmokeCreate
         try
         {
             var appDir = NativeBae.UserAppDir();
-            BaeDiagnostics.Configure(appDir);
+            BaeDiagnostics.Configure();
             var host = NativeBae.CreateHost(BaeDiagnostics.Handle, appDir);
             NativeBae.Startup(BaeDiagnostics.Handle);
             L("bridge startup ok");

@@ -6,18 +6,15 @@
 /// events the core emits, ever reach Datadog.
 public enum BaeDiagnostics {
     /// Construct the telemetry sink and install the core's tracing subscriber.
-    /// Call once at startup, before `initKeyring` and `BaeHost.make`, with
-    /// bae's directory the desktop file log is written under. Infallible: the
-    /// core falls back to the no-op sink (with a local error log) rather than
-    /// let telemetry setup block a launch.
+    /// Call once at startup, before `initKeyring` and `BaeHost.make`.
+    /// Infallible: the core falls back to the no-op sink (with a local error
+    /// log) rather than let telemetry setup block a launch.
     public static func configure(
         source: String,
-        edition: AppEdition,
-        appDir: BridgeAppDir
+        edition: AppEdition
     ) -> BridgeDiagnostics {
         configureDiagnostics(
-            config: bridgeConfig(source: source, edition: edition),
-            appDir: appDir
+            config: bridgeConfig(source: source, edition: edition)
         )
     }
 

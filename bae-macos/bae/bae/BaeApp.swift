@@ -114,8 +114,7 @@ final class ApplicationServices {
         let appDir = baeAppDir(environment: baeAppProcessEnvironment)
         diagnostics = BaeDiagnostics.configure(
             source: "macos",
-            edition: baeAppEdition,
-            appDir: appDir
+            edition: baeAppEdition
         )
         host = BaeHost.make(diagnostics: diagnostics, appDir: appDir)
         mediaControlService = MediaControlService()

@@ -47,14 +47,14 @@ internal static class BaeDiagnostics
     internal static BridgeDiagnostics Handle { get; private set; } = null!;
 
     /// <summary>
-    /// Construct the telemetry sink and install the core's tracing subscriber,
-    /// with the file log under <paramref name="appDir"/>. Call once at startup,
-    /// before keyring init and any library open. Never throws: an
-    /// enabled-config worker failure falls back to the disabled (no-op) sink.
+    /// Construct the telemetry sink and install the core's tracing subscriber.
+    /// Call once at startup, before keyring init and any library open. Never
+    /// throws: an enabled-config worker failure falls back to the disabled
+    /// (no-op) sink.
     /// </summary>
-    internal static BridgeDiagnostics Configure(BridgeAppDir appDir)
+    internal static BridgeDiagnostics Configure()
     {
-        Handle = NativeBae.ConfigureDiagnostics(BridgeConfig(), appDir);
+        Handle = NativeBae.ConfigureDiagnostics(BridgeConfig());
         return Handle;
     }
 

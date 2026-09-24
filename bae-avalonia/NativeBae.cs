@@ -54,13 +54,12 @@ internal static partial class NativeBae
     }
 
     /// <summary>
-    /// Construct the telemetry sink and install the core's tracing subscriber,
-    /// with the file log under <paramref name="appDir"/>. Infallible: the core
-    /// falls back to the no-op sink (with a local error log) rather than let
-    /// telemetry setup block a launch.
+    /// Construct the telemetry sink and install the core's tracing subscriber.
+    /// Infallible: the core falls back to the no-op sink (with a local error
+    /// log) rather than let telemetry setup block a launch.
     /// </summary>
-    internal static BridgeDiagnostics ConfigureDiagnostics(BridgeDiagnosticsConfig config, BridgeAppDir appDir) =>
-        BaeBridgeMethods.ConfigureDiagnostics(config, appDir);
+    internal static BridgeDiagnostics ConfigureDiagnostics(BridgeDiagnosticsConfig config) =>
+        BaeBridgeMethods.ConfigureDiagnostics(config);
 
     /// <summary>
     /// Build the Datadog telemetry config the sink is constructed from. Local
