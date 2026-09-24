@@ -270,8 +270,9 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
 
 /// One local log sink and the level it records at when `RUST_LOG` is unset.
 /// Levels are per sink because the sinks keep different amounts: the unified
-/// log and ETW discard what no one is capturing, so they take `debug`; logcat,
-/// the journal, and a terminal keep or show every line, so they take `info`.
+/// log and ETW discard what no one is capturing, and a terminal is someone
+/// watching, so they take `debug`; logcat and the journal keep every line on
+/// the device, so they take `info`.
 struct LogSink {
     layer: Box<dyn tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync>,
     default_level: &'static str,
@@ -342,7 +343,8 @@ fn install_logging(sinks: Vec<LogSink>) {
 }
 
 /// The terminal sink of the desktop apps: every line printed to stdout when
-/// bae runs from a terminal. Mobile has no terminal.
+/// bae runs from a terminal, down to debug — a terminal run is someone
+/// watching everything, and `RUST_LOG` quiets it. Mobile has no terminal.
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 fn terminal_log_sink() -> LogSink {
     LogSink::new(
@@ -350,7 +352,7 @@ fn terminal_log_sink() -> LogSink {
             .with_line_number(true)
             .with_target(false)
             .with_file(true),
-        "info",
+        "debug",
     )
 }
 
