@@ -152,52 +152,12 @@ pub(super) fn artist_image_cloud_path_for_storage(
         .then(|| resolve_artist_cloud_path(artist_id, blob_id, content_type))
 }
 
-/// What a delete owes coven once its rows are gone.
-///
-/// Captured *before* the delete runs, because an external-file registration is
-/// keyed by a row that will not exist afterwards. The transaction that drops the
-/// rows hands it over through `apply_delete_cleanup_on`.
-///
-/// A deleted row's cloud object is not represented here: a row that stops naming
-/// a blob leaves an orphan, and coven's accepted reclaim retires it once the
-/// accepted Store snapshot shows nothing owns the bytes. Neither is an in-flight
-/// make-remote: cancelling one is
-/// [`CovenHandle::cancel_make_remote`](coven::CovenHandle::cancel_make_remote),
-/// which clears the intent, drops the pending uploads, and takes back out
-/// whatever already reached the cloud — all of it coven's bookkeeping, none of
-/// it bae's.
-#[derive(Clone, Debug, Default)]
-pub struct DeleteCleanupPlan {
-    /// `(table, row_id)` pairs whose external-file registration this delete must
-    /// drop — the user's own in-place files, which are never themselves deleted.
-    pub external_refs_to_clear: Vec<(String, String)>,
-}
-
-#[derive(Clone, Debug)]
-pub struct ImportReplacementDelete {
-    pub release_id: String,
-    pub album_id: String,
-    pub cleanup: DeleteCleanupPlan,
-}
-
 #[derive(Clone, Debug)]
 pub struct ImportReplacementOutcome {
     pub release_id: String,
     pub album_id: String,
     /// The replaced release was its album's last.
     pub album_emptied: bool,
-}
-
-/// Hand a delete's captured blob cleanup to coven, inside the same transaction
-/// that removes the rows. See [`DeleteCleanupPlan`].
-pub(super) fn apply_delete_cleanup_on(
-    conn: &SqlContext<'_, '_>,
-    cleanup: &DeleteCleanupPlan,
-) -> Result<(), DbError> {
-    for (table, row_id) in &cleanup.external_refs_to_clear {
-        conn.clear_external_blob(table, row_id)?;
-    }
-    Ok(())
 }
 
 /// After `removed_release_id` has left `album_id` inside the current

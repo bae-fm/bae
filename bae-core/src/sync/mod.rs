@@ -225,6 +225,20 @@ pub(crate) fn image_blob_ref(
     }
 }
 
+/// The coven [`BlobRef`](coven::BlobRef) for one `release_files` row: the user's
+/// own imported file, whose blob id is the row id. `cloud_path` is the row's
+/// readable path on a browsable home (`None` on an opaque one).
+pub(crate) fn release_file_blob_ref(file_id: &str, cloud_path: Option<String>) -> coven::BlobRef {
+    coven::BlobRef {
+        namespace: RELEASE_FILES_NAMESPACE.to_string(),
+        id: file_id.to_string(),
+        scope: coven::BlobScope::Master,
+        cloud_path,
+        provenance: coven::Provenance::UserProvided,
+        fill: coven::CacheFill::CacheLazy,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;

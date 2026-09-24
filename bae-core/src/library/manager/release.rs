@@ -703,18 +703,17 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Delete a release and its data. The rows go in one cleanup-aware transaction,
-    /// taking the album with them if this was its last release; coven evicts the
-    /// blobs named by the delete plan once that transaction commits.
+    /// Delete a release and its data. The rows go in one transaction, taking the
+    /// album with them if this was its last release, and that transaction
+    /// declares the release's blobs deleted so coven reclaims their on-device
+    /// copies with the commit.
     pub async fn delete_release(&self, release_id: &str) -> Result<(), LibraryError> {
-        let release = self
-            .database
+        self.database
             .find_release_by_id(release_id)
             .await?
             .ok_or_else(|| {
                 LibraryError::TrackMapping(format!("Release not found: {release_id}"))
             })?;
-        let album_id = release.album_id.clone();
 
         // Read the track ids before the delete cascades them away — playback needs
         // them to clear the queue.
@@ -725,17 +724,14 @@ impl LibraryManager {
             .map(|t| t.id)
             .collect();
 
-        let delete_plan = self.release_delete_plan(&release).await?;
+        let deletion = self.database.plan_release_deletion(release_id).await?;
         // The delete records the unwind itself, in the transaction that removes
         // the rows: coven marks the transition cancelling and the drain takes
         // any object already in the cloud back out. Cancelling here first would
         // only make the delete wait for a provider it does not need — deleting
         // is local work, and the unwind waits visibly like any other transfer.
-        self.database
-            .delete_release_with_cleanup(release_id, &album_id, delete_plan.db_cleanup)
-            .await?;
+        self.database.delete_release_with_cleanup(deletion).await?;
         self.emit_outbox_changed().await;
-        self.evict_delete_blobs(delete_plan.evict_blobs).await;
 
         if !track_ids.is_empty() {
             self.emit(LibraryEvent::TracksDeleted { track_ids });
@@ -763,27 +759,15 @@ impl LibraryManager {
     ) -> Result<Vec<ImportReplacementPlan>, LibraryError> {
         let mut plans = Vec::new();
         for release_id in self.database.release_ids_for_content_hash(hash).await? {
-            let release = self
-                .database
-                .find_release_by_id(&release_id)
-                .await?
-                .ok_or_else(|| {
-                    LibraryError::TrackMapping(format!("Release not found: {release_id}"))
-                })?;
             let track_ids: Vec<String> = self
                 .get_tracks_for_release(&release_id)
                 .await?
                 .into_iter()
                 .map(|t| t.id)
                 .collect();
-            let delete_plan = self.release_delete_plan(&release).await?;
+            let deletion = self.database.plan_release_deletion(&release_id).await?;
             plans.push(ImportReplacementPlan {
-                db_delete: crate::db::ImportReplacementDelete {
-                    release_id,
-                    album_id: release.album_id,
-                    cleanup: delete_plan.db_cleanup,
-                },
-                evict_blobs: delete_plan.evict_blobs,
+                deletion,
                 track_ids,
             });
         }

@@ -413,7 +413,7 @@ impl Database {
         // keys each blob by its hashed id, `Browsable` lays it out at a readable
         // `cloud_path` computed inside this transaction, ready when the gate flips.
         storage: crate::config::HomeStorage,
-        replacement_deletes: &[ImportReplacementDelete],
+        replacement_deletes: &[ReleaseDeletion],
     ) -> Result<Vec<ImportReplacementOutcome>, DbError> {
         let album = album.cloned();
         let release = release.clone();
@@ -454,6 +454,10 @@ impl Database {
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let records = rows.records.to_vec();
         let replacement_deletes = replacement_deletes.to_vec();
+        let replaced_blobs: Vec<coven::BlobRef> = replacement_deletes
+            .iter()
+            .flat_map(ReleaseDeletion::blob_deletes)
+            .collect();
 
         let now_dt = self.inner.clock.now();
         let now = now_dt.to_rfc3339();
@@ -466,6 +470,9 @@ impl Database {
                     for (namespace, id, bytes) in image_blobs {
                         w.put_blob(namespace, id, bytes);
                     }
+                    for blob in replaced_blobs {
+                        w.delete_blob(blob);
+                    }
                     Ok(())
                 },
                 move |sql| {
@@ -476,24 +483,24 @@ impl Database {
                     let reg = sql.stamp();
 
                     for replacement in &replacement_deletes {
-                        apply_delete_cleanup_on(tx, &replacement.cleanup)?;
+                        replacement.apply_on(tx)?;
                         tx.execute(
                             "DELETE FROM releases WHERE id = ?",
-                            params![replacement.release_id],
+                            params![replacement.release_id()],
                         )?;
 
                         let album_emptied = vacate_album_on(
                             tx,
-                            &replacement.album_id,
-                            &replacement.release_id,
+                            replacement.album_id(),
+                            replacement.release_id(),
                             &reg,
                         )?;
                         replacement_outcomes_for_write
                             .lock()
                             .expect("replacement outcomes mutex not poisoned")
                             .push(ImportReplacementOutcome {
-                                release_id: replacement.release_id.clone(),
-                                album_id: replacement.album_id.clone(),
+                                release_id: replacement.release_id().to_string(),
+                                album_id: replacement.album_id().to_string(),
                                 album_emptied,
                             });
                     }
@@ -654,10 +661,11 @@ impl Database {
             .expect("replacement outcomes mutex not poisoned"))
     }
 
-    /// Delete a release row and apply its cleanup plan. Returns whether its
-    /// album is now empty. Deliberately does NOT delete the emptied album (see
-    /// `vacate_album_on`) or sweep now-orphaned artists, works, work_parts, or
-    /// artist-image blobs — retaining them is a sync-safety invariant.
+    /// Delete a release row in the write that declares its blobs deleted (see
+    /// [`ReleaseDeletion`]). Returns whether its album is now empty.
+    /// Deliberately does NOT delete the emptied album (see `vacate_album_on`)
+    /// or sweep now-orphaned artists, works, work_parts, or artist-image blobs
+    /// — retaining them is a sync-safety invariant.
     ///
     /// This delete may target a remote (sync-visible) release, and artist/work rows
     /// are shared across devices (import find-or-create reuses them by
@@ -677,21 +685,29 @@ impl Database {
     /// the same artist or work.
     pub async fn delete_release_with_cleanup(
         &self,
-        release_id: &str,
-        album_id: &str,
-        cleanup: DeleteCleanupPlan,
+        plan: ReleaseDeletion,
     ) -> Result<bool, DbError> {
-        let release_id = release_id.to_string();
-        let album_id = album_id.to_string();
-        self.call_sql(move |sql| {
+        let deleted = plan.blob_deletes().collect();
+        self.call_sql_deleting_blobs(deleted, move |sql| {
             let reg = sql.stamp();
-            let conn = &sql;
-            apply_delete_cleanup_on(conn, &cleanup)?;
-            conn.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
-
-            vacate_album_on(conn, &album_id, &release_id, &reg)
+            plan.apply_on(&sql)?;
+            sql.execute(
+                "DELETE FROM releases WHERE id = ?",
+                params![plan.release_id()],
+            )?;
+            vacate_album_on(&sql, plan.album_id(), plan.release_id(), &reg)
         })
         .await
+    }
+
+    /// Read what deleting `release_id` owes coven; see [`ReleaseDeletion`].
+    pub async fn plan_release_deletion(
+        &self,
+        release_id: &str,
+    ) -> Result<ReleaseDeletion, DbError> {
+        let release_id = release_id.to_string();
+        self.read(move |sql| ReleaseDeletion::plan_on(&sql, &release_id))
+            .await
     }
 
     /// Mark an import failed and remove the release it finalized. Used when

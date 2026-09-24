@@ -39,7 +39,7 @@ use crate::config::CloudProvider;
 use crate::config::ConfigHandle;
 use crate::db::{
     Database, DbAlbum, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile,
-    DbLibraryImage, DbRelease, DbTrack, DeleteCleanupPlan, LibraryImageType, Pressing,
+    DbLibraryImage, DbRelease, DbTrack, LibraryImageType, Pressing,
 };
 use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -537,15 +537,9 @@ mod sync_indicator_tests {
     }
 }
 
-struct ReleaseDeletePlan {
-    db_cleanup: DeleteCleanupPlan,
-    evict_blobs: Vec<coven::RowBlobRef>,
-}
-
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) struct ImportReplacementPlan {
-    pub(crate) db_delete: crate::db::ImportReplacementDelete,
-    pub(crate) evict_blobs: Vec<coven::RowBlobRef>,
+    pub(crate) deletion: crate::db::ReleaseDeletion,
     pub(crate) track_ids: Vec<String>,
 }
 

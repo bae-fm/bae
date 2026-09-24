@@ -2,11 +2,6 @@ mod rollback_guards;
 use super::super::*;
 use super::*;
 
-/// A replacement with no blob/outbox cleanup — the released-in-place local
-/// files these album-cleanup tests use carry no cloud state to tear down.
-fn empty_cleanup_plan() -> DeleteCleanupPlan {
-    DeleteCleanupPlan::default()
-}
 fn scanned_flac() -> crate::import::folder_scanner::ScannedAudio {
     crate::import::folder_scanner::ScannedAudio {
         content_type: ContentType::Flac,
@@ -153,7 +148,7 @@ struct Commit<'a> {
     artist_images: &'a [(&'a DbLibraryImage, &'a [u8])],
     /// `(album_id, release_id)`
     primary_release_id: Option<(&'a str, &'a str)>,
-    replacement_deletes: &'a [ImportReplacementDelete],
+    replacement_deletes: &'a [ReleaseDeletion],
 }
 
 /// Finalize `release` past the guard, which these tests have already satisfied
@@ -267,7 +262,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
 /// Shared arrange for the two reimport-replacement tests. Seeds `album-old` with
 /// `existing_release_ids` and its `primary_release_id` at `replaced_release_id`,
 /// then finalizes a reimport whose new release `rel-new` lands in the fresh
-/// `album-new`, carrying an `ImportReplacementDelete` for `replaced_release_id`.
+/// `album-new`, carrying a `ReleaseDeletion` for `replaced_release_id`.
 /// Returns the finalize outcomes, so each test asserts the album's fate itself.
 async fn finalize_reimport_replacing_release(
     db: &Database,
@@ -301,11 +296,7 @@ async fn finalize_reimport_replacing_release(
     )
     .await;
 
-    let replacement = ImportReplacementDelete {
-        release_id: replaced_release_id.to_string(),
-        album_id: album_old.id.clone(),
-        cleanup: empty_cleanup_plan(),
-    };
+    let replacement = db.plan_release_deletion(replaced_release_id).await.unwrap();
     commit_import(
         db,
         &release_new,

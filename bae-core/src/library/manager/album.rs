@@ -191,31 +191,28 @@ impl LibraryManager {
         SearchResults::from_raw(projection.results, &covers, &artist_images)
     }
 
-    /// Delete an album and its data: the rows go in one cleanup-aware transaction,
-    /// then coven evicts the blobs the delete plans name.
+    /// Delete an album and its data: the rows go in one transaction, which
+    /// declares every release's blobs deleted so coven reclaims their on-device
+    /// copies with the commit.
     pub async fn delete_album(&self, album_id: &str) -> Result<(), LibraryError> {
         let releases = self.get_releases_for_album(album_id).await?;
 
         // Read every release's track ids before the delete cascades them away —
         // playback needs them to clear the queue.
         let mut all_track_ids = Vec::new();
-        let mut db_cleanups = Vec::new();
-        let mut evict_blobs = Vec::new();
+        let mut deletions = Vec::new();
         for release in &releases {
             let tracks = self.get_tracks_for_release(&release.id).await?;
             all_track_ids.extend(tracks.into_iter().map(|t| t.id));
-            let delete_plan = self.release_delete_plan(release).await?;
             // See `delete_release`: the delete records each release's unwind in
             // the transaction that removes it.
-            db_cleanups.push(delete_plan.db_cleanup);
-            evict_blobs.extend(delete_plan.evict_blobs);
+            deletions.push(self.database.plan_release_deletion(&release.id).await?);
         }
 
         self.database
-            .delete_album_with_cleanup(album_id, db_cleanups)
+            .delete_album_with_cleanup(album_id, deletions)
             .await?;
         self.emit_outbox_changed().await;
-        self.evict_delete_blobs(evict_blobs).await;
 
         if !all_track_ids.is_empty() {
             self.emit(LibraryEvent::TracksDeleted {

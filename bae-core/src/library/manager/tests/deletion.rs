@@ -393,42 +393,6 @@ async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_f
     assert!(find_release(&manager, &release.id).await.is_some());
 }
 
-/// The row deletes and the blob cleanup share one transaction, so a cleanup step
-/// coven refuses takes the row deletes down with it — the release survives rather
-/// than leaving the library short a release whose blob bookkeeping still stands.
-///
-/// Clearing an external registration names the blob table it belongs to, and
-/// coven refuses a name that declares no blob. That refusal lands mid-transaction,
-/// after the deletes have been staged, which is the point.
-#[tokio::test]
-async fn delete_release_rolls_back_when_an_external_ref_clear_is_refused() {
-    let (manager, _temp_dir, album, release) = manager_with_release().await;
-
-    let file = DbFile::new(
-        &release.id,
-        "track1.flac",
-        5,
-        crate::util::content_type::ContentType::Flac,
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-    );
-    manager.add_file(&file).await.unwrap();
-
-    manager
-        .database
-        .delete_release_with_cleanup(
-            &release.id,
-            &album.id,
-            DeleteCleanupPlan {
-                external_refs_to_clear: vec![("no_such_blob_table".to_string(), file.id.clone())],
-            },
-        )
-        .await
-        .expect_err("clearing a ref on an undeclared blob table is refused");
-
-    assert!(find_release(&manager, &release.id).await.is_some());
-}
-
 #[tokio::test]
 async fn delete_album_fails_before_rows_are_deleted_when_track_lookup_fails() {
     let (manager, _temp_dir, album, _release) = manager_with_release().await;
@@ -655,6 +619,73 @@ async fn delete_album_removes_release_covers() {
         .await
         .unwrap()
         .is_none());
+}
+
+/// A cover's bytes live in coven's own store, which reclaims only blobs a write
+/// declares deleted. A release delete that only drops the `covers` row leaves
+/// the bytes behind for good, so the delete declares the cover blob in the same
+/// write and coven records the cleanup with it.
+#[tokio::test]
+async fn delete_release_declares_its_cover_blob_deleted() {
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
+    store_test_cover_image(&manager, &release.id).await;
+    let cover_blob = bae_test_support::test_uuid(&format!("{}-{COVER_BLOB}", release.id));
+
+    manager.delete_release(&release.id).await.unwrap();
+
+    assert_eq!(
+        manager
+            .database
+            .local_blob_cleanup_intent_count_for_test(crate::sync::COVERS_NAMESPACE, &cover_blob)
+            .await
+            .unwrap(),
+        1,
+        "the deleted release's cover blob is cleaned up"
+    );
+}
+
+/// The album delete takes each release's cover with it the same way.
+#[tokio::test]
+async fn delete_album_declares_each_cover_blob_deleted() {
+    let (manager, _temp_dir, album, release) = manager_with_release().await;
+    store_test_cover_image(&manager, &release.id).await;
+    let cover_blob = bae_test_support::test_uuid(&format!("{}-{COVER_BLOB}", release.id));
+
+    manager.delete_album(&album.id).await.unwrap();
+
+    assert_eq!(
+        manager
+            .database
+            .local_blob_cleanup_intent_count_for_test(crate::sync::COVERS_NAMESPACE, &cover_blob)
+            .await
+            .unwrap(),
+        1,
+        "the deleted album's cover blob is cleaned up"
+    );
+}
+
+/// The blobs a delete declares are read before its write opens. A cover
+/// replaced in between would leave the new blob undeclared, so the write
+/// checks the plan against the rows it deletes and refuses a stale one.
+#[tokio::test]
+async fn delete_release_refuses_a_plan_whose_cover_changed() {
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
+    store_test_cover_image(&manager, &release.id).await;
+    let plan = manager
+        .database
+        .plan_release_deletion(&release.id)
+        .await
+        .unwrap();
+    store_test_cover_image_with_blob(&manager, &release.id, "replacement-cover").await;
+
+    let error = manager
+        .database
+        .delete_release_with_cleanup(plan)
+        .await
+        .expect_err("a stale delete plan is refused");
+
+    assert!(error.to_string().contains("changed after planning"));
+    assert!(find_release(&manager, &release.id).await.is_some());
 }
 
 #[tokio::test]

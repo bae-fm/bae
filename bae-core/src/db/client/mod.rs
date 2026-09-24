@@ -72,6 +72,8 @@ pub(crate) use playback::QueueCatalogProjection;
 mod release;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use release::ImportRows;
+mod release_deletion;
+pub use release_deletion::ReleaseDeletion;
 mod release_projection;
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;
@@ -84,8 +86,8 @@ mod query;
 mod read;
 mod write;
 
+pub use query::ImportReplacementOutcome;
 use query::*;
-pub use query::{DeleteCleanupPlan, ImportReplacementDelete, ImportReplacementOutcome};
 use read::*;
 use release_projection::{
     find_release_detail_context_on, storage_count_on, storage_page_on, storage_total_size_on,
@@ -202,6 +204,33 @@ impl Database {
         self.inner
             .handle
             .write(move |sql| f(sql).map_err(CovenError::from))
+            .await
+            .map(|receipt| receipt.value)
+            .map_err(Self::coven_error)
+    }
+
+    /// [`call_sql`](Self::call_sql) for a write that stops referencing
+    /// `deleted`: coven records the cleanup of each blob's on-device copies
+    /// with the commit, so no copy outlives the rows that named it.
+    async fn call_sql_deleting_blobs<R>(
+        &self,
+        deleted: Vec<coven::BlobRef>,
+        f: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>) -> Result<R, DbError> + Send + 'static,
+    ) -> Result<R, DbError>
+    where
+        R: Send + 'static,
+    {
+        self.inner
+            .handle
+            .write_with_blobs(
+                move |batch| {
+                    for blob in deleted {
+                        batch.delete_blob(blob);
+                    }
+                    Ok(())
+                },
+                move |sql| f(sql).map_err(CovenError::from),
+            )
             .await
             .map(|receipt| receipt.value)
             .map_err(Self::coven_error)

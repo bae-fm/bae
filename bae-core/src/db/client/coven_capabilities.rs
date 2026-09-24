@@ -212,6 +212,7 @@ impl Database {
         self.inner.handle.rows_pinned(table, row_ids).await
     }
 
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn evict_blob(
         &self,
         blob: &coven::RowBlobRef,
@@ -273,17 +274,6 @@ impl Database {
         self.inner
             .handle
             .set_cache_budget(namespace, max_bytes)
-            .await
-    }
-
-    pub(crate) async fn make_remote_progress(
-        &self,
-        root_table: &str,
-        root_id: &str,
-    ) -> Result<Option<coven::MakeRemoteProgress>, coven::DbError> {
-        self.inner
-            .handle
-            .make_remote_progress(root_table, root_id)
             .await
     }
 

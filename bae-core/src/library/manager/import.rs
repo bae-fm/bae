@@ -422,7 +422,7 @@ impl LibraryManager {
         let storage = self.config_handle.config().cloud_home.storage;
         let replacement_deletes: Vec<_> = replacement_plans
             .iter()
-            .map(|plan| plan.db_delete.clone())
+            .map(|plan| plan.deletion.clone())
             .collect();
         self.database
             .finalize_import_atomic(
@@ -443,8 +443,6 @@ impl LibraryManager {
             self.emit_outbox_changed().await;
         }
         for plan in replacement_plans {
-            self.evict_delete_blobs(plan.evict_blobs.clone()).await;
-
             if !plan.track_ids.is_empty() {
                 self.emit(LibraryEvent::TracksDeleted {
                     track_ids: plan.track_ids.clone(),

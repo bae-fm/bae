@@ -415,15 +415,41 @@ impl Database {
         .await
     }
 
+    /// Delete every release an album holds, in the write that declares each
+    /// release's blobs deleted (see [`ReleaseDeletion`]). `releases` must plan
+    /// every release the album holds when the write runs: one added since would
+    /// go without its blobs declared, so the write refuses a set that no longer
+    /// matches.
     pub async fn delete_album_with_cleanup(
         &self,
         album_id: &str,
-        cleanups: Vec<DeleteCleanupPlan>,
+        releases: Vec<ReleaseDeletion>,
     ) -> Result<(), DbError> {
         let album_id = album_id.to_string();
-        self.call_sql(move |sql| {
-            for cleanup in &cleanups {
-                apply_delete_cleanup_on(&sql, cleanup)?;
+        let deleted = releases
+            .iter()
+            .flat_map(ReleaseDeletion::blob_deletes)
+            .collect();
+        self.call_sql_deleting_blobs(deleted, move |sql| {
+            let mut current: Vec<String> = sql.query(
+                "SELECT id FROM releases WHERE album_id = ? ORDER BY id",
+                params![album_id],
+                |row| row.get(0),
+            )?;
+            current.sort();
+            let mut planned: Vec<String> = releases
+                .iter()
+                .filter(|release| release.album_id() == album_id)
+                .map(|release| release.release_id().to_string())
+                .collect();
+            planned.sort();
+            if current != planned || planned.len() != releases.len() {
+                return Err(DbError::Message(format!(
+                    "delete plan for album {album_id} changed after planning"
+                )));
+            }
+            for release in &releases {
+                release.apply_on(&sql)?;
             }
             // The releases go; the album row stays, empty, for the reason in
             // `vacate_album_on`.

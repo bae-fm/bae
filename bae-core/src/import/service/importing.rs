@@ -261,7 +261,7 @@ impl ImportService {
             .await?;
         let replacement_release_ids: Vec<String> = replacement_plans
             .iter()
-            .map(|plan| plan.db_delete.release_id.clone())
+            .map(|plan| plan.deletion.release_id().to_string())
             .collect();
 
         let mut records = Vec::new();

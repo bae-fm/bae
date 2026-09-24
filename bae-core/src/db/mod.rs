@@ -17,6 +17,6 @@ pub(crate) use client::{
     CandidateLookupUpdate, CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras,
     CandidateSaved, CandidateScanExpectation, ImportRows, ScannedCandidateKey,
 };
-pub use client::{Database, DeleteCleanupPlan, ImportReplacementDelete, ImportReplacementOutcome};
+pub use client::{Database, ImportReplacementOutcome, ReleaseDeletion};
 pub(crate) use client::{OutboxDisplayContext, OutboxDisplayRequest, QueueCatalogProjection};
 pub use models::*;
