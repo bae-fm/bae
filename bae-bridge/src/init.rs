@@ -9,6 +9,7 @@ use bae_core::diagnostics::{
 
 use crate::handle::AppHandle;
 use crate::types::BridgeError;
+use tracing_subscriber::filter::LevelFilter;
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeDiagnosticsConfig {
@@ -268,20 +269,20 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
     }
 }
 
-/// One local log sink and the level it records at when `RUST_LOG` is unset.
-/// Levels are per sink because the sinks keep different amounts: the unified
-/// log and ETW discard what no one is capturing, and a terminal is someone
-/// watching, so they take `debug`; logcat and the journal keep every line on
-/// the device, so they take `info`.
+/// One local log sink and the level bae's own crates record at when
+/// `RUST_LOG` is unset. Levels are per sink because the sinks keep different
+/// amounts: the unified log and ETW discard what no one is capturing, and a
+/// terminal is someone watching, so they take `debug`; logcat and the journal
+/// keep every line on the device, so they take `info`.
 struct LogSink {
     layer: Box<dyn tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync>,
-    default_level: &'static str,
+    default_level: LevelFilter,
 }
 
 impl LogSink {
     fn new(
         layer: impl tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync + 'static,
-        default_level: &'static str,
+        default_level: LevelFilter,
     ) -> Self {
         Self {
             layer: Box::new(layer),
@@ -290,9 +291,40 @@ impl LogSink {
     }
 }
 
+/// The log targets that are bae's own: every workspace crate the apps link,
+/// and coven, whose target also covers its `coven_*` crates (a directive
+/// matches every target it prefixes).
+const FIRST_PARTY_TARGETS: &[&str] = &[
+    "bae_automation",
+    "bae_bridge",
+    "bae_cast",
+    "bae_core",
+    "bae_desktop",
+    "bae_loc",
+    "bae_mcp",
+    "bae_mirror",
+    "bae_subsonic",
+    "coven",
+];
+
+/// A sink's filter directives when `RUST_LOG` is unset: bae's own crates at
+/// the sink's level, everything else no finer than `info`. A dependency's
+/// debug output is its internals — a SQL lexer reports every token it
+/// consumes — and at `debug` it buries bae's lines.
+fn default_directives(level: LevelFilter) -> String {
+    std::iter::once(std::cmp::min(level, LevelFilter::INFO).to_string())
+        .chain(
+            FIRST_PARTY_TARGETS
+                .iter()
+                .map(|target| format!("{target}={level}")),
+        )
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 /// The filter directives `RUST_LOG` sets for every sink, plus a complaint to
 /// emit once the subscriber is installed. `None` leaves each sink at its own
-/// default level. `RUST_LOG` is a local debugging knob; a bad value degrades to
+/// defaults. `RUST_LOG` is a local debugging knob; a bad value degrades to
 /// the default levels instead of failing, because every host's telemetry
 /// fallback relies on subscriber installation never failing — a launch must
 /// never die over a malformed env var.
@@ -317,6 +349,18 @@ fn rust_log() -> (Option<String>, Option<String>) {
     }
 }
 
+/// One sink's filter: `RUST_LOG` when it is set, the sink's defaults when not.
+/// `rust_log` has already been parsed, so `new` sees only valid directives.
+fn sink_filter(
+    rust_log: Option<&str>,
+    default_level: LevelFilter,
+) -> tracing_subscriber::EnvFilter {
+    tracing_subscriber::EnvFilter::new(match rust_log {
+        Some(rust_log) => rust_log.to_string(),
+        None => default_directives(default_level),
+    })
+}
+
 /// Install the global subscriber over `sinks`, each behind its own level
 /// filter. Ignores the "already initialized" error, which is the documented
 /// use-case for `try_init`.
@@ -326,10 +370,7 @@ fn install_logging(sinks: Vec<LogSink>) {
     let layers: Vec<_> = sinks
         .into_iter()
         .map(|sink| {
-            // `rust_log` already parsed, so `new` sees only valid directives.
-            let filter = tracing_subscriber::EnvFilter::new(
-                rust_log.as_deref().unwrap_or(sink.default_level),
-            );
+            let filter = sink_filter(rust_log.as_deref(), sink.default_level);
             sink.layer.with_filter(filter).boxed()
         })
         .collect();
@@ -352,7 +393,7 @@ fn terminal_log_sink() -> LogSink {
             .with_line_number(true)
             .with_target(false)
             .with_file(true),
-        "debug",
+        LevelFilter::DEBUG,
     )
 }
 
@@ -364,7 +405,7 @@ fn configure_logging() {
         terminal_log_sink(),
         LogSink::new(
             tracing_oslog::OsLogger::new("fm.bae.desktop", "default"),
-            "debug",
+            LevelFilter::DEBUG,
         ),
     ])
 }
@@ -383,7 +424,7 @@ fn configure_logging() {
             return;
         }
     };
-    install_logging(vec![LogSink::new(android_layer, "info")])
+    install_logging(vec![LogSink::new(android_layer, LevelFilter::INFO)])
 }
 
 /// The unified log, read with
@@ -392,7 +433,7 @@ fn configure_logging() {
 fn configure_logging() {
     install_logging(vec![LogSink::new(
         tracing_oslog::OsLogger::new("fm.bae.app", "default"),
-        "debug",
+        LevelFilter::DEBUG,
     )])
 }
 
@@ -402,9 +443,10 @@ fn configure_logging() {
     // "bae-core" (GUID derived from the name), captured with
     // `logman start ... -p "*bae-core"` — the `log stream` equivalent.
     match tracing_etw::LayerBuilder::new("bae-core").build() {
-        Ok(etw_layer) => {
-            install_logging(vec![terminal_log_sink(), LogSink::new(etw_layer, "debug")])
-        }
+        Ok(etw_layer) => install_logging(vec![
+            terminal_log_sink(),
+            LogSink::new(etw_layer, LevelFilter::DEBUG),
+        ]),
         Err(error) => {
             // The terminal is the only sink left to report this in; launch
             // must not die over it.
@@ -427,7 +469,7 @@ fn configure_logging() {
             terminal_log_sink(),
             LogSink::new(
                 journald_layer.with_syslog_identifier("bae".to_string()),
-                "info",
+                LevelFilter::INFO,
             ),
         ]),
         Err(error) => {
@@ -514,6 +556,89 @@ mod tests {
         assert_eq!(
             core.fields()["screen"],
             serde_json::Value::String("settings".to_string())
+        );
+    }
+
+    /// The messages a subscriber behind `filter` keeps, in emission order.
+    fn kept_lines(filter: tracing_subscriber::EnvFilter) -> Vec<String> {
+        use tracing_subscriber::prelude::*;
+        let kept = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let writer = {
+            let kept = kept.clone();
+            move || KeptLine(kept.clone())
+        };
+        let subscriber = tracing_subscriber::registry().with(
+            tracing_subscriber::fmt::layer()
+                .with_ansi(false)
+                .without_time()
+                .with_writer(writer)
+                .with_filter(filter),
+        );
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::debug!(target: "bae_core::import", "first-party debug");
+            tracing::debug!(target: "coven_database::live_query", "coven debug");
+            tracing::debug!(target: "sqlite3_parser::lexer", "dependency debug");
+            tracing::info!(target: "sqlite3_parser::lexer", "dependency info");
+        });
+        let kept = kept.lock().expect("kept lines mutex poisoned");
+        String::from_utf8(kept.clone())
+            .expect("log lines are UTF-8")
+            .lines()
+            .map(|line| {
+                line.split_once(": ")
+                    .expect("a formatted line puts the message after the target")
+                    .1
+                    .to_string()
+            })
+            .collect()
+    }
+
+    struct KeptLine(Arc<std::sync::Mutex<Vec<u8>>>);
+
+    impl std::io::Write for KeptLine {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0
+                .lock()
+                .expect("kept lines mutex poisoned")
+                .extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// A debug sink records bae's own debug lines and a dependency's info,
+    /// never a dependency's debug.
+    #[test]
+    fn a_debug_sink_keeps_dependencies_at_info() {
+        let kept = kept_lines(sink_filter(None, LevelFilter::DEBUG));
+
+        assert_eq!(
+            kept,
+            vec![
+                "first-party debug".to_string(),
+                "coven debug".to_string(),
+                "dependency info".to_string(),
+            ]
+        );
+    }
+
+    /// `RUST_LOG` replaces the defaults whole.
+    #[test]
+    fn rust_log_overrides_the_default_levels() {
+        let kept = kept_lines(sink_filter(
+            Some("sqlite3_parser=debug"),
+            LevelFilter::DEBUG,
+        ));
+
+        assert_eq!(
+            kept,
+            vec![
+                "dependency debug".to_string(),
+                "dependency info".to_string()
+            ]
         );
     }
 
