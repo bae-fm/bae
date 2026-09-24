@@ -37,9 +37,12 @@ impl LibraryManager {
         Ok(self.emit_outbox_changed().await)
     }
 
-    /// Cancel an in-flight make-Remote of `release_id` through coven: clears the
-    /// intent and pending uploads and takes back out any object the uploads
-    /// already wrote. The gate never flips, so the release stays Local.
+    /// Cancel an in-flight make-Remote of `release_id` through coven. coven
+    /// records the cancel durably, so the release stays Local from here on; the
+    /// sync loop's drain then drops the still-queued uploads and takes back out
+    /// any object they already wrote, retrying while the cloud refuses. Until
+    /// it does the outbox shows the transition as cancelling. Recording needs
+    /// no provider, so the cancel does not wait on one.
     pub(crate) async fn coven_cancel_make_remote(
         &self,
         release_id: &str,
@@ -50,24 +53,8 @@ impl LibraryManager {
             .map_err(|e| {
                 LibraryError::Storage(format!("cancel make release {release_id} remote: {e}"))
             })?;
-        // `cancel_make_remote` records the intent to unwind; the drain carries it
-        // out — dropping the still-queued uploads and deleting whatever already
-        // landed. The operation has not completed until that drain succeeds.
-        self.database.drain_uploads().await.map_err(|error| {
-            LibraryError::Storage(format!(
-                "finish cancelling make release {release_id} remote: {error}"
-            ))
-        })?;
-        if self
-            .database
-            .make_remote_progress_for_release(release_id)
-            .await?
-            .is_some()
-        {
-            return Err(LibraryError::Storage(format!(
-                "cancel make release {release_id} remote did not finish"
-            )));
-        }
+        // Start the unwind now rather than at the loop's next idle tick.
+        self.database.sync_now();
         Ok(())
     }
 

@@ -616,14 +616,44 @@ async fn cancelling_an_upload_leaves_no_in_flight_import_behind() {
     let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
 
     manager.cancel_release_upload(&release.id).await.unwrap();
+    manager.drain_uploads_for_test().await.unwrap();
 
     assert!(
         make_remote_progress(&manager, &release.id).await.is_none(),
-        "the cancel clears coven's make-Remote intent"
+        "the drain after the cancel clears coven's make-Remote intent"
     );
     assert!(
         queued_upload_count(&manager).await == 0,
         "no upload is left queued, so nothing reads as still importing"
+    );
+    let after = find_release(&manager, &release.id)
+        .await
+        .expect("the release survives the cancel");
+    assert!(!after.remote, "the cancelled release stays Local");
+}
+
+/// Cancelling is recorded, not performed: coven marks the transition
+/// cancelling and a drain takes the uploaded object back out when the cloud
+/// allows it. A cloud that refuses that removal does not fail the cancel —
+/// the unwind stays owed and shows as cancelling, the way a deleted release's
+/// does.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn cancelling_an_upload_survives_a_cloud_that_refuses_the_cleanup() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let home = connect_test_cloud(&manager).await;
+    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
+    home.fail_exact_delete_on_call(1);
+
+    manager
+        .cancel_release_upload(&release.id)
+        .await
+        .expect("the cancel does not wait on the cloud");
+
+    assert_eq!(
+        make_remote_progress(&manager, &release.id).await,
+        Some(coven::MakeRemoteProgress::Cancelling),
+        "the unwind is still owed"
     );
     let after = find_release(&manager, &release.id)
         .await

@@ -258,6 +258,7 @@ impl Database {
             .await
     }
 
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn drain_uploads(&self) -> Result<coven::DrainOutcome, coven::SyncError> {
         self.inner.handle.drain_uploads().await
     }

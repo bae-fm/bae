@@ -328,8 +328,10 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     assert_eq!(failure.0, 1);
     assert!(failure.1, "coven records why the attempt failed");
 
-    // Cancelling the release's make-Remote clears the queue; the snapshot empties.
+    // Cancelling the release's make-Remote records the unwind; the drain that
+    // carries it out clears the queue and the snapshot empties.
     manager.cancel_release_upload(&release.id).await.unwrap();
+    manager.drain_uploads_for_test().await.unwrap();
     let snap = manager.outbox_snapshot().await.unwrap();
     assert!(snap.upload_groups.is_empty());
     assert_eq!(snap.total.retrying, 0);
@@ -347,9 +349,10 @@ async fn cancelling_an_upload_then_deleting_its_release_leaves_no_orphan() {
 
     manager.cancel_release_upload(&release.id).await.unwrap();
     manager.delete_release(&release.id).await.unwrap();
+    manager.drain_uploads_for_test().await.unwrap();
 
-    // The cancel drained before it returned, so the delete finds nothing left
-    // to unwind and the outbox is empty either way.
+    // The drain carries out the recorded cancel, so nothing is left to
+    // unwind and the outbox is empty.
     let snapshot = manager
         .outbox_snapshot()
         .await
