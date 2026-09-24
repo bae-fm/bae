@@ -3,12 +3,12 @@ use super::*;
 /// The bae rows needed to label one exact coven outbox snapshot.
 ///
 /// This is an absolute live-query request: when coven changes the durable
-/// queue, the subscription is reconfigured to follow precisely the release
-/// and release-file rows named by that snapshot.
+/// queue, the subscription is reconfigured to follow precisely the
+/// release-file rows named by that snapshot. Album titles need no row: the
+/// queue carries the label it snapshotted when the work was queued.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct OutboxDisplayRequest {
     release_file_ids: Vec<String>,
-    release_ids: Vec<String>,
 }
 
 /// Display values read reactively for an [`OutboxDisplayRequest`].
@@ -293,46 +293,33 @@ impl Database {
         release_file_ids.sort();
         release_file_ids.dedup();
 
-        let mut release_ids = snapshot
+        if let Some(upload) = snapshot
             .uploads
             .iter()
-            .map(|upload| {
-                if upload.root_table != "releases" {
-                    return Err(DbError::Message(format!(
-                        "queued upload root {}:{} is not a release",
-                        upload.root_table, upload.root_id
-                    )));
-                }
-                Ok(upload.root_id.clone())
-            })
-            .collect::<Result<Vec<_>, DbError>>()?;
-        release_ids.extend(
-            snapshot
-                .make_remotes
-                .iter()
-                .map(|transition| {
-                    if transition.root_table != "releases" {
-                        return Err(DbError::Message(format!(
-                            "make-Remote root {}:{} is not a release",
-                            transition.root_table, transition.root_id
-                        )));
-                    }
-                    Ok(transition.root_id.clone())
-                })
-                .collect::<Result<Vec<_>, DbError>>()?,
-        );
-        release_ids.sort();
-        release_ids.dedup();
+            .find(|upload| upload.root_table != "releases")
+        {
+            return Err(DbError::Message(format!(
+                "queued upload root {}:{} is not a release",
+                upload.root_table, upload.root_id
+            )));
+        }
+        if let Some(transition) = snapshot
+            .make_remotes
+            .iter()
+            .find(|transition| transition.root_table != "releases")
+        {
+            return Err(DbError::Message(format!(
+                "make-Remote root {}:{} is not a release",
+                transition.root_table, transition.root_id
+            )));
+        }
 
-        Ok(OutboxDisplayRequest {
-            release_file_ids,
-            release_ids,
-        })
+        Ok(OutboxDisplayRequest { release_file_ids })
     }
 
-    /// Follow the bae display rows named by the current coven outbox. A title,
-    /// release-to-album link, or original filename change produces a new value
-    /// even while the durable outbox itself is unchanged.
+    /// Follow the bae display rows named by the current coven outbox. An
+    /// original filename change produces a new value even while the durable
+    /// outbox itself is unchanged.
     pub(crate) fn subscribe_outbox_display(
         &self,
         initial: OutboxDisplayRequest,
