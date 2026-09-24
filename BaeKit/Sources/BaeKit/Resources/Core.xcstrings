@@ -8496,6 +8496,179 @@
         }
       }
     },
+    "core.import.error.candidate_being_identified": {
+      "comment": "A bulk import skipped this release because identification was still running for it when the import reached it.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يزال التعرف على هذا الإصدار جاريًا. استورده بعد انتهاء التعرف."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Това издание все още се идентифицира. Импортирайте го, след като идентифицирането приключи."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toto vydání se stále identifikuje. Importujte ho, až identifikace skončí."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Denne udgivelse bliver stadig identificeret. Importér den, når identificeringen er færdig."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Veröffentlichung wird noch identifiziert. Importiere sie, sobald die Identifizierung abgeschlossen ist."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αυτή η κυκλοφορία αναγνωρίζεται ακόμη. Εισαγάγετέ την μόλις ολοκληρωθεί η αναγνώριση."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This release is still being identified. Import it once identification finishes."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta publicación aún se está identificando. Impórtala cuando termine la identificación."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tätä julkaisua tunnistetaan vielä. Tuo se, kun tunnistus on valmis."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette parution est encore en cours d’identification. Importez-la une fois l’identification terminée."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ההוצאה הזו עדיין מזוהה. ייבא אותה כשהזיהוי יסתיים."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ovo se izdanje još identificira. Uvezite ga kad identifikacija završi."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ennek a kiadásnak az azonosítása még folyamatban van. Importáld, ha az azonosítás befejeződött."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa pubblicazione è ancora in fase di identificazione. Importala al termine dell’identificazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このリリースはまだ識別中です。識別が終わってからインポートしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 릴리스는 아직 식별 중입니다. 식별이 끝나면 가져오세요."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Denne utgivelsen blir fortsatt identifisert. Importer den når identifiseringen er ferdig."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze uitgave wordt nog geïdentificeerd. Importeer haar zodra de identificatie klaar is."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To wydanie jest wciąż identyfikowane. Zaimportuj je po zakończeniu identyfikacji."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este lançamento ainda está sendo identificado. Importe-o quando a identificação terminar."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este lançamento ainda está a ser identificado. Importe-o quando a identificação terminar."
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Această lansare este încă în curs de identificare. Importă-o după ce identificarea se încheie."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toto vydanie sa stále identifikuje. Importujte ho, keď sa identifikácia skončí."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den här utgåvan identifieras fortfarande. Importera den när identifieringen är klar."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu yayın hâlâ tanımlanıyor. Tanımlama bittiğinde içe aktarın."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей реліз ще розпізнається. Імпортуйте його, коли розпізнавання завершиться."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此发行版仍在识别中。识别完成后再导入。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此發行版本仍在辨識中。辨識完成後再匯入。"
+          }
+        }
+      }
+    },
     "core.import.error.candidate_import_in_progress": {
       "comment": "Import edit rejected because the import worker has already claimed this candidate.",
       "localizations": {

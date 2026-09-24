@@ -31,6 +31,15 @@ fn file_tag_snapshot_match(
     }
 }
 
+/// Who asked for an import, which decides what running work refuses it.
+#[derive(Clone, Copy)]
+enum ImportRequest {
+    /// The person, from the candidate's own pane.
+    Person,
+    /// A bulk import of the Ready set, reaching this row.
+    ReadySet,
+}
+
 impl ImportServiceHandle {
     pub(super) async fn file_tag_snapshot(
         &self,
@@ -142,7 +151,27 @@ impl ImportServiceHandle {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
         self.committed(async move {
-            this.start_import_write(&candidate_key, storage_mode, pin)
+            this.start_import_write(&candidate_key, storage_mode, pin, ImportRequest::Person)
+                .await
+        })
+        .await
+    }
+
+    /// Import one row of a bulk import of the Ready set: the same import as
+    /// [`Self::start_import`], refused for a candidate an import already owns
+    /// or identification is still answering. The Ready set is what the tables
+    /// say; what is running is checked here, under the lock the claim is taken
+    /// under, so a refusal is the state at the moment the row is reached.
+    pub async fn import_ready(
+        &self,
+        candidate_key: &str,
+        storage_mode: StorageMode,
+        pin: bool,
+    ) -> Result<String, crate::import::ImportError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        self.committed(async move {
+            this.start_import_write(&candidate_key, storage_mode, pin, ImportRequest::ReadySet)
                 .await
         })
         .await
@@ -153,8 +182,28 @@ impl ImportServiceHandle {
         candidate_key: &str,
         storage_mode: StorageMode,
         pin: bool,
+        request: ImportRequest,
     ) -> Result<String, crate::import::ImportError> {
         let commit = self.folder_state_commit.lock().await;
+        match request {
+            // A person importing the candidate they are looking at is
+            // answering it themselves; the claim ends whatever run it had.
+            ImportRequest::Person => {}
+            ImportRequest::ReadySet => {
+                let facts = self
+                    .runtime
+                    .get(candidate_key)
+                    .as_ref()
+                    .map(crate::import::triage::TriageRuntimeFacts::of)
+                    .unwrap_or_default();
+                if facts.importing {
+                    return Err(crate::import::ImportError::CandidateImportInProgress);
+                }
+                if facts.identifying() {
+                    return Err(crate::import::ImportError::CandidateBeingIdentified);
+                }
+            }
+        }
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),

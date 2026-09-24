@@ -811,3 +811,37 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
     );
     shut_down(handle).await;
 }
+
+/// A bulk import of the Ready set reaching a row identification is still
+/// answering skips that row and says why, leaving it unclaimed for the person
+/// to import once the run settles; a row an import already owns is refused the
+/// same way rather than claimed twice.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_bulk_import_skips_a_row_being_identified_and_says_so() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    handle.admit_identification(vec![key.clone()], crate::import::Admission::Requested);
+
+    let refused = handle
+        .import_ready(&key, crate::import::StorageMode::Local, false)
+        .await;
+
+    assert!(matches!(
+        refused,
+        Err(crate::import::ImportError::CandidateBeingIdentified)
+    ));
+    let runtime = handle
+        .candidate_runtime(&key)
+        .expect("the queued run is still the key's");
+    assert!(runtime.import.is_none(), "the skipped row is not claimed");
+    assert!(runtime.queued.is_some(), "and its run is not cancelled");
+
+    handle.withdraw_identification(&key);
+    handle.claim_candidate_for_import(&key).await;
+    assert!(matches!(
+        handle
+            .import_ready(&key, crate::import::StorageMode::Local, false)
+            .await,
+        Err(crate::import::ImportError::CandidateImportInProgress)
+    ));
+    shut_down(handle).await;
+}

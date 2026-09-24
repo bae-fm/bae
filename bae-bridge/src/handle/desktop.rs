@@ -422,6 +422,17 @@ forward! {
                 .map_err(BridgeError::import)
         }
 
+        /// Import one row of a bulk import of the Ready set. Refused, with a
+        /// reason the row can be told, for a candidate an import already owns
+        /// or identification is still answering at the moment it is reached.
+        fn import_ready(candidate_key: String, storage_mode: BridgeStorageMode, pin: bool) -> () {
+            this.services
+                .import_ready(&candidate_key, storage_mode.into_core(), pin)
+                .await
+                .map(|_| ())
+                .map_err(BridgeError::import)
+        }
+
         /// Record the cover the user chose for a candidate. Nothing comes back:
         /// the per-candidate subscription delivers the pane's next value.
         fn set_candidate_cover(candidate_key: String, cover: BridgeCoverSelection) -> () {

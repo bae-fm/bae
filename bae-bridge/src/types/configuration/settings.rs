@@ -203,6 +203,8 @@ pub enum BridgeErrorCategory {
     /// Source metadata or artwork could not be parsed or decoded.
     ImportData,
     CandidateImportInProgress,
+    /// A bulk import reached a row identification is still answering.
+    CandidateBeingIdentified,
     CandidateAlreadyImported,
     MetadataTrackCount,
     Export,
@@ -347,6 +349,9 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         }
         BridgeErrorCategory::CandidateImportInProgress => {
             "core.import.error.candidate_import_in_progress"
+        }
+        BridgeErrorCategory::CandidateBeingIdentified => {
+            "core.import.error.candidate_being_identified"
         }
         BridgeErrorCategory::CandidateAlreadyImported => {
             "core.import.error.candidate_already_imported"
@@ -576,6 +581,7 @@ impl From<bae_core::import::ImportError> for BridgeError {
             ImportError::CandidateImportInProgress => {
                 BridgeErrorCategory::CandidateImportInProgress
             }
+            ImportError::CandidateBeingIdentified => BridgeErrorCategory::CandidateBeingIdentified,
             ImportError::CandidateAlreadyImported => BridgeErrorCategory::CandidateAlreadyImported,
             ImportError::MetadataTrackCount { .. } => BridgeErrorCategory::MetadataTrackCount,
             ImportError::SourceData { .. } | ImportError::CoverArt { .. } => {

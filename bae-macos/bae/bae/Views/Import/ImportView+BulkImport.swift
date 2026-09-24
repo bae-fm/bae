@@ -46,8 +46,11 @@ extension ImportView {
             before: commitAndEndEditing
         ) { key in
             switch offer.action {
+            // The Ready set is what the tables say; a row being identified
+            // or already importing when the run reaches it is refused by
+            // core, and the refusal joins the run's report beside its name.
             case .importReady:
-                try await importer.startImport(
+                try await importer.importReady(
                     ImportCommitRequest(
                         candidateKey: key,
                         storageMode: storageMode,

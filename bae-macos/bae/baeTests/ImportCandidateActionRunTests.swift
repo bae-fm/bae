@@ -100,6 +100,40 @@ struct ImportCandidateActionRunTests {
         }
     }
 
+    /// A bulk import reaching a row identification is still answering is
+    /// refused by core; the row stays selected, the others go on, and the
+    /// report names the row with the reason core gave.
+    @Test("A bulk import reports a row it skipped for being identified")
+    func bulkImportReportsARowBeingIdentified() async {
+        let identifying = PreviewData.importTabCandidate
+        let ready = PreviewData.importTabDisagreementCandidate
+        let uiStore = UiStore()
+        uiStore.setFolderCandidateSelection([identifying.key, ready.key])
+        var attempted: [String] = []
+        await uiStore.candidateActionRun.perform(
+            action: .importReady,
+            candidates: [identifying, ready],
+            uiStore: uiStore
+        ) { key in
+            attempted.append(key)
+            if key == identifying.key {
+                throw BridgeError.Diagnostic(
+                    category: .candidateBeingIdentified,
+                    detail: "still being identified"
+                )
+            }
+        }
+        #expect(attempted == [identifying.key, ready.key])
+        #expect(uiStore.selectedFolderCandidates == [identifying.key])
+        let line = uiStore.lastError?.line ?? ""
+        #expect(line.contains(identifying.displayName))
+        #expect(
+            line.contains(
+                coreString("core.import.error.candidate_being_identified")
+            )
+        )
+    }
+
     @Test("Batch completion preserves folders selected during the operation")
     func selectionChangesSurviveCompletion() async {
         let candidate = PreviewData.importTabCandidate

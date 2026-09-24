@@ -108,6 +108,7 @@ private struct ImportOperations: Sendable {
         ) -> any LiveSubscriptionProtocol
     let candidateSignals: @Sendable (String) -> Signals?
     let startImport: @Sendable (ImportCommitRequest) async throws -> Void
+    let importReady: @Sendable (ImportCommitRequest) async throws -> Void
     let mergeCandidateArtistIdentityConflict:
         @Sendable (String, String) async throws -> Void
     let setIdentifyAutomatically: @MainActor @Sendable (Bool) throws -> Void
@@ -295,6 +296,13 @@ extension ImportOperations {
                     pin: request.pin
                 )
             },
+            importReady: { request in
+                try await handle.importReady(
+                    candidateKey: request.candidateKey,
+                    storageMode: request.storageMode,
+                    pin: request.pin
+                )
+            },
             mergeCandidateArtistIdentityConflict: {
                 try await handle.mergeCandidateArtistIdentityConflict(
                     candidateKey: $0,
@@ -459,6 +467,10 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (ImportCommitRequest) async throws -> Void = {
                 _ in
             },
+        importReady:
+            @escaping @Sendable (ImportCommitRequest) async throws -> Void = {
+                _ in
+            },
         setIdentifyAutomatically:
             @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
         setPrefillWithFileMetadata:
@@ -504,6 +516,7 @@ final class Importer: Sendable, Observable {
             subscribeCandidateLiveState: subscribeCandidateLiveState,
             candidateSignals: candidateSignals,
             startImport: startImport,
+            importReady: importReady,
             mergeCandidateArtistIdentityConflict: { _, _ in
                 throw StubError.notImplemented
             },
@@ -755,6 +768,13 @@ extension Importer {
 
     func startImport(_ request: ImportCommitRequest) async throws {
         try await operations.startImport(request)
+    }
+
+    /// Import one row of a bulk import of the Ready set. Core refuses a row an
+    /// import already owns or identification is still answering, and the
+    /// refusal says which.
+    func importReady(_ request: ImportCommitRequest) async throws {
+        try await operations.importReady(request)
     }
 
     func mergeCandidateArtistIdentityConflict(

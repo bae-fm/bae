@@ -110,6 +110,10 @@ fn expected_local_and_draft_failures_keep_their_presentation() {
             BridgeErrorCategory::CandidateImportInProgress,
         ),
         (
+            ImportError::CandidateBeingIdentified,
+            BridgeErrorCategory::CandidateBeingIdentified,
+        ),
+        (
             ImportError::CandidateAlreadyImported,
             BridgeErrorCategory::CandidateAlreadyImported,
         ),

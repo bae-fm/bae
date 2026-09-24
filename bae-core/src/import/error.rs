@@ -136,6 +136,14 @@ pub enum ImportError {
     #[error("This release is being imported and can no longer be edited")]
     CandidateImportInProgress,
 
+    /// A bulk import reached a candidate identification is still answering: a
+    /// run is queued for it, running, or writing what it found. The import
+    /// would cancel the run and commit what the run is about to replace, so
+    /// the candidate is left for the person to import once it is settled.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("This release is still being identified; import it once identification finishes")]
+    CandidateBeingIdentified,
+
     /// A completed import is edited through the persisted release editor, not
     /// through the candidate preparation it was created from.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
