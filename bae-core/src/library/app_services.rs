@@ -83,64 +83,6 @@ fn replace_transitioning_release_ids(current: &mut Vec<String>, mut next: Vec<St
     true
 }
 
-/// A live query's events, produced on a task of the query's own.
-///
-/// A subscription that merges a live query with other streams must take the
-/// query's events from here rather than poll [`coven::LiveQuery::next`] in its
-/// `select!` directly. `select!` drops the branches it does not pick, and
-/// dropping `next` throws away the database read it had in flight — the run
-/// stays pending, so the next poll starts that read over from the beginning. A
-/// steady stream on the other branches is what a running sync cycle looks like
-/// from here, and it restarts the read again and again; on a device where the
-/// read takes longer than the gap between those events the query never finishes
-/// its first run at all, and the screen waiting on its first value gets neither
-/// a value nor an error. Owning the query in its own task puts its read out of
-/// reach of the merge loop, whose only query branch is then a channel receive,
-/// which loses nothing when it is dropped and polled again.
-///
-/// Dropping this stops that task, so a subscription that ends — or replaces its
-/// query — takes the query it is done with down too.
-struct LiveQueryEvents<T> {
-    events: tokio::sync::mpsc::UnboundedReceiver<Result<T, crate::library::LibraryError>>,
-    task: tokio::task::JoinHandle<()>,
-}
-
-impl<T> LiveQueryEvents<T> {
-    async fn recv(&mut self) -> Option<Result<T, crate::library::LibraryError>> {
-        self.events.recv().await
-    }
-}
-
-impl<T> Drop for LiveQueryEvents<T> {
-    fn drop(&mut self) {
-        self.task.abort();
-    }
-}
-
-fn live_query_events<T>(
-    runtime_handle: &tokio::runtime::Handle,
-    mut query: coven::LiveQuery<T>,
-) -> LiveQueryEvents<T>
-where
-    T: Clone + PartialEq + Send + 'static,
-{
-    let (tx, events) = tokio::sync::mpsc::unbounded_channel();
-    let task = runtime_handle.spawn(async move {
-        loop {
-            let event = query.next().await.map_err(|error| {
-                crate::library::LibraryError::Database(match error {
-                    coven::CovenError::Database(error) => *error,
-                    other => coven::DbError::Message(other.to_string()),
-                })
-            });
-            if tx.send(event).is_err() {
-                return;
-            }
-        }
-    });
-    LiveQueryEvents { events, task }
-}
-
 impl std::fmt::Debug for AppServices {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppServices")
@@ -345,23 +287,6 @@ impl AppServices {
         self.inner.manager.subscribe_release_library_status(check)
     }
 
-    pub fn subscribe_storage_page(
-        &self,
-        sort: &crate::db::StorageSortCriterion,
-        filter: crate::db::StorageFilter,
-        transitioning_release_ids: Vec<String>,
-        offset: u64,
-        limit: u64,
-    ) -> coven::LiveQuery<crate::db::StoragePageProjection> {
-        self.inner.manager.subscribe_storage_page(
-            sort,
-            filter,
-            transitioning_release_ids,
-            offset,
-            limit,
-        )
-    }
-
     pub async fn resolve_storage_page_projection(
         &self,
         projection: crate::db::StoragePageProjection,
@@ -405,9 +330,9 @@ impl AppServices {
                     },
                 }
             } else { Vec::new() };
-            let mut query = live_query_events(
+            let mut query = reconfigurable_live_query_events(
                 &query_runtime,
-                services.subscribe_storage_page(
+                services.inner.manager.subscribe_storage_page(
                     &sort,
                     filter,
                     transitioning.clone(),
@@ -420,13 +345,13 @@ impl AppServices {
                 tokio::select! {
                     event = query.recv() => match event {
                         None => return,
-                        Some(Ok(projection)) => {
+                        Some((_, Ok(projection))) => {
                             last = Some(projection.clone());
                             let value = services.resolve_storage_page_projection(projection).await
                                 .map(|(page, total_size)| StorageProjectionValue { page, total_size });
                             if tx.send(value).is_err() { return; }
                         }
-                        Some(Err(error)) => {
+                        Some((_, Err(error))) => {
                             if tx.send(Err(error)).is_err() { return; }
                         }
                     },
@@ -436,10 +361,7 @@ impl AppServices {
                             Some(Ok(snapshot)) => {
                                 let next = snapshot.transitioning_release_ids();
                                 if replace_transitioning_release_ids(&mut transitioning, next) {
-                                    query = live_query_events(
-                                        &query_runtime,
-                                        services.subscribe_storage_page(&sort, filter, transitioning.clone(), offset, limit),
-                                    );
+                                    query.set(transitioning.clone());
                                 }
                             }
                             Some(Err(error)) => match tx.send(Err(crate::library::LibraryError::Internal(error))) {
@@ -581,27 +503,44 @@ impl AppServices {
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
+        let query_runtime = runtime_handle.clone();
         runtime_handle.spawn(async move {
+            let manager = &services.inner.manager;
             let mut queue_values = services.inner.playback.subscribe_queue_values();
             let mut projection = queue_values.borrow_and_update().clone();
-            let mut catalog = services.inner.manager.subscribe_queue_catalog(&projection);
+            let mut request = crate::library::manager::queue_catalog_request(&projection);
+            let mut catalog = reconfigurable_live_query_events(
+                &query_runtime,
+                manager.subscribe_queue_catalog(request.clone()),
+            );
+            // The catalog last read for `request`, so a queue change that
+            // reads the same entries resolves again without another read.
+            let mut current = None;
             loop {
                 tokio::select! {
-                    result = catalog.next() => {
-                        let value = result
-                            .map(|catalog| services.inner.manager.resolve_queue_catalog(projection.clone(), catalog))
-                            .map_err(|error| match error {
-                                coven::CovenError::Database(error) => crate::library::LibraryError::Database(*error),
-                                other => crate::library::LibraryError::Database(coven::DbError::Message(other.to_string())),
-                            });
-                        if tx.send(value).is_err() {
-                            return;
-                        }
+                    event = catalog.recv() => {
+                        let Some((answered, result)) = event else { return };
+                        // A read for entries the queue has since moved past;
+                        // the read for the current ones follows.
+                        if answered != request { continue; }
+                        let value = result.map(|read: crate::db::QueueCatalogProjection| {
+                            current = Some(read.clone());
+                            manager.resolve_queue_catalog(projection.clone(), read)
+                        });
+                        if tx.send(value).is_err() { return; }
                     }
                     changed = queue_values.changed() => {
                         if changed.is_err() { return; }
                         projection = queue_values.borrow_and_update().clone();
-                        catalog = services.inner.manager.subscribe_queue_catalog(&projection);
+                        let next = crate::library::manager::queue_catalog_request(&projection);
+                        if next != request {
+                            request = next;
+                            current = None;
+                            catalog.set(request.clone());
+                        } else if let Some(read) = current.clone() {
+                            let value = manager.resolve_queue_catalog(projection.clone(), read);
+                            if tx.send(Ok(value)).is_err() { return; }
+                        }
                     }
                 }
             }
@@ -619,41 +558,62 @@ impl AppServices {
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
+        let query_runtime = runtime_handle.clone();
         runtime_handle.spawn(async move {
+            let manager = &services.inner.manager;
             let mut queue_values = services.inner.playback.subscribe_queue_values();
             let mut projection = queue_values.borrow_and_update().clone();
-            let page_entries = |projection: &crate::playback::PlaybackQueueProjection| {
+            let page_request = |projection: &crate::playback::PlaybackQueueProjection| {
                 let tail = projection
                     .context
                     .as_ref()
                     .map(|context| context.upcoming.as_slice())
                     .unwrap_or(&[]);
-                crate::queue::clamp_upcoming_page(tail, offset, limit).to_vec()
+                crate::db::QueueCatalogRequest {
+                    entries: crate::queue::clamp_upcoming_page(tail, offset, limit).to_vec(),
+                    context_release_id: None,
+                }
             };
-            let mut entries = page_entries(&projection);
-            let mut catalog = services
-                .inner
-                .manager
-                .subscribe_queue_entries(entries.clone());
+            let page = |projection: &crate::playback::PlaybackQueueProjection,
+                        request: &crate::db::QueueCatalogRequest,
+                        read: crate::db::QueueCatalogProjection| {
+                crate::queue::ResolvedQueueUpcomingPage {
+                    revision: projection.revision,
+                    items: manager.resolve_queue_entries(request.entries.len(), read),
+                }
+            };
+            let mut request = page_request(&projection);
+            let mut catalog = reconfigurable_live_query_events(
+                &query_runtime,
+                manager.subscribe_queue_catalog(request.clone()),
+            );
+            // The page last read for `request`: a queue change that leaves
+            // this slice alone still stamps the page with its new revision.
+            let mut current = None;
             loop {
                 tokio::select! {
-                    result = catalog.next() => {
-                        let value = result
-                            .map(|catalog| crate::queue::ResolvedQueueUpcomingPage {
-                                revision: projection.revision,
-                                items: services.inner.manager.resolve_queue_entries(entries.len(), catalog),
-                            })
-                            .map_err(|error| match error {
-                                coven::CovenError::Database(error) => crate::library::LibraryError::Database(*error),
-                                other => crate::library::LibraryError::Database(coven::DbError::Message(other.to_string())),
-                            });
+                    event = catalog.recv() => {
+                        let Some((answered, result)) = event else { return };
+                        // A read for a slice the queue has since moved past;
+                        // the read for the current one follows.
+                        if answered != request { continue; }
+                        let value = result.map(|read: crate::db::QueueCatalogProjection| {
+                            current = Some(read.clone());
+                            page(&projection, &request, read)
+                        });
                         if tx.send(value).is_err() { return; }
                     }
                     changed = queue_values.changed() => {
                         if changed.is_err() { return; }
                         projection = queue_values.borrow_and_update().clone();
-                        entries = page_entries(&projection);
-                        catalog = services.inner.manager.subscribe_queue_entries(entries.clone());
+                        let next = page_request(&projection);
+                        if next != request {
+                            request = next;
+                            current = None;
+                            catalog.set(request.clone());
+                        } else if let Some(read) = current.clone() {
+                            if tx.send(Ok(page(&projection, &request, read))).is_err() { return; }
+                        }
                     }
                 }
             }
@@ -952,6 +912,8 @@ impl AppServices {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import;
+mod live_query_events;
+use live_query_events::{live_query_events, reconfigurable_live_query_events};
 #[cfg(test)]
 #[path = "app_services_tests.rs"]
 mod tests;

@@ -104,28 +104,21 @@ impl LibraryManager {
         &self,
         projection: crate::playback::PlaybackQueueProjection,
     ) -> Result<crate::queue::ResolvedQueueSnapshot, LibraryError> {
-        let (entries, context_release_id) = queue_catalog_inputs(&projection);
         let catalog = self
             .database
-            .get_queue_catalog(entries, context_release_id)
+            .get_queue_catalog(queue_catalog_request(&projection))
             .await?;
         Ok(self.resolve_queue_catalog(projection, catalog))
     }
 
     pub(crate) fn subscribe_queue_catalog(
         &self,
-        projection: &crate::playback::PlaybackQueueProjection,
-    ) -> coven::LiveQuery<crate::db::QueueCatalogProjection> {
-        let (entries, context_release_id) = queue_catalog_inputs(projection);
-        self.database
-            .subscribe_queue_catalog(entries, context_release_id)
-    }
-
-    pub(crate) fn subscribe_queue_entries(
-        &self,
-        entries: Vec<QueueEntry>,
-    ) -> coven::LiveQuery<crate::db::QueueCatalogProjection> {
-        self.database.subscribe_queue_catalog(entries, None)
+        initial: crate::db::QueueCatalogRequest,
+    ) -> coven::ReconfigurableLiveQuery<
+        crate::db::QueueCatalogRequest,
+        crate::db::QueueCatalogProjection,
+    > {
+        self.database.subscribe_queue_catalog(initial)
     }
 
     pub(crate) fn resolve_queue_entries(
@@ -248,9 +241,11 @@ impl LibraryManager {
     }
 }
 
-fn queue_catalog_inputs(
+/// What resolving `projection` reads: the manual lane in full and the first
+/// `QUEUE_UPCOMING_WINDOW` entries of the context's upcoming tail.
+pub(crate) fn queue_catalog_request(
     projection: &crate::playback::PlaybackQueueProjection,
-) -> (Vec<QueueEntry>, Option<String>) {
+) -> crate::db::QueueCatalogRequest {
     let context_window = projection.context.as_ref().into_iter().flat_map(|context| {
         context
             .upcoming
@@ -271,7 +266,10 @@ fn queue_catalog_inputs(
             None
         }
     });
-    (entries, context_release_id)
+    crate::db::QueueCatalogRequest {
+        entries,
+        context_release_id,
+    }
 }
 
 /// `PlaybackTrackInfo` from an already-loaded track and release: queries only the

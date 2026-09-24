@@ -23,28 +23,35 @@ impl Database {
             .await
     }
 
+    /// Follow the display rows for the queue entries `initial` names. The
+    /// queue changes by pointing the same query at new entries through its
+    /// request handle, not by opening another one.
     pub(crate) fn subscribe_queue_catalog(
         &self,
-        entries: Vec<QueueEntry>,
-        context_release_id: Option<String>,
-    ) -> coven::LiveQuery<QueueCatalogProjection> {
+        initial: QueueCatalogRequest,
+    ) -> coven::ReconfigurableLiveQuery<QueueCatalogRequest, QueueCatalogProjection> {
         self.inner
             .handle
-            .subscribe(move |sql| {
-                queue_catalog_on(&sql, entries.clone(), context_release_id.as_deref())
-                    .map_err(CovenError::from)
+            .subscribe_reconfigurable(initial, |request, sql| {
+                queue_catalog_on(
+                    &sql,
+                    request.entries.clone(),
+                    request.context_release_id.as_deref(),
+                )
+                .map_err(CovenError::from)
             })
-            .process(|rows| Ok(rows.process()))
+            .process(|_, rows| Ok(rows.process()))
     }
 
     pub(crate) async fn get_queue_catalog(
         &self,
-        entries: Vec<QueueEntry>,
-        context_release_id: Option<String>,
+        request: QueueCatalogRequest,
     ) -> Result<QueueCatalogProjection, DbError> {
-        self.read(move |sql| queue_catalog_on(&sql, entries, context_release_id.as_deref()))
-            .process(|rows| Ok(rows.process()))
-            .await
+        self.read(move |sql| {
+            queue_catalog_on(&sql, request.entries, request.context_release_id.as_deref())
+        })
+        .process(|rows| Ok(rows.process()))
+        .await
     }
 
     /// Write the single device-local `playback_state` row (id = 'current'),
@@ -266,6 +273,14 @@ impl QueueCatalogRows {
             source_title: self.source_title,
         }
     }
+}
+
+/// The queue entries a catalog read resolves, and the release a release
+/// context plays from, which names the queue's source.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct QueueCatalogRequest {
+    pub entries: Vec<QueueEntry>,
+    pub context_release_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -95,6 +95,7 @@ mod storage;
 mod sync;
 mod sync_status;
 mod track;
+pub(crate) use track::queue_catalog_request;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use discogs::discogs_validation_from_result;

@@ -181,6 +181,44 @@ async fn queue_upcoming_subscription_clamps_to_the_live_tails_end() {
     );
 }
 
+async fn next_upcoming_page(
+    values: &mut tokio::sync::mpsc::UnboundedReceiver<
+        Result<crate::queue::ResolvedQueueUpcomingPage, crate::library::LibraryError>,
+    >,
+) -> crate::queue::ResolvedQueueUpcomingPage {
+    tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
+        .await
+        .expect("upcoming-page subscription delivers")
+        .expect("upcoming-page subscription stays open")
+        .expect("upcoming page resolves")
+}
+
+/// A queue change that leaves the page's slice of the context tail alone
+/// still reaches the page: the same query's read is stamped with the new
+/// revision, so the page keeps matching the queue the UI is rendering.
+#[tokio::test]
+async fn queue_upcoming_page_follows_a_revision_that_leaves_its_slice_alone() {
+    let (services, track_ids, _temp_dir) = playing_app_services(12).await;
+    queue_value_with_context(&services).await;
+    let mut values =
+        services.subscribe_queue_upcoming_values(&tokio::runtime::Handle::current(), 2, 5);
+    let first = next_upcoming_page(&mut values).await;
+
+    // The manual lane is not part of the context tail this page slices.
+    services.playback_add_to_queue(vec![track_ids[0].clone()]);
+
+    let restamped = loop {
+        let page = next_upcoming_page(&mut values).await;
+        if page.revision != first.revision {
+            break page;
+        }
+    };
+    assert_eq!(
+        restamped.items, first.items,
+        "the slice itself is unchanged"
+    );
+}
+
 #[test]
 fn storage_sync_queue_reconfigures_only_when_membership_changes() {
     let mut current = vec!["release-a".to_string(), "release-b".to_string()];

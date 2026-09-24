@@ -185,7 +185,7 @@ impl LibraryManager {
         transitioning_release_ids: Vec<String>,
         offset: u64,
         limit: u64,
-    ) -> coven::LiveQuery<crate::db::StoragePageProjection> {
+    ) -> coven::ReconfigurableLiveQuery<Vec<String>, crate::db::StoragePageProjection> {
         self.database
             .subscribe_storage_page(sort, filter, transitioning_release_ids, offset, limit)
     }
