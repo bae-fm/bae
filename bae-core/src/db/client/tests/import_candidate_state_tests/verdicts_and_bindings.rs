@@ -69,6 +69,7 @@ fn sample_match() -> MetadataResult {
         links: Vec::new(),
         cover_art: None,
         source_group_id: Some("group-1".to_string()),
+        album_links: crate::import::album_links::AlbumLinks::NotAsked,
         source_tracks: None,
     }
 }
@@ -170,11 +171,13 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
     );
 }
 
-/// Every barcode, every medium entry — stated or not — and every link a
-/// match carries store and read back, so the rows a stored verdict groups
-/// into are the rows the run grouped into.
+/// Every barcode, every medium entry — stated or not — every link a match
+/// carries, and what reading its album's links answered store and read back,
+/// so the rows and cards a stored verdict groups into are the ones the run
+/// grouped into.
 #[tokio::test]
 async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
+    use crate::import::album_links::AlbumLinks;
     use crate::import::search::StatedMedia;
     use crate::import::{Catalog, MetadataRef};
 
@@ -189,6 +192,11 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
         MetadataRef::new(Catalog::Discogs, "42"),
         MetadataRef::new(Catalog::Discogs, "43"),
     ];
+    let album = AlbumLinks::Read(vec![
+        MetadataRef::new(Catalog::Discogs, "7"),
+        MetadataRef::new(Catalog::Discogs, "8"),
+    ]);
+    musicbrainz.album_links = album.clone();
     let mut discogs = sample_match();
     discogs.source = Catalog::Discogs;
     discogs.release_id = "42".to_string();
@@ -199,7 +207,12 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     undescribed.release_id = "rel-2".to_string();
     undescribed.year = Some(2001);
     undescribed.media = StatedMedia::Undescribed;
-    let matches = vec![musicbrainz, discogs, undescribed];
+    undescribed.album_links = album;
+    let mut unread = sample_match();
+    unread.release_id = "rel-3".to_string();
+    unread.source_group_id = Some("group-2".to_string());
+    unread.album_links = AlbumLinks::Unread;
+    let matches = vec![musicbrainz, discogs, undescribed, unread];
     let verdict = TerminalVerdict::Found {
         provenance: matches
             .iter()
@@ -246,7 +259,11 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
         crate::import::release_group::unranked(stored_matches.clone()),
     );
     assert_eq!(replayed, live);
-    assert_eq!(live.len(), 1, "the link joins the two groups on one card");
+    assert_eq!(
+        live.len(),
+        2,
+        "the pair joins the two groups on one card; the unread group is its own"
+    );
     assert_eq!(
         live[0]
             .pressings
@@ -256,7 +273,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
         vec![2, 1],
         "the linked pair is one row, the other release its own"
     );
-    assert_eq!(crate::import::release_group::pressing_count(matches), 2);
+    assert_eq!(crate::import::release_group::pressing_count(matches), 3);
 }
 
 /// The candidate's own text stores and reads back whole — every line, in the

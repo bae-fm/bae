@@ -197,6 +197,9 @@ impl BridgeCandidateSearch {
             sources,
             groups,
             library_statuses,
+            // Which cards the albums join is already in `groups`.
+            album_links_reading: _,
+            album_links_read: _,
         } = search;
         Self {
             status,

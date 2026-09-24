@@ -311,6 +311,7 @@ mod identify_mirrors {
             text: Default::default(),
             text_settled: true,
             track_count: 0,
+            album_links: bae_core::identify::state::AlbumLinkReading::Pending,
         }
     }
 

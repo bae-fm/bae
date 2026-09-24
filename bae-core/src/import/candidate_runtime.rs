@@ -535,6 +535,33 @@ impl CandidateRuntime {
         })
     }
 
+    /// Mark the MusicBrainz groups `key`'s search now needs album links for as
+    /// being read, and name them — none when `run` is no longer its run, or
+    /// the list holds nothing to join.
+    pub(super) fn start_reading_album_links(&self, key: &str, run: u64) -> Vec<String> {
+        self.set(key, |_, runtime| match runtime.search.as_mut() {
+            Some(running) if running.run == run => running.search.start_reading_album_links(),
+            Some(_) | None => Vec::new(),
+        })
+    }
+
+    /// Land what reading album links answered on `key`'s search, if `run` is
+    /// still its run. `false` means the answer goes nowhere.
+    pub(super) fn land_album_links(
+        &self,
+        key: &str,
+        run: u64,
+        read: Vec<crate::import::album_links::GroupLinks>,
+    ) -> bool {
+        self.set(key, |_, runtime| match runtime.search.as_mut() {
+            Some(running) if running.run == run => {
+                running.search.record_album_links(read);
+                true
+            }
+            Some(_) | None => false,
+        })
+    }
+
     /// Drop everything held for a key: what is in flight and the signals that
     /// described its files. Both are answers about a candidate that is gone.
     fn remove(&self, key: &str) {

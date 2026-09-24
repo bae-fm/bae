@@ -136,7 +136,7 @@ fn a_shared_barcode_pairs_with_the_record_pressed_the_same_year() {
 /// settles alone.
 #[test]
 fn two_records_of_one_catalog_leave_their_common_match_alone() {
-    let mut lead = mb("mb-1", Some("group-x"), None);
+    let mut lead = linked(mb("mb-1", Some("group-x"), None), "master-7");
     lead.barcodes = vec!["4988014720311".to_string()];
     let mut first = discogs("dg-first", Some("master-7"), None);
     first.barcodes = vec!["4988014720311".to_string()];
@@ -159,7 +159,7 @@ fn two_records_of_one_catalog_leave_their_common_match_alone() {
 /// Discogs records, which are not one object, stay apart.
 #[test]
 fn records_that_contradict_each_other_leave_their_common_match_ambiguous() {
-    let mut lead = mb("mb-1", Some("group-x"), None);
+    let mut lead = linked(mb("mb-1", Some("group-x"), None), "master-7");
     lead.barcodes = vec!["4988014720311".to_string()];
     let mut first = discogs("dg-first", Some("master-7"), Some(1991));
     first.barcodes = vec!["4988014720311".to_string()];

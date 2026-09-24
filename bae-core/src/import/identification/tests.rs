@@ -738,6 +738,7 @@ impl Fixture {
                 links: Vec::new(),
                 cover_art: None,
                 source_group_id: Some(group_id.to_string()),
+                album_links: crate::import::album_links::AlbumLinks::NotAsked,
                 source_tracks: Some(source_tracks),
             }],
             track_count: 2,

@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::album_links::AlbumLinks;
 use crate::import::search::StatedMedia;
 
 /// The tests are about how results bucket, pair and order by year, none of
@@ -23,6 +24,7 @@ pub(super) fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) ->
         links: Vec::new(),
         cover_art: None,
         source_group_id: group_id.map(str::to_string),
+        album_links: crate::import::album_links::AlbumLinks::NotAsked,
         source_tracks: None,
     }
 }
@@ -38,6 +40,18 @@ pub(super) fn discogs(
         source: Catalog::Discogs,
         ..mb(release_id, group_id, year)
     }
+}
+
+/// `release` as its catalog states it: its album is `master` on Discogs.
+pub(super) fn linked(mut release: MetadataResult, master: &str) -> MetadataResult {
+    release.album_links = AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, master)]);
+    release
+}
+
+/// Every card's rows, card by card — what a test about pairing reads, since
+/// pairing does not depend on which cards the rows land on.
+pub(super) fn rows(groups: &[ReleaseGroup]) -> Vec<Vec<&str>> {
+    groups.iter().flat_map(lead_ids).collect()
 }
 
 pub(super) fn cover() -> RemoteCover {
@@ -132,13 +146,13 @@ fn two_musicbrainz_groups_never_merge_with_each_other() {
     assert_eq!(groups.len(), 2);
 }
 
-/// The two providers describing the same album become one card carrying
-/// both, MusicBrainz first, each with its own editorial page.
+/// MusicBrainz linking its album to a Discogs master makes the two one card
+/// carrying both, MusicBrainz first, each with its own editorial page.
 #[test]
-fn the_same_album_across_sources_merges_into_one_card() {
+fn an_album_musicbrainz_links_to_a_master_is_one_card() {
     let groups = grouped(vec![
         discogs("dg-1", Some("master-7"), Some(2001)),
-        mb("mb-1", Some("group-x"), Some(1992)),
+        linked(mb("mb-1", Some("group-x"), Some(1992)), "master-7"),
     ]);
     assert_eq!(groups.len(), 1);
     // The Discogs bucket was seen first, so the card sits at its position
@@ -161,42 +175,112 @@ fn the_same_album_across_sources_merges_into_one_card() {
     assert_eq!(groups[0].year_max, Some(2001));
 }
 
+/// The case the grouping is for: the two catalogs credit the artist
+/// differently, one Discogs release credits it as MusicBrainz does, and no
+/// pressing pairs. MusicBrainz's link makes them one card, whichever order
+/// the results arrive in; without it, identical text is no reason to join.
 #[test]
-fn different_titles_across_sources_stay_apart() {
-    let mut other = discogs("dg-1", Some("master-7"), None);
-    other.title = "Another Album".to_string();
-    let groups = grouped(vec![mb("mb-1", Some("group-x"), None), other]);
+fn a_linked_album_is_one_card_whatever_the_artist_text_and_the_order() {
+    let group = "0f5d2a51-8c1e-4b7a-9e3d-6a2b4c8d1e7f";
+    let master = "510001";
+    let musicbrainz = |release_id: &str, year: i32| {
+        let mut release = linked(mb(release_id, Some(group), Some(year)), master);
+        release.title = "Album".to_string();
+        release.artist = Some("Artist".to_string());
+        release
+    };
+    let discogs_release = |release_id: &str, year: i32, artist: &str| {
+        let mut release = discogs(release_id, Some(master), Some(year));
+        release.title = "Album".to_string();
+        release.artist = Some(artist.to_string());
+        release
+    };
+    let results = vec![
+        musicbrainz("a1b2c3d4-0000-4000-8000-000000000001", 1965),
+        discogs_release("1001", 1965, "The Artists*"),
+        musicbrainz("a1b2c3d4-0000-4000-8000-000000000002", 1970),
+        discogs_release("1002", 1974, "Artist"),
+    ];
+    let mut reversed = results.clone();
+    reversed.reverse();
+
+    for order in [results.clone(), reversed] {
+        let groups = grouped(order);
+        assert_eq!(groups.len(), 1, "{groups:?}");
+        assert_eq!(groups[0].id, group);
+        assert_eq!(groups[0].sources.len(), 2);
+        let mut rows = lead_ids(&groups[0]);
+        rows.sort();
+        assert_eq!(
+            rows,
+            vec![
+                vec!["1001"],
+                vec!["1002"],
+                vec!["a1b2c3d4-0000-4000-8000-000000000001"],
+                vec!["a1b2c3d4-0000-4000-8000-000000000002"],
+            ]
+        );
+    }
+
+    let unlinked: Vec<MetadataResult> = results
+        .into_iter()
+        .map(|mut release| {
+            release.album_links = AlbumLinks::NotAsked;
+            release
+        })
+        .collect();
+    assert_eq!(grouped(unlinked).len(), 2);
+}
+
+/// Albums nothing links are two cards, however alike their text: the text is
+/// no reason to join them.
+#[test]
+fn albums_nothing_links_are_two_cards_whatever_their_text() {
+    let groups = grouped(vec![
+        mb("mb-1", Some("group-x"), None),
+        discogs("dg-1", Some("master-7"), None),
+    ]);
+    assert_eq!(groups.len(), 2);
+
+    // A group whose page could not be read links nothing either.
+    let mut unread = mb("mb-2", Some("group-y"), None);
+    unread.album_links = AlbumLinks::Unread;
+    let groups = grouped(vec![unread, discogs("dg-2", Some("master-8"), None)]);
     assert_eq!(groups.len(), 2);
 }
 
-/// Casing and punctuation differences in the title are not different
-/// albums; a different artist is.
+/// Everything the links connect is one card: two MusicBrainz albums that both
+/// link one master are one card with it.
 #[test]
-fn the_album_key_ignores_case_and_edge_punctuation() {
-    let mut other = discogs("dg-1", Some("master-7"), None);
-    other.title = "  album title!".to_string();
-    let groups = grouped(vec![mb("mb-1", Some("group-x"), None), other]);
+fn everything_the_links_connect_is_one_card() {
+    let groups = grouped(vec![
+        linked(mb("mb-1", Some("group-x"), None), "master-7"),
+        discogs("dg-1", Some("master-7"), None),
+        linked(mb("mb-2", Some("group-y"), None), "master-7"),
+    ]);
     assert_eq!(groups.len(), 1);
-
-    let mut different_artist = discogs("dg-2", Some("master-8"), None);
-    different_artist.artist = Some("Other Artist".to_string());
-    let groups = grouped(vec![mb("mb-2", Some("group-y"), None), different_artist]);
-    assert_eq!(groups.len(), 2);
+    assert_eq!(
+        groups[0]
+            .sources
+            .iter()
+            .map(|source| source.source)
+            .collect::<Vec<_>>(),
+        vec![Catalog::MusicBrainz, Catalog::MusicBrainz, Catalog::Discogs]
+    );
 }
 
-/// A named artist and no artist at all are not the same album as far as the
-/// text goes; where no pair says otherwise, the cards stay apart.
+/// A link joins the album it names and no other: a second master with the
+/// same text stays its own card.
 #[test]
-fn an_absent_artist_matches_only_an_absent_artist() {
-    let mut anonymous = discogs("dg-1", Some("master-7"), None);
-    anonymous.artist = None;
-    let groups = grouped(vec![mb("mb-1", Some("group-x"), None), anonymous.clone()]);
+fn a_link_joins_only_the_album_it_names() {
+    let groups = grouped(vec![
+        linked(mb("mb-1", Some("group-x"), None), "master-7"),
+        discogs("dg-1", Some("master-7"), None),
+        discogs("dg-2", Some("master-8"), None),
+    ]);
     assert_eq!(groups.len(), 2);
-
-    let mut also_anonymous = mb("mb-2", Some("group-y"), None);
-    also_anonymous.artist = None;
-    let groups = grouped(vec![also_anonymous, anonymous]);
-    assert_eq!(groups.len(), 1);
+    assert_eq!(groups[0].sources.len(), 2);
+    assert_eq!(groups[1].id, "master-8");
 }
 
 /// An artist one source spells differently, or leaves out, does not keep two
@@ -282,17 +366,17 @@ fn a_stated_link_names_the_record_that_stands_for_its_catalog() {
     );
 }
 
-/// The two sources' groups are one album when their text agrees, and that
-/// merge invents no pressing correspondence: two rows, one per source.
+/// A link makes the two catalogs' albums one card and invents no pressing
+/// correspondence: two rows, one per source.
 #[test]
-fn a_text_merge_combines_the_album_without_pairing_pressings() {
+fn a_link_combines_the_album_without_pairing_pressings() {
     let groups = grouped(vec![
-        mb("mb-1", Some("group-x"), Some(1992)),
+        linked(mb("mb-1", Some("group-x"), Some(1992)), "master-7"),
         discogs("dg-1", Some("master-7"), Some(1992)),
     ]);
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0].sources.len(), 2);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]]);
+    assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 }
 
 /// Different labels as written are inconclusive, so the barcode pair stands;
@@ -319,7 +403,7 @@ fn label_spelling_neither_blocks_nor_fabricates_identity() {
     other.catalog_number = Some("CAT-7".to_string());
     other.label = Some("Label Name".to_string());
     let groups = grouped(vec![one, other]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-2"], vec!["dg-2"]]);
+    assert_eq!(rows(&groups), vec![vec!["mb-2"], vec!["dg-2"]]);
 }
 
 /// A barcode in a different but equivalent representation, or a country as
@@ -351,7 +435,7 @@ fn equivalent_representations_pair_and_distinct_identifiers_do_not() {
     other.barcodes = vec!["12345678".to_string()];
     other.catalog_number = Some("CAT-7 2".to_string());
     let groups = grouped(vec![one, other]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-2"], vec!["dg-2"]]);
+    assert_eq!(rows(&groups), vec![vec!["mb-2"], vec!["dg-2"]]);
 }
 
 /// A different country or a different year is a contradiction that an
@@ -366,18 +450,18 @@ fn meaningful_conflicts_prevent_inferred_pairs() {
     other.barcodes = vec!["012345678905".to_string()];
     other.country = Some("Germany".to_string());
     let groups = grouped(vec![one.clone(), other.clone()]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]]);
+    assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 
     other.country = Some("United States".to_string());
     other.year = Some(1993);
     let groups = grouped(vec![one.clone(), other.clone()]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]]);
+    assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 
     other.year = Some(1992);
     one.media = StatedMedia::PerMedium(vec![Some("CD".to_string())]);
     other.media = StatedMedia::Descriptors(vec!["Vinyl".to_string(), "LP".to_string()]);
     let groups = grouped(vec![one, other]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]]);
+    assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 }
 
 /// A release issued as files is not the CD it was cut from, however much
@@ -400,7 +484,7 @@ fn a_file_release_is_not_the_cd_whose_catalog_number_it_carries() {
         "Reissue".to_string(),
     ]);
     let groups = grouped(vec![cd, download]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]]);
+    assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 }
 
 /// Reissues repeat a pressing's codes. Where the year tells the records
@@ -492,20 +576,6 @@ fn pairs_join_groups_and_leave_the_rest_apart() {
     assert_eq!(lead_ids(&groups[1]), vec![vec!["mb-1", "dg-1"]]);
 }
 
-/// Only one bucket per source merges into a card: a second Discogs master
-/// with the same title stays its own card rather than joining.
-#[test]
-fn each_bucket_merges_at_most_once() {
-    let groups = grouped(vec![
-        mb("mb-1", Some("group-x"), None),
-        discogs("dg-1", Some("master-7"), None),
-        discogs("dg-2", Some("master-8"), None),
-    ]);
-    assert_eq!(groups.len(), 2);
-    assert_eq!(groups[0].sources.len(), 2);
-    assert_eq!(groups[1].sources.len(), 1);
-}
-
 /// A row paired across both sources is picked whole: the lead is the
 /// document the draft is read from, and the other source's record of the
 /// same pressing rides along as a partner.
@@ -566,7 +636,7 @@ fn releases_sharing_a_catalog_number_are_not_one_pressing() {
     other.label = Some("Label Name".to_string());
 
     let groups = grouped(vec![one, other]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]]);
+    assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 }
 
 /// A catalog number with nothing else stated pairs nothing either.
@@ -578,7 +648,7 @@ fn a_catalog_number_alone_pairs_nothing() {
     other.catalog_number = Some("CAT-7".to_string());
 
     let groups = grouped(vec![one, other]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]]);
+    assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 }
 
 /// A catalog number the two sources share cannot pair records whose barcodes
@@ -593,7 +663,7 @@ fn a_shared_catalog_number_cannot_bypass_incompatible_barcodes() {
     other.barcodes = vec!["5051961234567".to_string()];
 
     let groups = grouped(vec![one, other]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]]);
+    assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 }
 
 /// The album title is spelled with a colon on one source and a dash on the
@@ -660,7 +730,7 @@ fn a_barcode_pair_outranks_a_catalog_pair_for_the_same_release() {
 #[test]
 fn unpaired_releases_are_single_source_pressings() {
     let groups = grouped(vec![
-        mb("mb-1", Some("group-x"), Some(1992)),
+        linked(mb("mb-1", Some("group-x"), Some(1992)), "master-7"),
         discogs("dg-1", Some("master-7"), Some(2001)),
     ]);
     assert_eq!(
@@ -733,7 +803,7 @@ fn a_merged_card_prefers_the_musicbrainz_cover() {
         label: Catalog::Discogs.cover_source_label().to_string(),
         source: Catalog::Discogs,
     });
-    let mut mb_covered = mb("mb-1", Some("group-x"), Some(1992));
+    let mut mb_covered = linked(mb("mb-1", Some("group-x"), Some(1992)), "master-7");
     mb_covered.cover_art = Some(cover());
 
     let groups = grouped(vec![discogs_covered, mb_covered]);
@@ -741,8 +811,8 @@ fn a_merged_card_prefers_the_musicbrainz_cover() {
 }
 
 /// Two results carrying the same `source_group_id` string but different
-/// sources are still bucketed apart; only the album key merges them, and
-/// here the titles differ.
+/// sources are still bucketed apart: only a link joins them, and none is
+/// stated here.
 #[test]
 fn the_same_group_id_across_sources_does_not_collide() {
     let mut one = mb("rel-mb", Some("shared-id"), Some(2001));

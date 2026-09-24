@@ -96,6 +96,22 @@ impl ImportServiceHandle {
                     candidate_key,
                     source.as_str()
                 );
+                return;
+            }
+            // What landed may put the other catalog's releases beside
+            // MusicBrainz's, whose album links then join the two.
+            let groups = runtime.start_reading_album_links(&candidate_key, run);
+            if groups.is_empty() {
+                return;
+            }
+            let read = library_manager
+                .read_album_links(&groups, CallPriority::Interactive)
+                .await;
+            if !runtime.land_album_links(&candidate_key, run, read) {
+                debug!(
+                    "{}'s album links landed on no run; it was cleared or superseded",
+                    candidate_key
+                );
             }
         });
     }

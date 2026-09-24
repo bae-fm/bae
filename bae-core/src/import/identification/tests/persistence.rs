@@ -97,6 +97,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                 links: Vec::new(),
                 cover_art: None,
                 source_group_id: Some(group_id.to_string()),
+                album_links: crate::import::album_links::AlbumLinks::NotAsked,
                 source_tracks: None,
             })
             .collect(),
@@ -246,6 +247,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
             text: Default::default(),
             text_settled: false,
             track_count: 0,
+            album_links: crate::identify::state::AlbumLinkReading::Pending,
         },
     };
     fixture

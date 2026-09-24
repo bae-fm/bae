@@ -7,6 +7,7 @@
 
 use super::*;
 use crate::identify::{IdentifyFailure, IdentifyRunView, LookupProvenance, TerminalVerdict};
+use crate::import::album_links::AlbumLinks;
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks, StatedMedia};
 use crate::import::{Catalog, MetadataRef};
@@ -231,6 +232,11 @@ fn insert_match(
         Some(SourceTracks::Nothing) => (Some("nothing"), None),
         Some(SourceTracks::Listed { count }) => (Some("listed"), Some(i64::from(*count))),
     };
+    let album_links_kind = match &result.album_links {
+        AlbumLinks::NotAsked => ALBUM_LINKS_NOT_ASKED,
+        AlbumLinks::Read(_) => ALBUM_LINKS_READ,
+        AlbumLinks::Unread => ALBUM_LINKS_UNREAD,
+    };
     let (media_kind, media_entries): (&str, Vec<Option<&str>>) = match &result.media {
         StatedMedia::Undescribed => (MEDIA_UNDESCRIBED, Vec::new()),
         StatedMedia::PerMedium(entries) => (
@@ -246,9 +252,9 @@ fn insert_match(
         "INSERT INTO import_candidate_match \
              (content_hash, position, pressing, source, release_id, title, artist, year, format, \
               label, catalog_number, country, media_kind, cover_url, cover_thumbnail_url, \
-              cover_label, cover_source, source_group_id, source_tracks_kind, \
+              cover_label, cover_source, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, by_disc_id, by_barcode, by_catalog, by_search, narrowed_out) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -268,6 +274,7 @@ fn insert_match(
             cover.map(|cover| cover.label.as_str()),
             cover.map(|cover| cover.source.as_str()),
             result.source_group_id,
+            album_links_kind,
             tracks_kind,
             tracks_count,
             provenance.by_disc_id,
@@ -311,6 +318,20 @@ fn insert_match(
             ],
         )?;
     }
+    for (ordinal, link) in result.album_links.named().iter().enumerate() {
+        sql.execute(
+            "INSERT INTO import_candidate_match_album_link \
+                 (content_hash, position, ordinal, catalog, key) \
+             VALUES (?, ?, ?, ?, ?)",
+            params![
+                content_hash,
+                position,
+                ordinal_column(ordinal)?,
+                link.catalog.as_str(),
+                link.key
+            ],
+        )?;
+    }
     Ok(())
 }
 
@@ -318,6 +339,11 @@ fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
     i64::try_from(ordinal)
         .map_err(|_| DbError::Message("a match's list is longer than SQLite counts".to_string()))
 }
+
+/// The stored `album_links` values, one per [`AlbumLinks`] shape.
+const ALBUM_LINKS_NOT_ASKED: &str = "not_asked";
+const ALBUM_LINKS_READ: &str = "read";
+const ALBUM_LINKS_UNREAD: &str = "unread";
 
 /// The stored `media_kind` values, one per [`StatedMedia`] shape.
 pub(super) const MEDIA_UNDESCRIBED: &str = "undescribed";
@@ -334,6 +360,8 @@ pub(super) struct MatchEntries {
     /// silently reinterpreted.
     pub(super) media: Vec<(String, Option<String>)>,
     pub(super) links: Vec<(String, String)>,
+    /// The album link rows, for a match whose album links were read.
+    pub(super) album_links: Vec<(String, String)>,
 }
 
 /// One stored release of a verdict: what the lookup returned, which lookups
@@ -371,6 +399,9 @@ pub(super) struct MatchColumns {
     pub(super) position: i64,
     pressing: i64,
     media_kind: String,
+    /// The stored `album_links` value; [`match_of`] reads it with the album
+    /// link rows.
+    album_links: String,
     /// The result with its list fields still empty; [`match_of`] fills them.
     result: MetadataResult,
     provenance: LookupProvenance,
@@ -387,6 +418,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         position,
         pressing,
         media_kind,
+        album_links: album_links_kind,
         mut result,
         provenance,
         narrowed_out,
@@ -395,6 +427,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         barcodes,
         media,
         links,
+        album_links,
     } = entries;
     let mismatch = |what: &str| {
         DbError::Message(format!(
@@ -429,6 +462,23 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         .into_iter()
         .map(|(catalog, key)| Ok(MetadataRef::new(source_of(&catalog)?, key)))
         .collect::<Result<_, DbError>>()?;
+    result.album_links = match album_links_kind.as_str() {
+        ALBUM_LINKS_READ => AlbumLinks::Read(
+            album_links
+                .into_iter()
+                .map(|(catalog, key)| Ok(MetadataRef::new(source_of(&catalog)?, key)))
+                .collect::<Result<_, DbError>>()?,
+        ),
+        ALBUM_LINKS_NOT_ASKED | ALBUM_LINKS_UNREAD if !album_links.is_empty() => {
+            return Err(DbError::Message(format!(
+                "match {position} of {content_hash} holds album link rows but its album links \
+                 are {album_links_kind}"
+            )))
+        }
+        ALBUM_LINKS_NOT_ASKED => AlbumLinks::NotAsked,
+        ALBUM_LINKS_UNREAD => AlbumLinks::Unread,
+        other => return Err(unreadable("album_links", other)),
+    };
     let row = u32::try_from(pressing).map_err(|_| {
         DbError::Message(format!(
             "match {position} of {content_hash} names pressing row {pressing}"
@@ -488,6 +538,7 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
         position: row.get("position")?,
         pressing,
         media_kind: row.get("media_kind")?,
+        album_links: row.get("album_links")?,
         result: MetadataResult {
             source: source_of(&source)?,
             release_id: row.get("release_id")?,
@@ -503,6 +554,7 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
             links: Vec::new(),
             cover_art,
             source_group_id: row.get("source_group_id")?,
+            album_links: AlbumLinks::NotAsked,
             source_tracks,
         },
         provenance: LookupProvenance {

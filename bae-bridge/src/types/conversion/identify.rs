@@ -26,6 +26,8 @@ impl BridgeMetadataResult {
             // fed is already the row.
             media: _,
             links: _,
+            // Which cards the albums join is already the grouping's answer.
+            album_links: _,
         } = r;
         BridgeMetadataResult {
             source: BridgeCatalog::from_core(source),
@@ -631,6 +633,7 @@ mod tests {
                 text: Default::default(),
                 text_settled: true,
                 track_count: 9,
+                album_links: bae_core::identify::state::AlbumLinkReading::Pending,
             },
         }
     }

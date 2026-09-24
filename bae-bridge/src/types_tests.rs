@@ -45,6 +45,7 @@ mod triage_tests {
             text: Default::default(),
             text_settled: true,
             track_count: 9,
+            album_links: bae_core::identify::state::AlbumLinkReading::Pending,
         };
         let live = IdentifyState::ManualOnly {
             track_count: 9,

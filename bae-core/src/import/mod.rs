@@ -1,6 +1,7 @@
 // Gated with its two callers (`handle` and `service`), which the mobile builds
 // leave out — the import editor is desktop-only.
 desktop_only! {
+    pub mod album_links;
     mod artist_assignments;
     mod assemble;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

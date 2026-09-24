@@ -5,6 +5,7 @@
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::import::cover_art::RemoteCover;
 use crate::import::parse_year;
+use crate::import::album_links::AlbumLinks;
 use crate::import::types::{parse_catalog_url, Catalog, CatalogPage, MetadataRef};
 use crate::import::ImportError;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
@@ -44,6 +45,9 @@ pub struct MetadataResult {
     pub links: Vec<MetadataRef>,
     pub cover_art: Option<RemoteCover>,
     pub source_group_id: Option<String>,
+    /// The albums on the other lookup catalog this record's catalog names as
+    /// its album — what puts two catalogs' albums on one card.
+    pub album_links: AlbumLinks,
     /// What the source says about this release's own tracklist — the other half
     /// of the Ready rule, which admits a single match only when the source's
     /// track count agrees with the candidate's.
@@ -84,6 +88,9 @@ impl MetadataResult {
             links: detail.links.clone(),
             cover_art: detail.default_cover().cloned(),
             source_group_id: detail.source_group_id.clone(),
+            // One release a person chose is the whole list; there is no other
+            // catalog's album on it to join.
+            album_links: AlbumLinks::NotAsked,
             source_tracks: Some(SourceTracks::Listed {
                 count: detail.track_count,
             }),
@@ -132,6 +139,7 @@ impl MetadataResult {
             links: Vec::new(),
             cover_art: None,
             source_group_id: source_group_id.map(str::to_string),
+            album_links: AlbumLinks::NotAsked,
             source_tracks: None,
         }
     }
@@ -243,6 +251,8 @@ pub fn discogs_search_result_to_metadata(
         links: Vec::new(),
         cover_art,
         source_group_id,
+        // A Discogs document names no counterpart on another catalog.
+        album_links: AlbumLinks::NotAsked,
         // The Discogs search response describes no tracklist; a Discogs result
         // gets one only from a paid `get_release`.
         source_tracks: None,
@@ -320,6 +330,9 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         links,
         cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),
+        // Read from the group's own document once the list it lands on holds
+        // the other catalog's releases too.
+        album_links: AlbumLinks::NotAsked,
         source_tracks,
     })
 }
@@ -378,6 +391,9 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
         links: Vec::new(),
         cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),
+        // Read from the group's own document once the list it lands on holds
+        // the other catalog's releases too.
+        album_links: AlbumLinks::NotAsked,
         source_tracks: None,
     }
 }

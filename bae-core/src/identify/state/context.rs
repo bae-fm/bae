@@ -24,6 +24,7 @@ use super::{
 };
 use crate::identify::agreements::CandidateText;
 use crate::identify::IdentifyFailure;
+use crate::import::album_links::{self, GroupLinks};
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
     ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextSignal,
@@ -422,6 +423,21 @@ pub struct SignalsContext {
     pub text_settled: bool,
     /// The candidate's local track count.
     pub track_count: u32,
+    /// The links between the MusicBrainz albums the run found and the other
+    /// catalog's, read once every lookup has settled.
+    pub album_links: AlbumLinkReading,
+}
+
+/// Where a run is with the album links of what its lookups returned.
+#[derive(Clone, Debug, PartialEq)]
+pub enum AlbumLinkReading {
+    /// Not started: a lookup is still out, so what the run found is not final.
+    Pending,
+    /// The links of these groups are being read.
+    Reading,
+    /// Read, group by group — empty when what the run found held nothing to
+    /// join.
+    Read(Vec<GroupLinks>),
 }
 
 impl Default for SignalsContext {
@@ -440,6 +456,7 @@ impl Default for SignalsContext {
             text: CandidateText::default(),
             text_settled: false,
             track_count: 0,
+            album_links: AlbumLinkReading::Pending,
         }
     }
 }
@@ -513,6 +530,31 @@ impl SignalsContext {
     /// all is decided from what they recorded.
     pub(super) fn record_search(&mut self, search: &SearchProgress) {
         self.search.record(search);
+    }
+
+    /// What every lookup the current selection still uses returned, each
+    /// release with what was read about its album's links — the four sets
+    /// combine takes, in its order.
+    pub(super) fn lookup_results(&self) -> [Vec<(MetadataResult, LibraryStatus)>; 4] {
+        let read: &[GroupLinks] = match &self.album_links {
+            AlbumLinkReading::Read(read) => read,
+            AlbumLinkReading::Pending | AlbumLinkReading::Reading => &[],
+        };
+        [
+            self.disc.results.clone(),
+            self.barcode.results.clone(),
+            self.catalog.active_results(),
+            self.search.results.clone(),
+        ]
+        .map(|results| {
+            results
+                .into_iter()
+                .map(|(mut result, status)| {
+                    album_links::apply(&mut result, read);
+                    (result, status)
+                })
+                .collect()
+        })
     }
 
     /// Failures belonging to evidence the current selection still uses.

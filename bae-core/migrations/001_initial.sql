@@ -1283,6 +1283,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     cover_label         TEXT,
     cover_source        TEXT CHECK (cover_source IS NULL OR cover_source IN ('musicbrainz', 'discogs')),
     source_group_id     TEXT,
+    -- What the record's catalog says its album is on the other lookup catalog.
+    -- 'not_asked': never read. 'read': the album page was read, and names the
+    -- album link rows it has. 'unread': the page could not be read.
+    album_links         TEXT NOT NULL CHECK (album_links IN ('not_asked', 'read', 'unread')),
     -- NULL: nobody asked the source for its tracklist yet. 'listed' /
     -- 'nothing': asked.
     source_tracks_kind  TEXT CHECK (source_tracks_kind IS NULL OR source_tracks_kind IN ('listed', 'nothing')),
@@ -1321,6 +1325,20 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_barcode (
 
 -- Every other catalog entry a matched record links to.
 CREATE TABLE IF NOT EXISTS import_candidate_match_link (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL,
+    ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
+    catalog      TEXT NOT NULL CHECK (catalog <> ''),
+    key          TEXT NOT NULL CHECK (key <> ''),
+    PRIMARY KEY (content_hash, position, ordinal),
+    FOREIGN KEY (content_hash, position)
+        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE
+) STRICT;
+
+-- Every other catalog's album a matched record's catalog names as its album —
+-- the Discogs masters a MusicBrainz release group links — for a match whose
+-- album_links is 'read'.
+CREATE TABLE IF NOT EXISTS import_candidate_match_album_link (
     content_hash TEXT NOT NULL,
     position     INTEGER NOT NULL,
     ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),

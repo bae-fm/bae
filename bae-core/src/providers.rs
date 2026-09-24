@@ -118,6 +118,14 @@ impl Providers {
         crate::import::search::search_mb(&self.musicbrainz, params, priority).await
     }
 
+    pub(crate) async fn read_album_links(
+        &self,
+        groups: &[String],
+        priority: CallPriority,
+    ) -> Vec<crate::import::album_links::GroupLinks> {
+        crate::import::album_links::read(&self.musicbrainz, groups, priority).await
+    }
+
     pub(crate) async fn lookup_musicbrainz_discid(
         &self,
         discid: &str,

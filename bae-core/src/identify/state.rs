@@ -14,8 +14,10 @@
 //! claim: an exact code beats a name, so a name is only asked when no code
 //! answered.
 //!
-//! Once every step settles, the reducer hands their results to `combine` and
-//! lands on `Found`, `NotFoundAnywhere`, or `Failed`.
+//! Once every step settles, and what they found holds both catalogs'
+//! releases, the run reads its MusicBrainz albums' links to Discogs masters —
+//! what puts the two catalogs' albums on one card. Then the reducer hands the
+//! results to `combine` and lands on `Found`, `NotFoundAnywhere`, or `Failed`.
 //!
 //! Settling also records the run's ledger — the layout every surface has been
 //! drawing while it ran — onto the terminal state, so what the run showed
@@ -28,6 +30,7 @@ use super::combine::{combine_results, CombineOutcome, LookupProvenance, Narrowed
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
 use crate::db::LibraryStatus;
+use crate::import::album_links::{self, GroupLinks};
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
@@ -339,6 +342,12 @@ pub enum IdentifyEvent {
         source: Catalog,
         outcome: LookupOutcome,
     },
+
+    /// The album links of the groups `Effect::ReadAlbumLinks` named, each
+    /// read or unread.
+    AlbumLinksRead {
+        read: Vec<GroupLinks>,
+    },
 }
 
 /// The side effects the service performs — the provider lookups, one per
@@ -363,6 +372,11 @@ pub enum Effect {
     SearchTitle {
         source: Catalog,
         query: TitleSearch,
+    },
+    /// Read these MusicBrainz release groups' links to the other catalog's
+    /// albums.
+    ReadAlbumLinks {
+        groups: Vec<String>,
     },
 }
 
@@ -580,6 +594,27 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             })
         }
 
+        // ── The album links, read once every lookup settled ────────────
+        (
+            IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                search,
+                mut context,
+            },
+            IdentifyEvent::AlbumLinksRead { read },
+        ) if context.album_links == AlbumLinkReading::Reading => {
+            context.album_links = AlbumLinkReading::Read(read);
+            settle_if_ready(IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                search,
+                context,
+            })
+        }
+
         // An event Triangulating doesn't act on — a stale barcode response, say.
         (state @ IdentifyState::Triangulating { .. }, _) => (state, vec![]),
 
@@ -762,6 +797,47 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     };
     context.record_search(&search);
 
+    // Every lookup is in, so what the run found is final: read its
+    // MusicBrainz albums' links when it holds both catalogs' releases, and
+    // settle once they are read.
+    match context.album_links {
+        AlbumLinkReading::Pending => {
+            let found = context.lookup_results();
+            let groups = album_links::groups_to_read(
+                found.iter().flatten().map(|(result, _)| result),
+                |_| false,
+            );
+            if groups.is_empty() {
+                context.album_links = AlbumLinkReading::Read(Vec::new());
+            } else {
+                context.album_links = AlbumLinkReading::Reading;
+                return (
+                    IdentifyState::Triangulating {
+                        discid,
+                        barcode,
+                        catalog,
+                        search,
+                        context,
+                    },
+                    vec![Effect::ReadAlbumLinks { groups }],
+                );
+            }
+        }
+        AlbumLinkReading::Reading => {
+            return (
+                IdentifyState::Triangulating {
+                    discid,
+                    barcode,
+                    catalog,
+                    search,
+                    context,
+                },
+                vec![],
+            )
+        }
+        AlbumLinkReading::Read(_) => {}
+    }
+
     // The ledger this run showed, as its last frame showed it: the same
     // layout the driver has been publishing, with every lookup now settled.
     // It is computed here and nowhere else — every later reader shows what
@@ -801,11 +877,13 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
     // invalidates what the others found, and a failed state that hid those
     // matches would leave a person looking at an empty pane while one source
     // had the answer.
+    let [discid_results, barcode_results, catalog_results, search_results] =
+        context.lookup_results();
     let outcome = combine_results(
-        context.disc.results.clone(),
-        context.barcode.results.clone(),
-        context.catalog.active_results(),
-        context.search.results.clone(),
+        discid_results,
+        barcode_results,
+        catalog_results,
+        search_results,
         &context.text,
     );
     let (matches, library_statuses, provenance, pressings, narrowed_out) = match outcome {
@@ -864,8 +942,8 @@ mod context;
 mod progress;
 
 pub use context::{
-    BarcodeEvidence, CatalogEvidence, ChosenCatalog, DiscIdEvidence, SearchEvidence,
-    SignalsContext, TitleSearch,
+    AlbumLinkReading, BarcodeEvidence, CatalogEvidence, ChosenCatalog, DiscIdEvidence,
+    SearchEvidence, SignalsContext, TitleSearch,
 };
 use progress::{
     barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,

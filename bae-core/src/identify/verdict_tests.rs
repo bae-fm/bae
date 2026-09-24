@@ -29,6 +29,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
         text: Default::default(),
         text_settled: true,
         track_count,
+        album_links: crate::identify::state::AlbumLinkReading::Pending,
     }
 }
 

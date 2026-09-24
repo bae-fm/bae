@@ -22,6 +22,7 @@ fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResu
         links: Vec::new(),
         cover_art: None,
         source_group_id: Some("rg-1".to_string()),
+        album_links: crate::import::album_links::AlbumLinks::NotAsked,
         source_tracks,
     }
 }

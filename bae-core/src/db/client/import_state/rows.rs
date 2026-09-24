@@ -201,7 +201,8 @@ const STATE_COLUMNS: &str = "content_hash, folder_path, edit_revision, metadata_
 
 const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_id, title, artist, \
      year, format, label, catalog_number, country, media_kind, cover_url, cover_thumbnail_url, \
-     cover_label, cover_source, source_group_id, source_tracks_kind, source_tracks_count, \
+     cover_label, cover_source, source_group_id, album_links, source_tracks_kind, \
+     source_tracks_count, \
      by_disc_id, by_barcode, by_catalog, by_search, narrowed_out";
 
 const FILE_EDIT_COLUMNS: &str =
@@ -279,6 +280,20 @@ pub(crate) fn load_matches_rows_on(
             ))
         },
     )?;
+    let album_links = sql.query(
+        "SELECT content_hash, position, catalog, key FROM import_candidate_match_album_link \
+         WHERE :only IS NULL OR content_hash = :only \
+         ORDER BY content_hash, position, ordinal",
+        named_params! { ":only": only },
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        },
+    )?;
     Ok(move || {
         let mut entries: HashMap<(String, i64), MatchEntries> = HashMap::new();
         for (content_hash, position, barcode) in barcodes {
@@ -300,6 +315,13 @@ pub(crate) fn load_matches_rows_on(
                 .entry((content_hash, position))
                 .or_default()
                 .links
+                .push((catalog, key));
+        }
+        for (content_hash, position, catalog, key) in album_links {
+            entries
+                .entry((content_hash, position))
+                .or_default()
+                .album_links
                 .push((catalog, key));
         }
         let mut matches: HashMap<String, StoredMatches> = HashMap::new();

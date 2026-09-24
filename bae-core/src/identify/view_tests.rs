@@ -1,8 +1,8 @@
 use super::*;
 use crate::db::LibraryStatus;
 use crate::identify::state::{
-    step, BarcodeEvidence, BarcodeLookupState, CatalogEvidence, ChosenCatalog, DiscIdEvidence,
-    IdentifyEvent, ProviderBarcodeLookup, ProviderLookup, SearchEvidence, SearchProgress,
+    step, BarcodeEvidence, BarcodeLookupState, ChosenCatalog, DiscIdEvidence, IdentifyEvent,
+    ProviderBarcodeLookup, ProviderLookup, SearchProgress,
 };
 use crate::identify::{IdentifyFailure, TerminalVerdict};
 use crate::import::release_group::unranked;
@@ -33,11 +33,9 @@ fn context() -> SignalsContext {
             had_source: true,
             ..Default::default()
         },
-        catalog: CatalogEvidence::default(),
-        search: SearchEvidence::default(),
-        text: Default::default(),
         text_settled: true,
         track_count: 9,
+        ..SignalsContext::default()
     }
 }
 

@@ -61,6 +61,7 @@ fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
         text: Default::default(),
         text_settled: true,
         track_count,
+        album_links: crate::identify::state::AlbumLinkReading::Pending,
     }
 }
 
@@ -720,6 +721,7 @@ fn search_result(
             links: Vec::new(),
             cover_art: None,
             source_group_id: None,
+            album_links: crate::import::album_links::AlbumLinks::NotAsked,
             source_tracks: None,
         },
         LibraryStatus::absent(release_id),

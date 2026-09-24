@@ -347,6 +347,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
             links: Vec::new(),
             cover_art: None,
             source_group_id: Some("rg-1".to_string()),
+            album_links: crate::import::album_links::AlbumLinks::NotAsked,
             source_tracks: source,
         }],
         track_count,
