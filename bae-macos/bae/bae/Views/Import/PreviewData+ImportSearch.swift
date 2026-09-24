@@ -92,7 +92,9 @@
             ],
             yearMin: 1988,
             yearMax: 1996,
-            pressings: exactPressings
+            sections: [
+                BridgePressingSection(album: nil, pressings: exactPressings)
+            ]
         )
 
         static let searchGroupExact = ReleaseGroup(
@@ -138,51 +140,56 @@
                 ],
                 yearMin: 1996,
                 yearMax: 1996,
-                pressings: [
-                    BridgePressing(
-                        releases: [
-                            BridgeMetadataResult(
-                                source: .musicBrainz,
-                                releaseId: "rel-aaa",
-                                year: 1996,
-                                format: "CD",
-                                label: "Label Name",
-                                catalogNumber: "6006-2",
-                                country: "US",
-                                barcodes: ["0123456789012"],
-                                sourceGroupId: "grp-1"
-                            )
-                        ],
-                        pick: .externalRelease(
-                            record: BridgeMetadataRef(
-                                catalog: .musicBrainz,
-                                key: "rel-aaa"
+                sections: [
+                    BridgePressingSection(
+                        album: nil,
+                        pressings: [
+                            BridgePressing(
+                                releases: [
+                                    BridgeMetadataResult(
+                                        source: .musicBrainz,
+                                        releaseId: "rel-aaa",
+                                        year: 1996,
+                                        format: "CD",
+                                        label: "Label Name",
+                                        catalogNumber: "6006-2",
+                                        country: "US",
+                                        barcodes: ["0123456789012"],
+                                        sourceGroupId: "grp-1"
+                                    )
+                                ],
+                                pick: .externalRelease(
+                                    record: BridgeMetadataRef(
+                                        catalog: .musicBrainz,
+                                        key: "rel-aaa"
+                                    ),
+                                    partners: []
+                                )
                             ),
-                            partners: []
-                        )
-                    ),
-                    BridgePressing(
-                        releases: [
-                            BridgeMetadataResult(
-                                source: .musicBrainz,
-                                releaseId: "rel-bbb",
-                                year: 1996,
-                                format: "CD",
-                                label: "Another Label",
-                                catalogNumber: "AL-1234",
-                                country: "JP",
-                                barcodes: [],
-                                sourceGroupId: "grp-1"
-                            )
-                        ],
-                        pick: .externalRelease(
-                            record: BridgeMetadataRef(
-                                catalog: .musicBrainz,
-                                key: "rel-bbb"
+                            BridgePressing(
+                                releases: [
+                                    BridgeMetadataResult(
+                                        source: .musicBrainz,
+                                        releaseId: "rel-bbb",
+                                        year: 1996,
+                                        format: "CD",
+                                        label: "Another Label",
+                                        catalogNumber: "AL-1234",
+                                        country: "JP",
+                                        barcodes: [],
+                                        sourceGroupId: "grp-1"
+                                    )
+                                ],
+                                pick: .externalRelease(
+                                    record: BridgeMetadataRef(
+                                        catalog: .musicBrainz,
+                                        key: "rel-bbb"
+                                    ),
+                                    partners: []
+                                )
                             ),
-                            partners: []
-                        )
-                    ),
+                        ]
+                    )
                 ]
             ),
             BridgeReleaseGroup(
@@ -204,44 +211,50 @@
                 ],
                 yearMin: 2005,
                 yearMax: 2005,
-                pressings: [
-                    BridgePressing(
-                        releases: [
-                            BridgeMetadataResult(
-                                source: .musicBrainz,
-                                releaseId: "rel-ccc",
-                                year: 2005,
-                                format: "CD",
-                                label: "Reissue Records",
-                                catalogNumber: "RR-500",
-                                country: "EU",
-                                barcodes: ["0123456789029"],
-                                sourceGroupId: "grp-2"
-                            ),
-                            BridgeMetadataResult(
-                                source: .discogs,
-                                releaseId: "rel-ddd",
-                                year: 2005,
-                                format: "CD, Album, Reissue, Remastered",
-                                label: "Reissue Records",
-                                catalogNumber: "RR-500",
-                                country: "EU",
-                                barcodes: ["0123456789029"],
-                                sourceGroupId: "master-7"
-                            ),
-                        ],
-                        pick: .externalRelease(
-                            record: BridgeMetadataRef(
-                                catalog: .musicBrainz,
-                                key: "rel-ccc"
-                            ),
-                            partners: [
-                                BridgeMetadataRef(
-                                    catalog: .discogs,
-                                    key: "rel-ddd"
+                sections: [
+                    BridgePressingSection(
+                        album: nil,
+                        pressings: [
+                            BridgePressing(
+                                releases: [
+                                    BridgeMetadataResult(
+                                        source: .musicBrainz,
+                                        releaseId: "rel-ccc",
+                                        year: 2005,
+                                        format: "CD",
+                                        label: "Reissue Records",
+                                        catalogNumber: "RR-500",
+                                        country: "EU",
+                                        barcodes: ["0123456789029"],
+                                        sourceGroupId: "grp-2"
+                                    ),
+                                    BridgeMetadataResult(
+                                        source: .discogs,
+                                        releaseId: "rel-ddd",
+                                        year: 2005,
+                                        format:
+                                            "CD, Album, Reissue, Remastered",
+                                        label: "Reissue Records",
+                                        catalogNumber: "RR-500",
+                                        country: "EU",
+                                        barcodes: ["0123456789029"],
+                                        sourceGroupId: "master-7"
+                                    ),
+                                ],
+                                pick: .externalRelease(
+                                    record: BridgeMetadataRef(
+                                        catalog: .musicBrainz,
+                                        key: "rel-ccc"
+                                    ),
+                                    partners: [
+                                        BridgeMetadataRef(
+                                            catalog: .discogs,
+                                            key: "rel-ddd"
+                                        )
+                                    ]
                                 )
-                            ]
-                        )
+                            )
+                        ]
                     )
                 ]
             ),
@@ -266,28 +279,33 @@
             ],
             yearMin: 1996,
             yearMax: 1996,
-            pressings: [
-                BridgePressing(
-                    releases: [
-                        BridgeMetadataResult(
-                            source: .musicBrainz,
-                            releaseId: "rel-disc-1",
-                            year: 1996,
-                            format: "CD",
-                            label: "Label A",
-                            catalogNumber: "AAA-001",
-                            country: "US",
-                            barcodes: [],
-                            sourceGroupId: "group-disc"
+            sections: [
+                BridgePressingSection(
+                    album: nil,
+                    pressings: [
+                        BridgePressing(
+                            releases: [
+                                BridgeMetadataResult(
+                                    source: .musicBrainz,
+                                    releaseId: "rel-disc-1",
+                                    year: 1996,
+                                    format: "CD",
+                                    label: "Label A",
+                                    catalogNumber: "AAA-001",
+                                    country: "US",
+                                    barcodes: [],
+                                    sourceGroupId: "group-disc"
+                                )
+                            ],
+                            pick: .externalRelease(
+                                record: BridgeMetadataRef(
+                                    catalog: .musicBrainz,
+                                    key: "rel-disc-1"
+                                ),
+                                partners: []
+                            )
                         )
-                    ],
-                    pick: .externalRelease(
-                        record: BridgeMetadataRef(
-                            catalog: .musicBrainz,
-                            key: "rel-disc-1"
-                        ),
-                        partners: []
-                    )
+                    ]
                 )
             ]
         )
@@ -306,28 +324,33 @@
             ],
             yearMin: 2001,
             yearMax: 2001,
-            pressings: [
-                BridgePressing(
-                    releases: [
-                        BridgeMetadataResult(
-                            source: .musicBrainz,
-                            releaseId: "rel-bar-1",
-                            year: 2001,
-                            format: "CD",
-                            label: "Label B",
-                            catalogNumber: "BBB-002",
-                            country: "JP",
-                            barcodes: [],
-                            sourceGroupId: "group-bar"
+            sections: [
+                BridgePressingSection(
+                    album: nil,
+                    pressings: [
+                        BridgePressing(
+                            releases: [
+                                BridgeMetadataResult(
+                                    source: .musicBrainz,
+                                    releaseId: "rel-bar-1",
+                                    year: 2001,
+                                    format: "CD",
+                                    label: "Label B",
+                                    catalogNumber: "BBB-002",
+                                    country: "JP",
+                                    barcodes: [],
+                                    sourceGroupId: "group-bar"
+                                )
+                            ],
+                            pick: .externalRelease(
+                                record: BridgeMetadataRef(
+                                    catalog: .musicBrainz,
+                                    key: "rel-bar-1"
+                                ),
+                                partners: []
+                            )
                         )
-                    ],
-                    pick: .externalRelease(
-                        record: BridgeMetadataRef(
-                            catalog: .musicBrainz,
-                            key: "rel-bar-1"
-                        ),
-                        partners: []
-                    )
+                    ]
                 )
             ]
         )
@@ -706,7 +729,12 @@
                             sources: searchGroupExactBridge.sources,
                             yearMin: 1996,
                             yearMax: 1996,
-                            pressings: [exactPressings[1]]
+                            sections: [
+                                BridgePressingSection(
+                                    album: nil,
+                                    pressings: [exactPressings[1]]
+                                )
+                            ]
                         )
                     )
                 ],

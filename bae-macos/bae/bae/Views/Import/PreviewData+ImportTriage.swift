@@ -142,7 +142,12 @@
                 ],
                 yearMin: 1994,
                 yearMax: 1994,
-                pressings: [exactPressings[0]]
+                sections: [
+                    BridgePressingSection(
+                        album: nil,
+                        pressings: [exactPressings[0]]
+                    )
+                ]
             )
         )
 

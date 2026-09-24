@@ -78,6 +78,25 @@ struct ReleaseGroupListContent<Trailing: View>: View {
     }
 }
 
+/// The album a section of a card's rows are pressings of: its own title, and
+/// its catalog's name opening its page there.
+struct AlbumSectionHeading: View {
+    let album: BridgeAlbumHeading
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(album.title)
+                .font(.system(size: 11.5, weight: .semibold))
+                .lineLimit(1)
+                .truncationMode(.tail)
+            AlbumSourceLink(source: album.source)
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 2)
+        .padding(.leading, 8)
+    }
+}
+
 /// A line closing a result list: what is not in it, and why. Sits where the
 /// next group would be, in the same indent as the pressing rows.
 struct MissingSourceNote: View {
@@ -113,24 +132,32 @@ struct ReleaseGroupSection: View {
     }
 
     /// The group's pressing rows, indented under a hairline rule that ties them
-    /// to the card above.
+    /// to the card above — album by album, each under its own heading, where
+    /// the card holds more than one album of a catalog.
     private var pressings: some View {
         HStack(spacing: 0) {
             Rectangle()
                 .fill(Theme.hairline)
                 .frame(width: 1)
-            VStack(spacing: 1) {
-                ForEach(group.pressings) { pressing in
-                    ImportSearchResultRow(
-                        pressing: pressing,
-                        isImporting: isImporting,
-                        libraryStatus: libraryStatuses[pressing.id],
-                        agreements: agreements[pressing.id],
-                        isSelected: isSelected(pressing),
-                        isLoading: isLoading(pressing),
-                        failure: releaseSelectionFailure,
-                        onSelect: onSelect,
-                    )
+            VStack(alignment: .leading, spacing: 1) {
+                ForEach(Array(group.sections.enumerated()), id: \.offset) {
+                    _,
+                    section in
+                    if let album = section.album {
+                        AlbumSectionHeading(album: album)
+                    }
+                    ForEach(section.pressings) { pressing in
+                        ImportSearchResultRow(
+                            pressing: pressing,
+                            isImporting: isImporting,
+                            libraryStatus: libraryStatuses[pressing.id],
+                            agreements: agreements[pressing.id],
+                            isSelected: isSelected(pressing),
+                            isLoading: isLoading(pressing),
+                            failure: releaseSelectionFailure,
+                            onSelect: onSelect,
+                        )
+                    }
                 }
             }
             .padding(.leading, 6)

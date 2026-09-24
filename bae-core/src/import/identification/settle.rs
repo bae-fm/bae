@@ -319,7 +319,7 @@ fn sole_pressing(
     let judged = crate::identify::judged_results(matches.to_vec(), provenance, text);
     let mut rows = crate::import::release_group::group_formed_rows(judged, pressings)
         .into_iter()
-        .flat_map(|group| group.pressings);
+        .flat_map(crate::import::release_group::ReleaseGroup::into_pressings);
     let only = rows.next()?;
     rows.next().is_none().then_some(only)
 }

@@ -213,7 +213,8 @@ internal sealed partial class ImportMappingPane : UserControl
                 + "|"
                 + string.Join(
                     ",",
-                    search.Groups.SelectMany(group => group.Pressings
+                    search.Groups.SelectMany(group => group.Sections
+                        .SelectMany(section => section.Pressings)
                         .Select(pressing => pressing.Releases[0].ReleaseId)));
 
     private static string SourceSearchTag(BridgeSourceSearch state) => state switch

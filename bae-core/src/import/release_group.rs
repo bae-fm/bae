@@ -60,7 +60,44 @@ pub struct ReleaseGroup {
     /// Both `None` when no pressing carries a year.
     pub year_min: Option<i32>,
     pub year_max: Option<i32>,
+    /// The card's pressing rows, album by album. A card holding one album of
+    /// each catalog at most is one section with no heading. A card holding
+    /// two albums of one catalog — two MusicBrainz groups a link or a pressing
+    /// joined, or two Discogs masters — splits its rows into one section per
+    /// album, each headed by that album, so what joined them can be seen and
+    /// a wrong link told apart.
+    pub sections: Vec<PressingSection>,
+}
+
+impl ReleaseGroup {
+    /// Every pressing row on the card, section by section.
+    pub fn pressings(&self) -> impl Iterator<Item = &Pressing> {
+        self.sections.iter().flat_map(|section| &section.pressings)
+    }
+
+    /// Every pressing row on the card, section by section, taken out of it.
+    pub fn into_pressings(self) -> impl Iterator<Item = Pressing> {
+        self.sections
+            .into_iter()
+            .flat_map(|section| section.pressings)
+    }
+}
+
+/// One album's rows on a card.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct PressingSection {
+    /// The album the rows are pressings of, where the card splits its rows by
+    /// album; `None` where it does not.
+    pub album: Option<AlbumHeading>,
     pub pressings: Vec<Pressing>,
+}
+
+/// An album heading a card's section: its own title as its catalog states
+/// it, and its page there.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct AlbumHeading {
+    pub title: String,
+    pub source: ReleaseGroupSource,
 }
 
 /// One source carrying a group, and where its editorial page for it is.
@@ -281,7 +318,7 @@ pub fn form_rows(results: &[MetadataResult]) -> Vec<u32> {
         std::collections::HashMap::new();
     for (row, pressing) in group_results(unranked(results.to_vec()))
         .iter()
-        .flat_map(|card| &card.pressings)
+        .flat_map(ReleaseGroup::pressings)
         .enumerate()
     {
         for release in &pressing.releases {
@@ -317,7 +354,7 @@ pub(crate) fn pressing_count(results: Vec<MetadataResult>) -> usize {
     // Counting is order-blind, so there is nothing to rank the rows by.
     group_results(unranked(results))
         .iter()
-        .map(|group| group.pressings.len())
+        .map(|group| group.pressings().count())
         .sum()
 }
 
@@ -607,6 +644,10 @@ fn merge_buckets(
 /// The card, and how much the candidate's text agrees with its best row —
 /// what orders the cards against each other.
 ///
+/// Where the card splits its rows by album, a row sits under the album of
+/// its first record in the order surfaces list sources in: a MusicBrainz
+/// album's, where the row has a MusicBrainz record.
+///
 /// Takes the card's releases out of `releases`: each lands on exactly one
 /// card.
 fn build_group(
@@ -642,15 +683,37 @@ fn build_group(
     let year_min = years.iter().min().copied();
     let year_max = years.iter().max().copied();
 
-    let mut rows: Vec<Row> = Vec::with_capacity(members.len());
+    let splits = card.iter().enumerate().any(|(at, bucket)| {
+        card[at + 1..]
+            .iter()
+            .any(|other| other.source == bucket.source)
+    });
+    let headings: Vec<AlbumHeading> = card
+        .iter()
+        .map(|bucket| AlbumHeading {
+            title: read(bucket.members[0]).title.clone(),
+            source: bucket.as_source(),
+        })
+        .collect();
+    // Which of the card's buckets holds each release. The buckets are in
+    // source order, so a row's lowest bucket is its first record's album.
+    let bucket_of = |release: usize| -> usize {
+        card.iter()
+            .position(|bucket| bucket.members.contains(&release))
+            .expect("a card's releases are its buckets' members")
+    };
+
+    let mut rows: Vec<(usize, Row)> = Vec::with_capacity(members.len());
     for at in members {
         let Some(release) = releases[at].take() else {
             // Already taken as another record of its pressing.
             continue;
         };
         let mut records = vec![release];
+        let mut album = bucket_of(at);
         if let Some(pressing) = pressings.iter().find(|pressing| pressing.contains(&at)) {
             for &other in pressing.iter().filter(|&&other| other != at) {
+                album = album.min(bucket_of(other));
                 records.push(
                     releases[other]
                         .take()
@@ -659,13 +722,40 @@ fn build_group(
             }
         }
         let pressing = Pressing::of(records, judgements);
-        rows.push(Row {
-            agreements: pressing.agreements(judgements).count(),
-            pressing,
-        });
+        rows.push((
+            album,
+            Row {
+                agreements: pressing.agreements(judgements).count(),
+                pressing,
+            },
+        ));
     }
-    let rows = ordered_rows(rows);
-    let best = rows.first().map_or(0, |row| row.agreements);
+    let best = rows.iter().map(|(_, row)| row.agreements).max().unwrap_or(0);
+    let sections = if splits {
+        headings
+            .into_iter()
+            .enumerate()
+            .filter_map(|(album, heading)| {
+                let rows: Vec<Row> = rows
+                    .iter()
+                    .filter(|(home, _)| *home == album)
+                    .map(|(_, row)| row.clone())
+                    .collect();
+                (!rows.is_empty()).then(|| PressingSection {
+                    album: Some(heading),
+                    pressings: ordered_rows(rows).into_iter().map(|row| row.pressing).collect(),
+                })
+            })
+            .collect()
+    } else {
+        vec![PressingSection {
+            album: None,
+            pressings: ordered_rows(rows.into_iter().map(|(_, row)| row).collect())
+                .into_iter()
+                .map(|row| row.pressing)
+                .collect(),
+        }]
+    };
 
     (
         ReleaseGroup {
@@ -677,7 +767,7 @@ fn build_group(
             sources,
             year_min,
             year_max,
-            pressings: rows.into_iter().map(|row| row.pressing).collect(),
+            sections,
         },
         best,
     )
@@ -685,6 +775,7 @@ fn build_group(
 
 /// One pressing row and how much of the candidate's text agrees with it — its
 /// records' agreements together, since the row is picked whole.
+#[derive(Clone)]
 struct Row {
     pressing: Pressing,
     agreements: u32,

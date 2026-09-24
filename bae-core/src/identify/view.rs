@@ -515,7 +515,7 @@ fn fold_matches(
     let groups = group_formed_rows(judged, pressings);
     let keyed = groups
         .iter()
-        .flat_map(|group| &group.pressings)
+        .flat_map(ReleaseGroup::pressings)
         .flat_map(|pressing| {
             let agreements = pressing.agreements(&judgements);
             pressing
@@ -949,7 +949,7 @@ fn found_or_no_match(results: &LookupResults) -> LookupView {
     LookupView::Found {
         count: groups
             .iter()
-            .map(|group| group.pressings.len() as u32)
+            .map(|group| group.pressings().count() as u32)
             .sum(),
         groups,
     }
@@ -958,3 +958,7 @@ fn found_or_no_match(results: &LookupResults) -> LookupView {
 #[cfg(test)]
 #[path = "view_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "view/catalog_chip_tests.rs"]
+mod catalog_chip_tests;

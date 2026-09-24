@@ -415,7 +415,26 @@ pub struct AutomationReleaseGroup {
     pub sources: Vec<AutomationReleaseGroupSource>,
     pub year_min: Option<i32>,
     pub year_max: Option<i32>,
+    /// The card's rows, album by album: one section with no heading, or one
+    /// per album where the card holds two albums of one catalog.
+    pub sections: Vec<AutomationPressingSection>,
+}
+
+/// One album's rows on a card.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationPressingSection {
+    /// The album the rows are pressings of, where the card splits its rows by
+    /// album.
+    pub album: Option<AutomationAlbumHeading>,
     pub pressings: Vec<AutomationPressing>,
+}
+
+/// An album heading a card's section: its own title, and its page on its
+/// catalog.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationAlbumHeading {
+    pub title: String,
+    pub source: AutomationReleaseGroupSource,
 }
 
 /// One source carrying a group, and its editorial page for it.

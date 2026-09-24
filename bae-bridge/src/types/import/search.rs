@@ -68,10 +68,31 @@ pub struct BridgeReleaseGroup {
     /// sources in.
     pub sources: Vec<BridgeReleaseGroupSource>,
     /// Earliest and latest pressing year for the UI's "1992 – 2012" span; both
-    /// `None` when no pressing carries a year. Pressing count is `pressings.len()`.
+    /// `None` when no pressing carries a year.
     pub year_min: Option<i32>,
     pub year_max: Option<i32>,
+    /// The card's pressing rows, album by album: one section with no heading,
+    /// or — where the card holds two albums of one catalog — one section per
+    /// album, headed by it.
+    pub sections: Vec<BridgePressingSection>,
+}
+
+/// One album's rows on a card. Mirrors
+/// `bae_core::import::release_group::PressingSection`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgePressingSection {
+    /// The album the rows are pressings of, where the card splits its rows by
+    /// album.
+    pub album: Option<BridgeAlbumHeading>,
     pub pressings: Vec<BridgePressing>,
+}
+
+/// An album heading a card's section: its own title, and its page on its
+/// catalog.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeAlbumHeading {
+    pub title: String,
+    pub source: BridgeReleaseGroupSource,
 }
 
 /// One source carrying a group, and its editorial page for it.

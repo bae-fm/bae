@@ -108,9 +108,9 @@ fn discogs_search_result_keeps_every_barcode_for_pairing() {
             discogs,
         ]));
     assert_eq!(groups.len(), 1);
-    assert_eq!(groups[0].pressings.len(), 1);
+    assert_eq!(groups[0].pressings().count(), 1);
     assert_eq!(
-        groups[0].pressings[0]
+        groups[0].sections[0].pressings[0]
             .releases
             .iter()
             .map(|release| release.release_id.as_str())

@@ -299,8 +299,23 @@ mirror_struct! {
         sources: (each AutomationReleaseGroupSource),
         year_min,
         year_max,
+        sections: (each AutomationPressingSection),
+    },
+}
+
+mirror_struct! {
+    AutomationPressingSection = bae_core::import::release_group::PressingSection,
+    from_core: pub(crate) fn,
+    fields: {
+        album: (opt AutomationAlbumHeading),
         pressings: (each AutomationPressing),
     },
+}
+
+mirror_struct! {
+    AutomationAlbumHeading = bae_core::import::release_group::AlbumHeading,
+    from_core: pub(crate) fn,
+    fields: { title, source: (AutomationReleaseGroupSource) },
 }
 
 impl AutomationMetadataResult {

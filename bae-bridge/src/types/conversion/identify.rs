@@ -348,7 +348,7 @@ impl BridgeReleaseGroup {
             sources,
             year_min,
             year_max,
-            pressings,
+            sections,
         } = g;
         BridgeReleaseGroup {
             id,
@@ -362,16 +362,41 @@ impl BridgeReleaseGroup {
                 .collect(),
             year_min,
             year_max,
+            sections: sections
+                .into_iter()
+                .map(BridgePressingSection::from_core)
+                .collect(),
+        }
+    }
+}
+
+impl BridgePressingSection {
+    fn from_core(section: bae_core::import::release_group::PressingSection) -> Self {
+        let bae_core::import::release_group::PressingSection { album, pressings } = section;
+        BridgePressingSection {
+            album: album.map(BridgeAlbumHeading::from_core),
             pressings: pressings
                 .into_iter()
-                .map(|pressing| BridgePressing {
-                    pick: crate::types::BridgeMetadataProvenance::from_core(pressing.pick()),
-                    releases: pressing
-                        .releases
-                        .into_iter()
-                        .map(BridgeMetadataResult::from_core)
-                        .collect(),
-                })
+                .map(BridgePressing::from_core)
+                .collect(),
+        }
+    }
+}
+
+mirror_struct! {
+    BridgeAlbumHeading = bae_core::import::release_group::AlbumHeading,
+    from_core: fn,
+    fields: { title, source: (BridgeReleaseGroupSource) },
+}
+
+impl BridgePressing {
+    fn from_core(pressing: bae_core::import::release_group::Pressing) -> Self {
+        BridgePressing {
+            pick: crate::types::BridgeMetadataProvenance::from_core(pressing.pick()),
+            releases: pressing
+                .releases
+                .into_iter()
+                .map(BridgeMetadataResult::from_core)
                 .collect(),
         }
     }

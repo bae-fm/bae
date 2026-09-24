@@ -499,7 +499,7 @@ fn rows(
     let judgements = Judgements::of(&judged);
     crate::import::release_group::group_formed_rows(judged, pressings)
         .into_iter()
-        .flat_map(|group| group.pressings)
+        .flat_map(crate::import::release_group::ReleaseGroup::into_pressings)
         .map(|pressing| {
             let agreements = pressing.agreements(&judgements);
             (pressing, agreements)

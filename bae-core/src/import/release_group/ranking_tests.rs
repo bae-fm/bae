@@ -219,7 +219,7 @@ fn the_record_the_text_says_most_about_leads_its_pressing() {
 
     assert_eq!(lead_ids(&groups[0]), vec![vec!["dg-1", "mb-1"]]);
     assert_eq!(
-        groups[0].pressings[0].pick(),
+        groups[0].sections[0].pressings[0].pick(),
         crate::import::MetadataProvenance::ExternalRelease {
             record: crate::import::MetadataRef::new(Catalog::Discogs, "dg-1".to_string()),
             partners: vec![crate::import::MetadataRef::new(

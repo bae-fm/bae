@@ -662,28 +662,33 @@ struct ImportSearchFlowLibraryStatusTests {
                         ],
                         yearMin: 2000,
                         yearMax: 2000,
-                        pressings: [
-                            BridgePressing(
-                                releases: [
-                                    BridgeMetadataResult(
-                                        source: .musicBrainz,
-                                        releaseId: "rel-live",
-                                        year: 2000,
-                                        format: "CD",
-                                        label: nil,
-                                        catalogNumber: nil,
-                                        country: nil,
-                                        barcodes: [],
-                                        sourceGroupId: "group-live"
+                        sections: [
+                            BridgePressingSection(
+                                album: nil,
+                                pressings: [
+                                    BridgePressing(
+                                        releases: [
+                                            BridgeMetadataResult(
+                                                source: .musicBrainz,
+                                                releaseId: "rel-live",
+                                                year: 2000,
+                                                format: "CD",
+                                                label: nil,
+                                                catalogNumber: nil,
+                                                country: nil,
+                                                barcodes: [],
+                                                sourceGroupId: "group-live"
+                                            )
+                                        ],
+                                        pick: .externalRelease(
+                                            record: BridgeMetadataRef(
+                                                catalog: .musicBrainz,
+                                                key: "rel-live"
+                                            ),
+                                            partners: []
+                                        )
                                     )
-                                ],
-                                pick: .externalRelease(
-                                    record: BridgeMetadataRef(
-                                        catalog: .musicBrainz,
-                                        key: "rel-live"
-                                    ),
-                                    partners: []
-                                )
+                                ]
                             )
                         ]
                     )

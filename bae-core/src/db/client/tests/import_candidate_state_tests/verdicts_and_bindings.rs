@@ -266,8 +266,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     );
     assert_eq!(
         live[0]
-            .pressings
-            .iter()
+            .pressings()
             .map(|pressing| pressing.releases.len())
             .collect::<Vec<_>>(),
         vec![2, 1],

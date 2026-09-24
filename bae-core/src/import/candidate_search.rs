@@ -566,7 +566,7 @@ mod tests {
             Some(&SourceSearch::Searching)
         );
         assert_eq!(search.groups.len(), 1);
-        assert_eq!(search.groups[0].pressings.len(), 1);
+        assert_eq!(search.groups[0].pressings().count(), 1);
         assert_eq!(search.library_statuses.len(), 1);
     }
 
@@ -587,7 +587,7 @@ mod tests {
         assert_eq!(search.groups.len(), 1);
         assert_eq!(search.groups[0].sources.len(), 2);
         assert_eq!(
-            search.groups[0].pressings[0]
+            search.groups[0].sections[0].pressings[0]
                 .releases
                 .iter()
                 .map(|release| release.release_id.as_str())
@@ -663,7 +663,7 @@ mod tests {
             answer(Catalog::Discogs, "dg-2", "master-8"),
         );
         assert_eq!(search.groups.len(), 1);
-        assert_eq!(search.groups[0].pressings[0].lead().release_id, "dg-1");
+        assert_eq!(search.groups[0].sections[0].pressings[0].lead().release_id, "dg-1");
     }
 
     /// A retry puts the failed source back to looking, and only then does its
@@ -678,7 +678,7 @@ mod tests {
             answer(Catalog::Discogs, "dg-2", "master-8"),
         );
         assert_eq!(search.groups.len(), 1);
-        assert_eq!(search.groups[0].pressings[0].lead().release_id, "dg-2");
+        assert_eq!(search.groups[0].sections[0].pressings[0].lead().release_id, "dg-2");
     }
 
     /// Switching a source off mid-search closes its part and takes its results

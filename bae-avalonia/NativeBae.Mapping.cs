@@ -294,7 +294,7 @@ internal static partial class NativeBae
         {
             BridgeIdentifyState.Idle => new ImportCandidateRowStatus { Kind = string.Empty },
             BridgeIdentifyState.Triangulating => new ImportCandidateRowStatus { Kind = "identifying" },
-            BridgeIdentifyState.Found found => new ImportCandidateRowStatus { Kind = "found", Count = found.Groups.Sum(group => group.Pressings.Length) },
+            BridgeIdentifyState.Found found => new ImportCandidateRowStatus { Kind = "found", Count = found.Groups.Sum(group => group.Sections.Sum(section => section.Pressings.Length)) },
             BridgeIdentifyState.NotFoundAnywhere => new ImportCandidateRowStatus { Kind = "not_found" },
             BridgeIdentifyState.ManualOnly => new ImportCandidateRowStatus { Kind = "manual" },
             BridgeIdentifyState.Failed => new ImportCandidateRowStatus { Kind = "failed" },
@@ -318,7 +318,8 @@ internal static partial class NativeBae
     internal static List<ReleaseCandidateChoice> GroupChoices(
         IEnumerable<BridgeReleaseGroup> groups) =>
         groups
-            .SelectMany(group => group.Pressings
+            .SelectMany(group => group.Sections
+                .SelectMany(section => section.Pressings)
                 .Select(pressing => new ReleaseCandidateChoice(group, pressing)))
             .ToList();
 

@@ -35,8 +35,12 @@ struct ReleaseGroupCard: View {
             Spacer(minLength: 8)
 
             HStack(spacing: 10) {
-                ForEach(group.sources, id: \.source) { source in
-                    sourceLink(source)
+                // A card can carry two albums of one catalog, so a source is
+                // told apart by its place rather than its catalog.
+                ForEach(Array(group.sources.enumerated()), id: \.offset) {
+                    _,
+                    source in
+                    AlbumSourceLink(source: source)
                 }
             }
         }
@@ -49,11 +53,14 @@ struct ReleaseGroupCard: View {
             .compactMap { $0 }
             .joined(separator: " \u{00b7} ")
     }
+}
 
-    /// One source's name, opening its editorial page for the album. A source
-    /// that returned the release ungrouped has no page, so its name is text.
-    @ViewBuilder
-    private func sourceLink(_ source: BridgeReleaseGroupSource) -> some View {
+/// One source's name, opening its editorial page for the album. A source that
+/// returned the release ungrouped has no page, so its name is text.
+struct AlbumSourceLink: View {
+    let source: BridgeReleaseGroupSource
+
+    var body: some View {
         let name = bridgeCatalogName(catalog: source.source)
         if let url = source.groupUrl.flatMap(URL.init(string:)) {
             Button {

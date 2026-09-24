@@ -65,8 +65,7 @@ pub(super) fn cover() -> RemoteCover {
 
 pub(super) fn lead_ids(group: &ReleaseGroup) -> Vec<Vec<&str>> {
     group
-        .pressings
-        .iter()
+        .pressings()
         .map(|pressing| {
             pressing
                 .releases
@@ -85,7 +84,7 @@ fn same_group_collapses_into_one_card() {
     ]);
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0].id, "group-x");
-    assert_eq!(groups[0].pressings.len(), 2);
+    assert_eq!(groups[0].pressings().count(), 2);
     assert_eq!(
         groups[0].sources,
         vec![ReleaseGroupSource {
@@ -108,8 +107,8 @@ fn distinct_groups_keep_first_seen_order() {
         groups.iter().map(|g| g.id.as_str()).collect::<Vec<_>>(),
         ["group-b", "group-a"]
     );
-    assert_eq!(groups[0].pressings.len(), 2);
-    assert_eq!(groups[1].pressings.len(), 1);
+    assert_eq!(groups[0].pressings().count(), 2);
+    assert_eq!(groups[1].pressings().count(), 1);
 }
 
 #[test]
@@ -269,6 +268,87 @@ fn everything_the_links_connect_is_one_card() {
     );
 }
 
+/// A card holding two albums of one catalog lists each album's rows under
+/// that album's own title and page, so what joined them can be seen. A row
+/// with a MusicBrainz record sits under its MusicBrainz album; a row only
+/// Discogs lists sits under its master.
+#[test]
+fn a_card_holding_two_albums_of_one_catalog_splits_its_rows_by_album() {
+    let mut paired = linked(mb("mb-1", Some("group-x"), Some(1992)), "master-7");
+    paired.barcodes = vec!["012345678905".to_string()];
+    let mut other_album = linked(mb("mb-2", Some("group-y"), Some(1994)), "master-7");
+    other_album.title = "Album Title (Live)".to_string();
+    let mut paired_discogs = discogs("dg-1", Some("master-7"), Some(1992));
+    paired_discogs.barcodes = vec!["012345678905".to_string()];
+    let discogs_only = discogs("dg-2", Some("master-7"), Some(2001));
+
+    let groups = grouped(vec![discogs_only, other_album, paired_discogs, paired]);
+    assert_eq!(groups.len(), 1);
+    type Heading<'a> = Option<(&'a str, Option<&'a str>)>;
+    let sections: Vec<(Heading, Vec<Vec<&str>>)> = groups[0]
+        .sections
+        .iter()
+        .map(|section| {
+            (
+                section.album.as_ref().map(|album| {
+                    (album.title.as_str(), album.source.group_url.as_deref())
+                }),
+                section
+                    .pressings
+                    .iter()
+                    .map(|pressing| {
+                        pressing
+                            .releases
+                            .iter()
+                            .map(|release| release.release_id.as_str())
+                            .collect()
+                    })
+                    .collect(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        sections,
+        vec![
+            (
+                Some((
+                    "Album Title (Live)",
+                    Some("https://musicbrainz.org/release-group/group-y")
+                )),
+                vec![vec!["mb-2"]],
+            ),
+            (
+                Some((
+                    "Album Title",
+                    Some("https://musicbrainz.org/release-group/group-x")
+                )),
+                vec![vec!["mb-1", "dg-1"]],
+            ),
+            (
+                Some((
+                    "Album Title",
+                    Some("https://www.discogs.com/master/master-7")
+                )),
+                vec![vec!["dg-2"]],
+            ),
+        ]
+    );
+}
+
+/// A card holding one album of each catalog lists its rows as one section
+/// with no heading: the card's own title and pages are the album's.
+#[test]
+fn a_card_holding_one_album_per_catalog_is_one_section() {
+    let groups = grouped(vec![
+        linked(mb("mb-1", Some("group-x"), Some(1992)), "master-7"),
+        discogs("dg-1", Some("master-7"), Some(2001)),
+        mb("mb-2", Some("group-x"), Some(1994)),
+    ]);
+    assert_eq!(groups[0].sections.len(), 1);
+    assert_eq!(groups[0].sections[0].album, None);
+    assert_eq!(groups[0].pressings().count(), 3);
+}
+
 /// A link joins the album it names and no other: a second master with the
 /// same text stays its own card.
 #[test]
@@ -324,7 +404,7 @@ fn a_stated_link_pairs_despite_the_text_and_the_facts() {
     assert_eq!(groups[0].id, "group-x");
     assert_eq!(groups[0].title, "Album Title: Subtitle");
     assert_eq!(
-        groups[0].pressings[0].pick(),
+        groups[0].sections[0].pressings[0].pick(),
         crate::import::MetadataProvenance::ExternalRelease {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
             partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-1")],
@@ -354,7 +434,7 @@ fn a_stated_link_names_the_record_that_stands_for_its_catalog() {
         vec![vec!["mb-1", "dg-linked"], vec!["dg-barcoded"]]
     );
     assert_eq!(
-        groups[0].pressings[0].pick(),
+        groups[0].sections[0].pressings[0].pick(),
         crate::import::MetadataProvenance::ExternalRelease {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
             partners: vec![crate::import::MetadataRef::new(
@@ -588,7 +668,7 @@ fn a_paired_row_is_picked_with_its_partner() {
 
     let groups = grouped(vec![one, other]);
     assert_eq!(
-        groups[0].pressings[0].pick(),
+        groups[0].sections[0].pressings[0].pick(),
         crate::import::MetadataProvenance::ExternalRelease {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
             partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-1")],
@@ -601,7 +681,7 @@ fn a_paired_row_is_picked_with_its_partner() {
 fn a_lone_row_is_picked_with_no_partner() {
     let groups = grouped(vec![discogs("dg-1", Some("master-7"), Some(1992))]);
     assert_eq!(
-        groups[0].pressings[0].pick(),
+        groups[0].sections[0].pressings[0].pick(),
         crate::import::MetadataProvenance::ExternalRelease {
             record: crate::import::MetadataRef::new(Catalog::Discogs, "dg-1".to_string()),
             partners: vec![],
@@ -696,7 +776,7 @@ fn a_title_spelling_difference_does_not_block_a_barcode_pair() {
         pressing_count(
             groups
                 .iter()
-                .flat_map(|group| group.pressings.iter())
+                .flat_map(ReleaseGroup::pressings)
                 .flat_map(|pressing| pressing.releases.clone())
                 .collect()
         ),

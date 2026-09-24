@@ -906,10 +906,15 @@ public sealed class ImportMappingPaneTests
                 1996,
                 new[]
                 {
-                    new BridgePressing(
-                        new[] { release },
-                        new BridgeMetadataProvenance.ExternalRelease(
-                            new BridgeMetadataRef(BridgeCatalog.MusicBrainz, releaseId), [])),
+                    new BridgePressingSection(
+                        null,
+                        new[]
+                        {
+                            new BridgePressing(
+                                new[] { release },
+                                new BridgeMetadataProvenance.ExternalRelease(
+                                    new BridgeMetadataRef(BridgeCatalog.MusicBrainz, releaseId), [])),
+                        }),
                 });
     }
 

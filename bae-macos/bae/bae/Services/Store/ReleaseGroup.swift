@@ -15,8 +15,14 @@ struct ReleaseGroup: Equatable, Identifiable {
     /// Every source carrying this group, in the one order surfaces name
     /// sources in.
     let sources: [BridgeReleaseGroupSource]
-    /// One row per physical pressing, each carrying every source that lists it.
-    let pressings: [Pressing]
+    /// The card's rows, album by album: one section with no heading, or one
+    /// per album where core split a card holding two albums of one catalog.
+    let sections: [PressingSection]
+
+    /// Every row on the card, section by section.
+    var pressings: [Pressing] {
+        sections.flatMap(\.pressings)
+    }
 
     var coverImageContent: ImageContent? {
         coverArt?.coverChoice.thumbnailContent
@@ -29,6 +35,20 @@ struct ReleaseGroup: Equatable, Identifiable {
         label = bridge.label
         coverArt = bridge.coverArt
         sources = bridge.sources
+        sections = bridge.sections.map(PressingSection.init(bridge:))
+    }
+}
+
+/// One album's rows on a card. Mirrors `BridgePressingSection`.
+struct PressingSection: Equatable {
+    /// The album the rows are pressings of, where core split the card's rows
+    /// by album.
+    let album: BridgeAlbumHeading?
+    /// One row per physical pressing, each carrying every source that lists it.
+    let pressings: [Pressing]
+
+    init(bridge: BridgePressingSection) {
+        album = bridge.album
         pressings = bridge.pressings.compactMap(Pressing.init(bridge:))
     }
 }

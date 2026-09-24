@@ -355,7 +355,7 @@ mod identify_mirrors {
         assert_eq!(groups.len(), 1, "both matches share one release group");
         // Two lookups stand behind `rel-2` and one behind `rel-1`, so the
         // rows come back with `rel-2` on top.
-        let pressings = groups[0]["pressings"].as_array().unwrap();
+        let pressings = groups[0]["sections"][0]["pressings"].as_array().unwrap();
         assert_eq!(pressings[0]["releases"][0]["release_id"], "rel-2");
         assert_eq!(pressings[1]["releases"][0]["release_id"], "rel-1");
         // Agreements and statuses are keyed by release id and travel in the
@@ -418,11 +418,11 @@ mod identify_mirrors {
         let groups = json["groups"].as_array().unwrap();
         assert_eq!(groups.len(), 2, "the two releases are two release groups");
         assert_eq!(
-            groups[0]["pressings"][0]["releases"][0]["release_id"],
+            groups[0]["sections"][0]["pressings"][0]["releases"][0]["release_id"],
             "rel-disc"
         );
         assert_eq!(
-            groups[1]["pressings"][0]["releases"][0]["release_id"],
+            groups[1]["sections"][0]["pressings"][0]["releases"][0]["release_id"],
             "rel-bar"
         );
         let agreements = json["agreements"].as_array().unwrap();
@@ -513,7 +513,8 @@ mod identify_mirrors {
         assert_eq!(rows[0]["cells"][1]["lookup"]["kind"], "found");
         assert_eq!(rows[0]["cells"][1]["lookup"]["count"], 1);
         assert_eq!(
-            rows[0]["cells"][1]["lookup"]["groups"][0]["pressings"][0]["releases"][0]["release_id"],
+            rows[0]["cells"][1]["lookup"]["groups"][0]["sections"][0]["pressings"][0]["releases"]
+                [0]["release_id"],
             "rel-dg"
         );
         assert_eq!(rows[1]["value"], "9999999999999");
@@ -524,7 +525,7 @@ mod identify_mirrors {
         let groups = json["groups"].as_array().unwrap();
         assert_eq!(groups.len(), 1);
         assert_eq!(
-            groups[0]["pressings"][0]["releases"][0]["release_id"],
+            groups[0]["sections"][0]["pressings"][0]["releases"][0]["release_id"],
             "rel-dg"
         );
         assert_eq!(json["agreements"][0]["release_id"], "rel-dg");

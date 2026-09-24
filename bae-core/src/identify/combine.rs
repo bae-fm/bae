@@ -27,7 +27,7 @@
 
 use super::agreements::{agreements_of, CandidateText};
 use crate::db::LibraryStatus;
-use crate::import::release_group::{group_results, Judged, Judgements, Pressing};
+use crate::import::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
 use crate::import::search::MetadataResult;
 use crate::import::Catalog;
 use std::collections::{HashMap, HashSet};
@@ -188,7 +188,7 @@ pub fn combine_results(
         .collect();
     let rows: Vec<Pressing> = group_results(judged)
         .into_iter()
-        .flat_map(|group| group.pressings)
+        .flat_map(ReleaseGroup::into_pressings)
         .collect();
     let (offered, set_aside) = split_rows(rows, &judgements, &returned_by);
 
