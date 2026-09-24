@@ -176,14 +176,11 @@ async fn import_list_subscription_delivers_scan_progress_beside_its_last_read() 
     let rescan = db.begin_folder_scan(root).await.unwrap();
 
     let request = list_request(crate::import::TriageTab::Pending, [(0, 50)]);
-    let (_changes, changes) = tokio::sync::broadcast::channel(8);
     let (_outbox, outbox) = tokio::sync::watch::channel(None);
     let subscription = crate::import::ImportListSubscription::start(
         db.subscribe_import_list(request.clone()),
         db.subscribe_folder_scan_progress(),
         request,
-        changes,
-        std::collections::HashMap::new,
         outbox,
         &tokio::runtime::Handle::current(),
     );

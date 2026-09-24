@@ -325,6 +325,9 @@ struct Candidate: Equatable, Identifiable {
     /// read by key alongside the folder. `nil` for a re-identify session,
     /// which has no scanned folder and so no row.
     var row: BridgeTriageRow?
+    /// What is running for this candidate right now and the commands it
+    /// offers with it, read with its row. `nil` for a re-identify session.
+    var live: BridgeCandidateLiveState?
     var libraryStatuses: [String: BridgeLibraryStatus] = [:]
     var libraryStatusSubscriptions:
         [ReleaseLibraryStatusSubscriptionKey: ReleaseLibraryStatusObservation] =
@@ -360,6 +363,9 @@ struct Candidate: Equatable, Identifiable {
     }
 
     var combination: BridgeCombination? { detail?.candidate.combination }
+    /// Where this candidate's import stands for the pane: running now, or
+    /// what the last one left.
+    var importStatus: BridgeCandidateImportStatus? { detail?.importStatus }
     var sourceFileEditsAllowed: Bool {
         detail?.candidate.sourceFileEditsAllowed ?? false
     }
@@ -387,6 +393,7 @@ struct Candidate: Equatable, Identifiable {
             bridge: detail.resumedIdentifyState
         )
         row = detail.row
+        live = detail.live
         self.detail = detail
         session = CandidateSessionState(bridge: detail.session)
         lookupChoices = detail.lookupChoices

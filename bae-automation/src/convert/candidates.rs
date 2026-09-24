@@ -157,20 +157,19 @@ fn automation_candidate_common(
     }
 }
 
-/// The row's import status with the running attempt's progress joined in. Only
-/// `Importing` has any: the other two are what an import left in a table on its
-/// way out.
+/// Where the candidate's import stands: the attempt running now, with its
+/// progress, or else what the last one left in the tables.
 pub(crate) fn automation_import_status(
-    status: Option<&TriageImportStatus>,
+    stored: Option<&TriageImportStatus>,
     in_flight: Option<&ImportInFlight>,
 ) -> Option<AutomationImportStatus> {
-    Some(match status? {
-        TriageImportStatus::Importing => AutomationImportStatus::Importing {
-            progress_percent: in_flight.and_then(|in_flight| in_flight.progress_percent),
-            step: in_flight
-                .and_then(|in_flight| in_flight.step)
-                .map(AutomationImportStep::from_core),
-        },
+    if let Some(in_flight) = in_flight {
+        return Some(AutomationImportStatus::Importing {
+            progress_percent: in_flight.progress_percent,
+            step: in_flight.step.map(AutomationImportStep::from_core),
+        });
+    }
+    Some(match stored? {
         TriageImportStatus::Complete { release } => AutomationImportStatus::Complete {
             release_id: release.release_id.clone(),
             album_id: release.album_id.clone(),

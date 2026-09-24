@@ -391,8 +391,6 @@
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Päivitä uudesta lähteestä</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Säilytä nykyiset metatiedot</value></data>
   <data name="import.tab.skipped" xml:space="preserve"><value>Ohitettu</value></data>
-  <data name="import.candidate.skip" xml:space="preserve"><value>Ohita</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Palauta tuotuihin</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Poista kansio</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Lajittelu ja tarkkaillut kansiot</value></data>
   <data name="import.sort.newest_first" xml:space="preserve"><value>Uusimmat ensin</value></data>
@@ -402,7 +400,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>Odottaa</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Valmis</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Tunnistetaan</value></data>
-  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Siirry ehdokkaaseen, jota vielä tunnistetaan</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} valittu</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Valitse kaikki</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>Poista valinnat</value></data>
@@ -413,8 +410,6 @@
   <data name="import.search.signals" xml:space="preserve"><value>Signaalit</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Epäonnistui</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Valmis</value></data>
-  <data name="import.phase.queued" xml:space="preserve"><value>Odottaa tunnistusta</value></data>
-  <data name="import.phase.running" xml:space="preserve"><value>Tunnistetaan…</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Suodatin…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Lisää kansio…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Täällä ei ole vielä mitään</value></data>

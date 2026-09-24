@@ -366,8 +366,6 @@
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Обновяване от нов източник</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Запазване на текущите метаданни</value></data>
   <data name="import.tab.skipped" xml:space="preserve"><value>Пропуснати</value></data>
-  <data name="import.candidate.skip" xml:space="preserve"><value>Пропускане</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Отмяна на пропускането</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Премахване на папката</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Сортиране и наблюдавани папки</value></data>
   <data name="import.sort.newest_first" xml:space="preserve"><value>Първо най-новите</value></data>
@@ -377,7 +375,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>Чакащи</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Завършени</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Идентифициране</value></data>
-  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Към кандидат, който още се разпознава</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} избрани</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Избиране на всички</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>Изчисти избора</value></data>
@@ -388,8 +385,6 @@
   <data name="import.search.signals" xml:space="preserve"><value>Сигнали</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Неуспешно</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Готово</value></data>
-  <data name="import.phase.queued" xml:space="preserve"><value>Чака идентифициране</value></data>
-  <data name="import.phase.running" xml:space="preserve"><value>Идентифициране…</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Филтриране…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Добавяне на папка…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Още няма нищо</value></data>

@@ -107,7 +107,7 @@ struct ImportMappingPane: View {
             unansweredCount: mapping.unansweredCount,
             readyCheck: candidate.row?.readyCheck,
             candidateKey: candidate.key,
-            importStatus: candidate.row?.importStatus,
+            importStatus: candidate.importStatus,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             actions: commitActions,
@@ -141,7 +141,7 @@ struct ImportMappingPane: View {
     private var banners: some View {
         ImportConfirmationBanners(
             libraryStatus: libraryStatus,
-            importStatus: candidate.row?.importStatus,
+            importStatus: candidate.importStatus,
             error: candidate.error,
             failure: candidate.failure,
             canEdit: candidate.detail?.actionable == true,

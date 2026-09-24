@@ -101,6 +101,10 @@ callbacks! {
     /// the reset does not list reads as that key's removal.
     #[cfg(feature = "desktop")]
     CandidateRuntimeCallback: on_change(change: BridgeCandidateRuntimeChange);
+    /// What is running for one candidate and the commands its row offers with
+    /// it: the value on opening, then one call each time either changes.
+    #[cfg(feature = "desktop")]
+    CandidateLiveStateCallback: on_value(value: BridgeCandidateLiveState);
     #[cfg(feature = "desktop")]
     ReleaseLibraryStatusCallback: on_value(value: BridgeLibraryStatus) + on_error;
 }

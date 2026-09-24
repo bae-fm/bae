@@ -2,20 +2,10 @@
 
 use super::*;
 use crate::db::Database;
-use crate::import::{
-    CandidateRuntimeChange, CandidateRuntimeSnapshot, ImportInFlight, ImportPhase, ImportStep,
-};
-use std::collections::HashMap;
-use std::time::Duration;
-use tokio::sync::broadcast;
 
-/// The subscription, and the runtime stream behind it — held by the caller so
-/// the merge task stays open for as long as the test wants to feed it.
-async fn subscription() -> (
-    ImportListSubscription,
-    broadcast::Sender<CandidateRuntimeChange>,
-    tempfile::TempDir,
-) {
+/// The subscription over an empty queue. Nothing publishes an outbox snapshot
+/// here; these tests are about the request round trip.
+async fn subscription() -> (ImportListSubscription, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().expect("a temp library dir");
     let database = Database::new_test(
         tmp.path()
@@ -29,30 +19,22 @@ async fn subscription() -> (
     .expect("the test database opens");
     let request = ImportListRequest::default();
     let query = database.subscribe_import_list(request.clone());
-    let (changes_tx, changes) = broadcast::channel(8);
-    // Dropping the sender is what the merge task reads as "no more runtime
-    // changes" — the same end it reaches when the import service shuts down.
-    // Nothing publishes an outbox snapshot here, and dropping the sender ends
-    // the upload-standing merge the way library shutdown does. These tests are
-    // about the runtime merge and the request round trip.
     let (_outbox_tx, outbox) = tokio::sync::watch::channel(None);
     let subscription = ImportListSubscription::start(
         query,
         database.subscribe_folder_scan_progress(),
         request,
-        changes,
-        HashMap::new,
         outbox,
         &tokio::runtime::Handle::current(),
     );
-    (subscription, changes_tx, tmp)
+    (subscription, tmp)
 }
 
 /// The windows travel in the request, so asking for one reruns the query and
 /// the value says it was the request that changed.
 #[tokio::test]
 async fn setting_the_windows_reruns_the_query_as_a_request_change() {
-    let (subscription, _changes, _tmp) = subscription().await;
+    let (subscription, _tmp) = subscription().await;
 
     let initial = subscription.next().await.expect("the initial value");
     assert_eq!(initial.cause, coven::ReconfigurableLiveQueryCause::Initial);
@@ -80,7 +62,7 @@ async fn setting_the_windows_reruns_the_query_as_a_request_change() {
 /// the list is gone, not merely quiet.
 #[tokio::test]
 async fn cancelling_refuses_a_later_view_change() {
-    let (subscription, _changes, _tmp) = subscription().await;
+    let (subscription, _tmp) = subscription().await;
     subscription.next().await.expect("the initial value");
 
     subscription.cancel().await;
@@ -93,119 +75,4 @@ async fn cancelling_refuses_a_later_view_change() {
         subscription.next().await,
         Err(ImportListSubscriptionError::Cancelled)
     ));
-}
-
-/// A running import ticks by the second, and none of those ticks moves a fact
-/// a row's placement reads — so the standing request is left alone and the
-/// query does not rerun. Claiming the candidate and the import ending both do
-/// move one, and both rerun it.
-#[tokio::test]
-async fn only_a_change_that_moves_a_placement_reruns_the_query() {
-    let (subscription, changes, _tmp) = subscription().await;
-    let initial = subscription.next().await.expect("the initial value");
-    assert_eq!(initial.request_revision, 0);
-
-    let key = "/music/Release".to_string();
-    let claimed = CandidateRuntimeSnapshot {
-        queued: None,
-        running: None,
-        saving: None,
-        save_failed: None,
-        import: Some(ImportInFlight {
-            progress_percent: None,
-            step: None,
-        }),
-        search: None,
-    };
-    changes
-        .send(CandidateRuntimeChange::Updated {
-            key: key.clone(),
-            runtime: claimed,
-        })
-        .expect("the merge task is listening");
-    let claimed = subscription.next().await.expect("the claim reruns");
-    assert_eq!(
-        claimed.cause,
-        coven::ReconfigurableLiveQueryCause::RequestChanged
-    );
-    assert_eq!(claimed.request_revision, 1);
-
-    // Two ticks of the same import, then the import ending. If a tick had
-    // reconfigured anything, the ending's revision would be past 2.
-    for percent in [40, 80] {
-        changes
-            .send(CandidateRuntimeChange::Updated {
-                key: key.clone(),
-                runtime: CandidateRuntimeSnapshot {
-                    queued: None,
-                    running: None,
-                    saving: None,
-                    save_failed: None,
-                    import: Some(ImportInFlight {
-                        progress_percent: Some(percent),
-                        step: Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
-                    }),
-                    search: None,
-                },
-            })
-            .expect("the merge task is listening");
-    }
-    changes
-        .send(CandidateRuntimeChange::Removed { key })
-        .expect("the merge task is listening");
-
-    let ended = subscription.next().await.expect("the import ending reruns");
-    assert_eq!(
-        ended.cause,
-        coven::ReconfigurableLiveQueryCause::RequestChanged
-    );
-    assert_eq!(ended.request_revision, 2);
-}
-
-/// Runtime changes can arrive faster than the list reads — a batch of runs
-/// moves one key after another while a large queue is still being read. The
-/// list has to keep answering through them: a read that every change restarts
-/// never finishes, and the rows show nothing of the batch until it is over.
-#[tokio::test(flavor = "multi_thread")]
-async fn the_list_keeps_answering_while_runtime_changes_keep_arriving() {
-    let (subscription, changes, _tmp) = subscription().await;
-    subscription.next().await.expect("the initial value");
-
-    let arriving = tokio_util::sync::CancellationToken::new();
-    let stream = tokio::spawn({
-        let arriving = arriving.clone();
-        async move {
-            let key = "/music/Release".to_string();
-            while !arriving.is_cancelled() {
-                for change in [
-                    CandidateRuntimeChange::Updated {
-                        key: key.clone(),
-                        runtime: CandidateRuntimeSnapshot {
-                            queued: Some(crate::import::Admission::Requested),
-                            running: None,
-                            saving: None,
-                            save_failed: None,
-                            import: None,
-                            search: None,
-                        },
-                    },
-                    CandidateRuntimeChange::Removed { key: key.clone() },
-                ] {
-                    changes.send(change).expect("the merge task is listening");
-                    tokio::task::yield_now().await;
-                }
-            }
-        }
-    });
-
-    let answered = tokio::time::timeout(Duration::from_secs(1), subscription.next()).await;
-    arriving.cancel();
-    stream.await.expect("the change stream ends");
-    let answered = answered
-        .expect("the list answers while runtime changes are still arriving")
-        .expect("the list stays open");
-    assert_eq!(
-        answered.cause,
-        coven::ReconfigurableLiveQueryCause::RequestChanged
-    );
 }

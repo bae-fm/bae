@@ -54,7 +54,7 @@ extension ImportView {
         for candidate: Candidate,
         runtime: BridgeCandidateRuntimeSnapshot?
     ) -> some View {
-        switch candidate.row?.importStatus {
+        switch candidate.importStatus {
         case .complete(let releaseId, let albumId):
             let releaseEditor = releaseEditor
             let mappingActions = mappingActions(for: candidate)

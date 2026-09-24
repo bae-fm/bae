@@ -113,7 +113,7 @@ extension ImportSearchFlow {
     /// settled when the import started.
     @MainActor
     static func isImporting(_ candidate: Candidate) -> Bool {
-        switch candidate.row?.importStatus {
+        switch candidate.importStatus {
         case .importing, .complete: return true
         case .error, nil: return false
         }

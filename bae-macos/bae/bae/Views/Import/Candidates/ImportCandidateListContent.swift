@@ -737,20 +737,14 @@ extension ImportCandidateListContent {
 }
 
 extension ImportCandidateListContent {
-    /// Go to the first row the identify count is still waiting on. `nil` when
-    /// there is none to go to.
+    /// Go to the first row the identify count is still waiting on, as core
+    /// finds it when asked.
     private func goToFirstUnidentified(
         using proxy: ScrollViewProxy
-    ) -> (() -> Void)? {
-        summary.firstUnidentified.map { target in
-            {
-                startReveal(using: proxy) {
-                    guard let position = try await listSlot.reveal(target)
-                    else {
-                        return nil
-                    }
-                    return (target.candidateKey, position)
-                }
+    ) -> () -> Void {
+        {
+            startReveal(using: proxy) {
+                try await listSlot.revealFirstIdentifying()
             }
         }
     }

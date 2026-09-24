@@ -88,7 +88,6 @@ internal sealed partial class ImportSectionView : UserControl
     private readonly TextBlock _progressCount = new() { FontSize = 12 };
     private readonly Panel _progressBarHost = new();
     private readonly Button _progressLine;
-    private string? _progressGoToKey;
 
     // Folder scans have no denominator. Their filter-row control stays
     // indeterminate and opens the per-root current-generation counts core
@@ -348,17 +347,6 @@ internal sealed partial class ImportSectionView : UserControl
             BorderThickness = new Thickness(0),
             Padding = new Thickness(0),
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-        };
-        ToolTip.SetTip(line, Loc.Chrome("import.progress.go_to_unidentified"));
-        line.Click += (_, _) =>
-        {
-            if (_progressGoToKey is not { } key)
-            {
-                return;
-            }
-            _progressButton.Flyout?.Hide();
-            _import.SetActiveTab(BridgeTriageTab.Pending);
-            SelectCandidate(key);
         };
         return line;
     }
@@ -620,7 +608,6 @@ internal sealed partial class ImportSectionView : UserControl
         if (_import.IdentificationProgress is not { } progress || progress.Total == 0)
         {
             _progressButton.IsVisible = false;
-            _progressGoToKey = null;
             return;
         }
         _progressButton.IsVisible = true;
@@ -634,8 +621,6 @@ internal sealed partial class ImportSectionView : UserControl
         _progressCount.Text = counted;
         _progressBarHost.Children.Clear();
         _progressBarHost.Children.Add(ImportProgressLine.Bar(fraction));
-        _progressGoToKey = _import.Summary.FirstUnidentified?.CandidateKey;
-        _progressLine.IsEnabled = _progressGoToKey is not null;
     }
 
     private void RenderScanProgressIndicator()

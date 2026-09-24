@@ -89,10 +89,6 @@ internal sealed class ImportService
     { get; init; }
         = (_, _) => throw new InvalidOperationException("ImportService stub: SetFolderReleaseDecision not wired");
 
-    /// <summary>Skip or un-skip a candidate; the import-candidate stream carries
-    /// the updated row.</summary>
-    public Func<string, bool, Task<(bool Current, string? Error)>> SetCandidateSkipped { get; init; }
-        = (_, _) => throw new InvalidOperationException("ImportService stub: SetCandidateSkipped not wired");
 
     /// <summary>Each CUE FILE reference, its current association, and the
     /// audio choices offered or refused by core.</summary>
@@ -272,8 +268,6 @@ internal sealed class ImportService
         SetFolderReleaseDecision = (key, decision) =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.SetFolderReleaseDecision(handle, key, decision)),
-        SetCandidateSkipped = (path, skipped) =>
-            session.RunForCurrentHandle(handle => NativeBae.SetCandidateSkipped(handle, path, skipped)),
         SheetBindingOptions = (candidateKey, sheetFileId) =>
             session.RunForCurrentHandle(handle => NativeBae.SheetBindingOptions(handle, candidateKey, sheetFileId)),
         SetSheetBinding = (candidateKey, sheetFileId, fileReference, audioFileId) =>

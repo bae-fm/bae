@@ -256,7 +256,7 @@ fn import_step_and_phase_serialize_snake_case() {
 #[test]
 fn indeterminate_import_progress_serializes_without_a_fraction() {
     let status = automation_import_status(
-        Some(&TriageImportStatus::Importing),
+        None,
         Some(&ImportInFlight {
             progress_percent: None,
             step: Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)),

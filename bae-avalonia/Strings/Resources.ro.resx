@@ -391,8 +391,6 @@
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Reîmprospătează din sursa nouă</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Păstrează metadatele actuale</value></data>
   <data name="import.tab.skipped" xml:space="preserve"><value>Omis</value></data>
-  <data name="import.candidate.skip" xml:space="preserve"><value>Omite</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Readu în așteptare</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Elimină dosarul</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Sortare și dosare urmărite</value></data>
   <data name="import.sort.newest_first" xml:space="preserve"><value>Cele mai noi întâi</value></data>
@@ -402,7 +400,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>În așteptare</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Gata</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Se identifică</value></data>
-  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Mergi la un candidat aflat încă în identificare</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} selectate</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Selectează tot</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>Deselectează tot</value></data>
@@ -413,8 +410,6 @@
   <data name="import.search.signals" xml:space="preserve"><value>Semnale</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Eșuat</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Gata</value></data>
-  <data name="import.phase.queued" xml:space="preserve"><value>Așteaptă identificarea</value></data>
-  <data name="import.phase.running" xml:space="preserve"><value>Se identifică…</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filtru…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Adaugă un dosar…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Încă nu e nimic aici</value></data>

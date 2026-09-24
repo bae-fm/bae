@@ -30,6 +30,12 @@ RENDER_LEAVES = (
         r"\bstruct\s+TriageRowView\s*:\s*View\b",
     ),
     RenderLeaf(
+        "bae-macos/bae/bae/Views/Import/Candidates/TriageRowView.swift",
+        "TriageRowContent",
+        "swift",
+        r"\bstruct\s+TriageRowContent\s*:\s*View\b",
+    ),
+    RenderLeaf(
         "bae-macos/bae/bae/Views/Library/Grid/AlbumCardView.swift",
         "AlbumCardView",
         "swift",

@@ -179,8 +179,9 @@ struct ImportPreviewDataTests {
             guard case .candidate(_, let row, _) = item else { return nil }
             return row
         }
+        let live = scene.store.selectedCandidates.values.compactMap(\.live)
         #expect(rows.contains { $0.placement == .ready })
-        #expect(rows.contains { $0.placement == .importing })
+        #expect(live.contains { $0.importing })
         #expect(rows.contains { $0.placement == .failed })
         #expect(rows.contains { $0.placement == .done })
         #expect(rows.contains { $0.placement == .skipped })
@@ -207,8 +208,8 @@ struct ImportPreviewDataTests {
             }
         )
         #expect(
-            rows.contains { row in
-                if case .running = row.identification { return true }
+            live.contains { state in
+                if case .running = state.identification { return true }
                 return false
             }
         )

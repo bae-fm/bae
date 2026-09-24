@@ -458,6 +458,14 @@ extension MappingFixtures {
                 metadataProvenance: metadataProvenance,
                 reading: reading
             ),
+            live: BridgeCandidateLiveState(
+                identification: nil,
+                importing: false,
+                actions: (metadataProvenance == nil && edit.albumTitle.isEmpty
+                    ? [] : [.importReady])
+                    + [.identify, .resetToFileMetadata, .clearMetadata, .skip]
+            ),
+            importStatus: nil,
             release: {
                 if case .externalRelease = metadataProvenance {
                     return releaseDetail
@@ -507,10 +515,11 @@ extension MappingFixtures {
             actionable: true,
             placement: undecided ? .pending : .ready,
             readyCheck: nil,
-            identification: nil,
-            skipAction: .skip,
-            actions: (undecided ? [] : [.importReady])
-                + [.identify, .resetToFileMetadata, .clearMetadata, .skip],
+            actionBasis: BridgeCandidateActionBasis(
+                actionable: true,
+                placement: undecided ? .pending : .ready,
+                lookupFailed: false
+            ),
             matched: nil,
             metadataSummary: nil,
             coverThumbnail: nil,

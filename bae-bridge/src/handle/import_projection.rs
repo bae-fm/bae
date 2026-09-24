@@ -166,12 +166,26 @@ impl crate::types::BridgeCandidateRuntimeChange {
 impl crate::types::BridgeTriageImportStatus {
     pub(super) fn from_core(status: bae_core::import::triage::TriageImportStatus) -> Self {
         match status {
-            bae_core::import::triage::TriageImportStatus::Importing => Self::Importing,
             bae_core::import::triage::TriageImportStatus::Complete { release } => Self::Complete {
                 release_id: release.release_id,
                 album_id: release.album_id,
             },
             bae_core::import::triage::TriageImportStatus::Error { error } => Self::Error {
+                error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(error)),
+            },
+        }
+    }
+}
+
+impl crate::types::BridgeCandidateImportStatus {
+    pub(super) fn from_core(status: bae_core::import::CandidateImportStatus) -> Self {
+        match status {
+            bae_core::import::CandidateImportStatus::Importing => Self::Importing,
+            bae_core::import::CandidateImportStatus::Complete { release } => Self::Complete {
+                release_id: release.release_id,
+                album_id: release.album_id,
+            },
+            bae_core::import::CandidateImportStatus::Error { error } => Self::Error {
                 error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(error)),
             },
         }
@@ -195,9 +209,7 @@ impl crate::types::BridgeTriageRow {
             actionable,
             placement,
             ready_check,
-            identification,
-            skip_action,
-            actions,
+            action_basis,
             matched,
             metadata_summary,
             cover_thumbnail,
@@ -220,12 +232,7 @@ impl crate::types::BridgeTriageRow {
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
             ready_check: ready_check.map(crate::types::BridgeNeedsYou::from_core),
-            identification: identification.map(crate::types::BridgeIdentificationStatus::from_core),
-            skip_action: skip_action.map(crate::types::BridgeTriageSkipAction::from_core),
-            actions: actions
-                .into_iter()
-                .map(crate::types::BridgeCandidateAction::from_core)
-                .collect(),
+            action_basis: crate::types::BridgeCandidateActionBasis::from_core(action_basis),
             matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
             metadata_summary: metadata_summary
                 .map(crate::types::BridgeTriageMetadataSummary::from_core),
@@ -261,23 +268,46 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    crate::types::BridgeTriageSkipAction = bae_core::import::TriageSkipAction,
-    from_core: pub(crate) fn,
-    variants: { Skip, Unskip },
-}
-
-mirror_enum! {
     crate::types::BridgeTriagePlacement = bae_core::import::TriagePlacement,
     from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
     variants: {
         Pending,
         Ready,
         NeedsYou { reason: (crate::types::BridgeNeedsYou) },
-        Importing,
         Failed,
         Done,
         Skipped,
     },
+}
+
+mirror_struct! {
+    crate::types::BridgeCandidateActionBasis = bae_core::import::CandidateActionBasis,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: {
+        actionable,
+        placement: (crate::types::BridgeTriagePlacement),
+        lookup_failed,
+    },
+}
+
+impl crate::types::BridgeCandidateLiveState {
+    pub(crate) fn from_core(live: bae_core::import::CandidateLiveState) -> Self {
+        let bae_core::import::CandidateLiveState { facts, actions } = live;
+        let bae_core::import::TriageRuntimeFacts {
+            identification,
+            importing,
+        } = facts;
+        Self {
+            identification: identification.map(crate::types::BridgeIdentificationStatus::from_core),
+            importing,
+            actions: actions
+                .into_iter()
+                .map(crate::types::BridgeCandidateAction::from_core)
+                .collect(),
+        }
+    }
 }
 
 impl crate::types::BridgeIdentificationStatus {
@@ -297,6 +327,7 @@ impl crate::types::BridgeIdentificationStatus {
 mirror_enum! {
     crate::types::BridgeNeedsYou = bae_core::identify::NeedsYou,
     from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
     variants: {
         SeveralMatches { count },
         NoMatch,
@@ -449,7 +480,6 @@ impl crate::types::BridgeImportQueueSummary {
             group_keys,
             ready,
             identified,
-            first_unidentified,
         } = summary;
         let bae_core::import::FolderScanProgress { statuses, activity } = folder_scans;
         Self {
@@ -475,21 +505,8 @@ impl crate::types::BridgeImportQueueSummary {
                 .into_iter()
                 .map(crate::types::BridgeReadyRowRef::from_core)
                 .collect(),
-            first_unidentified: first_unidentified
-                .map(crate::types::BridgeFirstUnidentifiedRowRef::from_core),
         }
     }
-}
-
-mirror_struct! {
-    crate::types::BridgeFirstUnidentifiedRowRef = bae_core::import::FirstUnidentifiedRowRef,
-    from_core: pub(super) fn,
-    fields: {
-        candidate_key,
-        stable_key,
-        group_key: (opt crate::types::BridgeFolderReleaseDecisionKey),
-        visible_position,
-    },
 }
 
 mirror_struct! {
@@ -546,6 +563,8 @@ impl crate::types::BridgeImportCandidateDetail {
             is_added,
             resumed_identify_state,
             row,
+            live,
+            import_status,
             release,
             picked_library_status,
             file_evidence,
@@ -576,6 +595,8 @@ impl crate::types::BridgeImportCandidateDetail {
                 resumed_identify_state,
             ),
             row: crate::types::BridgeTriageRow::from_core(row),
+            live: crate::types::BridgeCandidateLiveState::from_core(live),
+            import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
             release: release.map(crate::types::BridgeReleaseDetail::from_core),
             picked_library_status: picked_library_status
                 .map(crate::types::BridgeLibraryStatus::from_core),

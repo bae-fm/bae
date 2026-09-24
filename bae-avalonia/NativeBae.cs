@@ -810,9 +810,6 @@ internal static partial class NativeBae
         BridgeFolderReleaseDecision decision) =>
         CaptureError(() => Await(() => handle.SetFolderReleaseDecision(key, decision)));
 
-    internal static string? SetCandidateSkipped(AppHandle handle, string path, bool skipped) =>
-        CaptureError(() => Await(() => handle.SetCandidateSkipped(path, skipped)));
-
     /// <summary>A text file's decoded contents (bridge-side encoding detection),
     /// or the error line. No session handle: the read is a free bridge call.</summary>
     internal static (string? Text, string? Error) ReadTextFile(string path) =>

@@ -15,25 +15,21 @@ pub enum TriageTab {
 /// row without a reason and an importable row with one are unrepresentable.
 /// See `many-fields-none-together-means-a-missing-type`.
 ///
-/// What identification is doing is not part of this. A run is true of a row
-/// wherever the row sits, so it is [`TriageRow::identification`].
+/// Read from the tables alone. What identification or an import is doing is
+/// not part of this: a run or an import is true of a candidate wherever it
+/// sits, and is the row's [`CandidateLiveState`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriagePlacement {
     /// Pending with nothing to import and nothing to ask: no verdict, or a
     /// verdict with nothing to ask over a draft that would not import.
     Pending,
-    /// Metadata is prepared for import. Offered actions also account for live
-    /// identification, which can temporarily prevent a bulk import.
+    /// Metadata is prepared for import. The commands a row offers also account
+    /// for what is running for it, which can keep a bulk import off it for a
+    /// while — see [`CandidateActionBasis::actions`].
     Ready,
     NeedsYou {
         reason: NeedsYou,
     },
-    /// An import claimed this candidate and has not finished. Its own variant
-    /// rather than a Needs-you group: nothing is being asked of the user, and
-    /// rather than Done, because the folder is not in the library until the
-    /// import says it is. How far it has got is the candidate's runtime, read
-    /// by the leaf that draws the bar.
-    Importing,
     /// The last attempt to import this candidate failed and nothing has been
     /// attempted since. Pending, not Done: the folder is not in the library
     /// and the work is waiting on another attempt. Its own variant rather than
@@ -51,27 +47,27 @@ impl TriagePlacement {
             Self::Pending
             | Self::Ready
             | Self::NeedsYou { .. }
-            | Self::Importing
             | Self::Failed => TriageTab::Pending,
             Self::Done => TriageTab::Done,
             Self::Skipped => TriageTab::Skipped,
         }
     }
 
-    /// A candidate an import has claimed, finished or failed is past the point
-    /// where skipping it means anything: the attempt is what decides it now.
+    /// A candidate an import has finished or failed is past the point where
+    /// skipping it means anything: the attempt is what decides it now. One an
+    /// import is running for is too, which is the live state's to say — see
+    /// [`CandidateActionBasis::actions`].
     pub fn skip_action(&self) -> Option<TriageSkipAction> {
         match self {
             Self::Pending | Self::Ready | Self::NeedsYou { .. } => Some(TriageSkipAction::Skip),
             Self::Skipped => Some(TriageSkipAction::Unskip),
-            Self::Importing | Self::Failed | Self::Done => None,
+            Self::Failed | Self::Done => None,
         }
     }
 }
 
-/// The absolute skip-state command available for a row, or absent after an
-/// import has started. Carrying the command keeps every surface from deriving
-/// lifecycle rules from placement independently.
+/// The absolute skip-state command a placement allows, or absent once an import
+/// has settled the candidate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriageSkipAction {
     Skip,
@@ -346,12 +342,10 @@ pub struct TriageRow {
     /// The Ready check this row did not pass, stated beside its Import:
     /// [`crate::import::triage::ready_check`] of its placement.
     pub ready_check: Option<NeedsYou>,
-    /// What identification is doing for this candidate right now, beside
-    /// wherever the placement puts it. `None` when no run is queued, running
-    /// or settling and the last one's write did not fail.
-    pub identification: Option<IdentificationStatus>,
-    pub skip_action: Option<TriageSkipAction>,
-    pub actions: Vec<CandidateAction>,
+    /// What the row's commands are decided from in the tables. The commands
+    /// themselves depend on what is running for the candidate too, so they
+    /// are its [`CandidateLiveState`], read with this.
+    pub action_basis: CandidateActionBasis,
     /// The release the row leads with. `None` and the folder name is the title.
     pub matched: Option<MatchedRelease>,
     /// The applied editable draft, independent of selection and of the
@@ -360,12 +354,13 @@ pub struct TriageRow {
     /// The effective cover the row renders: selection, matched artwork, or the
     /// folder's default image.
     pub cover_thumbnail: Option<crate::import::CoverImageSource>,
-    /// Whether a bulk import can claim this row. Derived from the same action
-    /// set the multi-selection pane renders.
+    /// Whether a bulk import can take this row when nothing is running for
+    /// it: [`CandidateActionBasis::importable_at_rest`]. What is running is
+    /// checked when the import runs.
     pub selectable: bool,
-    /// Where the candidate's import stands, without its progress: the row
-    /// says *that* an import is running; how far along it is is the
-    /// candidate's runtime, which ticks far more often than rows re-project.
+    /// What the last import of this candidate left in the tables: the release
+    /// it became, or the error it failed with. An import running now is the
+    /// row's [`CandidateLiveState`].
     pub import_status: Option<TriageImportStatus>,
     /// The metadata provenance already applied to this candidate. `None` while no
     /// source has been selected.
@@ -409,12 +404,10 @@ impl TriageTabCounts {
     }
 }
 
-/// A candidate's import as the queue places it: claimed and running, or the
-/// outcome it finished with, read off the release row an import wrote or the
-/// failure row one left behind.
+/// The outcome a candidate's last import finished with, read off the release
+/// row an import wrote or the failure row one left behind.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TriageImportStatus {
-    Importing,
     Complete { release: ImportedRelease },
     Error { error: String },
 }

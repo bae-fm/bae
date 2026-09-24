@@ -149,9 +149,24 @@ pub struct BridgeImportInFlight {
     pub step: Option<BridgeImportStep>,
 }
 
+/// Where a candidate's import stands for the pane that shows it: running now,
+/// or the outcome the last one left in the tables.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeCandidateImportStatus {
+    Importing,
+    Complete {
+        release_id: String,
+        album_id: String,
+    },
+    Error {
+        error: BridgeError,
+    },
+}
+
+/// What the last import of a candidate left in the tables. An import running
+/// now is the candidate's `BridgeCandidateLiveState`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeTriageImportStatus {
-    Importing,
     Complete {
         release_id: String,
         album_id: String,
@@ -215,8 +230,8 @@ pub enum BridgeTriageTab {
 /// rather than a tab plus an optional group, so a surface cannot read half of
 /// it.
 ///
-/// Live identification is not here: a run is true of a row wherever the row
-/// sits, so it rides on `BridgeTriageRow::identification` instead.
+/// Read from the tables alone. A run or an import is true of a candidate
+/// wherever its row sits, so both are its `BridgeCandidateLiveState` instead.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTriagePlacement {
     Pending,
@@ -224,10 +239,6 @@ pub enum BridgeTriagePlacement {
     NeedsYou {
         reason: BridgeNeedsYou,
     },
-    /// An import claimed this candidate and has not finished. Not Done: the
-    /// folder is not in the library until the import says it is. How far it
-    /// has got is `BridgeCandidateRuntimeSnapshot::import`.
-    Importing,
     /// The last attempt failed and nothing has been attempted since. Pending,
     /// not Done: the folder is not in the library and the work is waiting on
     /// another attempt, which is the ordinary import the pane offers. What
@@ -235,13 +246,6 @@ pub enum BridgeTriagePlacement {
     Failed,
     Done,
     Skipped,
-}
-
-/// The absolute skip-state command available for a sidebar row.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeTriageSkipAction {
-    Skip,
-    Unskip,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -253,6 +257,29 @@ pub enum BridgeCandidateAction {
     ClearMetadata,
     Skip,
     Restore,
+}
+
+/// What the tables say a row's commands are decided from: whether it can be
+/// acted on, where it is placed, and whether its stored lookup failed.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeCandidateActionBasis {
+    pub actionable: bool,
+    pub placement: BridgeTriagePlacement,
+    pub lookup_failed: bool,
+}
+
+/// What is running for one candidate right now, and the commands its row
+/// offers with it — the part of a row that changes without a write, read per
+/// row beside the list.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeCandidateLiveState {
+    /// What identification is doing for the candidate. Absent when no run is
+    /// queued, running or settling and the last one's write did not fail.
+    pub identification: Option<BridgeIdentificationStatus>,
+    /// Whether an import owns the candidate. How far it has got is
+    /// `BridgeCandidateRuntimeSnapshot::import`.
+    pub importing: bool,
+    pub actions: Vec<BridgeCandidateAction>,
 }
 
 /// What identification is doing for a candidate right now, whatever its
@@ -311,7 +338,6 @@ pub fn bridge_triage_tab(placement: &BridgeTriagePlacement) -> BridgeTriageTab {
         BridgeTriagePlacement::Pending
         | BridgeTriagePlacement::Ready
         | BridgeTriagePlacement::NeedsYou { .. }
-        | BridgeTriagePlacement::Importing
         | BridgeTriagePlacement::Failed => BridgeTriageTab::Pending,
         BridgeTriagePlacement::Done => BridgeTriageTab::Done,
         BridgeTriagePlacement::Skipped => BridgeTriageTab::Skipped,
@@ -468,22 +494,19 @@ pub struct BridgeTriageRow {
     /// The Ready check this row did not pass — its release's tracklist
     /// disagrees with the folder, or there is none — stated beside Import.
     pub ready_check: Option<BridgeNeedsYou>,
-    /// What identification is doing for this candidate right now, beside
-    /// wherever the placement puts it. Absent when no run is queued, running
-    /// or settling and the last one's write did not fail.
-    pub identification: Option<BridgeIdentificationStatus>,
-    pub skip_action: Option<BridgeTriageSkipAction>,
-    pub actions: Vec<BridgeCandidateAction>,
+    /// What the row's commands are decided from in the tables. Handed back
+    /// with the row's live-state subscription, which answers with the commands
+    /// themselves.
+    pub action_basis: BridgeCandidateActionBasis,
     pub matched: Option<BridgeMatchedRelease>,
     pub metadata_summary: Option<BridgeTriageMetadataSummary>,
     /// The cover selected for this candidate, even when its metadata draft is
     /// otherwise blank.
     pub cover_thumbnail: Option<BridgeCoverImageSource>,
-    /// Whether this row currently permits bulk import.
+    /// Whether a bulk import can take this row when nothing is running for
+    /// it. What is running is checked when the import runs.
     pub selectable: bool,
-    /// Where the candidate's import stands, without its progress: the row
-    /// says *that* an import is running; how far along rides on the
-    /// candidate's runtime.
+    /// What the last import of this candidate left in the tables.
     pub import_status: Option<BridgeTriageImportStatus>,
     /// Where this candidate's draft was read from, already recorded.
     pub metadata_provenance: Option<BridgeMetadataProvenance>,

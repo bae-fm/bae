@@ -42,9 +42,7 @@
             for candidate: Candidate,
             placement: BridgeTriagePlacement,
             readyCheck: BridgeNeedsYou? = nil,
-            identification: BridgeIdentificationStatus? = nil,
-            skipAction: BridgeTriageSkipAction?,
-            actions: [BridgeCandidateAction],
+            selectable: Bool = false,
             matched: BridgeMatchedRelease?,
             metadataSummary: BridgeTriageMetadataSummary? = nil,
             coverThumbnail: BridgeCoverImageSource? = nil,
@@ -62,13 +60,15 @@
                 actionable: true,
                 placement: placement,
                 readyCheck: readyCheck,
-                identification: identification,
-                skipAction: skipAction,
-                actions: actions,
+                actionBasis: BridgeCandidateActionBasis(
+                    actionable: true,
+                    placement: placement,
+                    lookupFailed: false
+                ),
                 matched: matched,
                 metadataSummary: metadataSummary,
                 coverThumbnail: coverThumbnail,
-                selectable: actions.contains(.importReady),
+                selectable: selectable,
                 importStatus: importStatus,
                 metadataProvenance: metadataProvenance,
                 reading: reading
@@ -289,8 +289,6 @@
         static let triageRowUnidentified = triageRow(
             for: importTabUnidentifiedCandidate,
             placement: .pending,
-            skipAction: .skip,
-            actions: [.identify, .resetToFileMetadata, .skip],
             matched: nil,
             metadataSummary: nil,
             coverThumbnail: .local(path: previewArtPath("Front.png"))
@@ -301,8 +299,6 @@
         static let triageRowPrefilledFromTags = triageRow(
             for: importTabTaggedCandidate,
             placement: .pending,
-            skipAction: .skip,
-            actions: [.identify, .clearMetadata, .skip],
             matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Twelve",
@@ -331,11 +327,7 @@
         static let triageRowIdentifiedOnline = triageRow(
             for: importTabIdentifiedCandidate,
             placement: .ready,
-            skipAction: .skip,
-            actions: [
-                .importReady, .identify, .resetToFileMetadata, .clearMetadata,
-                .skip,
-            ],
+            selectable: true,
             matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Thirteen",
@@ -364,8 +356,6 @@
             placement: .needsYou(
                 reason: .severalMatches(count: 2)
             ),
-            skipAction: .skip,
-            actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Fourteen",
@@ -391,11 +381,7 @@
         static let triageRowReady = triageRow(
             for: importTabCandidate,
             placement: .ready,
-            skipAction: .skip,
-            actions: [
-                .importReady, .identify, .resetToFileMetadata, .clearMetadata,
-                .skip,
-            ],
+            selectable: true,
             matched: triageMatch(
                 releaseId: releaseDetailBridge.releaseId,
                 title: releaseDetailBridge.title,
@@ -419,8 +405,6 @@
             placement: .needsYou(
                 reason: .severalMatches(count: 2)
             ),
-            skipAction: .skip,
-            actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             // Several matches — the pressing is exactly what's unsettled, so
             // there is no `pressing` to show yet, only the lead's title and
             // artist.
@@ -446,8 +430,6 @@
             placement: .needsYou(
                 reason: .severalMatches(count: 2)
             ),
-            skipAction: .skip,
-            actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: nil,
             metadataSummary: nil
         )
@@ -457,8 +439,6 @@
             placement: .needsYou(
                 reason: .trackCountDisagrees(local: 1, source: 10)
             ),
-            skipAction: .skip,
-            actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: triageMatch(
                 releaseId: "rel-track-mismatch",
                 title: "Album Title Seven",
@@ -474,11 +454,7 @@
         static let triageRowAlreadyInLibrary = triageRow(
             for: importTabAlreadyInLibraryCandidate,
             placement: .ready,
-            skipAction: .skip,
-            actions: [
-                .importReady, .identify, .resetToFileMetadata, .clearMetadata,
-                .skip,
-            ],
+            selectable: true,
             matched: triageMatch(
                 releaseId: releaseDetailBridge.releaseId,
                 title: "Album Title (Reissue)",
@@ -501,8 +477,6 @@
             placement: .needsYou(
                 reason: .noMatch
             ),
-            skipAction: .skip,
-            actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: nil,
             metadataSummary: nil
         )
@@ -510,9 +484,6 @@
         static let triageRowIdentifying = triageRow(
             for: importTabIdentifyingCandidate,
             placement: .pending,
-            identification: .running,
-            skipAction: .skip,
-            actions: [.skip],
             matched: nil,
             metadataSummary: nil
         )
@@ -528,25 +499,23 @@
             step: .running(phase: .measuringLoudness)
         )
 
+        /// Ready in the tables until its import writes the release; that the
+        /// import is running is the row's live state.
         static let triageRowImporting = triageRow(
             for: importTabImportingCandidate,
-            placement: .importing,
-            skipAction: nil,
-            actions: [],
+            placement: .ready,
+            selectable: true,
             matched: triageMatch(
                 releaseId: "rel-importing",
                 title: importTabImportingCandidate.displayName,
                 trackCount: 15
             ),
-            metadataSummary: nil,
-            importStatus: .importing
+            metadataSummary: nil
         )
 
         static let triageRowSkipped = triageRow(
             for: folderCandidates[1],
             placement: .skipped,
-            skipAction: .unskip,
-            actions: [.restore],
             matched: nil,
             metadataSummary: nil
         )
@@ -554,8 +523,6 @@
         static let triageRowDoneImported = triageRow(
             for: importTabDoneCandidate,
             placement: .done,
-            skipAction: nil,
-            actions: [],
             matched: triageMatch(
                 releaseId: "preview-release",
                 title: importTabDoneCandidate.displayName,
@@ -571,8 +538,6 @@
         static let triageRowFailed = triageRow(
             for: importTabFailedCandidate,
             placement: .failed,
-            skipAction: nil,
-            actions: [.identify, .resetToFileMetadata, .clearMetadata],
             matched: triageMatch(
                 releaseId: "rel-failed",
                 title: importTabFailedCandidate.displayName,
@@ -594,12 +559,7 @@
             triageRow(
                 for: importTabGroupedReadyCandidate,
                 placement: .ready,
-                skipAction: .skip,
-                actions: [
-                    .importReady, .identify, .resetToFileMetadata,
-                    .clearMetadata,
-                    .skip,
-                ],
+                selectable: true,
                 matched: triageMatch(
                     releaseId: releaseDetailBridge.releaseId,
                     title: releaseDetailBridge.title,
@@ -622,10 +582,6 @@
                 placement: .needsYou(
                     reason: .noMatch
                 ),
-                skipAction: .skip,
-                actions: [
-                    .identify, .resetToFileMetadata, .clearMetadata, .skip,
-                ],
                 matched: nil,
                 metadataSummary: nil
             ),
@@ -701,15 +657,74 @@
             skipped: 1 + UInt32(invalidCandidates.count),
             watchedFolders: [importWatchedFolder],
             groupKeys: [importTabGroupKey],
-            ready: readyRows(importTabPendingRows + triageGroupedRows),
-            firstUnidentified: BridgeFirstUnidentifiedRowRef(
-                candidateKey: triageRowIdentifying.candidateKey,
-                stableKey:
-                    "candidate:\(triageRowIdentifying.candidateKey)",
-                groupKey: nil,
-                visiblePosition: 0
-            )
+            ready: readyRows(importTabPendingRows + triageGroupedRows)
         )
+
+        /// What a preview row's live state reads: nothing running and `actions`
+        /// offered, unless a run or an import is given.
+        static func triageLive(
+            _ actions: [BridgeCandidateAction],
+            identification: BridgeIdentificationStatus? = nil,
+            importing: Bool = false
+        ) -> BridgeCandidateLiveState {
+            BridgeCandidateLiveState(
+                identification: identification,
+                importing: importing,
+                actions: actions
+            )
+        }
+
+        private static let everyDraftCommand: [BridgeCandidateAction] = [
+            .identify, .resetToFileMetadata, .clearMetadata, .skip,
+        ]
+
+        /// What is running for each of the tab's rows, and the commands each
+        /// offers — what a row's subscription and a selected candidate's read
+        /// deliver.
+        @MainActor
+        private static func importTabLiveStates()
+            -> [String: BridgeCandidateLiveState]
+        {
+            let entries: [(BridgeTriageRow, BridgeCandidateLiveState)] = [
+                (
+                    triageRowReady,
+                    triageLive([.importReady] + everyDraftCommand)
+                ),
+                (triageRowPickAPressing, triageLive(everyDraftCommand)),
+                (
+                    triageRowSeveralMatchesFromSignals,
+                    triageLive(everyDraftCommand)
+                ),
+                (triageRowTrackMismatch, triageLive(everyDraftCommand)),
+                (
+                    triageRowAlreadyInLibrary,
+                    triageLive([.importReady] + everyDraftCommand)
+                ),
+                (triageRowNoMatch, triageLive(everyDraftCommand)),
+                (
+                    triageRowIdentifying,
+                    triageLive([.skip], identification: .running)
+                ),
+                (triageRowImporting, triageLive([], importing: true)),
+                (
+                    triageRowFailed,
+                    triageLive([
+                        .identify, .resetToFileMetadata, .clearMetadata,
+                    ])
+                ),
+                (
+                    triageGroupedRows[0],
+                    triageLive([.importReady] + everyDraftCommand)
+                ),
+                (triageGroupedRows[1], triageLive(everyDraftCommand)),
+                (triageRowDoneImported, triageLive([])),
+                (triageRowSkipped, triageLive([.restore])),
+            ]
+            return Dictionary(
+                entries.map { ($0.0.candidateKey, $0.1) },
+                uniquingKeysWith: { first, _ in first }
+            )
+        }
 
         /// One preview of the whole Import tab: the store the sidebar and the
         /// detail pane read, and the items each tab holds. Every candidate row
@@ -717,9 +732,10 @@
         /// invalid entries exercise the two non-candidate shapes.
         @MainActor
         /// Every row the tab holds, whichever tab it is on, by candidate key.
-        /// A selected candidate carries the same row the list does — which is
-        /// what the row-driven actions (skip, import) read their eligibility
-        /// from, so a fixture without it makes every candidate ineligible.
+        /// A selected candidate carries the same row the list does, and the
+        /// live state beside it is what the row-driven actions (skip, import)
+        /// read their eligibility from, so a fixture without it makes every
+        /// candidate ineligible.
         private static func importTabRowsByKey() -> [String: BridgeTriageRow] {
             let rows =
                 importTabPendingRows + triageGroupedRows + importTabDoneRows
@@ -735,8 +751,10 @@
             let store = ImportStore()
             store.applySummary(importTabSummary)
             let rows = importTabRowsByKey()
+            let live = importTabLiveStates()
             for var candidate in importTabCandidates {
                 candidate.row = rows[candidate.key]
+                candidate.live = live[candidate.key]
                 store.selectedCandidates[candidate.key] = candidate
             }
             store.identificationProgress = (identified: 112, total: 130)
@@ -750,9 +768,11 @@
             )
         }
 
+        @MainActor
         static func importTabImporter() -> Importer {
             let importingKey = importTabImportingCandidate.key
             let inFlight = importTabImportInFlight
+            let live = importTabLiveStates()
             return Importer(
                 candidateRuntime: { key in
                     guard key == importingKey else { return nil }
@@ -762,9 +782,23 @@
                         import: inFlight,
                         search: nil
                     )
+                },
+                subscribeCandidateLiveState: { key, _, callback in
+                    if let state = live[key] {
+                        callback.onValue(value: state)
+                    }
+                    return PreviewLiveStateSubscription()
                 }
             )
         }
 
+    }
+
+    /// A preview row's live state answers once, as it opens; there is nothing
+    /// behind it to end.
+    private final class PreviewLiveStateSubscription: LiveSubscriptionProtocol,
+        @unchecked Sendable
+    {
+        func cancel() {}
     }
 #endif

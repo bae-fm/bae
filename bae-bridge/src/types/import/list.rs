@@ -67,16 +67,6 @@ pub struct BridgeReadyRowRef {
     pub cover_thumbnail_url: Option<String>,
 }
 
-/// The first candidate identification has not settled yet, and where that row
-/// is in the requested view when the view includes it.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeFirstUnidentifiedRowRef {
-    pub candidate_key: String,
-    pub stable_key: String,
-    pub group_key: Option<BridgeFolderReleaseDecisionKey>,
-    pub visible_position: Option<u64>,
-}
-
 /// The list view and position that reveal one candidate at its current
 /// placement.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -105,9 +95,6 @@ pub struct BridgeImportQueueSummary {
     /// The rows among `ready` whose draft was read from a catalog's release,
     /// in the same order.
     pub identified: Vec<BridgeReadyRowRef>,
-    /// The first row the identify count is still waiting on, unfiltered, plus
-    /// its position when the current view contains it.
-    pub first_unidentified: Option<BridgeFirstUnidentifiedRowRef>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -147,7 +134,14 @@ pub struct BridgeImportCandidateDetail {
     /// what the pane shows when its runtime holds no run. `Idle` when nothing
     /// is stored for the candidate's current files.
     pub resumed_identify_state: BridgeIdentifyState,
+    /// The candidate's row as the tables place it.
     pub row: BridgeTriageRow,
+    /// What is running for the candidate right now, and the commands its row
+    /// offers with it.
+    pub live: BridgeCandidateLiveState,
+    /// Where the candidate's import stands for the pane: the one running now,
+    /// or what the last one left in the tables.
+    pub import_status: Option<BridgeCandidateImportStatus>,
     /// The picked release as its archived documents describe it. `None` with
     /// no pick, and for a folder read as its own tags.
     pub release: Option<BridgeReleaseDetail>,

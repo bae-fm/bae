@@ -11,7 +11,7 @@ import SwiftUI
 /// disabled button that says nothing is the thing that redesign removed.
 struct ImportConfirmationCardAction: View {
     /// Where the candidate's import stands, as its row places it.
-    let importStatus: BridgeTriageImportStatus?
+    let importStatus: BridgeCandidateImportStatus?
     /// Routes the running import's progress to the leaf line that draws it.
     let candidateKey: String
     let onConfirmImport: () -> Void

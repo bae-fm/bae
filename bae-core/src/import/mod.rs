@@ -185,7 +185,7 @@ desktop_only! {
         ImportEventBus, ImportServiceHandle, ScanEvent,
     };
     pub use list::{
-        ActiveFolderScan, FirstUnidentifiedRowRef, FolderScanActivity, FolderScanProgress,
+        ActiveFolderScan, CandidateImportStatus, FolderScanActivity, FolderScanProgress,
         ImportCandidateDetail,
         ImportCandidateDetailProjection, ImportCandidateListLocation, ImportListItem,
         ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
@@ -211,7 +211,8 @@ desktop_only! {
         lengths_disagree, SlotFile, SlotReconciliation, SlotSpan, SlotTable, SourceTrack, TrackSlot,
     };
     pub use triage::{
-        IdentificationStatus, MatchEvidence, MatchedPressing, MatchedRelease,
+        CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,
+        MatchEvidence, MatchedPressing, MatchedRelease,
         MatchedSignal, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
         TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
     };

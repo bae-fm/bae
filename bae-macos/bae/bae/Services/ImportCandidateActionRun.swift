@@ -136,7 +136,7 @@ struct ImportCandidateSelection {
         uiStore.selectedFolderCandidates.sorted()
             .compactMap { key in
                 guard let candidate = importStore.selectedCandidates[key],
-                    candidate.row?.actions.contains(action) == true
+                    candidate.live?.actions.contains(action) == true
                 else { return nil }
                 return candidate
             }

@@ -11,6 +11,7 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, info, warn};
 
+mod candidate_facts_watch;
 mod combinations;
 mod edits;
 mod import;
@@ -579,7 +580,6 @@ impl ImportServiceHandle {
         view: crate::import::ImportListView,
         mut accept: impl FnMut(&crate::import::ImportListSnapshot) -> bool,
     ) -> crate::import::ImportListSnapshot {
-        let (initial_runtime, changes) = self.subscribe_candidate_runtime();
         let request = crate::import::ImportListRequest {
             view,
             windows: std::iter::once(crate::library::LibraryPageWindow {
@@ -587,17 +587,13 @@ impl ImportServiceHandle {
                 limit: u64::MAX,
             })
             .collect(),
-            runtime_facts: crate::import::list::facts_of(&initial_runtime),
             upload_standing: Default::default(),
         };
         let query = self.library_manager.subscribe_import_list(request.clone());
-        let runtime = self.runtime.clone();
         let subscription = crate::import::ImportListSubscription::start(
             query,
             self.library_manager.subscribe_folder_scan_progress(),
             request,
-            changes,
-            move || runtime.all(),
             self.library_manager.subscribe_outbox_values(),
             &self.runtime_handle,
         );

@@ -10,7 +10,7 @@ import SwiftUI
 /// these: it is stated on the track slot it belongs to.
 struct ImportConfirmationBanners: View {
     let libraryStatus: BridgeLibraryStatus?
-    let importStatus: BridgeTriageImportStatus?
+    let importStatus: BridgeCandidateImportStatus?
     /// Commit-time error written to the candidate (invalid edit shape, a failed
     /// `start_import` dispatch). Distinct from the `importStatus`-derived error,
     /// which the candidate's row carries once an import has failed.

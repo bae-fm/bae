@@ -366,8 +366,6 @@
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Aggiorna da nuova sorgente</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Mantieni i metadati attuali</value></data>
   <data name="import.tab.skipped" xml:space="preserve"><value>Saltato</value></data>
-  <data name="import.candidate.skip" xml:space="preserve"><value>Salta</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Non saltare</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Rimuovi cartella</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Ordinamento e cartelle monitorate</value></data>
   <data name="import.sort.newest_first" xml:space="preserve"><value>Prima i più recenti</value></data>
@@ -377,7 +375,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>In sospeso</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Completato</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identificazione</value></data>
-  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Vai a un candidato ancora in identificazione</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} selezionati</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Seleziona tutto</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>Deseleziona tutto</value></data>
@@ -388,8 +385,6 @@
   <data name="import.search.signals" xml:space="preserve"><value>Segnali</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Non riuscito</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Pronto</value></data>
-  <data name="import.phase.queued" xml:space="preserve"><value>In attesa di identificazione</value></data>
-  <data name="import.phase.running" xml:space="preserve"><value>Identificazione…</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filtra…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Aggiungi una cartella…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Qui non c'è ancora nulla</value></data>

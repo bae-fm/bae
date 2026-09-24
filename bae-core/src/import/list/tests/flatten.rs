@@ -295,84 +295,72 @@ fn done_orders_by_upload_then_newest_import_first() {
     );
 }
 
+fn first_among(rows: &ImportQueueRows, view: ImportListView, keys: &[&str]) -> Option<String> {
+    let keys = keys.iter().map(|display_path| key(display_path)).collect();
+    first_candidate_among(rows, &request(view), &keys).expect("the queue orders")
+}
+
+/// The first of several keys is the one the queue reaches first, not the one
+/// named first.
 #[test]
-fn the_first_unidentified_row_has_its_position_in_the_current_view() {
+fn the_first_candidate_among_keys_follows_the_queue_order() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release 1"), candidate("Release 2")];
     rows.states
         .insert("hash-Release 1".to_string(), ready_state("mb-1"));
 
-    let flat = flattened_queued(&rows, view(TriageTab::Pending), &["Release 2"]);
-
-    let target = flat
-        .summary
-        .first_unidentified
-        .expect("the queue has an unidentified row");
-    assert_eq!(target.candidate_key, key("Release 2"));
-    assert_eq!(target.stable_key, format!("candidate:{}", key("Release 2")));
-    assert_eq!(target.group_key, None);
-    assert_eq!(target.visible_position, Some(1));
+    assert_eq!(
+        first_among(&rows, view(TriageTab::Pending), &["Release 2"]),
+        Some(key("Release 2"))
+    );
+    assert_eq!(
+        first_among(
+            &rows,
+            view(TriageTab::Pending),
+            &["Release 2", "Release 1"]
+        ),
+        Some(key("Release 1"))
+    );
+    assert_eq!(
+        first_among(&rows, view(TriageTab::Pending), &["Elsewhere"]),
+        None
+    );
 }
 
+/// The queue's order is the whole queue's: a filter that hides the row, or
+/// another tab on screen, does not.
 #[test]
-fn the_first_unidentified_position_is_absent_outside_the_current_view() {
+fn the_first_candidate_among_keys_ignores_the_filter_and_the_tab() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release 1"), candidate("Release 2")];
-    rows.states
-        .insert("hash-Release 1".to_string(), ready_state("mb-1"));
 
-    let filtered = flattened_queued(
-        &rows,
-        ImportListView {
-            filter_text: "Release 1".to_string(),
-            ..view(TriageTab::Pending)
-        },
-        &["Release 2"],
-    );
-    let other_tab = flattened_queued(&rows, view(TriageTab::Done), &["Release 2"]);
-
+    let filtered = ImportListView {
+        filter_text: "Release 1".to_string(),
+        ..view(TriageTab::Pending)
+    };
     assert_eq!(
-        filtered
-            .summary
-            .first_unidentified
-            .expect("identification still has a target")
-            .visible_position,
-        None
+        first_among(&rows, filtered, &["Release 2"]),
+        Some(key("Release 2"))
     );
     assert_eq!(
-        other_tab
-            .summary
-            .first_unidentified
-            .expect("identification still has a target")
-            .visible_position,
-        None
+        first_among(&rows, view(TriageTab::Done), &["Release 2"]),
+        Some(key("Release 2"))
     );
 }
 
 #[test]
-fn the_first_grouped_unidentified_position_follows_its_header() {
+fn the_first_candidate_among_grouped_keys_is_the_groups_first_member() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Group/Release 1"), candidate("Group/Release 2")];
 
-    let flat = flattened_queued(
-        &rows,
-        view(TriageTab::Pending),
-        &["Group/Release 1", "Group/Release 2"],
-    );
-    let target = flat
-        .summary
-        .first_unidentified
-        .expect("the queue has an unidentified row");
-
-    assert_eq!(target.candidate_key, key("Group/Release 1"));
     assert_eq!(
-        target
-            .group_key
-            .expect("the candidate is grouped")
-            .relative_folder_path,
-        "Group"
+        first_among(
+            &rows,
+            view(TriageTab::Pending),
+            &["Group/Release 2", "Group/Release 1"]
+        ),
+        Some(key("Group/Release 1"))
     );
-    assert_eq!(target.visible_position, Some(1));
 }
 
 #[test]

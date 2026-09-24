@@ -483,10 +483,8 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
             importing: true,
         });
 
-    assert!(matches!(
-        detail.row.import_status,
-        Some(crate::import::TriageImportStatus::Importing)
-    ));
+    assert!(detail.live.facts.importing);
+    assert!(detail.live.actions.is_empty());
     assert!(detail.failure.is_none());
 }
 

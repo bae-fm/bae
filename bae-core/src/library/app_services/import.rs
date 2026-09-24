@@ -3,8 +3,9 @@
 
 use super::*;
 use crate::import::{
-    ImportCandidateDetail, ImportCandidateDetailProjection, ImportListProjection,
-    ImportListRequest, ImportListSubscription, ImportListView, TriageRuntimeFacts,
+    CandidateActionBasis, CandidateLiveState, ImportCandidateDetail,
+    ImportCandidateDetailProjection, ImportListProjection, ImportListRequest,
+    ImportListSubscription, ImportListView, TriageRuntimeFacts,
 };
 
 impl AppServices {
@@ -189,30 +190,26 @@ impl AppServices {
 
     /// The import list, reconfigurable by view and by window.
     ///
-    /// The runtime stream is taken before the first read, so no change lands
-    /// between the two; the subscription then keeps the request's runtime facts
-    /// and upload standing current on its own.
+    /// The list reads the tables and the upload standing the Done tab is
+    /// ordered by, which the subscription keeps current on its own. What is
+    /// running for each candidate is its row's
+    /// [`Self::subscribe_candidate_live_state`].
     pub fn subscribe_import_list(
         &self,
         view: ImportListView,
         runtime_handle: &tokio::runtime::Handle,
     ) -> ImportListSubscription {
-        let (initial_runtime, changes) = self.subscribe_candidate_runtime();
         let outbox = self.subscribe_outbox_values();
         let request = ImportListRequest {
             view,
             windows: crate::library::LibraryPageWindows::new(),
-            runtime_facts: crate::import::list::facts_of(&initial_runtime),
             upload_standing: upload_standing_of(&outbox),
         };
         let query = self.inner.manager.subscribe_import_list(request.clone());
-        let import = self.inner.import.clone();
         ImportListSubscription::start(
             query,
             self.inner.manager.subscribe_folder_scan_progress(),
             request,
-            changes,
-            move || import.candidate_runtimes(),
             outbox,
             runtime_handle,
         )
@@ -229,7 +226,6 @@ impl AppServices {
             .load_import_list(ImportListRequest {
                 view,
                 windows,
-                runtime_facts: crate::import::list::facts_of(&self.candidate_runtimes()),
                 upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
             })
             .await
@@ -249,7 +245,6 @@ impl AppServices {
                 ImportListRequest {
                     view,
                     windows: crate::library::LibraryPageWindows::new(),
-                    runtime_facts: crate::import::list::facts_of(&self.candidate_runtimes()),
                     upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
                 },
                 candidate_key,
@@ -257,7 +252,40 @@ impl AppServices {
             .await
     }
 
-    /// One candidate as the pane reads it, once, with its runtime folded in.
+    /// The first candidate the identification count is still waiting on — one
+    /// queued, running or having its answer written — in the queue's order
+    /// under `view`. `None` when nothing is being identified, or nothing that
+    /// is has a row.
+    ///
+    /// Asked when the person goes to it rather than kept on the list: which
+    /// runs are in flight moves no row, and the list does not read it.
+    pub async fn first_identifying_candidate(
+        &self,
+        view: ImportListView,
+    ) -> Result<Option<String>, crate::library::LibraryError> {
+        let identifying: std::collections::HashSet<String> = self
+            .candidate_runtimes()
+            .into_iter()
+            .filter(|(_, runtime)| TriageRuntimeFacts::of(runtime).identifying())
+            .map(|(key, _)| key)
+            .collect();
+        if identifying.is_empty() {
+            return Ok(None);
+        }
+        self.inner
+            .manager
+            .first_import_candidate_among(
+                ImportListRequest {
+                    view,
+                    windows: crate::library::LibraryPageWindows::new(),
+                    upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
+                },
+                identifying,
+            )
+            .await
+    }
+
+    /// One candidate as the pane reads it, once, with its runtime joined.
     pub async fn load_import_candidate(
         &self,
         key: &str,
@@ -275,6 +303,16 @@ impl AppServices {
             .map(|projection| projection.resolve(&facts)))
     }
 
+    /// What is running for one candidate, and the commands its row offers
+    /// with it, now and on every change to either.
+    pub fn subscribe_candidate_live_state(
+        &self,
+        key: String,
+        basis: CandidateActionBasis,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<CandidateLiveState> {
+        self.inner.import.subscribe_candidate_live_state(key, basis)
+    }
+
     /// One candidate as the pane reads it, and every later read of it. `None`
     /// once the key names no scanned folder, which is what clears a selection.
     pub fn subscribe_import_candidate_values(
@@ -285,12 +323,9 @@ impl AppServices {
         Result<Option<ImportCandidateDetail>, crate::library::LibraryError>,
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let (initial_runtime, mut changes) = self.subscribe_candidate_runtime();
+        let mut watch = self.inner.import.watch_candidate_facts(key.clone());
         let mut query = self.inner.manager.subscribe_import_candidate(&key);
-        let import = self.inner.import.clone();
         runtime_handle.spawn(async move {
-            let initial = initial_runtime.get(&key);
-            let mut facts = initial.map(TriageRuntimeFacts::of).unwrap_or_default();
             let mut projection: Option<ImportCandidateDetailProjection> = None;
             let deliver = |projection: &Option<ImportCandidateDetailProjection>,
                            facts: &TriageRuntimeFacts| {
@@ -304,7 +339,7 @@ impl AppServices {
                         Ok(value) => {
                             projection = value;
                             if tx
-                                .send(Ok(deliver(&projection, &facts)))
+                                .send(Ok(deliver(&projection, watch.facts())))
                                 .is_err()
                             {
                                 return;
@@ -323,43 +358,10 @@ impl AppServices {
                             }
                         }
                     },
-                    change = changes.recv() => {
-                        let next = match change {
-                            Ok(crate::import::CandidateRuntimeChange::Updated {
-                                key: changed,
-                                runtime,
-                            }) => {
-                                if changed != key {
-                                    continue;
-                                }
-                                Some(runtime)
-                            }
-                            Ok(crate::import::CandidateRuntimeChange::Removed { key: changed }) => {
-                                if changed != key {
-                                    continue;
-                                }
-                                None
-                            }
-                            Ok(crate::import::CandidateRuntimeChange::Reset { mut runtimes }) => {
-                                runtimes.remove(&key)
-                            }
-                            Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
-                                tracing::warn!(
-                                    "the selected candidate dropped {count} runtime changes; \
-                                     re-reading its runtime"
-                                );
-                                import.candidate_runtimes().remove(&key)
-                            }
-                            Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+                    facts = watch.changed() => {
+                        let Some(facts) = facts else {
+                            return;
                         };
-                        let next_facts = next
-                            .as_ref()
-                            .map(TriageRuntimeFacts::of)
-                            .unwrap_or_default();
-                        if next_facts == facts {
-                            continue;
-                        }
-                        facts = next_facts;
                         if projection.is_some()
                             && tx
                                 .send(Ok(deliver(&projection, &facts)))

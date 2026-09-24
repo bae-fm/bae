@@ -139,8 +139,7 @@ internal sealed partial class ImportStore : IDisposable
         FolderScanActivity: null,
         GroupKeys: Array.Empty<BridgeFolderReleaseDecisionKey>(),
         Ready: Array.Empty<BridgeReadyRowRef>(),
-        Identified: Array.Empty<BridgeReadyRowRef>(),
-        FirstUnidentified: null);
+        Identified: Array.Empty<BridgeReadyRowRef>());
 
     private BridgeImportListView BuildView() => new(
         Tab: ActiveTab,
@@ -580,17 +579,6 @@ internal sealed partial class ImportStore : IDisposable
         BridgeFolderReleaseDecision decision)
     {
         var (current, error) = await _import.SetFolderReleaseDecision(key, decision);
-        if (current && error is not null)
-        {
-            _showError(Loc.Chrome("import.error_title"), error);
-        }
-    }
-
-    // Skip or un-skip a candidate: core persists the change and the triage
-    // subscription delivers the candidate in its new tab.
-    public async void SetCandidateSkipped(string key, bool skipped)
-    {
-        var (current, error) = await _import.SetCandidateSkipped(key, skipped);
         if (current && error is not null)
         {
             _showError(Loc.Chrome("import.error_title"), error);

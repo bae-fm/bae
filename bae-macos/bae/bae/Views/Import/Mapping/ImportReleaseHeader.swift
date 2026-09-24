@@ -14,8 +14,9 @@ struct ImportCommitControls {
     let readyCheck: BridgeNeedsYou?
     /// Routes the running import's progress to the leaf line that draws it.
     let candidateKey: String
-    /// Where the candidate's import stands, as its row places it.
-    let importStatus: BridgeTriageImportStatus?
+    /// Where the candidate's import stands: running now, or what the last
+    /// one left.
+    let importStatus: BridgeCandidateImportStatus?
     let storageCloud: Binding<Bool>
     let storagePinned: Binding<Bool>
     let actions: ImportCommitActions

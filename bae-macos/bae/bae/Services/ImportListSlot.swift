@@ -36,6 +36,9 @@ final class ImportListSlot {
         @Sendable (BridgeImportListView, String) async throws
             -> BridgeImportCandidateListLocation?
     @ObservationIgnored
+    private let firstIdentifyingCandidate:
+        @Sendable (BridgeImportListView) async throws -> String?
+    @ObservationIgnored
     private let candidateRevealSubject = PassthroughSubject<String, Never>()
     @ObservationIgnored
     private var pages: ImportListPages?
@@ -67,12 +70,15 @@ final class ImportListSlot {
         makeSource: @escaping (BridgeImportListView) -> ImportListPages,
         locateCandidate:
             @escaping @Sendable (BridgeImportListView, String) async throws
-            -> BridgeImportCandidateListLocation?
+            -> BridgeImportCandidateListLocation?,
+        firstIdentifyingCandidate:
+            @escaping @Sendable (BridgeImportListView) async throws -> String?
     ) {
         self.importStore = importStore
         self.uiStore = uiStore
         self.makeSource = makeSource
         self.locateCandidate = locateCandidate
+        self.firstIdentifyingCandidate = firstIdentifyingCandidate
         self.defaults = defaults
         let initialOrder: BridgeImportListOrder
         if let saved = defaults.string(forKey: Self.sortPreferenceKey) {
@@ -132,35 +138,15 @@ final class ImportListSlot {
         updateView { $0.order = order }
     }
 
-    /// Ask for the view that contains `target`, then return only after that
-    /// exact view revision has delivered the candidate's position.
-    func reveal(_ target: BridgeFirstUnidentifiedRowRef) async throws -> Int? {
-        uiStore.setImportCandidateTab(.pending)
-        uiStore.setImportCandidateFilterText("")
-        if let groupKey = target.groupKey {
-            uiStore.setReleaseGroupExpanded(
-                releaseGroupDisclosureID(groupKey),
-                true
-            )
-        }
-        var next = view
-        next.tab = .pending
-        next.filterText = ""
-        next.collapsedGroups = uiStore.collapsedReleaseGroupKeys
-        view = next
-        guard let pages else { return nil }
-        guard
-            let position = try await pages.firstUnidentifiedPosition(
-                for: target,
-                afterApplying: next
-            ), let list
+    /// Navigate to the first candidate the identification count is still
+    /// waiting on, as core finds it when asked. `nil` when nothing is.
+    func revealFirstIdentifying() async throws
+        -> (candidateKey: String, position: Int)?
+    {
+        guard let candidateKey = try await firstIdentifyingCandidate(view),
+            let position = try await revealCandidate(candidateKey)
         else { return nil }
-        await list.loadPage(containing: position)
-        guard
-            !Task.isCancelled,
-            list.idAt(position) == target.stableKey
-        else { return nil }
-        return position
+        return (candidateKey, position)
     }
 
     /// Navigate to the candidate's current authoritative placement, even when
@@ -302,7 +288,8 @@ final class ImportListSlot {
                                 visiblePosition: UInt64($0)
                             )
                         }
-                }
+                },
+                firstIdentifyingCandidate: { _ in nil }
             )
             importStore.ingest(items)
             let list = PaginatedList<BridgeImportListItem>(

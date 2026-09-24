@@ -454,6 +454,21 @@ impl Database {
             .await
     }
 
+    /// The first of `keys` in the queue's own order under `request`'s view,
+    /// read from the tables. `None` when the queue holds none of them.
+    pub(crate) async fn first_import_candidate_among(
+        &self,
+        request: ImportListRequest,
+        keys: HashSet<String>,
+    ) -> Result<Option<String>, DbError> {
+        self.read(move |sql| load_import_queue_on(&sql))
+            .process(move |rows| {
+                crate::import::list::first_candidate_among(&rows, &request, &keys)
+                    .map_err(|error| DbError::Message(error.to_string()))
+            })
+            .await
+    }
+
     /// One candidate as the pane reads it, live. `None` once the key names no
     /// scanned folder, which is what clears a selection.
     pub(crate) fn subscribe_import_candidate(

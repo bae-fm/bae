@@ -23,46 +23,22 @@ import Foundation
     public struct ImportListPages: Sendable {
         public let source: any PageSource<BridgeImportListItem>
         private let applyView: @Sendable (BridgeImportListView) -> Void
-        private let resolveFirstUnidentifiedPosition:
-            @Sendable (
-                BridgeImportListView,
-                BridgeFirstUnidentifiedRowRef
-            ) async throws -> Int?
         private let awaitAppliedView:
             @Sendable (BridgeImportListView) async throws -> Void
 
         public init(
             source: any PageSource<BridgeImportListItem>,
             setView: @escaping @Sendable (BridgeImportListView) -> Void,
-            firstUnidentifiedPosition candidatePosition:
-                @escaping @Sendable (
-                    BridgeImportListView,
-                    BridgeFirstUnidentifiedRowRef
-                ) async throws -> Int?,
             waitForView:
                 @escaping @Sendable (BridgeImportListView) async throws -> Void
         ) {
             self.source = source
             applyView = setView
-            resolveFirstUnidentifiedPosition = candidatePosition
             awaitAppliedView = waitForView
         }
 
         public func setView(_ view: BridgeImportListView) {
             applyView(view)
-        }
-
-        /// Apply `view`, wait for the exact revision that accepted it, and
-        /// return the summary's first-unidentified position in that delivered
-        /// view, if the target still names that row.
-        public func firstUnidentifiedPosition(
-            for target: BridgeFirstUnidentifiedRowRef,
-            afterApplying view: BridgeImportListView
-        ) async throws -> Int? {
-            try await resolveFirstUnidentifiedPosition(
-                view,
-                target
-            )
         }
 
         /// Apply `view` and wait until the live list has delivered the exact
@@ -162,12 +138,6 @@ import Foundation
                     catch {
                         failEveryPage(with: error)
                     }
-                },
-                firstUnidentifiedPosition: { [self] view, target in
-                    let summary = try await deliveredSummary(
-                        afterApplying: view
-                    )
-                    return summary.firstUnidentifiedPosition(for: target)
                 },
                 waitForView: { [self] view in
                     _ = try await deliveredSummary(afterApplying: view)
@@ -498,11 +468,6 @@ import Foundation
             ImportListPages(
                 source: self,
                 setView: { _ in },
-                firstUnidentifiedPosition: { _, target in
-                    items.firstIndex {
-                        $0.id == target.stableKey
-                    }
-                },
                 waitForView: { _ in }
             )
         }
@@ -536,21 +501,6 @@ import Foundation
             func cancel() {
                 task.cancel()
             }
-        }
-    }
-
-    extension BridgeImportQueueSummary {
-        fileprivate func firstUnidentifiedPosition(
-            for target: BridgeFirstUnidentifiedRowRef
-        ) -> Int? {
-            guard
-                firstUnidentified?.candidateKey == target.candidateKey,
-                firstUnidentified?.stableKey == target.stableKey,
-                firstUnidentified?.groupKey == target.groupKey
-            else {
-                return nil
-            }
-            return firstUnidentified?.visiblePosition.map(Int.init)
         }
     }
 #endif

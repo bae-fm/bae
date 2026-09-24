@@ -568,7 +568,7 @@ public sealed class ImportMappingPaneTests
     public void ImportingUsesTheReadOnlySourcePane()
     {
         var (pane, _) = Show(Detail(
-            importStatus: new BridgeTriageImportStatus.Importing()));
+            importStatus: new BridgeCandidateImportStatus.Importing()));
 
         Assert.Empty(Fields(pane));
         Assert.Contains("01.flac", Texts(pane));
@@ -584,7 +584,7 @@ public sealed class ImportMappingPaneTests
     {
         var openedAlbums = new List<string>();
         var (pane, _) = Show(
-            Detail(importStatus: new BridgeTriageImportStatus.Complete(
+            Detail(importStatus: new BridgeCandidateImportStatus.Complete(
                 "release-1", "album-1")),
             openedAlbums: openedAlbums);
 

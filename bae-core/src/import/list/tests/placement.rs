@@ -1,9 +1,10 @@
 //! Where each candidate's row lands, and what it carries there.
 //!
-//! One pass places every row from the stored columns plus this process's
-//! runtime, so these are the placement rules over row literals: what a stored
-//! verdict, a pick, an import and a run in flight each make of a candidate,
-//! and in which order they outrank one another.
+//! One pass places every row from the stored columns alone, so these are the
+//! placement rules over row literals: what a stored verdict, a pick, a skip
+//! and an import's rows each make of a candidate, and in which order they
+//! outrank one another. What is running for a candidate places nothing; it is
+//! the row's live state.
 
 use super::*;
 use crate::identify::NeedsYou;
@@ -30,7 +31,7 @@ fn a_stored_verdict_that_classifies_ready_makes_a_selectable_row() {
     );
 }
 /// A verdict derived from a file shape the candidate has moved past is not the
-/// candidate's answer, so nothing places the row but the work queued for it.
+/// candidate's answer, so nothing places the row.
 #[test]
 fn a_verdict_at_a_stale_edit_revision_is_not_the_row_s_answer() {
     let mut rows = queue();
@@ -41,11 +42,12 @@ fn a_verdict_at_a_stale_edit_revision_is_not_the_row_s_answer() {
     rows.states
         .insert("hash-Release".to_string(), ready_state("mb-1"));
 
-    let flat = flattened_queued(&rows, view(TriageTab::Pending), &["Release"]);
+    let flat = flattened(&rows, &view(TriageTab::Pending));
 
-    let row = row_for(&flat, "Release");
-    assert_eq!(row.placement, TriagePlacement::Pending);
-    assert_eq!(row.identification, Some(IdentificationStatus::Queued));
+    assert_eq!(
+        row_for(&flat, "Release").placement,
+        TriagePlacement::Pending
+    );
 }
 #[test]
 fn an_imported_content_hash_puts_its_row_in_done() {
@@ -83,37 +85,30 @@ fn a_skipped_candidate_lands_in_skipped() {
     );
     assert_eq!(flat.summary.counts.skipped, 1);
 }
-/// The three runtime facts a placement reads, each on its own.
+/// An import running for a candidate places nothing: until it writes the
+/// release, the tables put the row where its draft does, and the import is the
+/// row's live state — which offers no command at all while it runs.
 #[test]
-fn a_claimed_import_places_the_row_as_importing() {
+fn a_claimed_import_leaves_the_row_where_its_draft_puts_it() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
         .insert("hash-Release".to_string(), ready_state("mb-1"));
-    let facts = BTreeMap::from([(
-        key("Release"),
+
+    let flat = flattened(&rows, &view(TriageTab::Pending));
+
+    let row = row_for(&flat, "Release");
+    assert_eq!(row.placement, TriagePlacement::Ready);
+    assert_eq!(row.import_status, None);
+    assert_eq!(flat.summary.counts.pending, 1);
+    let importing = crate::import::CandidateLiveState::of(
+        &row.action_basis,
         TriageRuntimeFacts {
-            identification: Some(IdentificationStatus::Queued),
+            identification: None,
             importing: true,
         },
-    )]);
-
-    let flat = flatten(
-        &rows,
-        &ImportListRequest {
-            view: view(TriageTab::Pending),
-            runtime_facts: facts,
-            ..ImportListRequest::default()
-        },
-    )
-    .expect("the queue flattens");
-
-    assert_eq!(
-        row_for(&flat, "Release").placement,
-        TriagePlacement::Importing
     );
-    assert_eq!(flat.summary.counts.pending, 1);
-    assert!(flat.summary.ready.is_empty());
+    assert!(importing.actions.is_empty());
 }
 /// The failure is a row, so it survives the session that produced it: a
 /// relaunched queue still says why the attempt failed. It stays Pending —
@@ -146,39 +141,26 @@ fn a_failed_import_stays_pending_and_reads_its_error_from_its_row() {
     );
     assert!(flat.summary.ready.is_empty());
 }
-/// Retrying is the ordinary import: the run claims the candidate, and the row
-/// leaves the failure for Importing without the failure row being cleared
-/// first. When it lands, the release outranks the leftover failure and the row
-/// is Done.
+/// Retrying is the ordinary import. Queuing it clears the failure row, which
+/// leaves the row where its draft puts it while the import runs; when the
+/// import lands, the release outranks any leftover failure and the row is
+/// Done.
 #[test]
-fn retrying_a_failed_import_moves_it_through_importing_to_done() {
+fn retrying_a_failed_import_moves_it_back_to_its_draft_then_to_done() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
         .insert("hash-Release".to_string(), ready_state("mb-1"));
     rows.failures
         .insert("hash-Release".to_string(), "boom".to_string());
-    let running = BTreeMap::from([(
-        key("Release"),
-        TriageRuntimeFacts {
-            identification: Some(IdentificationStatus::Queued),
-            importing: true,
-        },
-    )]);
-
-    let flat = flatten(
-        &rows,
-        &ImportListRequest {
-            view: view(TriageTab::Pending),
-            runtime_facts: running,
-            ..ImportListRequest::default()
-        },
-    )
-    .expect("the queue flattens");
     assert_eq!(
-        row_for(&flat, "Release").placement,
-        TriagePlacement::Importing
+        row_for(&flattened(&rows, &view(TriageTab::Pending)), "Release").placement,
+        TriagePlacement::Failed
     );
+
+    rows.failures.clear();
+    let flat = flattened(&rows, &view(TriageTab::Pending));
+    assert_eq!(row_for(&flat, "Release").placement, TriagePlacement::Ready);
     assert_eq!(flat.summary.counts.pending, 1);
 
     rows.imported.insert(
@@ -217,109 +199,21 @@ fn an_imported_release_outranks_a_leftover_failure() {
         Some(TriageImportStatus::Complete { .. })
     ));
 }
-/// A claimed import outranks both stored answers: the folder is not in the
-/// library until the running attempt says it is.
+/// A row's placement is what its preparation says; a run queued for it is
+/// its live state. A tag-prefilled draft is ready to import whether or not
+/// identification is about to answer the folder again.
 #[test]
-fn a_running_import_outranks_the_release_it_has_not_finished_writing() {
-    let mut rows = queue();
-    rows.candidates = vec![candidate("Release")];
-    rows.imported.insert(
-        "hash-Release".to_string(),
-        ImportedRelease {
-            release_id: "rel-1".to_string(),
-            album_id: "alb-1".to_string(),
-        },
-    );
-    let facts = BTreeMap::from([(
-        key("Release"),
-        TriageRuntimeFacts {
-            identification: Some(IdentificationStatus::Queued),
-            importing: true,
-        },
-    )]);
-
-    let flat = flatten(
-        &rows,
-        &ImportListRequest {
-            view: view(TriageTab::Pending),
-            runtime_facts: facts,
-            ..ImportListRequest::default()
-        },
-    )
-    .expect("the queue flattens");
-
-    let row = row_for(&flat, "Release");
-    assert_eq!(row.placement, TriagePlacement::Importing);
-    assert_eq!(row.import_status, Some(TriageImportStatus::Importing));
-}
-#[test]
-fn the_identification_rides_on_a_row_with_no_stored_verdict() {
-    let mut rows = queue();
-    rows.candidates = vec![candidate("Release")];
-    let facts = BTreeMap::from([(
-        key("Release"),
-        TriageRuntimeFacts {
-            identification: Some(IdentificationStatus::Running),
-            importing: false,
-        },
-    )]);
-
-    let flat = flatten(
-        &rows,
-        &ImportListRequest {
-            view: view(TriageTab::Pending),
-            runtime_facts: facts,
-            ..ImportListRequest::default()
-        },
-    )
-    .expect("the queue flattens");
-
-    let row = row_for(&flat, "Release");
-    assert_eq!(row.placement, TriagePlacement::Pending);
-    assert_eq!(row.identification, Some(IdentificationStatus::Running));
-}
-/// A row's placement is what its preparation says; the run is a separate fact
-/// the row carries beside it. A tag-prefilled draft is ready to import whether
-/// or not identification is about to answer the folder again, and the chrome
-/// still counts the row as one the queue is waiting on.
-#[test]
-fn a_ready_row_states_the_identification_queued_for_it() {
+fn a_ready_row_stays_ready_with_identification_queued_for_it() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
         .insert("hash-Release".to_string(), prefilled_from_tags_state());
 
-    let flat = flattened_queued(&rows, view(TriageTab::Pending), &["Release"]);
+    let flat = flattened(&rows, &view(TriageTab::Pending));
 
     let row = row_for(&flat, "Release");
     assert_eq!(row.placement, TriagePlacement::Ready);
-    assert_eq!(row.identification, Some(IdentificationStatus::Queued));
-    assert_eq!(
-        flat.summary
-            .first_unidentified
-            .as_ref()
-            .map(|first| first.candidate_key.as_str()),
-        Some(key("Release").as_str())
-    );
-}
-#[test]
-fn an_idle_candidate_is_not_queued_by_the_current_automatic_setting() {
-    let mut rows = queue();
-    rows.candidates = vec![candidate("Release")];
-
-    let flat = flatten(
-        &rows,
-        &ImportListRequest {
-            view: view(TriageTab::Pending),
-            ..ImportListRequest::default()
-        },
-    )
-    .expect("the queue flattens");
-
-    assert_eq!(
-        row_for(&flat, "Release").placement,
-        TriagePlacement::Pending
-    );
+    assert!(row.selectable);
 }
 /// A draft a person typed in, read from no catalog and no tags, is their
 /// answer as soon as it would import.
@@ -546,7 +440,7 @@ fn a_verdict_with_nothing_to_ask_does_not_make_an_invalid_draft_ready() {
 
 /// A pick belongs to the file shape it was chosen against. Editing the folder
 /// moves the candidate past that shape, so the pick is not its answer any more
-/// and the row falls back to Pending with its queued work beside it.
+/// and the row falls back to Pending.
 #[test]
 fn a_pick_at_a_stale_edit_revision_does_not_answer_the_row() {
     let mut rows = queue();
@@ -559,17 +453,16 @@ fn a_pick_at_a_stale_edit_revision_does_not_answer_the_row() {
         picked_by_the_person(several_matches_state()),
     );
 
-    let flat = flattened_queued(&rows, view(TriageTab::Pending), &["Release"]);
+    let flat = flattened(&rows, &view(TriageTab::Pending));
     let row = row_for(&flat, "Release");
     assert_eq!(row.placement, TriagePlacement::Pending);
-    assert_eq!(row.identification, Some(IdentificationStatus::Queued));
     assert_eq!(row.metadata_provenance, None);
 }
 
-/// A pick does not outrank the three facts above it: a skipped candidate stays
-/// skipped, an imported one stays done, and a running import keeps the row.
+/// A pick does not outrank the two facts above it: a skipped candidate stays
+/// skipped, and an imported one stays done.
 #[test]
-fn a_pick_does_not_outrank_skipped_done_or_importing() {
+fn a_pick_does_not_outrank_skipped_or_done() {
     let picked = picked_by_the_person(several_matches_state());
 
     let mut rows = queue();
@@ -586,7 +479,7 @@ fn a_pick_does_not_outrank_skipped_done_or_importing() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
-        .insert("hash-Release".to_string(), picked.clone());
+        .insert("hash-Release".to_string(), picked);
     rows.imported.insert(
         "hash-Release".to_string(),
         ImportedRelease {
@@ -597,30 +490,6 @@ fn a_pick_does_not_outrank_skipped_done_or_importing() {
     assert_eq!(
         row_for(&flattened(&rows, &view(TriageTab::Done)), "Release").placement,
         TriagePlacement::Done
-    );
-
-    let mut rows = queue();
-    rows.candidates = vec![candidate("Release")];
-    rows.states.insert("hash-Release".to_string(), picked);
-    let running = BTreeMap::from([(
-        key("Release"),
-        TriageRuntimeFacts {
-            identification: Some(IdentificationStatus::Queued),
-            importing: true,
-        },
-    )]);
-    let flat = flatten(
-        &rows,
-        &ImportListRequest {
-            view: view(TriageTab::Pending),
-            runtime_facts: running,
-            ..ImportListRequest::default()
-        },
-    )
-    .expect("the queue flattens");
-    assert_eq!(
-        row_for(&flat, "Release").placement,
-        TriagePlacement::Importing
     );
 }
 

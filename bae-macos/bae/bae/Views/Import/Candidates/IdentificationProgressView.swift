@@ -15,9 +15,8 @@ import SwiftUI
 struct IdentificationProgressView: View {
     let identified: UInt32
     let total: UInt32
-    /// Go to the first candidate with no verdict yet. Nil when there is none
-    /// to go to, which is also when the count has nothing left to wait on.
-    let onGoToUnidentified: (() -> Void)?
+    /// Go to the first candidate the count is still waiting on.
+    let onGoToUnidentified: () -> Void
 
     private var fraction: Double {
         total == 0 ? 1 : Double(identified) / Double(total)
@@ -25,7 +24,7 @@ struct IdentificationProgressView: View {
 
     var body: some View {
         Button {
-            onGoToUnidentified?()
+            onGoToUnidentified()
         } label: {
             ProgressLine(
                 String(localized: "Identifying"),
@@ -36,7 +35,6 @@ struct IdentificationProgressView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(onGoToUnidentified == nil)
         .help("Go to a candidate still being identified")
     }
 }
@@ -46,7 +44,7 @@ struct IdentificationProgressView: View {
 struct IdentificationProgressIndicator: View {
     let identified: UInt32
     let total: UInt32
-    let onGoToUnidentified: (() -> Void)?
+    let onGoToUnidentified: () -> Void
 
     @State
     private var lineShown = false

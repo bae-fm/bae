@@ -100,7 +100,7 @@ internal sealed partial class ImportMappingPane : UserControl
         _candidate = _import.Candidate(row.CandidateKey);
         _candidatePresentationFingerprint = CandidatePresentationFingerprint(_candidate);
         _importStatusFingerprint = ImportStatusFingerprint(
-            _candidate?.Detail?.Row.ImportStatus ?? row.ImportStatus);
+            _candidate?.Detail?.ImportStatus);
         // The subscription is already open, so this read cannot be undone by a
         // change that was on its way.
         _runtime = _import.CandidateRuntime(row.CandidateKey);
@@ -123,7 +123,7 @@ internal sealed partial class ImportMappingPane : UserControl
         var refreshed = _import.Candidate(key);
         var presentationFingerprint = CandidatePresentationFingerprint(refreshed);
         var importStatusFingerprint = ImportStatusFingerprint(
-            refreshed?.Detail?.Row.ImportStatus);
+            refreshed?.Detail?.ImportStatus);
         if (Equals(refreshed?.Detail, _candidate?.Detail)
             && IdentifyFingerprint(refreshed) == IdentifyFingerprint(_candidate)
             && presentationFingerprint == _candidatePresentationFingerprint
@@ -240,12 +240,12 @@ internal sealed partial class ImportMappingPane : UserControl
             : $"{candidate.MetadataPresentation}";
 
     private static string ImportStatusFingerprint(
-        BridgeTriageImportStatus? status) => status switch
+        BridgeCandidateImportStatus? status) => status switch
         {
-            BridgeTriageImportStatus.Importing => "importing",
-            BridgeTriageImportStatus.Complete complete =>
+            BridgeCandidateImportStatus.Importing => "importing",
+            BridgeCandidateImportStatus.Complete complete =>
                 $"complete:{complete.ReleaseId}:{complete.AlbumId}",
-            BridgeTriageImportStatus.Error error =>
+            BridgeCandidateImportStatus.Error error =>
                 $"error:{BridgeDisplay.LocalizedLine(error.ErrorValue)}",
             null => string.Empty,
             _ => throw new ArgumentOutOfRangeException(
@@ -396,12 +396,12 @@ internal sealed partial class ImportMappingPane : UserControl
             return;
         }
 
-        switch (_candidate.Detail?.Row.ImportStatus)
+        switch (_candidate.Detail?.ImportStatus)
         {
-            case BridgeTriageImportStatus.Importing:
+            case BridgeCandidateImportStatus.Importing:
                 _content.Content = BuildReadOnlyImportPane(completed: null);
                 return;
-            case BridgeTriageImportStatus.Complete complete:
+            case BridgeCandidateImportStatus.Complete complete:
                 _content.Content = BuildReadOnlyImportPane(complete);
                 return;
         }

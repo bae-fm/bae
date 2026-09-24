@@ -366,8 +366,6 @@
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>רענן מהמקור החדש</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>שמור על המטא-נתונים הנוכחיים</value></data>
   <data name="import.tab.skipped" xml:space="preserve"><value>דולגו</value></data>
-  <data name="import.candidate.skip" xml:space="preserve"><value>דלג</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>בטל דילוג</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>הסר תיקייה</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>מיון ותיקיות במעקב</value></data>
   <data name="import.sort.newest_first" xml:space="preserve"><value>החדשים ביותר תחילה</value></data>
@@ -377,7 +375,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>ממתינים</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>הושלמו</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>מזהה</value></data>
-  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>מעבר למועמד שעדיין בזיהוי</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} נבחרו</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>בחר הכול</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>ביטול הבחירה</value></data>
@@ -388,8 +385,6 @@
   <data name="import.search.signals" xml:space="preserve"><value>אותות</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>נכשל</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>מוכן</value></data>
-  <data name="import.phase.queued" xml:space="preserve"><value>ממתין לזיהוי</value></data>
-  <data name="import.phase.running" xml:space="preserve"><value>מזהה…</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>סינון…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>הוספת תיקייה…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>אין כאן עדיין כלום</value></data>

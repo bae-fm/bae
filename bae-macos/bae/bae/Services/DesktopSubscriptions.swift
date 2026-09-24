@@ -204,6 +204,9 @@ final class DesktopSubscriptions {
                     view: view,
                     candidateKey: key
                 )
+            },
+            firstIdentifyingCandidate: { view in
+                try await appHandle.firstIdentifyingCandidate(view: view)
             }
         )
     }

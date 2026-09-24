@@ -60,6 +60,58 @@ struct ImportCandidateSelectionTests {
         #expect(host.fittingSize.height > 0)
     }
 
+    /// What is running for a candidate reaches its row through the row's own
+    /// subscription, asked with the row's basis: a run the subscription says
+    /// is going draws the row's spinner, and the list's row alone draws none.
+    @MainActor
+    @Test("a row draws the run its own subscription reports")
+    func rowDrawsItsOwnLiveState() async throws {
+        let row = PreviewData.triageRowUnidentified
+        let asked = RecordedLiveStateSubscription()
+        let running = Importer(
+            subscribeCandidateLiveState: { key, basis, callback in
+                asked.record(key: key, basis: basis)
+                callback.onValue(
+                    value: BridgeCandidateLiveState(
+                        identification: .running,
+                        importing: false,
+                        actions: [.skip]
+                    )
+                )
+                return asked
+            }
+        )
+        func spinners(_ importer: Importer) async -> Int {
+            let size = NSSize(width: 400, height: 80)
+            let (_, host) = SnapshotTestSupport.hostInWindow(
+                TriageRowView(
+                    row: row,
+                    coverContent: nil,
+                    uploadObservation: nil,
+                    isGroupMember: false,
+                    onReveal: {},
+                    onSkip: { _ in }
+                )
+                .environment(importer)
+                .environment(ImageStore.stub())
+                .frame(width: size.width, height: size.height),
+                size: size
+            )
+            for _ in 0..<50 {
+                await Task.yield()
+                host.layoutSubtreeIfNeeded()
+            }
+            return SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSProgressIndicator }
+                .count
+        }
+
+        #expect(await spinners(Importer()) == 0)
+        #expect(await spinners(running) == 1)
+        #expect(asked.keys == [row.candidateKey])
+        #expect(asked.bases == [row.actionBasis])
+    }
+
     /// The foot bar offers importing only the selected rows read from a
     /// catalog's release beside importing every selected Ready row, each with
     /// its own count.
@@ -203,4 +255,21 @@ final class PopoverAnimationTests: XCTestCase {
         popover.performClose(nil)
         withExtendedLifetime(window) {}
     }
+}
+
+/// Records what a row asked its live-state subscription for.
+private final class RecordedLiveStateSubscription: LiveSubscriptionProtocol,
+    @unchecked Sendable
+{
+    private let lock = NSLock()
+    private var asked: [(String, BridgeCandidateActionBasis)] = []
+
+    var keys: [String] { lock.withLock { asked.map(\.0) } }
+    var bases: [BridgeCandidateActionBasis] { lock.withLock { asked.map(\.1) } }
+
+    func record(key: String, basis: BridgeCandidateActionBasis) {
+        lock.withLock { asked.append((key, basis)) }
+    }
+
+    func cancel() {}
 }

@@ -366,8 +366,6 @@
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>新しいソースから更新</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>現在のメタデータを保持</value></data>
   <data name="import.tab.skipped" xml:space="preserve"><value>スキップ済み</value></data>
-  <data name="import.candidate.skip" xml:space="preserve"><value>スキップ</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>スキップを解除</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>フォルダを削除</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>並べ替えと監視フォルダ</value></data>
   <data name="import.sort.newest_first" xml:space="preserve"><value>新しい順</value></data>
@@ -377,7 +375,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>保留中</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>完了</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>識別中</value></data>
-  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>まだ識別中の候補へ移動</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} 件選択中</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>すべて選択</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>選択を解除</value></data>
@@ -388,8 +385,6 @@
   <data name="import.search.signals" xml:space="preserve"><value>シグナル</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>失敗</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>準備完了</value></data>
-  <data name="import.phase.queued" xml:space="preserve"><value>識別待ち</value></data>
-  <data name="import.phase.running" xml:space="preserve"><value>識別中…</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>絞り込み…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>フォルダを追加…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>まだ何もありません</value></data>

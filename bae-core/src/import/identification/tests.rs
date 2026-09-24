@@ -841,3 +841,4 @@ include!("tests/candidate_decisions.rs");
 include!("tests/cancellation.rs");
 include!("tests/requested.rs");
 include!("tests/admissions.rs");
+include!("tests/row_live_state.rs");

@@ -100,7 +100,6 @@ mod triage_tests {
             TriagePlacement::NeedsYou {
                 reason: bae_core::identify::NeedsYou::SeveralMatches { count: 2 },
             },
-            TriagePlacement::Importing,
             TriagePlacement::Done,
             TriagePlacement::Skipped,
         ] {
@@ -242,6 +241,27 @@ mod conversion_roundtrip {
         assert_eq!(
             BridgeErrorCategory::from_core(UiErrorCategory::DeviceIdentityMissing),
             BridgeErrorCategory::DeviceIdentityMissing,
+        );
+    }
+
+    /// A row hands its action basis back with its live-state subscription, so
+    /// it has to come back as the value core placed it with.
+    #[cfg(feature = "desktop")]
+    #[test]
+    fn candidate_action_basis_round_trips() {
+        let core = bae_core::import::CandidateActionBasis {
+            actionable: true,
+            placement: bae_core::import::TriagePlacement::NeedsYou {
+                reason: bae_core::identify::NeedsYou::TrackCountDisagrees {
+                    local: 13,
+                    source: 12,
+                },
+            },
+            lookup_failed: true,
+        };
+        assert_eq!(
+            core,
+            crate::types::BridgeCandidateActionBasis::from_core(core.clone()).into_core()
         );
     }
 

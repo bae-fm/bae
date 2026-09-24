@@ -366,8 +366,6 @@
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Obnovit z nového zdroje</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Zachovat stávající metadata</value></data>
   <data name="import.tab.skipped" xml:space="preserve"><value>Přeskočené</value></data>
-  <data name="import.candidate.skip" xml:space="preserve"><value>Přeskočit</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Zrušit přeskočení</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Odebrat složku</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Řazení a sledované složky</value></data>
   <data name="import.sort.newest_first" xml:space="preserve"><value>Nejnovější první</value></data>
@@ -377,7 +375,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>Čekající</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Hotové</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identifikace</value></data>
-  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Přejít na kandidáta, který se stále identifikuje</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>Vybráno: {count}</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Vybrat vše</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>Zrušit výběr</value></data>
@@ -388,8 +385,6 @@
   <data name="import.search.signals" xml:space="preserve"><value>Signály</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Selhalo</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Připraveno</value></data>
-  <data name="import.phase.queued" xml:space="preserve"><value>Čeká na identifikaci</value></data>
-  <data name="import.phase.running" xml:space="preserve"><value>Identifikace…</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filtrovat…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Přidat složku…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Zatím tu nic není</value></data>

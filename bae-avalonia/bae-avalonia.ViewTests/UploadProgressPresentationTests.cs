@@ -72,13 +72,15 @@ public sealed class UploadProgressPresentationTests
             UploadProgressPresentation.ResolveImport(status, Snapshot(7)));
     }
 
-    // A running import has no cloud state to read yet, and neither has a
-    // failed one.
+    // A failed import has no cloud state to read, and neither has a row no
+    // import has finished for.
     [Fact]
     public void AnUnfinishedImportHasNoCloudObservation()
     {
         Assert.Null(UploadProgressPresentation.ResolveImport(
-            new BridgeTriageImportStatus.Importing(),
+            new BridgeTriageImportStatus.Error(
+                new BridgeException.Diagnostic(
+                    new BridgeErrorCategory.Import(), "the disk filled")),
             Snapshot(7, Progress())));
         Assert.Null(UploadProgressPresentation.ResolveImport(
             null,

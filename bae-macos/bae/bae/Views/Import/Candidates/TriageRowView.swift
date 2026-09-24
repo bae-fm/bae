@@ -7,6 +7,11 @@ import SwiftUI
 /// A row does not change height on selection: the folder it came from is the
 /// main pane's to state, and a row that grows on selection shifts every row
 /// under it.
+///
+/// What the list delivers is what the tables say; what is running for the
+/// candidate — a run queued or in flight, an import that owns it — and the
+/// commands the row offers with it are the row's own subscription's, read
+/// here and drawn by `TriageRowContent`.
 struct TriageRowView: View {
     /// The cover's edge, in points. Named because it is also the size the
     /// sidebar warms Ready covers at — a decode cached at another size is a
@@ -50,15 +55,52 @@ struct TriageRowView: View {
     }
 
     var body: some View {
+        CandidateLiveStateReader(
+            key: row.candidateKey,
+            basis: row.actionBasis
+        ) { live in
+            TriageRowContent(
+                row: row,
+                live: live,
+                coverContent: coverContent,
+                uploadObservation: uploadObservation,
+                isGroupMember: isGroupMember,
+                onReveal: onReveal,
+                onSkip: onSkip,
+                onReleaseDecision: onReleaseDecision
+            )
+        }
+    }
+}
+
+/// A triage row drawn from its row and its live state.
+struct TriageRowContent: View {
+    let row: BridgeTriageRow
+    /// `nil` until the row's subscription has answered.
+    let live: BridgeCandidateLiveState?
+    let coverContent: ImageContent?
+    let uploadObservation: UploadObservation?
+    let isGroupMember: Bool
+    let onReveal: () -> Void
+    let onSkip: (_ skipped: Bool) -> Void
+    let onReleaseDecision:
+        (
+            _ key: BridgeFolderReleaseDecisionKey,
+            _ decision: BridgeFolderReleaseDecision
+        ) -> Void
+
+    var body: some View {
         rowContent
             .groupMemberRail(isGroupMember)
             .contentShape(Rectangle())
             .contextMenu {
-                if let skipAction = row.skipAction {
-                    switch skipAction {
-                    case .skip:
+                if let actions = live?.actions,
+                    actions.contains(.skip) || actions.contains(.restore)
+                {
+                    if actions.contains(.skip) {
                         Button("Skip") { onSkip(true) }
-                    case .unskip:
+                    }
+                    if actions.contains(.restore) {
                         Button("Unskip") { onSkip(false) }
                     }
                     Divider()
@@ -106,9 +148,12 @@ struct TriageRowView: View {
     private var cover: some View {
         ImageView(
             content: coverContent,
-            pointSize: Self.coverPointSize
+            pointSize: TriageRowView.coverPointSize
         )
-        .frame(width: Self.coverPointSize, height: Self.coverPointSize)
+        .frame(
+            width: TriageRowView.coverPointSize,
+            height: TriageRowView.coverPointSize
+        )
         .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
@@ -167,7 +212,7 @@ struct TriageRowView: View {
     private var stateLine: some View {
         // A running import is the one line that changes by the second, so it
         // subscribes to the candidate-runtime signal at this leaf.
-        if case .importing = row.importStatus {
+        if live?.importing == true {
             ImportProgressLine(key: row.candidateKey)
                 .font(.system(size: 11.5))
         }
@@ -185,27 +230,25 @@ struct TriageRowView: View {
 
 /// The row's metadata and trailing column. In an extension so the view's body
 /// and the layout it composes stay readable as one piece.
-extension TriageRowView {
+extension TriageRowContent {
     /// State that belongs below the release summary: an import failure, or a
     /// write of an identification result that failed. What a Ready check found
     /// is the pane's to state, beside the Import it bears on; identification
     /// activity belongs to the trailing indicator's tooltip.
     private var statusLine: String? {
-        if case .finalizationFailed(let error) = row.identification {
+        if case .finalizationFailed(let error) = live?.identification {
             return error.displayLine
         }
         switch row.placement {
         case .pending, .ready, .skipped, .needsYou:
             return nil
-        case .importing, .failed, .done:
+        case .failed, .done:
             return importStatusLine
         }
     }
 
     private var importStatusLine: String? {
         switch row.importStatus {
-        case .importing:
-            return nil
         case .complete, nil:
             return nil
         case .error(let error):
@@ -222,13 +265,17 @@ extension TriageRowView {
     ///
     /// A run in flight takes the column rather than sitting beside it: while a
     /// run is going there is nothing to answer, and the answer being written
-    /// is about to replace whatever the column said. Otherwise the import
-    /// says what it has to. What an identification result asks is the pane's
-    /// to state, never the row's.
+    /// is about to replace whatever the column said. A running import leaves
+    /// it empty — the line under the title carries the bar. Otherwise the
+    /// import says what it has to. What an identification result asks is the
+    /// pane's to state, never the row's.
     private var trailing: some View {
         Group {
-            if let identification = row.identification {
+            if let identification = live?.identification {
                 identificationTrailing(identification)
+            }
+            else if live?.importing == true {
+                EmptyView()
             }
             else {
                 placementTrailing
@@ -246,9 +293,6 @@ extension TriageRowView {
             EmptyView()
         case .needsYou:
             // The question is the pane's to state.
-            EmptyView()
-        case .importing:
-            // The line under the title carries the bar; nothing trails it.
             EmptyView()
         case .failed, .done:
             importTrailing
@@ -281,13 +325,10 @@ extension TriageRowView {
     }
 
     /// What a row past the point of being asked anything shows: the failure's
-    /// tag, or the completed import's mark and its cloud transition. A running
-    /// import's bar is on the line under the title.
+    /// tag, or the completed import's mark and its cloud transition.
     @ViewBuilder
     private var importTrailing: some View {
         switch row.importStatus {
-        case .importing:
-            EmptyView()
         case .complete:
             if case .active = uploadObservation {
                 // Still going up to the cloud — the same arrow the storage

@@ -366,8 +366,6 @@
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Odśwież z nowego źródła</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Zachowaj obecne metadane</value></data>
   <data name="import.tab.skipped" xml:space="preserve"><value>Pominięte</value></data>
-  <data name="import.candidate.skip" xml:space="preserve"><value>Pomiń</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Cofnij pominięcie</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Usuń folder</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Sortowanie i obserwowane foldery</value></data>
   <data name="import.sort.newest_first" xml:space="preserve"><value>Najnowsze najpierw</value></data>
@@ -377,7 +375,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>Oczekujące</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Zakończone</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identyfikowanie</value></data>
-  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Przejdź do kandydata wciąż identyfikowanego</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>Wybrano: {count}</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Zaznacz wszystko</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>Odznacz wszystko</value></data>
@@ -388,8 +385,6 @@
   <data name="import.search.signals" xml:space="preserve"><value>Sygnały</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Niepowodzenie</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Gotowe</value></data>
-  <data name="import.phase.queued" xml:space="preserve"><value>Czeka na identyfikację</value></data>
-  <data name="import.phase.running" xml:space="preserve"><value>Identyfikowanie…</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filtruj…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Dodaj folder…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Jeszcze nic tu nie ma</value></data>

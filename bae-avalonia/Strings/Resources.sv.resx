@@ -391,8 +391,6 @@
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Uppdatera från den nya källan</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Behåll nuvarande metadata</value></data>
   <data name="import.tab.skipped" xml:space="preserve"><value>Överhoppad</value></data>
-  <data name="import.candidate.skip" xml:space="preserve"><value>Hoppa över</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Återställ till importerad</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Ta bort mappen</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Sortering och bevakade mappar</value></data>
   <data name="import.sort.newest_first" xml:space="preserve"><value>Nyast först</value></data>
@@ -402,7 +400,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>Väntar</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Klar</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identifierar</value></data>
-  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Gå till en kandidat som fortfarande identifieras</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} markerade</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Markera alla</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>Avmarkera alla</value></data>
@@ -413,8 +410,6 @@
   <data name="import.search.signals" xml:space="preserve"><value>Signaler</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Misslyckades</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Klar</value></data>
-  <data name="import.phase.queued" xml:space="preserve"><value>Väntar på identifiering</value></data>
-  <data name="import.phase.running" xml:space="preserve"><value>Identifierar…</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filter…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Lägg till en mapp…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Inget här ännu</value></data>

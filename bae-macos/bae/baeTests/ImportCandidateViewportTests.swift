@@ -38,13 +38,6 @@ private final class MutableImportListPageSource: PageSource,
         ImportListPages(
             source: self,
             setView: { _ in },
-            firstUnidentifiedPosition: { [self] _, target in
-                lock.withLock {
-                    items.firstIndex {
-                        $0.id == target.stableKey
-                    }
-                }
-            },
             waitForView: { _ in }
         )
     }
@@ -123,7 +116,8 @@ final class ImportCandidateViewportTests: XCTestCase {
             importStore: store,
             uiStore: uiStore,
             makeSource: { _ in source.pages },
-            locateCandidate: { _, _ in nil }
+            locateCandidate: { _, _ in nil },
+            firstIdentifyingCandidate: { _ in nil }
         )
         slot.startLoad()
         await viewportSettle { slot.list?.idAt(30) != nil }
@@ -428,9 +422,11 @@ extension ImportCandidateViewportTests {
                 actionable: true,
                 placement: .skipped,
                 readyCheck: nil,
-                identification: nil,
-                skipAction: .unskip,
-                actions: [.restore],
+                actionBasis: BridgeCandidateActionBasis(
+                    actionable: true,
+                    placement: .skipped,
+                    lookupFailed: false
+                ),
                 matched: nil,
                 metadataSummary: nil,
                 coverThumbnail: nil,

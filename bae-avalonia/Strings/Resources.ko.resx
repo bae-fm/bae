@@ -366,8 +366,6 @@
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>새 소스에서 새로 고침</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>현재 메타데이터 유지</value></data>
   <data name="import.tab.skipped" xml:space="preserve"><value>건너뜀</value></data>
-  <data name="import.candidate.skip" xml:space="preserve"><value>건너뛰기</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>건너뛰기 취소</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>폴더 제거</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>정렬 및 감시 중인 폴더</value></data>
   <data name="import.sort.newest_first" xml:space="preserve"><value>최신순</value></data>
@@ -377,7 +375,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>대기 중</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>완료</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>식별 중</value></data>
-  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>아직 식별 중인 항목으로 이동</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count}개 선택됨</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>전체 선택</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>선택 해제</value></data>
@@ -388,8 +385,6 @@
   <data name="import.search.signals" xml:space="preserve"><value>신호</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>실패</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>준비됨</value></data>
-  <data name="import.phase.queued" xml:space="preserve"><value>식별 대기 중</value></data>
-  <data name="import.phase.running" xml:space="preserve"><value>식별 중…</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>필터…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>폴더 추가…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>아직 아무것도 없습니다</value></data>

@@ -398,8 +398,7 @@ async fn unchanged_rescan_keeps_combination_and_missing_source_blocks_it() {
         blocked.composition_action,
         Some(CombinationAction::Separate)
     );
-    assert!(blocked.row.actions.is_empty());
-    assert!(blocked.row.skip_action.is_none());
+    assert!(blocked.live.actions.is_empty());
     assert!(db.load_release_candidate("combination:test").await.is_err());
     assert_eq!(
         db.load_import_list(Default::default())

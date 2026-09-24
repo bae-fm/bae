@@ -143,9 +143,10 @@ internal static class PreviewData
                 Actionable: true,
                 Placement: new BridgeTriagePlacement.Ready(),
                 ReadyCheck: null,
-                Identification: null,
-                SkipAction: BridgeTriageSkipAction.Skip,
-                Actions: [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
+                ActionBasis: new BridgeCandidateActionBasis(
+                    Actionable: true,
+                    Placement: new BridgeTriagePlacement.Ready(),
+                    LookupFailed: false),
                 Matched: null,
                 MetadataSummary: new BridgeTriageMetadataSummary(
                     AlbumTitle: "Applied Draft",
@@ -194,8 +195,7 @@ internal static class PreviewData
         FolderScanActivity: null,
         GroupKeys: groupKeys.ToArray(),
         Ready: ready.ToArray(),
-        Identified: Array.Empty<BridgeReadyRowRef>(),
-        FirstUnidentified: null);
+        Identified: Array.Empty<BridgeReadyRowRef>());
 
     private static BridgeTriageRow ImportRow(string name, string displayPath) =>
         new(
@@ -208,9 +208,10 @@ internal static class PreviewData
             Actionable: true,
             Placement: new BridgeTriagePlacement.Ready(),
             ReadyCheck: null,
-            Identification: null,
-            SkipAction: BridgeTriageSkipAction.Skip,
-            Actions: [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
+            ActionBasis: new BridgeCandidateActionBasis(
+                Actionable: true,
+                Placement: new BridgeTriagePlacement.Ready(),
+                LookupFailed: false),
             Matched: null,
             MetadataSummary: null,
             CoverThumbnail: null,

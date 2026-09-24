@@ -155,12 +155,11 @@ private func readyRow(
         actionable: true,
         placement: .ready,
         readyCheck: nil,
-        identification: nil,
-        skipAction: .skip,
-        actions: [
-            .importReady, .identify, .resetToFileMetadata, .clearMetadata,
-            .skip,
-        ],
+        actionBasis: BridgeCandidateActionBasis(
+            actionable: true,
+            placement: .ready,
+            lookupFailed: false
+        ),
         matched: matchedRelease(
             releaseId: "rel-\(key)",
             title: title,
@@ -196,9 +195,11 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         actionable: true,
         placement: .done,
         readyCheck: nil,
-        identification: nil,
-        skipAction: nil,
-        actions: [],
+        actionBasis: BridgeCandidateActionBasis(
+            actionable: true,
+            placement: .done,
+            lookupFailed: false
+        ),
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
         metadataSummary: nil,
         coverThumbnail: nil,
@@ -220,9 +221,11 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         actionable: true,
         placement: .skipped,
         readyCheck: nil,
-        identification: nil,
-        skipAction: .unskip,
-        actions: [.restore],
+        actionBasis: BridgeCandidateActionBasis(
+            actionable: true,
+            placement: .skipped,
+            lookupFailed: false
+        ),
         matched: nil,
         metadataSummary: nil,
         coverThumbnail: nil,
@@ -254,6 +257,15 @@ private func detail(
         actionable: true,
         resumedIdentifyState: resumedIdentifyState,
         row: row ?? readyRow(folderPath, title: name),
+        live: BridgeCandidateLiveState(
+            identification: nil,
+            importing: false,
+            actions: [
+                .importReady, .identify, .resetToFileMetadata, .clearMetadata,
+                .skip,
+            ]
+        ),
+        importStatus: nil,
         release: release,
         pickedLibraryStatus: nil,
         fileEvidence: [],
@@ -441,10 +453,10 @@ private final class DeliveredPages {
 }
 
 @MainActor
-private final class CandidatePositionOutcome {
+private final class ViewDeliveryOutcome {
     enum State: Equatable {
         case waiting
-        case resolved(Int?)
+        case delivered
         case failed
     }
 
@@ -453,7 +465,7 @@ private final class CandidatePositionOutcome {
 
 @Suite("Import list page source")
 struct ImportListPageSourceTests {
-    private struct PositionReadFailed: Error {}
+    private struct ViewReadFailed: Error {}
 
     private struct SnapshotWindow {
         let window: BridgeLibraryPageWindow
@@ -562,8 +574,6 @@ struct ImportListPageSourceTests {
     private func snapshot(
         _ windows: [SnapshotWindow],
         totalCount: UInt64,
-        firstUnidentifiedCandidateKey: String? = nil,
-        firstUnidentifiedPosition: UInt64? = nil,
         requestRevision: UInt64 = 0
     ) -> BridgeImportListSnapshot {
         BridgeImportListSnapshot(
@@ -585,15 +595,7 @@ struct ImportListPageSourceTests {
                 folderScanActivity: nil,
                 groupKeys: [],
                 ready: [],
-                identified: [],
-                firstUnidentified: firstUnidentifiedCandidateKey.map {
-                    BridgeFirstUnidentifiedRowRef(
-                        candidateKey: $0,
-                        stableKey: "candidate:\($0)",
-                        groupKey: nil,
-                        visiblePosition: firstUnidentifiedPosition
-                    )
-                }
+                identified: []
             ),
             requestRevision: requestRevision,
             cause: .requestChanged
@@ -603,8 +605,8 @@ struct ImportListPageSourceTests {
 
 extension ImportListPageSourceTests {
     @MainActor
-    @Test("candidate position waits for the view revision that defines it")
-    func candidatePositionWaitsForItsViewRevision() async throws {
+    @Test("a view waits for the revision that answers it")
+    func aViewWaitsForTheRevisionThatAnswersIt() async throws {
         let subscription = StubListSubscription()
         let source = ImportListPageSource(
             subscription: subscription,
@@ -616,20 +618,11 @@ extension ImportListPageSourceTests {
             collapsedGroups: [],
             order: .pathAscending
         )
-        let outcome = CandidatePositionOutcome()
+        let outcome = ViewDeliveryOutcome()
         Task {
             do {
-                outcome.state = .resolved(
-                    try await source.pages.firstUnidentifiedPosition(
-                        for: BridgeFirstUnidentifiedRowRef(
-                            candidateKey: "/w/target",
-                            stableKey: "candidate:/w/target",
-                            groupKey: nil,
-                            visiblePosition: nil
-                        ),
-                        afterApplying: view
-                    )
-                )
+                try await source.pages.waitForView(view)
+                outcome.state = .delivered
             }
             catch {
                 outcome.state = .failed
@@ -638,47 +631,29 @@ extension ImportListPageSourceTests {
         await settle(until: { subscription.requestedViews == [view] })
 
         subscription.deliver(
-            snapshot(
-                [],
-                totalCount: 70,
-                firstUnidentifiedCandidateKey: "/w/target",
-                firstUnidentifiedPosition: 4,
-                requestRevision: 0
-            )
+            snapshot([], totalCount: 70, requestRevision: 0)
         )
         await Task.yield()
         #expect(outcome.state == .waiting)
 
         subscription.deliver(
-            snapshot(
-                [],
-                totalCount: 70,
-                firstUnidentifiedCandidateKey: "/w/target",
-                firstUnidentifiedPosition: 61,
-                requestRevision: 1
-            )
+            snapshot([], totalCount: 70, requestRevision: 1)
         )
         await settle(until: { outcome.state != .waiting })
-        #expect(outcome.state == .resolved(61))
+        #expect(outcome.state == .delivered)
     }
 
     @MainActor
-    @Test("candidate position cancellation cannot miss registration")
-    func candidatePositionCancellationAtRegistration() async {
+    @Test("a view wait's cancellation cannot miss registration")
+    func viewWaitCancellationAtRegistration() async {
         let subscription = StubListSubscription()
         let source = ImportListPageSource(
             subscription: subscription,
             onSummary: { _ in }
         )
         let task = Task {
-            try await source.pages.firstUnidentifiedPosition(
-                for: BridgeFirstUnidentifiedRowRef(
-                    candidateKey: "/w/target",
-                    stableKey: "candidate:/w/target",
-                    groupKey: nil,
-                    visiblePosition: nil
-                ),
-                afterApplying: BridgeImportListView(
+            try await source.pages.waitForView(
+                BridgeImportListView(
                     tab: .pending,
                     filterText: "",
                     collapsedGroups: [],
@@ -691,7 +666,7 @@ extension ImportListPageSourceTests {
 
         do {
             _ = try await task.value
-            Issue.record("a cancelled position wait returned a position")
+            Issue.record("a cancelled view wait returned")
         }
         catch is CancellationError {}
         catch {
@@ -700,22 +675,16 @@ extension ImportListPageSourceTests {
     }
 
     @MainActor
-    @Test("candidate position registration receives a source failure")
-    func candidatePositionFailureAtRegistration() async {
+    @Test("a view wait's registration receives a source failure")
+    func viewWaitFailureAtRegistration() async {
         let subscription = StubListSubscription()
         let source = ImportListPageSource(
             subscription: subscription,
             onSummary: { _ in }
         )
         let task = Task {
-            try await source.pages.firstUnidentifiedPosition(
-                for: BridgeFirstUnidentifiedRowRef(
-                    candidateKey: "/w/target",
-                    stableKey: "candidate:/w/target",
-                    groupKey: nil,
-                    visiblePosition: nil
-                ),
-                afterApplying: BridgeImportListView(
+            try await source.pages.waitForView(
+                BridgeImportListView(
                     tab: .pending,
                     filterText: "",
                     collapsedGroups: [],
@@ -725,20 +694,20 @@ extension ImportListPageSourceTests {
         }
         await settle(until: { !subscription.requestedViews.isEmpty })
 
-        subscription.fail(PositionReadFailed())
+        subscription.fail(ViewReadFailed())
 
         do {
             _ = try await task.value
-            Issue.record("a failed position wait returned a position")
+            Issue.record("a failed view wait returned")
         }
-        catch is PositionReadFailed {}
+        catch is ViewReadFailed {}
         catch {
-            Issue.record("unexpected position error: \(error)")
+            Issue.record("unexpected view wait error: \(error)")
         }
     }
 
     @Test("a failure between view acceptance and registration is retained")
-    func candidatePositionFailureBeforeRegistration() async {
+    func viewWaitFailureBeforeRegistration() async {
         let subscription = StubListSubscription()
         let source = ImportListPageSource(
             subscription: subscription,
@@ -752,19 +721,13 @@ extension ImportListPageSourceTests {
             onError: { _ in failureDelivered.signal() }
         )
         subscription.onSetView {
-            subscription.fail(PositionReadFailed())
+            subscription.fail(ViewReadFailed())
             failureDelivered.wait()
         }
         let pages = source.pages
         let task = Task {
-            try await pages.firstUnidentifiedPosition(
-                for: BridgeFirstUnidentifiedRowRef(
-                    candidateKey: "/w/target",
-                    stableKey: "candidate:/w/target",
-                    groupKey: nil,
-                    visiblePosition: nil
-                ),
-                afterApplying: BridgeImportListView(
+            try await pages.waitForView(
+                BridgeImportListView(
                     tab: .pending,
                     filterText: "",
                     collapsedGroups: [],
@@ -775,11 +738,11 @@ extension ImportListPageSourceTests {
 
         do {
             _ = try await task.value
-            Issue.record("a failed position wait returned a position")
+            Issue.record("a failed view wait returned")
         }
-        catch is PositionReadFailed {}
+        catch is ViewReadFailed {}
         catch {
-            Issue.record("unexpected position error: \(error)")
+            Issue.record("unexpected view wait error: \(error)")
         }
     }
 
@@ -824,8 +787,7 @@ extension ImportListPageSourceTests {
                     ),
                     SnapshotWindow(offset: 2, limit: 2, keys: ["/w/c"]),
                 ],
-                totalCount: 3,
-                firstUnidentifiedCandidateKey: "/w/c"
+                totalCount: 3
             )
         )
         await settle(until: { totals.count == 2 })
@@ -833,9 +795,7 @@ extension ImportListPageSourceTests {
         #expect(first == ["candidate:/w/a", "candidate:/w/b"])
         #expect(second == ["candidate:/w/c"])
         #expect(totals == [3, 3])
-        #expect(
-            summaries.last?.firstUnidentified?.candidateKey == "/w/c"
-        )
+        #expect(summaries.last?.counts.pending == 3)
     }
 
     @MainActor

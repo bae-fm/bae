@@ -25,8 +25,8 @@ class ImportStore {
     var items: [String: BridgeImportListItem] = [:]
 
     /// Everything the chrome around the list shows: the tab counts, the
-    /// watched folders and their scan statuses, the group keys, the Ready set,
-    /// and the row the identify count is still waiting on. Defaults to an
+    /// watched folders and their scan statuses, the group keys and the Ready
+    /// set. Defaults to an
     /// empty summary rather than `nil`: "not loaded yet" and "the queue is
     /// genuinely empty" render identically, so no surface needs to tell them
     /// apart.
@@ -42,8 +42,7 @@ class ImportStore {
         folderScanActivity: nil,
         groupKeys: [],
         ready: [],
-        identified: [],
-        firstUnidentified: nil
+        identified: []
     )
 
     /// The fault each watched root was last reported as having. A summary is

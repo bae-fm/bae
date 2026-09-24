@@ -220,15 +220,7 @@ internal sealed partial class ImportSectionView
         }
         column.Children.Add(TitleWithGlyphs(leading, title, row.Reading));
 
-        // A running import is the one line on a row that changes by the
-        // second, so it draws itself off the candidate-runtime signal rather
-        // than waiting for the queue to re-project. The row says only *that*
-        // an import is running, which is what the queue does answer.
-        if (row.ImportStatus is BridgeTriageImportStatus.Importing)
-        {
-            column.Children.Add(ImportProgressLine.Build(_import, row.CandidateKey));
-        }
-        else if (SubLine(RowSubLine(row)) is { } subLine)
+        if (SubLine(PlacementSubLine(row)) is { } subLine)
         {
             column.Children.Add(subLine);
         }
@@ -322,14 +314,7 @@ internal sealed partial class ImportSectionView
     }
 
     // The second line: the resolved artist, a disagreement sentence, or an
-    // import failure. Identification activity belongs to its trailing
-    // indicator's tooltip — except a write that failed, which is an error
-    // about the row and leads whatever the placement would have said.
-    private string? RowSubLine(BridgeTriageRow row) =>
-        row.Identification is BridgeIdentificationStatus.FinalizationFailed failed
-            ? BridgeDisplay.LocalizedLine(failed.Error)
-            : PlacementSubLine(row);
-
+    // import failure.
     private string? PlacementSubLine(BridgeTriageRow row) => row.Placement switch
     {
         BridgeTriagePlacement.Ready or BridgeTriagePlacement.Skipped =>
@@ -340,7 +325,7 @@ internal sealed partial class ImportSectionView
             null,
         BridgeTriagePlacement.NeedsYou needsYou =>
             BridgeDisplay.LocalizedLine(needsYou.Reason),
-        BridgeTriagePlacement.Importing or BridgeTriagePlacement.Failed or BridgeTriagePlacement.Done =>
+        BridgeTriagePlacement.Failed or BridgeTriagePlacement.Done =>
             ImportSubLine(row),
         _ => null,
     };
@@ -359,8 +344,6 @@ internal sealed partial class ImportSectionView
 
     private static string? ImportSubLine(BridgeTriageRow row) => row.ImportStatus switch
     {
-        // A running import draws its own line; this is not asked for it.
-        BridgeTriageImportStatus.Importing => null,
         // The row says what the release is. That its files are still going up
         // is the trailing glyph's to say, and how far they have come is the
         // bar's — a count of the files queued behind it answers a question
@@ -411,17 +394,7 @@ internal sealed partial class ImportSectionView
 
     // The row's trailing column. Where the draft came from is the title line's
     // mark, not a column of its own.
-    //
-    // A run in flight takes the column from the placement rather than sitting
-    // beside it. The placement's trailing is what the row is asking of the
-    // person, and while a run is going there is nothing to answer: the row
-    // offers no command but Skip, and the answer being written is about to
-    // replace the question.
-    private Control RowTrailing(BridgeTriageRow row) =>
-        (row.Identification is { } identification
-            ? IdentificationTrailing(identification)
-            : PlacementTrailing(row))
-        ?? new Panel();
+    private Control RowTrailing(BridgeTriageRow row) => PlacementTrailing(row) ?? new Panel();
 
     // What the placement itself puts at the end of the row, or nothing when it
     // has nothing to put there.
@@ -433,30 +406,12 @@ internal sealed partial class ImportSectionView
                 return null;
             case BridgeTriagePlacement.NeedsYou(var reason):
                 return NeedsYouTrailing(row, reason);
-            case BridgeTriagePlacement.Importing:
-                return new Spinner { Width = 14, Height = 14 };
             case BridgeTriagePlacement.Failed:
             case BridgeTriagePlacement.Done:
                 return ImportTrailing(row);
             default:
                 return null;
         }
-    }
-
-    private static Control IdentificationTrailing(BridgeIdentificationStatus status)
-    {
-        Control indicator = status switch
-        {
-            BridgeIdentificationStatus.Queued =>
-                Icons.Glyph(Icons.Clock, 14, "BaeTextSecondaryBrush"),
-            BridgeIdentificationStatus.Running or BridgeIdentificationStatus.Finalizing =>
-                new Spinner { Width = 14, Height = 14 },
-            BridgeIdentificationStatus.FinalizationFailed =>
-                DotIcon("BaeWarningBrush"),
-            _ => new Panel(),
-        };
-        ToolTip.SetTip(indicator, BridgeDisplay.LocalizedLine(status));
-        return indicator;
     }
 
     private Control? NeedsYouTrailing(BridgeTriageRow row, BridgeNeedsYou reason)
@@ -488,12 +443,10 @@ internal sealed partial class ImportSectionView
         return button;
     }
 
-    // What a row past the point of being asked anything shows: the running
-    // import's spinner, the failure's tag, or the completed import's mark and
-    // its cloud transition.
+    // What a row past the point of being asked anything shows: the failure's
+    // tag, or the completed import's mark and its cloud transition.
     private Control? ImportTrailing(BridgeTriageRow row) => row.ImportStatus switch
     {
-        BridgeTriageImportStatus.Importing => new Spinner { Width = 14, Height = 14 },
         BridgeTriageImportStatus.Complete =>
             UploadProgressPresentation.ResolveImport(
                 row.ImportStatus,
@@ -543,22 +496,6 @@ internal sealed partial class ImportSectionView
     private ContextMenu? BuildRowContextMenu(BridgeTriageRow row)
     {
         var items = new List<Control>();
-        if (row.SkipAction is { } skipAction)
-        {
-            var shouldSkip = skipAction is BridgeTriageSkipAction.Skip;
-            var toggle = new MenuItem
-            {
-                Header = Loc.Chrome(
-                    shouldSkip
-                        ? "import.candidate.skip"
-                        : "import.candidate.unskip"),
-            };
-            toggle.Click += (_, _) => _import.SetCandidateSkipped(
-                row.CandidateKey,
-                shouldSkip);
-            items.Add(toggle);
-            items.Add(new Separator());
-        }
         var reveal = new MenuItem { Header = Loc.Chrome("libraries.reveal") };
         reveal.Click += async (_, _) =>
         {

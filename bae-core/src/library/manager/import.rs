@@ -71,6 +71,17 @@ impl LibraryManager {
             .await?)
     }
 
+    pub(crate) async fn first_import_candidate_among(
+        &self,
+        request: crate::import::ImportListRequest,
+        keys: std::collections::HashSet<String>,
+    ) -> Result<Option<String>, LibraryError> {
+        Ok(self
+            .database
+            .first_import_candidate_among(request, keys)
+            .await?)
+    }
+
     pub(crate) fn subscribe_import_candidate(
         &self,
         key: &str,

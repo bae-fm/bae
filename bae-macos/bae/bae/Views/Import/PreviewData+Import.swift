@@ -255,13 +255,11 @@
                 actionable: true,
                 placement: .ready,
                 readyCheck: nil,
-                identification: nil,
-                skipAction: .skip,
-                actions: [
-                    .importReady, .identify, .resetToFileMetadata,
-                    .clearMetadata,
-                    .skip,
-                ],
+                actionBasis: BridgeCandidateActionBasis(
+                    actionable: true,
+                    placement: .ready,
+                    lookupFailed: false
+                ),
                 matched: nil,
                 metadataSummary: nil,
                 coverThumbnail: nil,
@@ -432,8 +430,7 @@
                         + [releaseQueueWatchedFolder],
                     folderScanStatuses: base.folderScanStatuses,
                     groupKeys: base.groupKeys,
-                    ready: base.ready,
-                    firstUnidentified: base.firstUnidentified
+                    ready: base.ready
                 )
             )
             // The identify count is over the whole queue, with the one row

@@ -399,7 +399,10 @@
             edit: BridgeRawReleaseEdit,
             cover: BridgeCoverChoice?
         ) -> BridgeTriageRow {
-            BridgeTriageRow(
+            let placement: BridgeTriagePlacement =
+                metadataProvenance == nil && edit.albumTitle.isEmpty
+                ? .pending : .ready
+            return BridgeTriageRow(
                 candidateKey: folder.folderPath,
                 folderName: folder.sourceFolderName,
                 watchedFolderPath: folder.watchedFolderPath,
@@ -407,17 +410,13 @@
                 resolvedBoundaries: [],
                 combineAncestorKey: nil,
                 actionable: true,
-                placement: metadataProvenance == nil
-                    && edit.albumTitle.isEmpty ? .pending : .ready,
+                placement: placement,
                 readyCheck: nil,
-                identification: nil,
-                skipAction: .skip,
-                actions: (metadataProvenance == nil
-                    && edit.albumTitle.isEmpty ? [] : [.importReady])
-                    + [
-                        .identify, .resetToFileMetadata, .clearMetadata,
-                        .skip,
-                    ],
+                actionBasis: BridgeCandidateActionBasis(
+                    actionable: true,
+                    placement: placement,
+                    lookupFailed: false
+                ),
                 matched: nil,
                 metadataSummary: nil,
                 coverThumbnail: cover?.thumbnailSource,
@@ -470,6 +469,17 @@
                         edit: edit,
                         cover: cover
                     ),
+                    live: BridgeCandidateLiveState(
+                        identification: nil,
+                        importing: false,
+                        actions: (metadataProvenance == nil
+                            && edit.albumTitle.isEmpty ? [] : [.importReady])
+                            + [
+                                .identify, .resetToFileMetadata,
+                                .clearMetadata, .skip,
+                            ]
+                    ),
+                    importStatus: nil,
                     release: release,
                     pickedLibraryStatus: nil,
                     fileEvidence: [],

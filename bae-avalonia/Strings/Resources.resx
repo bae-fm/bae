@@ -391,8 +391,6 @@
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Refresh from new source</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Keep current metadata</value></data>
   <data name="import.tab.skipped" xml:space="preserve"><value>Skipped</value></data>
-  <data name="import.candidate.skip" xml:space="preserve"><value>Skip</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Unskip</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Remove folder</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Sorting and watched folders</value></data>
   <data name="import.sort.newest_first" xml:space="preserve"><value>Newest First</value></data>
@@ -402,7 +400,6 @@
   <data name="import.tab.pending" xml:space="preserve"><value>Pending</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Done</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identifying</value></data>
-  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Go to a candidate still being identified</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} selected</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Select All</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>Select None</value></data>
@@ -413,8 +410,6 @@
   <data name="import.search.signals" xml:space="preserve"><value>Signals</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Failed</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Ready</value></data>
-  <data name="import.phase.queued" xml:space="preserve"><value>Waiting to be identified</value></data>
-  <data name="import.phase.running" xml:space="preserve"><value>Identifying…</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filter…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Add a Folder…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Nothing here yet</value></data>

@@ -26,12 +26,7 @@
             triageRow(
                 for: glyphCandidate(folder),
                 placement: .ready,
-                skipAction: .skip,
-                actions: [
-                    .importReady, .identify, .resetToFileMetadata,
-                    .clearMetadata,
-                    .skip,
-                ],
+                selectable: true,
                 matched: nil,
                 metadataSummary: glyphSummary,
                 coverThumbnail: .local(path: previewArtPath("Front.png")),

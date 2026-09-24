@@ -201,18 +201,18 @@ internal static partial class NativeBae
         return row;
     }
 
-    /// <summary>What the tables say about a candidate: where its import stands
-    /// first — a running import outranks any answer — then the identity its
-    /// stored verdict resumes.</summary>
+    /// <summary>What the candidate's read says about it: where its import
+    /// stands first — a running import outranks any answer — then the identity
+    /// its stored verdict resumes.</summary>
     private static ImportCandidateRowStatus StoredRowStatus(
-        BridgeImportCandidateDetail detail) => detail.Row.ImportStatus switch
+        BridgeImportCandidateDetail detail) => detail.ImportStatus switch
         {
-            BridgeTriageImportStatus.Importing => new ImportCandidateRowStatus
+            BridgeCandidateImportStatus.Importing => new ImportCandidateRowStatus
             {
                 Kind = "importing",
             },
-            BridgeTriageImportStatus.Complete => new ImportCandidateRowStatus { Kind = "complete" },
-            BridgeTriageImportStatus.Error error => new ImportCandidateRowStatus
+            BridgeCandidateImportStatus.Complete => new ImportCandidateRowStatus { Kind = "complete" },
+            BridgeCandidateImportStatus.Error error => new ImportCandidateRowStatus
             {
                 Kind = "error",
                 Error = error.ErrorValue,

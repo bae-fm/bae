@@ -15,6 +15,15 @@ forward! { async this => {
             .map_err(BridgeError::database_query)
     }
 
+    fn first_identifying_candidate(
+        view: crate::types::BridgeImportListView,
+    ) -> Option<String> {
+        this.services
+            .first_identifying_candidate(view.into_core())
+            .await
+            .map_err(BridgeError::database_query)
+    }
+
     fn merge_candidate_artist_identity_conflict(
         candidate_key: String,
         surviving_artist_id: String,
@@ -66,6 +75,25 @@ impl AppHandle {
                 Ok(value) => callback
                     .on_value(value.map(crate::types::BridgeImportCandidateDetail::from_core)),
                 Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
+    }
+
+    /// What is running for one candidate and the commands its row offers with
+    /// it, now and on every change. `basis` is the row's own; a row delivered
+    /// again with a different one subscribes again.
+    pub fn subscribe_candidate_live_state(
+        &self,
+        candidate_key: String,
+        basis: crate::types::BridgeCandidateActionBasis,
+        callback: Box<dyn crate::types::CandidateLiveStateCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        self.subscribe_channel(
+            move |services, _| {
+                services.subscribe_candidate_live_state(candidate_key, basis.into_core())
+            },
+            move |value| {
+                callback.on_value(crate::types::BridgeCandidateLiveState::from_core(value))
             },
         )
     }

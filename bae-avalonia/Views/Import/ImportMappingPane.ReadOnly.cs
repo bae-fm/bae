@@ -13,7 +13,7 @@ namespace Bae.Desktop;
 internal sealed partial class ImportMappingPane
 {
     private Control BuildReadOnlyImportPane(
-        BridgeTriageImportStatus.Complete? completed)
+        BridgeCandidateImportStatus.Complete? completed)
     {
         var sections = new StackPanel
         {
@@ -48,7 +48,7 @@ internal sealed partial class ImportMappingPane
     }
 
     private Control ReadOnlyStatusLine(
-        BridgeTriageImportStatus.Complete? completed)
+        BridgeCandidateImportStatus.Complete? completed)
     {
         if (completed is null)
         {

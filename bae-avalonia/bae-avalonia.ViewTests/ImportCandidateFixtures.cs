@@ -23,7 +23,7 @@ internal static class ImportCandidateFixtures
     /// provenance.</summary>
     internal static BridgeImportCandidateDetail Detail(
         BridgeImportFailure? failure = null,
-        BridgeTriageImportStatus? importStatus = null) =>
+        BridgeCandidateImportStatus? importStatus = null) =>
         Detail(
             new BridgeMetadataProvenance.ExternalRelease(
                 new BridgeMetadataRef(BridgeCatalog.MusicBrainz, "rel-1"),
@@ -36,7 +36,7 @@ internal static class ImportCandidateFixtures
         BridgeImportFailure? failure = null,
         BridgeRawReleaseEdit? edit = null,
         ulong metadataRevision = 1,
-        BridgeTriageImportStatus? importStatus = null,
+        BridgeCandidateImportStatus? importStatus = null,
         BridgeLookupChoices? lookupChoices = null,
         string key = CandidateKey,
         string audioIdentity = "mapping-pane-audio",
@@ -64,7 +64,14 @@ internal static class ImportCandidateFixtures
                 IsAdded: false),
             Actionable: true,
             ResumedIdentifyState: new BridgeIdentifyState.Idle(),
-            Row: Row(metadataProvenance, importStatus, key, reading),
+            Row: Row(metadataProvenance, StoredImportStatus(importStatus), key, reading),
+            Live: new BridgeCandidateLiveState(
+                Identification: null,
+                Importing: importStatus is BridgeCandidateImportStatus.Importing,
+                Actions: importStatus is null
+                    ? [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip]
+                    : []),
+            ImportStatus: importStatus,
             Release: null,
             PickedLibraryStatus: null,
             FileEvidence: Array.Empty<BridgeFileEvidence>(),
@@ -111,6 +118,18 @@ internal static class ImportCandidateFixtures
                 new BridgeSearchForm(BridgeSearchTab.General, "", "", "", ""),
                 null));
 
+    /// <summary>What the fixture's import left in the tables: nothing while
+    /// one is running.</summary>
+    private static BridgeTriageImportStatus? StoredImportStatus(
+        BridgeCandidateImportStatus? status) => status switch
+        {
+            BridgeCandidateImportStatus.Complete complete =>
+                new BridgeTriageImportStatus.Complete(complete.ReleaseId, complete.AlbumId),
+            BridgeCandidateImportStatus.Error error =>
+                new BridgeTriageImportStatus.Error(error.ErrorValue),
+            _ => null,
+        };
+
     internal static BridgeTriageRow Row(
         BridgeMetadataProvenance? metadataProvenance,
         BridgeTriageImportStatus? importStatus,
@@ -125,9 +144,10 @@ internal static class ImportCandidateFixtures
         Actionable: true,
         Placement: new BridgeTriagePlacement.Ready(),
         ReadyCheck: null,
-        Identification: null,
-        SkipAction: BridgeTriageSkipAction.Skip,
-        Actions: [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
+        ActionBasis: new BridgeCandidateActionBasis(
+            Actionable: true,
+            Placement: new BridgeTriagePlacement.Ready(),
+            LookupFailed: false),
         Matched: null,
         MetadataSummary: null,
         CoverThumbnail: null,

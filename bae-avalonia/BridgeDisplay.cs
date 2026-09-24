@@ -311,20 +311,6 @@ internal static class BridgeDisplay
         _ => string.Empty,
     };
 
-    /// <summary>
-    /// The identification row's activity label. A failed finalization carries
-    /// its typed error and uses the same error renderer as every other failure.
-    /// </summary>
-    internal static string? LocalizedLine(BridgeIdentificationStatus status) => status switch
-    {
-        BridgeIdentificationStatus.Queued => Loc.Chrome("import.phase.queued"),
-        BridgeIdentificationStatus.Running or BridgeIdentificationStatus.Finalizing =>
-            Loc.Chrome("import.phase.running"),
-        BridgeIdentificationStatus.FinalizationFailed failed =>
-            LocalizedLine(failed.Error),
-        _ => string.Empty,
-    };
-
     // The wire provider tag (google_drive / dropbox / onedrive / s3) as a name to
     // show the user. Unknown tags pass through unchanged.
     internal static string ProviderDisplayName(string provider) => provider switch

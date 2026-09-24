@@ -29,33 +29,28 @@ use crate::identify::{LeadMatch, NeedsYou, QueueClassification, VerdictSummary};
 mod actions;
 mod model;
 
-pub(crate) use actions::candidate_actions;
-pub use actions::CandidateAction;
+pub use actions::{CandidateAction, CandidateActionBasis, CandidateLiveState};
 pub use model::*;
 
 /// Which tab a candidate belongs to, and why a Pending row still needs input.
 ///
-/// A total function of the facts core already holds, checked in one order:
+/// A total function of what the tables hold, checked in one order:
 ///
-/// 1. **An import in flight outranks everything**, including the library
-///    check: the release row lands partway through an import, so `is_added`
-///    flips before the import is finished, and a row that reads Done then says
-///    the folder is in the library while its files are still being copied.
-/// 2. **Then Done**, which is an import that completed, or a folder a previous
-///    session already imported. Not awaiting triage, whatever its verdict says
-///    and whether or not it was ever skipped.
-/// 3. **Then Skipped**, which is a decision the user already made.
-/// 4. **Then a failed attempt**, which is Pending work: the folder is not in
+/// 1. **Done first**, which is an import that completed, or a folder a
+///    previous session already imported. Not awaiting triage, whatever its
+///    verdict says and whether or not it was ever skipped.
+/// 2. **Then Skipped**, which is a decision the user already made.
+/// 3. **Then a failed attempt**, which is Pending work: the folder is not in
 ///    the library and the only thing standing between it and being there is
 ///    another attempt. It comes before the draft because a failed candidate
 ///    always has one — read the draft first and the row would say Ready, and
 ///    join the set a bulk import sweeps up, on the strength of the attempt
 ///    that just failed.
-/// 5. **Then a valid draft a person or the tags wrote**, which is Ready. A
+/// 4. **Then a valid draft a person or the tags wrote**, which is Ready. A
 ///    person's draft is their answer to whatever the verdict was going to
 ///    ask; a draft the folder's tags seeded is what the person chose to start
 ///    from. Either way nothing is left to ask.
-/// 6. **Then what its stored verdict classified to.** This is where a draft
+/// 5. **Then what its stored verdict classified to.** This is where a draft
 ///    identification wrote lands: a run applying its own pick is not an
 ///    answer, so the Ready rule's checks — which pressing, the track count —
 ///    decide whether it is Ready or which question it asks.
@@ -64,10 +59,12 @@ pub use model::*;
 /// says: Ready means a bulk import can commit it. With no verdict, or with one
 /// classified Ready over a draft that would not import, the row is Pending.
 ///
-/// Live identification is not one of these facts. A run is true of a candidate
+/// Nothing running is one of these facts. A run is true of a candidate
 /// wherever that candidate is placed — a Ready row somebody asked to identify
-/// again is still Ready, and still running — so it rides on the row as
-/// [`TriageRow::identification`] rather than displacing the placement.
+/// again is still Ready, and still running — and so is an import: the tables
+/// place a candidate being imported where its draft puts it until the import
+/// writes the release that makes it Done. Both are the row's
+/// [`CandidateLiveState`], read beside the list.
 pub fn place(
     skipped: bool,
     is_added: bool,
@@ -80,7 +77,6 @@ pub fn place(
     // somewhere different, and a new one should have to be placed here on
     // purpose rather than inherited by an `_`.
     let failed = match import_status {
-        Some(TriageImportStatus::Importing) => return TriagePlacement::Importing,
         Some(TriageImportStatus::Complete { .. }) => return TriagePlacement::Done,
         Some(TriageImportStatus::Error { .. }) => true,
         None => false,
@@ -131,12 +127,11 @@ pub fn ready_check(placement: &TriagePlacement) -> Option<NeedsYou> {
     }
 }
 
-/// Where a candidate's import stands, from the three places that can say so.
+/// What the last import of a candidate left in the tables.
 ///
-/// A running import is the only live fact, so it outranks both stored ones. Of
-/// those, the release wins: the failure row is written when an attempt fails
-/// and cleared when the next one is queued, so a release for this hash means
-/// an attempt already succeeded and any leftover error is behind it.
+/// The release wins: the failure row is written when an attempt fails and
+/// cleared when the next one is queued, so a release for this hash means an
+/// attempt already succeeded and any leftover error is behind it.
 ///
 /// The stored failure is here rather than only in the pane because a row has
 /// to say it too. Without it, quitting after a failed import brings the
@@ -144,13 +139,9 @@ pub fn ready_check(placement: &TriagePlacement) -> Option<NeedsYou> {
 /// failed is to open it. It stays in Pending either way — see
 /// [`TriagePlacement::Failed`] — but as a row that says what went wrong.
 pub fn import_status_of(
-    importing: bool,
     imported: Option<&ImportedRelease>,
     failure: Option<&str>,
 ) -> Option<TriageImportStatus> {
-    if importing {
-        return Some(TriageImportStatus::Importing);
-    }
     if let Some(release) = imported {
         return Some(TriageImportStatus::Complete {
             release: release.clone(),
@@ -162,10 +153,9 @@ pub fn import_status_of(
 }
 
 /// The runtime facts a row reads: a change to any other part of a candidate's
-/// runtime — a progress tick within a running import — leaves the queue as
-/// projected.
-/// The default is a key nothing is running for: no identification work exists
-/// and no import has claimed it.
+/// runtime — a progress tick within a running import — leaves the row as it
+/// was drawn. The default is a key nothing is running for: no identification
+/// work exists and no import has claimed it.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TriageRuntimeFacts {
     pub identification: Option<IdentificationStatus>,
@@ -194,6 +184,20 @@ impl TriageRuntimeFacts {
             identification,
             importing: runtime.import.is_some(),
         }
+    }
+
+    /// A run for the candidate is queued, running, or having its answer
+    /// written — something is still to come from it. A write that failed is
+    /// over.
+    pub fn identifying(&self) -> bool {
+        matches!(
+            self.identification,
+            Some(
+                IdentificationStatus::Queued
+                    | IdentificationStatus::Running
+                    | IdentificationStatus::Finalizing
+            )
+        )
     }
 }
 

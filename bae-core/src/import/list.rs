@@ -12,8 +12,14 @@
 //!
 //! Everything the chrome around the list shows — the tab counts, the Ready
 //! rows a bulk import acts on, the group keys disclosure state is retained
-//! against, the row the identify count is still waiting on — is computed in
-//! that same pass, so none of it can disagree with the rows.
+//! against — is computed in that same pass, so none of it can disagree with
+//! the rows.
+//!
+//! The read is of the tables and nothing else. What is running for a candidate
+//! right now — a run queued or in flight, an import that owns it — moves no row
+//! between tabs and reorders nothing, so it is not an input to the list: each
+//! row reads it from its own subscription, as a
+//! [`CandidateLiveState`](super::triage::CandidateLiveState).
 
 use super::cover_art::{CoverChoice, RemoteCover};
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
@@ -21,8 +27,9 @@ use super::mapping::MappingTable;
 use super::release_candidate::ReleaseCandidate;
 use super::search::ImportSearchReleaseDetail;
 use super::triage::{
-    import_status_of, place, MatchedRelease, TriageGroup, TriageImportStatus,
-    TriageMetadataSummary, TriageRow, TriageRuntimeFacts, TriageTabCounts,
+    import_status_of, place, CandidateActionBasis, CandidateLiveState, MatchedRelease,
+    TriageGroup, TriageImportStatus, TriageMetadataSummary, TriageRow, TriageRuntimeFacts,
+    TriageTabCounts,
 };
 use super::types::{MetadataProvenance, RawReleaseEdit};
 use super::watched_folder::WatchedFolder;
@@ -40,8 +47,7 @@ mod subscription;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use flatten::{flatten, locate_candidate, Flattened, ItemRef};
-pub(crate) use subscription::facts_of;
+pub(crate) use flatten::{first_candidate_among, flatten, locate_candidate, Flattened, ItemRef};
 pub use subscription::{ImportListSubscription, ImportListSubscriptionError};
 
 pub use super::triage::TriageTab;
@@ -86,8 +92,7 @@ pub enum ImportListOrder {
 /// is settled.
 ///
 /// A release with nothing outstanding is absent from the map rather than
-/// present and settled — the same shape `runtime_facts` uses, and for the same
-/// reason: the common case is empty.
+/// present and settled: the common case is empty.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UploadStanding {
     /// Something is happening to this release's files right now — preparing,
@@ -133,17 +138,14 @@ impl UploadStanding {
 
 /// Everything the list query is a function of.
 ///
-/// `runtime_facts` and `upload_standing` are filled in by
-/// [`ImportListSubscription`], never by a caller: a claimed import and a
-/// running identification move a row between tabs, an outstanding upload moves
-/// a Done row within its tab. Neither is in a table this query reads.
+/// `upload_standing` is filled in by [`ImportListSubscription`], never by a
+/// caller: an outstanding upload moves a Done row within its tab, and whether
+/// one is moving or waiting is the upload pipeline's, held in memory rather
+/// than in a table this query reads.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ImportListRequest {
     pub view: ImportListView,
     pub windows: LibraryPageWindows,
-    /// Only the keys whose facts differ from the default, so an idle queue
-    /// makes an empty map.
-    pub runtime_facts: BTreeMap<String, TriageRuntimeFacts>,
     /// Only the releases the cloud outbox still holds work for, by release id.
     pub upload_standing: BTreeMap<String, UploadStanding>,
 }
@@ -229,25 +231,12 @@ pub struct ImportListWindow {
 
 /// One Ready row, as the surfaces that act on the whole Ready set need it: the
 /// foot bar's count, select-all, the bulk import's claims, and the covers to
-/// decode before Pending opens.
+/// decode before Pending opens. Ready as the tables place it: a bulk import
+/// checks what is running for each row when it gets to it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReadyRowRef {
     pub candidate_key: String,
     pub cover_thumbnail_url: Option<String>,
-}
-
-/// The first candidate identification has not settled yet, and where that row
-/// is in the requested view when the view includes it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct FirstUnidentifiedRowRef {
-    pub candidate_key: String,
-    /// Stable identity of the candidate row in the paginated list.
-    pub stable_key: String,
-    /// The Pending group that must be open for the candidate to be visible.
-    pub group_key: Option<FolderReleaseDecisionKey>,
-    /// Its position in this projection's active tab/filter/disclosure view.
-    /// Absent when that view does not contain the candidate.
-    pub visible_position: Option<u64>,
 }
 
 /// Everything the chrome around the list shows, computed in the same pass as
@@ -265,9 +254,6 @@ pub struct ImportQueueSummary {
     /// release, in the same order — what importing only identified rows
     /// acts on, leaving the ones drafted from tags or typed in.
     pub identified: Vec<ReadyRowRef>,
-    /// The first row the identify count is still waiting on, unfiltered, plus
-    /// its position when the current view contains it.
-    pub first_unidentified: Option<FirstUnidentifiedRowRef>,
 }
 
 /// Where each watched folder's scan stands, for the chrome around the list.
@@ -347,11 +333,11 @@ pub struct ImportListSnapshot {
     pub cause: coven::ReconfigurableLiveQueryCause,
 }
 
-/// One candidate as the pane reads it, before its runtime is folded in.
+/// One candidate as the pane reads it, before its runtime is joined.
 ///
-/// The row is built here with the placement the tables alone imply; a claimed
-/// import or a run in flight is applied by [`Self::resolve`], which is where
-/// the runtime this process holds joins what the tables say.
+/// The row is built here from what the tables say; a claimed import or a run
+/// in flight is joined by [`Self::resolve`] as the detail's live state, beside
+/// the row rather than inside it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateDetailProjection {
     pub candidate: ReleaseCandidate,
@@ -412,7 +398,7 @@ impl ImportCandidateDetailProjection {
         })
     }
 
-    /// The pane's value, with this key's runtime applied.
+    /// The pane's value, with this key's runtime joined.
     pub fn resolve(self, facts: &TriageRuntimeFacts) -> ImportCandidateDetail {
         let session = self.session_or_initial();
         let Self {
@@ -445,16 +431,18 @@ impl ImportCandidateDetailProjection {
             .map(crate::import::file_evidence)
             .unwrap_or_default();
         let import_status = import_status_of(
-            facts.importing,
             imported_release.as_ref(),
             source_error
                 .as_deref()
                 .or_else(|| failure.as_ref().map(|failure| failure.error.as_str())),
         );
-        let failure = if matches!(
-            import_status.as_ref(),
-            Some(TriageImportStatus::Importing | TriageImportStatus::Complete { .. })
-        ) {
+        // The attempt running now, or the one that completed, is what the pane
+        // shows; an earlier failure is behind either.
+        let failure = if facts.importing
+            || matches!(
+                import_status.as_ref(),
+                Some(TriageImportStatus::Complete { .. })
+            ) {
             None
         } else {
             failure
@@ -468,12 +456,8 @@ impl ImportCandidateDetailProjection {
             metadata_draft.clone().shape().is_ok(),
             classification,
         );
-        let actions = super::triage::candidate_actions(
-            actionable,
-            &placement,
-            facts.identification.as_ref(),
-            classification,
-        );
+        let action_basis = CandidateActionBasis::of(actionable, &placement, classification);
+        let live = CandidateLiveState::of(&action_basis, facts.clone());
         // The pick and the draft summary the row leads with, read once: its
         // reading, its summary and its provenance all state the same fact.
         let picked = metadata_provenance.clone().filter(|_| actionable);
@@ -486,10 +470,8 @@ impl ImportCandidateDetailProjection {
             resolved_boundaries: candidate.resolved_boundaries().to_vec(),
             combine_ancestor_key: candidate.combine_ancestor_key().cloned(),
             actionable,
-            skip_action: actionable.then(|| placement.skip_action()).flatten(),
-            selectable: actions.contains(&super::triage::CandidateAction::ImportReady),
-            actions,
-            identification: facts.identification.clone(),
+            selectable: action_basis.importable_at_rest(),
+            action_basis,
             matched: matched.filter(|_| actionable),
             reading: super::triage::TriageReading::of(
                 metadata_summary.as_ref(),
@@ -504,16 +486,7 @@ impl ImportCandidateDetailProjection {
             metadata_provenance: picked,
         };
         let metadata_draft_is_blank = metadata_draft.is_blank();
-        let composition_action = if is_added
-            || facts.importing
-            || matches!(
-                facts.identification,
-                Some(
-                    super::triage::IdentificationStatus::Queued
-                        | super::triage::IdentificationStatus::Running
-                        | super::triage::IdentificationStatus::Finalizing
-                )
-            ) {
+        let composition_action = if is_added || facts.importing || facts.identifying() {
             None
         } else {
             match &candidate {
@@ -526,6 +499,11 @@ impl ImportCandidateDetailProjection {
                 }
             }
         };
+        let import_status = if facts.importing {
+            Some(CandidateImportStatus::Importing)
+        } else {
+            row.import_status.clone().map(CandidateImportStatus::of)
+        };
         ImportCandidateDetail {
             composition_action,
             candidate,
@@ -534,6 +512,8 @@ impl ImportCandidateDetailProjection {
             is_added,
             resumed_identify_state,
             row,
+            live,
+            import_status,
             release,
             picked_library_status,
             file_evidence,
@@ -553,6 +533,26 @@ impl ImportCandidateDetailProjection {
     }
 }
 
+/// Where a candidate's import stands for the pane that shows the candidate:
+/// running now, or the outcome the last one left in the tables. The pane
+/// draws a different surface for each, so the three are one value rather
+/// than a row's stored outcome beside a live flag.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CandidateImportStatus {
+    Importing,
+    Complete { release: super::ImportedRelease },
+    Error { error: String },
+}
+
+impl CandidateImportStatus {
+    fn of(stored: TriageImportStatus) -> Self {
+        match stored {
+            TriageImportStatus::Complete { release } => Self::Complete { release },
+            TriageImportStatus::Error { error } => Self::Error { error },
+        }
+    }
+}
+
 /// One candidate, whole: the folder with its files, what the queue makes of
 /// it, and the identify state it resumes.
 #[derive(Debug, Clone, PartialEq)]
@@ -563,7 +563,14 @@ pub struct ImportCandidateDetail {
     pub skipped: bool,
     pub is_added: bool,
     pub resumed_identify_state: IdentifyState,
+    /// The candidate's row as the tables place it.
     pub row: TriageRow,
+    /// What is running for the candidate right now, and the commands its row
+    /// offers with it.
+    pub live: CandidateLiveState,
+    /// Where the candidate's import stands for the pane: the one running now,
+    /// or what the last one left in the tables.
+    pub import_status: Option<CandidateImportStatus>,
     pub release: Option<ImportSearchReleaseDetail>,
     pub picked_library_status: Option<LibraryStatus>,
     /// Extracted identifying signals pinned to their source files. Independent

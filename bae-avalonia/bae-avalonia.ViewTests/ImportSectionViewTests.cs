@@ -114,7 +114,7 @@ public sealed class ImportSectionViewTests
     {
         var placement = new BridgeTriagePlacement.Ready();
         var view = BuildView(
-            MatchedItems(placement, BridgeTriageSkipAction.Skip),
+            MatchedItems(placement),
             MatchedSummary(placement, BridgeTriageTab.Pending),
             BridgeTriageTab.Pending);
 
@@ -130,7 +130,6 @@ public sealed class ImportSectionViewTests
         var view = BuildView(
             MatchedItems(
                 placement,
-                BridgeTriageSkipAction.Skip,
                 metadataSummary: AppliedDraft,
                 reading: new BridgeTriageReading.Prefilled()),
             MatchedSummary(placement, BridgeTriageTab.Pending));
@@ -152,7 +151,6 @@ public sealed class ImportSectionViewTests
         var view = BuildView(
             MatchedItems(
                 placement,
-                BridgeTriageSkipAction.Skip,
                 metadataSummary: AppliedDraft,
                 reading: new BridgeTriageReading.Prefilled()),
             MatchedSummary(placement, BridgeTriageTab.Pending));
@@ -182,7 +180,7 @@ public sealed class ImportSectionViewTests
     {
         var placement = new BridgeTriagePlacement.Ready();
         var view = BuildView(
-            MatchedItems(placement, BridgeTriageSkipAction.Skip),
+            MatchedItems(placement),
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
         Assert.Equal(new[] { "Release 01" }, RowText(view));
@@ -199,7 +197,6 @@ public sealed class ImportSectionViewTests
         var identified = BuildView(
             MatchedItems(
                 placement,
-                BridgeTriageSkipAction.Skip,
                 reading: new BridgeTriageReading.Identified(PairedRecords)),
             MatchedSummary(placement, BridgeTriageTab.Pending));
         Assert.Contains(ImportPaneUi.OutboundArrow, RowText(identified));
@@ -207,7 +204,6 @@ public sealed class ImportSectionViewTests
         var prefilled = BuildView(
             MatchedItems(
                 placement,
-                BridgeTriageSkipAction.Skip,
                 reading: new BridgeTriageReading.Prefilled()),
             MatchedSummary(placement, BridgeTriageTab.Pending));
         Assert.DoesNotContain(ImportPaneUi.OutboundArrow, RowText(prefilled));
@@ -291,7 +287,7 @@ public sealed class ImportSectionViewTests
             new BridgeErrorCategory.Import(), "the disk filled");
         var status = new BridgeTriageImportStatus.Error(failure);
         var view = BuildView(
-            MatchedItems(placement, null, status),
+            MatchedItems(placement, status),
             MatchedSummary(placement, BridgeTriageTab.Pending),
             BridgeTriageTab.Pending);
 
@@ -311,7 +307,7 @@ public sealed class ImportSectionViewTests
     {
         var placement = new BridgeTriagePlacement.Done();
         var view = BuildView(
-            MatchedItems(placement, null),
+            MatchedItems(placement),
             MatchedSummary(placement, BridgeTriageTab.Done),
             BridgeTriageTab.Done);
 
@@ -327,74 +323,18 @@ public sealed class ImportSectionViewTests
     {
         var pending = new BridgeTriagePlacement.Pending();
         var (view, app) = BuildSection(
-            MatchedItems(
-                pending,
-                BridgeTriageSkipAction.Skip,
-                identification: new BridgeIdentificationStatus.Running()),
+            MatchedItems(pending),
             MatchedSummary(pending, BridgeTriageTab.Pending),
             BridgeTriageTab.Pending);
         RaiseTap(CandidateRow(view));
 
         var ready = new BridgeTriagePlacement.Ready();
         app.ImportStore.SeedPreview(
-            MatchedItems(ready, BridgeTriageSkipAction.Skip),
+            MatchedItems(ready),
             MatchedSummary(ready, BridgeTriageTab.Pending),
             BridgeTriageTab.Pending);
 
         Assert.Equal(CandidateKey, SelectedKey(view));
-    }
-
-    // A row being identified again is still Ready, and it is the run that its
-    // trailing column states while the run is going.
-    [AvaloniaFact]
-    public void IdentificationPhaseLivesOnTheTrailingIndicatorTooltip()
-    {
-        var status = new BridgeIdentificationStatus.Running();
-        var label = BridgeDisplay.LocalizedLine(status);
-        var placement = new BridgeTriagePlacement.Ready();
-        var view = BuildView(
-            MatchedItems(
-                placement,
-                BridgeTriageSkipAction.Skip,
-                identification: status),
-            MatchedSummary(placement, BridgeTriageTab.Pending));
-
-        var row = CandidateRow(view);
-        Assert.DoesNotContain(
-            row.GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text == label);
-        Assert.Contains(
-            row.GetLogicalDescendants().OfType<Control>(),
-            control => Equals(ToolTip.GetTip(control), label));
-        // A run is not the row going inactive: the person can still open and
-        // read it, and the trailing column is what says a run is going.
-        Assert.Equal(1, row.Opacity);
-    }
-
-    [AvaloniaFact]
-    public void AFinalizationFailureReplacesTheInProgressPresentation()
-    {
-        var failure = new BridgeException.Diagnostic(
-            new BridgeErrorCategory.Import(), "the verdict could not be stored");
-        var status = new BridgeIdentificationStatus.FinalizationFailed(failure);
-        var placement = new BridgeTriagePlacement.Pending();
-        var view = BuildView(
-            MatchedItems(
-                placement,
-                BridgeTriageSkipAction.Skip,
-                identification: status),
-            MatchedSummary(placement, BridgeTriageTab.Pending));
-
-        var row = CandidateRow(view);
-        var label = BridgeDisplay.LocalizedLine(failure);
-        Assert.Contains(
-            row.GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text == label);
-        Assert.Empty(row.GetLogicalDescendants().OfType<Spinner>());
-        Assert.Contains(
-            row.GetLogicalDescendants().OfType<Control>(),
-            control => Equals(ToolTip.GetTip(control), label));
-        Assert.Equal(1, row.Opacity);
     }
 
     // A folder group renders as a header row with its rows as siblings, so
@@ -517,7 +457,7 @@ public sealed class ImportSectionViewTests
             "album-a");
         var done = new BridgeTriagePlacement.Done();
         var (view, app) = BuildSection(
-            MatchedItems(done, null, status),
+            MatchedItems(done, status),
             MatchedSummary(done, BridgeTriageTab.Done),
             BridgeTriageTab.Done);
 
@@ -565,46 +505,6 @@ public sealed class ImportSectionViewTests
         Assert.DoesNotContain(
             finishedRow.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text == "✓");
-    }
-
-    // A running import draws its own line off the candidate-runtime signal,
-    // and a Reset that does not name its key says nothing is running for it.
-    [AvaloniaFact]
-    public void AnImportingRowDrawsTheRunItIsToldAbout()
-    {
-        var importing = new BridgeTriagePlacement.Importing();
-        var (view, app) = BuildSection(
-            MatchedItems(importing, null, new BridgeTriageImportStatus.Importing()),
-            MatchedSummary(importing, BridgeTriageTab.Pending));
-
-        app.ImportStore.ApplyCandidateRuntime(
-            new BridgeCandidateRuntimeChange.Updated(
-                CandidateKey,
-                new BridgeCandidateRuntimeSnapshot(
-                    new BridgeIdentifyState.Idle(),
-                    new BridgeSignalsToolbar([]),
-                    new BridgeImportInFlight(40, null),
-                    null)));
-
-        Assert.Contains(
-            CandidateRow(view).GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text is { } line
-                && line.Contains("40", StringComparison.Ordinal));
-        var runningBar = CandidateRow(view).GetLogicalDescendants().OfType<ProgressBar>().Single();
-        Assert.False(runningBar.IsIndeterminate);
-        Assert.Equal(0.4, runningBar.Value);
-
-        app.ImportStore.ApplyCandidateRuntime(
-            new BridgeCandidateRuntimeChange.Reset([]));
-
-        // The progress the run reported is gone; the title is the folder's
-        // name and may carry digits of its own.
-        var resetRow = CandidateRow(view);
-        Assert.DoesNotContain(
-            resetRow.GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text is { } line
-                && line.Contains("40", StringComparison.Ordinal));
-        Assert.True(resetRow.GetLogicalDescendants().OfType<ProgressBar>().Single().IsIndeterminate);
     }
 
     private static ImportSectionView BuildView(
@@ -684,38 +584,32 @@ public sealed class ImportSectionViewTests
     // is asking about — the shape only the placement distinguishes.
     private static List<BridgeImportListItem> MatchedItems(
         BridgeTriagePlacement placement,
-        BridgeTriageSkipAction? skipAction,
         BridgeTriageImportStatus? importStatus = null,
         bool isGroupMember = false,
         BridgeTriageMetadataSummary? metadataSummary = null,
         BridgeCoverImageSource? coverThumbnail = null,
         BridgeMetadataProvenance? metadataProvenance = null,
-        BridgeTriageReading? reading = null,
-        BridgeIdentificationStatus? identification = null) => new()
+        BridgeTriageReading? reading = null) => new()
     {
         new BridgeImportListItem.Candidate(
             PreviewData.CandidateStableKey(CandidateKey),
             MatchedRow(
                 placement,
-                skipAction,
                 importStatus,
                 metadataSummary,
                 coverThumbnail,
                 metadataProvenance,
-                reading,
-                identification),
+                reading),
             IsGroupMember: isGroupMember),
     };
 
     private static BridgeTriageRow MatchedRow(
         BridgeTriagePlacement placement,
-        BridgeTriageSkipAction? skipAction,
         BridgeTriageImportStatus? importStatus = null,
         BridgeTriageMetadataSummary? metadataSummary = null,
         BridgeCoverImageSource? coverThumbnail = null,
         BridgeMetadataProvenance? metadataProvenance = null,
-        BridgeTriageReading? reading = null,
-        BridgeIdentificationStatus? identification = null) =>
+        BridgeTriageReading? reading = null) =>
             new BridgeTriageRow(
                 CandidateKey: CandidateKey,
                 FolderName: "Release 01",
@@ -726,21 +620,10 @@ public sealed class ImportSectionViewTests
                 Actionable: true,
                 Placement: placement,
                 ReadyCheck: null,
-                Identification: identification,
-                SkipAction: skipAction,
-                Actions: identification is not null
-                    and not BridgeIdentificationStatus.FinalizationFailed
-                    ? [BridgeCandidateAction.Skip]
-                    : placement switch
-                {
-                    BridgeTriagePlacement.Ready => [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
-                    BridgeTriagePlacement.Pending => [BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
-                    BridgeTriagePlacement.NeedsYou => [BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
-                    BridgeTriagePlacement.Failed => [BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata],
-                    BridgeTriagePlacement.Skipped => [BridgeCandidateAction.Restore],
-                    BridgeTriagePlacement.Done or BridgeTriagePlacement.Importing => [],
-                    _ => throw new ArgumentOutOfRangeException(nameof(placement)),
-                },
+                ActionBasis: new BridgeCandidateActionBasis(
+                    Actionable: true,
+                    Placement: placement,
+                    LookupFailed: false),
                 Matched: new BridgeMatchedRelease(
                     ReleaseId: "rel-matched",
                     Title: "Album Title",
@@ -783,8 +666,7 @@ public sealed class ImportSectionViewTests
                     null),
             }
             : Array.Empty<BridgeReadyRowRef>(),
-        Identified: Array.Empty<BridgeReadyRowRef>(),
-        FirstUnidentified: null);
+        Identified: Array.Empty<BridgeReadyRowRef>());
 
     // A window carrying one of each item kind, with the group header core emits
     // before the run of rows it holds.
@@ -801,7 +683,6 @@ public sealed class ImportSectionViewTests
         };
         items.AddRange(MatchedItems(
             new BridgeTriagePlacement.Ready(),
-            BridgeTriageSkipAction.Skip,
             isGroupMember: true));
         items.Add(new BridgeImportListItem.Invalid(
             $"invalid:{PreviewData.ImportRoot}/Broken",
@@ -823,8 +704,7 @@ public sealed class ImportSectionViewTests
         FolderScanActivity: null,
         GroupKeys: new[] { PreviewData.ImportGroupKey },
         Ready: Array.Empty<BridgeReadyRowRef>(),
-        Identified: Array.Empty<BridgeReadyRowRef>(),
-        FirstUnidentified: null);
+        Identified: Array.Empty<BridgeReadyRowRef>());
 
     private static BridgeOutboxSnapshot Outbox(
         ulong revision,

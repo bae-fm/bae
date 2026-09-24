@@ -2,21 +2,20 @@
 //!
 //! One pass over the queue answers every question the tab asks: where each
 //! entry sits, which group it joins, which tab it counts against, whether the
-//! filter keeps it, and — for the chrome — the Ready set, the group keys and
-//! the row the identify count is still waiting on. Nothing here reads a file,
+//! filter keeps it, and — for the chrome — the Ready set and the group keys.
+//! Nothing here reads a file,
 //! a cue sheet, a boundary tree or an archived document; those are loaded for
 //! the items inside the requested windows and nowhere else.
 
 use super::{
-    FirstUnidentifiedRowRef, GroupHeaderRow,
-    ImportCandidateListLocation, ImportListItem, ImportListOrder, ImportListRequest,
-    ImportListView, ImportQueueSummary, PlacedRow, ReadyRowRef, UploadStanding,
+    GroupHeaderRow, ImportCandidateListLocation, ImportListItem, ImportListOrder,
+    ImportListRequest, ImportListView, ImportQueueSummary, PlacedRow, ReadyRowRef, UploadStanding,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::classify_summary;
 use crate::import::triage::{
-    import_status_of, place, MatchedRelease, TriageGroup, TriageImportStatus, TriageReading,
-    TriageRow, TriageRuntimeFacts, TriageTab, TriageTabCounts,
+    import_status_of, place, CandidateActionBasis, MatchedRelease, TriageGroup,
+    TriageImportStatus, TriageReading, TriageRow, TriageTab, TriageTabCounts,
 };
 use crate::import::watched_folder::candidate_relative_path;
 use crate::import::FolderReleaseDecisionKey;
@@ -65,13 +64,55 @@ struct DoneOrder {
     imported_at: Option<i64>,
 }
 
+/// Every entry of the queue, placed and in the order the view sorts them,
+/// before the tab filter and the grouping into items runs.
+struct Ordered {
+    entries: Vec<OrderedEntry>,
+    placed: Vec<PlacedRow>,
+    counts: TriageTabCounts,
+}
+
 pub(crate) fn flatten(
     rows: &ImportQueueRows,
     request: &ImportListRequest,
 ) -> Result<Flattened, LibraryError> {
+    let Ordered {
+        entries: ordered,
+        placed,
+        counts,
+    } = order(rows, request)?;
+    let summary = summarise(rows, &ordered, &placed, counts);
+    let (items, headers) = emit(&request.view, &ordered);
+    Ok(Flattened {
+        items,
+        headers,
+        rows: placed,
+        summary,
+    })
+}
+
+/// The first of `keys` in the queue's own order — every tab in turn, each in
+/// the order `request`'s view sorts it — or `None` when the queue holds none
+/// of them.
+pub(crate) fn first_candidate_among(
+    rows: &ImportQueueRows,
+    request: &ImportListRequest,
+    keys: &HashSet<String>,
+) -> Result<Option<String>, LibraryError> {
+    let Ordered {
+        entries, placed, ..
+    } = order(rows, request)?;
+    Ok(entries.iter().find_map(|entry| match entry.item {
+        ItemRef::Candidate { index, .. } => {
+            let key = &placed[index].row.candidate_key;
+            keys.contains(key).then(|| key.clone())
+        }
+        ItemRef::Header(_) | ItemRef::Invalid { .. } => None,
+    }))
+}
+
+fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered, LibraryError> {
     let view = &request.view;
-    let runtime_facts = &request.runtime_facts;
-    let idle = TriageRuntimeFacts::default();
     let mut placed = Vec::new();
     let mut counts = TriageTabCounts::default();
     let mut ordered = Vec::with_capacity(rows.candidates.len());
@@ -104,8 +145,7 @@ pub(crate) fn flatten(
             // it belongs to.
             ScanCandidateKind::Tentative => {}
             ScanCandidateKind::Valid => {
-                let facts = runtime_facts.get(&row.path).unwrap_or(&idle);
-                let triage_row = place_row(rows, row, facts)?;
+                let triage_row = place_row(rows, row)?;
                 let tab = triage_row.placement.tab();
                 counts.bump(tab);
                 let matched = triage_row.matched.as_ref();
@@ -220,24 +260,10 @@ pub(crate) fn flatten(
         })
     });
 
-    let mut summary = summarise(rows, &ordered, &placed, counts);
-    let (items, headers) = emit(view, &ordered);
-    if let Some(target) = &mut summary.first_unidentified {
-        target.visible_position = items
-            .iter()
-            .position(|item| match item {
-                ItemRef::Candidate { index, .. } => {
-                    placed[*index].row.candidate_key == target.candidate_key
-                }
-                ItemRef::Header(_) | ItemRef::Invalid { .. } => false,
-            })
-            .map(|position| position as u64);
-    }
-    Ok(Flattened {
-        items,
-        headers,
-        rows: placed,
-        summary,
+    Ok(Ordered {
+        entries: ordered,
+        placed,
+        counts,
     })
 }
 
@@ -333,13 +359,12 @@ pub(crate) fn locate_candidate(
     }))
 }
 
-/// One settled candidate's row, as the tables place it with this key's
-/// runtime. `resolved_boundaries` is left empty and `matched` is the verdict's
-/// lead — the window fills both in for the items it materialises.
+/// One settled candidate's row, as the tables place it. `resolved_boundaries`
+/// is left empty and `matched` is the verdict's lead — the window fills both in
+/// for the items it materialises.
 fn place_row(
     rows: &ImportQueueRows,
     row: &ScanCandidateListRow,
-    facts: &TriageRuntimeFacts,
 ) -> Result<TriageRow, LibraryError> {
     let content_hash = row.content_hash.as_deref().ok_or_else(|| {
         LibraryError::Internal(format!(
@@ -354,7 +379,6 @@ fn place_row(
     let verdict = state.and_then(|state| state.verdict.as_ref());
     let imported = rows.imported.get(content_hash);
     let import_status = import_status_of(
-        facts.importing,
         imported,
         row.source
             .error()
@@ -380,12 +404,10 @@ fn place_row(
         state.is_some_and(|state| state.metadata_draft_valid),
         answer.as_ref(),
     );
-    let actions = crate::import::triage::candidate_actions(
-        row.source.error().is_none(),
-        &placement,
-        facts.identification.as_ref(),
-        answer.as_ref(),
-    );
+    // Every row the list holds is a settled release: a tentative candidate
+    // never becomes one.
+    let actionable = row.source.error().is_none();
+    let action_basis = CandidateActionBasis::of(actionable, &placement, answer.as_ref());
     Ok(TriageRow {
         candidate_key: row.path.clone(),
         folder_name: row.name.clone(),
@@ -398,18 +420,9 @@ fn place_row(
                 relative_folder_path: relative,
             }
         }),
-        // Every row the list holds is a settled release: a tentative
-        // candidate never becomes one.
-        actionable: row.source.error().is_none(),
-        skip_action: row
-            .source
-            .error()
-            .is_none()
-            .then(|| placement.skip_action())
-            .flatten(),
-        selectable: actions.contains(&crate::import::triage::CandidateAction::ImportReady),
-        actions,
-        identification: facts.identification.clone(),
+        actionable,
+        selectable: action_basis.importable_at_rest(),
+        action_basis,
         matched: verdict.and_then(MatchedRelease::of_summary),
         // The records are read off the pick's archived documents, which the
         // queue never opens: the window that materialises the row reads them
@@ -539,9 +552,8 @@ fn matches_text<'a>(view: &ImportListView, haystack: impl IntoIterator<Item = &'
 }
 
 /// The chrome, over the whole queue rather than the requested tab: the counts
-/// every tab bar shows, the Ready set the foot bar acts on, every group key
-/// disclosure state is retained against, and the row the identify count is
-/// still waiting on.
+/// every tab bar shows, the Ready set the foot bar acts on, and every group key
+/// disclosure state is retained against.
 fn summarise(
     rows: &ImportQueueRows,
     ordered: &[OrderedEntry],
@@ -552,7 +564,6 @@ fn summarise(
     let mut seen_groups = HashSet::new();
     let mut ready = Vec::new();
     let mut identified = Vec::new();
-    let mut first_unidentified = None;
     for entry in ordered {
         if let Some(group) = &entry.group {
             if seen_groups.insert(group.key.clone()) {
@@ -563,14 +574,6 @@ fn summarise(
             continue;
         };
         let row = &placed[index].row;
-        if first_unidentified.is_none() && row.identification.is_some() {
-            first_unidentified = Some(FirstUnidentifiedRowRef {
-                candidate_key: row.candidate_key.clone(),
-                stable_key: ImportListItem::candidate_stable_key(&row.candidate_key),
-                group_key: entry.group.as_ref().map(|group| group.key.clone()),
-                visible_position: None,
-            });
-        }
         if entry.matches_filter && row.selectable {
             let reference = ReadyRowRef {
                 candidate_key: row.candidate_key.clone(),
@@ -591,7 +594,6 @@ fn summarise(
         group_keys,
         ready,
         identified,
-        first_unidentified,
     }
 }
 
