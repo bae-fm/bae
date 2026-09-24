@@ -51,7 +51,9 @@ impl Database {
     /// references a different one, the old blob is deleted in the same batch. coven
     /// admits both halves: the new blob id is referenced by no row before the
     /// closure runs, and the old one is referenced by none after it repoints the
-    /// row.
+    /// row. The old blob is read before the write opens, so the write refuses a
+    /// row that names a different blob by then rather than leave that one
+    /// undeclared.
     ///
     /// The replaced blob's cloud object is coven's to retire: once the row points
     /// at the new blob nothing names the old object, and accepted reclaim removes
@@ -64,15 +66,47 @@ impl Database {
         image: &DbLibraryImage,
         bytes: &[u8],
     ) -> Result<(), DbError> {
+        self.write_library_image_blob_after_planning(image, bytes, || async {})
+            .await
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn write_library_image_blob_after_planning_for_test<F, Fut>(
+        &self,
+        image: &DbLibraryImage,
+        bytes: &[u8],
+        after_planning: F,
+    ) -> Result<(), DbError>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = ()>,
+    {
+        self.write_library_image_blob_after_planning(image, bytes, after_planning)
+            .await
+    }
+
+    async fn write_library_image_blob_after_planning<F, Fut>(
+        &self,
+        image: &DbLibraryImage,
+        bytes: &[u8],
+        after_planning: F,
+    ) -> Result<(), DbError>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = ()>,
+    {
         let image = image.clone();
         let namespace = image.image_type.namespace();
-        let replaced = self
+        let existing = self
             .find_library_image(&image.id, &image.image_type)
-            .await?
+            .await?;
+        let planned_blob_id = existing.as_ref().map(|existing| existing.blob_id.clone());
+        let replaced = existing
             .filter(|existing| existing.blob_id != image.blob_id)
             .map(|existing| {
                 crate::sync::image_blob_ref(namespace, &existing.blob_id, existing.cloud_path)
             });
+        after_planning().await;
 
         let new_blob =
             crate::sync::image_blob_ref(namespace, &image.blob_id, image.cloud_path.clone());
@@ -88,6 +122,26 @@ impl Database {
                     Ok(())
                 },
                 move |sql| {
+                    // The replaced blob was declared from a read before the
+                    // write opened; a replacement that landed since would go
+                    // undeclared, so the row must still name that blob.
+                    let current_blob_id: Option<String> = sql
+                        .query_row(
+                            &format!(
+                                "SELECT blob_id FROM {} WHERE id = ?",
+                                image_table(&image.image_type)
+                            ),
+                            params![image.id],
+                            |row| row.get(0),
+                        )
+                        .optional()
+                        .map_err(|error| CovenError::from(DbError::from(error)))?;
+                    if current_blob_id != planned_blob_id {
+                        return Err(CovenError::from(DbError::Message(format!(
+                            "{} image for {} changed after planning",
+                            namespace, image.id
+                        ))));
+                    }
                     let reg = sql.stamp();
                     upsert_library_image_row(&sql, &image, &reg).map_err(CovenError::from)?;
                     Ok(())
