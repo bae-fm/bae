@@ -1,12 +1,11 @@
 use serde::{Deserialize, Deserializer, Serialize};
-use std::num::{NonZeroU32, NonZeroU64, NonZeroUsize};
+use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
 mod app_dir;
 mod handle;
 mod keyring;
-mod migrations;
 mod save;
 mod server;
 
@@ -20,7 +19,7 @@ pub use server::{
     McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,
 };
 
-use coven::{write_atomic, WriteError};
+use coven::{write_atomic, StoreDir, WriteError};
 use save::default_save_presets;
 
 /// Blob transfers bae runs at once, per direction, on a fresh library. Serial
@@ -102,8 +101,8 @@ pub enum DiscogsValidation {
 ///
 /// The gain is derived at playback from the stored loudness measurements and a
 /// constant target; this only selects which measurement (track vs album) drives
-/// it. Defaults to `Off`. Set by editing `config.yaml`; there is no UI picker
-/// yet.
+/// it. Defaults to `Off`. Set by editing `preferences.yaml`; there is no UI
+/// picker yet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReplayGainMode {
     Off,
@@ -260,17 +259,16 @@ impl Config {
         }
     }
 
-    /// Wrap coven's config, filling bae-only fields with defaults. Used after a
-    /// restore where coven produced the synced/cloud config.
+    /// The running config for a store coven just restored or joined. coven
+    /// wrote that store's `config.yaml` itself; bae has recorded no preferences
+    /// for it yet, so they start at their defaults, as they do on any library
+    /// whose `preferences.yaml` has not been written.
     pub fn from_coven(c: coven::Config, library_path: PathBuf) -> Self {
-        let mut cfg = Self::with_defaults(
-            c.store_id.clone(),
-            c.device_id.clone(),
+        Self {
+            inner: c,
             library_path,
-            c.store_name.clone(),
-        );
-        cfg.inner = c;
-        cfg
+            prefs: Preferences::default(),
+        }
     }
 }
 
@@ -282,13 +280,10 @@ pub enum ConfigError {
     Serialization(String),
     #[error("configuration file: {0}")]
     Io(#[from] std::io::Error),
-    /// `config.yaml` could not be carried to the shape this build reads: it
-    /// records a version that is not one, or one above this build's, or a
-    /// ladder step refused what it found. Its own variant because the library
-    /// is present and its file readable — [`Self::Config`] is what the host
-    /// reports as a missing library.
-    #[error("config.yaml: {0}")]
-    Upgrade(String),
+    /// coven could not read or write the library's `config.yaml`, which it
+    /// owns.
+    #[error("store configuration: {0}")]
+    Store(#[from] coven::ConfigError),
 }
 
 /// Deserialize an `Option<T>` whose key must be present, even when its value is
@@ -303,17 +298,24 @@ where
     Option::deserialize(deserializer)
 }
 
-/// bae's own per-library settings, in the order `config.yaml` writes them.
+/// The file in a library directory that holds bae's [`Preferences`], next to
+/// coven's `config.yaml`.
 ///
-/// Declared once: [`Config`] holds them at runtime and [`ConfigYaml`] flattens
-/// them onto the top level of the file, so each field name is its on-disk key.
+/// Two files because two owners: coven writes `config.yaml` (store identity,
+/// device id, snapshot policy, cloud home) on create, restore, and join, and
+/// reads it back as the mark of a finished join; bae writes only this one.
+/// A library directory whose `preferences.yaml` has not been written yet — a
+/// new, restored, or joined library before any setting changes — has every
+/// preference at its default.
+pub const PREFERENCES_FILENAME: &str = "preferences.yaml";
+
+/// bae's own per-library settings: `preferences.yaml`, in field order.
+/// Device-local, like the rest of the library directory; nothing here syncs.
 ///
 /// No field carries a `serde` default — serialization always emits every key,
-/// so a missing key fails the load rather than silently taking an implicit
-/// value. A new library starts from [`Preferences::default`]; a library whose
-/// file predates a field is carried to the current shape by a step in the
-/// migration ladder in `config/migrations.rs`, so adding, renaming, or
-/// removing a field here lands with the step that covers it.
+/// so a file missing a key fails the load rather than silently taking an
+/// implicit value. Only a missing file means defaults (see
+/// [`PREFERENCES_FILENAME`]).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Preferences {
     /// The stored Discogs key's validation state, or `None` when no key is
@@ -342,13 +344,13 @@ pub struct Preferences {
     /// How many blob downloads a pin fetches at once. Device-local, like uploads.
     pub max_concurrent_downloads: NonZeroU32,
     /// Whether the seek bar's leading label counts down the time remaining
-    /// instead of showing the time elapsed. Defaults to `false` (elapsed). A
-    /// preference like any other, so it follows the user to every device rather
-    /// than living in each platform's own store.
+    /// instead of showing the time elapsed. Defaults to `false` (elapsed). Kept
+    /// here rather than in each platform's own store, so every app on this
+    /// device reads the same choice.
     pub show_remaining_time: bool,
     /// Whether the library page spans the window's full width instead of
     /// centering its content in a width-capped column. Defaults to `false`
-    /// (capped). A synced preference, like `show_remaining_time`.
+    /// (capped).
     pub library_full_width: bool,
     /// Whether import fully decodes each track to verify it (fatal-error / frame
     /// shortfall), failing the import for a broken track rather than importing it
@@ -404,102 +406,6 @@ impl Default for Preferences {
     }
 }
 
-/// Which library `config.yaml` describes, under the key names bae has always
-/// written: `library_id` and `library_name` are coven's `store_id` and
-/// `store_name`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LibraryIdentity {
-    pub library_id: String,
-    /// Human-readable name for this library
-    pub library_name: String,
-    /// Unique identifier for this device, used as the namespace key for sync changesets.
-    /// The one designed absence: auto-generated and written back on first load.
-    #[serde(default)]
-    pub device_id: Option<String>,
-}
-
-/// `config.yaml`: the library's identity, snapshot policy, bae's settings, and
-/// coven's cloud home in one top-level mapping.
-///
-/// Serializing is derived. Parsing is not: a save preset's codec is written as
-/// a YAML tag (`codec: !Flac`), and serde's `flatten` funnels every flattened
-/// key through an untagged intermediate that rejects tags. Parsing instead reads
-/// each part from the same parsed [`serde_yaml::Value`], which keeps them.
-#[derive(Debug, Clone, Serialize)]
-pub struct ConfigYaml {
-    /// Which shape of this file the rest of the mapping is in. Describes the
-    /// file rather than the running config, so it lives here and on neither
-    /// [`Config`] nor [`Preferences`]: every write stamps the version this
-    /// build reads.
-    pub config_version: u32,
-    #[serde(flatten)]
-    pub identity: LibraryIdentity,
-    /// Accepted library commits before an owner attempts a snapshot.
-    pub snapshot_commit_threshold: NonZeroU64,
-    #[serde(flatten)]
-    pub prefs: Preferences,
-    /// Cloud home provider + per-provider settings.
-    #[serde(flatten)]
-    pub cloud_home: CloudHomeConfig,
-}
-
-impl ConfigYaml {
-    /// Read the config from one parsed mapping, preserving YAML tags in presets.
-    fn from_value(value: &serde_yaml::Value) -> Result<Self, serde_yaml::Error> {
-        Ok(Self {
-            config_version: u32::deserialize(
-                value.get(migrations::CONFIG_VERSION_KEY).ok_or_else(|| {
-                    <serde_yaml::Error as serde::de::Error>::missing_field(
-                        migrations::CONFIG_VERSION_KEY,
-                    )
-                })?,
-            )?,
-            identity: LibraryIdentity::deserialize(value)?,
-            snapshot_commit_threshold: NonZeroU64::deserialize(
-                value.get("snapshot_commit_threshold").ok_or_else(|| {
-                    <serde_yaml::Error as serde::de::Error>::missing_field(
-                        "snapshot_commit_threshold",
-                    )
-                })?,
-            )?,
-            prefs: Preferences::deserialize(value)?,
-            cloud_home: CloudHomeConfig::deserialize(value)?,
-        })
-    }
-
-    /// Convert to a runtime Config. The caller resolves device_id (auto-generating
-    /// if missing from YAML) and provides the library_dir.
-    fn into_config(self, device_id: String, library_path: PathBuf) -> Config {
-        Config {
-            inner: coven::Config {
-                store_id: self.identity.library_id,
-                device_id,
-                store_name: self.identity.library_name,
-                snapshot_commit_threshold: self.snapshot_commit_threshold,
-                cloud_home: self.cloud_home,
-            },
-            library_path,
-            prefs: self.prefs,
-        }
-    }
-}
-
-impl From<&Config> for ConfigYaml {
-    fn from(config: &Config) -> Self {
-        Self {
-            config_version: migrations::current_version(),
-            identity: LibraryIdentity {
-                library_id: config.store_id.clone(),
-                library_name: config.store_name.clone(),
-                device_id: Some(config.device_id.clone()),
-            },
-            prefs: config.prefs.clone(),
-            snapshot_commit_threshold: config.snapshot_commit_threshold,
-            cloud_home: config.cloud_home.clone(),
-        }
-    }
-}
-
 /// Metadata about a discovered library (for the library switcher UI)
 /// A library registered under the app directory, whether or not it can be opened.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -531,7 +437,7 @@ pub struct Config {
     /// Runtime location of this library. It is host context rather than synced
     /// configuration, so it stays outside `coven::Config` and off the wire.
     library_path: PathBuf,
-    /// bae's own settings, exactly as `config.yaml` carries them.
+    /// bae's own settings, exactly as `preferences.yaml` carries them.
     pub prefs: Preferences,
 }
 
@@ -555,56 +461,27 @@ impl Config {
         &self.library_path
     }
 
+    /// Open the library registered as `library_id`: coven's `config.yaml` and
+    /// bae's `preferences.yaml` from its directory.
     pub fn load_registered_library(
         app_dir: &AppDir,
         library_id: &str,
-        ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
         let library_dir = app_dir.registered_library(library_id);
-        let config_path = library_dir.join("config.yaml");
-        let parsed = load_registered_config_yaml(&library_dir, library_id)?;
-        Self::config_from_yaml(parsed, library_dir, &config_path, ids)
-    }
-
-    /// Read config.yaml into the fields this build uses.
-    fn load_config_yaml(config_path: &std::path::Path) -> Result<ParsedConfigYaml, ConfigError> {
-        let content = std::fs::read_to_string(config_path)?;
-        parse_config_yaml(&content)
-    }
-
-    /// Turn a parsed `config.yaml` into the running config, minting a
-    /// `device_id` when the file carries none.
-    ///
-    /// Opening is where the file is written back: once, after the typed read
-    /// succeeded, when what this build read differs from what is on disk — a
-    /// minted `device_id`, a shape the ladder carried up, or both. A failed
-    /// write fails the open rather than leaving the next run to read the old
-    /// file and mint a second `device_id`.
-    fn config_from_yaml(
-        parsed: ParsedConfigYaml,
-        library_dir: PathBuf,
-        config_path: &std::path::Path,
-        ids: &dyn coven::IdProvider,
-    ) -> Result<Self, ConfigError> {
-        let ParsedConfigYaml {
-            config: mut yaml_config,
-            upgraded_from,
-        } = parsed;
-        let (device_id, minted_device_id) = match yaml_config.identity.device_id.clone() {
-            Some(id) => (id, false),
-            None => {
-                let id = ids.new_id();
-                info!("No device_id in config.yaml, generated: {}", id);
-                yaml_config.identity.device_id = Some(id.clone());
-                (id, true)
-            }
-        };
-        if minted_device_id || upgraded_from.is_some() {
-            let serialized = serde_yaml::to_string(&yaml_config)
-                .map_err(|e| ConfigError::Serialization(e.to_string()))?;
-            write_atomic(config_path, serialized.as_bytes()).map_err(WriteError::into_inner)?;
+        let inner = coven::Config::load_from_config_yaml(&StoreDir::new(&library_dir))?;
+        if inner.store_id != library_id {
+            return Err(ConfigError::Config(format!(
+                "registered library directory {} contains store_id {}",
+                library_dir.display(),
+                inner.store_id
+            )));
         }
-        Ok(yaml_config.into_config(device_id, library_dir))
+        let prefs = read_preferences(&library_dir)?;
+        Ok(Self {
+            inner,
+            library_path: library_dir,
+            prefs,
+        })
     }
 
     /// Record this library as the one this device last opened, in the app
@@ -616,18 +493,38 @@ impl Config {
         Ok(())
     }
 
-    pub fn save_to_config_yaml(&self) -> Result<(), ConfigError> {
-        self.write_config_yaml().map_err(WriteError::into_inner)
+    /// Write coven's part of this config to the library's `config.yaml`,
+    /// through coven.
+    pub fn save_store_config(&self) -> Result<(), ConfigError> {
+        self.write_store_config().map_err(WriteError::into_inner)
     }
 
-    fn write_config_yaml(&self) -> Result<(), WriteError<ConfigError>> {
+    /// Write bae's preferences to the library's `preferences.yaml`.
+    pub fn save_preferences(&self) -> Result<(), ConfigError> {
+        self.write_preferences().map_err(WriteError::into_inner)
+    }
+
+    /// [`Self::save_store_config`], reporting whether the new file was
+    /// installed when the write failed.
+    fn write_store_config(&self) -> Result<(), WriteError<ConfigError>> {
+        self.inner
+            .save_to_config_yaml(&StoreDir::new(&self.library_path))
+            .map_err(|error| {
+                if store_config_write_committed(&error) {
+                    WriteError::AfterCommit(error.into())
+                } else {
+                    WriteError::BeforeCommit(error.into())
+                }
+            })
+    }
+
+    fn write_preferences(&self) -> Result<(), WriteError<ConfigError>> {
         std::fs::create_dir_all(&self.library_path)
             .map_err(|e| WriteError::BeforeCommit(ConfigError::from(e)))?;
-        let yaml: ConfigYaml = self.into();
-        let serialized = serde_yaml::to_string(&yaml)
+        let serialized = serde_yaml::to_string(&self.prefs)
             .map_err(|e| WriteError::BeforeCommit(ConfigError::Serialization(e.to_string())))?;
         write_atomic(
-            &self.library_path.join("config.yaml"),
+            &self.library_path.join(PREFERENCES_FILENAME),
             serialized.as_bytes(),
         )
         .map_err(|e| e.map(ConfigError::from))
@@ -653,13 +550,13 @@ impl Config {
 
         let mut libraries: Vec<LibraryInfo> = discover_all_library_paths(app_dir)
             .into_iter()
-            .map(|(path, yaml)| match yaml {
-                Ok(yaml) => LibraryInfo {
-                    is_active: active_id.as_deref() == Some(&yaml.identity.library_id),
-                    id: yaml.identity.library_id,
-                    name: yaml.identity.library_name,
+            .map(|(path, store)| match store {
+                Ok(store) => LibraryInfo {
+                    is_active: active_id.as_deref() == Some(&store.store_id),
+                    id: store.store_id,
+                    name: store.store_name,
                     path,
-                    cloud_provider: yaml.cloud_home.provider.clone(),
+                    cloud_provider: store.cloud_home.provider,
                     error: None,
                 },
                 // The config is the only thing that knows the library's id and name, and
@@ -715,7 +612,8 @@ impl Config {
 }
 
 /// Rename a library by id without loading it into memory: locate its directory,
-/// read its `config.yaml`, replace `library_name`, write back. Used by
+/// read its `config.yaml` through coven, replace `store_name`, write it back
+/// through coven. Used by
 /// `LibraryManager::rename_library` for libraries that aren't the active one —
 /// the active one renames through [`ConfigHandle::rename_library`], so its
 /// subscribers see the change.
@@ -726,37 +624,51 @@ pub fn rename_inactive_library(
 ) -> Result<(), ConfigError> {
     let library_dir = find_library_by_id(app_dir, library_id)
         .ok_or_else(|| ConfigError::Config(format!("library not found: {library_id}")))?;
-    let config_path = library_dir.join("config.yaml");
-    let mut yaml = parse_config_yaml(&std::fs::read_to_string(&config_path)?)?.config;
-    yaml.identity.library_name = new_name.as_str().to_string();
-    let serialized =
-        serde_yaml::to_string(&yaml).map_err(|e| ConfigError::Serialization(e.to_string()))?;
-    write_atomic(&config_path, serialized.as_bytes()).map_err(WriteError::into_inner)?;
+    let store_dir = StoreDir::new(library_dir);
+    let mut store = coven::Config::load_from_config_yaml(&store_dir)?;
+    store.store_name = new_name.as_str().to_string();
+    store.save_to_config_yaml(&store_dir)?;
     Ok(())
 }
 
-fn load_registered_config_yaml(
-    library_dir: &std::path::Path,
-    expected_library_id: &str,
-) -> Result<ParsedConfigYaml, ConfigError> {
-    let parsed = Config::load_config_yaml(&library_dir.join("config.yaml"))?;
-    if parsed.config.identity.library_id != expected_library_id {
-        return Err(ConfigError::Config(format!(
-            "registered library directory {} contains library_id {}",
-            library_dir.display(),
-            parsed.config.identity.library_id
-        )));
+/// Whether a failed [`coven::Config::save_to_config_yaml`] had already
+/// installed the new file. coven's atomic write reports its commit phase as a
+/// [`WriteError`] in the error's source chain; a failure with none there
+/// (creating the directory, serializing) happened before anything was written.
+fn store_config_write_committed(error: &coven::ConfigError) -> bool {
+    let mut source: Option<&(dyn std::error::Error + 'static)> = Some(error);
+    while let Some(error) = source {
+        if let Some(write) = error.downcast_ref::<WriteError<std::io::Error>>() {
+            return write.committed();
+        }
+        source = error.source();
     }
-    Ok(parsed)
+    false
+}
+
+/// Read bae's preferences from a library directory. A directory with no
+/// `preferences.yaml` is one bae has recorded no preference in yet, so every
+/// preference is at its default.
+fn read_preferences(library_dir: &std::path::Path) -> Result<Preferences, ConfigError> {
+    let path = library_dir.join(PREFERENCES_FILENAME);
+    let Some(content) = read_optional_file(&path)? else {
+        info!(
+            "no {} yet; preferences start at their defaults",
+            path.display()
+        );
+        return Ok(Preferences::default());
+    };
+    serde_yaml::from_str(&content)
+        .map_err(|e| ConfigError::Serialization(format!("{}: {e}", path.display())))
 }
 
 /// Find a library's directory by its UUID, scanning the app directory's
 /// registered libraries.
 fn find_library_by_id(app_dir: &AppDir, uuid: &str) -> Option<PathBuf> {
-    for (path, yaml) in discover_all_library_paths(app_dir) {
+    for (path, store) in discover_all_library_paths(app_dir) {
         // A library whose config will not parse cannot be addressed by id — its id
         // is precisely what we could not read.
-        if yaml.is_ok_and(|yaml| yaml.identity.library_id == uuid) {
+        if store.is_ok_and(|store| store.store_id == uuid) {
             return Some(path);
         }
     }
@@ -768,7 +680,9 @@ fn find_library_by_id(app_dir: &AppDir, uuid: &str) -> Option<PathBuf> {
 ///
 /// The failure is carried, not dropped, so an unreadable library remains visible
 /// in the picker.
-fn discover_all_library_paths(app_dir: &AppDir) -> Vec<(PathBuf, Result<ConfigYaml, ConfigError>)> {
+fn discover_all_library_paths(
+    app_dir: &AppDir,
+) -> Vec<(PathBuf, Result<coven::Config, ConfigError>)> {
     let mut results = Vec::new();
     let libraries_dir = app_dir.libraries();
 
@@ -808,8 +722,8 @@ fn discover_all_library_paths(app_dir: &AppDir) -> Vec<(PathBuf, Result<ConfigYa
                 );
                 continue;
             }
-            match read_config_yaml(&path) {
-                Ok(Some(yaml)) => results.push((path, Ok(yaml))),
+            match read_store_config(&path) {
+                Ok(Some(store)) => results.push((path, Ok(store))),
                 // Not a library at all — nothing to show, nothing to report.
                 Ok(None) => {
                     debug!(
@@ -830,46 +744,21 @@ fn discover_all_library_paths(app_dir: &AppDir) -> Vec<(PathBuf, Result<ConfigYa
     results
 }
 
-/// Read and parse config.yaml from a library directory, if it exists.
+/// Read coven's `config.yaml` from a library directory, if it exists.
 ///
-/// Returns `Ok(None)` if the file doesn't exist, `Err` if it exists but can't be parsed.
-fn read_config_yaml(path: &std::path::Path) -> Result<Option<ConfigYaml>, ConfigError> {
-    let config_path = path.join("config.yaml");
-    let Some(content) = read_optional_file(&config_path)? else {
-        return Ok(None);
-    };
-    parse_config_yaml(&content).map(|parsed| Some(parsed.config))
-}
-
-/// A parsed `config.yaml` and where it came from.
-#[derive(Debug)]
-pub(crate) struct ParsedConfigYaml {
-    pub(crate) config: ConfigYaml,
-    /// The version the file was at when read, when the ladder had to run.
-    pub(crate) upgraded_from: Option<u32>,
-}
-
-/// Parse config.yaml into the fields this build uses, running every ladder step
-/// the file is behind first.
-///
-/// The typed read is unchanged in its strictness: it reads `config_version` as
-/// strictly as every other key, so a ladder that forgot to stamp it fails here
-/// rather than writing a file that claims a shape it is not in.
-fn parse_config_yaml(content: &str) -> Result<ParsedConfigYaml, ConfigError> {
-    let value: serde_yaml::Value =
-        serde_yaml::from_str(content).map_err(|e| ConfigError::Serialization(e.to_string()))?;
-    let serde_yaml::Value::Mapping(mut mapping) = value else {
-        return Err(ConfigError::Serialization(
-            "config.yaml is not a mapping".to_string(),
-        ));
-    };
-    let upgraded_from = migrations::upgrade(&mut mapping)?;
-    let config = ConfigYaml::from_value(&serde_yaml::Value::Mapping(mapping))
-        .map_err(|e| ConfigError::Serialization(e.to_string()))?;
-    Ok(ParsedConfigYaml {
-        config,
-        upgraded_from,
-    })
+/// Returns `Ok(None)` if the file doesn't exist, `Err` if it exists but can't be
+/// read.
+fn read_store_config(path: &std::path::Path) -> Result<Option<coven::Config>, ConfigError> {
+    let store_dir = StoreDir::new(path);
+    let config_path = store_dir.config_path();
+    match config_path.try_exists() {
+        Ok(false) => Ok(None),
+        Ok(true) => Ok(Some(coven::Config::load_from_config_yaml(&store_dir)?)),
+        Err(e) => Err(ConfigError::Io(std::io::Error::new(
+            e.kind(),
+            format!("{}: {e}", config_path.display()),
+        ))),
+    }
 }
 
 fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, ConfigError> {

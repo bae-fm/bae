@@ -21,7 +21,8 @@ bae نواة Rust واحدة ترتدي أربعة تطبيقات أصلية. ك
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # device-local settings, never synced
+  config.yaml       # coven: هوية المكتبة، الموطن السحابي؛ لا يُزامَن أبدًا
+  preferences.yaml  # إعدادات bae؛ لا تُزامَن أبدًا
   storage/
     local/          # blobs this device owns (covers, artist images)
     cache/          # evictable copies of cloud blobs

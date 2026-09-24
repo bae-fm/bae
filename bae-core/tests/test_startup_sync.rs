@@ -23,7 +23,7 @@ fn write_cloudkit_library(app_dir: &AppDir) -> String {
     .expect("create test library");
     config.cloud_home.provider = Some(CloudProvider::CloudKit);
     config.cloud_home.storage = coven::HomeStorage::Browsable;
-    config.save_to_config_yaml().expect("save test config");
+    config.save_store_config().expect("save test config");
     config.store_id.clone()
 }
 

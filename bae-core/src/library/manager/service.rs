@@ -283,7 +283,7 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn set_home_storage(&self, storage: crate::config::HomeStorage) {
         self.config_handle
-            .update(|c| c.cloud_home.storage = storage)
+            .update_store(|c| c.cloud_home.storage = storage)
             .expect("set test home storage mode");
     }
 

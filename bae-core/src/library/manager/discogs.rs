@@ -130,7 +130,7 @@ fn record_discogs_validation_signal(config_handle: &ConfigHandle, signal: Discog
     if current == next {
         return;
     }
-    if let Err(error) = config_handle.update(|config| config.prefs.discogs = Some(next)) {
+    if let Err(error) = config_handle.update_preferences(|prefs| prefs.discogs = Some(next)) {
         warn!("failed to persist discogs validation {next:?}: {error}");
     }
 }
@@ -182,7 +182,7 @@ impl LibraryManager {
             *client = None;
         }
         self.config_handle
-            .update(|config| config.prefs.discogs = Some(validation))?;
+            .update_preferences(|prefs| prefs.discogs = Some(validation))?;
         Ok(())
     }
 
@@ -192,7 +192,7 @@ impl LibraryManager {
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         let mut client = self.discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
         self.config_handle
-            .update(|config| config.prefs.discogs = None)?;
+            .update_preferences(|prefs| prefs.discogs = None)?;
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         {
             *client = None;
@@ -206,9 +206,9 @@ impl LibraryManager {
         &self,
         validation: DiscogsValidation,
     ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle.update(|config| {
-            if config.prefs.discogs.is_some() {
-                config.prefs.discogs = Some(validation);
+        self.config_handle.update_preferences(|prefs| {
+            if prefs.discogs.is_some() {
+                prefs.discogs = Some(validation);
             }
         })
     }

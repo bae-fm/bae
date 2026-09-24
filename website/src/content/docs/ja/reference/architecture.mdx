@@ -21,7 +21,8 @@ bae は 1 つの Rust コアを、4 つのネイティブアプリから使い�
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # device-local settings, never synced
+  config.yaml       # coven: ライブラリの識別情報、クラウドホーム。同期されない
+  preferences.yaml  # bae の設定。同期されない
   storage/
     local/          # blobs this device owns (covers, artist images)
     cache/          # evictable copies of cloud blobs

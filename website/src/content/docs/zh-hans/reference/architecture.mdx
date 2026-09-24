@@ -21,7 +21,8 @@ bae 是一个 Rust 核心外加四个原生应用。定义产品的一切，即�
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # device-local settings, never synced
+  config.yaml       # coven：资料库身份、云端主目录；从不同步
+  preferences.yaml  # bae 的设置；从不同步
   storage/
     local/          # blobs this device owns (covers, artist images)
     cache/          # evictable copies of cloud blobs

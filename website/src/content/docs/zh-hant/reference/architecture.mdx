@@ -21,7 +21,8 @@ App 旁邊還有：`bae-mcp`（MCP 伺服器）和 `bae-automation`。
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # device-local settings, never synced
+  config.yaml       # coven：資料庫身分、雲端主目錄；從不同步
+  preferences.yaml  # bae 的設定；從不同步
   storage/
     local/          # blobs this device owns (covers, artist images)
     cache/          # evictable copies of cloud blobs

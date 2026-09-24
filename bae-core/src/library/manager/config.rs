@@ -14,7 +14,7 @@ macro_rules! pref_setter {
     ($(#[$doc:meta])* $name:ident, $field:ident: $ty:ty) => {
         $(#[$doc])*
         pub fn $name(&self, value: $ty) -> Result<(), crate::config::ConfigError> {
-            self.config_handle.update(|config| config.prefs.$field = value)
+            self.config_handle.update_preferences(|prefs| prefs.$field = value)
         }
     };
 }
@@ -81,7 +81,7 @@ impl LibraryManager {
             )));
         }
         self.config_handle
-            .update(|config| config.prefs.metadata_sources.set(source, enabled))
+            .update_preferences(|prefs| prefs.metadata_sources.set(source, enabled))
     }
 
     pref_setter!(
@@ -105,7 +105,7 @@ impl LibraryManager {
     pub fn set_max_concurrent_uploads(&self, n: u32) -> Result<(), crate::config::ConfigError> {
         let n = crate::config::validate_concurrency(n)?;
         self.config_handle
-            .update(|c| c.prefs.max_concurrent_uploads = n)?;
+            .update_preferences(|prefs| prefs.max_concurrent_uploads = n)?;
         self.apply_transfer_limits();
         Ok(())
     }
@@ -115,7 +115,7 @@ impl LibraryManager {
     pub fn set_max_concurrent_downloads(&self, n: u32) -> Result<(), crate::config::ConfigError> {
         let n = crate::config::validate_concurrency(n)?;
         self.config_handle
-            .update(|c| c.prefs.max_concurrent_downloads = n)?;
+            .update_preferences(|prefs| prefs.max_concurrent_downloads = n)?;
         self.apply_transfer_limits();
         Ok(())
     }
@@ -168,7 +168,7 @@ impl LibraryManager {
         Self::validate_default_save_preset(&default_track, &presets, true)?;
         Self::validate_default_save_preset(&default_release, &presets, false)?;
         self.config_handle
-            .update(|c| c.prefs.save_presets = presets)
+            .update_preferences(|prefs| prefs.save_presets = presets)
     }
 
     pub fn set_default_track_save_preset(
@@ -181,7 +181,7 @@ impl LibraryManager {
             true,
         )?;
         self.config_handle
-            .update(|c| c.prefs.default_track_save_preset = preset_id)
+            .update_preferences(|prefs| prefs.default_track_save_preset = preset_id)
     }
 
     pub fn set_default_release_save_preset(
@@ -194,7 +194,7 @@ impl LibraryManager {
             false,
         )?;
         self.config_handle
-            .update(|c| c.prefs.default_release_save_preset = preset_id)
+            .update_preferences(|prefs| prefs.default_release_save_preset = preset_id)
     }
 
     /// A save default must name a preset that exists and applies to its level
@@ -232,7 +232,8 @@ impl LibraryManager {
         config: crate::config::McpConfig,
     ) -> Result<(), crate::config::ConfigError> {
         config.validate()?;
-        self.config_handle.update(|c| c.prefs.mcp = config)
+        self.config_handle
+            .update_preferences(|prefs| prefs.mcp = config)
     }
 
     pub fn get_mcp_token(&self) -> Result<Option<String>, LibraryError> {
@@ -264,7 +265,8 @@ impl LibraryManager {
         config: crate::config::SubsonicConfig,
     ) -> Result<(), crate::config::ConfigError> {
         config.validate()?;
-        self.config_handle.update(|c| c.prefs.subsonic = config)
+        self.config_handle
+            .update_preferences(|prefs| prefs.subsonic = config)
     }
 
     pub fn get_subsonic_password(&self) -> Result<Option<String>, LibraryError> {

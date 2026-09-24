@@ -1,4 +1,5 @@
 use super::*;
+use std::num::NonZeroU64;
 use std::sync::{Arc, Barrier};
 use std::time::Duration;
 use tempfile::TempDir;
@@ -12,26 +13,33 @@ fn make_test_config(library_id: &str, library_path: PathBuf) -> Config {
     )
 }
 
-/// A full `ConfigYaml` serialized to a `serde_yaml::Value` mapping, for
-/// tests that assert a single missing key fails the load.
-fn full_config_yaml_value() -> serde_yaml::Value {
-    let config = make_test_config("abc-123", PathBuf::from("unused"));
-    serde_yaml::to_value(ConfigYaml::from(&config)).unwrap()
+/// Default preferences as a `serde_yaml::Value` mapping, for tests that edit
+/// one key of the file.
+fn default_preferences_value() -> serde_yaml::Value {
+    serde_yaml::to_value(Preferences::default()).unwrap()
 }
 
-/// The config a `config.yaml` text parses to, for tests that are about the
-/// settings rather than the shape the file arrived in.
-fn parse_config(content: &str) -> Result<ConfigYaml, ConfigError> {
-    parse_config_yaml(content).map(|parsed| parsed.config)
+/// Write `value` as a library directory's `preferences.yaml` and read it back
+/// the way opening the library does.
+fn read_preferences_value(value: &serde_yaml::Value) -> Result<Preferences, ConfigError> {
+    let tmp = TempDir::new().unwrap();
+    std::fs::write(
+        tmp.path().join(PREFERENCES_FILENAME),
+        serde_yaml::to_string(value).unwrap(),
+    )
+    .unwrap();
+    read_preferences(tmp.path())
 }
 
-/// Parse a full config with one top-level key removed.
-fn parse_yaml_without(key: &str) -> Result<ConfigYaml, serde_yaml::Error> {
-    let mut value = full_config_yaml_value();
-    let map = value.as_mapping_mut().unwrap();
-    map.remove(serde_yaml::Value::String(key.to_string()))
-        .unwrap_or_else(|| panic!("{key} not in serialized config"));
-    ConfigYaml::from_value(&value)
+/// Read default preferences with one top-level key removed.
+fn read_preferences_without(key: &str) -> Result<Preferences, ConfigError> {
+    let mut value = default_preferences_value();
+    value
+        .as_mapping_mut()
+        .unwrap()
+        .remove(serde_yaml::Value::String(key.to_string()))
+        .unwrap_or_else(|| panic!("{key} not in serialized preferences"));
+    read_preferences_value(&value)
 }
 
 #[test]
@@ -41,21 +49,20 @@ fn export_settings_survive_yaml_roundtrip() {
     // Filename tokens are per-preset now; a preset's edited pattern survives.
     config.prefs.save_presets[0].filename_tokens =
         vec![SaveFilenameToken::Artist, SaveFilenameToken::Title];
-    config.save_to_config_yaml().unwrap();
+    config.save_preferences().unwrap();
 
-    let yaml =
-        parse_config(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap()).unwrap();
+    let prefs = read_preferences(tmp.path()).unwrap();
     assert_eq!(
-        yaml.prefs.save_presets[0].filename_tokens,
+        prefs.save_presets[0].filename_tokens,
         vec![SaveFilenameToken::Artist, SaveFilenameToken::Title]
     );
-    assert_eq!(yaml.prefs.save_presets, config.prefs.save_presets);
+    assert_eq!(prefs.save_presets, config.prefs.save_presets);
     assert_eq!(
-        yaml.prefs.default_track_save_preset,
+        prefs.default_track_save_preset,
         config.prefs.default_track_save_preset
     );
     assert_eq!(
-        yaml.prefs.default_release_save_preset,
+        prefs.default_release_save_preset,
         config.prefs.default_release_save_preset
     );
 }
@@ -107,12 +114,11 @@ fn transfer_concurrency_survives_yaml_roundtrip() {
     let mut config = make_test_config("lib", tmp.path().to_path_buf());
     config.prefs.max_concurrent_uploads = NonZeroU32::new(7).unwrap();
     config.prefs.max_concurrent_downloads = NonZeroU32::new(4).unwrap();
-    config.save_to_config_yaml().unwrap();
+    config.save_preferences().unwrap();
 
-    let yaml =
-        parse_config(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap()).unwrap();
-    assert_eq!(yaml.prefs.max_concurrent_uploads.get(), 7);
-    assert_eq!(yaml.prefs.max_concurrent_downloads.get(), 4);
+    let prefs = read_preferences(tmp.path()).unwrap();
+    assert_eq!(prefs.max_concurrent_uploads.get(), 7);
+    assert_eq!(prefs.max_concurrent_downloads.get(), 4);
 }
 
 #[test]
@@ -131,80 +137,44 @@ fn prefill_with_file_metadata_and_identify_automatically_roundtrip_independently
         let mut config = make_test_config("lib", tmp.path().to_path_buf());
         config.prefs.identify_automatically = identify;
         config.prefs.prefill_with_file_metadata = prefill;
-        config.save_to_config_yaml().unwrap();
+        config.save_preferences().unwrap();
 
-        let yaml = parse_config(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
-            .unwrap();
-        let loaded = yaml.into_config("device".to_string(), tmp.path().to_path_buf());
+        let prefs = read_preferences(tmp.path()).unwrap();
 
-        assert_eq!(loaded.prefs.identify_automatically, identify);
-        assert_eq!(loaded.prefs.prefill_with_file_metadata, prefill);
+        assert_eq!(prefs.identify_automatically, identify);
+        assert_eq!(prefs.prefill_with_file_metadata, prefill);
     }
 }
 
 /// The typed read is strict about the keys it needs, not about the keys it
-/// finds: a file at the current version carrying something extra — a key edited
-/// in by hand — still loads. Carrying a retired key forward is a ladder step's
-/// job, not the read's.
+/// finds: a file carrying something extra — a key edited in by hand — still
+/// loads.
 #[test]
-fn a_config_carrying_an_unrecognized_key_loads() {
-    let mut value = full_config_yaml_value();
+fn preferences_carrying_an_unrecognized_key_load() {
+    let mut value = default_preferences_value();
     value.as_mapping_mut().unwrap().insert(
-        serde_yaml::Value::String("default_import_metadata_source".to_string()),
-        serde_yaml::Value::String("file_tags".to_string()),
+        serde_yaml::Value::String("unrecognized_setting".to_string()),
+        serde_yaml::Value::String("value".to_string()),
     );
 
-    let loaded = ConfigYaml::from_value(&value).expect("an unknown key is ignored");
+    let loaded = read_preferences_value(&value).expect("an unknown key is ignored");
 
-    assert!(loaded.prefs.prefill_with_file_metadata);
-    assert!(loaded.prefs.identify_automatically);
+    assert!(loaded.prefill_with_file_metadata);
+    assert!(loaded.identify_automatically);
 }
 
 /// A hand-edited `0` is refused at load rather than reaching coven — the
 /// `NonZeroU32` field makes the deadlocking value unrepresentable.
 #[test]
 fn a_zero_concurrency_fails_to_load() {
-    let mut value = full_config_yaml_value();
+    let mut value = default_preferences_value();
     value.as_mapping_mut().unwrap().insert(
         serde_yaml::Value::String("max_concurrent_uploads".to_string()),
         serde_yaml::Value::Number(0.into()),
     );
-    let yaml = serde_yaml::to_string(&value).unwrap();
     assert!(
-        parse_config(&yaml).is_err(),
+        read_preferences_value(&value).is_err(),
         "a zero concurrency must not load"
-    );
-}
-
-#[test]
-fn config_yaml_requires_library_id() {
-    assert!(
-        parse_yaml_without("library_id").is_err(),
-        "ConfigYaml should fail without library_id"
-    );
-}
-
-#[test]
-fn config_yaml_requires_a_positive_snapshot_threshold() {
-    assert!(parse_yaml_without("snapshot_commit_threshold").is_err());
-    let mut value = full_config_yaml_value();
-    value["snapshot_commit_threshold"] = serde_yaml::Value::Number(0.into());
-    assert!(ConfigYaml::from_value(&value).is_err());
-}
-
-#[test]
-fn config_yaml_requires_mcp() {
-    assert!(
-        parse_yaml_without("mcp").is_err(),
-        "ConfigYaml should fail without mcp"
-    );
-}
-
-#[test]
-fn config_yaml_requires_subsonic() {
-    assert!(
-        parse_yaml_without("subsonic").is_err(),
-        "ConfigYaml should fail without subsonic"
     );
 }
 
@@ -272,12 +242,11 @@ fn subsonic_config_allows_disabled_without_username() {
     );
 }
 
-/// Every key the file writes except `device_id` is serialized unconditionally,
-/// so a missing key fails rather than taking an implicit default.
+/// Every key the file writes is serialized unconditionally, so a missing key
+/// fails rather than taking an implicit default.
 #[test]
-fn config_yaml_requires_every_bae_field() {
+fn preferences_require_every_field() {
     for key in [
-        "config_version",
         "discogs",
         "replay_gain_mode",
         "save_presets",
@@ -293,31 +262,30 @@ fn config_yaml_requires_every_bae_field() {
         "prefill_with_file_metadata",
         "metadata_sources",
         "cast_enabled",
+        "mcp",
+        "subsonic",
     ] {
         assert!(
-            parse_yaml_without(key).is_err(),
-            "ConfigYaml should fail without {key}"
+            read_preferences_without(key).is_err(),
+            "preferences should fail without {key}"
         );
     }
 }
 
-/// The file is the contract. Identity, snapshot policy, preferences, and coven's
-/// cloud home share one mapping, so this pins the whole thing a
-/// fresh library writes: every key, its order, its nesting, and its default. A
-/// rename, a dropped key, or a value that stopped being emitted shows up here.
+/// The file is the contract. This pins the whole `preferences.yaml` a
+/// library writes at its defaults: every key, its order, its nesting, and its
+/// value. A rename, a dropped key, or a value that stopped being emitted shows
+/// up here.
 #[test]
-fn config_yaml_pins_the_on_disk_file() {
-    let config = make_test_config("abc-123", PathBuf::from("unused"));
-    let written = serde_yaml::to_string(&ConfigYaml::from(&config)).unwrap();
+fn preferences_yaml_pins_the_on_disk_file() {
+    let tmp = TempDir::new().unwrap();
+    let config = make_test_config("abc-123", tmp.path().to_path_buf());
+    config.save_preferences().unwrap();
+    let written = std::fs::read_to_string(tmp.path().join(PREFERENCES_FILENAME)).unwrap();
 
     assert_eq!(
         written,
-        r#"config_version: 2
-library_id: abc-123
-library_name: Test Library
-device_id: test-device-id
-snapshot_commit_threshold: 100
-discogs: null
+        r#"discogs: null
 replay_gain_mode: Off
 save_presets:
 - id: flac
@@ -364,30 +332,15 @@ subsonic:
   port: 4533
   username: ''
   bind_address: 127.0.0.1
-provider: null
-s3_bucket: null
-s3_region: null
-s3_endpoint: null
-s3_key_prefix: null
-exact_upload_verification: metadata_hash
-google_drive_folder_id: null
-dropbox_folder_path: null
-onedrive_drive_id: null
-onedrive_folder_id: null
-cloudkit_owner_name: null
-cloudkit_zone_name: null
-storage: opaque
 "#
     );
-    // And it reads back: the flattened parts each claim their own keys.
-    let read_back = parse_config(&written).unwrap();
-    assert_eq!(read_back.identity.library_id, "abc-123");
-    assert_eq!(read_back.prefs.save_presets, config.prefs.save_presets);
-    assert_eq!(read_back.cloud_home, config.cloud_home);
+    // And it reads back, save presets' codec tags included.
+    let read_back = read_preferences(tmp.path()).unwrap();
+    assert_eq!(read_back.save_presets, config.prefs.save_presets);
 }
 
 /// Casting reaches the local network, so it is opt-in: a fresh library has
-/// it off, and the choice survives a write/read of config.yaml.
+/// it off, and the choice survives a write/read of preferences.yaml.
 #[test]
 fn cast_is_off_by_default_and_survives_yaml_roundtrip() {
     let tmp = TempDir::new().unwrap();
@@ -395,11 +348,9 @@ fn cast_is_off_by_default_and_survives_yaml_roundtrip() {
     assert!(!config.prefs.cast_enabled, "casting is opt-in");
 
     config.prefs.cast_enabled = true;
-    config.save_to_config_yaml().unwrap();
+    config.save_preferences().unwrap();
 
-    let yaml =
-        parse_config(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap()).unwrap();
-    assert!(yaml.prefs.cast_enabled);
+    assert!(read_preferences(tmp.path()).unwrap().cast_enabled);
 }
 
 /// A config that is genuinely unreadable is SHOWN as broken, not skipped. The
@@ -434,7 +385,7 @@ fn a_broken_library_does_not_hide_a_working_one() {
     std::fs::create_dir_all(&good_dir).unwrap();
     let mut good = make_test_config("lib-good", good_dir.clone());
     good.store_name = "Good".to_string();
-    good.save_to_config_yaml().unwrap();
+    good.save_store_config().unwrap();
 
     let broken_dir = libraries_dir.join("lib-broken");
     std::fs::create_dir_all(&broken_dir).unwrap();
@@ -447,14 +398,6 @@ fn a_broken_library_does_not_hide_a_working_one() {
     assert!(libraries[0].error.is_none());
     assert_eq!(libraries[1].id, "lib-broken");
     assert!(libraries[1].error.is_some());
-}
-
-/// `device_id` is the one designed absence: missing on a fresh library, and
-/// auto-generated (and written back) on first load rather than failing.
-#[test]
-fn config_yaml_allows_missing_device_id() {
-    let config = parse_yaml_without("device_id").unwrap();
-    assert_eq!(config.identity.device_id, None);
 }
 
 /// The YAML mapping names its fields, but nothing reads them by name: the
@@ -572,29 +515,22 @@ fn discogs_token_status_derives_from_option() {
     ));
 }
 
+/// A library bae created and changed a preference in opens with both: coven's
+/// config from `config.yaml` and bae's preferences from `preferences.yaml`.
 #[test]
-fn config_yaml_requires_storage() {
-    // `storage` rides the flattened coven CloudHomeConfig and carries no
-    // serde default: a config file without it fails to load rather than
-    // silently assuming a cipher/path scheme.
-    assert!(
-        parse_yaml_without("storage").is_err(),
-        "ConfigYaml should fail without storage"
-    );
-}
-
-#[test]
-fn save_and_load_config_yaml_roundtrip() {
+fn a_saved_library_loads_back() {
     let tmp = TempDir::new().unwrap();
-    let library_path = tmp.path().to_path_buf();
-    let config = make_test_config("my-library-id", library_path.clone());
+    let app_dir = AppDir::at(tmp.path());
+    let mut config = make_test_config("my-library-id", app_dir.registered_library("my-library-id"));
+    config.prefs.cast_enabled = true;
+    config.save_store_config().unwrap();
+    config.save_preferences().unwrap();
 
-    config.save_to_config_yaml().unwrap();
+    let loaded = Config::load_registered_library(&app_dir, "my-library-id").unwrap();
 
-    let yaml =
-        parse_config(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap()).unwrap();
-    assert_eq!(yaml.identity.library_id, "my-library-id");
-    assert_eq!(yaml.prefs.mcp, McpConfig::disabled_default());
+    assert_eq!(loaded.to_coven(), config.to_coven());
+    assert!(loaded.prefs.cast_enabled);
+    assert_eq!(loaded.prefs.mcp, McpConfig::disabled_default());
 }
 
 #[test]
@@ -605,14 +541,10 @@ fn load_registered_library_rejects_mismatched_config_id() {
         "wrong-lib-id",
         app_dir.registered_library("expected-lib-id"),
     )
-    .save_to_config_yaml()
+    .save_store_config()
     .unwrap();
 
-    let result = Config::load_registered_library(
-        &app_dir,
-        "expected-lib-id",
-        &coven::SequentialIdProvider::new("device"),
-    );
+    let result = Config::load_registered_library(&app_dir, "expected-lib-id");
 
     assert!(matches!(result, Err(ConfigError::Config(_))));
 }
@@ -636,7 +568,7 @@ fn discover_libraries_returns_active_pointer_read_error() {
     let library_path = app_dir.registered_library("auto-lib");
 
     make_test_config("auto-lib", library_path)
-        .save_to_config_yaml()
+        .save_store_config()
         .unwrap();
     std::fs::create_dir(app_dir.active_library_pointer()).unwrap();
 
@@ -666,7 +598,7 @@ fn discovery_skips_non_utf8_library_dir() {
     // A valid library: UTF-8 dir name + config.yaml.
     let library_path = libraries_dir.join("valid-lib");
     make_test_config("valid-lib", library_path.clone())
-        .save_to_config_yaml()
+        .save_store_config()
         .unwrap();
 
     // A sibling dir whose name is not valid UTF-8 (a lone 0xFF byte). On a
@@ -679,10 +611,7 @@ fn discovery_skips_non_utf8_library_dir() {
 
     let discovered = discover_all_library_paths(&app_dir);
     assert_eq!(discovered.len(), 1, "non-UTF-8 dir should be skipped");
-    assert_eq!(
-        discovered[0].1.as_ref().unwrap().identity.library_id,
-        "valid-lib"
-    );
+    assert_eq!(discovered[0].1.as_ref().unwrap().store_id, "valid-lib");
 }
 
 #[test]
@@ -691,11 +620,10 @@ fn library_name_roundtrip() {
     let library_path = tmp.path().to_path_buf();
     let mut config = make_test_config("lib-1", library_path.clone());
     config.store_name = "My Music".to_string();
-    config.save_to_config_yaml().unwrap();
+    config.save_store_config().unwrap();
 
-    let yaml =
-        parse_config(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap()).unwrap();
-    assert_eq!(yaml.identity.library_name, "My Music");
+    let store = coven::Config::load_from_config_yaml(&StoreDir::new(&library_path)).unwrap();
+    assert_eq!(store.store_name, "My Music");
 }
 
 #[test]
@@ -707,13 +635,13 @@ fn discover_libraries_finds_dirs_with_config() {
     // Create two libraries
     let lib1_path = libraries_dir.join("lib-1");
     make_test_config("lib-1", lib1_path.clone())
-        .save_to_config_yaml()
+        .save_store_config()
         .unwrap();
 
     let lib2_path = libraries_dir.join("lib-2");
     let mut lib2 = make_test_config("lib-2", lib2_path.clone());
     lib2.store_name = "Second Library".to_string();
-    lib2.save_to_config_yaml().unwrap();
+    lib2.save_store_config().unwrap();
 
     // Create an invalid dir (no config.yaml)
     std::fs::create_dir_all(libraries_dir.join("invalid")).unwrap();
@@ -723,17 +651,16 @@ fn discover_libraries_finds_dirs_with_config() {
 
     let ids: Vec<&str> = discovered
         .iter()
-        .map(|(_, y)| y.as_ref().unwrap().identity.library_id.as_str())
+        .map(|(_, y)| y.as_ref().unwrap().store_id.as_str())
         .collect();
     assert!(ids.contains(&"lib-1"));
     assert!(ids.contains(&"lib-2"));
 
     let lib2_entry = discovered
         .iter()
-        .find(|(_, y)| y.as_ref().unwrap().identity.library_id == "lib-2")
+        .find(|(_, y)| y.as_ref().unwrap().store_id == "lib-2")
         .unwrap();
-    let lib2_yaml = lib2_entry.1.as_ref().unwrap();
-    assert_eq!(lib2_yaml.identity.library_name, "Second Library");
+    assert_eq!(lib2_entry.1.as_ref().unwrap().store_name, "Second Library");
 }
 
 #[test]
@@ -744,12 +671,12 @@ fn find_library_by_id_scans_libraries_dir() {
 
     let lib1_path = libraries_dir.join("lib-1");
     make_test_config("lib-1", lib1_path.clone())
-        .save_to_config_yaml()
+        .save_store_config()
         .unwrap();
 
     let lib2_path = libraries_dir.join("lib-2");
     make_test_config("lib-2", lib2_path.clone())
-        .save_to_config_yaml()
+        .save_store_config()
         .unwrap();
 
     let found = find_library_by_id(&app_dir, "lib-1");
@@ -768,7 +695,7 @@ fn rename_library_updates_config_yaml() {
     let tmp = TempDir::new().unwrap();
     let library_path = tmp.path().to_path_buf();
     let config = make_test_config("lib-1", library_path.clone());
-    config.save_to_config_yaml().unwrap();
+    config.save_store_config().unwrap();
     let handle = ConfigHandle::new(config);
 
     handle
@@ -776,10 +703,9 @@ fn rename_library_updates_config_yaml() {
         .unwrap();
     assert_eq!(handle.config().store_name, "New Name");
 
-    let yaml =
-        parse_config(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap()).unwrap();
-    assert_eq!(yaml.identity.library_name, "New Name");
-    assert_eq!(yaml.identity.library_id, "lib-1"); // unchanged
+    let store = coven::Config::load_from_config_yaml(&StoreDir::new(&library_path)).unwrap();
+    assert_eq!(store.store_name, "New Name");
+    assert_eq!(store.store_id, "lib-1"); // unchanged
 }
 
 /// An `update` is reflected by the `Config` that `config()` returns — the
@@ -790,12 +716,12 @@ fn rename_library_updates_config_yaml() {
 fn update_is_reflected_by_config() {
     let tmp = TempDir::new().unwrap();
     let config = make_test_config("lib-update", tmp.path().to_path_buf());
-    config.save_to_config_yaml().unwrap();
+    config.save_store_config().unwrap();
     let handle = ConfigHandle::new(config);
 
     assert!(handle.config().prefs.discogs.is_none());
     handle
-        .update(|c| c.prefs.discogs = Some(DiscogsValidation::Valid))
+        .update_preferences(|prefs| prefs.discogs = Some(DiscogsValidation::Valid))
         .unwrap();
     assert_eq!(
         handle.config().prefs.discogs,
@@ -803,37 +729,43 @@ fn update_is_reflected_by_config() {
     );
 }
 
+/// A store edit and a preference edit racing each other both land, in memory
+/// and in their own files.
 #[test]
 fn update_serializes_concurrent_edits() {
     let tmp = TempDir::new().unwrap();
     let library_path = tmp.path().to_path_buf();
     let config = make_test_config("lib-update-race", library_path.clone());
-    config.save_to_config_yaml().unwrap();
+    config.save_store_config().unwrap();
     let handle = Arc::new(ConfigHandle::new(config));
     let start = Arc::new(Barrier::new(3));
 
-    fn spawn_update(
-        handle: Arc<ConfigHandle>,
-        start: Arc<Barrier>,
-        edit: impl FnOnce(&mut Config) + Send + 'static,
-    ) -> std::thread::JoinHandle<()> {
+    let rename = {
+        let handle = Arc::clone(&handle);
+        let start = Arc::clone(&start);
         std::thread::spawn(move || {
             start.wait();
             handle
-                .update(|config| {
+                .update_store(|store| {
                     std::thread::sleep(Duration::from_millis(100));
-                    edit(config);
+                    store.store_name = "Renamed Library".to_string();
                 })
                 .unwrap();
         })
-    }
-
-    let rename = spawn_update(Arc::clone(&handle), Arc::clone(&start), |config| {
-        config.store_name = "Renamed Library".to_string();
-    });
-    let playback = spawn_update(Arc::clone(&handle), Arc::clone(&start), |config| {
-        config.prefs.pause_between_sides = false;
-    });
+    };
+    let playback = {
+        let handle = Arc::clone(&handle);
+        let start = Arc::clone(&start);
+        std::thread::spawn(move || {
+            start.wait();
+            handle
+                .update_preferences(|prefs| {
+                    std::thread::sleep(Duration::from_millis(100));
+                    prefs.pause_between_sides = false;
+                })
+                .unwrap();
+        })
+    };
 
     start.wait();
     rename.join().unwrap();
@@ -843,20 +775,17 @@ fn update_serializes_concurrent_edits() {
     assert_eq!(final_config.store_name, "Renamed Library");
     assert!(!final_config.prefs.pause_between_sides);
 
-    let yaml =
-        parse_config(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap()).unwrap();
-    assert_eq!(yaml.identity.library_name, "Renamed Library");
-    assert!(!yaml.prefs.pause_between_sides);
+    let store = coven::Config::load_from_config_yaml(&StoreDir::new(&library_path)).unwrap();
+    assert_eq!(store.store_name, "Renamed Library");
+    assert!(!read_preferences(&library_path).unwrap().pause_between_sides);
 }
 
+/// A store coven just restored or joined keeps every field coven gave it, and
+/// starts bae's preferences at their defaults.
 #[test]
-fn from_coven_preserves_library_id_and_persists_bae_yaml() {
-    let tmp = TempDir::new().unwrap();
-    let library_path = tmp.path().join("libraries").join("restored-lib-abc-123");
-    let library_id = "restored-lib-abc-123";
-
+fn from_coven_keeps_coven_config_and_defaults_preferences() {
     let mut coven_config = coven::Config::with_defaults(
-        library_id.to_string(),
+        "restored-lib-abc-123".to_string(),
         "restored-device".to_string(),
         "Test Library".to_string(),
     );
@@ -864,35 +793,51 @@ fn from_coven_preserves_library_id_and_persists_bae_yaml() {
     coven_config.snapshot_commit_threshold = NonZeroU64::new(7).unwrap();
     coven_config.cloud_home.cloudkit_owner_name = Some("_owner".to_string());
     coven_config.cloud_home.cloudkit_zone_name = Some("bae-library".to_string());
-    let config = Config::from_coven(coven_config, library_path.clone());
 
-    assert_eq!(config.store_id, library_id);
-    assert_eq!(config.store_name, "Test Library");
-    assert_eq!(config.to_coven().snapshot_commit_threshold.get(), 7);
+    let config = Config::from_coven(coven_config.clone(), PathBuf::from("unused"));
+
+    assert_eq!(config.to_coven(), coven_config);
     assert_eq!(config.prefs.mcp, McpConfig::disabled_default());
-    assert_eq!(
-        config.cloud_home.cloudkit_owner_name.as_deref(),
-        Some("_owner")
-    );
-    assert_eq!(
-        config.cloud_home.cloudkit_zone_name.as_deref(),
-        Some("bae-library")
-    );
+}
 
-    config.save_to_config_yaml().unwrap();
+/// coven's restore and join write `config.yaml` themselves and treat it as the
+/// finished store. A library that has only that file — nothing bae wrote after
+/// coven returned — opens, with bae's preferences at their defaults.
+#[test]
+fn a_library_coven_wrote_opens_with_default_preferences() {
+    let tmp = TempDir::new().unwrap();
+    let app_dir = AppDir::at(tmp.path());
+    let store_dir = app_dir.store_layout().store_dir("restored-lib");
+    let mut coven_config = coven::Config::with_defaults(
+        "restored-lib".to_string(),
+        "restored-device".to_string(),
+        "Restored Library".to_string(),
+    );
+    coven_config.snapshot_commit_threshold = NonZeroU64::new(7).unwrap();
+    coven_config.save_to_config_yaml(&store_dir).unwrap();
 
-    let yaml =
-        parse_config(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap()).unwrap();
-    assert_eq!(yaml.identity.library_id, library_id);
-    assert_eq!(yaml.prefs.mcp, McpConfig::disabled_default());
+    let config = Config::load_registered_library(&app_dir, "restored-lib").unwrap();
+
+    assert_eq!(config.to_coven(), coven_config);
+    assert_eq!(config.prefs.mcp, McpConfig::disabled_default());
+}
+
+/// `config.yaml` stays in coven's format after bae changes a setting, so coven
+/// can still read it back (join reads it as its completion marker).
+#[test]
+fn changing_a_preference_leaves_coven_config_readable_by_coven() {
+    let tmp = TempDir::new().unwrap();
+    let config = make_test_config("lib-owned", tmp.path().to_path_buf());
+    config.save_store_config().unwrap();
+    let handle = ConfigHandle::new(config.clone());
+
+    handle
+        .update_preferences(|prefs| prefs.pause_between_sides = false)
+        .unwrap();
+
+    let store_dir = coven::StoreDir::new(tmp.path());
     assert_eq!(
-        yaml.cloud_home.cloudkit_owner_name.as_deref(),
-        Some("_owner")
+        coven::Config::load_from_config_yaml(&store_dir).unwrap(),
+        config.to_coven()
     );
-    assert_eq!(
-        yaml.cloud_home.cloudkit_zone_name.as_deref(),
-        Some("bae-library")
-    );
-    let loaded = yaml.into_config("restored-device".to_string(), library_path);
-    assert_eq!(loaded.to_coven().snapshot_commit_threshold.get(), 7);
 }

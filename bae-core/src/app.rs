@@ -169,14 +169,12 @@ where
 {
     let timing = BootstrapTiming::start(&library_id);
 
-    // The injected wall clock + id source are built before loading the config so
-    // device-id auto-generation draws from the injected source too.
     let clock: ClockRef = Arc::new(SystemClock);
     let ids: IdRef = Arc::new(UuidProvider);
 
     let config = timing
         .stage(&library_id, "load config", || {
-            Config::load_registered_library(&app_dir, &library_id, ids.as_ref())
+            Config::load_registered_library(&app_dir, &library_id)
         })
         .map_err(|error| match error {
             crate::config::ConfigError::Config(_) => {
@@ -187,10 +185,11 @@ where
     let library_id = config.store_id.clone();
 
     // Telemetry was built by the host at process start (from compiled-in values
-    // only) and handed in. Enrich it now with the stable per-device id the config
-    // mints on first run — a set-once post-construction step, the one place late
-    // mutability is accepted. Events before this point (host launch, keyring,
-    // config load) ship without the field rather than a placeholder.
+    // only) and handed in. Enrich it now with the stable per-device id recorded
+    // when the library was created or joined — a set-once post-construction
+    // step, the one place late mutability is accepted. Events before this point
+    // (host launch, keyring, config load) ship without the field rather than a
+    // placeholder.
     diagnostics.set_device_id(config.device_id.clone());
 
     let runtime = timing

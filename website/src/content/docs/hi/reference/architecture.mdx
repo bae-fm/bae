@@ -21,7 +21,8 @@ bae चार native ऐप के भीतर एक Rust core है। produ
 ```
 ~/.bae/libraries/<id>/
   लाइब्रेरी.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # उपकरण-स्थानीय सेटिंग, never synced
+  config.yaml       # coven: लाइब्रेरी की पहचान, क्लाउड होम; कभी सिंक नहीं होता
+  preferences.yaml  # bae की सेटिंग; कभी सिंक नहीं होतीं
   संग्रहण/
     स्थानीय/          # blobs this उपकरण owns (कवर, कलाकार images)
     कैश/          # evictable copies of क्लाउड blobs

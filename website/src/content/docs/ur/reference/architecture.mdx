@@ -21,7 +21,8 @@ bae ایک Rust مرکز ہے جس پر چار مقامی ایپیں ہیں۔ م
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # device-local settings, never synced
+  config.yaml       # coven: لائبریری کی شناخت، کلاؤڈ ہوم؛ کبھی سنک نہیں ہوتا
+  preferences.yaml  # bae کی ترتیبات؛ کبھی سنک نہیں ہوتیں
   storage/
     local/          # blobs this device owns (covers, artist images)
     cache/          # evictable copies of cloud blobs

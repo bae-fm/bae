@@ -21,7 +21,8 @@ A library lives at `~/.bae/libraries/<library-id>/` (a platform data directory o
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # device-local settings, never synced
+  config.yaml       # coven: library identity, cloud home; never synced
+  preferences.yaml  # bae's settings; never synced
   storage/
     local/          # blobs this device owns (covers, artist images)
     cache/          # evictable copies of cloud blobs

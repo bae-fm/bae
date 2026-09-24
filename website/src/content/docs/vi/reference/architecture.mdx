@@ -21,7 +21,8 @@ Một thư viện nằm tại `~/.bae/libraries/<library-id>/` (một thư mục
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # device-local settings, never synced
+  config.yaml       # coven: danh tính thư viện, cloud home; không bao giờ đồng bộ
+  preferences.yaml  # cài đặt của bae; không bao giờ đồng bộ
   storage/
     local/          # blobs this device owns (covers, artist images)
     cache/          # evictable copies of cloud blobs

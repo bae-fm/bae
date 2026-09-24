@@ -21,7 +21,8 @@ Eine Mediathek lebt unter `~/.bae/libraries/<library-id>/` (auf Mobilgeräten ei
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # device-local settings, never synced
+  config.yaml       # coven: Bibliotheksidentität, Cloud-Home; wird nie synchronisiert
+  preferences.yaml  # Einstellungen von bae; werden nie synchronisiert
   storage/
     local/          # blobs this device owns (covers, artist images)
     cache/          # evictable copies of cloud blobs

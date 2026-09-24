@@ -171,7 +171,7 @@ pub fn create_library(
     let device_id = ids.new_id();
     let config = Config::with_defaults(library_id, device_id, &library_dir, name.into_string());
     let creation: Result<Config, CreateLibraryError> = (|| {
-        config.save_to_config_yaml()?;
+        config.save_store_config()?;
         let config_handle = Arc::new(crate::config::ConfigHandle::new(config.clone()));
         let handle = config_handle
             .coven_builder()
@@ -186,14 +186,6 @@ pub fn create_library(
     })();
 
     creation.map_err(|failure| failure.with_rollback(library_dir.remove_tree()))
-}
-
-/// coven's restore/join returns the recovered Config; wrap it in bae's Config
-/// (which adds Discogs fields) and persist it.
-fn save_coven_library(coven_config: coven::Config, store_dir: StoreDir) -> Result<Config, String> {
-    let config = Config::from_coven(coven_config, store_dir.to_path_buf());
-    config.save_to_config_yaml().map_err(|e| e.to_string())?;
-    Ok(config)
 }
 
 /// Bridge bae's `CancellationToken` onto the `watch::Receiver<bool>` that coven's
@@ -235,7 +227,8 @@ fn cancel_receiver(
 /// Finish a code-driven join/restore: stop the cancel bridge, then map coven's
 /// outcome. `BootstrapError::Cancelled` (coven cancelled cooperatively at a phase
 /// boundary and already removed its partial store dir) becomes our `Cancelled`;
-/// any other error is `Failed`; success persists bae's wrapped `Config`.
+/// any other error is `Failed`; success wraps the config coven already wrote to
+/// the store's `config.yaml`.
 fn finish_code_operation(
     result: Result<coven::Config, coven::BootstrapError>,
     layout: &coven::StoreLayout,
@@ -247,7 +240,7 @@ fn finish_code_operation(
     match result {
         Ok(coven_config) => {
             let store_dir = layout.store_dir(&coven_config.store_id);
-            save_coven_library(coven_config, store_dir).map_err(LibraryCodeOperationError::Failed)
+            Ok(Config::from_coven(coven_config, store_dir.to_path_buf()))
         }
         Err(coven::BootstrapError::Cancelled) => Err(LibraryCodeOperationError::Cancelled),
         Err(e) => Err(LibraryCodeOperationError::Failed(e.to_string())),
@@ -500,7 +493,7 @@ pub async fn join_prepared_device_pairing_cancellable(
     match result {
         Ok(coven::DeviceJoinTransportOutcome::Joined(coven_config)) => {
             let store_dir = layout.store_dir(&coven_config.store_id);
-            save_coven_library(coven_config, store_dir).map_err(JoinDevicePairingError::Join)
+            Ok(Config::from_coven(coven_config, store_dir.to_path_buf()))
         }
         // The owner gave up on this attempt before it completed. Not a failure of
         // this device — a distinct end the UI reports as such.

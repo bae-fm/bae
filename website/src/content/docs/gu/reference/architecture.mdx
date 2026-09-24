@@ -21,7 +21,8 @@ Library `~/.bae/libraries/<library-id>/` પર રહે છે (mobile પર 
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # device-local settings, never synced
+  config.yaml       # coven: લાઇબ્રેરીની ઓળખ, ક્લાઉડ હોમ; ક્યારેય સિંક થતું નથી
+  preferences.yaml  # bae ની સેટિંગ્સ; ક્યારેય સિંક થતી નથી
   storage/
     local/          # blobs this device owns (covers, artist images)
     cache/          # evictable copies of cloud blobs

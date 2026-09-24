@@ -42,7 +42,7 @@ fn write_library(app_dir: &AppDir, name: &str, configure: impl FnOnce(&mut Confi
         name.to_string(),
     );
     configure(&mut config);
-    config.save_to_config_yaml().unwrap();
+    config.save_store_config().unwrap();
     id
 }
 

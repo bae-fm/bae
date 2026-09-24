@@ -109,8 +109,10 @@ baeium needs nothing proprietary to build, run, or distribute.
 
 ## Configuration
 
-Secrets live in the system keyring; settings in `~/.bae/config.yaml`. The
-Discogs API key is entered in the app's settings.
+Secrets live in the system keyring. Each library directory,
+`~/.bae/libraries/<library-id>/`, holds coven's `config.yaml` (library identity
+and cloud home, written by coven) and bae's own `preferences.yaml`. The Discogs
+API key is entered in the app's settings.
 
 ## Logging
 

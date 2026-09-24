@@ -21,7 +21,8 @@ Knihovna žije v `~/.bae/libraries/<library-id>/` (na mobilu v datovém adresá�
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: katalog, kredity, specifikace přehrávání
-  config.yaml       # místní nastavení zařízení, nikdy se nesynchronizuje
+  config.yaml       # coven: identita knihovny, cloudový domov; nikdy se nesynchronizuje
+  preferences.yaml  # nastavení bae; nikdy se nesynchronizuje
   storage/
     local/          # bloby vlastněné tímto zařízením (obaly, obrázky interpretů)
     cache/          # zahoditelné kopie cloudových blobů

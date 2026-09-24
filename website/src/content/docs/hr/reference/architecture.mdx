@@ -21,7 +21,8 @@ Biblioteka živi na `~/.bae/libraries/<library-id>/` (podatkovni direktorij plat
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: katalog, zasluge, specifikacije reprodukcije
-  config.yaml       # lokalne postavke uređaja, nikad sinkronizirane
+  config.yaml       # coven: identitet knjižnice, oblačni dom; nikad se ne sinkronizira
+  preferences.yaml  # postavke za bae; nikad se ne sinkroniziraju
   storage/
     local/          # binarni objekti koje ovaj uređaj posjeduje (omoti, slike izvođača)
     cache/          # izbacive kopije binarnih objekata iz oblaka

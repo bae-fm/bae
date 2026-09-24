@@ -21,7 +21,8 @@ bae는 하나의 Rust 코어에 네 개의 네이티브 앱을 씌운 형태입�
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # device-local settings, never synced
+  config.yaml       # coven: 라이브러리 식별 정보, 클라우드 홈; 동기화되지 않음
+  preferences.yaml  # bae 설정; 동기화되지 않음
   storage/
     local/          # blobs this device owns (covers, artist images)
     cache/          # evictable copies of cloud blobs

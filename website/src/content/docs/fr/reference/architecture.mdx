@@ -21,7 +21,8 @@ Une bibliothèque vit dans `~/.bae/libraries/<library-id>/` (un dossier de donn�
 ```
 ~/.bae/libraries/<id>/
   library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # device-local settings, never synced
+  config.yaml       # coven : identité de la bibliothèque, espace cloud ; jamais synchronisé
+  preferences.yaml  # réglages de bae ; jamais synchronisés
   storage/
     local/          # blobs this device owns (covers, artist images)
     cache/          # evictable copies of cloud blobs

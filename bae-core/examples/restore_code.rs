@@ -35,15 +35,13 @@ fn main() {
         }
     };
 
-    let ids = coven::UuidProvider;
-    let config =
-        match bae_core::config::Config::load_registered_library(&app_dir, &library_id, &ids) {
-            Ok(config) => config,
-            Err(e) => {
-                eprintln!("load config failed: {e}");
-                std::process::exit(1);
-            }
-        };
+    let config = match bae_core::config::Config::load_registered_library(&app_dir, &library_id) {
+        Ok(config) => config,
+        Err(e) => {
+            eprintln!("load config failed: {e}");
+            std::process::exit(1);
+        }
+    };
     eprintln!(
         "active library: {} ({})",
         config.store_name, config.store_id,

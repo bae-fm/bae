@@ -21,7 +21,8 @@ bae হলো এক Rust core, তার উপর চারটি native app�
 ```
 ~/.bae/libraries/<id>/
   লাইব্রেরি.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # ডিভাইস-স্থানীয় সেটিংস, never synced
+  config.yaml       # coven: লাইব্রেরির পরিচয়, ক্লাউড হোম; কখনও সিঙ্ক হয় না
+  preferences.yaml  # bae-এর সেটিংস; কখনও সিঙ্ক হয় না
   সংরক্ষণ/
     স্থানীয়/          # blobs this ডিভাইস owns (কভার, শিল্পী images)
     ক্যাশ/          # evictable copies of ক্লাউড blobs

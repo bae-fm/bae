@@ -54,14 +54,35 @@ impl ConfigHandle {
             .map_err(|error| error.to_string())
     }
 
-    /// Edit the config, persist it to disk, and publish the new state to
-    /// subscribers. The single write path for every config change.
-    pub fn update(&self, edit: impl FnOnce(&mut Config)) -> Result<(), ConfigError> {
+    /// Edit coven's part of the config, persist it to `config.yaml` through
+    /// coven, and publish the new state to subscribers. The write path for the
+    /// store name and the cloud home.
+    pub fn update_store(&self, edit: impl FnOnce(&mut coven::Config)) -> Result<(), ConfigError> {
+        self.update_with(|config| edit(&mut config.inner), Config::write_store_config)
+    }
+
+    /// Edit bae's preferences, persist them to `preferences.yaml`, and publish
+    /// the new state to subscribers. The write path for every bae setting.
+    pub fn update_preferences(
+        &self,
+        edit: impl FnOnce(&mut Preferences),
+    ) -> Result<(), ConfigError> {
+        self.update_with(|config| edit(&mut config.prefs), Config::write_preferences)
+    }
+
+    /// Apply `edit` to a copy, write the file it touched, and publish the copy
+    /// once that file holds it — including when only the durability step after
+    /// the install failed, since readers of the file already see the new value.
+    fn update_with(
+        &self,
+        edit: impl FnOnce(&mut Config),
+        write: impl FnOnce(&Config) -> Result<(), WriteError<ConfigError>>,
+    ) -> Result<(), ConfigError> {
         let mut save_err = None;
         self.state.send_if_modified(|config| {
             let mut edited = config.clone();
             edit(&mut edited);
-            match edited.write_config_yaml() {
+            match write(&edited) {
                 Ok(()) => {
                     *config = edited;
                     true
@@ -87,6 +108,6 @@ impl ConfigHandle {
         &self,
         name: &crate::library_name::LibraryName,
     ) -> Result<(), ConfigError> {
-        self.update(|c| c.store_name = name.as_str().to_string())
+        self.update_store(|c| c.store_name = name.as_str().to_string())
     }
 }
