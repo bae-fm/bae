@@ -911,3 +911,36 @@ fn the_same_group_id_across_sources_does_not_collide() {
         vec![Catalog::MusicBrainz, Catalog::Discogs]
     );
 }
+
+/// A run's offered rows and the rows its agreement set aside are grouped as
+/// one list: an album is one card whichever side its rows are on, and a card
+/// none of whose rows is offered comes after every card that offers one.
+#[test]
+fn rows_either_side_of_the_disclosure_are_one_card() {
+    let groups = group_formed_rows(
+        unranked(vec![linked(
+            mb("mb-1", Some("group-x"), Some(1992)),
+            "master-7",
+        )]),
+        &[0],
+        unranked(vec![
+            mb("mb-2", Some("group-z"), None),
+            discogs("dg-1", Some("master-7"), Some(1994)),
+        ]),
+        &[0, 1],
+    );
+    assert_eq!(
+        groups.iter().map(|group| group.id.as_str()).collect::<Vec<_>>(),
+        vec!["group-x", "group-z"]
+    );
+    let ids = |pressings: &[Pressing]| -> Vec<String> {
+        pressings
+            .iter()
+            .map(|pressing| pressing.lead().release_id.clone())
+            .collect()
+    };
+    assert_eq!(ids(&groups[0].sections[0].pressings), vec!["mb-1"]);
+    assert_eq!(ids(&groups[0].sections[0].narrowed_out), vec!["dg-1"]);
+    assert!(groups[1].sections[0].pressings.is_empty());
+    assert_eq!(ids(&groups[1].sections[0].narrowed_out), vec!["mb-2"]);
+}

@@ -497,7 +497,7 @@ fn rows(
         })
         .collect();
     let judgements = Judgements::of(&judged);
-    crate::import::release_group::group_formed_rows(judged, pressings)
+    crate::import::release_group::group_formed_rows(judged, pressings, Vec::new(), &[])
         .into_iter()
         .flat_map(crate::import::release_group::ReleaseGroup::into_pressings)
         .map(|pressing| {

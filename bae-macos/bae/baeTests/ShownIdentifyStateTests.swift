@@ -29,11 +29,7 @@ struct ShownIdentifyStateTests {
                     groups: [],
                     libraryStatuses: [:],
                     agreements: [:],
-                    narrowedOut: BridgeNarrowedOut(
-                        groups: [],
-                        libraryStatuses: [:],
-                        agreements: [:]
-                    )
+                    narrowedOut: BridgeNarrowedOut(groups: [], count: 0)
                 )
             )
         )

@@ -317,7 +317,7 @@ fn sole_pressing(
     text: &crate::identify::CandidateText,
 ) -> Option<crate::import::release_group::Pressing> {
     let judged = crate::identify::judged_results(matches.to_vec(), provenance, text);
-    let mut rows = crate::import::release_group::group_formed_rows(judged, pressings)
+    let mut rows = crate::import::release_group::group_formed_rows(judged, pressings, Vec::new(), &[])
         .into_iter()
         .flat_map(crate::import::release_group::ReleaseGroup::into_pressings);
     let only = rows.next()?;

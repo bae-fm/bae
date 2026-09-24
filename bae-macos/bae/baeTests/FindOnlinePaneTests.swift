@@ -149,7 +149,7 @@ struct NarrowedOutDisclosureTests {
                 .importPreviewEnvironment(),
             size: Self.paneSize
         )
-        #expect(narrowed.contains { $0.contains("2 more releases") })
+        #expect(narrowed.contains { $0.contains("3 more releases") })
 
         let agreed = try await FindOnlineRendering.text(
             ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
@@ -179,10 +179,42 @@ struct NarrowedOutDisclosureTests {
         #expect(open.contains { $0.contains("Other Album Title") })
     }
 
+    /// A row set aside of an album the matches are on shows on that album's
+    /// card, behind the same disclosure — not as a second card for the album.
+    @Test("a row set aside shows on its album's card once the list is open")
+    func aRowSetAsideShowsOnItsAlbumsCard() async throws {
+        let closed = try await FindOnlineRendering.text(
+            card(showsNarrowedOut: false),
+            size: Self.disclosureSize
+        )
+        let open = try await FindOnlineRendering.text(
+            card(showsNarrowedOut: true),
+            size: Self.disclosureSize
+        )
+        #expect(!closed.contains { $0.contains("1871-2") })
+        #expect(closed.contains { $0.contains("6006-2") })
+        #expect(open.contains { $0.contains("1871-2") })
+        #expect(open.filter { $0.contains("Album Title") }.count == 1)
+    }
+
+    private func card(showsNarrowedOut: Bool) -> some View {
+        ReleaseGroupSection(
+            group: PreviewData.searchGroupExactWithSetAside,
+            showsNarrowedOut: showsNarrowedOut,
+            isImporting: false,
+            libraryStatuses: [:],
+            selectedReleaseId: nil,
+            onSelect: { _ in }
+        )
+        .importPreviewEnvironment()
+    }
+
     private func disclosure(isExpanded: Bool) -> some View {
         NarrowedOutDisclosure(
             narrowedOut: PreviewData.searchStateNarrowedOut.narrowedOut,
             isExpanded: .constant(isExpanded),
+            libraryStatuses: [:],
+            agreements: [:],
             isImporting: false,
             selectedReleaseId: nil,
             loadingReleaseId: nil,

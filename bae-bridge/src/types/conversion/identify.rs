@@ -372,10 +372,18 @@ impl BridgeReleaseGroup {
 
 impl BridgePressingSection {
     fn from_core(section: bae_core::import::release_group::PressingSection) -> Self {
-        let bae_core::import::release_group::PressingSection { album, pressings } = section;
+        let bae_core::import::release_group::PressingSection {
+            album,
+            pressings,
+            narrowed_out,
+        } = section;
         BridgePressingSection {
             album: album.map(BridgeAlbumHeading::from_core),
             pressings: pressings
+                .into_iter()
+                .map(BridgePressing::from_core)
+                .collect(),
+            narrowed_out: narrowed_out
                 .into_iter()
                 .map(BridgePressing::from_core)
                 .collect(),
@@ -559,22 +567,10 @@ impl BridgeIdentifyState {
     }
 }
 
-impl BridgeNarrowedOut {
-    fn from_core(view: bae_core::identify::NarrowedOutView) -> Self {
-        Self {
-            groups: view
-                .groups
-                .into_iter()
-                .map(BridgeReleaseGroup::from_core)
-                .collect(),
-            library_statuses: status_map(view.library_statuses),
-            agreements: view
-                .agreements
-                .into_iter()
-                .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
-                .collect(),
-        }
-    }
+mirror_struct! {
+    BridgeNarrowedOut = bae_core::identify::NarrowedOutView,
+    from_core: fn,
+    fields: { groups: (each BridgeReleaseGroup), count },
 }
 
 fn identify_failure(

@@ -210,14 +210,17 @@ pub enum AutomationIdentifyFailure {
     },
 }
 
-/// The releases agreement left out of a state's matches, shaped as its matches
-/// are. Empty when nothing was narrowed. Mirrors
-/// `bae_core::identify::NarrowedOutView`.
+/// The rows agreement left out of a state's matches. A card the matches are
+/// on carries its own rows set aside as each section's `narrowed_out`; only an
+/// album none of whose rows is offered is a card here, and every row's status
+/// and badges are in the state's own lists. Empty when nothing was narrowed.
+/// Mirrors `bae_core::identify::NarrowedOutView`.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct AutomationNarrowedOut {
+    /// The cards none of whose rows is offered.
     pub groups: Vec<AutomationReleaseGroup>,
-    pub library_statuses: Vec<AutomationLibraryStatus>,
-    pub agreements: Vec<AutomationAgreements>,
+    /// How many rows were set aside, on every card.
+    pub count: u32,
 }
 
 /// Projects bae-core's `identify::IdentifyState`. The `SignalsContext`

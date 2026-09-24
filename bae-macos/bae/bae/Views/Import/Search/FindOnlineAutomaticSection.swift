@@ -136,6 +136,8 @@ struct FindOnlineAutomaticSection: View {
             NarrowedOutDisclosure(
                 narrowedOut: state.narrowedOut,
                 isExpanded: $narrowedOutExpanded,
+                libraryStatuses: state.libraryStatuses,
+                agreements: state.identifiedAgreements,
                 isImporting: state.isImporting,
                 selectedReleaseId: state.selectedReleaseId,
                 loadingReleaseId: state.loadingReleaseId,
@@ -150,6 +152,7 @@ struct FindOnlineAutomaticSection: View {
     ) -> some View {
         ReleaseGroupListContent(
             groups: state.identifiedGroups,
+            showsNarrowedOut: narrowedOutExpanded,
             isImporting: state.isImporting,
             libraryStatuses: state.libraryStatuses,
             agreements: state.identifiedAgreements,

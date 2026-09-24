@@ -248,23 +248,27 @@ pub struct IdentifyRunView {
     pub search: SearchStepView,
 }
 
-/// The releases agreement left out, as a surface lists them: folded into album
-/// cards like the matches, with the same per-pressing library statuses and
-/// badges. Empty when nothing was narrowed — one signal answering alone,
-/// signals that shared nothing, and a candidate whose text stands behind none
-/// of the answers, which is offered whole rather than emptied.
+/// The rows agreement left out, as a surface offers them behind its "more"
+/// disclosure. The matches and these are grouped as one list, so an album is
+/// one card whichever side of the disclosure its rows are on: a card the
+/// matches are on carries its own rows set aside as `narrowed_out`, and only
+/// an album none of whose rows is offered is a card here. Their library
+/// statuses and badges are the state's own, beside the matches'. Empty when
+/// nothing was narrowed — one signal answering alone, signals that shared
+/// nothing, and a candidate whose text stands behind none of the answers,
+/// which is offered whole rather than emptied.
 #[derive(Debug, Clone, Default)]
 pub struct NarrowedOutView {
+    /// The cards none of whose rows is offered.
     pub groups: Vec<ReleaseGroup>,
-    /// One per pressing; each carries its own `release_id`.
-    pub library_statuses: Vec<LibraryStatus>,
-    /// Per-pressing agreements, keyed by release id, as `Found`'s are.
-    pub agreements: Vec<(String, Agreements)>,
+    /// How many rows agreement set aside, on every card: the matches' and
+    /// these.
+    pub count: u32,
 }
 
 impl NarrowedOutView {
     pub fn is_empty(&self) -> bool {
-        self.groups.is_empty()
+        self.count == 0
     }
 }
 
@@ -299,13 +303,16 @@ pub enum IdentifyStateView {
     /// pick from either way.
     Found {
         run: Option<IdentifyRunView>,
-        /// The match list, folded into group cards in match order.
+        /// The match list, folded into group cards in match order — each card
+        /// with its own rows agreement set aside beside the offered ones.
         groups: Vec<ReleaseGroup>,
-        /// One per pressing; each carries its own `release_id`.
+        /// One per pressing, offered or set aside; each carries its own
+        /// `release_id`.
         library_statuses: Vec<LibraryStatus>,
         track_count: u32,
         /// What the candidate's own text agrees with about each pressing,
-        /// keyed by release id — the row's badges, and what ordered the rows.
+        /// offered or set aside, keyed by release id — the row's badges, and
+        /// what ordered the rows.
         /// It is derived per result, and the results are now inside the group
         /// cards, so the alignment is re-expressed as a key here rather than
         /// left for a surface to reconstruct.
@@ -363,14 +370,20 @@ impl From<IdentifyState> for IdentifyStateView {
             } => {
                 let (matches, library_statuses, provenance, pressings, narrowed_out) =
                     live_matches(&discid, &barcode, &catalog, &search, &context);
-                let (groups, agreements) =
-                    fold_matches(matches, provenance, &pressings, &context.text);
+                let folded = fold(
+                    matches,
+                    library_statuses,
+                    provenance,
+                    &pressings,
+                    narrowed_out,
+                    &context.text,
+                );
                 IdentifyStateView::Triangulating {
                     run: run_view(&discid, &barcode, &catalog, &search, &context),
-                    groups,
-                    library_statuses,
-                    agreements,
-                    narrowed_out: fold_narrowed_out(narrowed_out, &context.text),
+                    groups: folded.groups,
+                    library_statuses: folded.library_statuses,
+                    agreements: folded.agreements,
+                    narrowed_out: folded.narrowed_out,
                 }
             }
 
@@ -385,15 +398,21 @@ impl From<IdentifyState> for IdentifyStateView {
                 context,
             } => {
                 let catalog_agreements = catalog_agreements(&matches, &provenance, &context.text);
-                let (groups, agreements) =
-                    fold_matches(matches, provenance, &pressings, &context.text);
+                let folded = fold(
+                    matches,
+                    library_statuses,
+                    provenance,
+                    &pressings,
+                    narrowed_out,
+                    &context.text,
+                );
                 IdentifyStateView::Found {
                     run: ledger.map(|run| without_chip_tiles(run, &catalog_agreements)),
-                    groups,
-                    library_statuses,
+                    groups: folded.groups,
+                    library_statuses: folded.library_statuses,
                     track_count,
-                    agreements,
-                    narrowed_out: fold_narrowed_out(narrowed_out, &context.text),
+                    agreements: folded.agreements,
+                    narrowed_out: folded.narrowed_out,
                     catalog_agreements,
                 }
             }
@@ -423,15 +442,21 @@ impl From<IdentifyState> for IdentifyStateView {
                 context,
             } => {
                 let catalog_agreements = catalog_agreements(&matches, &provenance, &context.text);
-                let (groups, agreements) =
-                    fold_matches(matches, provenance, &pressings, &context.text);
+                let folded = fold(
+                    matches,
+                    library_statuses,
+                    provenance,
+                    &pressings,
+                    narrowed_out,
+                    &context.text,
+                );
                 IdentifyStateView::Failed {
                     run: ledger.map(|run| without_chip_tiles(run, &catalog_agreements)),
                     failures,
-                    groups,
-                    library_statuses,
-                    agreements,
-                    narrowed_out: fold_narrowed_out(narrowed_out, &context.text),
+                    groups: folded.groups,
+                    library_statuses: folded.library_statuses,
+                    agreements: folded.agreements,
+                    narrowed_out: folded.narrowed_out,
                     catalog_agreements,
                 }
             }
@@ -489,9 +514,22 @@ fn live_matches(
     }
 }
 
-/// Judge each match against the candidate's own text, fold the list into its
-/// group cards — which is also what orders the rows — and key the agreements
-/// by release id.
+/// A state's answers as a surface lists them: its cards, and the library
+/// status and badges of every row on them.
+struct Folded {
+    groups: Vec<ReleaseGroup>,
+    library_statuses: Vec<LibraryStatus>,
+    agreements: Vec<(String, Agreements)>,
+    narrowed_out: NarrowedOutView,
+}
+
+/// Judge the matches and the releases agreement set aside against the
+/// candidate's own text, fold both lists into album cards as one — which is
+/// also what orders the rows — and key the agreements by release id.
+///
+/// One grouping, so an album is one card whichever list its rows are on: a
+/// card the matches are on carries its rows set aside beside the offered
+/// ones, and a card none of whose rows is offered goes behind the disclosure.
 ///
 /// The badges are the row's, not the release's: a row is one physical object
 /// picked whole, so what the two sources' records of it agree with is one set
@@ -504,18 +542,27 @@ fn live_matches(
 /// run's own rows were judged by `combine` against this same text, so a row
 /// does not change what it says, or which records it holds, between the run
 /// and the read.
-fn fold_matches(
+fn fold(
     matches: Vec<MetadataResult>,
+    library_statuses: Vec<LibraryStatus>,
     provenance: Vec<LookupProvenance>,
     pressings: &[u32],
+    narrowed_out: NarrowedOut,
     text: &CandidateText,
-) -> (Vec<ReleaseGroup>, Vec<(String, Agreements)>) {
-    let judged = judged_results(matches, &provenance, text);
-    let judgements = Judgements::of(&judged);
-    let groups = group_formed_rows(judged, pressings);
-    let keyed = groups
+) -> Folded {
+    let offered = judged_results(matches, &provenance, text);
+    let set_aside = judged_results(narrowed_out.matches, &narrowed_out.provenance, text);
+    let judgements = Judgements::of(
+        &offered
+            .iter()
+            .chain(&set_aside)
+            .cloned()
+            .collect::<Vec<_>>(),
+    );
+    let cards = group_formed_rows(offered, pressings, set_aside, &narrowed_out.pressings);
+    let agreements = cards
         .iter()
-        .flat_map(ReleaseGroup::pressings)
+        .flat_map(|group| group.pressings().chain(group.narrowed_out()))
         .flat_map(|pressing| {
             let agreements = pressing.agreements(&judgements);
             pressing
@@ -524,23 +571,24 @@ fn fold_matches(
                 .map(move |release| (release.release_id.clone(), agreements))
         })
         .collect();
-    (groups, keyed)
-}
-
-/// The narrowed-out releases, folded into their album cards the way the
-/// matches are, so a surface lists both the same way.
-fn fold_narrowed_out(narrowed_out: NarrowedOut, text: &CandidateText) -> NarrowedOutView {
-    let NarrowedOut {
-        matches,
-        library_statuses,
-        provenance,
-        pressings,
-    } = narrowed_out;
-    let (groups, agreements) = fold_matches(matches, provenance, &pressings, text);
-    NarrowedOutView {
+    let count = cards
+        .iter()
+        .map(|group| group.narrowed_out().count() as u32)
+        .sum();
+    let (groups, set_aside_cards): (Vec<ReleaseGroup>, Vec<ReleaseGroup>) = cards
+        .into_iter()
+        .partition(|group| group.pressings().next().is_some());
+    Folded {
         groups,
-        library_statuses,
+        library_statuses: library_statuses
+            .into_iter()
+            .chain(narrowed_out.library_statuses)
+            .collect(),
         agreements,
+        narrowed_out: NarrowedOutView {
+            groups: set_aside_cards,
+            count,
+        },
     }
 }
 
@@ -588,6 +636,9 @@ fn without_chip_tiles(mut run: IdentifyRunView, chips: &[CatalogAgreementView]) 
     run
 }
 
+mod ledger;
+use ledger::{barcode_step, catalog_step, disc_id_step, identifiers_found_something, search_step};
+
 /// The run as it stands: the three pipes laid out against the inputs and the
 /// providers the run asks. The reducer records this when the run ends, and
 /// what it recorded is what every later reader shows.
@@ -609,349 +660,6 @@ pub(super) fn run_view(
             identifiers_found_something(discid, barcode, catalog),
             context,
         ),
-    }
-}
-
-/// Whether any identifier has already found a release, whether or not the
-/// others have finished looking.
-fn identifiers_found_something(
-    discid: &DiscidProgress,
-    barcode: &BarcodeProgress,
-    catalog: &CatalogProgress,
-) -> bool {
-    let disc = matches!(discid, DiscidProgress::Done { results, .. } if !results.is_empty());
-    let code = matches!(barcode, BarcodeProgress::Lookups { providers, .. }
-        if providers.iter().any(|provider| matches!(provider.state, BarcodeLookupState::Matched { .. })));
-    let number = matches!(catalog, CatalogProgress::Lookups { values }
-    if values.iter().flat_map(|lookup| &lookup.providers).any(|provider| {
-        matches!(&provider.state, LookupState::Done { results } if !results.is_empty())
-    }));
-    disc || code || number
-}
-
-/// The title-search step: the words the run searched by, from the context,
-/// and how far each provider's lookup of them has got, from the pipe.
-///
-/// A step that has not run says which of the two reasons applies: the
-/// candidate's draft states no title, or there was a title and the
-/// identifiers answered before it was needed. An identifier that has already
-/// found something while the rest are still looking has answered too: the
-/// search runs only when all of them find nothing, so it is not needed. Only
-/// while nothing has been found yet is the step waiting on them.
-fn search_step(
-    progress: &SearchProgress,
-    identifiers_found_something: bool,
-    context: &SignalsContext,
-) -> SearchStepView {
-    let providers = match (progress, &context.search.query) {
-        (_, None) => return SearchStepView::NoTitle,
-        (SearchProgress::Pending, Some(_)) if identifiers_found_something => {
-            return SearchStepView::NotNeeded
-        }
-        (SearchProgress::Pending, Some(query)) => {
-            return SearchStepView::Waiting {
-                album: query.album.clone(),
-                artist: query.artist.clone(),
-            }
-        }
-        (SearchProgress::Skipped, Some(_)) => return SearchStepView::NotNeeded,
-        (SearchProgress::Lookups { providers }, Some(_)) => providers,
-    };
-    let query = context
-        .search
-        .query
-        .as_ref()
-        .expect("a search runs only on a query");
-    SearchStepView::Searched {
-        album: query.album.clone(),
-        artist: query.artist.clone(),
-        cells: providers
-            .iter()
-            .map(|provider| ProviderCell {
-                source: provider.source,
-                lookup: match &provider.state {
-                    LookupState::LookingUp => LookupView::LookingUp,
-                    LookupState::Done { results } => found_or_no_match(results),
-                    LookupState::Failed { failure } => LookupView::Failed {
-                        failure: failure.clone(),
-                    },
-                },
-            })
-            .collect(),
-    }
-}
-
-/// The disc-ID step: what extraction read, from the context, and how far
-/// MusicBrainz's lookup of it has got, from the pipe.
-fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) -> DiscIdStepView {
-    let (disc_id, source_file) = match &context.disc.signal {
-        DiscIdSignal::Computed {
-            disc_id,
-            source_file,
-            ..
-        } => (disc_id.clone(), source_file.clone()),
-        DiscIdSignal::Absent { .. } => {
-            return match progress {
-                DiscidProgress::Computing => DiscIdStepView::Reading,
-                _ => DiscIdStepView::Absent,
-            }
-        }
-        DiscIdSignal::Failed { failure, .. } => {
-            return DiscIdStepView::ReadFailed {
-                failure: failure.clone(),
-            }
-        }
-    };
-    // Two things leave a read disc ID unasked, and they are not the same thing
-    // to a person looking at it: they took it out of the run, or no provider
-    // the run asks answers disc IDs at all.
-    if let DiscidProgress::NotAsked { .. } = progress {
-        let source = source_file.map(disc_id_file);
-        return if context.disc.excluded {
-            DiscIdStepView::LeftOut { disc_id, source }
-        } else {
-            DiscIdStepView::ReadNotAsked { disc_id, source }
-        };
-    }
-    let lookup = match progress {
-        // The track count is a settled-state concern — it reaches a surface
-        // through the terminal state, not through progress.
-        DiscidProgress::Computing | DiscidProgress::LookingUp => LookupView::LookingUp,
-        DiscidProgress::Done { results, .. } => found_or_no_match(results),
-        DiscidProgress::Skipped { .. } | DiscidProgress::NotAsked { .. } => {
-            unreachable!("a computed disc ID is skipped only by the early return above")
-        }
-        DiscidProgress::Failed { failure, .. } => LookupView::Failed {
-            failure: failure.clone(),
-        },
-    };
-    DiscIdStepView::Read {
-        disc_id,
-        source: source_file.map(disc_id_file),
-        lookup,
-    }
-}
-
-/// The file a disc ID was read off, by the kind of artifact it is. A disc ID
-/// is derived from a rip log or a cue sheet and nothing else, so a file that
-/// is not a log is a sheet.
-fn disc_id_file(file: String) -> DiscIdFile {
-    let is_log = std::path::Path::new(&file)
-        .extension()
-        .and_then(|e| e.to_str())
-        .is_some_and(|e| e.eq_ignore_ascii_case("log"));
-    DiscIdFile {
-        kind: if is_log {
-            DiscIdFileKind::Log
-        } else {
-            DiscIdFileKind::Cue
-        },
-        file,
-    }
-}
-
-fn barcode_step(
-    progress: &BarcodeProgress,
-    context: &SignalsContext,
-    scanning: bool,
-) -> BarcodeStepView {
-    let row = |code: String, excluded: bool, cells: Vec<ProviderCell>| SignalValueRow {
-        sources: sources_of(&context.barcode.codes, &code),
-        value: code,
-        excluded,
-        cells,
-    };
-    match progress {
-        // The walks start once the codes settle: every code read so far is a
-        // row whose cells wait, and more rows may still come.
-        BarcodeProgress::Scanning => BarcodeStepView::Rows {
-            scanning: true,
-            rows: context
-                .barcode
-                .code_values()
-                .into_iter()
-                .map(|code| row(code, false, uniform_cells(context, LookupView::Queued)))
-                .collect(),
-        },
-        BarcodeProgress::NoCodes => BarcodeStepView::NoCodes,
-        BarcodeProgress::ScanFailed { failure } => BarcodeStepView::ScanFailed {
-            failure: failure.clone(),
-        },
-        BarcodeProgress::Skipped => BarcodeStepView::Absent,
-        // Every code is the run's and nobody was asked about any of them: every
-        // row stands with its cells saying so, rather than reading as a lookup
-        // that found nothing.
-        BarcodeProgress::NotAsked { codes } => BarcodeStepView::Rows {
-            scanning: false,
-            rows: codes
-                .iter()
-                .map(|code| {
-                    row(
-                        code.clone(),
-                        true,
-                        uniform_cells(context, LookupView::NotAsked),
-                    )
-                })
-                .collect(),
-        },
-        // Every code the candidate carries is a row. The ones the run asks
-        // about take their cells from where each walk has got to, at the code's
-        // index among the asked ones; the rest were never asked, and the
-        // person's own choices say which of them they left out.
-        BarcodeProgress::Lookups { codes, providers } => BarcodeStepView::Rows {
-            scanning,
-            rows: context
-                .barcode
-                .code_values()
-                .into_iter()
-                .map(|code| {
-                    let cells = match codes.iter().position(|asked| *asked == code) {
-                        Some(index) => providers
-                            .iter()
-                            .map(|provider| ProviderCell {
-                                source: provider.source,
-                                lookup: barcode_cell(&provider.state, index, codes),
-                            })
-                            .collect(),
-                        None => uniform_cells(context, LookupView::NotAsked),
-                    };
-                    let excluded = context.barcode.excluded.contains(&code);
-                    row(code, excluded, cells)
-                })
-                .collect(),
-        },
-    }
-}
-
-/// One cell per provider the run asks, all saying the same thing: a row whose
-/// codes are still queued, or one nobody was asked about.
-fn uniform_cells(context: &SignalsContext, lookup: LookupView) -> Vec<ProviderCell> {
-    context
-        .providers
-        .iter()
-        .map(|&source| ProviderCell {
-            source,
-            lookup: lookup.clone(),
-        })
-        .collect()
-}
-
-/// One provider's cell for the code at `index`, from where its walk is. A
-/// walk asks the codes in order and stops at the first match or failure, so
-/// where it is says what it did with every code: the ones before it missed,
-/// the one it is on it is asking about, and the ones after wait — or, once it
-/// has stopped, were never needed.
-fn barcode_cell(walk: &BarcodeLookupState, index: usize, codes: &[String]) -> LookupView {
-    match walk {
-        BarcodeLookupState::Trying { index: at } => match index.cmp(at) {
-            std::cmp::Ordering::Less => LookupView::NoMatch,
-            std::cmp::Ordering::Equal => LookupView::LookingUp,
-            std::cmp::Ordering::Greater => LookupView::Queued,
-        },
-        BarcodeLookupState::Matched { code, results } => {
-            let at = codes
-                .iter()
-                .position(|c| c == code)
-                .expect("a walk matches one of the codes it asks");
-            match index.cmp(&at) {
-                std::cmp::Ordering::Less => LookupView::NoMatch,
-                std::cmp::Ordering::Equal => found_or_no_match(results),
-                std::cmp::Ordering::Greater => LookupView::NotAsked,
-            }
-        }
-        BarcodeLookupState::Exhausted => LookupView::NoMatch,
-        BarcodeLookupState::Failed { failure, index: at } => match index.cmp(at) {
-            std::cmp::Ordering::Less => LookupView::NoMatch,
-            std::cmp::Ordering::Equal => LookupView::Failed {
-                failure: failure.clone(),
-            },
-            std::cmp::Ordering::Greater => LookupView::NotAsked,
-        },
-    }
-}
-
-fn catalog_step(
-    progress: &CatalogProgress,
-    context: &SignalsContext,
-    scanning: bool,
-) -> CatalogStepView {
-    let numbers = context.catalog.number_values();
-    if numbers.is_empty() && !scanning {
-        return CatalogStepView::NoneFound;
-    }
-    let rows = progress
-        .lookups()
-        .iter()
-        .map(|lookup| catalog_row(lookup, context))
-        .collect();
-    let candidates = numbers
-        .into_iter()
-        .filter(|value| !context.catalog.is_chosen(value))
-        .map(|value| CatalogCandidateView {
-            sources: sources_of(&context.catalog.numbers, &value),
-            value,
-        })
-        .collect();
-    CatalogStepView::Numbers {
-        scanning,
-        rows,
-        candidates,
-    }
-}
-
-fn catalog_row(lookup: &CatalogLookup, context: &SignalsContext) -> SignalValueRow {
-    SignalValueRow {
-        value: lookup.value.clone(),
-        sources: sources_of(&context.catalog.numbers, &lookup.value),
-        // A catalog row exists only for a number the run looks up: taking one
-        // out drops its row and leaves the number offered as a candidate.
-        excluded: false,
-        cells: lookup
-            .providers
-            .iter()
-            .map(|provider| ProviderCell {
-                source: provider.source,
-                lookup: match &provider.state {
-                    LookupState::LookingUp => LookupView::LookingUp,
-                    LookupState::Done { results } => found_or_no_match(results),
-                    LookupState::Failed { failure } => LookupView::Failed {
-                        failure: failure.clone(),
-                    },
-                },
-            })
-            .collect(),
-    }
-}
-
-/// Every place `value` was read, in the order it was read there.
-fn sources_of(sightings: &[crate::signals::SourcedValue], value: &str) -> Vec<ValueSource> {
-    sightings
-        .iter()
-        .filter(|sighting| sighting.value == value)
-        .map(|sighting| ValueSource {
-            origin: sighting.origin,
-            file: sighting.origin_path.clone(),
-            region: sighting.region,
-        })
-        .collect()
-}
-
-/// What a settled lookup turned up: its releases folded into album cards, or
-/// nothing. One cell of the ledger — what this lookup alone saw, before
-/// anything else narrowed it — so the rows are the lookup's own order.
-fn found_or_no_match(results: &LookupResults) -> LookupView {
-    if results.is_empty() {
-        return LookupView::NoMatch;
-    }
-    let groups = group_results(crate::import::release_group::unranked(
-        results.iter().map(|(result, _)| result.clone()).collect(),
-    ));
-    LookupView::Found {
-        count: groups
-            .iter()
-            .map(|group| group.pressings().count() as u32)
-            .sum(),
-        groups,
     }
 }
 

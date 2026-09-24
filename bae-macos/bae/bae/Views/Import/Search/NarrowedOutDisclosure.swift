@@ -9,12 +9,17 @@ import SwiftUI
 /// with what came back, so a barcode lookup that returned somebody else's
 /// record ends up here too. Each of these was a real answer, and one of them
 /// may be the disc on the desk, so they are here rather than gone. Closed to
-/// begin with, because the matches are the answer; open, they are the same
-/// cards as the matches, picked the same way.
+/// begin with, because the matches are the answer. Open, a row set aside
+/// shows on its album's card among the matches, and an album none of whose
+/// rows is offered is a card below this line — picked the same way.
 struct NarrowedOutDisclosure: View {
     let narrowedOut: NarrowedOut
     @Binding
     var isExpanded: Bool
+    /// Library status and badges per release, keyed by release id — the
+    /// state's own maps, which carry the rows set aside too.
+    let libraryStatuses: [String: BridgeLibraryStatus]
+    let agreements: [String: BridgeAgreements]
     let isImporting: Bool
     let selectedReleaseId: String?
     let loadingReleaseId: String?
@@ -30,7 +35,7 @@ struct NarrowedOutDisclosure: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    Text("\(narrowedOut.pressingCount) more releases")
+                    Text("\(narrowedOut.count) more releases")
                 }
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
@@ -41,9 +46,10 @@ struct NarrowedOutDisclosure: View {
                 ForEach(narrowedOut.groups) { group in
                     ReleaseGroupSection(
                         group: group,
+                        showsNarrowedOut: true,
                         isImporting: isImporting,
-                        libraryStatuses: narrowedOut.libraryStatuses,
-                        agreements: narrowedOut.agreements,
+                        libraryStatuses: libraryStatuses,
+                        agreements: agreements,
                         selectedReleaseId: selectedReleaseId,
                         loadingReleaseId: loadingReleaseId,
                         releaseSelectionFailure: releaseSelectionFailure,

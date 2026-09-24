@@ -426,7 +426,10 @@ pub struct AutomationPressingSection {
     /// The album the rows are pressings of, where the card splits its rows by
     /// album.
     pub album: Option<AutomationAlbumHeading>,
+    /// The rows offered.
     pub pressings: Vec<AutomationPressing>,
+    /// The rows of this album a run's agreement set aside.
+    pub narrowed_out: Vec<AutomationPressing>,
 }
 
 /// An album heading a card's section: its own title, and its page on its

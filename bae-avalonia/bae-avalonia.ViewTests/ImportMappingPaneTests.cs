@@ -858,10 +858,7 @@ public sealed class ImportMappingPaneTests
             button => Equals(ToolTip.GetTip(button), tip));
 
     private static BridgeNarrowedOut NothingNarrowedOut() =>
-        new(
-            Array.Empty<BridgeReleaseGroup>(),
-            new Dictionary<string, BridgeLibraryStatus>(),
-            new Dictionary<string, BridgeAgreements>());
+        new(Array.Empty<BridgeReleaseGroup>(), 0);
 
     /// <summary>A settled run whose one group offers `releaseId` to pick.</summary>
     private static BridgeCandidateRuntimeSnapshot RunOfferingChoice(string releaseId) =>
@@ -914,7 +911,8 @@ public sealed class ImportMappingPaneTests
                                 new[] { release },
                                 new BridgeMetadataProvenance.ExternalRelease(
                                     new BridgeMetadataRef(BridgeCatalog.MusicBrainz, releaseId), [])),
-                        }),
+                        },
+                        Array.Empty<BridgePressing>()),
                 });
     }
 

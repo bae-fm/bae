@@ -322,8 +322,7 @@ pub(crate) fn automation_identify_state(
     }
 }
 
-/// The narrowed-out releases, field for field — the same shapes a state's own
-/// matches cross as.
+/// The narrowed-out rows, field for field.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn automation_narrowed_out(
     narrowed_out: bae_core::identify::NarrowedOutView,
@@ -334,11 +333,6 @@ fn automation_narrowed_out(
             .into_iter()
             .map(AutomationReleaseGroup::from_core)
             .collect(),
-        library_statuses: narrowed_out
-            .library_statuses
-            .into_iter()
-            .map(AutomationLibraryStatus::from_core)
-            .collect(),
-        agreements: automation_agreements(narrowed_out.agreements),
+        count: narrowed_out.count,
     }
 }

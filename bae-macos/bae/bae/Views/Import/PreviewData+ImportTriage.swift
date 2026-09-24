@@ -145,7 +145,8 @@
                 sections: [
                     BridgePressingSection(
                         album: nil,
-                        pressings: [exactPressings[0]]
+                        pressings: [exactPressings[0]],
+                        narrowedOut: []
                     )
                 ]
             )

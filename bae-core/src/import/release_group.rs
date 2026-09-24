@@ -70,12 +70,18 @@ pub struct ReleaseGroup {
 }
 
 impl ReleaseGroup {
-    /// Every pressing row on the card, section by section.
+    /// Every row the card offers, section by section.
     pub fn pressings(&self) -> impl Iterator<Item = &Pressing> {
         self.sections.iter().flat_map(|section| &section.pressings)
     }
 
-    /// Every pressing row on the card, section by section, taken out of it.
+    /// Every row on the card that a run's agreement set aside, section by
+    /// section.
+    pub fn narrowed_out(&self) -> impl Iterator<Item = &Pressing> {
+        self.sections.iter().flat_map(|section| &section.narrowed_out)
+    }
+
+    /// Every row the card offers, section by section, taken out of it.
     pub fn into_pressings(self) -> impl Iterator<Item = Pressing> {
         self.sections
             .into_iter()
@@ -89,7 +95,12 @@ pub struct PressingSection {
     /// The album the rows are pressings of, where the card splits its rows by
     /// album; `None` where it does not.
     pub album: Option<AlbumHeading>,
+    /// The rows offered.
     pub pressings: Vec<Pressing>,
+    /// The rows of this album a run's agreement set aside, which a surface
+    /// shows behind its "more" disclosure. Empty for a list that sets nothing
+    /// aside — a typed search, a lookup's own answer.
+    pub narrowed_out: Vec<Pressing>,
 }
 
 /// An album heading a card's section: its own title as its catalog states
@@ -380,45 +391,80 @@ pub fn group_results(results: Vec<Judged>) -> Vec<ReleaseGroup> {
     let judgements = Judgements::of(&results);
     let releases: Vec<MetadataResult> = results.into_iter().map(|(release, _)| release).collect();
     let pressings = gather_pressings(&releases);
-    cards(releases, pressings, &judgements)
+    let offered = releases.len();
+    cards(releases, pressings, &judgements, offered)
 }
 
-/// Group results into album cards over rows that are already formed.
+/// Group a run's answers into album cards over rows that are already formed:
+/// the rows it offered and the rows its agreement set aside, as one list, so
+/// an album is one card whichever side of the "more" disclosure its rows are
+/// on. The rows set aside are each card's `narrowed_out`.
 ///
-/// `rows` says which row each result belongs to, index-aligned with
-/// `results`: the numbers of a run's own grouping, as its verdict recorded
-/// them. Only the cards are built here — the rows are read, never re-formed,
-/// because a sublist of a run's answers does not hold what the run decided
-/// them against, and grouping it alone can roll up records the run kept
-/// apart.
-pub fn group_formed_rows(results: Vec<Judged>, rows: &[u32]) -> Vec<ReleaseGroup> {
+/// Each list's rows say which row each of its results belongs to,
+/// index-aligned with the list and numbered within it: the numbers of the
+/// run's own grouping, as its verdict recorded them. Only the cards are built
+/// here — the rows are read, never re-formed, because a sublist of a run's
+/// answers does not hold what the run decided them against, and grouping it
+/// alone can roll up records the run kept apart.
+pub fn group_formed_rows(
+    offered: Vec<Judged>,
+    offered_rows: &[u32],
+    narrowed_out: Vec<Judged>,
+    narrowed_out_rows: &[u32],
+) -> Vec<ReleaseGroup> {
     assert_eq!(
-        results.len(),
-        rows.len(),
-        "each result names the row it belongs to"
+        offered.len(),
+        offered_rows.len(),
+        "each offered result names the row it belongs to"
     );
+    assert_eq!(
+        narrowed_out.len(),
+        narrowed_out_rows.len(),
+        "each result set aside names the row it belongs to"
+    );
+    // The two lists number their rows apart; the rows set aside are
+    // renumbered past the offered ones so no number names a row of each.
+    let past_offered = offered_rows.iter().max().map_or(0, |row| row + 1);
+    let rows: Vec<u32> = offered_rows
+        .iter()
+        .copied()
+        .chain(narrowed_out_rows.iter().map(|row| row + past_offered))
+        .collect();
+    let offered_count = offered.len();
+    let results: Vec<Judged> = offered.into_iter().chain(narrowed_out).collect();
     let judgements = Judgements::of(&results);
     let releases: Vec<MetadataResult> = results.into_iter().map(|(release, _)| release).collect();
-    let pressings = formed_pressings(rows);
-    cards(releases, pressings, &judgements)
+    let pressings = formed_pressings(&rows);
+    cards(releases, pressings, &judgements, offered_count)
 }
 
-/// The album cards `releases` make, given the pressing rows they are in.
+/// The album cards `releases` make, given the pressing rows they are in. The
+/// first `offered` releases are offered and the rest were set aside.
 fn cards(
     releases: Vec<MetadataResult>,
     pressings: Vec<Vec<usize>>,
     judgements: &Judgements,
+    offered: usize,
 ) -> Vec<ReleaseGroup> {
     let cards = merge_buckets(bucket_by_source_group(&releases), &releases, &pressings);
     let mut releases: Vec<Option<MetadataResult>> = releases.into_iter().map(Some).collect();
-    let mut cards: Vec<(ReleaseGroup, u32)> = cards
+    let mut cards: Vec<(ReleaseGroup, CardRank)> = cards
         .into_iter()
-        .map(|card| build_group(card, &mut releases, &pressings, judgements))
+        .map(|card| build_group(card, &mut releases, &pressings, judgements, offered))
         .collect();
     // Stable: cards nothing tells apart keep the order the signals named them
     // in, which is the order they were bucketed.
-    cards.sort_by_key(|(_, best)| std::cmp::Reverse(*best));
+    cards.sort_by_key(|(_, rank)| std::cmp::Reverse(*rank));
     cards.into_iter().map(|(group, _)| group).collect()
+}
+
+/// What orders cards against each other: a card offering a row before one
+/// whose rows were all set aside, and then how much the candidate's text
+/// agrees with its best row — its best offered row, where it offers one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct CardRank {
+    offers: bool,
+    best: u32,
 }
 
 /// The sets of records each already-formed row holds, in the shape
@@ -641,8 +687,7 @@ fn merge_buckets(
         .collect()
 }
 
-/// The card, and how much the candidate's text agrees with its best row —
-/// what orders the cards against each other.
+/// The card, and what orders it against the others.
 ///
 /// Where the card splits its rows by album, a row sits under the album of
 /// its first record in the order surfaces list sources in: a MusicBrainz
@@ -655,7 +700,8 @@ fn build_group(
     releases: &mut [Option<MetadataResult>],
     pressings: &[Vec<usize>],
     judgements: &Judgements,
-) -> (ReleaseGroup, u32) {
+    offered: usize,
+) -> (ReleaseGroup, CardRank) {
     let sources: Vec<ReleaseGroupSource> = card.iter().map(Bucket::as_source).collect();
     let members: Vec<usize> = card
         .iter()
@@ -703,7 +749,7 @@ fn build_group(
             .expect("a card's releases are its buckets' members")
     };
 
-    let mut rows: Vec<(usize, Row)> = Vec::with_capacity(members.len());
+    let mut rows: Vec<CardRow> = Vec::with_capacity(members.len());
     for at in members {
         let Some(release) = releases[at].take() else {
             // Already taken as another record of its pressing.
@@ -713,6 +759,11 @@ fn build_group(
         let mut album = bucket_of(at);
         if let Some(pressing) = pressings.iter().find(|pressing| pressing.contains(&at)) {
             for &other in pressing.iter().filter(|&&other| other != at) {
+                assert_eq!(
+                    other < offered,
+                    at < offered,
+                    "a row is offered whole or set aside whole"
+                );
                 album = album.min(bucket_of(other));
                 records.push(
                     releases[other]
@@ -722,39 +773,55 @@ fn build_group(
             }
         }
         let pressing = Pressing::of(records, judgements);
-        rows.push((
+        rows.push(CardRow {
             album,
-            Row {
+            offered: at < offered,
+            row: Row {
                 agreements: pressing.agreements(judgements).count(),
                 pressing,
             },
-        ));
+        });
     }
-    let best = rows.iter().map(|(_, row)| row.agreements).max().unwrap_or(0);
-    let sections = if splits {
+    let best = |offered: bool| {
+        rows.iter()
+            .filter(|row| row.offered == offered)
+            .map(|row| row.row.agreements)
+            .max()
+    };
+    let rank = match best(true) {
+        Some(best) => CardRank { offers: true, best },
+        None => CardRank {
+            offers: false,
+            best: best(false).expect("a card holds at least one row"),
+        },
+    };
+    let section = |album: Option<AlbumHeading>, home: Option<usize>| -> Option<PressingSection> {
+        let of = |offered: bool| -> Vec<Pressing> {
+            ordered_rows(
+                rows.iter()
+                    .filter(|row| row.offered == offered && home.is_none_or(|home| row.album == home))
+                    .map(|row| row.row.clone())
+                    .collect(),
+            )
+            .into_iter()
+            .map(|row| row.pressing)
+            .collect()
+        };
+        let section = PressingSection {
+            album,
+            pressings: of(true),
+            narrowed_out: of(false),
+        };
+        (!section.pressings.is_empty() || !section.narrowed_out.is_empty()).then_some(section)
+    };
+    let sections: Vec<PressingSection> = if splits {
         headings
             .into_iter()
             .enumerate()
-            .filter_map(|(album, heading)| {
-                let rows: Vec<Row> = rows
-                    .iter()
-                    .filter(|(home, _)| *home == album)
-                    .map(|(_, row)| row.clone())
-                    .collect();
-                (!rows.is_empty()).then(|| PressingSection {
-                    album: Some(heading),
-                    pressings: ordered_rows(rows).into_iter().map(|row| row.pressing).collect(),
-                })
-            })
+            .filter_map(|(album, heading)| section(Some(heading), Some(album)))
             .collect()
     } else {
-        vec![PressingSection {
-            album: None,
-            pressings: ordered_rows(rows.into_iter().map(|(_, row)| row).collect())
-                .into_iter()
-                .map(|row| row.pressing)
-                .collect(),
-        }]
+        section(None, None).into_iter().collect()
     };
 
     (
@@ -769,8 +836,16 @@ fn build_group(
             year_max,
             sections,
         },
-        best,
+        rank,
     )
+}
+
+/// One row as its card places it: the album it sits under, and whether it is
+/// offered or was set aside.
+struct CardRow {
+    album: usize,
+    offered: bool,
+    row: Row,
 }
 
 /// One pressing row and how much of the candidate's text agrees with it — its

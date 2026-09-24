@@ -44,11 +44,16 @@ struct PressingSection: Equatable {
     /// The album the rows are pressings of, where core split the card's rows
     /// by album.
     let album: BridgeAlbumHeading?
-    /// One row per physical pressing, each carrying every source that lists it.
+    /// The rows offered: one per physical pressing, each carrying every
+    /// source that lists it.
     let pressings: [Pressing]
+    /// The rows of this album a run's agreement set aside, shown behind the
+    /// list's "more" disclosure.
+    let narrowedOut: [Pressing]
 
     init(bridge: BridgePressingSection) {
         album = bridge.album
         pressings = bridge.pressings.compactMap(Pressing.init(bridge:))
+        narrowedOut = bridge.narrowedOut.compactMap(Pressing.init(bridge:))
     }
 }

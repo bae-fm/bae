@@ -47,6 +47,8 @@ struct ReleaseGroupListView<Trailing: View>: View {
 /// above it in the AUTOMATIC section.
 struct ReleaseGroupListContent<Trailing: View>: View {
     let groups: [ReleaseGroup]
+    /// Whether the rows a run's agreement set aside show on their cards.
+    var showsNarrowedOut = false
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
     var agreements: [String: BridgeAgreements] = [:]
@@ -62,6 +64,7 @@ struct ReleaseGroupListContent<Trailing: View>: View {
             ForEach(groups) { group in
                 ReleaseGroupSection(
                     group: group,
+                    showsNarrowedOut: showsNarrowedOut,
                     isImporting: isImporting,
                     libraryStatuses: libraryStatuses,
                     agreements: agreements,
@@ -114,6 +117,9 @@ struct MissingSourceNote: View {
 /// connecting rule.
 struct ReleaseGroupSection: View {
     let group: ReleaseGroup
+    /// Whether the rows a run's agreement set aside show beneath the offered
+    /// ones — the list's "more" disclosure, open.
+    var showsNarrowedOut = false
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
     var agreements: [String: BridgeAgreements] = [:]
@@ -133,7 +139,8 @@ struct ReleaseGroupSection: View {
 
     /// The group's pressing rows, indented under a hairline rule that ties them
     /// to the card above — album by album, each under its own heading, where
-    /// the card holds more than one album of a catalog.
+    /// the card holds more than one album of a catalog — with the rows set
+    /// aside after the offered ones while the disclosure is open.
     private var pressings: some View {
         HStack(spacing: 0) {
             Rectangle()
@@ -143,10 +150,14 @@ struct ReleaseGroupSection: View {
                 ForEach(Array(group.sections.enumerated()), id: \.offset) {
                     _,
                     section in
-                    if let album = section.album {
+                    let rows =
+                        showsNarrowedOut
+                        ? section.pressings + section.narrowedOut
+                        : section.pressings
+                    if let album = section.album, !rows.isEmpty {
                         AlbumSectionHeading(album: album)
                     }
-                    ForEach(section.pressings) { pressing in
+                    ForEach(rows) { pressing in
                         ImportSearchResultRow(
                             pressing: pressing,
                             isImporting: isImporting,

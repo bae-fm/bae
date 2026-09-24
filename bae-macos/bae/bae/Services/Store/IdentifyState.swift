@@ -9,44 +9,34 @@ import Foundation
 /// beside the matches. It carries none when extraction handed the run nothing
 /// to lay out: a folder with no disc ID, no barcode source and no catalog
 /// number, or a verdict stood back up from the store.
-/// The releases agreement left out of the matches — real answers a lookup
+/// The rows agreement left out of the matches — real answers a lookup
 /// returned that the intersection discarded, and the ones the folder's own
-/// text says nothing about. Offered behind a disclosure rather than dropped,
-/// and shaped exactly as a state's own matches, so the pane lists them the
-/// same way. Empty when nothing was narrowed.
+/// text says nothing about. Offered behind a disclosure rather than dropped.
+/// A card the matches are on carries its own rows set aside; only an album
+/// none of whose rows is offered is a card here. Their statuses and badges
+/// are in the state's own maps. Empty when nothing was narrowed.
 struct NarrowedOut: Equatable {
+    /// The cards none of whose rows is offered.
     var groups: [ReleaseGroup]
-    /// Library status per release, keyed by release id, as the matches' are.
-    var libraryStatuses: [String: BridgeLibraryStatus]
-    /// What the candidate's text agrees with about each release, keyed by
-    /// release id.
-    var agreements: [String: BridgeAgreements]
+    /// How many rows are behind the disclosure, on every card — pressings,
+    /// not cards: two sources' records of one pressing are one release to
+    /// pick.
+    var count: UInt32
 }
 
 extension NarrowedOut {
     /// Nothing was narrowed out — what a state carries when one signal
     /// answered alone and the folder's text stands behind every answer.
-    static let nothing = NarrowedOut(
-        groups: [],
-        libraryStatuses: [:],
-        agreements: [:]
-    )
+    static let nothing = NarrowedOut(groups: [], count: 0)
 
     init(bridge: BridgeNarrowedOut) {
         self.init(
             groups: bridge.groups.map(ReleaseGroup.init(bridge:)),
-            libraryStatuses: bridge.libraryStatuses,
-            agreements: bridge.agreements
+            count: bridge.count
         )
     }
 
-    var isEmpty: Bool { groups.isEmpty }
-
-    /// How many releases are behind the disclosure — pressings, not cards: two
-    /// sources' records of one pressing are one release to pick.
-    var pressingCount: Int {
-        groups.reduce(0) { $0 + $1.pressings.count }
-    }
+    var isEmpty: Bool { count == 0 }
 }
 
 enum IdentifyState: Equatable {

@@ -688,7 +688,8 @@ struct ImportSearchFlowLibraryStatusTests {
                                             partners: []
                                         )
                                     )
-                                ]
+                                ],
+                                narrowedOut: []
                             )
                         ]
                     )

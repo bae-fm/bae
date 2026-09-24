@@ -719,49 +719,74 @@ fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
 // ── What agreement narrowed out ─────────────────────────────────────────────
 
 /// Agreement is what shortens the list, so what it discarded stays on the
-/// state: its own cards, its own statuses, and the provenance saying which
-/// signal named each one.
+/// state — on the same card as the matches when it is the same album, with
+/// its own status and the badges saying which signal named it. An album none
+/// of whose rows is offered is a card of its own behind the disclosure.
 #[test]
-fn a_settled_state_lists_what_agreement_narrowed_out() {
+fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
         disc_id: "d".to_string(),
         track_count: 9,
         source_file: None,
     };
-    context.disc.results = vec![result(MB, "mb-shared"), result(MB, "mb-only")];
+    let other_album = (
+        MetadataResult::for_test(MB, "mb-other", Some("g-other")),
+        LibraryStatus::absent("mb-other"),
+    );
+    context.disc.results = vec![
+        result(MB, "mb-shared"),
+        result(MB, "mb-only"),
+        other_album.clone(),
+    ];
     context.barcode.results = vec![result(MB, "mb-shared")];
     context.barcode.matched = Some("A".to_string());
 
     let IdentifyStateView::Found {
         groups,
+        library_statuses,
+        agreements,
         narrowed_out,
         ..
     } = IdentifyStateView::from(crate::identify::state::re_derive_for_tests(context))
     else {
         panic!("the signals agree on one release");
     };
-    assert_eq!(groups.len(), 1);
     assert_eq!(
-        groups[0].sections[0].pressings[0].releases[0].release_id,
-        "mb-shared"
+        groups.len(),
+        1,
+        "the album is one card across the disclosure"
     );
+    assert_eq!(groups[0].sections.len(), 1);
+    let rows = |pressings: &[crate::import::release_group::Pressing]| -> Vec<String> {
+        pressings
+            .iter()
+            .map(|pressing| pressing.lead().release_id.clone())
+            .collect()
+    };
+    assert_eq!(rows(&groups[0].sections[0].pressings), vec!["mb-shared"]);
+    assert_eq!(rows(&groups[0].sections[0].narrowed_out), vec!["mb-only"]);
+    assert_eq!(narrowed_out.count, 2);
     assert_eq!(narrowed_out.groups.len(), 1);
+    assert_eq!(narrowed_out.groups[0].id, "g-other");
+    assert_eq!(narrowed_out.groups[0].pressings().count(), 0);
     assert_eq!(
-        narrowed_out.groups[0].sections[0].pressings[0].releases[0].release_id,
-        "mb-only"
+        rows(&narrowed_out.groups[0].sections[0].narrowed_out),
+        vec!["mb-other"]
     );
     assert_eq!(
-        narrowed_out
-            .library_statuses
+        library_statuses
             .iter()
             .map(|status| status.release_id.as_str())
             .collect::<Vec<_>>(),
-        vec!["mb-only"]
+        vec!["mb-shared", "mb-only", "mb-other"]
     );
-    assert_eq!(narrowed_out.agreements[0].0, "mb-only");
-    assert!(narrowed_out.agreements[0].1.disc_id);
-    assert!(!narrowed_out.agreements[0].1.barcode);
+    let only = agreements
+        .iter()
+        .find(|(release_id, _)| release_id == "mb-only")
+        .expect("a row set aside is badged");
+    assert!(only.1.disc_id);
+    assert!(!only.1.barcode);
 }
 
 /// Signals that share nothing still rank against each other: the disc ID is
@@ -788,5 +813,6 @@ fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
         panic!("both releases are offered");
     };
     assert_eq!(groups[0].pressings().count(), 1);
-    assert_eq!(narrowed_out.groups[0].pressings().count(), 1);
+    assert_eq!(groups[0].narrowed_out().count(), 1);
+    assert_eq!(narrowed_out.count, 1);
 }

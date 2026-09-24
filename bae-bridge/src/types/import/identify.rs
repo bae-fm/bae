@@ -569,16 +569,19 @@ pub struct BridgeAgreements {
     pub country: bool,
 }
 
-/// The releases agreement left out of a state's matches — real answers a real
+/// The rows agreement left out of a state's matches — real answers a real
 /// lookup returned that the intersection discarded, and the ones the folder's
-/// own text says nothing about. Shaped exactly as a state's own matches, so a
-/// surface lists them the same way. Empty when nothing was narrowed. Mirrors
+/// own text says nothing about — offered behind the list's "more" disclosure.
+/// A card the matches are on carries its own rows set aside; only an album
+/// none of whose rows is offered is a card here. Their statuses and badges are
+/// in the state's own maps. Empty when nothing was narrowed. Mirrors
 /// `bae_core::identify::NarrowedOutView`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeNarrowedOut {
+    /// The cards none of whose rows is offered.
     pub groups: Vec<BridgeReleaseGroup>,
-    pub library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
-    pub agreements: std::collections::HashMap<String, BridgeAgreements>,
+    /// How many rows were set aside, on every card.
+    pub count: u32,
 }
 
 /// Current identify-pipeline state for one candidate. One variant per state;
@@ -611,16 +614,17 @@ pub enum BridgeIdentifyState {
         /// UI renders them in the order they arrive and sorts nothing. Usually
         /// one card; signals that named different releases give several.
         groups: Vec<BridgeReleaseGroup>,
-        /// Library status per matched release, keyed by release id, so the
-        /// UI looks up a row's status directly without re-indexing a flat
-        /// list.
+        /// Library status per release, offered or set aside, keyed by release
+        /// id, so the UI looks up a row's status directly without re-indexing
+        /// a flat list.
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         track_count: u32,
-        /// Per-pressing agreements keyed by release id — the per-row badges,
-        /// and what ordered the rows.
+        /// Per-pressing agreements keyed by release id, offered or set aside —
+        /// the per-row badges, and what ordered the rows.
         agreements: std::collections::HashMap<String, BridgeAgreements>,
-        /// The releases the agreement left out of `groups`, for the surface to
-        /// offer behind a disclosure.
+        /// What the agreement left out, for the surface to offer behind a
+        /// disclosure: the count of every row set aside, and the cards none of
+        /// whose rows is offered.
         narrowed_out: BridgeNarrowedOut,
         /// The catalog numbers the candidate's text states about the offered
         /// releases, as the Catalog # row's chips.

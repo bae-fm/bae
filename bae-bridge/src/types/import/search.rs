@@ -84,7 +84,11 @@ pub struct BridgePressingSection {
     /// The album the rows are pressings of, where the card splits its rows by
     /// album.
     pub album: Option<BridgeAlbumHeading>,
+    /// The rows offered.
     pub pressings: Vec<BridgePressing>,
+    /// The rows of this album a run's agreement set aside, shown behind the
+    /// list's "more" disclosure. Empty for a list that sets nothing aside.
+    pub narrowed_out: Vec<BridgePressing>,
 }
 
 /// An album heading a card's section: its own title, and its page on its

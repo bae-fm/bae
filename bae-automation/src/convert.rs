@@ -309,6 +309,7 @@ mirror_struct! {
     fields: {
         album: (opt AutomationAlbumHeading),
         pressings: (each AutomationPressing),
+        narrowed_out: (each AutomationPressing),
     },
 }
 

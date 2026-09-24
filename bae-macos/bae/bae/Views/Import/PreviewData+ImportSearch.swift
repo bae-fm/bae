@@ -93,7 +93,11 @@
             yearMin: 1988,
             yearMax: 1996,
             sections: [
-                BridgePressingSection(album: nil, pressings: exactPressings)
+                BridgePressingSection(
+                    album: nil,
+                    pressings: exactPressings,
+                    narrowedOut: []
+                )
             ]
         )
 
@@ -188,7 +192,8 @@
                                     partners: []
                                 )
                             ),
-                        ]
+                        ],
+                        narrowedOut: []
                     )
                 ]
             ),
@@ -254,7 +259,8 @@
                                     ]
                                 )
                             )
-                        ]
+                        ],
+                        narrowedOut: []
                     )
                 ]
             ),
@@ -305,7 +311,8 @@
                                 partners: []
                             )
                         )
-                    ]
+                    ],
+                    narrowedOut: []
                 )
             ]
         )
@@ -350,7 +357,8 @@
                                 partners: []
                             )
                         )
-                    ]
+                    ],
+                    narrowedOut: []
                 )
             ]
         )
@@ -575,20 +583,52 @@
             signals: settledSignals
         )
 
-        /// The signals agreed on one release and each named another the
-        /// agreement discarded — the disclosure's own case.
+        /// `group` as a run lists it when agreement set every one of its rows
+        /// aside.
+        static func setAside(_ group: BridgeReleaseGroup) -> BridgeReleaseGroup
+        {
+            var group = group
+            group.sections = group.sections.map { section in
+                BridgePressingSection(
+                    album: section.album,
+                    pressings: [],
+                    narrowedOut: section.pressings + section.narrowedOut
+                )
+            }
+            return group
+        }
+
+        /// The exact album with its earlier pressing set aside: the matches'
+        /// own card, holding a row behind the disclosure.
+        static let searchGroupExactWithSetAside: ReleaseGroup = {
+            var group = searchGroupExactBridge
+            group.sections = [
+                BridgePressingSection(
+                    album: nil,
+                    pressings: [exactPressings[1]],
+                    narrowedOut: [exactPressings[0]]
+                )
+            ]
+            return ReleaseGroup(bridge: group)
+        }()
+
+        /// The signals agreed on one release. Agreement set aside another
+        /// pressing of the same album, which stays on its card, and each named
+        /// an album of its own — the disclosure's own case.
         static let searchStateNarrowedOut = searchState(
             identifyState: .found(
                 run: identifyRunFound,
-                groups: [searchGroupExact],
+                groups: [searchGroupExactWithSetAside],
                 libraryStatuses: [:],
                 trackCount: 11,
-                agreements: searchAgreementsExact,
+                agreements: searchAgreementsExact.merging(
+                    disagreementAgreements
+                ) { offered, _ in offered },
                 narrowedOut: NarrowedOut(
                     groups: [discidOnlyGroup, barcodeOnlyGroup]
+                        .map(setAside)
                         .map(ReleaseGroup.init(bridge:)),
-                    libraryStatuses: [:],
-                    agreements: disagreementAgreements
+                    count: 3
                 ),
                 catalogAgreements: catalogAgreements
             ),
@@ -609,11 +649,7 @@
             libraryStatuses: [:],
             trackCount: 11,
             agreements: disagreementAgreements,
-            narrowedOut: BridgeNarrowedOut(
-                groups: [],
-                libraryStatuses: [:],
-                agreements: [:]
-            ),
+            narrowedOut: BridgeNarrowedOut(groups: [], count: 0),
             catalogAgreements: catalogAgreements
         )
 
@@ -732,7 +768,8 @@
                             sections: [
                                 BridgePressingSection(
                                     album: nil,
-                                    pressings: [exactPressings[1]]
+                                    pressings: [exactPressings[1]],
+                                    narrowedOut: []
                                 )
                             ]
                         )
