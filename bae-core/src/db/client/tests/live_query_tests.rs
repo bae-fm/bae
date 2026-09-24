@@ -237,11 +237,23 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         ],
     )
     .await;
-    let covered = tokio::time::timeout(Duration::from_secs(2), live.next())
-        .await
-        .expect("non-first album cover wakes album browse")
-        .into_result()
-        .unwrap();
+    // Only the requested rows' covers are read, so a cover on the album
+    // outside the window changes nothing the browse delivers.
+    assert!(
+        tokio::time::timeout(Duration::from_millis(100), live.next())
+            .await
+            .is_err(),
+        "an unrequested album's cover leaves the delivered page unchanged"
+    );
+    let other_album_page = [LibraryPageWindow {
+        offset: 0,
+        limit: 1,
+    }]
+    .into_iter()
+    .collect::<BTreeSet<_>>();
+    requests.set(other_album_page).unwrap();
+    let covered = live.next().await.into_result().unwrap();
+    assert_eq!(covered.windows[0].rows[0].id, OTHER_ALBUM_ID);
     assert_eq!(
         covered
             .cover_versions
@@ -258,7 +270,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     .await;
     let cover_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("non-first album cover version wakes album browse")
+        .expect("a requested album's cover version wakes album browse")
         .into_result()
         .unwrap();
     assert_eq!(
@@ -269,6 +281,17 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         Some("cover-v2")
     );
 
+    requests
+        .set(
+            [LibraryPageWindow {
+                offset: 1,
+                limit: 1,
+            }]
+            .into_iter()
+            .collect::<BTreeSet<_>>(),
+        )
+        .unwrap();
+    live.next().await.into_result().unwrap();
     exec(&db, "DELETE FROM albums WHERE id = ?1", &[OTHER_ALBUM_ID]).await;
     let deleted = live.next().await.into_result().unwrap();
     assert_eq!(deleted.total_count, 1);
@@ -389,11 +412,23 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
         ],
     )
     .await;
-    let imaged = tokio::time::timeout(Duration::from_secs(2), live.next())
-        .await
-        .expect("non-first composer image wakes composer browse")
-        .into_result()
-        .unwrap();
+    // Only the requested rows' images are read, so an image on the composer
+    // outside the window changes nothing the browse delivers.
+    assert!(
+        tokio::time::timeout(Duration::from_millis(100), live.next())
+            .await
+            .is_err(),
+        "an unrequested composer's image leaves the delivered page unchanged"
+    );
+    let other_composer_page = [LibraryPageWindow {
+        offset: 0,
+        limit: 1,
+    }]
+    .into_iter()
+    .collect::<BTreeSet<_>>();
+    requests.set(other_composer_page).unwrap();
+    let imaged = live.next().await.into_result().unwrap();
+    assert_eq!(imaged.windows[0].rows[0].artist.id, OTHER_COMPOSER_ID);
     assert_eq!(
         imaged
             .image_versions
@@ -410,7 +445,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     .await;
     let image_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("non-first composer image version wakes composer browse")
+        .expect("a requested composer's image version wakes composer browse")
         .into_result()
         .unwrap();
     assert_eq!(

@@ -236,20 +236,10 @@ impl Database {
              ORDER BY {order_by} LIMIT ? OFFSET ?",
             album_summary_select(),
         );
-        let dependency_query = format!(
-            "{} FROM albums a {artist_sort_join} WHERE {ALBUM_A_IS_SHOWN} ORDER BY {order_by}",
-            album_summary_select(),
-        );
         self.inner
             .handle
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
                 let total_count = album_count_on(&sql).map_err(CovenError::from)?;
-                let dependency_rows = album_rows_on(&sql, &dependency_query, [])?;
-                let album_ids = dependency_rows
-                    .iter()
-                    .map(|row| row.id.clone())
-                    .collect::<Vec<_>>();
-                let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
                 let windows = requested
                     .iter()
                     .map(|window| {
@@ -264,6 +254,13 @@ impl Database {
                         })
                     })
                     .collect::<Result<Vec<_>, CovenError>>()?;
+                // Only the rows the windows hold are shown, so only their
+                // covers are read and followed.
+                let album_ids = windows
+                    .iter()
+                    .flat_map(|window| window.rows.iter().map(|row| row.id.clone()))
+                    .collect::<Vec<_>>();
+                let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
                 Ok((windows, cover_versions, total_count))
             })
             .process(|_, (windows, cover_versions, total_count)| {

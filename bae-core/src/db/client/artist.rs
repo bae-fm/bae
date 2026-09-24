@@ -241,20 +241,10 @@ impl Database {
         let order_by = composer_order_by(sort);
         let page_tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
         let page_query = composer_summary_query(None, Some(&page_tail));
-        let dependency_tail = format!("ORDER BY {order_by}");
-        let dependency_query = composer_summary_query(None, Some(&dependency_tail));
         self.inner
             .handle
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
                 let total_count = composer_count_on(&sql).map_err(CovenError::from)?;
-                let dependency_rows = composer_rows_on(&sql, &dependency_query, [])?;
-                let artist_ids = dependency_rows
-                    .iter()
-                    .map(|row| row.artist.id.clone())
-                    .collect::<Vec<_>>();
-                let image_versions =
-                    super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
-                        .map_err(CovenError::from)?;
                 let windows = requested
                     .iter()
                     .map(|window| {
@@ -269,6 +259,15 @@ impl Database {
                         })
                     })
                     .collect::<Result<Vec<_>, CovenError>>()?;
+                // Only the rows the windows hold are shown, so only their
+                // images are read and followed.
+                let artist_ids = windows
+                    .iter()
+                    .flat_map(|window| window.rows.iter().map(|row| row.artist.id.clone()))
+                    .collect::<Vec<_>>();
+                let image_versions =
+                    super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
+                        .map_err(CovenError::from)?;
                 Ok(ComposerBrowseProjection {
                     windows,
                     image_versions,
