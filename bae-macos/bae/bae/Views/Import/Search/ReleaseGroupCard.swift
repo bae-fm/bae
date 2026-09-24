@@ -4,7 +4,9 @@ import SwiftUI
 
 /// Header for a release group: the album's cover, its title and the artist and
 /// label beneath it, and on the right one outbound link per source carrying
-/// it. The group's pressing rows render beneath.
+/// it. A source whose page linking the album to the other catalog could not be
+/// read says so under the title, since the album may then be listed twice.
+/// The group's pressing rows render beneath.
 struct ReleaseGroupCard: View {
     let group: ReleaseGroup
 
@@ -29,6 +31,18 @@ struct ReleaseGroupCard: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
+                }
+                ForEach(Array(group.sources.enumerated()), id: \.offset) {
+                    _,
+                    source in
+                    if source.albumLinksUnread {
+                        let name = bridgeCatalogName(catalog: source.source)
+                        Text(
+                            "Couldn't read this album's links on \(name); it may also be listed separately."
+                        )
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    }
                 }
             }
 
@@ -93,6 +107,7 @@ struct AlbumSourceLink: View {
         VStack(alignment: .leading, spacing: 18) {
             ReleaseGroupCard(group: PreviewData.searchGroupExact)
             ReleaseGroupCard(group: PreviewData.searchGroupsManual[1])
+            ReleaseGroupCard(group: PreviewData.searchGroupLinksUnread)
         }
         .padding()
         .frame(width: 560)

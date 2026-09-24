@@ -55181,6 +55181,179 @@
         }
       }
     },
+    "Couldn't read this album's links on %@; it may also be listed separately." : {
+      "comment" : "Import album card: a source whose page linking this album to the other catalog could not be read; %@ is the source name",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّرت قراءة روابط هذا الألبوم على %@؛ قد يكون مدرجًا أيضًا بشكل منفصل."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Връзките на този албум в %@ не можаха да бъдат прочетени; може да е показан и отделно."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odkazy tohoto alba na %@ se nepodařilo načíst; může být uvedeno i samostatně."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette albums links på %@ kunne ikke læses; det kan også være vist separat."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Verknüpfungen dieses Albums auf %@ konnten nicht gelesen werden; es ist möglicherweise auch separat aufgeführt."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Δεν ήταν δυνατή η ανάγνωση των συνδέσμων αυτού του άλμπουμ στο %@· μπορεί να εμφανίζεται και ξεχωριστά."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read this album's links on %@; it may also be listed separately."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron leer los enlaces de este álbum en %@; puede que también aparezca por separado."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tämän albumin linkkejä palvelussa %@ ei voitu lukea; se voi näkyä myös erikseen."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de lire les liens de cet album sur %@ ; il peut aussi apparaître séparément."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן היה לקרוא את הקישורים של אלבום זה ב-%@; ייתכן שהוא מופיע גם בנפרד."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poveznice ovog albuma na %@ nije bilo moguće pročitati; možda je naveden i zasebno."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Az album hivatkozásait nem sikerült beolvasni innen: %@; lehet, hogy külön is szerepel."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile leggere i collegamenti di questo album su %@; potrebbe comparire anche separatamente."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ でこのアルバムのリンクを読み取れませんでした。別の項目としても表示されている可能性があります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@에서 이 앨범의 링크를 읽을 수 없습니다. 별도로 표시되어 있을 수도 있습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Albumets lenker på %@ kunne ikke leses; det kan også være oppført separat."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De koppelingen van dit album op %@ konden niet worden gelezen; het staat mogelijk ook apart vermeld."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się odczytać powiązań tego albumu w %@; może być też wyświetlany osobno."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível ler os links deste álbum no %@; ele também pode aparecer separadamente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível ler as ligações deste álbum em %@; pode também aparecer em separado."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legăturile acestui album pe %@ nu au putut fi citite; este posibil să apară și separat."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odkazy tohto albumu v službe %@ sa nepodarilo načítať; môže byť uvedený aj samostatne."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Albumets länkar på %@ kunde inte läsas; det kan också visas separat."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu albümün %@ üzerindeki bağlantıları okunamadı; ayrı olarak da listelenmiş olabilir."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося прочитати посилання цього альбому на %@; його також може бути показано окремо."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法读取此专辑在 %@ 上的链接；它可能也会单独列出。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法讀取此專輯在 %@ 上的連結；它可能也會單獨列出。"
+          }
+        }
+      }
+    },
     "Open this album on %@" : {
       "comment" : "Import album card: help tooltip on a source link; %@ is the source name",
       "localizations" : {

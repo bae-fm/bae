@@ -334,7 +334,7 @@ mirror_struct! {
 mirror_struct! {
     BridgeReleaseGroupSource = bae_core::import::release_group::ReleaseGroupSource,
     from_core: fn,
-    fields: { source: (BridgeCatalog), group_url },
+    fields: { source: (BridgeCatalog), group_url, album_links_unread },
 }
 
 impl BridgeReleaseGroup {

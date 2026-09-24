@@ -897,7 +897,8 @@ public sealed class ImportMappingPaneTests
                 {
                     new BridgeReleaseGroupSource(
                         BridgeCatalog.MusicBrainz,
-                        "https://musicbrainz.org/release-group/source-group-1"),
+                        "https://musicbrainz.org/release-group/source-group-1",
+                        false),
                 },
                 1996,
                 1996,

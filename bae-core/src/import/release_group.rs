@@ -119,6 +119,11 @@ pub struct ReleaseGroupSource {
     /// MusicBrainz, master on Discogs). `None` when the source returned the
     /// release ungrouped, which has no group page to open.
     pub group_url: Option<String>,
+    /// Whether this album's page on its catalog, which states the other
+    /// catalog's album it is, could not be read. Nothing then says whether a
+    /// card of the other catalog on the same list is this album, so a surface
+    /// says it may be listed twice.
+    pub album_links_unread: bool,
 }
 
 /// One physical pressing, under every record that names it. A row is picked
@@ -289,13 +294,14 @@ impl Bucket {
             .any(|&at| releases[at].album_links.named().contains(&album))
     }
 
-    fn as_source(&self) -> ReleaseGroupSource {
+    fn as_source(&self, read: impl Fn(usize) -> bool) -> ReleaseGroupSource {
         ReleaseGroupSource {
             source: self.source,
             group_url: self
                 .source_group_id
                 .as_deref()
                 .and_then(|group_id| self.source.group_url(group_id)),
+            album_links_unread: self.members.iter().any(|&at| !read(at)),
         }
     }
 }
@@ -702,7 +708,6 @@ fn build_group(
     judgements: &Judgements,
     offered: usize,
 ) -> (ReleaseGroup, CardRank) {
-    let sources: Vec<ReleaseGroupSource> = card.iter().map(Bucket::as_source).collect();
     let members: Vec<usize> = card
         .iter()
         .flat_map(|bucket| bucket.members.iter().copied())
@@ -712,6 +717,13 @@ fn build_group(
             .as_ref()
             .expect("a release is read before its card takes it")
     };
+    // Whether a release's album links were read, or never needed asking.
+    let links_known =
+        |at: usize| !matches!(read(at).album_links, crate::import::album_links::AlbumLinks::Unread);
+    let sources: Vec<ReleaseGroupSource> = card
+        .iter()
+        .map(|bucket| bucket.as_source(links_known))
+        .collect();
     let lead = read(
         *members
             .first()
@@ -738,7 +750,7 @@ fn build_group(
         .iter()
         .map(|bucket| AlbumHeading {
             title: read(bucket.members[0]).title.clone(),
-            source: bucket.as_source(),
+            source: bucket.as_source(links_known),
         })
         .collect();
     // Which of the card's buckets holds each release. The buckets are in

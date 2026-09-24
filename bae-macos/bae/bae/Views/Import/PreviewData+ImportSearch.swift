@@ -83,11 +83,13 @@
                 BridgeReleaseGroupSource(
                     source: .musicBrainz,
                     groupUrl:
-                        "https://musicbrainz.org/release-group/group-preview"
+                        "https://musicbrainz.org/release-group/group-preview",
+                    albumLinksUnread: false
                 ),
                 BridgeReleaseGroupSource(
                     source: .discogs,
-                    groupUrl: "https://www.discogs.com/master/master-6"
+                    groupUrl: "https://www.discogs.com/master/master-6",
+                    albumLinksUnread: false
                 ),
             ],
             yearMin: 1988,
@@ -104,6 +106,21 @@
         static let searchGroupExact = ReleaseGroup(
             bridge: searchGroupExactBridge
         )
+
+        /// The exact album as a list shows it when its MusicBrainz page could
+        /// not be read.
+        static let searchGroupLinksUnread: ReleaseGroup = {
+            var group = searchGroupExactBridge
+            group.sources = [
+                BridgeReleaseGroupSource(
+                    source: .musicBrainz,
+                    groupUrl:
+                        "https://musicbrainz.org/release-group/group-preview",
+                    albumLinksUnread: true
+                )
+            ]
+            return ReleaseGroup(bridge: group)
+        }()
 
         /// The disc ID named the first pressing and the folder's text states
         /// its catalog number, label and year; the barcode named the second,
@@ -139,7 +156,8 @@
                     BridgeReleaseGroupSource(
                         source: .musicBrainz,
                         groupUrl:
-                            "https://musicbrainz.org/release-group/grp-1"
+                            "https://musicbrainz.org/release-group/grp-1",
+                        albumLinksUnread: false
                     )
                 ],
                 yearMin: 1996,
@@ -207,11 +225,13 @@
                     BridgeReleaseGroupSource(
                         source: .musicBrainz,
                         groupUrl:
-                            "https://musicbrainz.org/release-group/grp-2"
+                            "https://musicbrainz.org/release-group/grp-2",
+                        albumLinksUnread: false
                     ),
                     BridgeReleaseGroupSource(
                         source: .discogs,
-                        groupUrl: "https://www.discogs.com/master/master-7"
+                        groupUrl: "https://www.discogs.com/master/master-7",
+                        albumLinksUnread: false
                     ),
                 ],
                 yearMin: 2005,
@@ -280,7 +300,9 @@
             sources: [
                 BridgeReleaseGroupSource(
                     source: .musicBrainz,
-                    groupUrl: "https://musicbrainz.org/release-group/group-disc"
+                    groupUrl:
+                        "https://musicbrainz.org/release-group/group-disc",
+                    albumLinksUnread: false
                 )
             ],
             yearMin: 1996,
@@ -326,7 +348,8 @@
             sources: [
                 BridgeReleaseGroupSource(
                     source: .musicBrainz,
-                    groupUrl: "https://musicbrainz.org/release-group/group-bar"
+                    groupUrl: "https://musicbrainz.org/release-group/group-bar",
+                    albumLinksUnread: false
                 )
             ],
             yearMin: 2001,

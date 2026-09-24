@@ -445,6 +445,9 @@ pub struct AutomationAlbumHeading {
 pub struct AutomationReleaseGroupSource {
     pub source: AutomationCatalog,
     pub group_url: Option<String>,
+    /// Whether this album's page, which states the other catalog's album it
+    /// is, could not be read.
+    pub album_links_unread: bool,
 }
 
 /// One physical pressing, on every source that lists it.

@@ -137,7 +137,8 @@
                     BridgeReleaseGroupSource(
                         source: .musicBrainz,
                         groupUrl:
-                            "https://musicbrainz.org/release-group/group-track-mismatch"
+                            "https://musicbrainz.org/release-group/group-track-mismatch",
+                        albumLinksUnread: false
                     )
                 ],
                 yearMin: 1994,

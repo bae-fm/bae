@@ -269,7 +269,7 @@ mirror_struct! {
 mirror_struct! {
     AutomationReleaseGroupSource = bae_core::import::release_group::ReleaseGroupSource,
     from_core: pub(crate) fn,
-    fields: { source: (into), group_url },
+    fields: { source: (into), group_url, album_links_unread },
 }
 
 impl AutomationPressing {

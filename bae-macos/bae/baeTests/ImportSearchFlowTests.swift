@@ -657,7 +657,8 @@ struct ImportSearchFlowLibraryStatusTests {
                         sources: [
                             BridgeReleaseGroupSource(
                                 source: .musicBrainz,
-                                groupUrl: "https://example.invalid/group-live"
+                                groupUrl: "https://example.invalid/group-live",
+                                albumLinksUnread: false
                             )
                         ],
                         yearMin: 2000,

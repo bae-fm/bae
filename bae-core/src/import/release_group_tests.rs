@@ -90,6 +90,7 @@ fn same_group_collapses_into_one_card() {
         vec![ReleaseGroupSource {
             source: Catalog::MusicBrainz,
             group_url: Some("https://musicbrainz.org/release-group/group-x".to_string()),
+            album_links_unread: false,
         }]
     );
 }
@@ -121,6 +122,7 @@ fn ungrouped_result_is_its_own_single_pressing_card() {
         vec![ReleaseGroupSource {
             source: Catalog::MusicBrainz,
             group_url: None,
+            album_links_unread: false,
         }]
     );
     assert_eq!(groups[0].year_min, Some(1999));
@@ -163,10 +165,12 @@ fn an_album_musicbrainz_links_to_a_master_is_one_card() {
             ReleaseGroupSource {
                 source: Catalog::MusicBrainz,
                 group_url: Some("https://musicbrainz.org/release-group/group-x".to_string()),
+                album_links_unread: false,
             },
             ReleaseGroupSource {
                 source: Catalog::Discogs,
                 group_url: Some("https://www.discogs.com/master/master-7".to_string()),
+                album_links_unread: false,
             },
         ]
     );
@@ -241,11 +245,14 @@ fn albums_nothing_links_are_two_cards_whatever_their_text() {
     ]);
     assert_eq!(groups.len(), 2);
 
-    // A group whose page could not be read links nothing either.
+    // A group whose page could not be read links nothing either, and its
+    // card says so, since it may be the other card's album.
     let mut unread = mb("mb-2", Some("group-y"), None);
     unread.album_links = AlbumLinks::Unread;
     let groups = grouped(vec![unread, discogs("dg-2", Some("master-8"), None)]);
     assert_eq!(groups.len(), 2);
+    assert!(groups[0].sources[0].album_links_unread);
+    assert!(!groups[1].sources[0].album_links_unread);
 }
 
 /// Everything the links connect is one card: two MusicBrainz albums that both
