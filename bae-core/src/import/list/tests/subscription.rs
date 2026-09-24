@@ -6,6 +6,7 @@ use crate::import::{
     CandidateRuntimeChange, CandidateRuntimeSnapshot, ImportInFlight, ImportPhase, ImportStep,
 };
 use std::collections::HashMap;
+use std::time::Duration;
 use tokio::sync::broadcast;
 
 /// The subscription, and the runtime stream behind it — held by the caller so
@@ -158,4 +159,52 @@ async fn only_a_change_that_moves_a_placement_reruns_the_query() {
         coven::ReconfigurableLiveQueryCause::RequestChanged
     );
     assert_eq!(ended.request_revision, 2);
+}
+
+/// Runtime changes can arrive faster than the list reads — a batch of runs
+/// moves one key after another while a large queue is still being read. The
+/// list has to keep answering through them: a read that every change restarts
+/// never finishes, and the rows show nothing of the batch until it is over.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_list_keeps_answering_while_runtime_changes_keep_arriving() {
+    let (subscription, changes, _tmp) = subscription().await;
+    subscription.next().await.expect("the initial value");
+
+    let arriving = tokio_util::sync::CancellationToken::new();
+    let stream = tokio::spawn({
+        let arriving = arriving.clone();
+        async move {
+            let key = "/music/Release".to_string();
+            while !arriving.is_cancelled() {
+                for change in [
+                    CandidateRuntimeChange::Updated {
+                        key: key.clone(),
+                        runtime: CandidateRuntimeSnapshot {
+                            queued: Some(crate::import::Admission::Requested),
+                            running: None,
+                            saving: None,
+                            save_failed: None,
+                            import: None,
+                            search: None,
+                        },
+                    },
+                    CandidateRuntimeChange::Removed { key: key.clone() },
+                ] {
+                    changes.send(change).expect("the merge task is listening");
+                    tokio::task::yield_now().await;
+                }
+            }
+        }
+    });
+
+    let answered = tokio::time::timeout(Duration::from_secs(1), subscription.next()).await;
+    arriving.cancel();
+    stream.await.expect("the change stream ends");
+    let answered = answered
+        .expect("the list answers while runtime changes are still arriving")
+        .expect("the list stays open");
+    assert_eq!(
+        answered.cause,
+        coven::ReconfigurableLiveQueryCause::RequestChanged
+    );
 }

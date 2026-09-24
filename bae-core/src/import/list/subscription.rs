@@ -1,13 +1,14 @@
 //! The list's live query, with what this process holds and no table does
 //! folded into its request.
 //!
-//! Three such facts. Two place a row: whether an import has claimed the
-//! candidate and how far actual identification work has got, both from
-//! [`CandidateRuntime`](crate::import::CandidateRuntime). The third orders one:
-//! where an imported release's cloud upload stands, from the outbox. The
-//! subscription owns the merges — it keeps the current request,
-//! applies each change that moves a row, and hands the query a new request. The
-//! bridge and the UIs never see any of it.
+//! Three such facts. Two come from
+//! [`CandidateRuntime`](crate::import::CandidateRuntime): whether an import has
+//! claimed the candidate, which places its row, and how far identification has
+//! got, which the row shows. The third orders a row: where an imported
+//! release's cloud upload stands, from the outbox. The subscription owns the
+//! merges — it keeps the current request, applies each change that moves a
+//! row, and hands the query the new request once the read under way has
+//! answered. The bridge and the UIs never see any of it.
 
 use super::{
     ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListView, UploadStanding,
@@ -29,28 +30,114 @@ pub enum ImportListSubscriptionError {
 }
 
 /// The request as it stands, and the query it reconfigures.
+///
+/// Two kinds of change reach the request, and they reach the query
+/// differently. A person's — a view, a set of windows — replaces the request
+/// at once: the read under way answers a question nobody is asking any more.
+/// A merge's — runtime facts, upload standing — waits for the read under way
+/// to answer, and goes in with the next one. Runtime facts move on every
+/// state a batch of runs passes through, and a large queue takes longer to
+/// read than that: a read restarted by each of them never answers, and the
+/// rows show none of the batch until it is over.
 struct StandingRequest {
-    current: Mutex<ImportListRequest>,
+    standing: Mutex<Standing>,
     query: CancellableLiveQuery<ImportListRequest, ImportListProjection>,
 }
 
+/// The request, and where the query stands with it.
+struct Standing {
+    request: ImportListRequest,
+    /// The revision of the last value the query delivered.
+    answered: Option<u64>,
+    /// The read the query owes, while it owes one. A merge's change waits for
+    /// it.
+    reading: Option<Reading>,
+}
+
+/// A request the query was handed and has not answered yet.
+struct Reading {
+    revision: u64,
+    /// A merge has changed the request since it was handed over.
+    held: bool,
+}
+
+impl Standing {
+    /// Hand the query the whole request, and wait for the revision that
+    /// answers it — unless the query already answered that request.
+    fn hand_over(
+        &mut self,
+        query: &CancellableLiveQuery<ImportListRequest, ImportListProjection>,
+    ) -> Result<u64, ImportListSubscriptionError> {
+        let revision = query
+            .set(self.request.clone())
+            .map_err(|_| ImportListSubscriptionError::Cancelled)?;
+        self.reading = self
+            .answered
+            .is_none_or(|answered| revision > answered)
+            .then_some(Reading {
+                revision,
+                held: false,
+            });
+        Ok(revision)
+    }
+}
+
 impl StandingRequest {
-    /// Replace part of the request and hand the whole thing to the query.
+    /// A person's change: replace part of the request and hand the whole
+    /// thing to the query now.
+    ///
+    /// Handed over under the lock, so two changes reach the query in the order
+    /// they were made to the request.
     fn update(
         &self,
         change: impl FnOnce(&mut ImportListRequest),
     ) -> Result<u64, ImportListSubscriptionError> {
-        let next = {
-            let mut current = self
-                .current
-                .lock()
-                .expect("import list request mutex poisoned");
-            change(&mut current);
-            current.clone()
+        let mut standing = self
+            .standing
+            .lock()
+            .expect("import list request mutex poisoned");
+        change(&mut standing.request);
+        standing.hand_over(&self.query)
+    }
+
+    /// A merge's change: apply it, and hand the request over only when no read
+    /// is waiting to answer. `change` reports whether it moved anything.
+    fn merge(
+        &self,
+        change: impl FnOnce(&mut ImportListRequest) -> bool,
+    ) -> Result<(), ImportListSubscriptionError> {
+        let mut standing = self
+            .standing
+            .lock()
+            .expect("import list request mutex poisoned");
+        if !change(&mut standing.request) {
+            return Ok(());
+        }
+        if let Some(reading) = &mut standing.reading {
+            reading.held = true;
+            return Ok(());
+        }
+        standing.hand_over(&self.query).map(|_| ())
+    }
+
+    /// The query delivered `revision`. A read that answers the revision it
+    /// was waiting on hands over whatever the merges held back meanwhile.
+    fn answered(&self, revision: u64) -> Result<(), ImportListSubscriptionError> {
+        let mut standing = self
+            .standing
+            .lock()
+            .expect("import list request mutex poisoned");
+        standing.answered = Some(revision);
+        let Some(reading) = standing
+            .reading
+            .take_if(|reading| revision >= reading.revision)
+        else {
+            return Ok(());
         };
-        self.query
-            .set(next)
-            .map_err(|_| ImportListSubscriptionError::Cancelled)
+        if reading.held {
+            standing.hand_over(&self.query)?;
+        }
+        Ok(())
     }
 }
 
@@ -74,8 +161,16 @@ impl ImportListSubscription {
         outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
         runtime_handle: &tokio::runtime::Handle,
     ) -> Self {
+        // The query reads `initial` as revision 0 on its own.
         let request = Arc::new(StandingRequest {
-            current: Mutex::new(initial),
+            standing: Mutex::new(Standing {
+                request: initial,
+                answered: None,
+                reading: Some(Reading {
+                    revision: 0,
+                    held: false,
+                }),
+            }),
             query: CancellableLiveQuery::new(query),
         });
         let merges = vec![
@@ -116,6 +211,7 @@ impl ImportListSubscription {
             .map_err(|_| ImportListSubscriptionError::Cancelled)?;
         let request_revision = event.revision().get();
         let cause = event.cause();
+        self.request.answered(request_revision)?;
         // A list read that fails takes the whole import tab with it — no rows,
         // no watched folders, no scan statuses — so the reason is worth a line
         // whether or not anyone is on screen to be shown it.
@@ -161,7 +257,7 @@ impl Drop for ImportListSubscription {
     }
 }
 
-/// Apply every runtime change that moves a placement to the standing request.
+/// Apply every runtime change that moves a row to the standing request.
 ///
 /// A progress tick within a running import changes nothing a row shows, so it
 /// reconfigures nothing; a run reaching a phase, an import claimed, and an
@@ -177,37 +273,25 @@ async fn merge_runtime(
             () = request.query.cancelled() => return,
             change = changes.recv() => change,
         };
-        let moved = match change {
+        let merged = match change {
             Ok(CandidateRuntimeChange::Updated { key, runtime }) => {
                 let next = TriageRuntimeFacts::of(&runtime);
-                let mut current = request
-                    .current
-                    .lock()
-                    .expect("import list request mutex poisoned");
-                let moved = current.runtime_facts.get(&key).unwrap_or(&idle) != &next;
-                if next == idle {
-                    current.runtime_facts.remove(&key);
-                } else {
-                    current.runtime_facts.insert(key, next);
-                }
-                moved
+                request.merge(|current| {
+                    let moved = current.runtime_facts.get(&key).unwrap_or(&idle) != &next;
+                    if next == idle {
+                        current.runtime_facts.remove(&key);
+                    } else {
+                        current.runtime_facts.insert(key, next);
+                    }
+                    moved
+                })
             }
-            Ok(CandidateRuntimeChange::Removed { key }) => request
-                .current
-                .lock()
-                .expect("import list request mutex poisoned")
-                .runtime_facts
-                .remove(&key)
-                .is_some(),
+            Ok(CandidateRuntimeChange::Removed { key }) => {
+                request.merge(|current| current.runtime_facts.remove(&key).is_some())
+            }
             Ok(CandidateRuntimeChange::Reset { runtimes }) => {
                 let facts = facts_of(&runtimes);
-                let mut current = request
-                    .current
-                    .lock()
-                    .expect("import list request mutex poisoned");
-                let moved = current.runtime_facts != facts;
-                current.runtime_facts = facts;
-                moved
+                request.merge(|current| replace_facts(current, facts))
             }
             Err(broadcast::error::RecvError::Lagged(count)) => {
                 tracing::warn!(
@@ -215,20 +299,24 @@ async fn merge_runtime(
                      re-reading every candidate's runtime"
                 );
                 let facts = facts_of(&reread());
-                let mut current = request
-                    .current
-                    .lock()
-                    .expect("import list request mutex poisoned");
-                let moved = current.runtime_facts != facts;
-                current.runtime_facts = facts;
-                moved
+                request.merge(|current| replace_facts(current, facts))
             }
             Err(broadcast::error::RecvError::Closed) => return,
         };
-        if moved && request.update(|_| {}).is_err() {
+        if merged.is_err() {
             return;
         }
     }
+}
+
+/// Put `facts` in place of the request's, and report whether that moved any.
+fn replace_facts(
+    request: &mut ImportListRequest,
+    facts: BTreeMap<String, TriageRuntimeFacts>,
+) -> bool {
+    let moved = request.runtime_facts != facts;
+    request.runtime_facts = facts;
+    moved
 }
 
 /// The placement-relevant facts of every key that has any, keyed the way the
@@ -262,16 +350,12 @@ async fn merge_outbox(
             Some(Err(_)) | None => None,
         };
         if let Some(next) = next {
-            let moved = {
-                let mut current = request
-                    .current
-                    .lock()
-                    .expect("import list request mutex poisoned");
+            let merged = request.merge(|current| {
                 let moved = current.upload_standing != next;
                 current.upload_standing = next;
                 moved
-            };
-            if moved && request.update(|_| {}).is_err() {
+            });
+            if merged.is_err() {
                 return;
             }
         }
