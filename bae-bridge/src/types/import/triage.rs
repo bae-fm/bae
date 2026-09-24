@@ -275,7 +275,6 @@ pub enum BridgeIdentificationStatus {
 /// it into the variant's `core.*` message (`bridge_needs_you_key`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeNeedsYou {
-    AlreadyInLibrary,
     SeveralMatches { count: u32 },
     NoMatch,
     NothingToLookUp,
@@ -287,7 +286,6 @@ pub enum BridgeNeedsYou {
 impl BridgeNeedsYou {
     pub(crate) fn loc_key(&self) -> &'static str {
         match self {
-            Self::AlreadyInLibrary => "core.import.triage.already_in_library",
             Self::SeveralMatches { .. } => "core.import.triage.several_matches",
             Self::NoMatch => "core.import.triage.no_match",
             Self::NothingToLookUp => "core.import.triage.nothing_to_look_up",

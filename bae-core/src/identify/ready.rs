@@ -1,10 +1,9 @@
 //! The Ready rule: whether a candidate's stored verdict is strong enough to
 //! import in bulk without anyone looking at it.
 //!
-//! Derived on read, never stored. The rule's inputs move independently of the
-//! verdict — another import landing flips a candidate from Ready to "already in
-//! library" without its own verdict changing — so a cached classification would
-//! go stale with nothing to invalidate it. See `plans/import-derived-state.md`.
+//! Derived on read, never stored: the verdict's own columns are the rule's
+//! whole input. Whether the release is already in the library is not part of
+//! it — importing a second copy is the person's to moderate.
 //!
 //! Nothing here blocks an import. Failing the rule means the candidate lands in
 //! Needs you *with the disagreement named*, and importing it from there is one
@@ -12,7 +11,6 @@
 
 use super::combine::LookupProvenance;
 use super::verdict::TerminalVerdict;
-use crate::db::LibraryStatus;
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::Catalog;
@@ -22,8 +20,8 @@ use crate::import::Catalog;
 /// variant names the question being asked, which is what the sidebar groups by.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QueueClassification {
-    /// Exactly one pressing, not in the library, and the source lists as many
-    /// tracks as the folder holds.
+    /// Exactly one pressing, and the source lists as many tracks as the
+    /// folder holds.
     Ready,
     NeedsYou(NeedsYou),
 }
@@ -32,8 +30,6 @@ pub enum QueueClassification {
 /// asked, carrying what it takes to state the disagreement on the row.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NeedsYou {
-    /// One match, but it (or its album) is already in the library.
-    AlreadyInLibrary,
     /// Several pressings matched; which one is on disk is the user's call.
     /// `count` is pressings, not result rows — the number of rows the list
     /// shows.
@@ -175,35 +171,12 @@ impl VerdictSummary {
 }
 
 /// Classify one candidate.
-///
-/// `library_statuses` is a **live** check of the verdict's matches, matched
-/// back to them by release id (see `in_library`) — never a copy stored with
-/// the verdict, which is the whole reason this is computed on read. Order and
-/// completeness are not part of the contract: a caller batching one check
-/// across a whole queue hands over what it resolved.
-pub fn classify(
-    verdict: &TerminalVerdict,
-    library_statuses: &[LibraryStatus],
-) -> QueueClassification {
-    let summary = VerdictSummary::of(verdict);
-    let lead_status = summary.lead.as_ref().and_then(|lead| {
-        library_statuses
-            .iter()
-            .find(|status| status.release_id == lead.release_id)
-    });
-    classify_summary(&summary, lead_status)
+pub fn classify(verdict: &TerminalVerdict) -> QueueClassification {
+    classify_summary(&VerdictSummary::of(verdict))
 }
 
 /// Classify one candidate from the columns its stored row holds.
-///
-/// `lead_status` is a **live** check of the lead match alone — the only match
-/// the rule consults, because every other shape is answered before the
-/// library is asked. `None` reads as "not in the library"; a caller that
-/// cannot answer for the lead must fail its read rather than hand over `None`.
-pub fn classify_summary(
-    summary: &VerdictSummary,
-    lead_status: Option<&LibraryStatus>,
-) -> QueueClassification {
+pub fn classify_summary(summary: &VerdictSummary) -> QueueClassification {
     let track_count = match summary.kind {
         VerdictKind::Found => summary.track_count.unwrap_or_default(),
         VerdictKind::NotFound => return QueueClassification::NeedsYou(NeedsYou::NoMatch),
@@ -221,10 +194,6 @@ pub fn classify_summary(
             count: summary.pressing_count,
         });
     };
-
-    if lead_status.is_some_and(|status| status.release_in_library || status.album_in_library) {
-        return QueueClassification::NeedsYou(NeedsYou::AlreadyInLibrary);
-    }
 
     // `None` (nobody has asked the source yet) and `Nothing` (it answered and
     // listed no tracks) are different facts about the queue — one is waiting on

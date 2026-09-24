@@ -801,23 +801,10 @@ impl Fixture {
     }
 
     /// The classification a sidebar would derive from a stored row — the stored
-    /// verdict plus a live library check, never a stored classification.
+    /// verdict, never a stored classification.
     async fn classification_for(&self, dir: &Path) -> QueueClassification {
         let row = self.stored_for(dir).await.expect("a row was stored");
-        let identify = identify_result(&row);
-        let verdict = identify.verdict.clone();
-        let matches: Vec<MetadataResult> = match &verdict {
-            TerminalVerdict::Found { matches, .. } => matches.clone(),
-            _ => Vec::new(),
-        };
-        let checks: Vec<crate::db::LibraryCheck> =
-            matches.iter().map(crate::db::LibraryCheck::from).collect();
-        let statuses = self
-            .manager
-            .check_releases_in_library(&checks)
-            .await
-            .unwrap();
-        classify(&verdict, &statuses)
+        classify(&identify_result(&row).verdict)
     }
 }
 

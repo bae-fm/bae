@@ -23,7 +23,7 @@ extension BridgeNeedsYou {
                 Int(local),
                 Int(source)
             )
-        case .alreadyInLibrary, .noMatch, .nothingToLookUp,
+        case .noMatch, .nothingToLookUp,
             .lookupFailed, .sourceTracksUnknown:
             return template
         }

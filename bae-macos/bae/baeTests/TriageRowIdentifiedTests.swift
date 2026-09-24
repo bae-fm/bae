@@ -70,10 +70,9 @@ struct TriageRowIdentifiedTests {
     @Test(
         "a row draws no badge for what its result asks",
         arguments: [
-            BridgeNeedsYou.alreadyInLibrary,
-            .severalMatches(count: 2), .noMatch, .nothingToLookUp,
-            .lookupFailed, .trackCountDisagrees(local: 13, source: 12),
-            .sourceTracksUnknown,
+            BridgeNeedsYou.severalMatches(count: 2), .noMatch,
+            .nothingToLookUp, .lookupFailed,
+            .trackCountDisagrees(local: 13, source: 12), .sourceTracksUnknown,
         ]
     )
     func aRowDrawsNoBadgeForWhatItsResultAsks(_ reason: BridgeNeedsYou)
@@ -91,10 +90,9 @@ struct TriageRowIdentifiedTests {
     @Test(
         "every question resolves to its own sentence",
         arguments: [
-            BridgeNeedsYou.alreadyInLibrary,
-            .severalMatches(count: 2), .noMatch, .nothingToLookUp,
-            .lookupFailed, .trackCountDisagrees(local: 13, source: 12),
-            .sourceTracksUnknown,
+            BridgeNeedsYou.severalMatches(count: 2), .noMatch,
+            .nothingToLookUp, .lookupFailed,
+            .trackCountDisagrees(local: 13, source: 12), .sourceTracksUnknown,
         ]
     )
     func everyQuestionResolvesToItsOwnSentence(_ reason: BridgeNeedsYou) {

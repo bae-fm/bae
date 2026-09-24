@@ -382,7 +382,6 @@
   <data name="import.footbar.select_all" xml:space="preserve"><value>Tout sélectionner</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>Tout désélectionner</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>Importer {count}</value></data>
-  <data name="import.row.import_anyway" xml:space="preserve"><value>Importer quand même</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Réessayer</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>rechercher manuellement</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Aucune correspondance automatique trouvée</value></data>

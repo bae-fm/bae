@@ -240,13 +240,6 @@ internal sealed partial class ImportSectionView
             column.Children.Add(bar);
         }
 
-        var actions = BuildRowActions(row);
-        if (actions is not null)
-        {
-            actions.Margin = new Thickness(0, 7, 0, 0);
-            column.Children.Add(actions);
-        }
-
         return column;
     }
 
@@ -341,8 +334,6 @@ internal sealed partial class ImportSectionView
     {
         BridgeTriagePlacement.Ready or BridgeTriagePlacement.Skipped =>
             RowArtist(row),
-        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.AlreadyInLibrary } =>
-            RowArtist(row),
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.SeveralMatches } =>
             RowArtist(row),
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.LookupFailed } =>
@@ -397,24 +388,6 @@ internal sealed partial class ImportSectionView
             Value = fraction ?? 0,
             IsIndeterminate = fraction is null,
         };
-    }
-
-    // The pill row under the meta column — only the placement the design gives
-    // one: already-in-library. Every other row's action is "activate it," which
-    // the whole row already does. How the folder around the row is read is not
-    // one of them: that lives on the group header, or in the row's own menu
-    // where the folder is this one row.
-    private Control? BuildRowActions(BridgeTriageRow row)
-    {
-        if (row.Placement is not BridgeTriagePlacement.NeedsYou
-            { Reason: BridgeNeedsYou.AlreadyInLibrary })
-        {
-            return null;
-        }
-        var pills = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        pills.Children.Add(BuildActionPill(
-            Loc.Chrome("import.row.import_anyway"), () => OnRowActivated(row)));
-        return pills;
     }
 
     private static Button BuildActionPill(string label, Action onClick)
@@ -492,8 +465,6 @@ internal sealed partial class ImportSectionView
         {
             BridgeNeedsYou.SeveralMatches =>
                 Chip(BridgeDisplay.LocalizedLine(reason), "BaeWarningBrush"),
-            BridgeNeedsYou.AlreadyInLibrary =>
-                Chip(BridgeDisplay.LocalizedLine(reason), "BaeInfoBrush"),
             BridgeNeedsYou.TrackCountDisagrees
                 or BridgeNeedsYou.SourceTracksUnknown => DotIcon("BaeWarningBrush"),
             BridgeNeedsYou.LookupFailed => LookupFailedIcon(reason),

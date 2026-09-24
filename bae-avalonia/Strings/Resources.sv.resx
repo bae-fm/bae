@@ -407,7 +407,6 @@
   <data name="import.footbar.select_all" xml:space="preserve"><value>Markera alla</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>Avmarkera alla</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>Importera {count}</value></data>
-  <data name="import.row.import_anyway" xml:space="preserve"><value>Importera ändå</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Försök igen</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>Sök manuellt</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Inga automatiska träffar hittades</value></data>

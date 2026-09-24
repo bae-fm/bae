@@ -57,7 +57,7 @@ pub use model::*;
 ///    from. Either way nothing is left to ask.
 /// 6. **Then what its stored verdict classified to.** This is where a draft
 ///    identification wrote lands: a run applying its own pick is not an
-///    answer, so the Ready rule's checks — the track count, the library —
+///    answer, so the Ready rule's checks — which pressing, the track count —
 ///    decide whether it is Ready or which question it asks.
 ///
 /// An invalid draft is never Ready, whoever wrote it and whatever the verdict
@@ -124,8 +124,7 @@ pub fn ready_check(placement: &TriagePlacement) -> Option<NeedsYou> {
         NeedsYou::TrackCountDisagrees { .. } | NeedsYou::SourceTracksUnknown => {
             Some(reason.clone())
         }
-        NeedsYou::AlreadyInLibrary
-        | NeedsYou::SeveralMatches { .. }
+        NeedsYou::SeveralMatches { .. }
         | NeedsYou::NoMatch
         | NeedsYou::NothingToLookUp
         | NeedsYou::LookupFailed => None,

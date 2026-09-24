@@ -12,9 +12,6 @@
 
 mod window;
 
-pub(super) use window::library_statuses;
-
-use super::records::check_releases_in_library_on;
 use super::import_state::{load_matches_on, load_provenance_on};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
@@ -111,10 +108,6 @@ pub struct ImportQueueRows {
     /// before the app quit comes back looking untouched.
     pub failures: HashMap<String, String>,
     pub states: HashMap<String, CandidateStateListRow>,
-    /// The live library check of every lead match, by release id. Only the
-    /// leads of single-pressing verdicts are checked: those are the only ones
-    /// the Ready rule asks about.
-    pub lead_statuses: HashMap<String, LibraryStatus>,
     /// Every folder whose reading is settled as several releases, keyed by
     /// `(watched_folder_path, relative_folder_path)`. The rows below such a
     /// folder are its releases; the folder is where the choice to read them as
@@ -189,31 +182,6 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         .collect();
 
     let states = state_rows(sql)?;
-    let mut checks = Vec::new();
-    for state in states.values() {
-        let Some(verdict) = state.verdict.as_ref() else {
-            continue;
-        };
-        // The Ready rule consults the lead and only when the verdict named one
-        // pressing; every other shape is answered before the library is asked.
-        if verdict.pressing_count != 1 {
-            continue;
-        }
-        if let Some(lead) = verdict.lead.as_ref() {
-            checks.push(LibraryCheck {
-                release_id: lead.release_id.clone(),
-                source: lead.source,
-                source_group_id: lead.source_group_id.clone(),
-            });
-        }
-    }
-    checks.sort_by(|left, right| left.release_id.cmp(&right.release_id));
-    checks.dedup_by(|left, right| left.release_id == right.release_id);
-    let lead_statuses = check_releases_in_library_on(sql, &checks)?
-        .into_iter()
-        .map(|status| (status.release_id.clone(), status))
-        .collect();
-
     Ok(ImportQueueRows {
         watched_folders,
         candidates,
@@ -222,7 +190,6 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         imported_at,
         failures,
         states,
-        lead_statuses,
         separated_folders,
     })
 }

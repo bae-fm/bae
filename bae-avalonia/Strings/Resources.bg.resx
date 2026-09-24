@@ -382,7 +382,6 @@
   <data name="import.footbar.select_all" xml:space="preserve"><value>Избиране на всички</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>Изчисти избора</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>Внасяне на {count}</value></data>
-  <data name="import.row.import_anyway" xml:space="preserve"><value>Внасяне въпреки това</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Повторен опит</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>ръчно търсене</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Няма автоматични съвпадения</value></data>

@@ -407,7 +407,6 @@
   <data name="import.footbar.select_all" xml:space="preserve"><value>Επιλογή όλων</value></data>
   <data name="import.footbar.select_none" xml:space="preserve"><value>Καμία επιλογή</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>Εισαγωγή {count}</value></data>
-  <data name="import.row.import_anyway" xml:space="preserve"><value>Εισαγωγή ούτως ή άλλως</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Δοκιμή ξανά</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>Χειροκίνητη αναζήτηση</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Δεν βρέθηκαν αυτόματες αντιστοιχίσεις</value></data>

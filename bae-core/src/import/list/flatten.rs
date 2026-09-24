@@ -360,13 +360,7 @@ fn place_row(
             .error()
             .or_else(|| rows.failures.get(content_hash).map(String::as_str)),
     );
-    let answer = verdict.map(|verdict| {
-        let lead_status = verdict
-            .lead
-            .as_ref()
-            .and_then(|lead| rows.lead_statuses.get(&lead.release_id));
-        classify_summary(verdict, lead_status)
-    });
+    let answer = verdict.map(classify_summary);
     let skipped = match &row.source {
         crate::db::CandidateListSource::Combination { skipped, .. } => *skipped,
         crate::db::CandidateListSource::Folder => rows.skipped.contains(&(

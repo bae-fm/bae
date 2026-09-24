@@ -74,24 +74,11 @@ fn listing(count: u32) -> Option<SourceTracks> {
     Some(SourceTracks::Listed { count })
 }
 
-fn status(release_id: &str, release_in_library: bool, album_in_library: bool) -> LibraryStatus {
-    LibraryStatus {
-        release_id: release_id.to_string(),
-        release_in_library,
-        album_in_library,
-        album_title: None,
-        album_id: None,
-    }
-}
-
 /// Every clause of the rule holding at once is the only way to Ready.
 #[test]
-fn one_verified_match_not_in_the_library_is_ready() {
+fn one_verified_match_is_ready() {
     let verdict = found(vec![result("mb-1", listing(11))], 11);
-    assert_eq!(
-        classify(&verdict, &[status("mb-1", false, false)]),
-        QueueClassification::Ready
-    );
+    assert_eq!(classify(&verdict), QueueClassification::Ready);
 }
 
 /// A lone match the title search found is admitted like any other: the
@@ -108,10 +95,7 @@ fn a_lone_match_found_by_title_is_ready() {
         by_catalog: false,
         by_search: true,
     };
-    assert_eq!(
-        classify(&verdict, &[status("mb-1", false, false)]),
-        QueueClassification::Ready
-    );
+    assert_eq!(classify(&verdict), QueueClassification::Ready);
 }
 
 /// The releases agreement narrowed out are not answers: the rule counts the
@@ -144,10 +128,7 @@ fn what_agreement_narrowed_out_is_not_a_match() {
         narrowed_out_pressings: vec![0],
         ledger: None,
     };
-    assert_eq!(
-        classify(&verdict, &[status("mb-1", false, false)]),
-        QueueClassification::Ready
-    );
+    assert_eq!(classify(&verdict), QueueClassification::Ready);
 }
 
 /// Two sources' records of one physical pressing are one row on the list,
@@ -164,10 +145,7 @@ fn two_sources_agreeing_on_a_barcode_are_one_pressing() {
         ],
         11,
     );
-    assert_eq!(
-        classify(&verdict, &[status("mb-1", false, false)]),
-        QueueClassification::Ready
-    );
+    assert_eq!(classify(&verdict), QueueClassification::Ready);
 }
 
 /// The count is the rows the run recorded, not the rows this list would form
@@ -204,7 +182,7 @@ fn the_pressing_count_is_the_rows_the_run_recorded() {
     };
     assert_eq!(VerdictSummary::of(&verdict).pressing_count, 2);
     assert_eq!(
-        classify(&verdict, &[]),
+        classify(&verdict),
         QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
     );
 }
@@ -221,7 +199,7 @@ fn two_sources_naming_different_pressings_stay_a_choice() {
         11,
     );
     assert_eq!(
-        classify(&verdict, &[]),
+        classify(&verdict),
         QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
     );
 }
@@ -236,24 +214,9 @@ fn several_matches_are_a_choice_for_the_user() {
         11,
     );
     assert_eq!(
-        classify(&verdict, &[]),
+        classify(&verdict),
         QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
     );
-}
-
-/// The clause that cannot be stored: another import landing flips this without
-/// the candidate's own verdict changing, which is why the status is passed in
-/// live rather than read out of the row.
-#[test]
-fn library_status_is_read_live_at_both_levels() {
-    let verdict = found(vec![result("mb-1", listing(11))], 11);
-    for (release, album) in [(true, false), (false, true), (true, true)] {
-        assert_eq!(
-            classify(&verdict, &[status("mb-1", release, album)]),
-            QueueClassification::NeedsYou(NeedsYou::AlreadyInLibrary),
-            "release_in_library={release}, album_in_library={album}"
-        );
-    }
 }
 
 /// A release that lists no tracks has no count to check the folder's against,
@@ -264,7 +227,7 @@ fn library_status_is_read_live_at_both_levels() {
 fn a_match_listing_no_tracks_is_never_admitted() {
     for source_tracks in [None, Some(SourceTracks::Nothing)] {
         assert_eq!(
-            classify(&found(vec![result("mb-1", source_tracks.clone())], 11), &[]),
+            classify(&found(vec![result("mb-1", source_tracks.clone())], 11)),
             QueueClassification::NeedsYou(NeedsYou::SourceTracksUnknown),
             "{source_tracks:?}"
         );
@@ -276,7 +239,7 @@ fn a_match_listing_no_tracks_is_never_admitted() {
 #[test]
 fn a_count_mismatch_names_both_counts() {
     assert_eq!(
-        classify(&found(vec![result("mb-1", listing(12))], 11), &[]),
+        classify(&found(vec![result("mb-1", listing(12))], 11)),
         QueueClassification::NeedsYou(NeedsYou::TrackCountDisagrees {
             local: 11,
             source: 12
@@ -289,17 +252,14 @@ fn a_count_mismatch_names_both_counts() {
 #[test]
 fn every_other_verdict_names_its_own_question() {
     assert_eq!(
-        classify(&TerminalVerdict::NotFoundAnywhere { ledger: None }, &[]),
+        classify(&TerminalVerdict::NotFoundAnywhere { ledger: None }),
         QueueClassification::NeedsYou(NeedsYou::NoMatch)
     );
     assert_eq!(
-        classify(
-            &TerminalVerdict::ManualOnly {
-                track_count: 11,
-                ledger: None,
-            },
-            &[]
-        ),
+        classify(&TerminalVerdict::ManualOnly {
+            track_count: 11,
+            ledger: None,
+        },),
         QueueClassification::NeedsYou(NeedsYou::NothingToLookUp)
     );
 }
@@ -383,14 +343,6 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
 
         // The rule reads the same answer either way — which is what lets the
         // list classify without rebuilding the verdict.
-        let statuses = [status("rel-a", false, false), status("rel-b", false, false)];
-        let lead_status = summary
-            .lead
-            .as_ref()
-            .and_then(|lead| statuses.iter().find(|s| s.release_id == lead.release_id));
-        assert_eq!(
-            classify_summary(&summary, lead_status),
-            classify(&verdict, &statuses)
-        );
+        assert_eq!(classify_summary(&summary), classify(&verdict));
     }
 }

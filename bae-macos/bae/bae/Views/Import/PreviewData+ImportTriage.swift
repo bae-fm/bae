@@ -468,13 +468,17 @@
             metadataSummary: nil
         )
 
+        /// A release already in the library is Ready like any other: the
+        /// pane says it is there, and importing another copy is the person's
+        /// call.
         static let triageRowAlreadyInLibrary = triageRow(
             for: importTabAlreadyInLibraryCandidate,
-            placement: .needsYou(
-                reason: .alreadyInLibrary
-            ),
+            placement: .ready,
             skipAction: .skip,
-            actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
+            actions: [
+                .importReady, .identify, .resetToFileMetadata, .clearMetadata,
+                .skip,
+            ],
             matched: triageMatch(
                 releaseId: releaseDetailBridge.releaseId,
                 title: "Album Title (Reissue)",
@@ -482,7 +486,14 @@
                 trackCount: 14,
                 signal: .barcode
             ),
-            metadataSummary: nil
+            metadataSummary: nil,
+            metadataProvenance: .externalRelease(
+                record: BridgeMetadataRef(
+                    catalog: releaseDetailBridge.source,
+                    key: releaseDetailBridge.releaseId
+                ),
+                partners: []
+            )
         )
 
         static let triageRowNoMatch = triageRow(

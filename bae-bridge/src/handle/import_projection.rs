@@ -298,7 +298,6 @@ mirror_enum! {
     crate::types::BridgeNeedsYou = bae_core::identify::NeedsYou,
     from_core: pub(crate) fn,
     variants: {
-        AlreadyInLibrary,
         SeveralMatches { count },
         NoMatch,
         NothingToLookUp,

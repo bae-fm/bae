@@ -405,14 +405,6 @@ fn a_person_s_pick_answers_whatever_the_verdict_asked() {
 /// you with that disagreement as its reason.
 #[test]
 fn identification_s_own_pick_is_judged_by_the_ready_rule() {
-    let mut in_library = queue();
-    in_library.lead_statuses.insert(
-        "mb-1".to_string(),
-        crate::db::LibraryStatus {
-            release_in_library: true,
-            ..crate::db::LibraryStatus::absent("mb-1")
-        },
-    );
     let cases = [
         (
             queue(),
@@ -444,7 +436,6 @@ fn identification_s_own_pick_is_judged_by_the_ready_rule() {
             }),
             NeedsYou::SourceTracksUnknown,
         ),
-        (in_library, ready_state("mb-1"), NeedsYou::AlreadyInLibrary),
     ];
     for (mut rows, state, reason) in cases {
         assert_eq!(state.metadata_author, MetadataAuthor::Identification);

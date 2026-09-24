@@ -202,14 +202,6 @@ struct ImportPreviewDataTests {
         )
         #expect(
             rows.contains { row in
-                if case .needsYou(.alreadyInLibrary) = row.placement {
-                    return true
-                }
-                return false
-            }
-        )
-        #expect(
-            rows.contains { row in
                 if case .needsYou(.noMatch) = row.placement { return true }
                 return false
             }

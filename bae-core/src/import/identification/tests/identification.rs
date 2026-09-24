@@ -3,8 +3,7 @@
 ///
 /// The provider answers the disc-ID lookup with exactly one release listing as
 /// many tracks as the fixture holds, so the Ready rule's every clause is
-/// exercised for real: one match, not in the library, found by disc ID, counts
-/// agreeing.
+/// exercised for real: one match, counts agreeing.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_candidate_nobody_selected_acquires_a_verdict() {
     let fixture = Fixture::new("acquires-verdict").await;
@@ -48,7 +47,7 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
     assert_eq!(
         fixture.classification_for(&dir).await,
         QueueClassification::Ready,
-        "one match, not in the library, counts agreeing"
+        "one match, counts agreeing"
     );
 }
 
@@ -380,7 +379,7 @@ fn the_lengths_a_source_states_do_not_decide() {
     );
     assert_eq!(source, SourceTracks::Listed { count: 3 });
     assert_eq!(
-        classify(&found_verdict(3, Some(source)), &[]),
+        classify(&found_verdict(3, Some(source))),
         QueueClassification::Ready,
         "the counts agree, whatever the lengths"
     );
@@ -392,7 +391,6 @@ fn a_count_disagreement_is_named_as_one() {
     assert_eq!(
         classify(
             &found_verdict(11, Some(SourceTracks::Listed { count: 12 })),
-            &[]
         ),
         QueueClassification::NeedsYou(NeedsYou::TrackCountDisagrees {
             local: 11,

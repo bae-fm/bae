@@ -94,8 +94,7 @@ pub(crate) enum CandidatePaneWrite {
     Keep,
     /// The pane opens on the draft when the result this save stores asks
     /// nothing: identification applied its own pick, and the draft and its
-    /// Import are all there is left to see. Classified inside the save, so
-    /// the library it is checked against is the one the result lands in.
+    /// Import are all there is left to see.
     OpenOnDraftIfReady,
 }
 
@@ -279,11 +278,9 @@ pub(super) fn save_preparation_on(
                     "candidate {content_hash} opens on a result it stores none of"
                 ))
             })?;
-            let classification = crate::identify::classify(
-                &identification.verdict,
-                &super::super::import_list::library_statuses(sql, &identification.verdict)?,
-            );
-            if classification == crate::identify::QueueClassification::Ready {
+            if crate::identify::classify(&identification.verdict)
+                == crate::identify::QueueClassification::Ready
+            {
                 super::session_rows::present_on(
                     sql,
                     content_hash,

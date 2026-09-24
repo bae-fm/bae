@@ -462,7 +462,7 @@ pub(super) fn load_candidate_detail_on(
                     .expect("the library check covers every release the verdict names")
                     .clone()
             };
-            answer = Some(classify(&identify.verdict, statuses));
+            answer = Some(classify(&identify.verdict));
             matched = MatchedRelease::of_summary(&VerdictSummary::of(&identify.verdict));
             // The candidate's own text is what the rows are judged and ordered
             // against, live or resumed, with the numbers the person struck out
@@ -619,7 +619,7 @@ fn chosen_cover(
 /// The live library status of every release the verdict names. A release the
 /// check does not answer for is a read that must fail rather than a release
 /// silently resumed as "not in the library".
-pub(crate) fn library_statuses(
+fn library_statuses(
     sql: &impl super::super::query::QueryOne,
     verdict: &TerminalVerdict,
 ) -> Result<Vec<LibraryStatus>, DbError> {
