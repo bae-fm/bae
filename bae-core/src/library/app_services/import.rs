@@ -223,6 +223,7 @@ impl AppServices {
         let import = self.inner.import.clone();
         ImportListSubscription::start(
             query,
+            self.inner.manager.subscribe_folder_scan_progress(),
             request,
             changes,
             move || import.candidate_runtimes(),

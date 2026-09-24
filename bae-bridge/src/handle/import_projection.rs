@@ -440,19 +440,49 @@ mirror_struct! {
     fields: { candidate_key, cover_thumbnail_url },
 }
 
-mirror_struct! {
-    crate::types::BridgeImportQueueSummary = bae_core::import::ImportQueueSummary,
-    from_core: pub(super) fn,
-    fields: {
-        counts: (crate::types::BridgeTriageTabCounts),
-        watched_folders: (each crate::types::BridgeWatchedFolder),
-        folder_scan_statuses: (each crate::types::BridgeWatchedFolderScanStatus),
-        folder_scan_activity: (opt crate::types::BridgeFolderScanActivity),
-        group_keys: (each crate::types::BridgeFolderReleaseDecisionKey),
-        ready: (each crate::types::BridgeReadyRowRef),
-        identified: (each crate::types::BridgeReadyRowRef),
-        first_unidentified: (opt crate::types::BridgeFirstUnidentifiedRowRef),
-    },
+impl crate::types::BridgeImportQueueSummary {
+    /// The list's chrome and where the folder scans stand, which core reads
+    /// by two live queries and delivers side by side.
+    fn from_core(
+        summary: bae_core::import::ImportQueueSummary,
+        folder_scans: bae_core::import::FolderScanProgress,
+    ) -> Self {
+        let bae_core::import::ImportQueueSummary {
+            counts,
+            watched_folders,
+            group_keys,
+            ready,
+            identified,
+            first_unidentified,
+        } = summary;
+        let bae_core::import::FolderScanProgress { statuses, activity } = folder_scans;
+        Self {
+            counts: crate::types::BridgeTriageTabCounts::from_core(counts),
+            watched_folders: watched_folders
+                .into_iter()
+                .map(crate::types::BridgeWatchedFolder::from_core)
+                .collect(),
+            folder_scan_statuses: statuses
+                .into_iter()
+                .map(crate::types::BridgeWatchedFolderScanStatus::from_core)
+                .collect(),
+            folder_scan_activity: activity.map(crate::types::BridgeFolderScanActivity::from_core),
+            group_keys: group_keys
+                .into_iter()
+                .map(crate::types::BridgeFolderReleaseDecisionKey::from_core)
+                .collect(),
+            ready: ready
+                .into_iter()
+                .map(crate::types::BridgeReadyRowRef::from_core)
+                .collect(),
+            identified: identified
+                .into_iter()
+                .map(crate::types::BridgeReadyRowRef::from_core)
+                .collect(),
+            first_unidentified: first_unidentified
+                .map(crate::types::BridgeFirstUnidentifiedRowRef::from_core),
+        }
+    }
 }
 
 mirror_struct! {
@@ -487,16 +517,27 @@ mirror_struct! {
     },
 }
 
-mirror_struct! {
-    crate::types::BridgeImportListSnapshot = bae_core::import::ImportListSnapshot,
-    from_core: pub(super) fn,
-    fields: {
-        windows: (each crate::types::BridgeImportListWindow),
-        total_count,
-        summary: (crate::types::BridgeImportQueueSummary),
-        request_revision,
-        cause: (crate::types::BridgeLiveQueryCause),
-    },
+impl crate::types::BridgeImportListSnapshot {
+    pub(super) fn from_core(snapshot: bae_core::import::ImportListSnapshot) -> Self {
+        let bae_core::import::ImportListSnapshot {
+            windows,
+            total_count,
+            summary,
+            folder_scans,
+            request_revision,
+            cause,
+        } = snapshot;
+        Self {
+            windows: windows
+                .into_iter()
+                .map(crate::types::BridgeImportListWindow::from_core)
+                .collect(),
+            total_count,
+            summary: crate::types::BridgeImportQueueSummary::from_core(summary, folder_scans),
+            request_revision,
+            cause: crate::types::BridgeLiveQueryCause::from_core(cause),
+        }
+    }
 }
 
 impl crate::types::BridgeImportCandidateDetail {

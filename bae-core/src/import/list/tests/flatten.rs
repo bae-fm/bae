@@ -457,13 +457,12 @@ fn the_summary_filters_ready_and_keeps_the_counts_whole() {
 }
 
 #[test]
-fn the_summary_carries_the_watched_folders_and_their_scan_statuses() {
+fn the_summary_carries_the_watched_folders() {
     let rows = queue();
 
     let flat = flattened(&rows, &view(TriageTab::Pending));
 
     assert_eq!(flat.summary.watched_folders.len(), 1);
-    assert_eq!(flat.summary.folder_scan_statuses.len(), 1);
 }
 
 // ── Applied metadata provenance is the answer ──────────────────────

@@ -256,10 +256,6 @@ pub struct FirstUnidentifiedRowRef {
 pub struct ImportQueueSummary {
     pub counts: TriageTabCounts,
     pub watched_folders: Vec<WatchedFolder>,
-    pub folder_scan_statuses: Vec<WatchedFolderScanStatus>,
-    /// The current walks, already filtered and totalled for the filter-bar
-    /// activity control. Absent as soon as no root is scanning.
-    pub folder_scan_activity: Option<FolderScanActivity>,
     /// Every group header the whole queue has, across all tabs — what
     /// disclosure state is retained against.
     pub group_keys: Vec<FolderReleaseDecisionKey>,
@@ -272,6 +268,43 @@ pub struct ImportQueueSummary {
     /// The first row the identify count is still waiting on, unfiltered, plus
     /// its position when the current view contains it.
     pub first_unidentified: Option<FirstUnidentifiedRowRef>,
+}
+
+/// Where each watched folder's scan stands, for the chrome around the list.
+///
+/// Read apart from the list, and by its own live query: a scan re-confirms
+/// every folder it walks by moving its row to the scan's generation, which
+/// moves the found count and nothing the list shows. Counted inside the list's
+/// read, each of those writes cost a whole-queue read, and a rescan of a large
+/// folder kept the list reading back to back until it finished.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FolderScanProgress {
+    /// Every scanned root, in watched-folder order.
+    pub statuses: Vec<WatchedFolderScanStatus>,
+    /// The current walks, already filtered and totalled for the filter-bar
+    /// activity control. Absent as soon as no root is scanning.
+    pub activity: Option<FolderScanActivity>,
+}
+
+impl FolderScanProgress {
+    pub(crate) fn of(statuses: Vec<WatchedFolderScanStatus>) -> Self {
+        let folders: Vec<ActiveFolderScan> = statuses
+            .iter()
+            .filter_map(|folder| match folder.status {
+                super::FolderScanStatus::Scanning { found_count } => Some(ActiveFolderScan {
+                    watched_folder_path: folder.watched_folder_path.clone(),
+                    watched_folder_name: folder.watched_folder_name.clone(),
+                    found_count,
+                }),
+                super::FolderScanStatus::Complete | super::FolderScanStatus::Failed { .. } => None,
+            })
+            .collect();
+        let activity = (!folders.is_empty()).then(|| FolderScanActivity {
+            found_count: folders.iter().map(|folder| folder.found_count).sum(),
+            folders,
+        });
+        Self { statuses, activity }
+    }
 }
 
 /// Live folder-scan activity for the list chrome. Counts come from each
@@ -299,12 +332,17 @@ pub struct ImportListProjection {
 }
 
 /// A projection with the live query's own bookkeeping — which request it
-/// answers and what woke it.
+/// answers and what woke it — and where the folder scans stand.
+///
+/// A change to the scans alone delivers the last projection again beside
+/// them, with its revision and a [`coven::ReconfigurableLiveQueryCause::DatabaseChanged`]
+/// cause.
 #[derive(Debug, Clone)]
 pub struct ImportListSnapshot {
     pub windows: Vec<ImportListWindow>,
     pub total_count: u64,
     pub summary: ImportQueueSummary,
+    pub folder_scans: FolderScanProgress,
     pub request_revision: u64,
     pub cause: coven::ReconfigurableLiveQueryCause,
 }

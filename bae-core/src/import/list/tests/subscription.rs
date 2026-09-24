@@ -38,6 +38,7 @@ async fn subscription() -> (
     let (_outbox_tx, outbox) = tokio::sync::watch::channel(None);
     let subscription = ImportListSubscription::start(
         query,
+        database.subscribe_folder_scan_progress(),
         request,
         changes,
         HashMap::new,

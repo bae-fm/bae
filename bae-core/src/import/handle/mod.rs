@@ -577,8 +577,8 @@ impl ImportServiceHandle {
     pub async fn wait_for_list(
         &self,
         view: crate::import::ImportListView,
-        mut accept: impl FnMut(&crate::import::ImportListProjection) -> bool,
-    ) -> crate::import::ImportListProjection {
+        mut accept: impl FnMut(&crate::import::ImportListSnapshot) -> bool,
+    ) -> crate::import::ImportListSnapshot {
         let (initial_runtime, changes) = self.subscribe_candidate_runtime();
         let request = crate::import::ImportListRequest {
             view,
@@ -594,6 +594,7 @@ impl ImportServiceHandle {
         let runtime = self.runtime.clone();
         let subscription = crate::import::ImportListSubscription::start(
             query,
+            self.library_manager.subscribe_folder_scan_progress(),
             request,
             changes,
             move || runtime.all(),
@@ -605,13 +606,8 @@ impl ImportServiceHandle {
                 .next()
                 .await
                 .expect("the import list query stays open");
-            let projection = crate::import::ImportListProjection {
-                windows: snapshot.windows,
-                total_count: snapshot.total_count,
-                summary: snapshot.summary,
-            };
-            if accept(&projection) {
-                return projection;
+            if accept(&snapshot) {
+                return snapshot;
             }
         }
     }

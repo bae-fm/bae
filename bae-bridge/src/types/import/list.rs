@@ -87,8 +87,9 @@ pub struct BridgeImportCandidateListLocation {
     pub visible_position: u64,
 }
 
-/// Everything the chrome around the list shows, computed in the same pass as
-/// the items so none of it can drift from them.
+/// Everything the chrome around the list shows. All but the folder scans is
+/// computed in the same pass as the items, so none of it can drift from them;
+/// the scans are read on their own, since a scan's progress moves no row.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportQueueSummary {
     /// `skipped` counts the Skipped rows **plus** the invalid folders.

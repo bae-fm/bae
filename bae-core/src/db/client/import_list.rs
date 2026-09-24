@@ -25,9 +25,7 @@ use crate::import::list::{
     ImportListWindow,
 };
 use crate::import::watched_folder::WatchedFolder;
-use crate::import::{
-    FolderScanStatus, ImportedRelease, MetadataProvenance, WatchedFolderScanStatus,
-};
+use crate::import::{ImportedRelease, MetadataProvenance};
 use folder_scans::columns::{invalid_reason_of, to_u32, to_u64, unreadable};
 
 /// What the scan made of one folder.
@@ -106,7 +104,6 @@ pub struct CandidateStateListRow {
 pub struct ImportQueueRows {
     /// The watched roots in their stored order — the list's outer ordering.
     pub watched_folders: Vec<WatchedFolder>,
-    pub folder_scan_statuses: Vec<WatchedFolderScanStatus>,
     pub candidates: Vec<ScanCandidateListRow>,
     /// `(watched_folder_path, relative_candidate_path)` of every skipped row.
     pub skipped: HashSet<(String, String)>,
@@ -145,7 +142,6 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         .map(WatchedFolder::from_path)
         .collect();
 
-    let folder_scan_statuses = scan_statuses(sql, &watched_folders)?;
     let candidates = candidate_rows(sql)?;
 
     let skipped: HashSet<(String, String)> = sql
@@ -229,7 +225,6 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
 
     Ok(ImportQueueRows {
         watched_folders,
-        folder_scan_statuses,
         candidates,
         skipped,
         imported,
@@ -239,73 +234,6 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         lead_statuses,
         separated_folders,
     })
-}
-
-fn scan_statuses(
-    sql: &SqlReadContext<'_>,
-    watched_folders: &[WatchedFolder],
-) -> Result<Vec<WatchedFolderScanStatus>, DbError> {
-    let order: HashMap<&str, usize> = watched_folders
-        .iter()
-        .enumerate()
-        .map(|(index, folder)| (folder.path.as_str(), index))
-        .collect();
-    let mut statuses = Vec::new();
-    for (watched_folder_path, status, error, found_count) in sql.query(
-        "SELECT roots.watched_folder_path, roots.status, roots.error, COUNT(candidate.path) \
-         FROM folder_scan_roots AS roots \
-         LEFT JOIN scan_candidate AS candidate \
-           ON candidate.watched_folder_path = roots.watched_folder_path \
-          AND candidate.generation = roots.generation AND candidate.source_kind = 'folder' \
-         GROUP BY roots.watched_folder_path, roots.status, roots.error",
-        [],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, i64>(3)?,
-            ))
-        },
-    )? {
-        let watched_folder = watched_folders
-            .iter()
-            .find(|folder| folder.path == watched_folder_path)
-            .ok_or_else(|| {
-                DbError::Message(format!(
-                    "folder scan root {watched_folder_path} is not a watched folder"
-                ))
-            })?;
-        let status = match (status.as_str(), error) {
-            ("scanning", None) => FolderScanStatus::Scanning {
-                found_count: to_u64(found_count, "current folder-scan candidate count")?,
-            },
-            ("complete", None) => FolderScanStatus::Complete,
-            ("failed", Some(error)) => FolderScanStatus::Failed { error },
-            (status, error) => {
-                return Err(DbError::Message(format!(
-                    "folder scan root {watched_folder_path} has invalid status {status:?} \
-                     and error {error:?}"
-                )))
-            }
-        };
-        let on_network_volume =
-            crate::import::volume::volume_kind(std::path::Path::new(&watched_folder_path))
-                == crate::import::volume::VolumeKind::Network;
-        statuses.push(WatchedFolderScanStatus {
-            watched_folder_path,
-            watched_folder_name: watched_folder.name.clone(),
-            status,
-            on_network_volume,
-        });
-    }
-    statuses.sort_by(|left, right| {
-        order
-            .get(left.watched_folder_path.as_str())
-            .cmp(&order.get(right.watched_folder_path.as_str()))
-            .then_with(|| left.watched_folder_path.cmp(&right.watched_folder_path))
-    });
-    Ok(statuses)
 }
 
 fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>, DbError> {

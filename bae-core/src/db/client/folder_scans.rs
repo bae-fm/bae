@@ -11,6 +11,7 @@
 
 pub(super) mod columns;
 mod dates;
+mod progress;
 pub(super) mod read;
 pub(super) mod write;
 

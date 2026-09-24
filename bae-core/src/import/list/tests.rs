@@ -11,7 +11,7 @@ use crate::import::folder_scanner::InvalidReason;
 use crate::import::search::SourceTracks;
 use crate::import::types::Catalog;
 use crate::import::watched_folder::host_root;
-use crate::import::{FolderScanStatus, ImportedRelease};
+use crate::import::ImportedRelease;
 use crate::import::{IdentificationStatus, TriageImportStatus, TriagePlacement};
 
 mod actions;
@@ -33,12 +33,6 @@ fn queue() -> ImportQueueRows {
         watched_folders: vec![WatchedFolder {
             path: root(),
             name: "music".to_string(),
-        }],
-        folder_scan_statuses: vec![WatchedFolderScanStatus {
-            watched_folder_path: root(),
-            watched_folder_name: "music".to_string(),
-            status: FolderScanStatus::Complete,
-            on_network_volume: false,
         }],
         ..ImportQueueRows::default()
     }

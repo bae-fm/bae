@@ -8,7 +8,7 @@
 //! the items inside the requested windows and nowhere else.
 
 use super::{
-    ActiveFolderScan, FirstUnidentifiedRowRef, FolderScanActivity, GroupHeaderRow,
+    FirstUnidentifiedRowRef, GroupHeaderRow,
     ImportCandidateListLocation, ImportListItem, ImportListOrder, ImportListRequest,
     ImportListView, ImportQueueSummary, PlacedRow, ReadyRowRef, UploadStanding,
 };
@@ -598,28 +598,9 @@ fn summarise(
             ready.push(reference);
         }
     }
-    let active_scans: Vec<ActiveFolderScan> = rows
-        .folder_scan_statuses
-        .iter()
-        .filter_map(|folder| match folder.status {
-            crate::import::FolderScanStatus::Scanning { found_count } => Some(ActiveFolderScan {
-                watched_folder_path: folder.watched_folder_path.clone(),
-                watched_folder_name: folder.watched_folder_name.clone(),
-                found_count,
-            }),
-            crate::import::FolderScanStatus::Complete
-            | crate::import::FolderScanStatus::Failed { .. } => None,
-        })
-        .collect();
-    let folder_scan_activity = (!active_scans.is_empty()).then(|| FolderScanActivity {
-        found_count: active_scans.iter().map(|folder| folder.found_count).sum(),
-        folders: active_scans,
-    });
     ImportQueueSummary {
         counts,
         watched_folders: rows.watched_folders.clone(),
-        folder_scan_statuses: rows.folder_scan_statuses.clone(),
-        folder_scan_activity,
         group_keys,
         ready,
         identified,

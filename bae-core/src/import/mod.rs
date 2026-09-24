@@ -186,7 +186,8 @@ desktop_only! {
         ImportEventBus, ImportServiceHandle, ScanEvent,
     };
     pub use list::{
-        ActiveFolderScan, FirstUnidentifiedRowRef, FolderScanActivity, ImportCandidateDetail,
+        ActiveFolderScan, FirstUnidentifiedRowRef, FolderScanActivity, FolderScanProgress,
+        ImportCandidateDetail,
         ImportCandidateDetailProjection, ImportCandidateListLocation, ImportListItem,
         ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
         ImportListSubscription, ImportListSubscriptionError, ImportListView, ImportListWindow,
