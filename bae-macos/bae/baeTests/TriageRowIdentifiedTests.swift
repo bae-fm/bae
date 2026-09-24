@@ -70,7 +70,7 @@ struct TriageRowIdentifiedTests {
     @Test(
         "a row draws no badge for what its result asks",
         arguments: [
-            BridgeNeedsYou.alreadyInLibrary, .foundByTitle,
+            BridgeNeedsYou.alreadyInLibrary,
             .severalMatches(count: 2), .noMatch, .nothingToLookUp,
             .lookupFailed, .trackCountDisagrees(local: 13, source: 12),
             .sourceTracksUnknown,
@@ -91,7 +91,7 @@ struct TriageRowIdentifiedTests {
     @Test(
         "every question resolves to its own sentence",
         arguments: [
-            BridgeNeedsYou.alreadyInLibrary, .foundByTitle,
+            BridgeNeedsYou.alreadyInLibrary,
             .severalMatches(count: 2), .noMatch, .nothingToLookUp,
             .lookupFailed, .trackCountDisagrees(local: 13, source: 12),
             .sourceTracksUnknown,

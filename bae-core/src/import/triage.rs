@@ -125,7 +125,6 @@ pub fn ready_check(placement: &TriagePlacement) -> Option<NeedsYou> {
             Some(reason.clone())
         }
         NeedsYou::AlreadyInLibrary
-        | NeedsYou::FoundByTitle
         | NeedsYou::SeveralMatches { .. }
         | NeedsYou::NoMatch
         | NeedsYou::NothingToLookUp

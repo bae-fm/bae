@@ -256,7 +256,6 @@ fn produced_keys() -> Vec<String> {
     // bridge_needs_you_key — every variant carries a key.
     for needs_you in [
         BridgeNeedsYou::AlreadyInLibrary,
-        BridgeNeedsYou::FoundByTitle,
         BridgeNeedsYou::SeveralMatches { count: 0 },
         BridgeNeedsYou::NoMatch,
         BridgeNeedsYou::NothingToLookUp,

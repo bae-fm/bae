@@ -343,7 +343,7 @@ internal sealed partial class ImportSectionView
             RowArtist(row),
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.AlreadyInLibrary } =>
             RowArtist(row),
-        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.SeveralMatches or BridgeNeedsYou.FoundByTitle } =>
+        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.SeveralMatches } =>
             RowArtist(row),
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.LookupFailed } =>
             null,
@@ -490,7 +490,7 @@ internal sealed partial class ImportSectionView
     {
         return reason switch
         {
-            BridgeNeedsYou.SeveralMatches or BridgeNeedsYou.FoundByTitle =>
+            BridgeNeedsYou.SeveralMatches =>
                 Chip(BridgeDisplay.LocalizedLine(reason), "BaeWarningBrush"),
             BridgeNeedsYou.AlreadyInLibrary =>
                 Chip(BridgeDisplay.LocalizedLine(reason), "BaeInfoBrush"),

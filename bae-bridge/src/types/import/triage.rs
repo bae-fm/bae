@@ -276,7 +276,6 @@ pub enum BridgeIdentificationStatus {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeNeedsYou {
     AlreadyInLibrary,
-    FoundByTitle,
     SeveralMatches { count: u32 },
     NoMatch,
     NothingToLookUp,
@@ -289,7 +288,6 @@ impl BridgeNeedsYou {
     pub(crate) fn loc_key(&self) -> &'static str {
         match self {
             Self::AlreadyInLibrary => "core.import.triage.already_in_library",
-            Self::FoundByTitle => "core.import.triage.found_by_title",
             Self::SeveralMatches { .. } => "core.import.triage.several_matches",
             Self::NoMatch => "core.import.triage.no_match",
             Self::NothingToLookUp => "core.import.triage.nothing_to_look_up",

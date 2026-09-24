@@ -584,9 +584,8 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
 /// providers for the candidate's own album title, and what comes back is the
 /// verdict.
 ///
-/// A name also names every reissue filed under it, so even a lone row found
-/// this way is offered rather than settled: its documents are not fetched and
-/// the draft is left as the folder's own.
+/// A lone row found this way is applied like any single match: its documents
+/// are fetched and identification writes its draft from them.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_no_identifier_names_is_found_by_its_title() {
     let fixture = Fixture::new("found-by-title").await;
@@ -649,7 +648,19 @@ async fn a_release_no_identifier_names_is_found_by_its_title() {
     );
     assert_eq!(
         fixture.provider.count_containing("/release/mb-by-title?"),
-        0,
-        "a row the title search found is not settled into the draft"
+        1,
+        "the lone row's documents are fetched to settle it"
+    );
+    let pane = fixture.pane(&dir).await.expect("the candidate reads back");
+    assert_eq!(
+        pane.metadata_author,
+        crate::import::MetadataAuthor::Identification,
+        "identification wrote the draft from the lone row"
+    );
+    assert_eq!(
+        pane.release
+            .expect("the settled row is the candidate's release")
+            .release_id,
+        "mb-by-title"
     );
 }

@@ -94,10 +94,10 @@ fn one_verified_match_not_in_the_library_is_ready() {
     );
 }
 
-/// A lone match the title search found is offered, not admitted, however well
-/// its tracklist agrees: a name also names every reissue filed under it.
+/// A lone match the title search found is admitted like any other: the
+/// tracklist check is what guards it.
 #[test]
-fn a_lone_match_found_by_title_is_the_persons_to_confirm() {
+fn a_lone_match_found_by_title_is_ready() {
     let mut verdict = found(vec![result("mb-1", listing(11))], 11);
     let TerminalVerdict::Found { provenance, .. } = &mut verdict else {
         unreachable!("the fixture is a found verdict");
@@ -110,7 +110,7 @@ fn a_lone_match_found_by_title_is_the_persons_to_confirm() {
     };
     assert_eq!(
         classify(&verdict, &[status("mb-1", false, false)]),
-        QueueClassification::NeedsYou(NeedsYou::FoundByTitle)
+        QueueClassification::Ready
     );
 }
 

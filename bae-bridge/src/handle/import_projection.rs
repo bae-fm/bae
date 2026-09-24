@@ -299,7 +299,6 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         AlreadyInLibrary,
-        FoundByTitle,
         SeveralMatches { count },
         NoMatch,
         NothingToLookUp,
