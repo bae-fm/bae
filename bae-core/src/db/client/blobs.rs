@@ -248,24 +248,35 @@ impl Database {
     /// Missing context is an invalid queue snapshot and is surfaced to the
     /// subscriber.
     pub async fn outbox_queue(&self) -> Result<DbOutboxQueue, DbError> {
+        let (snapshot, _, names) = self.outbox_queue_parts().await?;
+        Self::outbox_queue_from_context(snapshot, names)
+    }
+
+    /// coven's durable queue as read now, the display request it needs, and
+    /// the display names that request reads — the parts
+    /// [`outbox_queue_from_context`](Self::outbox_queue_from_context) joins.
+    pub(crate) async fn outbox_queue_parts(
+        &self,
+    ) -> Result<
+        (
+            coven::CloudOutboxSnapshot,
+            OutboxDisplayRequest,
+            OutboxDisplayContext,
+        ),
+        DbError,
+    > {
         let snapshot = self.inner.handle.cloud_outbox_snapshot().await?;
-        self.outbox_queue_from(snapshot).await
+        let request = Self::outbox_display_request(&snapshot)?;
+        let names = self.outbox_display_context(request.clone()).await?;
+        Ok((snapshot, request, names))
     }
 
     /// Subscribe to coven's durable uploads and make-Remote intents as one
-    /// committed stream. Display context is joined by
-    /// [`outbox_queue_from`](Self::outbox_queue_from) after each value arrives.
+    /// committed stream. Each value is labelled by the display rows
+    /// [`subscribe_outbox_display`](Self::subscribe_outbox_display) follows and
+    /// joined by [`outbox_queue_from_context`](Self::outbox_queue_from_context).
     pub fn subscribe_cloud_outbox(&self) -> coven::CloudOutboxLiveQuery {
         self.inner.handle.subscribe_cloud_outbox()
-    }
-
-    pub async fn outbox_queue_from(
-        &self,
-        snapshot: coven::CloudOutboxSnapshot,
-    ) -> Result<DbOutboxQueue, DbError> {
-        let request = Self::outbox_display_request(&snapshot)?;
-        let context = self.outbox_display_context(request).await?;
-        Self::outbox_queue_from_context(snapshot, context)
     }
 
     /// Identify the bae rows that label an exact durable outbox snapshot.

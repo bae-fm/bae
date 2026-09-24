@@ -1,7 +1,6 @@
 mod client;
 pub mod identity;
 mod models;
-pub(crate) use client::QueueCatalogProjection;
 pub use client::{
     AlbumBrowseProjection, AlbumDetailProjection, AlbumPageProjection, ArtistDetailProjection,
     ArtistPageProjection, ComposerBrowseProjection, ComposerDetailProjection,
@@ -19,4 +18,5 @@ pub(crate) use client::{
     CandidateSaved, CandidateScanExpectation, ImportRows, ScannedCandidateKey,
 };
 pub use client::{Database, DeleteCleanupPlan, ImportReplacementDelete, ImportReplacementOutcome};
+pub(crate) use client::{OutboxDisplayContext, OutboxDisplayRequest, QueueCatalogProjection};
 pub use models::*;

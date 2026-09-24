@@ -845,15 +845,10 @@ pub struct LibraryManager {
     /// and writes to a user directory. Desktop-only: see the `output` module.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     outputs: crate::library::Outputs,
-    /// The upload observer coven reports blob transitions to. coven holds only a
-    /// `Weak` to it (through `WeakUploadObserver`), so this strong `Arc` is its
-    /// sole owner and its lifetime is the manager's. Its event sender feeds a task
-    /// that owns a `SyncController`; dropping the last manager clone drops this
-    /// sender, ends that task, and releases its database clone and store-open lock.
-    /// Registering the observer strongly in coven would close that cycle. Held for
-    /// its lifetime and read only by named test operations, so it carries the
-    /// leading underscore.
-    _upload_observer: Arc<crate::sync::upload_observer::ReleaseUploadObserver>,
+    /// The upload observer coven reports blob transitions to, for tests that
+    /// drive its callbacks by hand.
+    #[cfg(test)]
+    upload_observer: Arc<crate::sync::upload_observer::ReleaseUploadObserver>,
     /// Session cache of provider image responses, keyed by URL. Candidate
     /// preparation and library images own their bytes independently.
     remote_images: crate::import::cover_art::RemoteImageCache,

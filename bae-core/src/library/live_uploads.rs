@@ -30,16 +30,33 @@ pub(crate) struct LiveUploads {
     /// provider futures wait on this through the observer, so suspending them
     /// touches neither the durable queue nor their open upload sessions.
     paused: tokio::sync::watch::Sender<bool>,
+    /// Marked on every change a callback or the pause makes. The sync
+    /// controller's outbox projection waits on it and republishes from the
+    /// durable queue it already holds; a burst of changes before it runs is
+    /// one republish.
+    changed: tokio::sync::watch::Sender<()>,
 }
 
 impl LiveUploads {
     pub(crate) fn new() -> Self {
         let (paused, _) = tokio::sync::watch::channel(false);
+        let (changed, _) = tokio::sync::watch::channel(());
         Self {
             transient: Arc::new(Mutex::new(HashMap::new())),
             throughput: Arc::new(UploadThroughput::new()),
             paused,
+            changed,
         }
+    }
+
+    /// Wakes on each change to this live state, coalescing a burst into one
+    /// wake.
+    pub(crate) fn subscribe_changes(&self) -> tokio::sync::watch::Receiver<()> {
+        self.changed.subscribe()
+    }
+
+    fn mark_changed(&self) {
+        self.changed.send_replace(());
     }
 
     /// coven began consuming this blob's plaintext into its durable spool.
@@ -63,6 +80,7 @@ impl LiveUploads {
             }
         }
         self.throughput.begin_preparation(blob_key);
+        self.mark_changed();
     }
 
     /// Advance the blob's preparation bytes and feed the tracker only what is
@@ -115,6 +133,7 @@ impl LiveUploads {
         if delta > 0 {
             self.throughput.record_preparation(&blob_key, delta);
         }
+        self.mark_changed();
     }
 
     /// coven began sending this blob's prepared payload to the provider. A
@@ -144,6 +163,7 @@ impl LiveUploads {
             }
         }
         self.throughput.begin_upload(blob_key);
+        self.mark_changed();
     }
 
     /// Advance the blob's provider bytes and feed the tracker only what is new
@@ -203,6 +223,7 @@ impl LiveUploads {
         if delta > 0 {
             self.throughput.record_upload(&blob_key, delta);
         }
+        self.mark_changed();
     }
 
     /// coven committed this row journal as Created before reporting completion,
@@ -227,6 +248,7 @@ impl LiveUploads {
             ),
         }
         self.throughput.end(&blob_key);
+        self.mark_changed();
     }
 
     /// The attempt failed. coven's drain records the attempt count and the error
@@ -238,6 +260,7 @@ impl LiveUploads {
         if removed.is_some() {
             self.throughput.end(&blob_key);
         }
+        self.mark_changed();
     }
 
     /// Whether the person has paused the pipeline. The snapshot reports it and
@@ -248,6 +271,7 @@ impl LiveUploads {
 
     pub(crate) fn set_paused(&self, paused: bool) {
         self.paused.send_replace(paused);
+        self.mark_changed();
     }
 
     pub(crate) async fn wait_until_paused(&self) {

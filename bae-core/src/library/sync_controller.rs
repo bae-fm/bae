@@ -10,12 +10,13 @@
 //! cloud-home change) stays on the manager, which calls the controller for the
 //! sync part and does the re-emit itself.
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use crate::config::{CloudProvider, ConfigHandle};
-use crate::db::Database;
+use crate::db::{Database, DbOutboxQueue, OutboxDisplayContext, OutboxDisplayRequest};
 use crate::diagnostics::{Diagnostics, TelemetryEvent};
 use crate::library::live_uploads::LiveUploads;
 use crate::library::{LibraryError, OutboxSnapshot};
@@ -31,11 +32,14 @@ use coven::ExactCloudHome;
 pub(crate) struct SyncController {
     config_handle: Arc<ConfigHandle>,
     outbox_values: tokio::sync::watch::Sender<Option<Result<OutboxSnapshot, String>>>,
-    /// Serializes every durable/transient projection and numbers publications
-    /// in the order they reach subscribers. Each projection rereads the current
-    /// durable queue while holding this lock, so a delayed trigger cannot
-    /// overwrite a newer value with an older queue snapshot.
-    outbox_projection_revision: Arc<tokio::sync::Mutex<u64>>,
+    /// Serializes every outbox publication and numbers them in the order they
+    /// reach subscribers, and holds the durable queue each one is built from.
+    outbox: Arc<tokio::sync::Mutex<OutboxProjection>>,
+    /// How many times the projection has read coven's durable queue itself
+    /// rather than taking the live query's delivery. The durable reader notes
+    /// this count before each wait, so a delivery that a read may have
+    /// overtaken is recognised and not published over it.
+    outbox_reads: Arc<AtomicU64>,
     database: Database,
     /// In-flight bytes, rate, and pause state of the upload pipeline, shared
     /// with the sync loop's `ReleaseUploadObserver`, which writes them. This
@@ -45,6 +49,39 @@ pub(crate) struct SyncController {
     /// Typed telemetry sink, shared with the owning manager. The
     /// provider-connect/disconnect completions emit through it.
     diagnostics: Diagnostics,
+}
+
+/// What the outbox stream is built from, under the one lock that numbers its
+/// values.
+#[derive(Default)]
+pub(crate) struct OutboxProjection {
+    revision: u64,
+    /// The newest durable queue coven delivered or was read for, with the
+    /// display rows it needs labelled.
+    durable: Option<(coven::CloudOutboxSnapshot, OutboxDisplayRequest)>,
+    /// The display query's latest answer and the request it answered.
+    names: Option<(OutboxDisplayRequest, OutboxDisplayContext)>,
+    /// The newest durable queue joined to its display names — what a live
+    /// upload change is republished over.
+    queue: Option<DbOutboxQueue>,
+    /// Points the display query at the rows the held durable queue needs;
+    /// present once the outbox subscription runs.
+    display_requests: Option<coven::LiveQueryRequests<OutboxDisplayRequest>>,
+}
+
+impl OutboxProjection {
+    fn hold_durable(
+        &mut self,
+        snapshot: coven::CloudOutboxSnapshot,
+        request: OutboxDisplayRequest,
+    ) {
+        if let Some(requests) = &self.display_requests {
+            requests
+                .set(request.clone())
+                .expect("the outbox display subscription is retained");
+        }
+        self.durable = Some((snapshot, request));
+    }
 }
 
 impl SyncController {
@@ -59,7 +96,8 @@ impl SyncController {
         Self {
             config_handle,
             outbox_values,
-            outbox_projection_revision: Arc::new(tokio::sync::Mutex::new(0)),
+            outbox: Arc::new(tokio::sync::Mutex::new(OutboxProjection::default())),
+            outbox_reads: Arc::new(AtomicU64::new(0)),
             database,
             uploads,
             cloudkit_ops,
@@ -86,13 +124,14 @@ impl SyncController {
     /// the outbox; coven suspends active preparation/provider futures and keeps
     /// their open upload sessions for resume.
     pub(crate) async fn set_sync_paused(&self, paused: bool) {
+        // The outbox projection sees the pause through the live upload state
+        // and republishes.
         self.uploads.set_paused(paused);
         if !paused {
             // Kick the loop so the queue starts draining immediately on resume
             // rather than waiting for the next idle tick.
             self.database.sync_now();
         }
-        self.emit_outbox_changed().await;
     }
 
     /// Current paused state of the upload pipeline. The snapshot builder
@@ -109,27 +148,13 @@ impl SyncController {
         self.outbox_values.subscribe()
     }
 
-    /// Build and publish the current outbox snapshot. Called by durable outbox
-    /// and display-row subscriptions and by each upload lifecycle callback.
+    /// Read coven's durable queue now and publish the snapshot built from it.
+    /// A command that changed the queue calls this so the value it hands back
+    /// a revision for already shows its change; the live query's delivery of
+    /// the same change follows.
     pub(crate) async fn emit_outbox_changed(&self) -> u64 {
-        let mut revision = self.outbox_projection_revision.lock().await;
-        *revision = revision
-            .checked_add(1)
-            .expect("outbox projection revision overflow");
-        let published_revision = *revision;
-        let value = self
-            .build_outbox_snapshot()
-            .await
-            .map(|mut snapshot| {
-                snapshot.revision = published_revision;
-                snapshot
-            })
-            .map_err(|error| error.to_string());
-        if let Err(error) = &value {
-            warn!("Failed to build outbox snapshot: {error}");
-        }
-        self.outbox_values.send_replace(Some(value));
-        published_revision
+        let mut projection = self.outbox.lock().await;
+        self.read_and_publish(&mut projection).await
     }
 
     /// The current outbox processing snapshot — queue depth, per-item state, and
@@ -137,63 +162,217 @@ impl SyncController {
     pub(crate) async fn outbox_snapshot(
         &self,
     ) -> Result<crate::library::OutboxSnapshot, LibraryError> {
-        let revision = self.outbox_projection_revision.lock().await;
-        let mut snapshot = self.build_outbox_snapshot().await?;
-        snapshot.revision = *revision;
+        let projection = self.outbox.lock().await;
+        let queue = self.database.outbox_queue().await?;
+        let mut snapshot = self.uploads.outbox_snapshot(queue);
+        snapshot.revision = projection.revision;
         Ok(snapshot)
     }
 
-    async fn build_outbox_snapshot(&self) -> Result<OutboxSnapshot, coven::DbError> {
-        let queue = self.database.outbox_queue().await?;
-        Ok(self.uploads.outbox_snapshot(queue))
+    #[cfg(test)]
+    pub(crate) async fn hold_outbox_projection_for_test(
+        &self,
+    ) -> tokio::sync::OwnedMutexGuard<OutboxProjection> {
+        self.outbox.clone().lock_owned().await
     }
 
-    pub(super) async fn process_upload_observer_event(&self) {
-        self.emit_outbox_changed().await;
-    }
-
+    /// Keep the outbox stream current: coven's durable queue as its live query
+    /// delivers it, the display rows that label that queue, and every change
+    /// to the live upload state. Each value is built from what was delivered
+    /// and what the live state holds; the database is read again only where a
+    /// delivery cannot be trusted to be the newest.
     pub(super) async fn run_cloud_outbox_subscription(
         &self,
         mut subscription: coven::CloudOutboxLiveQuery,
     ) {
         let mut display = self.database.subscribe_outbox_display(Default::default());
-        let display_requests = display.requests();
-        loop {
-            tokio::select! {
-                durable = subscription.next() => match durable {
-                    Ok(snapshot) => {
-                        match Database::outbox_display_request(&snapshot) {
-                            Ok(request) => {
-                                display_requests
-                                    .set(request)
-                                    .expect("the outbox display subscription is retained");
-                                self.emit_outbox_changed().await;
-                            }
-                            Err(error) => {
-                                warn!(%error, "Failed to identify durable outbox display rows");
-                                self.outbox_values
-                                    .send_replace(Some(Err(error.to_string())));
-                            }
-                        }
+        self.outbox.lock().await.display_requests = Some(display.requests());
+        let mut live = self.uploads.subscribe_changes();
+        let (durable_tx, mut durable_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (names_tx, mut names_rx) = tokio::sync::mpsc::unbounded_channel();
+        let outbox_reads = self.outbox_reads.clone();
+        // Neither live query can sit in the `select!` below: dropping
+        // `CloudOutboxLiveQuery::next` mid-read loses the change it was woken
+        // for, and dropping `ReconfigurableLiveQuery::next` mid-read throws the
+        // read away and starts it over, so upload ticks arriving faster than
+        // one read would keep the display names from ever landing. Each query
+        // runs in a loop of its own that nothing races and hands its results
+        // over a channel, whose receive loses nothing when it is dropped.
+        let read_durable = async move {
+            loop {
+                let reads_before = outbox_reads.load(Ordering::Acquire);
+                let delivered = subscription.next().await;
+                if durable_tx.send((reads_before, delivered)).is_err() {
+                    return;
+                }
+            }
+        };
+        let read_names = async move {
+            loop {
+                let event = display.next().await;
+                let request = event.request().clone();
+                if names_tx.send((request, event.into_result())).is_err() {
+                    return;
+                }
+            }
+        };
+        let project = async {
+            loop {
+                tokio::select! {
+                    Some((reads_before, delivered)) = durable_rx.recv() => {
+                        self.durable_delivered(reads_before, delivered).await;
                     }
-                    Err(error) => {
-                        warn!(%error, "Failed to read the durable cloud outbox");
-                        self.outbox_values
-                            .send_replace(Some(Err(error.to_string())));
+                    Some((request, names)) = names_rx.recv() => {
+                        self.names_answered(request, names).await;
                     }
-                },
-                event = display.next() => match event.into_result() {
-                    Ok(_) => {
-                        self.emit_outbox_changed().await;
+                    changed = live.changed() => {
+                        changed.expect("the sync controller retains the live upload state");
+                        self.publish_live().await;
                     }
-                    Err(error) => {
-                        warn!(%error, "Failed to read durable outbox display rows");
-                        self.outbox_values
-                            .send_replace(Some(Err(error.to_string())));
-                    }
-                },
+                }
+            }
+        };
+        tokio::join!(read_durable, read_names, project);
+    }
+
+    async fn durable_delivered(
+        &self,
+        reads_before: u64,
+        delivered: Result<coven::CloudOutboxSnapshot, coven::DbError>,
+    ) {
+        let mut projection = self.outbox.lock().await;
+        let snapshot = match delivered {
+            Ok(snapshot) => snapshot,
+            Err(error) => {
+                warn!(%error, "Failed to read the durable cloud outbox");
+                self.publish(&mut projection, Err(error.to_string()));
+                return;
+            }
+        };
+        // A read of its own since the reader started waiting may have seen a
+        // newer queue than this delivery; reading again settles which is
+        // newest.
+        if self.outbox_reads.load(Ordering::Acquire) != reads_before {
+            debug!("an outbox read overtook this delivery; reading the durable queue again");
+            self.read_and_publish(&mut projection).await;
+            return;
+        }
+        match Database::outbox_display_request(&snapshot) {
+            Ok(request) => {
+                projection.hold_durable(snapshot, request);
+                self.publish_if_labelled(&mut projection);
+            }
+            Err(error) => {
+                warn!(%error, "Failed to identify durable outbox display rows");
+                self.publish(&mut projection, Err(error.to_string()));
             }
         }
+    }
+
+    async fn names_answered(
+        &self,
+        request: OutboxDisplayRequest,
+        names: coven::CovenResult<OutboxDisplayContext>,
+    ) {
+        let mut projection = self.outbox.lock().await;
+        match names {
+            Ok(names) => {
+                projection.names = Some((request, names));
+                self.publish_if_labelled(&mut projection);
+            }
+            Err(error) => {
+                warn!(%error, "Failed to read durable outbox display rows");
+                self.publish(&mut projection, Err(error.to_string()));
+            }
+        }
+    }
+
+    /// Republish after the live upload state changed, over the durable queue
+    /// already held.
+    async fn publish_live(&self) {
+        let mut projection = self.outbox.lock().await;
+        match projection.queue.clone() {
+            Some(queue) => {
+                let snapshot = self.uploads.outbox_snapshot(queue);
+                self.publish(&mut projection, Ok(snapshot));
+            }
+            None => {
+                debug!("no durable outbox delivered yet; reading it for a live upload change");
+                self.read_and_publish(&mut projection).await;
+            }
+        }
+    }
+
+    /// Join the held durable snapshot to its display names and publish, once
+    /// the display query has answered for the request that snapshot needs.
+    fn publish_if_labelled(&self, projection: &mut OutboxProjection) {
+        let (Some((snapshot, request)), Some((named, names))) =
+            (&projection.durable, &projection.names)
+        else {
+            return;
+        };
+        if request != named {
+            debug!("durable outbox waits for the display rows of its new request");
+            return;
+        }
+        match Database::outbox_queue_from_context(snapshot.clone(), names.clone()) {
+            Ok(queue) => {
+                projection.queue = Some(queue.clone());
+                let snapshot = self.uploads.outbox_snapshot(queue);
+                self.publish(projection, Ok(snapshot));
+            }
+            Err(error) => {
+                warn!(%error, "Failed to label the durable cloud outbox");
+                self.publish(projection, Err(error.to_string()));
+            }
+        }
+    }
+
+    /// Read coven's durable queue and its display names directly, hold them,
+    /// and publish. Counted in `outbox_reads` once the read is done, so any
+    /// delivery whose wait began before it is recognised as possibly older.
+    async fn read_and_publish(&self, projection: &mut OutboxProjection) -> u64 {
+        let read = self.database.outbox_queue_parts().await;
+        self.outbox_reads.fetch_add(1, Ordering::AcqRel);
+        match read {
+            Ok((snapshot, request, names)) => {
+                projection.hold_durable(snapshot.clone(), request);
+                match Database::outbox_queue_from_context(snapshot, names) {
+                    Ok(queue) => {
+                        projection.queue = Some(queue.clone());
+                        let snapshot = self.uploads.outbox_snapshot(queue);
+                        self.publish(projection, Ok(snapshot))
+                    }
+                    Err(error) => {
+                        warn!(%error, "Failed to label the durable cloud outbox");
+                        self.publish(projection, Err(error.to_string()))
+                    }
+                }
+            }
+            Err(error) => {
+                warn!(%error, "Failed to read the durable cloud outbox");
+                self.publish(projection, Err(error.to_string()))
+            }
+        }
+    }
+
+    /// Number and send one outbox value.
+    fn publish(
+        &self,
+        projection: &mut OutboxProjection,
+        value: Result<OutboxSnapshot, String>,
+    ) -> u64 {
+        projection.revision = projection
+            .revision
+            .checked_add(1)
+            .expect("outbox projection revision overflow");
+        let revision = projection.revision;
+        let value = value.map(|mut snapshot| {
+            snapshot.revision = revision;
+            snapshot
+        });
+        self.outbox_values.send_replace(Some(value));
+        revision
     }
 
     /// The library's membership: its devices (with this device flagged, each

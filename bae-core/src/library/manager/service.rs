@@ -7,24 +7,20 @@ async fn report_background_task_exit(task_name: &'static str, task: tokio::task:
 }
 
 /// The live upload observer both constructors build before assembling the
-/// manager: the upload list coven's blob transitions are reported into, the
-/// observer that reports them, and the event stream its callbacks drive.
+/// manager: the upload list coven's blob transitions are reported into and the
+/// observer that reports them.
 struct UploadObserver {
     uploads: crate::library::live_uploads::LiveUploads,
     observer: Arc<crate::sync::upload_observer::ReleaseUploadObserver>,
-    events: crate::sync::upload_observer::UploadObserverEvents,
 }
 
 impl UploadObserver {
     fn new() -> Self {
         let uploads = crate::library::live_uploads::LiveUploads::new();
-        let (observer, events) =
-            crate::sync::upload_observer::ReleaseUploadObserver::new(uploads.clone());
-        Self {
-            uploads,
-            observer: Arc::new(observer),
-            events,
-        }
+        let observer = Arc::new(crate::sync::upload_observer::ReleaseUploadObserver::new(
+            uploads.clone(),
+        ));
+        Self { uploads, observer }
     }
 }
 
@@ -46,13 +42,6 @@ impl LibraryManager {
         providers: crate::providers::Providers,
     ) -> Result<Self, coven::DbError> {
         let uploads = UploadObserver::new();
-        // coven holds only a `Weak` to the observer (via `WeakUploadObserver`);
-        // the `LibraryManager` below owns the strong `Arc`. Registering the
-        // observer strongly here would close a cycle through the `CovenHandle` it
-        // holds back, pinning coven's store-open lock past the manager's life.
-        let weak_observer = Arc::new(crate::sync::upload_observer::WeakUploadObserver::new(
-            Arc::downgrade(&uploads.observer),
-        ));
         let (max_uploads, max_downloads) = {
             let config = config_handle.config();
             (
@@ -66,7 +55,7 @@ impl LibraryManager {
             .clock(clock.clone())
             .oauth_clients(oauth_clients)
             .apply_cloudkit_ops(cloudkit_ops.clone())
-            .observer(weak_observer as Arc<dyn coven::BlobTransitionObserver>)
+            .observer(uploads.observer.clone() as Arc<dyn coven::BlobTransitionObserver>)
             .migrations(crate::migrations::all())
             .max_concurrent_uploads(max_uploads)
             .max_concurrent_downloads(max_downloads)
@@ -177,28 +166,11 @@ impl LibraryManager {
             outputs: crate::library::Outputs::new(
                 crate::library::output_snapshot::build_output_snapshot,
             ),
-            _upload_observer: uploads.observer,
+            #[cfg(test)]
+            upload_observer: uploads.observer,
         };
-        manager.start_upload_observer_events(uploads.events);
         manager.start_queue_workers();
         manager
-    }
-
-    pub(super) fn start_upload_observer_events(
-        &self,
-        events: crate::sync::upload_observer::UploadObserverEvents,
-    ) {
-        let sync = self.sync.clone();
-        self.spawn_supervised_task("upload observer event processor", async move {
-            events
-                .run(move || {
-                    let sync = sync.clone();
-                    async move {
-                        sync.process_upload_observer_event().await;
-                    }
-                })
-                .await;
-        });
     }
 
     pub(super) fn start_queue_workers(&self) {
@@ -419,7 +391,7 @@ impl LibraryManager {
             .await
             .unwrap();
         coven::BlobTransitionObserver::on_blob_preparation_started(
-            self._upload_observer.as_ref(),
+            self.upload_observer.as_ref(),
             &blob,
         )
         .await;
@@ -438,7 +410,7 @@ impl LibraryManager {
             .await
             .unwrap();
         coven::BlobTransitionObserver::on_blob_preparation_progress(
-            self._upload_observer.as_ref(),
+            self.upload_observer.as_ref(),
             &blob,
             bytes_done,
             bytes_total,

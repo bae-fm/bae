@@ -149,7 +149,6 @@ capability_types=(
   UploadThroughput
   UuidProvider
   WatchBackend
-  WeakUploadObserver
   Write
   WriteAvioContext
   WriteSeek

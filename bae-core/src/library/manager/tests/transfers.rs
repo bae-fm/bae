@@ -825,20 +825,74 @@ async fn preparation_observer_advances_snapshot_bytes_done() {
     assert_eq!(snap.total.upload_bytes_done, 0);
 }
 
-/// One coalesced coven callback is one outbox value. Publishing it twice would
-/// double the database reads and revision churn at every progress tick.
+/// One coven callback is one outbox value, built over the durable queue the
+/// projection already holds. Publishing it twice would double the revision
+/// churn at every progress tick.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn one_upload_observer_callback_publishes_one_outbox_revision() {
     let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
-    let before = manager.outbox_snapshot().await.unwrap().revision;
+    manager.start();
+    let mut values = manager.subscribe_outbox_values();
+    let before = next_outbox_value_where(&mut values, |snapshot| snapshot.total.queued == 1)
+        .await
+        .revision;
 
     manager
         .observe_blob_preparation_started_for_test(&file_id)
         .await;
 
-    let after = manager.outbox_snapshot().await.unwrap().revision;
-    assert_eq!(after, before + 1);
+    let after = next_outbox_value_where(&mut values, |_| true).await;
+    assert_eq!(after.revision, before + 1);
+    assert_eq!(after.total.preparing, 1);
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(200), values.changed())
+            .await
+            .is_err(),
+        "one callback publishes once"
+    );
+}
+
+/// Wait for the next published outbox value `accept` takes.
+#[cfg(feature = "test-utils")]
+async fn next_outbox_value_where(
+    values: &mut tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxSnapshot, String>>>,
+    accept: impl Fn(&crate::library::OutboxSnapshot) -> bool,
+) -> crate::library::OutboxSnapshot {
+    tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            values.changed().await.expect("outbox value stream");
+            let current = values.borrow_and_update();
+            let snapshot = current
+                .as_ref()
+                .expect("the outbox published a value")
+                .as_ref()
+                .unwrap_or_else(|error| panic!("outbox projection failed: {error}"));
+            if accept(snapshot) {
+                return snapshot.clone();
+            }
+        }
+    })
+    .await
+    .expect("the outbox publishes the awaited value")
+}
+
+/// coven awaits each observer callback inside its upload, so a callback that
+/// waits for the outbox projection holds the transfer up behind the UI. The
+/// callback records its fact and returns even while the projection is busy.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn an_upload_callback_does_not_wait_for_the_outbox_projection() {
+    let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
+    manager.start();
+    let _projection_busy = manager.sync.hold_outbox_projection_for_test().await;
+
+    tokio::time::timeout(
+        std::time::Duration::from_secs(1),
+        manager.observe_blob_preparation_started_for_test(&file_id),
+    )
+    .await
+    .expect("the callback returns while the projection is busy");
 }
 
 /// Source preparation progress is ordered after preparation-start, which

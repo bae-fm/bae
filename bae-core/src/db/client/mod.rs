@@ -67,6 +67,7 @@ desktop_only! {
     mod source_releases;
 }
 mod playback;
+pub(crate) use blobs::{OutboxDisplayContext, OutboxDisplayRequest};
 pub(crate) use playback::QueueCatalogProjection;
 mod release;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

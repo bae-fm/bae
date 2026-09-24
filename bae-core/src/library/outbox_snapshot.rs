@@ -1,15 +1,17 @@
 //! The cloud-outbox processing snapshot: the one source of truth for the Storage
 //! Manager's queue panel, the per-release upload badges, and the master progress
-//! bar. Re-emitted on every queue mutation (enqueue, upload start, progress tick,
-//! success, failure, cancel, retry), so no consumer keeps cached counts of its own.
+//! bar. The sync controller publishes a new one whenever either input below
+//! changes, so no consumer keeps cached counts of its own.
 //!
 //! Two inputs derive it:
 //!
-//! - coven's durable cloud queue, read through
-//!   [`Database::outbox_queue`](crate::db::Database::outbox_queue): what remains.
+//! - coven's durable cloud queue joined to the display names of its files, as
+//!   coven's outbox and display live queries deliver them: what remains.
 //! - An in-memory map of preparation and provider-transfer callbacks. It refines
 //!   the durable phase with buffer-cadence byte progress; a restart loses only
 //!   those live counters and immediately retains coven's durable lower bound.
+//!   A progress tick rebuilds the snapshot over the durable queue last
+//!   delivered, without reading the database.
 
 use std::{collections::HashMap, path::PathBuf};
 
