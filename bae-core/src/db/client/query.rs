@@ -22,7 +22,6 @@ pub(super) trait QueryOne {
 /// Multi-row SELECT shared by coven's read and write SQL contexts. Kept
 /// separate from [`QueryOne`] because the release-path resolvers need only a
 /// single-row lookup, while deletion planning needs both forms.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) trait QueryRows {
     fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
         &self,
@@ -71,7 +70,6 @@ impl QueryOne for SqlReadContext<'_> {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl QueryRows for SqlReadContext<'_> {
     fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
         &self,
@@ -94,7 +92,6 @@ impl QueryOne for SqlContext<'_, '_> {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl QueryRows for SqlContext<'_, '_> {
     fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
         &self,
