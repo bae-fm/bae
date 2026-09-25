@@ -146,6 +146,9 @@ impl AppServices {
         )
     }
 
+    /// The album's detail as it changes: its rows, the releases' pin markers
+    /// coven watches, and the config, cloud-home, and transfer state it is
+    /// resolved against.
     pub fn subscribe_album_detail_values(
         &self,
         runtime_handle: &tokio::runtime::Handle,
@@ -155,48 +158,60 @@ impl AppServices {
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
-        let mut query = live_query_events(
-            runtime_handle,
-            services.inner.manager.subscribe_album_detail(&album_id),
-        );
+        let manager = services.inner.manager.clone();
+        let mut query =
+            live_query_events(runtime_handle, manager.subscribe_album_detail(&album_id));
+        let mut pins = manager.watch_release_pins();
         let mut config = services.subscribe_config_changes();
-        let mut sync = services.subscribe_sync_status_values();
+        let mut cloud_home = manager.subscribe_cloud_home();
         let mut transfers = services.subscribe_transfer_values();
         runtime_handle.spawn(async move {
-            let mut last = None;
+            let mut last: Option<(crate::db::AlbumDetailProjection, Vec<bool>)> = None;
             loop {
-                tokio::select! {
+                let value = tokio::select! {
                     event = query.recv() => match event {
                         None => return,
                         Some(Ok(projection)) => {
-                            last = Some(projection.clone());
-                            let value = services.inner.manager.resolve_album_detail_projection(projection).await;
-                            if tx.send(value).is_err() { return; }
+                            match pins.watch(LibraryManager::album_detail_pin_files(&projection)).await {
+                                Ok(pinned) => {
+                                    last = Some((projection.clone(), pinned.clone()));
+                                    manager.resolve_album_detail_projection(projection, pinned)
+                                }
+                                Err(error) => Err(error),
+                            }
                         }
-                        Some(Err(error)) => {
-                            if tx.send(Err(error)).is_err() { return; }
+                        Some(Err(error)) => Err(error),
+                    },
+                    answer = pins.changed() => match (answer, last.as_mut()) {
+                        (Ok(pinned), Some((projection, last_pinned))) => {
+                            *last_pinned = pinned.clone();
+                            manager.resolve_album_detail_projection(projection.clone(), pinned)
                         }
+                        (Ok(_), None) => continue,
+                        (Err(error), _) => Err(error),
                     },
                     changed = async { tokio::select! {
                         value = config.changed() => value,
-                        value = sync.changed() => value,
+                        value = cloud_home.changed() => value,
                         value = transfers.changed() => value,
                     }} => {
                         if changed.is_err() { return; }
                         config.borrow_and_update();
-                        sync.borrow_and_update();
+                        cloud_home.borrow_and_update();
                         transfers.borrow_and_update();
-                        if let Some(projection) = last.clone() {
-                            let value = services.inner.manager.resolve_album_detail_projection(projection).await;
-                            if tx.send(value).is_err() { return; }
-                        }
+                        let Some((projection, pinned)) = last.clone() else { continue };
+                        manager.resolve_album_detail_projection(projection, pinned)
                     }
-                }
+                };
+                if tx.send(value).is_err() { return; }
             }
         });
         rx
     }
 
+    /// One release's detail as it changes: its rows, its pin marker coven
+    /// watches, and the config, cloud-home, and transfer state it is resolved
+    /// against.
     pub fn subscribe_release_detail_values(
         &self,
         runtime_handle: &tokio::runtime::Handle,
@@ -206,43 +221,55 @@ impl AppServices {
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
+        let manager = services.inner.manager.clone();
         let mut query = live_query_events(
             runtime_handle,
-            services.inner.manager.subscribe_release_detail(&release_id),
+            manager.subscribe_release_detail(&release_id),
         );
+        let mut pins = manager.watch_release_pins();
         let mut config = services.subscribe_config_changes();
-        let mut sync = services.subscribe_sync_status_values();
+        let mut cloud_home = manager.subscribe_cloud_home();
         let mut transfers = services.subscribe_transfer_values();
         runtime_handle.spawn(async move {
-            let mut last = None;
+            let mut last: Option<(crate::db::ReleaseDetailProjection, bool)> = None;
             loop {
-                tokio::select! {
+                let value = tokio::select! {
                     event = query.recv() => match event {
                         None => return,
                         Some(Ok(projection)) => {
-                            last = Some(projection.clone());
-                            let value = services.inner.manager.resolve_release_detail_projection(&release_id, projection).await;
-                            if tx.send(value).is_err() { return; }
+                            match pins.watch(LibraryManager::release_detail_pin_files(&projection)).await {
+                                Ok(pinned) => {
+                                    let pinned = pinned.first().copied().unwrap_or(false);
+                                    last = Some((projection.clone(), pinned));
+                                    manager.resolve_release_detail_projection(&release_id, projection, pinned)
+                                }
+                                Err(error) => Err(error),
+                            }
                         }
-                        Some(Err(error)) => {
-                            if tx.send(Err(error)).is_err() { return; }
+                        Some(Err(error)) => Err(error),
+                    },
+                    answer = pins.changed() => match (answer, last.as_mut()) {
+                        (Ok(pinned), Some((projection, last_pinned))) => {
+                            *last_pinned = pinned.first().copied().unwrap_or(false);
+                            manager.resolve_release_detail_projection(&release_id, projection.clone(), *last_pinned)
                         }
+                        (Ok(_), None) => continue,
+                        (Err(error), _) => Err(error),
                     },
                     changed = async { tokio::select! {
                         value = config.changed() => value,
-                        value = sync.changed() => value,
+                        value = cloud_home.changed() => value,
                         value = transfers.changed() => value,
                     }} => {
                         if changed.is_err() { return; }
                         config.borrow_and_update();
-                        sync.borrow_and_update();
+                        cloud_home.borrow_and_update();
                         transfers.borrow_and_update();
-                        if let Some(projection) = last.clone() {
-                            let value = services.inner.manager.resolve_release_detail_projection(&release_id, projection).await;
-                            if tx.send(value).is_err() { return; }
-                        }
+                        let Some((projection, pinned)) = last.clone() else { continue };
+                        manager.resolve_release_detail_projection(&release_id, projection, pinned)
                     }
-                }
+                };
+                if tx.send(value).is_err() { return; }
             }
         });
         rx
@@ -265,16 +292,10 @@ impl AppServices {
         self.inner.manager.subscribe_release_library_status(check)
     }
 
-    pub async fn resolve_storage_page_projection(
-        &self,
-        projection: crate::db::StoragePageProjection,
-    ) -> Result<(crate::album_detail::StoragePage, u64), crate::library::LibraryError> {
-        self.inner
-            .manager
-            .resolve_storage_page_projection(projection)
-            .await
-    }
-
+    /// A storage page as it changes: its rows, the rows' pin markers coven
+    /// watches, the outbox's transitioning releases (for the Uploading
+    /// filter), and the config, cloud-home, download, and transfer state it is
+    /// resolved against.
     pub fn subscribe_storage_values(
         &self,
         runtime_handle: &tokio::runtime::Handle,
@@ -287,12 +308,18 @@ impl AppServices {
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
+        let manager = services.inner.manager.clone();
         let query_runtime = runtime_handle.clone();
         let mut outbox = services.subscribe_outbox_values();
-        let mut sync = services.subscribe_sync_status_values();
+        let mut cloud_home = manager.subscribe_cloud_home();
         let mut config = services.subscribe_config_changes();
         let mut downloads = services.subscribe_download_values();
         let mut transfers = services.subscribe_transfer_values();
+        let mut pins = manager.watch_release_pins();
+        let resolve = move |projection, pinned| {
+            let (page, total_size) = manager.resolve_storage_page_projection(projection, pinned);
+            StorageProjectionValue { page, total_size }
+        };
         runtime_handle.spawn(async move {
             let mut transitioning = if filter == crate::db::StorageFilter::Uploading {
                 let current = { outbox.borrow_and_update().clone() };
@@ -318,20 +345,29 @@ impl AppServices {
                     limit,
                 ),
             );
-            let mut last = None;
+            let mut last: Option<(crate::db::StoragePageProjection, Vec<bool>)> = None;
             loop {
-                tokio::select! {
+                let value = tokio::select! {
                     event = query.recv() => match event {
                         None => return,
                         Some((_, Ok(projection))) => {
-                            last = Some(projection.clone());
-                            let value = services.resolve_storage_page_projection(projection).await
-                                .map(|(page, total_size)| StorageProjectionValue { page, total_size });
-                            if tx.send(value).is_err() { return; }
+                            match pins.watch(LibraryManager::storage_page_pin_files(&projection)).await {
+                                Ok(pinned) => {
+                                    last = Some((projection.clone(), pinned.clone()));
+                                    Ok(resolve(projection, pinned))
+                                }
+                                Err(error) => Err(error),
+                            }
                         }
-                        Some((_, Err(error))) => {
-                            if tx.send(Err(error)).is_err() { return; }
+                        Some((_, Err(error))) => Err(error),
+                    },
+                    answer = pins.changed() => match (answer, last.as_mut()) {
+                        (Ok(pinned), Some((projection, last_pinned))) => {
+                            *last_pinned = pinned.clone();
+                            Ok(resolve(projection.clone(), pinned))
                         }
+                        (Ok(_), None) => continue,
+                        (Err(error), _) => Err(error),
                     },
                     changed = outbox.changed(), if filter == crate::db::StorageFilter::Uploading => {
                         if changed.is_err() { return; }
@@ -341,23 +377,20 @@ impl AppServices {
                                 if replace_transitioning_release_ids(&mut transitioning, next) {
                                     query.set(transitioning.clone());
                                 }
+                                continue;
                             }
-                            Some(Err(error)) => match tx.send(Err(crate::library::LibraryError::Internal(error))) {
-                                Ok(()) => {}
-                                Err(_) => return,
-                            },
-                            None => {}
+                            Some(Err(error)) => Err(crate::library::LibraryError::Internal(error)),
+                            None => continue,
                         }
                     }
-                    _ = async { tokio::select! { value = sync.changed() => value, value = config.changed() => value, value = downloads.changed() => value, value = transfers.changed() => value } } => {
-                        sync.borrow_and_update(); config.borrow_and_update(); downloads.borrow_and_update(); transfers.borrow_and_update();
-                        if let Some(projection) = last.clone() {
-                            let value = services.resolve_storage_page_projection(projection).await
-                                .map(|(page, total_size)| StorageProjectionValue { page, total_size });
-                            if tx.send(value).is_err() { return; }
-                        }
+                    changed = async { tokio::select! { value = cloud_home.changed() => value, value = config.changed() => value, value = downloads.changed() => value, value = transfers.changed() => value } } => {
+                        if changed.is_err() { return; }
+                        cloud_home.borrow_and_update(); config.borrow_and_update(); downloads.borrow_and_update(); transfers.borrow_and_update();
+                        let Some((projection, pinned)) = last.clone() else { continue };
+                        Ok(resolve(projection, pinned))
                     }
-                }
+                };
+                if tx.send(value).is_err() { return; }
             }
         });
         rx

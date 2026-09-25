@@ -17,6 +17,12 @@ impl LibraryManager {
         self.sync_connection() != super::sync_status::SyncConnection::Disconnected
     }
 
+    /// Every change to [`Self::has_cloud_home`], as the status stream reports
+    /// it.
+    pub(crate) fn subscribe_cloud_home(&self) -> tokio::sync::watch::Receiver<bool> {
+        self.sync_status.subscribe_cloud_home()
+    }
+
     fn sync_connection(&self) -> super::sync_status::SyncConnection {
         super::sync_status::SyncConnection::of(&self.database.subscribe_sync_status().borrow())
     }

@@ -100,16 +100,34 @@ impl LibraryManager {
         self.database.subscribe_album_detail(album_id)
     }
 
-    pub(crate) async fn resolve_album_detail_projection(
+    /// Each release's representative file id, in release order: what the
+    /// album's pin markers are watched by.
+    pub(crate) fn album_detail_pin_files(
+        projection: &crate::db::AlbumDetailProjection,
+    ) -> Vec<Option<String>> {
+        projection
+            .detail
+            .as_ref()
+            .map(|raw| {
+                album_pin_files(raw)
+                    .map(|id| id.map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Resolve an album-detail delivery with its releases' pin markers, one per
+    /// release in order (see [`Self::album_detail_pin_files`]).
+    pub(crate) fn resolve_album_detail_projection(
         &self,
         projection: crate::db::AlbumDetailProjection,
+        pinned: Vec<bool>,
     ) -> Result<Option<AlbumDetail>, LibraryError> {
         let Some(raw) = projection.detail else {
             return Ok(None);
         };
         let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
-        self.resolve_album_detail_with_covers(raw, covers)
-            .await
+        self.resolve_album_detail_with_covers(raw, covers, pinned)
             .map(Some)
     }
 
@@ -209,6 +227,14 @@ impl LibraryManager {
     }
 }
 
+/// Each release's representative file — the one its pin marker is asked by —
+/// in release order.
+fn album_pin_files(raw: &crate::db::DbAlbumDetail) -> impl Iterator<Item = Option<&str>> {
+    raw.releases
+        .iter()
+        .map(|release| release.files.first().map(|file| file.id.as_str()))
+}
+
 fn resolve_album_rows(
     rows: Vec<crate::db::DbAlbumSummary>,
     covers: &HashMap<String, ImageRef>,
@@ -230,13 +256,17 @@ impl LibraryManager {
     ) -> Result<AlbumDetail, LibraryError> {
         let release_ids: Vec<String> = raw.releases.iter().map(|r| r.release.id.clone()).collect();
         let covers = self.cover_refs(&release_ids).await?;
-        self.resolve_album_detail_with_covers(raw, covers).await
+        let pinned = self
+            .releases_pinned(&album_pin_files(&raw).collect::<Vec<_>>())
+            .await?;
+        self.resolve_album_detail_with_covers(raw, covers, pinned)
     }
 
-    async fn resolve_album_detail_with_covers(
+    fn resolve_album_detail_with_covers(
         &self,
         raw: crate::db::DbAlbumDetail,
         covers: HashMap<String, ImageRef>,
+        pin_states: Vec<bool>,
     ) -> Result<AlbumDetail, LibraryError> {
         let artist_names = join_artist_names(&raw.artists);
         let primary_release_id = crate::db::resolve_primary_release_id(
@@ -251,15 +281,6 @@ impl LibraryManager {
 
         let has_cloud_home = self.has_cloud_home();
         let cover = covers.get(&primary_release_id).cloned();
-        // Ask coven's cache which of these releases are pinned — the orthogonal
-        // coven-cache property of a remote release. One read covers the whole
-        // album, the way the cover lookup above does.
-        let pin_ids: Vec<Option<&str>> = raw
-            .releases
-            .iter()
-            .map(|r| r.files.first().map(|f| f.id.as_str()))
-            .collect();
-        let pin_states = self.releases_pinned(&pin_ids).await?;
         let mut releases = Vec::with_capacity(raw.releases.len());
         for (i, (r, pinned)) in raw.releases.into_iter().zip(pin_states).enumerate() {
             let release_cover = covers.get(&r.release.id).cloned();

@@ -184,8 +184,26 @@ impl LibraryManager {
         &self,
         any_file_ids: &[Option<&str>],
     ) -> Result<Vec<bool>, LibraryError> {
-        Ok(release_file_pin_states(&self.database, any_file_ids)
-            .await?
+        Ok(self.pin_markers(release_file_pin_states(&self.database, any_file_ids).await?))
+    }
+
+    /// Watch whether each release of a view is pinned: a subscription whose
+    /// rows are pointed at a view's releases with [`ReleasePinWatch::watch`] and
+    /// that answers again whenever a pin, an unpin, an upload keeping its copy,
+    /// or a release going Remote or Local changes the answer.
+    pub(crate) fn watch_release_pins(&self) -> ReleasePinWatch {
+        ReleasePinWatch {
+            manager: self.clone(),
+            query: None,
+            watched: Vec::new(),
+            answers: Vec::new(),
+        }
+    }
+
+    /// The pin marker each release shows. A file id that names no release file
+    /// is counted as an anomaly and shows as not pinned.
+    fn pin_markers(&self, states: Vec<ReleasePinState>) -> Vec<bool> {
+        states
             .into_iter()
             .map(|state| match state {
                 ReleasePinState::Pinned => true,
@@ -197,7 +215,7 @@ impl LibraryManager {
                     false
                 }
             })
-            .collect())
+            .collect()
     }
 
     /// Every blob a release keeps pinned: its cover when present, followed by
@@ -350,4 +368,77 @@ fn total_bytes(release_id: &str, pinnable: &[PinnableBlob]) -> Result<u64, Libra
             LibraryError::Storage(format!("pin release {release_id}: byte total overflow"))
         })
     })
+}
+
+/// A view's releases' pin markers, kept current by coven's pin-state live
+/// query (see [`LibraryManager::watch_release_pins`]).
+pub(crate) struct ReleasePinWatch {
+    manager: LibraryManager,
+    /// Opened with the first releases watched; a view with none asks coven
+    /// nothing.
+    query: Option<coven::RowsPinnedLiveQuery>,
+    /// Each watched release's representative file id, or `None` for a release
+    /// with no files.
+    watched: Vec<Option<String>>,
+    /// Coven's latest answer for the watched files, one per named file.
+    answers: Vec<Option<bool>>,
+}
+
+impl ReleasePinWatch {
+    /// Watch `any_file_ids` — one per release, its representative file or
+    /// `None` — and return their markers now, one per release in order. The
+    /// same files watched again answer from coven's latest answer; other files
+    /// are asked about at once.
+    pub(crate) async fn watch(
+        &mut self,
+        any_file_ids: Vec<Option<String>>,
+    ) -> Result<Vec<bool>, LibraryError> {
+        let named = named_file_ids(&slots(&any_file_ids));
+        let unchanged = self.query.is_some() && named == named_file_ids(&slots(&self.watched));
+        self.watched = any_file_ids;
+        if unchanged {
+            return Ok(self.markers());
+        }
+        match &mut self.query {
+            Some(query) => query.set_rows(named),
+            None => {
+                self.query = Some(
+                    self.manager
+                        .database
+                        .subscribe_rows_pinned(crate::sync::RELEASE_FILES_NAMESPACE, named),
+                );
+            }
+        }
+        self.next().await
+    }
+
+    /// Wait until the watched releases' markers change and return them.
+    /// Cancel-safe: an answer stays owed until a read of it completes. Waits
+    /// forever until [`Self::watch`] has named releases.
+    pub(crate) async fn changed(&mut self) -> Result<Vec<bool>, LibraryError> {
+        if self.query.is_none() {
+            return std::future::pending().await;
+        }
+        self.next().await
+    }
+
+    async fn next(&mut self) -> Result<Vec<bool>, LibraryError> {
+        let query = self.query.as_mut().expect("a watched release set");
+        self.answers = query
+            .next()
+            .await
+            .map_err(|e| LibraryError::blob("pin-state for a view's releases", e))?;
+        Ok(self.markers())
+    }
+
+    fn markers(&self) -> Vec<bool> {
+        self.manager.pin_markers(release_pin_states_from_answers(
+            &slots(&self.watched),
+            &self.answers,
+        ))
+    }
+}
+
+fn slots(any_file_ids: &[Option<String>]) -> Vec<Option<&str>> {
+    any_file_ids.iter().map(Option::as_deref).collect()
 }

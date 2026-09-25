@@ -496,6 +496,64 @@ async fn pin_release_pins_the_cover_and_counts_its_bytes() {
     assert_eq!(last.fraction, 1.0, "the bar lands on its denominator");
 }
 
+/// A pin reaches the storage view as it lands, from coven's pin-state watch:
+/// no sync cycle runs behind this connection and no transfer reports it.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("pin-watch"),
+        "Pin Watch",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.drain_uploads_expecting_work().await.unwrap();
+
+    let services = crate::library::AppServices::for_test(manager.clone())
+        .await
+        .unwrap();
+    let mut values = services.subscribe_storage_values(
+        &tokio::runtime::Handle::current(),
+        crate::db::StorageSortCriterion {
+            field: crate::db::StorageSortField::AlbumTitle,
+            direction: crate::db::SortDirection::Ascending,
+        },
+        crate::db::StorageFilter::All,
+        0,
+        50,
+    );
+    let pinned = |value: &crate::library::StorageProjectionValue| {
+        value
+            .page
+            .rows
+            .iter()
+            .find(|row| row.release.id == release.id)
+            .map(|row| row.release.pinned)
+    };
+    let first = values.recv().await.unwrap().unwrap();
+    assert_eq!(pinned(&first), Some(false));
+
+    manager
+        .pin_release_blobs_with_progress(&release.id, |_| {})
+        .await
+        .unwrap();
+
+    loop {
+        let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
+            .await
+            .expect("the pin reaches the storage view")
+            .unwrap()
+            .unwrap();
+        if pinned(&value) == Some(true) {
+            break;
+        }
+    }
+}
+
 /// A pin the provider refuses — bad credentials, a missing bucket — is about
 /// the cloud setup the person fixes, not an internal fault.
 #[cfg(feature = "test-utils")]

@@ -558,10 +558,25 @@ impl LibraryManager {
         self.database.subscribe_release_detail(release_id)
     }
 
-    pub(crate) async fn resolve_release_detail_projection(
+    /// The release's representative file id: what its pin marker is watched
+    /// by. Empty when the release is gone.
+    pub(crate) fn release_detail_pin_files(
+        projection: &crate::db::ReleaseDetailProjection,
+    ) -> Vec<Option<String>> {
+        projection
+            .context
+            .as_ref()
+            .map(|context| vec![context.detail.files.first().map(|file| file.id.clone())])
+            .unwrap_or_default()
+    }
+
+    /// Resolve a release-detail delivery with its pin marker (see
+    /// [`Self::release_detail_pin_files`]).
+    pub(crate) fn resolve_release_detail_projection(
         &self,
         release_id: &str,
         projection: crate::db::ReleaseDetailProjection,
+        pinned: bool,
     ) -> Result<Option<ReleaseDetail>, LibraryError> {
         let Some(crate::db::ReleaseDetailContext {
             detail,
@@ -580,19 +595,19 @@ impl LibraryManager {
                 version: version.clone(),
                 image_type: LibraryImageType::Cover,
             });
-        self.resolve_release_detail_context(
+        Ok(Some(self.resolve_release_detail_context(
             release_id,
             detail,
             album_artists,
             release_index,
             is_compilation,
             cover,
-        )
-        .await
-        .map(Some)
+            pinned,
+        )))
     }
 
-    async fn resolve_release_detail_context(
+    #[allow(clippy::too_many_arguments)]
+    fn resolve_release_detail_context(
         &self,
         release_id: &str,
         raw: crate::db::DbReleaseDetail,
@@ -600,11 +615,9 @@ impl LibraryManager {
         release_index: usize,
         is_compilation: bool,
         cover: Option<ImageRef>,
-    ) -> Result<ReleaseDetail, LibraryError> {
+        pinned: bool,
+    ) -> ReleaseDetail {
         let has_cloud_home = self.has_cloud_home();
-        let pinned = self
-            .release_pinned(raw.files.first().map(|file| file.id.as_str()))
-            .await?;
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
             pinned,
@@ -614,7 +627,7 @@ impl LibraryManager {
         };
         let (detail, orphans) = ReleaseDetail::from_raw(raw, &album_artists, release_index, &ctx);
         self.report_audio_format_orphans(orphans);
-        Ok(detail)
+        detail
     }
 
     /// Resolved release detail for the album-detail view: a `ReleaseSummary` plus
@@ -638,16 +651,18 @@ impl LibraryManager {
             return Ok(None);
         };
         let cover = self.cover_ref(release_id).await?;
-        self.resolve_release_detail_context(
+        let pinned = self
+            .release_pinned(raw.files.first().map(|file| file.id.as_str()))
+            .await?;
+        Ok(Some(self.resolve_release_detail_context(
             release_id,
             raw,
             album_artists,
             release_index,
             is_compilation,
             cover,
-        )
-        .await
-        .map(Some)
+            pinned,
+        )))
     }
 
     pub async fn get_releases_for_album(

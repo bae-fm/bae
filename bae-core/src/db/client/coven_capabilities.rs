@@ -197,6 +197,14 @@ impl Database {
     /// in the order given, resolved in one read. `None` where an id names no
     /// live blob-bearing row. The set-based read behind every list that draws a
     /// per-row "kept offline" marker.
+    pub(crate) fn subscribe_rows_pinned(
+        &self,
+        table: &str,
+        row_ids: Vec<String>,
+    ) -> coven::RowsPinnedLiveQuery {
+        self.inner.handle.subscribe_rows_pinned(table, row_ids)
+    }
+
     pub(crate) async fn rows_pinned(
         &self,
         table: &str,

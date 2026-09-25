@@ -24,15 +24,21 @@ use std::sync::{Arc, Mutex};
 pub(super) struct SyncStatus {
     state: Arc<Mutex<SyncStatusState>>,
     values: tokio::sync::watch::Sender<SyncStatusSnapshot>,
+    /// Whether a cloud connection is installed: what views that offer storage
+    /// actions re-resolve on, apart from every cycle's banner change.
+    cloud_home: tokio::sync::watch::Sender<bool>,
 }
 
 impl SyncStatus {
     pub(super) fn new(database: &Database) -> Self {
         let state = SyncStatusState::initial(&database.subscribe_sync_status().borrow());
         let (values, _) = tokio::sync::watch::channel(state.snapshot());
+        let (cloud_home, _) =
+            tokio::sync::watch::channel(state.connection != SyncConnection::Disconnected);
         Self {
             state: Arc::new(Mutex::new(state)),
             values,
+            cloud_home,
         }
     }
 
@@ -40,14 +46,25 @@ impl SyncStatus {
     /// anything; when it did, the new snapshot is published before this
     /// returns. Whatever else it computed comes back to the caller.
     pub(super) fn apply<R>(&self, change: impl FnOnce(&mut SyncStatusState) -> (bool, R)) -> R {
-        let (changed, result) = {
+        let (changed, result, cloud_home) = {
             let mut state = self.state.lock().unwrap();
-            change(&mut state)
+            let (changed, result) = change(&mut state);
+            (
+                changed,
+                result,
+                state.connection != SyncConnection::Disconnected,
+            )
         };
         if changed {
             self.values.send_replace(self.snapshot());
+            self.cloud_home
+                .send_if_modified(|current| std::mem::replace(current, cloud_home) != cloud_home);
         }
         result
+    }
+
+    pub(super) fn subscribe_cloud_home(&self) -> tokio::sync::watch::Receiver<bool> {
+        self.cloud_home.subscribe()
     }
 
     /// The banner as it stands.

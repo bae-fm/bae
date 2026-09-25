@@ -190,13 +190,27 @@ impl LibraryManager {
             .subscribe_storage_page(sort, filter, transitioning_release_ids, offset, limit)
     }
 
-    pub(crate) async fn resolve_storage_page_projection(
+    /// Each row's representative file id, in row order: what the page's pin
+    /// markers are watched by.
+    pub(crate) fn storage_page_pin_files(
+        projection: &crate::db::StoragePageProjection,
+    ) -> Vec<Option<String>> {
+        projection
+            .rows
+            .iter()
+            .map(|row| row.release.any_file_id.clone())
+            .collect()
+    }
+
+    /// Resolve a storage-page delivery with its rows' pin markers, one per row
+    /// in order (see [`Self::storage_page_pin_files`]).
+    pub(crate) fn resolve_storage_page_projection(
         &self,
         projection: crate::db::StoragePageProjection,
-    ) -> Result<(StoragePage, u64), LibraryError> {
+        pin_states: Vec<bool>,
+    ) -> (StoragePage, u64) {
         let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let has_cloud_home = self.has_cloud_home();
-        let pin_states = self.page_pin_states(&projection.rows).await?;
         let mut rows = Vec::with_capacity(projection.rows.len());
         for (raw, pinned) in projection.rows.into_iter().zip(pin_states) {
             let transfer_action = self.current_transfer_action(&raw.release.id);
@@ -208,13 +222,13 @@ impl LibraryManager {
                 |release_id| covers.get(release_id).cloned(),
             ));
         }
-        Ok((
+        (
             StoragePage {
                 rows,
                 total_count: projection.total_count,
             },
             projection.total_size,
-        ))
+        )
     }
 
     /// Count storage rows matching `filter`. Matches `get_storage_page`'s

@@ -28,11 +28,7 @@ pub(super) async fn release_file_pin_states(
     database: &Database,
     any_file_ids: &[Option<&str>],
 ) -> Result<Vec<ReleasePinState>, LibraryError> {
-    let named: Vec<String> = any_file_ids
-        .iter()
-        .flatten()
-        .map(|file_id| (*file_id).to_string())
-        .collect();
+    let named = named_file_ids(any_file_ids);
     if named.is_empty() {
         return Ok(vec![ReleasePinState::NotPinned; any_file_ids.len()]);
     }
@@ -40,10 +36,28 @@ pub(super) async fn release_file_pin_states(
         .rows_pinned(crate::sync::RELEASE_FILES_NAMESPACE, named.clone())
         .await
         .map_err(|e| LibraryError::blob(format!("pin-state for {named:?}"), e))?;
-    // coven answers one entry per named id, in order, so stepping those answers
-    // through the named slots puts each back beside the release it came from.
-    let mut answers = named.iter().zip(pinned);
-    Ok(any_file_ids
+    Ok(release_pin_states_from_answers(any_file_ids, &pinned))
+}
+
+/// The file ids coven is asked about: every release's representative file, in
+/// order, skipping releases with none.
+pub(super) fn named_file_ids(any_file_ids: &[Option<&str>]) -> Vec<String> {
+    any_file_ids
+        .iter()
+        .flatten()
+        .map(|file_id| (*file_id).to_string())
+        .collect()
+}
+
+/// Each release's pin state from coven's answers for [`named_file_ids`]: one
+/// answer per named id, in order, so stepping those answers through the named
+/// slots puts each back beside the release it came from.
+pub(super) fn release_pin_states_from_answers(
+    any_file_ids: &[Option<&str>],
+    answers: &[Option<bool>],
+) -> Vec<ReleasePinState> {
+    let mut answers = any_file_ids.iter().flatten().zip(answers);
+    any_file_ids
         .iter()
         .map(
             |any_file_id| match any_file_id.and_then(|_| answers.next()) {
@@ -55,5 +69,5 @@ pub(super) async fn release_file_pin_states(
                 }
             },
         )
-        .collect())
+        .collect()
 }
