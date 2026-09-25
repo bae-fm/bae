@@ -397,13 +397,16 @@ async fn ending_a_preview_closes_its_file() {
             .filter(|open| *open == path)
             .count()
     };
-    let wait_closed = |path: std::path::PathBuf| async move {
+    // The preview's reader opens its file on its own task, and closes it there
+    // once the preview ends, so each count is awaited rather than sampled.
+    let wait_open = |path: std::path::PathBuf, count: usize| async move {
         let deadline = std::time::Instant::now() + Duration::from_secs(5);
-        while open_now(&path) > 0 {
+        while open_now(&path) != count {
             assert!(
                 std::time::Instant::now() < deadline,
-                "{} is still open",
-                path.display()
+                "{} is open {} times, not {count}",
+                path.display(),
+                open_now(&path)
             );
             tokio::time::sleep(Duration::from_millis(5)).await;
         }
@@ -411,13 +414,13 @@ async fn ending_a_preview_closes_its_file() {
 
     let whole = |path: &std::path::Path| PreviewTarget::whole_file(path.display().to_string());
     assert!(player.play(whole(&first), &device).await.started());
-    assert_eq!(open_now(&first), 1, "the preview reads its file");
+    wait_open(first.clone(), 1).await;
 
     assert!(player.play(whole(&second), &device).await.started());
-    wait_closed(first.clone()).await;
-    assert_eq!(open_now(&second), 1, "the new preview reads its file");
+    wait_open(first.clone(), 0).await;
+    wait_open(second.clone(), 1).await;
 
     assert_eq!(player.stop(), AfterPreview::LeaveMain);
-    wait_closed(second).await;
+    wait_open(second, 0).await;
     coven::assert_no_open_files_under(dir.path());
 }
