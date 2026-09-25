@@ -151,6 +151,7 @@ impl Database {
                 a.created_at \
             FROM albums a \
             {artist_join} \
+            WHERE {ALBUM_A_IS_SHOWN} \
             ORDER BY {order_by}"
         );
 
@@ -173,6 +174,7 @@ impl Database {
             "{select} \
             FROM albums a \
             {artist_sort_join} \
+            WHERE {ALBUM_A_IS_SHOWN} \
             ORDER BY {order_by} \
             LIMIT ? OFFSET ?",
         );
@@ -198,7 +200,8 @@ impl Database {
         let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
         let select = album_summary_select();
         let query = format!(
-            "{select} FROM albums a {artist_sort_join} ORDER BY {order_by} LIMIT ? OFFSET ?"
+            "{select} FROM albums a {artist_sort_join} WHERE {ALBUM_A_IS_SHOWN} \
+             ORDER BY {order_by} LIMIT ? OFFSET ?"
         );
         self.inner
             .handle
@@ -229,11 +232,12 @@ impl Database {
         let (order_by, needs_artist_sort_join) = build_order_by(sort, "a.created_at DESC");
         let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
         let page_query = format!(
-            "{} FROM albums a {artist_sort_join} ORDER BY {order_by} LIMIT ? OFFSET ?",
+            "{} FROM albums a {artist_sort_join} WHERE {ALBUM_A_IS_SHOWN} \
+             ORDER BY {order_by} LIMIT ? OFFSET ?",
             album_summary_select(),
         );
         let dependency_query = format!(
-            "{} FROM albums a {artist_sort_join} ORDER BY {order_by}",
+            "{} FROM albums a {artist_sort_join} WHERE {ALBUM_A_IS_SHOWN} ORDER BY {order_by}",
             album_summary_select(),
         );
         self.inner
@@ -304,6 +308,7 @@ impl Database {
                     ROW_NUMBER() OVER (ORDER BY {order_by}) - 1 AS idx \
                 FROM albums a \
                 {artist_sort_join} \
+                WHERE {ALBUM_A_IS_SHOWN} \
             ) WHERE id = ?"
         );
 
@@ -420,7 +425,9 @@ impl Database {
             for cleanup in &cleanups {
                 apply_delete_cleanup_on(&sql, cleanup)?;
             }
-            sql.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
+            // The releases go; the album row stays, empty, for the reason in
+            // `vacate_album_on`.
+            sql.execute("DELETE FROM releases WHERE album_id = ?", params![album_id])?;
             Ok(())
         })
         .await
@@ -457,8 +464,9 @@ fn search_library_on(
                    art.name as artist_name
             FROM albums a
             JOIN artists art ON art.id = {primary}
-            WHERE a.title LIKE ? ESCAPE '\'
-               OR art.name LIKE ? ESCAPE '\'
+            WHERE {ALBUM_A_IS_SHOWN}
+              AND (a.title LIKE ? ESCAPE '\'
+               OR art.name LIKE ? ESCAPE '\')
             ORDER BY a.title
             LIMIT ?
             "#,
@@ -654,9 +662,11 @@ impl AlbumDetailRows {
 }
 
 fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
-    sql.query_row("SELECT COUNT(*) FROM albums", [], |row| {
-        row.get::<_, i64>(0)
-    })
+    sql.query_row(
+        &format!("SELECT COUNT(*) FROM albums a WHERE {ALBUM_A_IS_SHOWN}"),
+        [],
+        |row| row.get::<_, i64>(0),
+    )
     .map(|count| count as u64)
     .map_err(DbError::from)
 }

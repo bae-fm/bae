@@ -710,7 +710,7 @@ pub(crate) fn is_various_artists(name: &str) -> bool {
 }
 
 impl DbRelease {
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-utils"))]
     /// A minimal release fixture. It lands **Local**, the way every import does:
     /// a Remote release is one whose every blob reached the cloud, which no bare
     /// row insert can make true — coven refuses to register an external file

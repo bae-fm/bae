@@ -580,7 +580,8 @@ fn find_artist_detail_on(
     let albums_query = format!(
         "{select} \
          FROM albums a \
-         WHERE ({primary} = ?1 \
+         WHERE {ALBUM_A_IS_SHOWN} \
+           AND ({primary} = ?1 \
             OR EXISTS ( \
                 SELECT 1 FROM album_artists aa \
                 WHERE aa.album_id = a.id AND {additional} = ?1 \

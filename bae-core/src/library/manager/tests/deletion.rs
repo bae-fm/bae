@@ -127,12 +127,12 @@ async fn work_detail_release_rows_are_display_ready() {
 }
 
 #[tokio::test]
-async fn test_delete_release_with_single_release_deletes_album() {
+async fn test_delete_release_with_single_release_empties_album() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
 
     manager.delete_release(&release.id).await.unwrap();
 
-    let album_result = find_album(&manager, &album.id).await;
+    let album_result = manager.find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
     let releases = album_releases(&manager, &album.id).await;
     assert!(releases.is_empty());
@@ -670,7 +670,7 @@ async fn test_delete_album_deletes_all_releases() {
 
     manager.delete_album(&album.id).await.unwrap();
 
-    let album_result = find_album(&manager, &album.id).await;
+    let album_result = manager.find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
     let releases = album_releases(&manager, &album.id).await;
     assert!(releases.is_empty());

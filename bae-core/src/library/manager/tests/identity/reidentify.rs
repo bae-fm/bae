@@ -105,14 +105,9 @@ async fn re_identify_with_file_metadata_clears_identities_and_moves_album() {
         .await
         .unwrap();
 
-    // Original (single-release) album is gone; release sits on a
-    // fresh one.
-    assert!(manager
-        .database
-        .find_album_by_id(&album.id)
-        .await
-        .unwrap()
-        .is_none());
+    // Original (single-release) album is empty, so no longer shown; the
+    // release sits on a fresh one.
+    assert!(manager.find_album_detail(&album.id).await.unwrap().is_none());
     let new_album_id = manager
         .database
         .find_album_id_for_release(&release.id)

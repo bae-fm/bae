@@ -482,7 +482,7 @@ impl Database {
                             params![replacement.release_id],
                         )?;
 
-                        let album_deleted = cleanup_album_after_release_removal_on(
+                        let album_emptied = vacate_album_on(
                             tx,
                             &replacement.album_id,
                             &replacement.release_id,
@@ -494,7 +494,7 @@ impl Database {
                             .push(ImportReplacementOutcome {
                                 release_id: replacement.release_id.clone(),
                                 album_id: replacement.album_id.clone(),
-                                album_deleted,
+                                album_emptied,
                             });
                     }
 
@@ -654,10 +654,10 @@ impl Database {
             .expect("replacement outcomes mutex not poisoned"))
     }
 
-    /// Delete a release row, apply its cleanup plan, and remove the album when this
-    /// was its last release. Deliberately does NOT sweep now-orphaned artists,
-    /// works, work_parts, or artist-image blobs — retaining them is a sync-safety
-    /// invariant.
+    /// Delete a release row and apply its cleanup plan. Returns whether its
+    /// album is now empty. Deliberately does NOT delete the emptied album (see
+    /// `vacate_album_on`) or sweep now-orphaned artists, works, work_parts, or
+    /// artist-image blobs — retaining them is a sync-safety invariant.
     ///
     /// This delete may target a remote (sync-visible) release, and artist/work rows
     /// are shared across devices (import find-or-create reuses them by
@@ -689,10 +689,7 @@ impl Database {
             apply_delete_cleanup_on(conn, &cleanup)?;
             conn.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
 
-            let album_deleted =
-                cleanup_album_after_release_removal_on(conn, &album_id, &release_id, &reg)?;
-
-            Ok(album_deleted)
+            vacate_album_on(conn, &album_id, &release_id, &reg)
         })
         .await
     }

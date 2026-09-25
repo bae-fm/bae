@@ -184,7 +184,8 @@ pub struct ImportReplacementDelete {
 pub struct ImportReplacementOutcome {
     pub release_id: String,
     pub album_id: String,
-    pub album_deleted: bool,
+    /// The replaced release was its album's last.
+    pub album_emptied: bool,
 }
 
 /// Hand a delete's captured blob cleanup to coven, inside the same transaction
@@ -199,38 +200,37 @@ pub(super) fn apply_delete_cleanup_on(
     Ok(())
 }
 
-/// After `removed_release_id` has left `album_id` inside the current transaction:
-/// delete the album when no releases remain, otherwise NULL a
-/// `primary_release_id` that pointed at the removed release (the user's
-/// cover-release choice is gone with it, and read paths fall back to the album's
-/// first release). Does not touch `imports` — delete flows clear
-/// `imports.release_id` before the release row goes, and a moved release keeps
-/// its import row.
+/// After `removed_release_id` has left `album_id` inside the current
+/// transaction: NULL a `primary_release_id` that pointed at the removed release
+/// (the user's cover-release choice is gone with it, and read paths fall back to
+/// the album's first release). Returns whether the album is now empty.
+///
+/// An emptied album is never deleted. Another device may have added a release
+/// to it while apart, and a delete wins over that release in the merge and
+/// leaves it without a parent, so the pull that carries it could never apply.
+/// An empty album is inert instead: every listing shows only albums with a
+/// release, and coven keeps an album with no remote release off other devices.
+/// A release that later lands in it, from any device, fills it again.
 ///
 /// Precondition: the release row must already be deleted or repointed away from
-/// `album_id`, since this counts what remains. Returns true if the album was
-/// deleted.
-pub(super) fn cleanup_album_after_release_removal_on(
+/// `album_id`, since this counts what remains.
+pub(super) fn vacate_album_on(
     conn: &SqlContext<'_, '_>,
     album_id: &str,
     removed_release_id: &str,
     reg: &str,
 ) -> Result<bool, DbError> {
-    let remaining: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM releases WHERE album_id = ?",
-        params![album_id],
-        |row| row.get(0),
-    )?;
-    if remaining == 0 {
-        conn.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
-        return Ok(true);
-    }
     conn.execute(
         "UPDATE albums SET primary_release_id = NULL, _updated_at = ? \
          WHERE id = ? AND primary_release_id = ?",
         params![reg, album_id, removed_release_id],
     )?;
-    Ok(false)
+    let remaining: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM releases WHERE album_id = ?",
+        params![album_id],
+        |row| row.get(0),
+    )?;
+    Ok(remaining == 0)
 }
 
 /// The id of the artist `artist_id` (an SQL expression) shows as: the survivor
@@ -247,6 +247,11 @@ pub(super) fn shown_artist_id(artist_id: &str) -> String {
 pub(super) fn artist_is_shown(alias: &str) -> String {
     format!("{alias}.id NOT IN (SELECT artist_id FROM merged_artist_survivors)")
 }
+
+/// Whether the album aliased `a` (every album listing's alias) holds a release,
+/// so listings include it. See [`vacate_album_on`].
+pub(super) const ALBUM_A_IS_SHOWN: &str =
+    "EXISTS (SELECT 1 FROM releases shown_release WHERE shown_release.album_id = a.id)";
 
 pub(super) fn composer_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
     let release_unlinked = unlinked_release_composer_role_predicate("rar");
@@ -312,8 +317,11 @@ pub(super) fn artist_summary_query(filter: Option<&str>, tail: Option<&str>) -> 
          FROM artists ar
          JOIN (
              SELECT {primary} AS artist_id, a.id AS album_id FROM albums a
+             WHERE {ALBUM_A_IS_SHOWN}
              UNION
              SELECT {additional} AS artist_id, aa.album_id FROM album_artists aa
+             JOIN albums a ON a.id = aa.album_id
+             WHERE {ALBUM_A_IS_SHOWN}
          ) link ON link.artist_id = ar.id
          ",
         primary = shown_artist_id("a.artist_id"),

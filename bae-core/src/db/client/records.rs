@@ -125,17 +125,9 @@ impl Database {
     ///    drops the artist links the source already had).
     /// 2. Replace the release's records.
     /// 3. UPDATE the release's `album_id` and `draft_from_tags`.
-    /// 4. If the release vacated `current_album_id` (the source), check
-    ///    inside the transaction whether any releases remain. None →
-    ///    delete the source album. Some → clear `primary_release_id`
-    ///    if it pointed at the moved release (read paths fall back to
-    ///    the first release).
-    ///
-    /// The post-move recheck on `current_album_id` closes a TOCTOU
-    /// window: a separate writer could have inserted a release into the
-    /// source between the manager's pre-flight read and this
-    /// transaction. Deciding inside the same transaction prevents the
-    /// cascade-delete from removing freshly-arrived releases.
+    /// 4. If the release vacated `current_album_id` (the source), clear its
+    ///    `primary_release_id` if it pointed at the moved release (read paths
+    ///    fall back to the first release). An emptied source stays.
     ///
     /// Metadata columns (pressing fields, album fields, tracks) are
     /// deliberately untouched. Caller decides whether to reseed the
@@ -176,10 +168,7 @@ impl Database {
                 // Copy album_artists from the source, rebound to the new album
                 // (each row's id is its `(album, artist)`). The UNIQUE(album_id,
                 // artist_id) constraint is satisfied because we're inserting
-                // into a different album. If the source is about to be
-                // deleted (sole release moved), the SELECT still sees the
-                // source rows because the DELETE happens later in the same
-                // transaction.
+                // into a different album.
                 let source_artists: Vec<(String, i32)> = tx.query(
                     "SELECT artist_id, position FROM album_artists \
                              WHERE album_id = ? ORDER BY position",
@@ -217,7 +206,7 @@ impl Database {
             //    inside the transaction (TOCTOU: a writer may have added a
             //    release to the source since the manager's pre-flight read).
             if target_album_id != current_album_id {
-                cleanup_album_after_release_removal_on(tx, &current_album_id, &release_id, &reg)?;
+                vacate_album_on(tx, &current_album_id, &release_id, &reg)?;
             }
 
             Ok(())

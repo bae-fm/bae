@@ -34,7 +34,7 @@ impl LibraryManager {
     /// destination (per-catalog agreement makes the candidate unique). With no
     /// merge candidate the release stays put if no sibling disagrees on a
     /// shared catalog, and moves to a fresh album if one does. A vacated album
-    /// with no releases left is deleted.
+    /// stays, empty (see `vacate_album_on`).
     ///
     /// **Album/release/track row data is not touched** — pressing fields, album
     /// fields, and tracks stay as they are. The caller decides whether to reseed

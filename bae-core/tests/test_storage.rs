@@ -222,12 +222,12 @@ async fn test_local_delete_preserves_files() {
     );
 
     let album_after = library_manager
-        .get_album_by_id(&album_id)
+        .find_album_detail(&album_id)
         .await
         .expect("get album after delete");
     assert!(
         album_after.is_none(),
-        "Album should be deleted (was last release)"
+        "Album should no longer be shown (was last release)"
     );
 
     // THE KEY ASSERTION: Original files must still exist on disk

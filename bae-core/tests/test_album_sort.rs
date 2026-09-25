@@ -1,6 +1,6 @@
 #![cfg(feature = "test-utils")]
 use bae_core::db::{
-    AlbumSortCriterion, AlbumSortField, Database, DbAlbum, DbArtist, SortDirection,
+    AlbumSortCriterion, AlbumSortField, Database, DbAlbum, DbArtist, DbRelease, SortDirection,
 };
 use chrono::{Duration, Utc};
 use uuid::Uuid;
@@ -21,6 +21,14 @@ fn make_album(
         is_compilation: false,
         created_at: now + Duration::hours(created_offset_hours),
     }
+}
+
+/// Insert `album` with one release: listings show only albums that hold one.
+async fn insert_listed_album(db: &Database, album: &DbAlbum) {
+    db.insert_album(album).await.unwrap();
+    db.insert_release(&DbRelease::new_test(&album.id, &Uuid::new_v4().to_string()))
+        .await
+        .unwrap();
 }
 
 async fn insert_default_artist(db: &Database) -> String {
@@ -55,8 +63,8 @@ async fn test_default_sort_is_date_added_desc() {
 
     let old = make_album("Old Album", &aid, Some(2020), -2);
     let new = make_album("New Album", &aid, Some(2024), 0);
-    db.insert_album(&old).await.unwrap();
-    db.insert_album(&new).await.unwrap();
+    insert_listed_album(&db, &old).await;
+    insert_listed_album(&db, &new).await;
 
     // Empty criteria = default = created_at DESC (newest first)
     let albums = db.get_albums(&[]).await.unwrap();
@@ -73,9 +81,9 @@ async fn test_sort_by_title_ascending() {
     let c = make_album("Charlie", &aid, Some(2020), 0);
     let a = make_album("Alpha", &aid, Some(2021), 1);
     let b = make_album("Bravo", &aid, Some(2022), 2);
-    db.insert_album(&c).await.unwrap();
-    db.insert_album(&a).await.unwrap();
-    db.insert_album(&b).await.unwrap();
+    insert_listed_album(&db, &c).await;
+    insert_listed_album(&db, &a).await;
+    insert_listed_album(&db, &b).await;
 
     let albums = db
         .get_albums(&[AlbumSortCriterion {
@@ -97,8 +105,8 @@ async fn test_sort_by_title_descending() {
 
     let a = make_album("Alpha", &aid, Some(2020), 0);
     let b = make_album("Bravo", &aid, Some(2021), 1);
-    db.insert_album(&a).await.unwrap();
-    db.insert_album(&b).await.unwrap();
+    insert_listed_album(&db, &a).await;
+    insert_listed_album(&db, &b).await;
 
     let albums = db
         .get_albums(&[AlbumSortCriterion {
@@ -119,8 +127,8 @@ async fn test_sort_by_title_is_case_insensitive() {
 
     let lower = make_album("alpha", &aid, Some(2020), 0);
     let upper = make_album("Bravo", &aid, Some(2021), 1);
-    db.insert_album(&lower).await.unwrap();
-    db.insert_album(&upper).await.unwrap();
+    insert_listed_album(&db, &lower).await;
+    insert_listed_album(&db, &upper).await;
 
     let albums = db
         .get_albums(&[AlbumSortCriterion {
@@ -142,9 +150,9 @@ async fn test_sort_by_year_ascending_nulls_last() {
     let no_year = make_album("No Year", &aid, None, 0);
     let y2020 = make_album("Year 2020", &aid, Some(2020), 1);
     let y2010 = make_album("Year 2010", &aid, Some(2010), 2);
-    db.insert_album(&no_year).await.unwrap();
-    db.insert_album(&y2020).await.unwrap();
-    db.insert_album(&y2010).await.unwrap();
+    insert_listed_album(&db, &no_year).await;
+    insert_listed_album(&db, &y2020).await;
+    insert_listed_album(&db, &y2010).await;
 
     let albums = db
         .get_albums(&[AlbumSortCriterion {
@@ -167,9 +175,9 @@ async fn test_sort_by_year_descending_nulls_first() {
     let no_year = make_album("No Year", &aid, None, 0);
     let y2020 = make_album("Year 2020", &aid, Some(2020), 1);
     let y2010 = make_album("Year 2010", &aid, Some(2010), 2);
-    db.insert_album(&no_year).await.unwrap();
-    db.insert_album(&y2020).await.unwrap();
-    db.insert_album(&y2010).await.unwrap();
+    insert_listed_album(&db, &no_year).await;
+    insert_listed_album(&db, &y2020).await;
+    insert_listed_album(&db, &y2010).await;
 
     let albums = db
         .get_albums(&[AlbumSortCriterion {
@@ -192,9 +200,9 @@ async fn test_sort_by_date_added_ascending() {
     let oldest = make_album("Oldest", &aid, Some(2024), -3);
     let newest = make_album("Newest", &aid, Some(2024), 0);
     let middle = make_album("Middle", &aid, Some(2024), -1);
-    db.insert_album(&oldest).await.unwrap();
-    db.insert_album(&newest).await.unwrap();
-    db.insert_album(&middle).await.unwrap();
+    insert_listed_album(&db, &oldest).await;
+    insert_listed_album(&db, &newest).await;
+    insert_listed_album(&db, &middle).await;
 
     let albums = db
         .get_albums(&[AlbumSortCriterion {
@@ -220,8 +228,8 @@ async fn test_sort_by_artist_ascending() {
 
     let album_z = make_album("Some Album", &artist_z.id, Some(2020), 0);
     let album_a = make_album("Another Album", &artist_a.id, Some(2021), 1);
-    db.insert_album(&album_z).await.unwrap();
-    db.insert_album(&album_a).await.unwrap();
+    insert_listed_album(&db, &album_z).await;
+    insert_listed_album(&db, &album_a).await;
 
     let albums = db
         .get_albums(&[AlbumSortCriterion {
@@ -246,8 +254,8 @@ async fn test_sort_by_artist_uses_sort_name() {
 
     let album_the = make_album("Album By The Zebras", &artist_the.id, Some(2020), 0);
     let album_a = make_album("Album By Alpha", &artist_a.id, Some(2021), 1);
-    db.insert_album(&album_the).await.unwrap();
-    db.insert_album(&album_a).await.unwrap();
+    insert_listed_album(&db, &album_the).await;
+    insert_listed_album(&db, &album_a).await;
 
     let albums = db
         .get_albums(&[AlbumSortCriterion {
@@ -274,7 +282,7 @@ async fn test_multi_criteria_artist_then_year() {
     let album_2022 = make_album("Album 2022", &artist.id, Some(2022), 2);
 
     for album in [&album_2020, &album_2024, &album_2022] {
-        db.insert_album(album).await.unwrap();
+        insert_listed_album(&db, album).await;
     }
 
     // Sort by artist ASC, then year DESC
@@ -306,9 +314,7 @@ async fn test_album_index_matches_page_position() {
     // A handful of albums with distinct titles so a title sort is total.
     let titles = ["Delta", "alpha", "Charlie", "Bravo", "echo"];
     for (i, title) in titles.iter().enumerate() {
-        db.insert_album(&make_album(title, &aid, Some(2000), i as i64))
-            .await
-            .unwrap();
+        insert_listed_album(&db, &make_album(title, &aid, Some(2000), i as i64)).await;
     }
 
     let sort = [AlbumSortCriterion {
@@ -336,9 +342,7 @@ async fn test_album_index_matches_page_position_default_sort() {
     let aid = insert_default_artist(&db).await;
 
     for i in 0..4 {
-        db.insert_album(&make_album(&format!("Album {i}"), &aid, Some(2000), i))
-            .await
-            .unwrap();
+        insert_listed_album(&db, &make_album(&format!("Album {i}"), &aid, Some(2000), i)).await;
     }
 
     // Empty sort exercises the default `created_at DESC` order, which needs no
@@ -360,9 +364,7 @@ async fn test_album_index_matches_page_position_on_ties() {
     // The window-function index query and the LIMIT/OFFSET page query must
     // still agree row-for-row.
     for _ in 0..8 {
-        db.insert_album(&make_album("Same Title", &aid, Some(2000), 0))
-            .await
-            .unwrap();
+        insert_listed_album(&db, &make_album("Same Title", &aid, Some(2000), 0)).await;
     }
 
     let sort = [AlbumSortCriterion {
@@ -385,9 +387,9 @@ async fn test_multi_criteria_year_asc_then_title_asc() {
     let a = make_album("Bravo", &aid, Some(2020), 0);
     let b = make_album("Alpha", &aid, Some(2020), 1);
     let c = make_album("Charlie", &aid, Some(2019), 2);
-    db.insert_album(&a).await.unwrap();
-    db.insert_album(&b).await.unwrap();
-    db.insert_album(&c).await.unwrap();
+    insert_listed_album(&db, &a).await;
+    insert_listed_album(&db, &b).await;
+    insert_listed_album(&db, &c).await;
 
     let albums = db
         .get_albums(&[

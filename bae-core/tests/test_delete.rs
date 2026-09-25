@@ -81,7 +81,7 @@ async fn test_delete_album_integration() {
 
     library_manager.delete_album(&album.id).await.unwrap();
 
-    let album_result = library_manager.get_album_by_id(&album.id).await.unwrap();
+    let album_result = library_manager.find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
 
     let releases = library_manager
@@ -140,7 +140,7 @@ async fn test_delete_release_integration() {
 }
 
 #[tokio::test]
-async fn test_delete_last_release_deletes_album() {
+async fn test_delete_last_release_empties_album() {
     let (library_manager, database, _temp_dir) = support::setup_test_library().await;
     let artist = create_test_artist();
     database.insert_artist(&artist).await.unwrap();
@@ -152,7 +152,7 @@ async fn test_delete_last_release_deletes_album() {
 
     library_manager.delete_release(&release.id).await.unwrap();
 
-    let album_result = library_manager.get_album_by_id(&album.id).await.unwrap();
+    let album_result = library_manager.find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
 
     let releases = library_manager

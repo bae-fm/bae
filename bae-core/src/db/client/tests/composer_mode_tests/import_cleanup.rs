@@ -560,7 +560,7 @@ async fn finalize_replacement_in_surviving_album_clears_dangling_primary() {
     assert_eq!(outcomes.len(), 1);
     assert_eq!(outcomes[0].album_id, ALBUM_OLD);
     assert_eq!(outcomes[0].release_id, REL_ONE);
-    assert!(!outcomes[0].album_deleted);
+    assert!(!outcomes[0].album_emptied);
 
     let surviving = db
         .find_album_by_id(ALBUM_OLD)
@@ -573,22 +573,24 @@ async fn finalize_replacement_in_surviving_album_clears_dangling_primary() {
 }
 
 /// Reimport replacing an album's sole release, landing in a new album: the prior
-/// album empties and is deleted, and the outcome reports that.
+/// album empties and stays (another device may be adding a release to it), and
+/// the outcome reports that it emptied.
 #[tokio::test]
-async fn finalize_replacement_of_last_release_deletes_prior_album() {
+async fn finalize_replacement_of_last_release_empties_prior_album() {
     let (db, tmp) = super::temp_db().await;
     let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
 
-    // album-old holds only rel-old; replacing it empties and deletes it.
+    // album-old holds only rel-old; replacing it empties it.
     let outcomes = finalize_reimport_replacing_release(&db, &tmp, now, &[REL_OLD], REL_OLD).await;
 
     assert_eq!(outcomes.len(), 1);
     assert_eq!(outcomes[0].album_id, ALBUM_OLD);
-    assert!(outcomes[0].album_deleted);
+    assert!(outcomes[0].album_emptied);
 
-    assert!(db.find_album_by_id(ALBUM_OLD).await.unwrap().is_none());
+    assert!(db.find_album_by_id(ALBUM_OLD).await.unwrap().is_some());
+    assert!(db.get_releases_for_album(ALBUM_OLD).await.unwrap().is_empty());
     assert!(db.find_release_by_id(REL_OLD).await.unwrap().is_none());
     assert!(db.find_album_by_id(ALBUM_NEW).await.unwrap().is_some());
     assert!(db.find_release_by_id(REL_NEW).await.unwrap().is_some());
