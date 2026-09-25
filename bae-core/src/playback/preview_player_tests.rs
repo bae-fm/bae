@@ -373,3 +373,51 @@ fn resolve_preview_probe_rejects_zero_channels() {
     let result: Result<_, tokio::task::JoinError> = Ok(Some(probe(44100, 0)));
     assert!(resolve_preview_probe("path", result).is_none());
 }
+
+/// A preview holds its file open while it plays; stopping it, or switching
+/// to another file, closes it.
+#[tokio::test(flavor = "multi_thread")]
+async fn ending_a_preview_closes_its_file() {
+    crate::audio_codec::init();
+    let dir = tempfile::TempDir::new().unwrap();
+    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
+    let first = dir.path().join("first.flac");
+    let second = dir.path().join("second.flac");
+    std::fs::copy(fixture.join("Test Album.flac"), &first).unwrap();
+    std::fs::copy(fixture.join("Test Album.flac"), &second).unwrap();
+    let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+    let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+    let (device, _capture_rx) = CaptureAudioDevice::new();
+
+    let open_now = |path: &std::path::Path| {
+        let path = path.canonicalize().unwrap();
+        coven::open_files_under(dir.path())
+            .into_iter()
+            .filter(|open| *open == path)
+            .count()
+    };
+    let wait_closed = |path: std::path::PathBuf| async move {
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while open_now(&path) > 0 {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "{} is still open",
+                path.display()
+            );
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    };
+
+    let whole = |path: &std::path::Path| PreviewTarget::whole_file(path.display().to_string());
+    assert!(player.play(whole(&first), &device).await.started());
+    assert_eq!(open_now(&first), 1, "the preview reads its file");
+
+    assert!(player.play(whole(&second), &device).await.started());
+    wait_closed(first.clone()).await;
+    assert_eq!(open_now(&second), 1, "the new preview reads its file");
+
+    assert_eq!(player.stop(), AfterPreview::LeaveMain);
+    wait_closed(second).await;
+    coven::assert_no_open_files_under(dir.path());
+}

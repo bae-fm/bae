@@ -732,3 +732,48 @@ async fn auto_advance_plays_pregap_over_sparse_buffer() {
          got {during_pregap}ms ~1s in",
     );
 }
+
+/// Playback holds the playing track's file open for as long as it streams,
+/// and stopping closes it: nothing under the album stays open.
+#[tokio::test]
+async fn stopping_playback_closes_the_files_it_streamed() {
+    tracing_init();
+    let import_ids = SequentialIdProvider::new("stopping-playback");
+    let (library_manager, imported) = imported_release_setup(
+        create_test_album(),
+        "test",
+        import_ids.new_id(),
+        |album_dir| {
+            let _track_data = generate_test_flac_files(album_dir);
+        },
+        |_| Ok(()),
+    )
+    .await
+    .expect("import the release to play");
+    let (playback_handle, _capture) =
+        start_capture_service(library_manager, tokio::runtime::Handle::current());
+    let mut progress_rx = playback_handle.subscribe_progress();
+
+    playback_handle.play(imported.track_ids[0].clone());
+    assert!(
+        support::wait_until_playing(&mut progress_rx, &imported.track_ids[0], Duration::from_secs(5))
+            .await,
+        "the track plays"
+    );
+    assert!(
+        !coven::open_files_under(&imported.album_dir).is_empty(),
+        "the playing track's file is open while it streams"
+    );
+
+    playback_handle.stop();
+
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while !coven::open_files_under(&imported.album_dir).is_empty() {
+        assert!(
+            Instant::now() < deadline,
+            "files still open after stopping: {:?}",
+            coven::open_files_under(&imported.album_dir)
+        );
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+}
