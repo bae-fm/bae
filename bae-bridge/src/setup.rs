@@ -107,9 +107,10 @@ use crate::types::{
 fn restore_error_to_bridge(error: RestoreFromCodeError) -> BridgeError {
     match error {
         RestoreFromCodeError::Cancelled => BridgeError::Cancelled,
-        RestoreFromCodeError::Restore(error) => {
-            BridgeError::internal(format!("Failed to restore library: {error}"))
-        }
+        error @ RestoreFromCodeError::Restore(_) => BridgeError::diagnostic(
+            crate::types::BridgeErrorCategory::from_core(error.category()),
+            error,
+        ),
     }
 }
 
@@ -142,7 +143,7 @@ pub(crate) async fn restore_from_code_config(
             |status| info!("{}", status),
         )
         .await
-        .map_err(|e| restore_error_to_bridge(RestoreFromCodeError::Restore(e))),
+        .map_err(restore_error_to_bridge),
     }
 }
 
@@ -361,9 +362,7 @@ pub(crate) fn join_error_to_bridge(error: JoinDevicePairingError) -> BridgeError
             BridgeDeviceJoinFailure::OwnerEnded,
             "the inviting device ended the join",
         ),
-        JoinDevicePairingError::Join(error) => {
-            BridgeError::internal(format!("Failed to join library: {error}"))
-        }
+        error => BridgeError::diagnostic(BridgeErrorCategory::from_core(error.category()), error),
     }
 }
 
@@ -526,6 +525,45 @@ mod tests {
                 assert!(detail.contains("onboarding worker task panicked"));
             }
             other => panic!("expected diagnostic bridge error, got {other:?}"),
+        }
+    }
+
+    /// A restore code that does not decode is the person's to fix, so it
+    /// reaches the UI as a configuration line rather than an internal fault.
+    #[tokio::test]
+    async fn an_undecodable_restore_code_is_a_configuration_error() {
+        let root = tempfile::TempDir::new().unwrap();
+        let error = restore_from_code_config(
+            bae_core::config::AppDir::under_home(root.path()),
+            "placeholder-code-that-does-not-decode".to_string(),
+            coven::OAuthClients::empty(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .expect_err("an undecodable code does not restore");
+
+        match error {
+            BridgeError::Diagnostic { category, .. } => {
+                assert_eq!(category, BridgeErrorCategory::Config)
+            }
+            other => panic!("expected a diagnostic bridge error, got {other:?}"),
+        }
+    }
+
+    /// Likewise a pairing code that does not decode: the person scans a fresh
+    /// one.
+    #[test]
+    fn an_undecodable_pairing_code_is_a_configuration_error() {
+        let decode = coven::DevicePairingOffer::decode("placeholder-pairing-code")
+            .expect_err("the placeholder does not decode");
+
+        match join_error_to_bridge(JoinDevicePairingError::from(decode)) {
+            BridgeError::Diagnostic { category, .. } => {
+                assert_eq!(category, BridgeErrorCategory::Config)
+            }
+            other => panic!("expected a diagnostic bridge error, got {other:?}"),
         }
     }
 

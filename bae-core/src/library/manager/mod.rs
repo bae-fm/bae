@@ -288,7 +288,7 @@ impl LibraryError {
 
 /// A cloud-home failure the user must fix (bad credentials, missing bucket) vs a
 /// transient one to retry (unreachable backend, local I/O).
-fn cloud_home_category(error: &coven::CloudHomeError) -> crate::ui::UiErrorCategory {
+pub(crate) fn cloud_home_category(error: &coven::CloudHomeError) -> crate::ui::UiErrorCategory {
     use crate::ui::UiErrorCategory as C;
     if error.is_retryable() {
         C::Network
@@ -321,7 +321,7 @@ fn cloud_unlock_category(error: &coven::CloudHomeUnlockError) -> crate::ui::UiEr
 
 /// Classify a coven sync/membership failure into a user-facing class: keyring vs
 /// cloud credentials/network vs the membership chain itself.
-fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
+pub(crate) fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
     use crate::ui::UiErrorCategory as C;
     use coven::SyncError;
     if error.is_retryable() {
@@ -359,6 +359,58 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
         | SyncError::BlobUpload(_)
         | SyncError::StuckReclaim(_)
         | SyncError::Loop(_) => C::Internal,
+    }
+}
+
+/// Classify a keyring failure: a keychain that refused this second is waited
+/// out, a missing device identity is its own state, anything else is a broken
+/// keyring.
+pub(crate) fn key_category(error: &coven::KeyError) -> crate::ui::UiErrorCategory {
+    use crate::ui::UiErrorCategory as C;
+    match error {
+        coven::KeyError::KeychainTemporarilyUnavailable => C::KeyringLocked,
+        coven::KeyError::NoDeviceIdentity => C::DeviceIdentityMissing,
+        _ => C::Keyring,
+    }
+}
+
+/// Classify why a restore or join failed to bootstrap a store from the cloud:
+/// the cloud's credentials vs an unreachable backend vs a code that does not
+/// decode vs the keyring vs the membership handshake. What is left is a fault
+/// in this device's own store work.
+pub(crate) fn bootstrap_category(error: &coven::BootstrapError) -> crate::ui::UiErrorCategory {
+    use crate::ui::UiErrorCategory as C;
+    use coven::BootstrapError as B;
+    match error {
+        B::CloudHome(error) => cloud_home_category(error),
+        B::Key(error) => key_category(error),
+        B::RestoreCode(_)
+        | B::UnsupportedDeviceInviteVersion(_)
+        | B::InvalidStoreId(_)
+        | B::Config(_) => C::Config,
+        B::MembershipMutation(_)
+        | B::DeviceJoin(_)
+        | B::DeviceJoinTransport(_)
+        | B::DeviceInvite(_)
+        | B::Pairing(_)
+        | B::PairingState(_)
+        | B::StoreRegistration(_) => C::Membership,
+        B::Provider(_) | B::ExactSlotsUnavailable { .. } => C::Credentials,
+        #[cfg(feature = "oauth-providers")]
+        B::OAuthClient(_) => C::Credentials,
+        B::Cleanup { cause, .. } => bootstrap_category(cause),
+        B::Encryption(_)
+        | B::Snapshot(_)
+        | B::Pull(_)
+        | B::StorePull(_)
+        | B::Storage(_)
+        | B::Io(_)
+        | B::StoreExists(_)
+        | B::TornBootstrapCleanup { .. }
+        | B::CancelledJoinCleanup { .. }
+        | B::DatabaseOpen(_)
+        | B::InvalidSigningKey(_)
+        | B::Cancelled => C::Internal,
     }
 }
 
