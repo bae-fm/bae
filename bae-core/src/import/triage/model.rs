@@ -370,6 +370,26 @@ pub struct TriageRow {
     pub reading: TriageReading,
 }
 
+impl TriageRow {
+    /// Every piece of text the row shows, which is what the list's filter
+    /// tests: the draft's album title and each credited artist's name, or —
+    /// with no draft, the [`TriageReading::Unidentified`] row — the folder's
+    /// name, which is the row's title then.
+    pub(crate) fn shown_text(&self) -> Vec<&str> {
+        match &self.metadata_summary {
+            None => vec![self.folder_name.as_str()],
+            Some(summary) => std::iter::once(summary.album_title.as_str())
+                .chain(
+                    summary
+                        .album_artist_assignments
+                        .iter()
+                        .map(crate::import::ArtistAssignment::name),
+                )
+                .collect(),
+        }
+    }
+}
+
 /// A Done row: the candidate that became a library release, presented as that
 /// release.
 ///
@@ -390,11 +410,31 @@ pub struct ImportedRow {
     pub release: ImportedReleaseSummary,
 }
 
-/// The library release a Done row became, as the library has it now.
+/// The library release a Done row became, as the library has it now. Its
+/// words are an [`ImportedReleaseText`], spread into the fields the surfaces
+/// draw.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportedReleaseSummary {
     pub release_id: String,
     pub album_id: String,
+    /// [`ImportedReleaseText::title`].
+    pub title: String,
+    /// [`ImportedReleaseText::artist`].
+    pub artist: Option<String>,
+    /// [`ImportedReleaseText::year`].
+    pub year: Option<i32>,
+    /// The release's own cover.
+    pub cover: Option<crate::album_detail::ImageRef>,
+    /// Every catalog's description of the release, in the order surfaces list
+    /// catalogs. Empty when no catalog describes it.
+    pub records: Vec<crate::import::ReleaseRecord>,
+}
+
+/// What a Done row states about its library release in words. One read
+/// answers it for the rows a window shows and for every Done row the list's
+/// filter tests, so a row is found by the text it shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportedReleaseText {
     /// The album's title as the library holds it. Empty for a release reseeded
     /// from tags that named none, which the person fills in the editor.
     pub title: String,
@@ -402,11 +442,20 @@ pub struct ImportedReleaseSummary {
     /// `None` when it credits none.
     pub artist: Option<String>,
     pub year: Option<i32>,
-    /// The release's own cover.
-    pub cover: Option<crate::album_detail::ImageRef>,
-    /// Every catalog's description of the release, in the order surfaces list
-    /// catalogs. Empty when no catalog describes it.
-    pub records: Vec<crate::import::ReleaseRecord>,
+}
+
+impl ImportedReleaseText {
+    /// Every piece of text the row shows — its title, and its artist beside
+    /// its year on the line under it — which is what the list's filter tests.
+    pub(crate) fn shown_text(&self) -> Vec<std::borrow::Cow<'_, str>> {
+        std::iter::once(std::borrow::Cow::Borrowed(self.title.as_str()))
+            .chain(self.artist.as_deref().map(std::borrow::Cow::Borrowed))
+            .chain(
+                self.year
+                    .map(|year| std::borrow::Cow::Owned(year.to_string())),
+            )
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

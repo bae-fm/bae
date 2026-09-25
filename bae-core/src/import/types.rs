@@ -675,6 +675,14 @@ impl ArtistAssignment {
         }
     }
 
+    /// The name the artist is shown by.
+    pub(crate) fn name(&self) -> &str {
+        match self {
+            Self::Existing { artist } => &artist.name,
+            Self::New { seed } => &seed.name,
+        }
+    }
+
     pub(crate) fn is_blank(&self) -> bool {
         match self {
             Self::Existing { artist } => {

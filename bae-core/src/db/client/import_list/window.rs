@@ -137,7 +137,9 @@ pub(super) fn materialise(
 /// A Done row, read from the library release its import wrote: the album's
 /// title, credited artists and year, the release's cover and its catalog
 /// records. Read here, inside the list's snapshot, so a re-identify, an edit, a
-/// new cover or a deleted release reruns the list and reaches the row.
+/// new cover or a deleted release reruns the list and reaches the row. Its
+/// words are the ones the filter tests: both read them with
+/// [`load_imported_release_text_on`].
 fn imported_row(
     sql: &SqlReadContext<'_>,
     placed: &crate::import::triage::TriageRow,
@@ -149,34 +151,27 @@ fn imported_row(
             placed.candidate_key
         )));
     };
-    let (album_id, title, artist, year, cover_version) = sql
-        .query_row(
-            &format!(
-                "SELECT r.album_id, a.title, NULLIF({artist_names}, '') AS artist_names, \
-                        a.year, (SELECT c.blob_id FROM covers c WHERE c.id = r.id) \
-                 FROM releases r JOIN albums a ON a.id = r.album_id \
-                 WHERE r.id = ?",
-                artist_names = super::super::query::album_artist_names_sql(),
-            ),
-            params![release.release_id],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, Option<String>>(2)?,
-                    row.get::<_, Option<i32>>(3)?,
-                    row.get::<_, Option<String>>(4)?,
-                ))
-            },
-        )
-        .optional()?
+    let text = load_imported_release_text_on(sql, Some(&release.release_id))?
+        .remove(&release.release_id)
         .ok_or_else(|| {
             DbError::Message(format!(
                 "candidate {} is placed Done on release {}, which has no album",
                 placed.candidate_key, release.release_id
             ))
         })?;
+    let cover_version = sql
+        .query_row(
+            "SELECT blob_id FROM covers WHERE id = ?",
+            params![release.release_id],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()?;
     let records = super::super::read::get_release_records_on(sql, &release.release_id)?;
+    let crate::import::ImportedReleaseText {
+        title,
+        artist,
+        year,
+    } = text;
     Ok(crate::import::ImportedRow {
         candidate_key: placed.candidate_key.clone(),
         display_path: placed.display_path.clone(),
@@ -188,7 +183,7 @@ fn imported_row(
                 image_type: crate::db::LibraryImageType::Cover,
             }),
             release_id: release.release_id.clone(),
-            album_id,
+            album_id: release.album_id.clone(),
             title,
             artist,
             year,

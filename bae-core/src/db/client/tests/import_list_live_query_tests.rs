@@ -196,6 +196,63 @@ async fn import_list_done_row_reads_the_library_release() {
     assert_eq!(deleted.summary.counts.pending, 1);
 }
 
+/// The filter finds a Done row by the library title it shows, read in the
+/// list's own query: renaming the album reruns a filtered list that holds no
+/// window at all, and the row is then found by its new title and not its old.
+#[tokio::test]
+async fn import_list_filter_finds_a_done_row_by_its_library_title() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::watched_folder::host_root("/music");
+    let item = scan_candidate(root, "release");
+    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
+        unreachable!("the fixture builds a valid candidate");
+    };
+    let content_hash = candidate.files.content_hash();
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    db.save_folder_scan_item(root, generation, &item)
+        .await
+        .unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+    exec(
+        &db,
+        "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
+        &[content_hash.as_str(), RELEASE_ID],
+    )
+    .await;
+
+    let filtered = |filter: &str| {
+        let mut request = list_request(crate::import::TriageTab::Done, []);
+        request.view.filter_text = filter.to_string();
+        request
+    };
+    let live = db.subscribe_import_list(filtered("album title"));
+    let requests = live.requests();
+    let mut live = live;
+    assert_eq!(live.next().await.into_result().unwrap().total_count, 1);
+
+    exec(
+        &db,
+        "UPDATE albums SET title = 'Album' WHERE id = ?1",
+        &[ALBUM_ID],
+    )
+    .await;
+    let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("renaming the album wakes a filtered list")
+        .into_result()
+        .unwrap();
+    assert_eq!(renamed.total_count, 0, "the old title is no longer shown");
+
+    requests.set(filtered("ALBUM")).unwrap();
+    let found = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("the filter change reruns the query")
+        .into_result()
+        .unwrap();
+    assert_eq!(found.total_count, 1, "the new title finds the row");
+}
+
 /// Moving the window is a request change, not a commit: the query reruns and
 /// says so without anything having been written.
 #[tokio::test]

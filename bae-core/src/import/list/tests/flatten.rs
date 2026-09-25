@@ -144,8 +144,10 @@ fn only_entries_beneath_a_group_header_are_group_members() {
     assert_eq!(memberships, vec![true, true, false]);
 }
 
+/// A row with no draft shows its folder's name and nothing else, so that is
+/// what finds it; its path is not on screen and finds nothing.
 #[test]
-fn the_filter_matches_the_folder_name_and_the_display_path() {
+fn the_filter_finds_an_undrafted_row_by_its_folder_name_not_its_path() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Group/Wanted"), candidate("Other")];
 
@@ -172,23 +174,27 @@ fn the_filter_matches_the_folder_name_and_the_display_path() {
             ..view(TriageTab::Pending)
         },
     );
-    assert_eq!(
-        sequence(&rows, &by_path),
-        vec![
-            "group Group".to_string(),
-            "candidate Group/Wanted".to_string()
-        ]
-    );
+    assert!(sequence(&rows, &by_path).is_empty());
 }
 
+/// A drafted row shows its draft's title and artists — not the verdict's
+/// lead, and not its folder — so those are what find it.
 #[test]
-fn the_filter_matches_the_lead_match_title_and_artist() {
+fn the_filter_finds_a_drafted_row_by_the_draft_it_shows() {
     let mut rows = queue();
-    rows.candidates = vec![candidate("Release"), candidate("Other")];
-    rows.states
-        .insert("hash-Release".to_string(), several_matches_state());
+    rows.candidates = vec![candidate("Folder"), candidate("Other")];
+    rows.states.insert(
+        "hash-Folder".to_string(),
+        CandidateStateListRow {
+            metadata_summary: Some(crate::import::TriageMetadataSummary {
+                album_title: "Album".to_string(),
+                album_artist_assignments: vec![crate::import::ArtistAssignment::new("Artist")],
+            }),
+            ..several_matches_state()
+        },
+    );
 
-    for needle in ["album title", "artist name"] {
+    let found = |needle: &str| {
         let flat = flattened(
             &rows,
             &ImportListView {
@@ -196,12 +202,82 @@ fn the_filter_matches_the_lead_match_title_and_artist() {
                 ..view(TriageTab::Pending)
             },
         );
+        sequence(&rows, &flat)
+    };
+    for needle in ["album", "ARTIST"] {
         assert_eq!(
-            sequence(&rows, &flat),
-            vec!["candidate Release".to_string()],
-            "{needle} matches the lead match's columns"
+            found(needle),
+            vec!["candidate Folder".to_string()],
+            "{needle} is on the row"
         );
     }
+    for needle in ["album title", "artist name", "folder"] {
+        assert!(
+            found(needle).is_empty(),
+            "{needle} is the verdict's lead or the folder, which the row does not show"
+        );
+    }
+}
+
+/// A Done row shows the library release it became — its title, artist and
+/// year — so those are what find it, and the candidate's own draft does not.
+#[test]
+fn the_filter_finds_a_done_row_by_its_library_release() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Folder"), candidate("Other")];
+    rows.states
+        .insert("hash-Folder".to_string(), ready_state("mb-1"));
+    rows.states.insert(
+        "hash-Other".to_string(),
+        CandidateStateListRow {
+            metadata_summary: Some(crate::import::TriageMetadataSummary {
+                album_title: "Draft".to_string(),
+                album_artist_assignments: vec![],
+            }),
+            ..ready_state("mb-2")
+        },
+    );
+    imported(&mut rows, "Folder", "rel-1", 100);
+    imported(&mut rows, "Other", "rel-2", 200);
+    rows.imported_text = Some(std::collections::HashMap::from([
+        (
+            "rel-1".to_string(),
+            crate::import::ImportedReleaseText {
+                title: "Album".to_string(),
+                artist: Some("Artist".to_string()),
+                year: Some(1999),
+            },
+        ),
+        (
+            "rel-2".to_string(),
+            crate::import::ImportedReleaseText {
+                title: "Other Album".to_string(),
+                artist: None,
+                year: None,
+            },
+        ),
+    ]));
+
+    let found = |needle: &str| {
+        let flat = flattened(
+            &rows,
+            &ImportListView {
+                filter_text: needle.to_string(),
+                ..view(TriageTab::Done)
+            },
+        );
+        sequence(&rows, &flat)
+    };
+    for needle in ["artist", "1999"] {
+        assert_eq!(
+            found(needle),
+            vec!["candidate Folder".to_string()],
+            "{needle} is on the row"
+        );
+    }
+    assert_eq!(found("album").len(), 2);
+    assert!(found("draft").is_empty(), "the candidate's draft is not shown");
+    assert!(found("folder").is_empty(), "the folder is not shown");
 }
 
 #[test]

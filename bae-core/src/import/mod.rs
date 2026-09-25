@@ -210,7 +210,7 @@ desktop_only! {
     };
     pub use triage::{
         CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,
-        ImportedReleaseSummary, ImportedRow, MatchEvidence, MatchedPressing, MatchedRelease,
+        ImportedReleaseSummary, ImportedReleaseText, ImportedRow, MatchEvidence, MatchedPressing, MatchedRelease,
         MatchedSignal, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
         TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
     };

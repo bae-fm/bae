@@ -6,6 +6,12 @@
 //! Nothing here reads a file,
 //! a cue sheet, a boundary tree or a fetched release; those are loaded for
 //! the items inside the requested windows and nowhere else.
+//!
+//! The filter tests the text each row shows and nothing else: a candidate
+//! row's draft title and artists, or its folder's name when it has no draft;
+//! a Done row's library release's title, artists and year; an invalid folder's
+//! name. What a row does not show — its path, the verdict's lead — finds
+//! nothing.
 
 use super::{
     GroupHeaderRow, ImportCandidateListLocation, ImportListItem, ImportListOrder,
@@ -20,6 +26,7 @@ use crate::import::triage::{
 use crate::import::watched_folder::candidate_relative_path;
 use crate::import::FolderReleaseDecisionKey;
 use crate::library::LibraryError;
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
@@ -93,7 +100,7 @@ pub(crate) fn flatten(
 
 /// The first of `keys` in the queue's own order — every tab in turn, each in
 /// the order `request`'s view sorts it — or `None` when the queue holds none
-/// of them.
+/// of them. The filter hides none of them, so it is not applied at all.
 pub(crate) fn first_candidate_among(
     rows: &ImportQueueRows,
     request: &ImportListRequest,
@@ -101,7 +108,7 @@ pub(crate) fn first_candidate_among(
 ) -> Result<Option<String>, LibraryError> {
     let Ordered {
         entries, placed, ..
-    } = order(rows, request)?;
+    } = order(rows, &unfiltered(request))?;
     Ok(entries.iter().find_map(|entry| match entry.item {
         ItemRef::Candidate { index, .. } => {
             let key = &placed[index].row.candidate_key;
@@ -113,6 +120,7 @@ pub(crate) fn first_candidate_among(
 
 fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered, LibraryError> {
     let view = &request.view;
+    let filter = TextFilter::of(view);
     let mut placed = Vec::new();
     let mut counts = TriageTabCounts::default();
     let mut ordered = Vec::with_capacity(rows.candidates.len());
@@ -127,10 +135,7 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
                     discovered_at: row.discovered_at,
                     tab: TriageTab::Skipped,
                     group: None,
-                    matches_filter: matches_text(
-                        view,
-                        [row.name.as_str(), row.display_path.as_str()],
-                    ),
+                    matches_filter: filter.keeps(|| Ok(vec![Cow::Borrowed(row.name.as_str())]))?,
                     item: ItemRef::Invalid {
                         index,
                         is_group_member: false,
@@ -148,18 +153,7 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
                 let triage_row = place_row(rows, row)?;
                 let tab = triage_row.placement.tab();
                 counts.bump(tab);
-                let matched = triage_row.matched.as_ref();
-                let matches_filter = matches_text(
-                    view,
-                    [
-                        row.name.as_str(),
-                        row.display_path.as_str(),
-                        matched.map_or("", |matched| matched.title.as_str()),
-                        matched
-                            .and_then(|matched| matched.artist.as_deref())
-                            .unwrap_or(""),
-                    ],
-                );
+                let matches_filter = filter.keeps(|| shown_text(rows, &triage_row))?;
                 ordered.push(OrderedEntry {
                     watched_folder_path: row.watched_folder_path.clone(),
                     display_path: row.display_path.clone(),
@@ -308,15 +302,17 @@ fn compare_dates(
     }
 }
 
-/// Locate `candidate_key` using the same placement, grouping, filtering and
-/// ordering pass as the list itself. Only the target's group is opened; the
+/// Locate `candidate_key` using the same placement, grouping and ordering
+/// pass as the list itself. The filter is cleared, so the candidate is where
+/// it sits in its tab unfiltered. Only the target's group is opened; the
 /// caller's disclosure state for every other group remains authoritative.
 pub(crate) fn locate_candidate(
     rows: &ImportQueueRows,
     request: &ImportListRequest,
     candidate_key: &str,
 ) -> Result<Option<ImportCandidateListLocation>, LibraryError> {
-    let initial = flatten(rows, request)?;
+    let mut request = unfiltered(request);
+    let initial = flatten(rows, &request)?;
     let Some(placed) = initial
         .rows
         .iter()
@@ -340,9 +336,7 @@ pub(crate) fn locate_candidate(
     } else {
         None
     };
-    let mut request = request.clone();
     request.view.tab = tab;
-    request.view.filter_text.clear();
     if let Some(group) = &group {
         request.view.collapsed_groups.remove(&group.key);
     }
@@ -357,6 +351,14 @@ pub(crate) fn locate_candidate(
         group_key: group.map(|group| group.key),
         visible_position: position as u64,
     }))
+}
+
+/// `request` with its filter cleared: the request a queue read without the
+/// filter's text answers.
+fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
+    let mut request = request.clone();
+    request.view.filter_text.clear();
+    request
 }
 
 /// One settled candidate's row, as the tables place it. `resolved_boundaries`
@@ -539,16 +541,67 @@ fn group_for(
     })
 }
 
-/// Whether one entry survives the view's filter. An empty filter keeps
-/// everything.
-fn matches_text<'a>(view: &ImportListView, haystack: impl IntoIterator<Item = &'a str>) -> bool {
-    if view.filter_text.is_empty() {
-        return true;
+/// The view's filter text, lowercased once. `None` for an empty filter, which
+/// keeps every row.
+struct TextFilter(Option<String>);
+
+impl TextFilter {
+    fn of(view: &ImportListView) -> Self {
+        Self(
+            view.filters()
+                .then(|| view.filter_text.to_lowercase()),
+        )
     }
-    let needle = view.filter_text.to_lowercase();
-    haystack
-        .into_iter()
-        .any(|value| value.to_lowercase().contains(&needle))
+
+    /// Whether a row showing `shown` survives the filter. The text is only
+    /// asked for when there is a filter: with none, the queue read did not
+    /// read a Done row's.
+    fn keeps<'a>(
+        &self,
+        shown: impl FnOnce() -> Result<Vec<Cow<'a, str>>, LibraryError>,
+    ) -> Result<bool, LibraryError> {
+        let Some(needle) = &self.0 else {
+            return Ok(true);
+        };
+        Ok(shown()?
+            .iter()
+            .any(|value| value.to_lowercase().contains(needle.as_str())))
+    }
+}
+
+/// Every piece of text one settled candidate's row shows. A Done row is the
+/// library release it became, so its text is that release's, read with the
+/// queue; every other row is the candidate's own [`TriageRow::shown_text`].
+fn shown_text<'a>(
+    rows: &'a ImportQueueRows,
+    triage_row: &'a TriageRow,
+) -> Result<Vec<Cow<'a, str>>, LibraryError> {
+    if triage_row.placement != crate::import::TriagePlacement::Done {
+        return Ok(triage_row
+            .shown_text()
+            .into_iter()
+            .map(Cow::Borrowed)
+            .collect());
+    }
+    let Some(TriageImportStatus::Complete { release }) = &triage_row.import_status else {
+        return Err(LibraryError::Internal(format!(
+            "candidate {} is placed Done with no imported release",
+            triage_row.candidate_key
+        )));
+    };
+    let texts = rows.imported_text.as_ref().ok_or_else(|| {
+        LibraryError::Internal(
+            "the import queue was read without its Done rows' text, which the filter tests"
+                .to_string(),
+        )
+    })?;
+    let text = texts.get(&release.release_id).ok_or_else(|| {
+        LibraryError::Internal(format!(
+            "candidate {} is placed Done on release {}, which has no album",
+            triage_row.candidate_key, release.release_id
+        ))
+    })?;
+    Ok(text.shown_text())
 }
 
 /// The chrome, over the whole queue rather than the requested tab: the counts

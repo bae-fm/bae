@@ -66,6 +66,14 @@ pub struct ImportListView {
     pub order: ImportListOrder,
 }
 
+impl ImportListView {
+    /// Whether the filter hides anything — and so whether the queue read
+    /// reads the text a Done row shows, which only the filter tests.
+    pub(crate) fn filters(&self) -> bool {
+        !self.filter_text.is_empty()
+    }
+}
+
 impl Default for ImportListView {
     fn default() -> Self {
         Self {
