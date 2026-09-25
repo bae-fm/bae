@@ -493,8 +493,10 @@ mod detail_reads;
 mod import;
 mod live_query_events;
 mod queue_reads;
+mod shown_transfers;
 mod storage_reads;
 use live_query_events::reconfigurable_live_query_events;
+use shown_transfers::ShownTransfers;
 #[cfg(test)]
 #[path = "app_services_tests.rs"]
 mod tests;

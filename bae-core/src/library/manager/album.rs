@@ -134,6 +134,22 @@ impl LibraryManager {
             .unwrap_or_default()
     }
 
+    /// The ids of the releases an album-detail delivery shows.
+    pub(crate) fn album_detail_release_ids(
+        projection: &crate::db::AlbumDetailProjection,
+    ) -> Vec<String> {
+        projection
+            .detail
+            .as_ref()
+            .map(|raw| {
+                raw.releases
+                    .iter()
+                    .map(|release| release.release.id.clone())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// Resolve an album-detail delivery with its releases' pin markers, one per
     /// release in order (see [`Self::album_detail_pin_files`]).
     pub(crate) fn resolve_album_detail_projection(

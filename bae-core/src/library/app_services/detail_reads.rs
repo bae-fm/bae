@@ -7,8 +7,9 @@ use super::*;
 impl AppServices {
     /// The detail view's album as it changes, read for the id the
     /// subscription is set to: its rows, the releases' pin markers coven
-    /// watches, and the config, cloud-home, and transfer state it is resolved
-    /// against. Another album is a new id on the same read.
+    /// watches, whether a cloud home is connected, and the transfers of its
+    /// releases — the state it is resolved against. Another album is a new id
+    /// on the same read.
     pub fn subscribe_album_detail(
         &self,
         runtime_handle: &tokio::runtime::Handle,
@@ -19,9 +20,8 @@ impl AppServices {
         let manager = services.inner.manager.clone();
         let query_runtime = runtime_handle.clone();
         let mut pins = manager.watch_release_pins();
-        let mut config = services.subscribe_config_changes();
         let mut cloud_home = manager.subscribe_cloud_home();
-        let mut transfers = services.subscribe_transfer_values();
+        let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let task = runtime_handle.spawn(async move {
             let mut id = ids.borrow_and_update().clone();
             let mut query = reconfigurable_live_query_events(
@@ -36,6 +36,7 @@ impl AppServices {
                         Some(Ok(projection)) => {
                             match pins.watch(LibraryManager::album_detail_pin_files(&projection)).await {
                                 Ok(pinned) => {
+                                    transfers.show(LibraryManager::album_detail_release_ids(&projection));
                                     last = Some((projection.clone(), pinned.clone()));
                                     manager.resolve_album_detail_projection(projection, pinned)
                                 }
@@ -60,14 +61,11 @@ impl AppServices {
                         continue;
                     }
                     changed = async { tokio::select! {
-                        value = config.changed() => value,
                         value = cloud_home.changed() => value,
                         value = transfers.changed() => value,
                     }} => {
                         if changed.is_err() { return; }
-                        config.borrow_and_update();
                         cloud_home.borrow_and_update();
-                        transfers.borrow_and_update();
                         let Some((projection, pinned)) = last.clone() else { continue };
                         manager.resolve_album_detail_projection(projection, pinned)
                     }
@@ -83,9 +81,9 @@ impl AppServices {
     }
 
     /// The detail view's release as it changes, read for the id the
-    /// subscription is set to: its rows, its pin marker coven watches, and the
-    /// config, cloud-home, and transfer state it is resolved against. Another
-    /// release is a new id on the same read.
+    /// subscription is set to: its rows, its pin marker coven watches, whether
+    /// a cloud home is connected, and its transfer — the state it is resolved
+    /// against. Another release is a new id on the same read.
     pub fn subscribe_release_detail(
         &self,
         runtime_handle: &tokio::runtime::Handle,
@@ -96,9 +94,8 @@ impl AppServices {
         let manager = services.inner.manager.clone();
         let query_runtime = runtime_handle.clone();
         let mut pins = manager.watch_release_pins();
-        let mut config = services.subscribe_config_changes();
         let mut cloud_home = manager.subscribe_cloud_home();
-        let mut transfers = services.subscribe_transfer_values();
+        let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let task = runtime_handle.spawn(async move {
             let mut id = ids.borrow_and_update().clone();
             let mut query = reconfigurable_live_query_events(
@@ -120,6 +117,7 @@ impl AppServices {
                             match pins.watch(LibraryManager::release_detail_pin_files(&projection)).await {
                                 Ok(pinned) => {
                                     let pinned = pinned.first().copied().unwrap_or(false);
+                                    transfers.show(id.iter().cloned().collect());
                                     last = Some((projection.clone(), pinned));
                                     resolve(&id, projection, pinned)
                                 }
@@ -144,14 +142,11 @@ impl AppServices {
                         continue;
                     }
                     changed = async { tokio::select! {
-                        value = config.changed() => value,
                         value = cloud_home.changed() => value,
                         value = transfers.changed() => value,
                     }} => {
                         if changed.is_err() { return; }
-                        config.borrow_and_update();
                         cloud_home.borrow_and_update();
-                        transfers.borrow_and_update();
                         let Some((projection, pinned)) = last.clone() else { continue };
                         resolve(&id, projection, pinned)
                     }

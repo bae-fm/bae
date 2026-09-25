@@ -201,6 +201,18 @@ impl LibraryManager {
             .collect()
     }
 
+    /// The ids of the releases a Storage Manager delivery shows, one per row.
+    pub(crate) fn storage_browse_release_ids(
+        projection: &crate::db::StorageBrowseProjection,
+    ) -> Vec<String> {
+        projection
+            .windows
+            .iter()
+            .flat_map(|window| &window.rows)
+            .map(|row| row.release.id.clone())
+            .collect()
+    }
+
     /// Resolve a Storage Manager delivery with its rows' pin markers, one per
     /// row in the order [`Self::storage_browse_pin_files`] lists them.
     pub(crate) fn resolve_storage_browse(

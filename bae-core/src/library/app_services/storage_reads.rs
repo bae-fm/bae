@@ -6,9 +6,10 @@ impl AppServices {
     /// The Storage Manager list as it changes, read in the view the
     /// subscription is asked for: its rows, the rows' pin markers coven
     /// watches, the upload queue (which the Uploading filter lists, in queue
-    /// order), and the config, cloud-home, download, and transfer state the
-    /// rows are resolved against. One query serves every window: a new view or
-    /// upload queue points it at what that reads.
+    /// order), whether a cloud home is connected, and the transfers of the
+    /// releases shown — the state the rows are resolved against. One query
+    /// serves every window: a new view or upload queue points it at what that
+    /// reads.
     pub fn subscribe_storage_browse(
         &self,
         runtime_handle: &tokio::runtime::Handle,
@@ -21,9 +22,7 @@ impl AppServices {
         let query_runtime = runtime_handle.clone();
         let mut outbox = services.subscribe_outbox_values();
         let mut cloud_home = manager.subscribe_cloud_home();
-        let mut config = services.subscribe_config_changes();
-        let mut downloads = services.subscribe_download_values();
-        let mut transfers = services.subscribe_transfer_values();
+        let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let mut pins = manager.watch_release_pins();
         let task = runtime_handle.spawn(async move {
             // The upload queue as the outbox holds it now, read only while
@@ -77,6 +76,7 @@ impl AppServices {
                         Some(Ok(projection)) => {
                             match pins.watch(LibraryManager::storage_browse_pin_files(&projection)).await {
                                 Ok(pinned) => {
+                                    transfers.show(LibraryManager::storage_browse_release_ids(&projection));
                                     last = Some((projection.clone(), pinned.clone()));
                                     Ok(manager.resolve_storage_browse(projection, pinned))
                                 }
@@ -134,9 +134,9 @@ impl AppServices {
                             None => continue,
                         }
                     }
-                    changed = async { tokio::select! { value = cloud_home.changed() => value, value = config.changed() => value, value = downloads.changed() => value, value = transfers.changed() => value } } => {
+                    changed = async { tokio::select! { value = cloud_home.changed() => value, value = transfers.changed() => value } } => {
                         if changed.is_err() { return; }
-                        cloud_home.borrow_and_update(); config.borrow_and_update(); downloads.borrow_and_update(); transfers.borrow_and_update();
+                        cloud_home.borrow_and_update();
                         let Some((projection, pinned)) = last.clone() else { continue };
                         Ok(manager.resolve_storage_browse(projection, pinned))
                     }
