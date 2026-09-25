@@ -47,6 +47,15 @@ struct AppearanceRenderingTests {
         }
     }
 
+    /// The segmented mode picker fills its selected segment with the accent's
+    /// button fill, which carries white labels, not the lighter accent used
+    /// for text.
+    ///
+    /// Stated as the colour the control is handed rather than read back from
+    /// its pixels: AppKit paints a segment's fill only while its window is
+    /// key in the active app, which a test host behind whatever the person
+    /// running the suite is working in never is, and which SwiftUI's
+    /// `controlActiveState` does not stand in for.
     @Test(
         "The selected mode uses the swatch fill, not the text accent",
         arguments: [AppearanceMode.system, .dark]
@@ -58,55 +67,34 @@ struct AppearanceRenderingTests {
         defaults.set(mode.rawValue, forKey: "appearance.mode")
         defaults.set("blue", forKey: "appearance.accent")
         let size = NSSize(width: 500, height: 300)
-        let host = NSHostingView(
-            rootView:
-                AppearanceSettingsTab().appAppearance()
-                .defaultAppStorage(defaults)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            AppearanceSettingsTab().appAppearance()
+                .defaultAppStorage(defaults),
+            size: size
         )
-        host.frame = NSRect(origin: .zero, size: size)
-        let window = NSWindow(
-            contentRect: host.frame,
-            styleMask: [.titled],
-            backing: .buffered,
-            defer: false
-        )
-        window.contentView = host
         window.isReleasedWhenClosed = false
-        window.appearance = NSAppearance(named: .darkAqua)
-        let previousPolicy = NSApp.activationPolicy()
-        NSApp.setActivationPolicy(.regular)
-        defer { NSApp.setActivationPolicy(previousPolicy) }
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        window.makeMain()
         defer {
             window.contentView = nil
             window.close()
         }
-        let image = try await bitmap(host, size: size)
+        await SnapshotTestSupport.settle(host)
+        let picker = try #require(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSSegmentedControl }
+                .first
+        )
+        let space = try #require(NSColorSpace.extendedSRGB)
+        let bezel = try #require(
+            picker.selectedSegmentBezelColor?.usingColorSpace(space)
+        )
         let fill = try #require(
-            NSColor(AccentChoice.blue.buttonColor)
-                .usingColorSpace(image.colorSpace)
+            NSColor(AccentChoice.blue.buttonColor).usingColorSpace(space)
         )
         let text = try #require(
-            NSColor(AccentChoice.blue.color(in: .dark))
-                .usingColorSpace(image.colorSpace)
+            NSColor(AccentChoice.blue.color(in: .dark)).usingColorSpace(space)
         )
-        var fillPixels = 0
-        var textPixels = 0
-        for y in 0..<image.pixelsHigh {
-            for x in 0..<image.pixelsWide {
-                let pixel = try #require(image.colorAt(x: x, y: y))
-                if distance(pixel, fill) < 0.03 { fillPixels += 1 }
-                if distance(pixel, text) < 0.03 { textPixels += 1 }
-            }
-        }
-        // The swatch alone occupies fewer than 2,000 pixels at this scale.
-        // The selected segment must contribute its filled area too.
-        #expect(
-            fillPixels > 2000 && fillPixels > textPixels,
-            "fill: \(fillPixels), text accent: \(textPixels)"
-        )
+        #expect(distance(bezel, fill) < 0.01, "bezel \(bezel), fill \(fill)")
+        #expect(distance(bezel, text) > 0.03, "bezel \(bezel), text \(text)")
     }
 
     @Test("Volume follows the accent used by playback progress")
