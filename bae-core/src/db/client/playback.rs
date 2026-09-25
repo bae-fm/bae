@@ -18,14 +18,19 @@ impl Database {
         }
 
         let entries = entries.to_vec();
-        self.read(move |sql| Ok((queue_metadata_on(&sql, &entries)?, entries)))
-            .process(|(metadata, entries)| Ok(resolve_queue_entries(&metadata, &entries)))
-            .await
+        self.read(move |sql| {
+            let track_ids: BTreeSet<String> =
+                entries.iter().map(|entry| entry.track_id.clone()).collect();
+            Ok((queue_metadata_on(&sql, &track_ids)?, entries))
+        })
+        .process(|(metadata, entries)| Ok(resolve_queue_entries(&metadata, &entries)))
+        .await
     }
 
-    /// Follow the display rows for the queue entries `initial` names. The
-    /// queue changes by pointing the same query at new entries through its
-    /// request handle, not by opening another one.
+    /// Follow the display rows for the tracks `initial` names. The queue
+    /// changes by pointing the same query at new tracks through its request
+    /// handle, not by opening another one; a queue change that plays the same
+    /// tracks in another order is not a new request at all.
     pub(crate) fn subscribe_queue_catalog(
         &self,
         initial: QueueCatalogRequest,
@@ -33,25 +38,16 @@ impl Database {
         self.inner
             .handle
             .subscribe_reconfigurable(initial, |request, sql| {
-                queue_catalog_on(
-                    &sql,
-                    request.entries.clone(),
-                    request.context_release_id.as_deref(),
-                )
-                .map_err(CovenError::from)
+                queue_catalog_on(&sql, request).map_err(CovenError::from)
             })
-            .process(|_, rows| Ok(rows.process()))
+            .process(|_, projection| Ok(projection))
     }
 
     pub(crate) async fn get_queue_catalog(
         &self,
         request: QueueCatalogRequest,
     ) -> Result<QueueCatalogProjection, DbError> {
-        self.read(move |sql| {
-            queue_catalog_on(&sql, request.entries, request.context_release_id.as_deref())
-        })
-        .process(|rows| Ok(rows.process()))
-        .await
+        self.read(move |sql| queue_catalog_on(&sql, &request)).await
     }
 
     /// Write the single device-local `playback_state` row (id = 'current'),
@@ -179,9 +175,9 @@ impl Database {
 
 fn queue_metadata_on(
     sql: &SqlReadContext<'_>,
-    entries: &[QueueEntry],
+    track_ids: &BTreeSet<String>,
 ) -> Result<HashMap<String, TrackQueueMeta>, DbError> {
-    let track_ids: Vec<String> = entries.iter().map(|entry| entry.track_id.clone()).collect();
+    let track_ids: Vec<&String> = track_ids.iter().collect();
     let mut meta_by_track: HashMap<String, TrackQueueMeta> = HashMap::new();
     for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
         let placeholders = in_clause_placeholders(chunk.len());
@@ -239,11 +235,10 @@ fn queue_metadata_on(
 
 fn queue_catalog_on(
     sql: &SqlReadContext<'_>,
-    entries: Vec<QueueEntry>,
-    context_release_id: Option<&str>,
-) -> Result<QueueCatalogRows, DbError> {
-    let metadata = queue_metadata_on(sql, &entries)?;
-    let source_title = match context_release_id {
+    request: &QueueCatalogRequest,
+) -> Result<QueueCatalogProjection, DbError> {
+    let tracks = queue_metadata_on(sql, &request.track_ids)?;
+    let source_title = match request.context_release_id.as_deref() {
         None => None,
         Some(release_id) => {
             let album_id = find_release_by_id_on(sql, release_id)?.map(|release| release.album_id);
@@ -253,38 +248,51 @@ fn queue_catalog_on(
             }
         }
     };
-    Ok(QueueCatalogRows {
-        entries,
-        metadata,
+    Ok(QueueCatalogProjection {
+        tracks,
         source_title,
     })
 }
 
-struct QueueCatalogRows {
-    entries: Vec<QueueEntry>,
-    metadata: HashMap<String, TrackQueueMeta>,
-    source_title: Option<String>,
+/// What a catalog read reads: the distinct tracks the queue shows, and the
+/// release a release context plays from, which names the queue's source. The
+/// queue's entries — which instance of a track sits where — are not read from
+/// the database, so they are not part of the request; the consumer joins them
+/// onto the tracks it read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct QueueCatalogRequest {
+    pub track_ids: BTreeSet<String>,
+    pub context_release_id: Option<String>,
 }
 
-impl QueueCatalogRows {
-    fn process(self) -> QueueCatalogProjection {
-        QueueCatalogProjection {
-            items: resolve_queue_entries(&self.metadata, &self.entries),
-            source_title: self.source_title,
+impl QueueCatalogRequest {
+    /// The request that reads every track `entries` play.
+    pub(crate) fn for_entries<'a>(
+        entries: impl IntoIterator<Item = &'a QueueEntry>,
+        context_release_id: Option<String>,
+    ) -> Self {
+        Self {
+            track_ids: entries
+                .into_iter()
+                .map(|entry| entry.track_id.clone())
+                .collect(),
+            context_release_id,
         }
     }
 }
 
-/// The queue entries a catalog read resolves, and the release a release
-/// context plays from, which names the queue's source.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct QueueCatalogRequest {
-    pub entries: Vec<QueueEntry>,
-    pub context_release_id: Option<String>,
-}
-
+/// The display metadata of each requested track, and the source title.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct QueueCatalogProjection {
-    pub items: Vec<QueueItem>,
+    tracks: HashMap<String, TrackQueueMeta>,
     pub source_title: Option<String>,
+}
+
+impl QueueCatalogProjection {
+    /// One item per entry whose track this read found, in entry order. An
+    /// entry whose track was not requested or is gone from the library is
+    /// skipped.
+    pub(crate) fn items(&self, entries: &[QueueEntry]) -> Vec<QueueItem> {
+        resolve_queue_entries(&self.tracks, entries)
+    }
 }

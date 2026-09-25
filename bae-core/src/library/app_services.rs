@@ -503,7 +503,8 @@ impl AppServices {
                 manager.subscribe_queue_catalog(request.clone()),
             );
             // The catalog last read for `request`, so a queue change that
-            // reads the same entries resolves again without another read.
+            // shows the same tracks — reordered, say — resolves again
+            // without another read.
             let mut current = None;
             loop {
                 tokio::select! {
@@ -549,23 +550,22 @@ impl AppServices {
             let manager = &services.inner.manager;
             let mut queue_values = services.inner.playback.subscribe_queue_values();
             let mut projection = queue_values.borrow_and_update().clone();
-            let page_request = |projection: &crate::playback::PlaybackQueueProjection| {
+            let slice = |projection: &crate::playback::PlaybackQueueProjection| {
                 let tail = projection
                     .context
                     .as_ref()
                     .map(|context| context.upcoming.as_slice())
                     .unwrap_or(&[]);
-                crate::db::QueueCatalogRequest {
-                    entries: crate::queue::clamp_upcoming_page(tail, offset, limit).to_vec(),
-                    context_release_id: None,
-                }
+                crate::queue::clamp_upcoming_page(tail, offset, limit).to_vec()
+            };
+            let page_request = |projection: &crate::playback::PlaybackQueueProjection| {
+                crate::db::QueueCatalogRequest::for_entries(&slice(projection), None)
             };
             let page = |projection: &crate::playback::PlaybackQueueProjection,
-                        request: &crate::db::QueueCatalogRequest,
-                        read: crate::db::QueueCatalogProjection| {
+                        read: &crate::db::QueueCatalogProjection| {
                 crate::queue::ResolvedQueueUpcomingPage {
                     revision: projection.revision,
-                    items: manager.resolve_queue_entries(request.entries.len(), read),
+                    items: manager.resolve_queue_entries(read, &slice(projection)),
                 }
             };
             let mut request = page_request(&projection);
@@ -581,8 +581,9 @@ impl AppServices {
                     event = catalog.recv() => {
                         let Some(result) = event else { return };
                         let value = result.map(|read: crate::db::QueueCatalogProjection| {
-                            current = Some(read.clone());
-                            page(&projection, &request, read)
+                            let value = page(&projection, &read);
+                            current = Some(read);
+                            value
                         });
                         if tx.send(value).is_err() { return; }
                     }
@@ -594,8 +595,8 @@ impl AppServices {
                             request = next;
                             current = None;
                             catalog.set(request.clone());
-                        } else if let Some(read) = current.clone() {
-                            if tx.send(Ok(page(&projection, &request, read))).is_err() { return; }
+                        } else if let Some(read) = current.as_ref() {
+                            if tx.send(Ok(page(&projection, read))).is_err() { return; }
                         }
                     }
                 }

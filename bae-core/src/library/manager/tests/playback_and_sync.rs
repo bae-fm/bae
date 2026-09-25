@@ -562,6 +562,60 @@ async fn resolve_queue_projection_resolves_manual_lane_in_full_regardless_of_win
     );
 }
 
+/// The catalog read asks for tracks, not entries: a queue that shows the same
+/// tracks in another order — a manual-lane reorder, a track queued twice —
+/// makes the same request, and the one read it already has resolves the new
+/// order with each entry in its place.
+#[tokio::test]
+async fn a_reordered_queue_reads_the_same_tracks_and_resolves_from_one_read() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let track_ids = seed_release_tracks(&manager, 3).await;
+    let entry = |id: &str, track: usize| crate::playback::QueueEntry {
+        id: crate::playback::QueueEntryId(id.to_string()),
+        track_id: track_ids[track].clone(),
+    };
+    let queue = |manual: Vec<crate::playback::QueueEntry>, revision| {
+        crate::playback::PlaybackQueueProjection {
+            manual,
+            context: None,
+            has_next: true,
+            has_previous: false,
+            revision,
+        }
+    };
+    let first = queue(vec![entry("m0", 0), entry("m1", 1), entry("m2", 2)], 1);
+    let reordered = queue(
+        vec![entry("m2", 2), entry("m0", 0), entry("m3", 0), entry("m1", 1)],
+        2,
+    );
+
+    let request = crate::library::manager::queue_catalog_request(&first);
+    assert_eq!(
+        crate::library::manager::queue_catalog_request(&reordered),
+        request,
+        "the same tracks in another order are the same request"
+    );
+
+    let read = manager.database.get_queue_catalog(request).await.unwrap();
+    let resolved = manager.resolve_queue_catalog(reordered, read);
+    let shown: Vec<(&str, &str)> = resolved
+        .manual
+        .iter()
+        .map(|item| (item.entry_id.as_str(), item.track_id.as_str()))
+        .collect();
+    assert_eq!(
+        shown,
+        vec![
+            ("m2", track_ids[2].as_str()),
+            ("m0", track_ids[0].as_str()),
+            ("m3", track_ids[0].as_str()),
+            ("m1", track_ids[1].as_str()),
+        ],
+        "the read is joined onto the new order, a repeated track once per entry"
+    );
+    assert_eq!(resolved.revision, 2);
+}
+
 /// A failed opaque-home setup leaves both the proposed provider and generated
 /// master key uncommitted. Coven owns that transaction; bae persists the returned
 /// provider config only after Coven returns success.

@@ -871,6 +871,7 @@ pub(super) fn replace_track_artists(
 /// once and joined onto every queue entry that plays that track. Carries no
 /// identity (no entry id, no track id) — `resolve_queue_entries` supplies those
 /// from the entries.
+#[derive(Debug, Clone, PartialEq)]
 pub(super) struct TrackQueueMeta {
     pub(super) title: String,
     pub(super) artist_names: String,

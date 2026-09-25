@@ -121,18 +121,21 @@ impl LibraryManager {
         self.database.subscribe_queue_catalog(initial)
     }
 
+    /// `entries` joined onto the tracks `catalog` read, counting each entry
+    /// whose track the read did not find.
     pub(crate) fn resolve_queue_entries(
         &self,
-        expected_count: usize,
-        catalog: crate::db::QueueCatalogProjection,
+        catalog: &crate::db::QueueCatalogProjection,
+        entries: &[crate::playback::QueueEntry],
     ) -> Vec<QueueItem> {
-        let dropped = expected_count.saturating_sub(catalog.items.len());
+        let items = catalog.items(entries);
+        let dropped = entries.len().saturating_sub(items.len());
         for _ in 0..dropped {
             self.diagnostics.event(TelemetryEvent::Anomaly {
                 kind: crate::diagnostics::AnomalyKind::QueueTrackNoMetadata,
             });
         }
-        catalog.items
+        items
     }
 
     pub(crate) fn resolve_queue_catalog(
@@ -140,41 +143,22 @@ impl LibraryManager {
         projection: crate::playback::PlaybackQueueProjection,
         catalog: crate::db::QueueCatalogProjection,
     ) -> crate::queue::ResolvedQueueSnapshot {
-        let upcoming_total = projection
-            .context
-            .as_ref()
-            .map(|c| c.upcoming.len() as u64)
-            .unwrap_or(0);
-        let context_window: Vec<_> = projection
-            .context
-            .as_ref()
-            .map(|c| {
-                c.upcoming
-                    .iter()
-                    .take(crate::queue::QUEUE_UPCOMING_WINDOW)
-                    .cloned()
-                    .collect()
-            })
-            .unwrap_or_default();
-        let expected_count = projection.manual.len() + context_window.len();
-        let items = self.resolve_queue_entries(expected_count, catalog.clone());
-        let context_ids: std::collections::HashSet<&str> =
-            context_window.iter().map(|e| e.id.0.as_str()).collect();
-        let (context_items, manual_items): (Vec<_>, Vec<_>) = items
-            .into_iter()
-            .partition(|i| context_ids.contains(i.entry_id.as_str()));
-        let context = match projection.context {
-            None => None,
-            Some(c) => Some(crate::queue::ResolvedContext {
-                source: c.source,
-                source_title: catalog.source_title,
-                shuffled: c.shuffled,
-                upcoming: context_items,
-                upcoming_total,
-            }),
-        };
+        let manual = self.resolve_queue_entries(&catalog, &projection.manual);
+        let context = projection.context.map(|context| {
+            let window = &context.upcoming[..context
+                .upcoming
+                .len()
+                .min(crate::queue::QUEUE_UPCOMING_WINDOW)];
+            crate::queue::ResolvedContext {
+                upcoming: self.resolve_queue_entries(&catalog, window),
+                upcoming_total: context.upcoming.len() as u64,
+                source: context.source,
+                source_title: catalog.source_title.clone(),
+                shuffled: context.shuffled,
+            }
+        });
         crate::queue::ResolvedQueueSnapshot {
-            manual: manual_items,
+            manual,
             context,
             has_next: projection.has_next,
             has_previous: projection.has_previous,
@@ -241,8 +225,9 @@ impl LibraryManager {
     }
 }
 
-/// What resolving `projection` reads: the manual lane in full and the first
-/// `QUEUE_UPCOMING_WINDOW` entries of the context's upcoming tail.
+/// What resolving `projection` reads: the tracks of the manual lane in full
+/// and of the first `QUEUE_UPCOMING_WINDOW` entries of the context's upcoming
+/// tail.
 pub(crate) fn queue_catalog_request(
     projection: &crate::playback::PlaybackQueueProjection,
 ) -> crate::db::QueueCatalogRequest {
@@ -251,14 +236,7 @@ pub(crate) fn queue_catalog_request(
             .upcoming
             .iter()
             .take(crate::queue::QUEUE_UPCOMING_WINDOW)
-            .cloned()
     });
-    let entries = projection
-        .manual
-        .iter()
-        .cloned()
-        .chain(context_window)
-        .collect();
     let context_release_id = projection.context.as_ref().and_then(|context| {
         if let crate::playback::ContextSource::Release(release_id) = &context.source {
             Some(release_id.clone())
@@ -266,10 +244,10 @@ pub(crate) fn queue_catalog_request(
             None
         }
     });
-    crate::db::QueueCatalogRequest {
-        entries,
+    crate::db::QueueCatalogRequest::for_entries(
+        projection.manual.iter().chain(context_window),
         context_release_id,
-    }
+    )
 }
 
 /// `PlaybackTrackInfo` from an already-loaded track and release: queries only the
