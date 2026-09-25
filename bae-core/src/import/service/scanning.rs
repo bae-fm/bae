@@ -22,7 +22,7 @@ impl ImportService {
         {
             return Ok(false);
         }
-        Self::announce_scan_failure(root, message, &services.event_tx);
+        Self::announce_scan_failure(root, message, &services.event_tx).await;
         Ok(true)
     }
 
@@ -30,11 +30,12 @@ impl ImportService {
     /// generation row could not be opened, or the status write on top of it
     /// failed. The user still has to hear that the folder they just added was
     /// not read, so the event goes out even when nothing durable can.
-    pub(super) fn announce_scan_failure(
+    pub(super) async fn announce_scan_failure(
         root: &Path,
         message: String,
         event_tx: &crate::import::handle::ImportEventBus,
     ) {
+        let on_network_volume = volume_kind(root).await == VolumeKind::Network;
         let watched_folder =
             crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
         event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
@@ -42,7 +43,7 @@ impl ImportService {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
                     status: crate::import::FolderScanStatus::Failed { error: message },
-                    on_network_volume: volume_kind(root) == VolumeKind::Network,
+                    on_network_volume,
                 },
             }),
         );
@@ -293,7 +294,7 @@ impl ImportService {
             Ok(generation) => generation,
             Err(error) => {
                 error!("folder scan of {} could not start: {error}", root.display());
-                Self::announce_scan_failure(root, error.to_string(), event_tx);
+                Self::announce_scan_failure(root, error.to_string(), event_tx).await;
                 return Err(error);
             }
         };
@@ -322,7 +323,7 @@ impl ImportService {
                 "{}'s failed scan could not be stored: {status_error}",
                 root.display()
             );
-            Self::announce_scan_failure(root, error.to_string(), event_tx);
+            Self::announce_scan_failure(root, error.to_string(), event_tx).await;
         }
         Err(error)
     }
@@ -334,6 +335,7 @@ impl ImportService {
         services: &crate::import::ImportServices,
     ) -> Result<u64, crate::import::ImportError> {
         let event_tx = &services.event_tx;
+        let on_network_volume = volume_kind(root).await == VolumeKind::Network;
         let _commit = services.folder_state_commit.lock().await;
         let generation = services.library_manager.begin_folder_scan(root_key).await?;
         let watched_folder =
@@ -343,7 +345,7 @@ impl ImportService {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
                     status: crate::import::FolderScanStatus::Scanning { found_count: 0 },
-                    on_network_volume: volume_kind(root) == VolumeKind::Network,
+                    on_network_volume,
                 },
             }),
         );
@@ -363,6 +365,7 @@ impl ImportService {
         let services = &scan.services;
         let event_tx = &services.event_tx;
         let library_manager = &services.library_manager;
+        let on_network_volume = volume_kind(root).await == VolumeKind::Network;
         // What the user has decided about each candidate's files — which audio
         // each sheet describes, and which files are the release's tracks — read
         // once for the whole walk. A folder's roles are only what its filenames
@@ -565,7 +568,7 @@ impl ImportService {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
                     status: crate::import::FolderScanStatus::Complete,
-                    on_network_volume: volume_kind(root) == VolumeKind::Network,
+                    on_network_volume,
                 },
             }),
         );

@@ -311,6 +311,23 @@ enum RootChange {
 /// beside them, so no folder under it reads on its own. A change to a hidden
 /// entry reaches nothing, because the scan never lists one; nor does a file
 /// directly in the root beside no tracks, which belongs to no release.
+/// [`root_change`] asked on a blocking thread: it stats the entries the
+/// changes name, which on a network volume can take as long as the mount does
+/// to answer, and the coordinator must not wait on that.
+async fn root_change_of(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> RootChange {
+    let root = root.to_path_buf();
+    let changed: Vec<PathBuf> = changed.iter().map(|path| path.to_path_buf()).collect();
+    let asked = tokio::task::spawn_blocking(move || {
+        let changed: Vec<&Path> = changed.iter().map(PathBuf::as_path).collect();
+        root_change(&root, &changed, holds_its_own_release)
+    })
+    .await;
+    match asked {
+        Ok(change) => change,
+        Err(error) => std::panic::resume_unwind(error.into_panic()),
+    }
+}
+
 fn root_change(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> RootChange {
     let mut folders = std::collections::BTreeSet::new();
     for path in changed {

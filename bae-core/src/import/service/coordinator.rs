@@ -282,10 +282,11 @@ impl ImportService {
                                     && event.paths.iter().any(|path| path.starts_with(&root))
                             });
                             let holds = holds_its_own_release(&library_manager, &root).await;
+                            let change = root_change_of(&root, &under, holds).await;
                             request_change(
                                 &mut active_roots,
                                 root.clone(),
-                                root_change(&root, &under, holds),
+                                change,
                                 if lost_track {
                                     RootScanCause::EventsDropped
                                 } else {
@@ -302,7 +303,7 @@ impl ImportService {
                                 let changes: Vec<&Path> =
                                     changes.iter().map(PathBuf::as_path).collect();
                                 let holds = holds_its_own_release(&library_manager, &root).await;
-                                root_change(&root, &changes, holds)
+                                root_change_of(&root, &changes, holds).await
                             }
                         };
                         request_change(
@@ -326,7 +327,7 @@ impl ImportService {
                             // notice, and it asks the cheap question first
                             // rather than walking a share every quarter of an
                             // hour to learn nothing.
-                            if volume_kind(&root) == VolumeKind::Local {
+                            if volume_kind(&root).await == VolumeKind::Local {
                                 continue;
                             }
                             if !checking.insert(root.clone()) {

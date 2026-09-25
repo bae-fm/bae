@@ -83,7 +83,7 @@ fn load_folder_scan_progress_on(
             statuses
                 .into_iter()
                 .map(|(_, stored)| WatchedFolderScanStatus {
-                    on_network_volume: crate::import::volume::volume_kind(Path::new(
+                    on_network_volume: crate::import::volume::volume_kind_blocking(Path::new(
                         &stored.watched_folder_path,
                     )) == crate::import::volume::VolumeKind::Network,
                     watched_folder_path: stored.watched_folder_path,

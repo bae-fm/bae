@@ -107,17 +107,17 @@ impl ImportService {
                             "{}'s failed reading could not be stored: {status_error}",
                             root.display()
                         );
-                        Self::announce_scan_failure(root, message, &scan.services.event_tx);
+                        Self::announce_scan_failure(root, message, &scan.services.event_tx).await;
                     }
                 }
-                Ok(None) => Self::announce_scan_failure(root, message, &scan.services.event_tx),
+                Ok(None) => Self::announce_scan_failure(root, message, &scan.services.event_tx).await,
                 Err(status_error) => {
                     error!(
                         "{}'s generation could not be read to store a failed reading: \
                          {status_error}",
                         root.display()
                     );
-                    Self::announce_scan_failure(root, message, &scan.services.event_tx);
+                    Self::announce_scan_failure(root, message, &scan.services.event_tx).await;
                 }
             }
         }

@@ -38,7 +38,21 @@ pub(crate) enum VolumeKind {
 /// local is a folder whose changes made elsewhere go unnoticed, and each
 /// platform below answers from what the system says of the volume rather than
 /// from how its path is spelled wherever it can.
-pub(crate) fn volume_kind(path: &Path) -> VolumeKind {
+///
+/// Asking can block for as long as a network mount takes to answer — a share
+/// that dropped off can take minutes — so the question is put on a blocking
+/// thread.
+pub(crate) async fn volume_kind(path: &Path) -> VolumeKind {
+    let path = path.to_path_buf();
+    match tokio::task::spawn_blocking(move || volume_kind_blocking(&path)).await {
+        Ok(kind) => kind,
+        Err(error) => std::panic::resume_unwind(error.into_panic()),
+    }
+}
+
+/// [`volume_kind`] for a caller already on a thread that may block: the
+/// library's live-query processors, which run on their own workers.
+pub(crate) fn volume_kind_blocking(path: &Path) -> VolumeKind {
     platform::volume_kind(path)
 }
 
@@ -223,7 +237,7 @@ mod tests {
     #[test]
     fn a_folder_on_this_machine_is_local() {
         let temp = tempfile::tempdir().unwrap();
-        assert_eq!(volume_kind(temp.path()), VolumeKind::Local);
+        assert_eq!(volume_kind_blocking(temp.path()), VolumeKind::Local);
     }
 
     /// A path nothing is mounted at answers `Local`, so a root that has gone
@@ -232,7 +246,7 @@ mod tests {
     #[test]
     fn a_path_that_is_not_there_is_local() {
         assert_eq!(
-            volume_kind(std::path::Path::new("/nowhere-at-all-1a2b3c")),
+            volume_kind_blocking(std::path::Path::new("/nowhere-at-all-1a2b3c")),
             VolumeKind::Local
         );
     }
