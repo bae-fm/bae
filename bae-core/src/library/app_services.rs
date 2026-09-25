@@ -248,20 +248,14 @@ impl AppServices {
         rx
     }
 
-    pub fn subscribe_library_search(
-        &self,
-        query: &crate::library::LibrarySearchQuery,
-    ) -> coven::LiveQuery<crate::db::LibrarySearchProjection> {
-        self.inner.manager.subscribe_library_search(query)
-    }
-
-    pub fn resolve_library_search_projection(
-        &self,
-        projection: crate::db::LibrarySearchProjection,
-    ) -> crate::album_detail::SearchResults {
-        self.inner
-            .manager
-            .resolve_library_search_projection(projection)
+    /// One live library search, pointed at a new query in place as the
+    /// person types; it starts with no query.
+    pub fn subscribe_library_search(&self) -> crate::library::LibrarySearchSubscription {
+        let manager = self.inner.manager.clone();
+        let query = manager.subscribe_library_search(None);
+        crate::library::LibrarySearchSubscription::new(query, move |projection| {
+            manager.resolve_library_search_projection(projection)
+        })
     }
 
     pub fn subscribe_release_library_status(

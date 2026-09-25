@@ -38,7 +38,10 @@ pub use queued_releases::QueuedReleases;
 pub use release_queue::{CountLabel, ReleaseQueue};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use save::SaveService;
-pub use search::{LibrarySearchQuery, SEARCH_RESULT_LIMIT};
+pub use search::{
+    LibrarySearchQuery, LibrarySearchSnapshot, LibrarySearchSubscription,
+    LibrarySearchSubscriptionError, SEARCH_RESULT_LIMIT,
+};
 /// How a device join this library invited ended. The controller itself stays
 /// crate-private; this outcome is part of the public sharing surface.
 pub use upload_throughput::UploadThroughput;

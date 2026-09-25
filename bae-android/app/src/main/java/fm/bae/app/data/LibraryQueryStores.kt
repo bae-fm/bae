@@ -82,6 +82,11 @@ internal class DetailQueryStore<Value>(
     }
 }
 
+/**
+ * The search screen's one live search. [activate] moves it to the field's text once typing pauses,
+ * so a run of keystrokes is one query change on one subscription; [deactivate] closes it when the
+ * screen goes. Only a value answering the query standing now is shown.
+ */
 internal class SearchQueryStore(
     private val library: Library,
     private val scope: CoroutineScope,
@@ -89,40 +94,77 @@ internal class SearchQueryStore(
     private val mutableState = MutableStateFlow(LiveQueryState<BridgeSearchResults>())
     val state: StateFlow<LiveQueryState<BridgeSearchResults>> = mutableState.asStateFlow()
     private var query: String? = null
-    private var job: Job? = null
-    private var generation = 0L
+    private var search: LibrarySearch? = null
+    private var deliveries: Job? = null
+    private var debounce: Job? = null
 
     fun activate(value: String) {
-        if (query == value && job?.isActive == true) return
-        query = value
-        job?.cancel()
-        generation++
-        val currentGeneration = generation
+        val trimmed = value.trim()
+        if (query == trimmed) return
+        query = trimmed
         mutableState.value = LiveQueryState()
-        job =
+        debounce?.cancel()
+        if (trimmed.isEmpty()) {
+            search?.let { setQuery(it, "") }
+            return
+        }
+        val live = open()
+        debounce =
             scope.launch {
                 delay(SEARCH_DEBOUNCE_MS)
-                library.searchResults(value).collect { event ->
-                    if (generation == currentGeneration) {
-                        mutableState.apply(event)
-                    }
-                }
+                if (query == trimmed) setQuery(live, trimmed)
             }
     }
 
-    fun deactivate(value: String) {
-        if (query != value) return
-        job?.cancel()
-        job = null
+    fun deactivate() {
+        debounce?.cancel()
+        debounce = null
+        deliveries?.cancel()
+        deliveries = null
         query = null
-        generation++
+        val closing = search ?: return
+        search = null
+        scope.launch { closing.cancel() }
     }
 
-    fun cancel() {
-        job?.cancel()
-        job = null
-        query = null
-        generation++
+    fun cancel() = deactivate()
+
+    private fun open(): LibrarySearch {
+        search?.let { return it }
+        val live = library.librarySearch()
+        search = live
+        deliveries = scope.launch { deliver(live) }
+        return live
+    }
+
+    private suspend fun deliver(live: LibrarySearch) {
+        var reading = true
+        while (reading) {
+            val delivered = runCatching { live.next() }
+            delivered.onSuccess { snapshot ->
+                if (snapshot.query.isNotEmpty() && snapshot.query == query) {
+                    mutableState.value = LiveQueryState(value = snapshot.results, delivered = true)
+                }
+            }
+            delivered.onFailure { error ->
+                when (error) {
+                    is BridgeException.Cancelled -> reading = false
+                    is BridgeException -> mutableState.value = mutableState.value.copy(error = error)
+                    else -> throw error
+                }
+            }
+        }
+    }
+
+    private fun setQuery(
+        live: LibrarySearch,
+        text: String,
+    ) {
+        runCatching { live.setQuery(text) }
+            .onFailure { error ->
+                if (error !is BridgeException) throw error
+                mutableState.value = LiveQueryState(error = error)
+            }
     }
 }
 

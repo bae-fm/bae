@@ -3,6 +3,7 @@ package fm.bae.app.data
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailCallback
 import uniffi.bae_bridge.AppHandle
@@ -18,13 +19,14 @@ import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryPageWindow
+import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailCallback
-import uniffi.bae_bridge.LibrarySearchCallback
+import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.ReleaseDetailCallback
 import uniffi.bae_bridge.WorkDetailCallback
 
@@ -154,26 +156,36 @@ class Library(
             awaitClose(subscription::cancel)
         }
 
+    /** One live library search whose query moves in place as the person types. */
+    internal fun librarySearch(): LibrarySearch = BridgeLibrarySearch(handle.subscribeLibrarySearch())
+
     /**
-     * Search albums and tracks by free-text query. Values and nonterminal errors
-     * share one live flow; collecting continues until the caller cancels.
+     * The results for one fixed query, for a surface that asks a whole phrase at once (Android
+     * Auto's spoken search). Values and nonterminal errors share one live flow; collecting
+     * continues until the caller cancels.
      */
     internal fun searchResults(query: String): Flow<LiveQueryEvent<BridgeSearchResults>> =
         callbackFlow {
-            val subscription =
-                handle.subscribeLibrarySearch(
-                    query,
-                    object : LibrarySearchCallback {
-                        override fun onValue(value: BridgeSearchResults) {
-                            trySend(LiveQueryEvent.Value(value))
+            val search = librarySearch()
+            search.setQuery(query)
+            val wanted = query.trim()
+            launch {
+                var reading = true
+                while (reading) {
+                    val delivered = runCatching { search.next() }
+                    delivered.onSuccess { if (it.query == wanted) send(LiveQueryEvent.Value(it.results)) }
+                    delivered.onFailure { error ->
+                        when (error) {
+                            is BridgeException.Cancelled -> reading = false
+                            is BridgeException -> send(LiveQueryEvent.Error(error))
+                            else -> throw error
                         }
-
-                        override fun onError(error: BridgeException) {
-                            trySend(LiveQueryEvent.Error(error))
-                        }
-                    },
-                )
-            awaitClose(subscription::cancel)
+                    }
+                }
+            }
+            // The reader's pending read is cancelled with this flow; releasing
+            // the search then ends it in core.
+            awaitClose(search::release)
         }
 }
 
@@ -219,4 +231,30 @@ private class BridgeArtistBrowseQuery(
     override suspend fun next(): BridgeArtistBrowseSnapshot = subscription.next()
 
     override suspend fun cancel() = subscription.cancel()
+}
+
+/** A live library search: point it at a query, take each value, which names the query it answers. */
+internal interface LibrarySearch {
+    fun setQuery(query: String)
+
+    suspend fun next(): BridgeLibrarySearchSnapshot
+
+    suspend fun cancel()
+
+    /** Free the search without waiting, from a scope that is already ending. */
+    fun release()
+}
+
+private class BridgeLibrarySearch(
+    private val subscription: LibrarySearchSubscription,
+) : LibrarySearch {
+    override fun setQuery(query: String) {
+        subscription.setQuery(query)
+    }
+
+    override suspend fun next(): BridgeLibrarySearchSnapshot = subscription.next()
+
+    override suspend fun cancel() = subscription.cancel()
+
+    override fun release() = subscription.close()
 }

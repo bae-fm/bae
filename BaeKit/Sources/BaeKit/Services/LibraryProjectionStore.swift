@@ -35,8 +35,16 @@ public final class LibraryProjectionStore {
     private var artistTask: Task<Void, Never>?
     @ObservationIgnored
     private var workTask: Task<Void, Never>?
+    /// The one live search the search field drives while it is open, and
+    /// the loop taking its values.
     @ObservationIgnored
-    private var searchTask: Task<Void, Never>?
+    private var liveSearch: LibrarySearch?
+    @ObservationIgnored
+    private var searchDeliveries: Task<Void, Never>?
+    /// Waits out typing before the query moves, so a burst of keystrokes is
+    /// one query change.
+    @ObservationIgnored
+    private var searchDebounce: Task<Void, Never>?
     @ObservationIgnored
     private var composerId: String?
     @ObservationIgnored
@@ -125,42 +133,80 @@ public final class LibraryProjectionStore {
         }
     }
 
+    /// Follow the search field's text: the one live search moves to it once
+    /// typing pauses. Empty text is no search, and reads nothing.
     public func activateSearch(_ rawQuery: String) {
         let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard searchQuery != query || searchTask == nil else { return }
+        guard searchQuery != query else { return }
         searchQuery = query
-        searchTask?.cancel()
+        search = LibraryProjectionState()
+        searchDebounce?.cancel()
+        searchDebounce = nil
         if query.isEmpty {
-            search = LibraryProjectionState()
-            searchTask = nil
+            if let liveSearch { setSearchQuery("", on: liveSearch) }
             return
         }
-        search = LibraryProjectionState()
-        searchTask = Task { [weak self, library] in
+        let live = openSearch()
+        searchDebounce = Task { [weak self] in
             do {
                 try await Task.sleep(for: .milliseconds(300))
             }
             catch {
                 return
             }
-            for await result in library.searchResults(query) {
-                guard !Task.isCancelled, self?.searchQuery == query else {
-                    return
-                }
-                switch result {
-                case .success(let value):
-                    self?.search = LibraryProjectionState(
-                        value: SearchResults(bridge: value, query: query),
+            guard self?.searchQuery == query else { return }
+            self?.setSearchQuery(query, on: live)
+        }
+    }
+
+    /// The live search, opened on first use. Its values are taken for as long
+    /// as it stays open; each names the query it answers, and only an answer to
+    /// the query standing now is shown.
+    private func openSearch() -> LibrarySearch {
+        if let liveSearch { return liveSearch }
+        let live = library.librarySearch()
+        liveSearch = live
+        searchDeliveries = Task { [weak self] in
+            while !Task.isCancelled {
+                do {
+                    let snapshot = try await live.next()
+                    guard let self else {
+                        await live.cancel()
+                        return
+                    }
+                    guard !snapshot.query.isEmpty,
+                        self.searchQuery == snapshot.query
+                    else { continue }
+                    self.search = LibraryProjectionState(
+                        value: SearchResults(
+                            bridge: snapshot.results,
+                            query: snapshot.query
+                        ),
                         delivered: true
                     )
-                case .failure(let error):
-                    self?.search = LibraryProjectionState(
-                        value: self?.search.value,
-                        delivered: self?.search.delivered ?? false,
+                }
+                catch BridgeError.Cancelled {
+                    return
+                }
+                catch {
+                    guard let self else { return }
+                    self.search = LibraryProjectionState(
+                        value: self.search.value,
+                        delivered: self.search.delivered,
                         error: DisplayError(error)
                     )
                 }
             }
+        }
+        return live
+    }
+
+    private func setSearchQuery(_ query: String, on live: LibrarySearch) {
+        do {
+            try live.setQuery(query)
+        }
+        catch {
+            search = LibraryProjectionState(error: DisplayError(error))
         }
     }
 
@@ -185,11 +231,16 @@ public final class LibraryProjectionStore {
         workId = nil
     }
 
-    public func deactivateSearch(_ rawQuery: String) {
-        let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard searchQuery == query else { return }
-        searchTask?.cancel()
-        searchTask = nil
+    /// Close the live search: the search field is gone.
+    public func deactivateSearch() {
+        searchDebounce?.cancel()
+        searchDebounce = nil
+        searchDeliveries?.cancel()
+        searchDeliveries = nil
         searchQuery = nil
+        if let live = liveSearch {
+            liveSearch = nil
+            Task { await live.cancel() }
+        }
     }
 }

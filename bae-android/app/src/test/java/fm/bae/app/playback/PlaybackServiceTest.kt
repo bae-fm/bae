@@ -45,6 +45,7 @@ import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryPageWindow
+import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
 import uniffi.bae_bridge.BridgeLiveQueryCause
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
@@ -56,7 +57,7 @@ import uniffi.bae_bridge.ComposerDetailCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
 import uniffi.bae_bridge.EagerCacheFillStatusCallback
-import uniffi.bae_bridge.LibrarySearchCallback
+import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.OutboxCallback
@@ -203,11 +204,10 @@ internal class FakeAppHandle(
     val albumPageWindows = mutableListOf<Pair<ULong, ULong>>()
     val playReleaseCalls = mutableListOf<Triple<String, UInt?, Boolean>>()
     val liveSubscriptions = mutableListOf<FakeLiveSubscription>()
-    val searchCallbacks = mutableListOf<LibrarySearchCallback>()
     val albumBrowseSubscriptions = mutableListOf<FakeAlbumBrowseSubscription>()
     val composerBrowseSubscriptions = mutableListOf<FakeComposerBrowseSubscription>()
     val albumDetailSubscriptions = mutableListOf<FakeLiveSubscription>()
-    val searchSubscriptions = mutableListOf<FakeLiveSubscription>()
+    val searchSubscriptions = mutableListOf<FakeLibrarySearchSubscription>()
 
     private fun liveSubscription(): FakeLiveSubscription = FakeLiveSubscription().also(liveSubscriptions::add)
 
@@ -247,7 +247,7 @@ internal class FakeAppHandle(
         subscription: Int,
         value: BridgeSearchResults,
     ) {
-        searchCallbacks[subscription].onValue(value)
+        searchSubscriptions[subscription].emit(Result.success(value))
     }
 
     override fun subscribeAlbumBrowse(sortCriteria: List<BridgeSortCriterion>): AlbumBrowseSubscription =
@@ -294,29 +294,20 @@ internal class FakeAppHandle(
         return liveSubscription()
     }
 
-    override fun subscribeLibrarySearch(
-        query: String,
-        callback: LibrarySearchCallback,
-    ): LiveSubscription {
-        searchCallbacks += callback
-        val subscription = liveSubscription().also(searchSubscriptions::add)
-        if (!deliverSearchResultsImmediately) {
-            return subscription
-        }
-        val error = initialSearchError(query)
-        if (error == null) {
-            callback.onValue(searchResults(query))
-        } else {
-            callback.onError(error)
-        }
-        return subscription
-    }
+    override fun subscribeLibrarySearch(): LibrarySearchSubscription =
+        FakeLibrarySearchSubscription { query ->
+            if (!deliverSearchResultsImmediately) {
+                null
+            } else {
+                initialSearchError(query)?.let { Result.failure(it) } ?: Result.success(searchResults(query))
+            }
+        }.also(searchSubscriptions::add)
 
     fun failSearchResults(
         subscription: Int,
         error: uniffi.bae_bridge.BridgeException,
     ) {
-        searchCallbacks[subscription].onError(error)
+        searchSubscriptions[subscription].emit(Result.failure(error))
     }
 
     override fun playRelease(
@@ -413,6 +404,47 @@ internal class FakeAlbumBrowseSubscription(
                 ),
             ),
         )
+    }
+}
+
+/**
+ * A live search that answers each query it is pointed at with whatever [answer] gives for it, and
+ * any value a test emits for the query it holds now.
+ */
+internal class FakeLibrarySearchSubscription(
+    private val answer: (String) -> Result<BridgeSearchResults>?,
+) : LibrarySearchSubscription(NoHandle) {
+    private val events = Channel<Result<BridgeLibrarySearchSnapshot>>(Channel.UNLIMITED)
+    private var query = ""
+    private var revision = 0uL
+    var cancelled = false
+        private set
+
+    init {
+        events.trySend(Result.success(BridgeLibrarySearchSnapshot("", BridgeFixtures.searchResults(), revision)))
+    }
+
+    override fun setQuery(query: String): ULong {
+        if (cancelled) throw BridgeException.Cancelled()
+        this.query = query.trim()
+        revision++
+        answer(this.query)?.let(::emit)
+        return revision
+    }
+
+    override suspend fun next(): BridgeLibrarySearchSnapshot = events.receive().getOrThrow()
+
+    override suspend fun cancel() {
+        cancelled = true
+        events.trySend(Result.failure(BridgeException.Cancelled()))
+    }
+
+    override fun close() {
+        cancelled = true
+    }
+
+    fun emit(value: Result<BridgeSearchResults>) {
+        events.trySend(value.map { BridgeLibrarySearchSnapshot(query, it, revision) })
     }
 }
 

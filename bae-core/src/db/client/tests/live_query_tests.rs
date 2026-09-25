@@ -542,6 +542,53 @@ async fn artist_browse_reads_its_windows_and_their_images() {
     assert!(count_only.image_versions.is_empty());
 }
 
+/// A search follows its text by moving its request: the same subscription
+/// answers each query, a blank one reads nothing, and a commit to a row the
+/// current query found wakes it.
+#[tokio::test]
+async fn library_search_moves_between_queries_on_one_subscription() {
+    let (db, _temp) = live_db().await;
+    let mut live = db.subscribe_library_search(None, 50);
+    let requests = live.requests();
+
+    let idle = live.next().await.into_result().unwrap();
+    assert!(idle.results.albums.is_empty(), "no query finds nothing");
+
+    requests
+        .set(crate::library::LibrarySearchQuery::parse("Album Title"))
+        .unwrap();
+    let found = live.next().await;
+    assert_eq!(
+        found.request().as_ref().map(|query| query.as_str()),
+        Some("Album Title")
+    );
+    let found = found.into_result().unwrap();
+    assert_eq!(found.results.albums.len(), 1);
+    assert_eq!(found.results.albums[0].id, ALBUM_ID);
+
+    exec(
+        &db,
+        "UPDATE albums SET title = 'Album Title Renamed' WHERE id = ?1",
+        &[ALBUM_ID],
+    )
+    .await;
+    let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("a found album's edit wakes the search")
+        .into_result()
+        .unwrap();
+    assert_eq!(renamed.results.albums[0].title, "Album Title Renamed");
+
+    requests
+        .set(crate::library::LibrarySearchQuery::parse("   "))
+        .unwrap();
+    let cleared = live.next().await.into_result().unwrap();
+    assert!(
+        cleared.results.albums.is_empty(),
+        "a blank query is no search"
+    );
+}
+
 #[tokio::test]
 async fn album_browse_ignores_an_unread_table() {
     let (db, _temp) = live_db().await;

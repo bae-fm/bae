@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -69,10 +70,12 @@ fun SearchResultsScreen(
         .collectAsState()
     val appContext = LocalContext.current
 
-    DisposableEffect(query, session) {
+    LaunchedEffect(query, session) {
         session.libraryQueries.search.activate(query)
+    }
+    DisposableEffect(session) {
         onDispose {
-            session.libraryQueries.search.deactivate(query)
+            session.libraryQueries.search.deactivate()
         }
     }
 

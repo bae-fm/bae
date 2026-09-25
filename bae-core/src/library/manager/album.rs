@@ -158,10 +158,13 @@ impl LibraryManager {
 
     pub(crate) fn subscribe_library_search(
         &self,
-        query: &crate::library::LibrarySearchQuery,
-    ) -> coven::LiveQuery<crate::db::LibrarySearchProjection> {
+        initial: Option<crate::library::LibrarySearchQuery>,
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<crate::library::LibrarySearchQuery>,
+        crate::db::LibrarySearchProjection,
+    > {
         self.database
-            .subscribe_library_search(query.as_str(), crate::library::SEARCH_RESULT_LIMIT)
+            .subscribe_library_search(initial, crate::library::SEARCH_RESULT_LIMIT)
     }
 
     pub(crate) fn resolve_library_search_projection(

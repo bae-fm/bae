@@ -64,15 +64,6 @@ private final class ArtistDetailSink: ArtistDetailCallback, @unchecked Sendable
     func onError(error: BridgeError) { sink.onError(error) }
 }
 
-private final class LibrarySearchSink: LibrarySearchCallback,
-    @unchecked Sendable
-{
-    private let sink: LibraryLiveValueSink<BridgeSearchResults>
-    init(_ sink: LibraryLiveValueSink<BridgeSearchResults>) { self.sink = sink }
-    func onValue(value: BridgeSearchResults) { sink.onValue(value) }
-    func onError(error: BridgeError) { sink.onError(error) }
-}
-
 private final class StorageProjectionSink: StorageProjectionCallback,
     @unchecked Sendable
 {
@@ -133,9 +124,8 @@ public final class Library: Sendable, Observable {
     private let subscribeArtistDetail:
         @Sendable (_ artistId: String, _ callback: ArtistDetailCallback)
             -> any LiveSubscriptionProtocol
-    private let subscribeLibrarySearch:
-        @Sendable (_ query: String, _ callback: LibrarySearchCallback)
-            -> any LiveSubscriptionProtocol
+    /// One live library search, pointed at each new query in place.
+    public let librarySearch: @Sendable () -> LibrarySearch
     public let searchArtists:
         @Sendable (_ query: String) async throws -> [BridgeArtistSearchResult]
     private let subscribeStorageProjection:
@@ -197,11 +187,9 @@ public final class Library: Sendable, Observable {
                     "Library artist-detail subscription is not installed"
                 )
             },
-        subscribeLibrarySearch:
-            @escaping @Sendable (String, LibrarySearchCallback)
-            -> any LiveSubscriptionProtocol = { _, _ in
-                fatalError("Library search subscription is not installed")
-            },
+        librarySearch: @escaping @Sendable () -> LibrarySearch = {
+            fatalError("Library search is not installed")
+        },
         searchArtists:
             @escaping @Sendable (String) async throws
             -> [BridgeArtistSearchResult] = { _ in [] },
@@ -235,7 +223,7 @@ public final class Library: Sendable, Observable {
         self.subscribeWorkDetail = subscribeWorkDetail
         self.artistBrowse = artistBrowse
         self.subscribeArtistDetail = subscribeArtistDetail
-        self.subscribeLibrarySearch = subscribeLibrarySearch
+        self.librarySearch = librarySearch
         self.searchArtists = searchArtists
         self.subscribeStorageProjection = subscribeStorageProjection
         self.subscribeReleaseDetail = subscribeReleaseDetail
@@ -276,15 +264,6 @@ public final class Library: Sendable, Observable {
         libraryLiveValue(
             callback: ArtistDetailSink.init,
             subscribe: { subscribeArtistDetail(artistId, $0) }
-        )
-    }
-
-    public func searchResults(_ query: String)
-        -> LibraryLiveValue<BridgeSearchResults>
-    {
-        libraryLiveValue(
-            callback: LibrarySearchSink.init,
-            subscribe: { subscribeLibrarySearch(query, $0) }
         )
     }
 
@@ -351,8 +330,8 @@ public final class Library: Sendable, Observable {
                 subscribeArtistDetail: {
                     handle.subscribeArtistDetail(artistId: $0, callback: $1)
                 },
-                subscribeLibrarySearch: {
-                    handle.subscribeLibrarySearch(query: $0, callback: $1)
+                librarySearch: {
+                    LibrarySearch(handle.subscribeLibrarySearch())
                 },
                 searchArtists: {
                     try await handle.searchArtists(query: $0)
@@ -412,8 +391,8 @@ public final class Library: Sendable, Observable {
                 subscribeArtistDetail: {
                     handle.subscribeArtistDetail(artistId: $0, callback: $1)
                 },
-                subscribeLibrarySearch: {
-                    handle.subscribeLibrarySearch(query: $0, callback: $1)
+                librarySearch: {
+                    LibrarySearch(handle.subscribeLibrarySearch())
                 },
                 searchArtists: {
                     try await handle.searchArtists(query: $0)
@@ -484,6 +463,33 @@ extension LibraryBrowseQuery where Row == BridgeArtistSummary {
                     totalCount: Int(snapshot.totalCount)
                 )
             },
+            cancel: { try? await subscription.cancel() }
+        )
+    }
+}
+
+/// A live library search whose query changes in place: set the text, and
+/// take each value it delivers, which names the query it answers.
+public struct LibrarySearch: Sendable {
+    public let setQuery: @Sendable (String) throws -> Void
+    public let next: @Sendable () async throws -> BridgeLibrarySearchSnapshot
+    public let cancel: @Sendable () async -> Void
+
+    public init(
+        setQuery: @escaping @Sendable (String) throws -> Void,
+        next:
+            @escaping @Sendable () async throws -> BridgeLibrarySearchSnapshot,
+        cancel: @escaping @Sendable () async -> Void
+    ) {
+        self.setQuery = setQuery
+        self.next = next
+        self.cancel = cancel
+    }
+
+    init(_ subscription: any LibrarySearchSubscriptionProtocol) {
+        self.init(
+            setQuery: { _ = try subscription.setQuery(query: $0) },
+            next: { try await subscription.next() },
             cancel: { try? await subscription.cancel() }
         )
     }

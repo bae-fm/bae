@@ -45,16 +45,26 @@ impl Database {
             .await
     }
 
+    /// Follow the results of one library search. The request is the parsed
+    /// query; `None` is no search, which reads nothing and delivers no results.
+    /// A new query moves this subscription's request rather than opening
+    /// another.
     pub(crate) fn subscribe_library_search(
         &self,
-        query: &str,
+        initial: Option<crate::library::LibrarySearchQuery>,
         limit: usize,
-    ) -> coven::LiveQuery<LibrarySearchProjection> {
-        let pattern = format!("%{}%", escape_like_pattern(query));
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<crate::library::LibrarySearchQuery>,
+        LibrarySearchProjection,
+    > {
         let limit_i64 = limit as i64;
         self.inner
             .handle
-            .subscribe(move |sql| {
+            .subscribe_reconfigurable(initial, move |request, sql| {
+                let Some(query) = request else {
+                    return Ok(None);
+                };
+                let pattern = format!("%{}%", escape_like_pattern(query.as_str()));
                 let results =
                     search_library_on(&sql, &pattern, limit_i64).map_err(CovenError::from)?;
                 let album_ids = results
@@ -93,9 +103,12 @@ impl Database {
                 let artist_image_versions =
                     super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
                         .map_err(CovenError::from)?;
-                Ok((results, cover_versions, artist_image_versions))
+                Ok(Some((results, cover_versions, artist_image_versions)))
             })
-            .process(|(results, mut cover_versions, artist_image_versions)| {
+            .process(|_, raw| {
+                let Some((results, mut cover_versions, artist_image_versions)) = raw else {
+                    return Ok(LibrarySearchProjection::default());
+                };
                 let results = results.process()?;
                 let release_ids = search_release_ids(&results)
                     .into_iter()
@@ -682,7 +695,7 @@ pub struct AlbumDetailProjection {
     pub cover_versions: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct LibrarySearchProjection {
     pub results: DbLibrarySearchResults,
     pub cover_versions: HashMap<String, String>,

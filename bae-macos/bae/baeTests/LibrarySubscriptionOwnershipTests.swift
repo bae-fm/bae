@@ -117,55 +117,89 @@ private final class AlbumProbeSubscription: LiveSubscriptionProtocol,
     }
 }
 
-private final class SearchSubscriptionProbe: @unchecked Sendable {
+/// Stands in for the live library search: records each query it is pointed
+/// at and each time it is opened, and answers with whatever a test emits.
+private final class SearchProbe: @unchecked Sendable {
     private let lock = NSLock()
-    private var callbacks: [LibrarySearchCallback] = []
+    private var queries: [String] = []
+    private var opened = 0
+    private var pending: [Result<BridgeLibrarySearchSnapshot, BridgeError>] = []
+    private var waiter:
+        CheckedContinuation<BridgeLibrarySearchSnapshot, any Error>?
 
-    func subscribe(callback: LibrarySearchCallback)
-        -> any LiveSubscriptionProtocol
-    {
-        lock.withLock { callbacks.append(callback) }
-        return SearchProbeSubscription()
+    func open() -> LibrarySearch {
+        lock.withLock { opened += 1 }
+        return LibrarySearch(
+            setQuery: { [self] query in
+                lock.withLock { queries.append(query) }
+            },
+            next: { [self] in try await nextValue() },
+            cancel: {}
+        )
     }
 
-    func emitValue(subscription: Int) {
-        let callback = lock.withLock { callbacks[subscription] }
-        callback.onValue(
-            value: BridgeSearchResults(
-                albums: [],
-                artists: [],
-                tracks: [],
-                composers: [],
-                works: []
+    var openCount: Int { lock.withLock { opened } }
+    var lastQuery: String? { lock.withLock { queries.last } }
+
+    func emitValue(query: String) {
+        deliver(
+            .success(
+                BridgeLibrarySearchSnapshot(
+                    query: query,
+                    results: BridgeSearchResults(
+                        albums: [],
+                        artists: [],
+                        tracks: [],
+                        composers: [],
+                        works: []
+                    ),
+                    requestRevision: 1
+                )
             )
         )
     }
 
-    func emitError(subscription: Int) {
-        let callback = lock.withLock { callbacks[subscription] }
-        callback.onError(
-            error: .Diagnostic(
-                category: .internal,
-                detail: "search failed"
-            )
+    func emitError() {
+        deliver(
+            .failure(.Diagnostic(category: .internal, detail: "search failed"))
         )
     }
 
-    var count: Int { lock.withLock { callbacks.count } }
+    private func deliver(
+        _ value: Result<BridgeLibrarySearchSnapshot, BridgeError>
+    ) {
+        let waiter = lock.withLock {
+            let waiter = self.waiter
+            self.waiter = nil
+            if waiter == nil { pending.append(value) }
+            return waiter
+        }
+        waiter?.resume(with: value.mapError { $0 as any Error })
+    }
+
+    private func nextValue() async throws -> BridgeLibrarySearchSnapshot {
+        try await withCheckedThrowingContinuation { continuation in
+            let ready = lock.withLock {
+                if pending.isEmpty {
+                    waiter = continuation
+                    return nil
+                        as Result<BridgeLibrarySearchSnapshot, BridgeError>?
+                }
+                return pending.removeFirst()
+            }
+            if let ready {
+                continuation.resume(with: ready.mapError { $0 as any Error })
+            }
+        }
+    }
 }
 
-private final class SearchProbeSubscription: LiveSubscriptionProtocol,
-    @unchecked Sendable
-{
-    func cancel() {}
-}
-
-private func waitForSearchSubscription(
-    _ expectedCount: Int,
-    probe: SearchSubscriptionProbe
+private func waitForSearchQuery(
+    _ expected: String,
+    probe: SearchProbe
 ) async throws -> Bool {
     for _ in 0..<100 {
-        guard probe.count < expectedCount else { return true }
+        if probe.lastQuery == expected { return true }
         try await Task.sleep(for: .milliseconds(10))
     }
     return false
@@ -174,20 +208,16 @@ private func waitForSearchSubscription(
 @Suite("LibraryProjectionStore search")
 struct LibraryProjectionStoreSearchTests {
     @MainActor
-    @Test("a new query clears the previous query before its first result")
+    @Test("a new query clears the previous query's results on the same search")
     func queryChangeClearsPreviousState() async throws {
-        let probe = SearchSubscriptionProbe()
+        let probe = SearchProbe()
         let store = LibraryProjectionStore(
-            library: Library(
-                subscribeLibrarySearch: { _, callback in
-                    probe.subscribe(callback: callback)
-                }
-            )
+            library: Library(librarySearch: { probe.open() })
         )
 
         store.activateSearch("query-a")
-        try #require(await waitForSearchSubscription(1, probe: probe))
-        probe.emitValue(subscription: 0)
+        try #require(await waitForSearchQuery("query-a", probe: probe))
+        probe.emitValue(query: "query-a")
         await waitForStoreUpdate { store.search.value?.query == "query-a" }
         #expect(store.search.delivered)
 
@@ -197,13 +227,24 @@ struct LibraryProjectionStoreSearchTests {
         #expect(!store.search.delivered)
         #expect(store.search.error == nil)
 
-        try #require(await waitForSearchSubscription(2, probe: probe))
-        probe.emitError(subscription: 1)
+        try #require(await waitForSearchQuery("query-b", probe: probe))
+        probe.emitValue(query: "query-a")
+        await Task.yield()
+        #expect(
+            store.search.value == nil,
+            "an answer to the old query is not shown"
+        )
+
+        probe.emitError()
         await waitForStoreUpdate { store.search.error != nil }
 
         #expect(store.search.value == nil)
         #expect(!store.search.delivered)
         #expect(store.search.error != nil)
+        #expect(
+            probe.openCount == 1,
+            "typing moves one search, never opens another"
+        )
     }
 }
 

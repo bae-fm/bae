@@ -145,9 +145,11 @@ struct LibraryView: View {
                 text: $searchQuery,
                 prompt: "Search"
             )
-            .onChange(of: searchQuery, initial: true) { oldQuery, newQuery in
-                libraryProjections.deactivateSearch(oldQuery)
+            .onChange(of: searchQuery, initial: true) { _, newQuery in
                 libraryProjections.activateSearch(newQuery)
+            }
+            .onDisappear {
+                libraryProjections.deactivateSearch()
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

@@ -50,7 +50,6 @@ pub struct BridgeStorageProjection {
 callbacks! {
     AlbumDetailCallback: on_value(value: Option<BridgeAlbumDetail>) + on_error;
     ReleaseDetailCallback: on_value(value: Option<BridgeRelease>) + on_error;
-    LibrarySearchCallback: on_value(value: BridgeSearchResults) + on_error;
     StorageProjectionCallback: on_value(value: BridgeStorageProjection) + on_error;
     ArtistDetailCallback: on_value(value: Option<BridgeArtistDetail>) + on_error;
     ComposerDetailCallback: on_value(value: Option<BridgeComposerDetail>) + on_error;

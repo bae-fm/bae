@@ -8,6 +8,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
@@ -45,6 +46,7 @@ class LibraryQueryStoresTest {
             assertNull(store.state.value.value)
             assertFalse(store.state.value.delivered)
             assertSame(failure, store.state.value.error)
+            assertEquals("typing moves one search, never opens another", 1, handle.searchSubscriptions.size)
             scope.cancel()
         }
 

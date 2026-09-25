@@ -116,32 +116,6 @@ impl AppHandle {
         )
     }
 
-    pub fn subscribe_library_search(
-        &self,
-        query: String,
-        callback: Box<dyn crate::types::LibrarySearchCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services, _| async move {
-            let parsed = bae_core::library::LibrarySearchQuery::parse(&query);
-            let Some(parsed) = parsed else {
-                callback.on_value(BridgeSearchResults::from_core(
-                    bae_core::album_detail::SearchResults::default(),
-                ));
-                std::future::pending::<()>().await;
-                return;
-            };
-            let mut values = services.subscribe_library_search(&parsed);
-            loop {
-                match values.next().await {
-                    Ok(projection) => callback.on_value(BridgeSearchResults::from_core(
-                        services.resolve_library_search_projection(projection),
-                    )),
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
-                }
-            }
-        })
-    }
-
     // =========================================================================
     // Playback
     // =========================================================================

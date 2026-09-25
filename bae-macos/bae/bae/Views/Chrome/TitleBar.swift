@@ -73,14 +73,12 @@ struct TitleBar: View {
                         .frame(height: 1)
                 }
         }
-        .onChange(of: searchText, initial: true) { oldValue, newValue in
-            libraryProjections.deactivateSearch(oldValue)
+        .onChange(of: searchText, initial: true) { _, newValue in
+            libraryProjections.activateSearch(newValue)
             if searchText.isEmpty {
                 uiStore.showSearchPopover = false
                 uiStore.searchResults = nil
-                return
             }
-            libraryProjections.activateSearch(newValue)
         }
         .onChange(of: libraryProjections.search.value) { _, results in
             if let results {
@@ -92,7 +90,7 @@ struct TitleBar: View {
             uiStore.showError(String(localized: "Search failed: \(line)"))
         }
         .onDisappear {
-            libraryProjections.deactivateSearch(searchText)
+            libraryProjections.deactivateSearch()
         }
         .focusedSceneValue(\.focusSearch) { searchFocused = true }
         .onChange(of: uiStore.searchResults != nil) { _, hasResults in

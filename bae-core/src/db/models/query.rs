@@ -2,7 +2,7 @@ use super::*;
 
 /// Raw combined search-result aggregate. No formatting — the resolver in
 /// `LibraryManager` produces the display-ready `crate::album_detail::SearchResults`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct DbLibrarySearchResults {
     pub albums: Vec<DbAlbumSearchResult>,
     pub artists: Vec<DbArtistSummary>,

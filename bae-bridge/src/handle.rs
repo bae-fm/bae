@@ -98,6 +98,7 @@ mod cloud_operations;
 mod collection_subscription;
 mod configuration;
 mod device_pairing;
+mod library_search;
 #[cfg(feature = "desktop")]
 pub use collection_subscription::{
     AlbumBrowseSubscription, ArtistBrowseSubscription, BridgeAlbumBrowseSnapshot,
@@ -105,6 +106,7 @@ pub use collection_subscription::{
     BridgeComposerBrowseSnapshot, BridgeComposerBrowseWindow, ComposerBrowseSubscription,
 };
 pub use device_pairing::BridgeDevicePairingSession;
+pub use library_search::{BridgeLibrarySearchSnapshot, LibrarySearchSubscription};
 #[cfg(feature = "desktop")]
 mod candidate_combination;
 #[cfg(any(feature = "cast", not(any(target_os = "ios", target_os = "android"))))]

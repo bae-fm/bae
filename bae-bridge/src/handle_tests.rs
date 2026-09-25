@@ -147,7 +147,7 @@ fn queue_entry_precomputes_duration_clock() {
 /// A handle over a fresh, empty library, built the way the app builds one so
 /// whatever this bridge build carries — the desktop services, the cast
 /// controller — is behind it.
-fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::PathBuf) {
+pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::PathBuf) {
     let root = std::env::temp_dir().join(format!("bae-bridge-{test_name}"));
     match std::fs::remove_dir_all(&root) {
         Ok(()) => {}
