@@ -266,6 +266,21 @@ impl LibraryManager {
             ids.push(actual_id);
         }
 
+        // A new artist a catalog names gets the id that catalog entry names,
+        // so every device that meets this artist writes one row.
+        for insert in &mut inserts {
+            let Some(identity) = crate::db::identity::artist_id(
+                insert.musicbrainz_artist_id.as_deref(),
+                insert.discogs_artist_id.as_deref(),
+            ) else {
+                continue;
+            };
+            for id in ids.iter_mut().filter(|id| **id == insert.id) {
+                *id = identity.clone();
+            }
+            insert.id = identity;
+        }
+
         Ok(ResolvedImportArtists {
             ids,
             inserts,

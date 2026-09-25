@@ -4,7 +4,7 @@
 //! apply.
 
 use super::test_devices::{run_two_device_test, TestDevice, TwoDevices};
-use crate::db::{Database, DbAlbum, DbArtist, DbRelease};
+use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackWork, DbWork};
 use crate::import::{
     ArtistAssignment, Catalog, ExistingArtist, MetadataRef, PressingEdit, ReleaseRecord,
     ReleaseUserEdit,
@@ -12,6 +12,7 @@ use crate::import::{
 
 const MB_ARTIST: &str = "5b11f4ce-a62d-471e-81fc-a69a8278c7da";
 const DISCOGS_ARTIST: &str = "3840";
+const MB_WORK: &str = "1d8e2b8f-8e9a-3b5c-9d1e-2f4a6b8c0d1e";
 const MB_GROUP: &str = "0c9f2c1e-5b8a-4c8e-9f3a-1b2c3d4e5f60";
 
 fn catalog_artist(
@@ -57,8 +58,39 @@ async fn remote_album_by(
     (artist_id, album.id, release.id)
 }
 
+async fn remote_release_in(device: &TestDevice, album_id: &str) -> String {
+    let release = DbRelease {
+        remote: true,
+        ..DbRelease::new_test(album_id, &uuid::Uuid::new_v4().to_string())
+    };
+    device.database().insert_release(&release).await.unwrap();
+    release.id
+}
+
 async fn texts(database: &Database, query: &str) -> Vec<String> {
     database.query_texts_for_test(query).await.unwrap()
+}
+
+/// The artists the artist browse lists.
+async fn listed_artists(database: &Database) -> Vec<String> {
+    database
+        .get_artist_page(&[], 0, 100)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|summary| summary.artist.id)
+        .collect()
+}
+
+/// The albums the album browse lists.
+async fn listed_albums(database: &Database) -> Vec<String> {
+    database
+        .get_album_page(&[], 0, 100)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|summary| summary.id)
+        .collect()
 }
 
 async fn album_artist_ids(database: &Database, album_id: &str) -> Vec<String> {
@@ -94,6 +126,161 @@ async fn releases_on_both(devices: &TwoDevices, release_ids: &[&str]) {
             }
         })
         .await;
+}
+
+/// The same MusicBrainz artist, credited on each device before either has
+/// seen the other's library, is one artist once they sync.
+#[test]
+fn one_catalog_artist_credited_on_two_devices_is_one_artist() {
+    run_two_device_test(|| async {
+        let devices = TwoDevices::pair().await;
+        devices.pause();
+        let (_, _, release_a) = remote_album_by(
+            devices.a(),
+            catalog_artist(Some(MB_ARTIST), None),
+            "Album A",
+        )
+        .await;
+        let (_, _, release_b) = remote_album_by(
+            devices.b(),
+            catalog_artist(Some(MB_ARTIST), None),
+            "Album B",
+        )
+        .await;
+        devices.resume().await;
+
+        releases_on_both(&devices, &[&release_a, &release_b]).await;
+        for database in [devices.a().database(), devices.b().database()] {
+            assert_eq!(
+                listed_artists(database).await.len(),
+                1,
+                "one MusicBrainz artist is one library artist on every device"
+            );
+        }
+        assert_nothing_held(&devices);
+    });
+}
+
+/// The same MusicBrainz work, performed on a track on each device, is one work
+/// once they sync.
+#[test]
+fn one_catalog_work_performed_on_two_devices_is_one_work() {
+    run_two_device_test(|| async {
+        let devices = TwoDevices::pair().await;
+        devices.pause();
+        let mut releases = Vec::new();
+        for device in [devices.a(), devices.b()] {
+            let artist_id = device
+                .manager()
+                .find_or_create_artists(&[catalog_artist(Some(MB_ARTIST), None)])
+                .await
+                .unwrap()
+                .remove(0);
+            let album = DbAlbum::new_test("Album", &artist_id);
+            let release = DbRelease {
+                remote: true,
+                ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string())
+            };
+            let track = DbTrack::new_test(
+                &release.id,
+                &uuid::Uuid::new_v4().to_string(),
+                "Track",
+                Some(1),
+            );
+            device
+                .database()
+                .insert_album_with_release_and_tracks(
+                    &album,
+                    &release,
+                    std::slice::from_ref(&track),
+                    &[],
+                )
+                .await
+                .unwrap();
+            let work = DbWork {
+                id: uuid::Uuid::new_v4().to_string(),
+                title: "Work".to_string(),
+                disambiguation: None,
+                work_type: None,
+                musicbrainz_work_id: MB_WORK.to_string(),
+                created_at: chrono::Utc::now(),
+            };
+            let resolved = device
+                .manager()
+                .resolve_works_for_import(std::slice::from_ref(&work))
+                .await
+                .unwrap();
+            let track_work = DbTrackWork::new(
+                &track.id,
+                &resolved.ids[0],
+                0,
+                Catalog::MusicBrainz,
+                uuid::Uuid::new_v4().to_string(),
+                chrono::Utc::now(),
+            );
+            device
+                .database()
+                .insert_composition_fixture_rows(&resolved.inserts, &[track_work], &[])
+                .await
+                .unwrap();
+            releases.push(release.id);
+        }
+        devices.resume().await;
+
+        releases_on_both(&devices, &[&releases[0], &releases[1]]).await;
+        for database in [devices.a().database(), devices.b().database()] {
+            assert_eq!(
+                texts(database, "SELECT id FROM works").await.len(),
+                1,
+                "one MusicBrainz work is one library work on every device"
+            );
+        }
+        assert_nothing_held(&devices);
+    });
+}
+
+/// Two pressings of one MusicBrainz release group, identified on different
+/// devices, belong to one album once they sync — the album a single device
+/// files both under.
+#[test]
+fn one_release_group_identified_on_two_devices_is_one_album() {
+    run_two_device_test(|| async {
+        let devices = TwoDevices::pair().await;
+        devices.pause();
+        let mut releases = Vec::new();
+        for (device, pressing) in [
+            (devices.a(), "7a3e1b2c-4d5e-4f60-8a9b-0c1d2e3f4a5b"),
+            (devices.b(), "8b4f2c3d-5e6f-4a71-9b0c-1d2e3f4a5b6c"),
+        ] {
+            let (_, _, release_id) =
+                remote_album_by(device, catalog_artist(Some(MB_ARTIST), None), "Album").await;
+            device
+                .manager()
+                .set_records(
+                    &release_id,
+                    vec![ReleaseRecord::new(
+                        &MetadataRef::new(Catalog::MusicBrainz, pressing),
+                        Some(MB_GROUP.to_string()),
+                        true,
+                    )],
+                    false,
+                )
+                .await
+                .unwrap();
+            releases.push(release_id);
+        }
+        devices.resume().await;
+
+        releases_on_both(&devices, &[&releases[0], &releases[1]]).await;
+        for database in [devices.a().database(), devices.b().database()] {
+            assert_eq!(
+                listed_albums(database).await.len(),
+                1,
+                "one release group is one album on every device"
+            );
+        }
+        assert_nothing_held(&devices);
+    });
 }
 
 /// The edit crediting `artist_ids`, in order, as a release's album artists.
@@ -332,6 +519,35 @@ fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
                 album_artist_ids(database, &new_album).await,
                 vec![musicbrainz.clone()]
             );
+        }
+        assert_nothing_held(&devices);
+    });
+}
+
+/// Device A deletes an album's only release while device B, apart, adds a
+/// release to that album. B's release survives on both devices, in the album
+/// it was added to.
+#[test]
+fn removing_an_albums_last_release_never_takes_a_concurrent_release_with_it() {
+    run_two_device_test(|| async {
+        let devices = TwoDevices::pair().await;
+        let (_, album_id, release_id) =
+            remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Album").await;
+        releases_on_both(&devices, &[&release_id]).await;
+
+        devices.pause();
+        devices
+            .a()
+            .manager()
+            .delete_release(&release_id)
+            .await
+            .unwrap();
+        let added = remote_release_in(devices.b(), &album_id).await;
+        devices.resume().await;
+
+        releases_on_both(&devices, &[&added]).await;
+        for database in [devices.a().database(), devices.b().database()] {
+            assert_eq!(listed_albums(database).await, vec![album_id.clone()]);
         }
         assert_nothing_held(&devices);
     });

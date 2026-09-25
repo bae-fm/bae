@@ -124,20 +124,21 @@ pub const CACHE_BUDGETS: [(&str, u64); 3] = [
 /// Passed to [`coven::Coven::builder`], which attaches the capture session to
 /// exactly these tables when the library is opened.
 pub fn synced_tables() -> Vec<SyncedTable> {
-    // A join row whose identity is the fact it states (an album credit, a
-    // release's record in one catalog) carries an id computed from that fact
-    // (`db::identity`), so two devices stating one fact write one row.
+    // A row whose identity is a fact (a catalog's artist, work or release
+    // group; an album credit; a release's record in one catalog) carries an id
+    // computed from that fact (`db::identity`), so two devices stating one fact
+    // write one row.
     vec![
-        SyncedTable::new("artists", RowIdentity::IndependentUuid).gated_by_descendants(),
+        SyncedTable::new("artists", RowIdentity::SharedKey).gated_by_descendants(),
         // A merge record is keyed by the artist it absorbs and travels with it.
         SyncedTable::new("artist_merges", RowIdentity::SharedKey).gated_through("id"),
-        SyncedTable::new("albums", RowIdentity::IndependentUuid).gated_by_descendants(),
+        SyncedTable::new("albums", RowIdentity::SharedKey).gated_by_descendants(),
         SyncedTable::new("album_artists", RowIdentity::SharedKey).gated_through("album_id"),
         SyncedTable::new("releases", RowIdentity::IndependentUuid).gated_by("remote"),
         SyncedTable::new("release_records", RowIdentity::SharedKey).gated_through("release_id"),
         SyncedTable::new("tracks", RowIdentity::IndependentUuid).gated_through("release_id"),
         SyncedTable::new("track_artists", RowIdentity::IndependentUuid).gated_through("track_id"),
-        SyncedTable::new("works", RowIdentity::IndependentUuid).gated_by_descendants(),
+        SyncedTable::new("works", RowIdentity::SharedKey).gated_by_descendants(),
         SyncedTable::new("work_artists", RowIdentity::SharedKey).gated_through("artist_id"),
         SyncedTable::new("work_parts", RowIdentity::SharedKey).gated_through("child_work_id"),
         SyncedTable::new("track_works", RowIdentity::IndependentUuid).gated_through("track_id"),
@@ -188,7 +189,9 @@ pub fn synced_tables() -> Vec<SyncedTable> {
             )
             .asset(),
         // The bae-produced artist image, same shape, riding `artists`' gate.
-        SyncedTable::new("artist_images", RowIdentity::IndependentUuid)
+        // Keyed by its artist, whose id a catalog can name, so it is one row
+        // wherever that artist is.
+        SyncedTable::new("artist_images", RowIdentity::SharedKey)
             .gated_through("id")
             .carries_blob(
                 BlobDecl::new(

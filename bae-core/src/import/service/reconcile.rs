@@ -88,7 +88,7 @@ impl ImportService {
             release: mut db_release,
             tracks: db_tracks,
             mut artists,
-            album_artists,
+            mut album_artists,
             track_artists,
             work_graph,
             release_artist_roles,
@@ -100,8 +100,20 @@ impl ImportService {
         let existing_album_id = library_manager
             .find_existing_album_for_import_excluding(&records, replacement_release_ids)
             .await?;
-        if let Some(album_id) = &existing_album_id {
-            db_release.album_id = album_id.clone();
+        match &existing_album_id {
+            Some(album_id) => db_release.album_id = album_id.clone(),
+            // A new album for a release group is the group's album on every
+            // device, so two devices importing into one group while apart
+            // write one album.
+            None => {
+                if let Some(group_album_id) = crate::db::identity::album_id_for_records(&records) {
+                    db_album.id = group_album_id;
+                    db_release.album_id = db_album.id.clone();
+                    for album_artist in &mut album_artists {
+                        album_artist.album_id = db_album.id.clone();
+                    }
+                }
+            }
         }
 
         retain_referenced_artists(

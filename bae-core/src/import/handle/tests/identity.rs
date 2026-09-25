@@ -1,3 +1,12 @@
+/// The id a new artist gets: the one its catalog ids name.
+fn catalog_artist_id(artist: &DbArtist) -> String {
+    crate::db::identity::artist_id(
+        artist.musicbrainz_artist_id.as_deref(),
+        artist.discogs_artist_id.as_deref(),
+    )
+    .expect("the artist has a catalog id")
+}
+
 #[tokio::test]
 async fn test_same_discogs_id_reuses_existing() {
     let (manager, _tmp) = setup_test_manager().await;
@@ -35,16 +44,16 @@ async fn one_import_reuses_an_artist_already_waiting_to_be_inserted() {
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
 
     let resolved = manager
-        .find_or_create_artists(&[discogs_credit.clone(), cross_linked_credit])
+        .find_or_create_artists(&[discogs_credit.clone(), cross_linked_credit.clone()])
         .await
         .unwrap();
 
-    assert_eq!(
-        resolved,
-        vec![discogs_credit.id.clone(), discogs_credit.id.clone()]
-    );
+    // The one new artist carries both ids, and its row id is the one its
+    // MusicBrainz id names.
+    let artist_id = catalog_artist_id(&cross_linked_credit);
+    assert_eq!(resolved, vec![artist_id.clone(), artist_id.clone()]);
     let saved = manager
-        .get_artist_by_id(&discogs_credit.id)
+        .get_artist_by_id(&artist_id)
         .await
         .unwrap()
         .unwrap();
@@ -89,21 +98,18 @@ async fn one_import_combines_two_pending_artists_when_a_later_credit_links_them(
         .find_or_create_artists(&[
             discogs_credit.clone(),
             musicbrainz_credit,
-            cross_linked_credit,
+            cross_linked_credit.clone(),
         ])
         .await
         .unwrap();
 
+    let artist_id = catalog_artist_id(&cross_linked_credit);
     assert_eq!(
         resolved,
-        vec![
-            discogs_credit.id.clone(),
-            discogs_credit.id.clone(),
-            discogs_credit.id.clone()
-        ]
+        vec![artist_id.clone(), artist_id.clone(), artist_id.clone()]
     );
     let saved = manager
-        .get_artist_by_id(&discogs_credit.id)
+        .get_artist_by_id(&artist_id)
         .await
         .unwrap()
         .unwrap();
@@ -264,7 +270,7 @@ async fn test_same_name_different_mb_id_creates_new() {
         .unwrap();
 
     // Should create a new artist, not reuse existing
-    assert_eq!(resolved[0], incoming.id);
+    assert_eq!(resolved[0], catalog_artist_id(&incoming));
     assert_ne!(resolved[0], existing.id);
 }
 
@@ -280,7 +286,7 @@ async fn test_same_name_different_discogs_id_creates_new() {
         .await
         .unwrap();
 
-    assert_eq!(resolved[0], incoming.id);
+    assert_eq!(resolved[0], catalog_artist_id(&incoming));
     assert_ne!(resolved[0], existing.id);
 }
 
@@ -299,7 +305,7 @@ async fn test_disjoint_source_ids_do_not_merge_by_name() {
         .await
         .unwrap();
 
-    assert_eq!(resolved[0], incoming.id);
+    assert_eq!(resolved[0], catalog_artist_id(&incoming));
     assert_ne!(resolved[0], existing.id);
 
     let unchanged = manager
@@ -311,7 +317,7 @@ async fn test_disjoint_source_ids_do_not_merge_by_name() {
     assert_eq!(unchanged.musicbrainz_artist_id, None);
 
     let inserted = manager
-        .get_artist_by_id(&incoming.id)
+        .get_artist_by_id(&catalog_artist_id(&incoming))
         .await
         .unwrap()
         .unwrap();
@@ -329,11 +335,11 @@ async fn test_new_artist_inserts() {
         .await
         .unwrap();
 
-    assert_eq!(resolved[0], incoming.id);
+    assert_eq!(resolved[0], catalog_artist_id(&incoming));
 
     // Verify it's in the DB
     let saved = manager
-        .get_artist_by_id(&incoming.id)
+        .get_artist_by_id(&resolved[0])
         .await
         .unwrap()
         .unwrap();

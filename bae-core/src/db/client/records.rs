@@ -119,10 +119,10 @@ impl Database {
     ///
     /// Everything below runs in one transaction:
     ///
-    /// 1. INSERT the destination album when `new_album` is `Some`,
-    ///    plus copies of `current_album_id`'s `album_artists` rows
-    ///    (so a fresh album lands fully populated, not a bare row that
-    ///    drops the artist links the source already had).
+    /// 1. Write the destination album when `new_album` is `Some` and that
+    ///    album holds no release, plus copies of `current_album_id`'s
+    ///    `album_artists` rows (so it lands fully populated, not a bare row
+    ///    that drops the artist links the source already had).
     /// 2. Replace the release's records.
     /// 3. UPDATE the release's `album_id` and `draft_from_tags`.
     /// 4. If the release vacated `current_album_id` (the source), clear its
@@ -159,30 +159,34 @@ impl Database {
             // One HLC stamp for every synced row this transaction touches.
             let reg = sql.stamp();
 
-            // 1. Insert the destination album (if brand-new). Must come
-            //    before the release UPDATE so the FK on `releases.album_id`
-            //    points at an existing row.
+            // 1. Write the destination album when it is new to this release's
+            //    history: absent, or here but empty (a group's album another
+            //    release vacated). Must come before the release UPDATE so the FK
+            //    on `releases.album_id` points at an existing row. The album
+            //    takes the source's fields and credits; one that holds releases
+            //    by the time this transaction runs is left as it is.
             if let Some(album) = &new_album {
-                insert_album_row(tx, album, &reg)?;
-
-                // Copy album_artists from the source, rebound to the new album
-                // (each row's id is its `(album, artist)`). The UNIQUE(album_id,
-                // artist_id) constraint is satisfied because we're inserting
-                // into a different album.
-                let source_artists: Vec<(String, i32)> = tx.query(
-                    "SELECT artist_id, position FROM album_artists \
-                             WHERE album_id = ? ORDER BY position",
-                    params![current_album_id],
-                    |row| {
-                        Ok((
-                            row.get::<_, String>("artist_id")?,
-                            row.get::<_, i32>("position")?,
-                        ))
-                    },
+                let holds_releases: bool = tx.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM releases WHERE album_id = ?)",
+                    params![album.id],
+                    |row| row.get(0),
                 )?;
-                for (artist_id, position) in source_artists {
-                    let album_artist = DbAlbumArtist::new(&album.id, &artist_id, position, now_dt);
-                    insert_album_artist_row(tx, &album_artist, &reg)?;
+                if !holds_releases {
+                    upsert_album_row(tx, album, &reg)?;
+                    let source_artists: Vec<DbAlbumArtist> = tx.query(
+                        "SELECT artist_id, position FROM album_artists \
+                                 WHERE album_id = ? ORDER BY position",
+                        params![current_album_id],
+                        |row| {
+                            Ok(DbAlbumArtist::new(
+                                &album.id,
+                                &row.get::<_, String>("artist_id")?,
+                                row.get::<_, i32>("position")?,
+                                now_dt,
+                            ))
+                        },
+                    )?;
+                    replace_album_artists(tx, &album.id, &source_artists, &reg, &now)?;
                 }
             }
 

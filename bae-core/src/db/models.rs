@@ -95,8 +95,8 @@ pub struct DbTrackArtist {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbWork {
-    /// Minted, never a source id — a MusicBrainz work MBID is often a name-based
-    /// (version 3) UUID, which the sync layer refuses on a synced row.
+    /// Computed from `musicbrainz_work_id` (`db::identity::work_id`), so every
+    /// device that meets one work writes one row.
     pub id: String,
     pub title: String,
     pub disambiguation: Option<String>,

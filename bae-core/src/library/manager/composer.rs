@@ -94,7 +94,8 @@ impl LibraryManager {
     }
 
     /// Resolve each parsed work to the `works` row already holding its
-    /// MusicBrainz id, or to a row for finalize to insert. `ids` comes back in
+    /// MusicBrainz id, or to a row for finalize to insert under the id that
+    /// MusicBrainz id names. `ids` comes back in
     /// input order, so a caller can zip it with `works` to remap the parsed ids
     /// its work links carry. Desktop-only, with the import that calls it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -113,8 +114,14 @@ impl LibraryManager {
             {
                 Some(existing_id) => ids.push(existing_id),
                 None => {
+                    // The work's id is its MusicBrainz id's, so every device
+                    // that meets this work writes one row.
+                    let work = crate::db::DbWork {
+                        id: crate::db::identity::work_id(&work.musicbrainz_work_id),
+                        ..work.clone()
+                    };
                     ids.push(work.id.clone());
-                    inserts.push(work.clone());
+                    inserts.push(work);
                 }
             }
         }

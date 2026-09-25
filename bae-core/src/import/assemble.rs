@@ -288,7 +288,7 @@ fn push_work_graph(
     let work_id = match pools.work_row_ids.get(&node.musicbrainz_work_id) {
         Some(work_id) => work_id.clone(),
         None => {
-            let work_id = ids.new_id();
+            let work_id = crate::db::identity::work_id(&node.musicbrainz_work_id);
             pools
                 .work_row_ids
                 .insert(node.musicbrainz_work_id.clone(), work_id.clone());

@@ -89,6 +89,43 @@ pub(super) fn insert_album_row(
     .map_err(DbError::from)
 }
 
+/// Write `album` whether or not its row is here: a group's album (whose id is
+/// the group's) can be here already, emptied, when a release is filed under it
+/// again.
+pub(super) fn upsert_album_row(
+    conn: &SqlContext<'_, '_>,
+    album: &DbAlbum,
+    reg: &str,
+) -> Result<(), DbError> {
+    conn.execute(
+        r#"
+        INSERT INTO albums (
+            id, title, artist_id, year, primary_release_id, is_compilation,
+            _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET
+            title = excluded.title,
+            artist_id = excluded.artist_id,
+            year = excluded.year,
+            primary_release_id = excluded.primary_release_id,
+            is_compilation = excluded.is_compilation,
+            _updated_at = excluded._updated_at
+        "#,
+        params![
+            album.id,
+            album.title,
+            album.artist_id,
+            album.year,
+            album.primary_release_id,
+            album.is_compilation,
+            reg,
+            album.created_at.to_rfc3339(),
+        ],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
 pub(super) fn insert_album_artist_row(
     conn: &SqlContext<'_, '_>,
     aa: &DbAlbumArtist,

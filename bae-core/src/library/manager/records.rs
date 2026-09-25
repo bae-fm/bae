@@ -32,9 +32,11 @@ impl LibraryManager {
     /// any *other* release in the library has a record matching one of
     /// `new_records` on `(catalog, album key)`, that release's album is the
     /// destination (per-catalog agreement makes the candidate unique). With no
-    /// merge candidate the release stays put if no sibling disagrees on a
-    /// shared catalog, and moves to a fresh album if one does. A vacated album
-    /// stays, empty (see `vacate_album_on`).
+    /// merge candidate, a release alone in its album moves to its group's own
+    /// album (`db::identity::album_id_for_records`); one with siblings stays put
+    /// if no sibling disagrees on a shared catalog, and moves to its group's
+    /// album (or a fresh one, with no group) if one does. A vacated album stays,
+    /// empty (see `vacate_album_on`).
     ///
     /// **Album/release/track row data is not touched** — pressing fields, album
     /// fields, and tracks stay as they are. The caller decides whether to reseed
@@ -83,9 +85,10 @@ impl LibraryManager {
     ///    album is the target — per-catalog agreement makes that album unique.
     ///    It wins even when the current album would also fit, since two albums
     ///    cannot both legitimately claim one group.
-    /// 2. **Stay put** when there is no merge candidate and the current album's
-    ///    other releases don't disagree with `new_records` on a shared catalog.
-    /// 3. **Fresh album** otherwise.
+    /// 2. **The group's album** when the release is alone in its album.
+    /// 3. **Stay put** when the current album's other releases don't disagree
+    ///    with `new_records` on a shared catalog.
+    /// 4. **The group's album**, or a **fresh album** with no group, otherwise.
     async fn resolve_records_target_album(
         &self,
         release_id: &str,
@@ -116,12 +119,27 @@ impl LibraryManager {
             });
         }
 
-        // No merge candidate: stay put if the album's other releases don't disagree
-        // on a shared catalog. An album whose only release is this one agrees
-        // trivially.
+        // No merge candidate. A release alone in its album moves to its group's
+        // own album, the one every device files this group under, so two
+        // devices identifying one group while apart land in one album.
         let other_records_in_current = self
             .other_release_records_for_album(current_album_id, release_id)
             .await?;
+        let group_album_id = crate::db::identity::album_id_for_records(new_records);
+        if other_records_in_current.is_empty() {
+            return match group_album_id {
+                Some(group_album_id) if group_album_id != current_album_id => {
+                    self.group_album(current_album_id, group_album_id).await
+                }
+                _ => Ok(RecordsTargetAlbum {
+                    album_id: current_album_id.to_string(),
+                    new_album: None,
+                }),
+            };
+        }
+
+        // Stay put if the album's other releases don't disagree on a shared
+        // catalog.
         if records_fit_album(new_records, &other_records_in_current) {
             return Ok(RecordsTargetAlbum {
                 album_id: current_album_id.to_string(),
@@ -129,8 +147,43 @@ impl LibraryManager {
             });
         }
 
-        // Doesn't fit anywhere. Spin up a fresh album.
-        let new_album = self.fresh_album_for_release(current_album_id).await?;
+        // Doesn't fit anywhere: the group's album, or a fresh one when no
+        // record names a group.
+        match group_album_id {
+            Some(group_album_id) => self.group_album(current_album_id, group_album_id).await,
+            None => {
+                let new_album = self.fresh_album_for_release(current_album_id).await?;
+                Ok(RecordsTargetAlbum {
+                    album_id: new_album.id.clone(),
+                    new_album: Some(new_album),
+                })
+            }
+        }
+    }
+
+    /// The group's album as the target: the row already here holding
+    /// releases, or one written under the group's id from the current album
+    /// (new, or here but emptied).
+    async fn group_album(
+        &self,
+        current_album_id: &str,
+        group_album_id: String,
+    ) -> Result<RecordsTargetAlbum, LibraryError> {
+        if !self
+            .database
+            .get_releases_for_album(&group_album_id)
+            .await?
+            .is_empty()
+        {
+            return Ok(RecordsTargetAlbum {
+                album_id: group_album_id,
+                new_album: None,
+            });
+        }
+        let new_album = DbAlbum {
+            id: group_album_id,
+            ..self.fresh_album_for_release(current_album_id).await?
+        };
         Ok(RecordsTargetAlbum {
             album_id: new_album.id.clone(),
             new_album: Some(new_album),

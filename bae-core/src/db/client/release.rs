@@ -530,12 +530,12 @@ impl Database {
                         )?;
                     }
 
+                    // A new album for a release group carries the group's id, so
+                    // its row can be here already, emptied by an earlier delete
+                    // or move: the import writes it whole either way.
                     if let Some(album) = &album {
-                        insert_album_row(tx, album, &reg)?;
-
-                        for aa in &album_artists {
-                            insert_album_artist_row(tx, aa, &reg)?;
-                        }
+                        upsert_album_row(tx, album, &reg)?;
+                        replace_album_artists(tx, &album.id, &album_artists, &reg, &now)?;
                     }
 
                     insert_release_row(tx, &release, &reg)?;

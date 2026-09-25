@@ -30,33 +30,44 @@ impl Database {
         &self,
         discogs_artist_id: &str,
     ) -> Result<Option<DbArtist>, DbError> {
-        self.get_artist_by_catalog_id("discogs_artist_id", discogs_artist_id)
-            .await
+        self.get_artist_by_catalog_id(
+            "discogs_artist_id",
+            discogs_artist_id,
+            crate::db::identity::artist_id(None, Some(discogs_artist_id)),
+        )
+        .await
     }
 
     /// The artist a MusicBrainz artist id names, as it shows after any merge.
     pub async fn get_artist_by_mb_id(&self, mb_id: &str) -> Result<Option<DbArtist>, DbError> {
-        self.get_artist_by_catalog_id("musicbrainz_artist_id", mb_id)
-            .await
+        self.get_artist_by_catalog_id(
+            "musicbrainz_artist_id",
+            mb_id,
+            crate::db::identity::artist_id(Some(mb_id), None),
+        )
+        .await
     }
 
-    /// The artist whose `column` holds `catalog_id`, followed through any
-    /// merge to the artist it shows as.
+    /// The artist whose `column` holds `catalog_id`, or whose row the catalog
+    /// id names (its column may have been filled in or edited since), followed
+    /// through any merge to the artist it shows as.
     async fn get_artist_by_catalog_id(
         &self,
         column: &'static str,
         catalog_id: &str,
+        identity: Option<String>,
     ) -> Result<Option<DbArtist>, DbError> {
         let catalog_id = catalog_id.to_string();
         self.read(move |sql| {
             sql.query_row(
                 &format!(
                     "SELECT a.* FROM artists a WHERE a.id IN ( \
-                         SELECT {} FROM artists named WHERE named.{column} = ?1) \
-                     ORDER BY a.id LIMIT 1",
+                         SELECT {} FROM artists named \
+                         WHERE named.{column} = ?1 OR named.id = ?2) \
+                     ORDER BY a.id = ?2 DESC, a.id LIMIT 1",
                     shown_artist_id("named.id")
                 ),
-                params![catalog_id],
+                params![catalog_id, identity],
                 row_to_artist,
             )
             .optional()
@@ -432,8 +443,12 @@ impl Database {
         let musicbrainz_work_id = musicbrainz_work_id.to_string();
         self.read(move |sql| {
             sql.query_row(
-                "SELECT id FROM works WHERE musicbrainz_work_id = ?",
-                params![musicbrainz_work_id],
+                "SELECT id FROM works WHERE id = ?1 OR musicbrainz_work_id = ?2 \
+                 ORDER BY id = ?1 DESC LIMIT 1",
+                params![
+                    crate::db::identity::work_id(&musicbrainz_work_id),
+                    musicbrainz_work_id
+                ],
                 |row| row.get::<_, String>(0),
             )
             .optional()
@@ -571,7 +586,7 @@ fn find_artist_detail_on(
     let albums_query = format!(
         "{select} \
          FROM albums a \
-         WHERE {ALBUM_A_IS_SHOWN} \
+         WHERE {album_shown} \
            AND ({primary} = ?1 \
             OR EXISTS ( \
                 SELECT 1 FROM album_artists aa \
@@ -580,6 +595,7 @@ fn find_artist_detail_on(
          ORDER BY CASE WHEN a.year IS NULL THEN 1 ELSE 0 END, \
                   a.year, a.title COLLATE NOCASE, a.id",
         select = album_summary_select(),
+        album_shown = ALBUM_A_IS_SHOWN,
         primary = shown_artist_id("a.artist_id"),
         additional = shown_artist_id("aa.artist_id"),
     );
