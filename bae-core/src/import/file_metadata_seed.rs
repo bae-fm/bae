@@ -17,8 +17,9 @@ pub(crate) struct FileMetadataSeed {
     /// The exact reading the draft was projected from.
     pub snapshot: FileTagSnapshot,
     pub draft: CandidateDraft,
-    /// The artwork the tags embed, where they embed any. Folder artwork stays
-    /// the candidate's source-neutral fallback.
+    /// The cover applying these tags selects, where the tags embed artwork:
+    /// that artwork, or a folder image named as the front cover, which ranks
+    /// ahead of it (`local_artwork::file_tags_cover`).
     pub cover: Option<CoverSelection>,
 }
 
@@ -70,7 +71,10 @@ impl FileMetadataSeed {
         if let Some(keeping) = keeping {
             draft.tracks = crate::import::pane::file_metadata_tracks(&draft.tracks, keeping);
         }
-        let cover = crate::import::file_tag_snapshot::embedded_cover_selection(&snapshot);
+        let cover = crate::import::local_artwork::file_tags_cover(
+            crate::import::file_tag_snapshot::embedded_cover_selection(&snapshot),
+            candidate.files().artwork(),
+        );
         Ok(Self {
             snapshot,
             draft,

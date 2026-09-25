@@ -815,8 +815,10 @@ async fn file_tags_uses_the_conventional_folder_cover() {
     shut_down(handle).await;
 }
 
+/// A folder image named as the front cover ranks ahead of the tags' embedded
+/// artwork when file tags are applied, and the selection persists.
 #[tokio::test(flavor = "multi_thread")]
-async fn file_tags_persists_embedded_artwork_ahead_of_the_folder_cover() {
+async fn file_tags_persist_the_front_cover_image_ahead_of_embedded_artwork() {
     let StoredCandidate {
         handle,
         manager,
@@ -824,11 +826,10 @@ async fn file_tags_persists_embedded_artwork_ahead_of_the_folder_cover() {
         tmp: _tmp,
         ..
     } = stored_candidate().await;
-    let bytes = vec![1, 2, 3, 4];
     handle
         .file_tag_snapshot_with_reader(
             &key,
-            std::sync::Arc::new(CountingFileTagReader::with_embedded_cover(bytes.clone())),
+            std::sync::Arc::new(CountingFileTagReader::with_embedded_cover(vec![1, 2, 3, 4])),
         )
         .await
         .unwrap();
@@ -843,16 +844,10 @@ async fn file_tags_persists_embedded_artwork_ahead_of_the_folder_cover() {
     let cover = pane(&handle, &key)
         .await
         .cover
-        .expect("the embedded default is projected");
+        .expect("applying tags that embed artwork selects a cover");
     assert_eq!(
         cover.selection,
-        crate::import::CoverSelection::Embedded("01 Track.flac".to_string())
-    );
-    assert_eq!(
-        cover.preview,
-        crate::import::cover_art::CoverImageSource::Bytes {
-            data: bytes.clone()
-        }
+        crate::import::CoverSelection::Local("cover.jpg".to_string())
     );
     shut_down(handle).await;
 
@@ -864,9 +859,9 @@ async fn file_tags_persists_embedded_artwork_ahead_of_the_folder_cover() {
         pane(&reopened, &key)
             .await
             .cover
-            .expect("the persisted embedded default survives a relaunch")
+            .expect("the persisted selection survives a relaunch")
             .selection,
-        crate::import::CoverSelection::Embedded("01 Track.flac".to_string())
+        crate::import::CoverSelection::Local("cover.jpg".to_string())
     );
     shut_down(reopened).await;
 }

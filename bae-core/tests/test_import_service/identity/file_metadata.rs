@@ -251,9 +251,10 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
     assert_cover_row_describes_stored_bytes(&f, &release_id).await;
 }
 
-/// Embedded artwork leads the folder's images when file metadata supplies both.
-#[tokio::test]
-async fn file_metadata_import_embedded_cover_wins_over_folder_image() {
+/// Import `folder_image` (a path under the album folder) beside audio that
+/// embeds artwork, from file metadata with no explicit cover choice, and
+/// return the stored cover's source.
+async fn file_metadata_cover_source_beside(folder_image: &str) -> String {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -269,11 +270,9 @@ async fn file_metadata_import_embedded_cover_wins_over_folder_image() {
             track_number: 1,
         }],
     );
-    // A folder image alongside the embedded-cover audio. No explicit
-    // selection — file metadata's embedded artwork still leads.
-    let scans = album_dir.join("scans");
-    fs::create_dir_all(&scans).unwrap();
-    fs::write(scans.join("cover.jpg"), embedded_cover_jpeg()).unwrap();
+    let image = album_dir.join(folder_image);
+    fs::create_dir_all(image.parent().unwrap()).unwrap();
+    fs::write(&image, embedded_cover_jpeg()).unwrap();
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
@@ -288,16 +287,23 @@ async fn file_metadata_import_embedded_cover_wins_over_folder_image() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    let cover =
-        f.db.find_library_image(&release_id, &LibraryImageType::Cover)
-            .await
-            .unwrap()
-            .expect("a cover should be written");
-    assert_eq!(
-        cover.source, "embedded",
-        "the embedded picture must win over the folder image, got source {:?}",
-        cover.source
-    );
+    f.db.find_library_image(&release_id, &LibraryImageType::Cover)
+        .await
+        .unwrap()
+        .expect("a cover should be written")
+        .source
+}
+
+/// A folder image named as the front cover leads the tags' embedded artwork.
+#[tokio::test]
+async fn file_metadata_import_front_cover_image_wins_over_embedded_cover() {
+    assert_eq!(file_metadata_cover_source_beside("scans/cover.jpg").await, "local");
+}
+
+/// Embedded artwork leads a folder image not named as the front cover.
+#[tokio::test]
+async fn file_metadata_import_embedded_cover_wins_over_other_folder_images() {
+    assert_eq!(file_metadata_cover_source_beside("scans/back.jpg").await, "embedded");
 }
 
 /// File-metadata imports never deduplicate against existing releases — even

@@ -121,11 +121,11 @@ async fn reset_setup_restores_cue_choices_and_saves_complete_tags() {
                     after.metadata_provenance,
                     Some(MetadataProvenance::FileMetadata)
                 );
+                // The folder's cover.jpg is named as the front cover, so it
+                // ranks ahead of the tags' embedded artwork.
                 assert_eq!(
                     after.cover,
-                    Some(crate::import::CoverSelection::Embedded(
-                        "01 Track.flac".into()
-                    ))
+                    Some(crate::import::CoverSelection::Local("cover.jpg".into()))
                 );
                 let stored = manager
                     .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
@@ -907,11 +907,13 @@ async fn reset_setup_without_tags_keeps_a_combination_snapshot_ineligible_until_
         .unwrap()
         .embedded_cover
         .is_some());
+    // Each combined folder's cover.jpg is named as the front cover, so one
+    // ranks ahead of the tags' embedded artwork.
     assert!(matches!(
         preparation(&handle, &source.files().content_hash())
             .await
             .cover,
-        Some(crate::import::CoverSelection::Embedded(_))
+        Some(crate::import::CoverSelection::Local(file_id)) if file_id.ends_with("/cover.jpg")
     ));
     manager.set_prefill_with_file_metadata(false).unwrap();
     handle.reset_candidate_setup(&key).await.unwrap();

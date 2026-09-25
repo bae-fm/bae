@@ -3,9 +3,16 @@
 use super::folder_scanner::ScannedFile;
 use crate::util::content_type_hint::ContentTypeHint;
 
-/// The cover a folder holds for itself: the artwork its own audio embeds —
-/// `embedded`, the selection the file-tag snapshot names — and failing that
-/// the folder's own image default. `None` when the folder has neither.
+/// The cover a folder holds for itself, first of:
+///
+/// 1. a folder image named as the front cover (`cover`, `folder`, `front`;
+///    see [`conventional_artwork_name`]) — the image the folder's owner put
+///    there to be the cover;
+/// 2. the artwork its own audio embeds — `embedded`, the selection the
+///    file-tag snapshot names;
+/// 3. any other folder image, by [`default_local_cover_file`]'s order.
+///
+/// `None` when the folder has none of them.
 ///
 /// One rule, run wherever a candidate's cover is filled in: a scan, a reset,
 /// the migration that fills what earlier scans left empty. A candidate's
@@ -15,10 +22,45 @@ pub(crate) fn folder_cover<'a>(
     embedded: Option<super::CoverSelection>,
     artwork: impl IntoIterator<Item = &'a ScannedFile>,
 ) -> Option<super::CoverSelection> {
-    embedded.or_else(|| {
-        default_local_cover_file(artwork)
-            .map(|image| super::CoverSelection::Local(image.relative_path.clone()))
+    let artwork = artwork.into_iter().collect::<Vec<_>>();
+    front_cover_file(artwork.iter().copied())
+        .map(local_selection)
+        .or(embedded)
+        .or_else(|| default_local_cover_file(artwork).map(local_selection))
+}
+
+/// The cover applying a folder's file tags selects: the tags' embedded
+/// artwork, unless the folder holds an image named as the front cover, which
+/// [`folder_cover`] ranks ahead of it. `None` when the tags embed nothing, so
+/// applying them leaves the candidate's cover as it is.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) fn file_tags_cover<'a>(
+    embedded: Option<super::CoverSelection>,
+    artwork: impl IntoIterator<Item = &'a ScannedFile>,
+) -> Option<super::CoverSelection> {
+    embedded.map(|embedded| {
+        front_cover_file(artwork)
+            .map(local_selection)
+            .unwrap_or(embedded)
     })
+}
+
+/// The folder image named as the front cover, by [`artwork_order`] among
+/// several.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn front_cover_file<'a>(files: impl IntoIterator<Item = &'a ScannedFile>) -> Option<&'a ScannedFile> {
+    files
+        .into_iter()
+        .filter(|file| {
+            ContentTypeHint::path_is_supported_cover(&file.path)
+                && conventional_artwork_name(file).is_some()
+        })
+        .min_by(|left, right| artwork_order(left, right))
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn local_selection(file: &ScannedFile) -> super::CoverSelection {
+    super::CoverSelection::Local(file.relative_path.clone())
 }
 
 /// Select the folder image used when no source supplies artwork. Every caller
@@ -85,6 +127,42 @@ mod tests {
             size,
             1,
         )
+    }
+
+    fn embedded() -> Option<crate::import::CoverSelection> {
+        Some(crate::import::CoverSelection::Embedded("01 Track.mp3".to_string()))
+    }
+
+    fn local(path: &str) -> Option<crate::import::CoverSelection> {
+        Some(crate::import::CoverSelection::Local(path.to_string()))
+    }
+
+    #[test]
+    fn a_front_cover_image_wins_over_embedded_artwork() {
+        let files = [artwork("Front.jpg", 500), artwork("back.jpg", 1)];
+
+        assert_eq!(folder_cover(embedded(), &files), local("Front.jpg"));
+        assert_eq!(file_tags_cover(embedded(), &files), local("Front.jpg"));
+    }
+
+    #[test]
+    fn embedded_artwork_wins_over_an_image_not_named_as_the_front_cover() {
+        let files = [artwork("back.jpg", 1), artwork("scan 1.jpg", 2)];
+
+        assert_eq!(folder_cover(embedded(), &files), embedded());
+        assert_eq!(file_tags_cover(embedded(), &files), embedded());
+    }
+
+    #[test]
+    fn without_embedded_artwork_the_folder_image_order_decides() {
+        let files = [artwork("back.jpg", 1), artwork("scan 1.jpg", 2)];
+
+        assert_eq!(folder_cover(None, &files), local("back.jpg"));
+        assert_eq!(
+            file_tags_cover(None, &files),
+            None,
+            "applying tags that embed nothing leaves the cover as it is"
+        );
     }
 
     #[test]
