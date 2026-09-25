@@ -126,7 +126,6 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
         metadata_author: crate::import::MetadataAuthor::Identification,
         metadata_draft_valid: true,
         metadata_summary: None,
-        selected_cover: None,
     }
 }
 
@@ -144,7 +143,6 @@ fn several_matches_state() -> CandidateStateListRow {
         metadata_author: crate::import::MetadataAuthor::Nobody,
         metadata_draft_valid: false,
         metadata_summary: None,
-        selected_cover: None,
     }
 }
 
@@ -162,7 +160,6 @@ fn not_found_state() -> CandidateStateListRow {
         metadata_author: crate::import::MetadataAuthor::Nobody,
         metadata_draft_valid: false,
         metadata_summary: None,
-        selected_cover: None,
     }
 }
 
@@ -176,7 +173,6 @@ fn prefilled_from_tags_state() -> CandidateStateListRow {
         metadata_author: crate::import::MetadataAuthor::Prefill,
         metadata_draft_valid: true,
         metadata_summary: None,
-        selected_cover: None,
     }
 }
 

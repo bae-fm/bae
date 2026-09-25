@@ -18,7 +18,7 @@ use edit_rows::{delete_file_edits, insert_file_edits};
 use failure_rows::load_failure_on;
 pub(super) use import_commit::require_import_commit_guard;
 pub(super) use pane_rows::{
-    insert_draft, load_authors_on, load_covers_on, load_drafts_on, load_pane_rows_on,
+    author_of, insert_draft, load_album_artist_assignments_on, load_covers_on, load_pane_rows_on,
 };
 pub(crate) use preparation_rows::{
     CandidateLookupUpdate, CandidatePaneWrite, CandidateSaveExpectation,

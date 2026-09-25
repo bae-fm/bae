@@ -328,6 +328,58 @@ async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
     assert_eq!(stored.release_edit().tracks, expected_tracks);
 }
 
+/// The list places a row by whether its draft is blank and valid, read off two
+/// columns rather than the draft whole; every draft write keeps them current.
+#[tokio::test]
+async fn every_draft_write_keeps_the_lists_draft_columns_current() {
+    let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-1").await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let columns = |db: &Database, hash: &str| {
+        let db = db.clone();
+        let hash = hash.to_string();
+        async move {
+            db.read(move |sql| {
+                Ok(sql.query_row(
+                    "SELECT draft_blank, draft_valid FROM import_candidate_edit \
+                     WHERE content_hash = ?1",
+                    params![hash],
+                    |row| Ok((row.get::<_, bool>(0)?, row.get::<_, bool>(1)?)),
+                )?)
+            })
+            .await
+            .unwrap()
+        }
+    };
+    let preparations = crate::import::CandidatePreparations::new(db.clone());
+    preparations
+        .replace_metadata(
+            &hash,
+            &pane_candidate_path(),
+            &metadata_draft("Album Title", "Artist Name"),
+            Some(&release_pick("rel-1")),
+        )
+        .await
+        .unwrap();
+    assert_eq!(columns(&db, &hash).await, (false, true));
+
+    preparations
+        .set_field(&hash, CandidateEditField::AlbumYear, "not a year")
+        .await
+        .unwrap();
+    assert_eq!(
+        columns(&db, &hash).await,
+        (false, false),
+        "a year that does not parse leaves the draft invalid"
+    );
+
+    preparations
+        .set_field(&hash, CandidateEditField::AlbumYear, "1987")
+        .await
+        .unwrap();
+    assert_eq!(columns(&db, &hash).await, (false, true));
+}
+
 #[tokio::test]
 async fn existing_artist_assignments_resolve_the_canonical_artist_row() {
     let (db, _tmp) = empty_db().await;

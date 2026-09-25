@@ -914,6 +914,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit (
     -- draft is saved: it spans this row and the provenance row.
     author         TEXT NOT NULL
         CHECK (author IN ('nobody', 'prefill', 'identification', 'person')),
+    -- What the import list places and shows a row by, written with the draft
+    -- from the draft so the list reads two columns instead of every draft
+    -- whole: whether it is blank, and whether it is a complete, valid edit.
+    draft_blank    INTEGER NOT NULL CHECK (draft_blank IN (0, 1)),
+    draft_valid    INTEGER NOT NULL CHECK (draft_valid IN (0, 1)),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
 ) STRICT;
 

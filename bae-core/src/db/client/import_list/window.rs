@@ -61,11 +61,17 @@ pub(super) fn materialise(
                 let content_hash = scanned.content_hash.as_deref().ok_or_else(|| {
                     DbError::Message(format!("candidate {} has no content hash", scanned.path))
                 })?;
-                let selected = rows
+                // Only a row inside a window shows its cover, so only such a
+                // row's cover is read.
+                let selected = match rows
                     .states
                     .get(content_hash)
                     .filter(|state| state.edit_revision == scanned.file_edit_revision)
-                    .and_then(|state| state.selected_cover.as_ref());
+                {
+                    Some(_) => super::super::import_state::load_covers_on(sql, Some(content_hash))?
+                        .remove(content_hash),
+                    None => None,
+                };
                 let files = if row.metadata_provenance.is_some() {
                     Some(
                         load_candidate_on(sql, &scanned.path)?
@@ -95,6 +101,7 @@ pub(super) fn materialise(
                     None => None,
                 };
                 let cover = selected
+                    .as_ref()
                     .map(|selected| row_cover_source(sql, scanned, selected))
                     .transpose()?;
                 Ok(WindowItemRows::Candidate {

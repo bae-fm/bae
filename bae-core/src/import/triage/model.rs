@@ -205,6 +205,23 @@ impl TriageMetadataSummary {
             album_artist_assignments: draft.album_artist_assignments.clone(),
         })
     }
+
+    /// The same summary from what the stored draft's columns say: its album
+    /// title and artists, and whether it is blank.
+    pub(crate) fn of_columns(
+        album_title: String,
+        album_artist_assignments: Vec<crate::import::ArtistAssignment>,
+        blank: bool,
+        provenance: Option<&crate::import::MetadataProvenance>,
+    ) -> Option<Self> {
+        if blank && provenance.is_none() {
+            return None;
+        }
+        Some(Self {
+            album_title,
+            album_artist_assignments,
+        })
+    }
 }
 
 impl MatchedRelease {

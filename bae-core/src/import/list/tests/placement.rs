@@ -230,7 +230,6 @@ fn a_valid_draft_a_person_typed_is_ready_and_bulk_importable() {
             metadata_author: MetadataAuthor::Person,
             metadata_draft_valid: true,
             metadata_summary: None,
-            selected_cover: None,
         },
     );
 

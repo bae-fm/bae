@@ -43,7 +43,7 @@ fn author_column(author: MetadataAuthor) -> &'static str {
     }
 }
 
-fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
+pub(crate) fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
     match stored {
         "nobody" => Ok(MetadataAuthor::Nobody),
         "prefill" => Ok(MetadataAuthor::Prefill),
@@ -75,10 +75,11 @@ pub(crate) fn insert_draft(
     draft: &CandidateDraft,
     author: MetadataAuthor,
 ) -> Result<(), DbError> {
+    let release_edit = draft.release_edit();
     sql.execute(
         &format!(
-            "INSERT INTO import_candidate_edit ({EDIT_COLUMNS}, author) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO import_candidate_edit ({EDIT_COLUMNS}, author, draft_blank, draft_valid) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
@@ -91,6 +92,8 @@ pub(crate) fn insert_draft(
             draft.pressing.country,
             draft.pressing.barcode,
             author_column(author),
+            release_edit.is_blank(),
+            release_edit.shape().is_ok(),
         ],
     )?;
     insert_album_artist_assignments(sql, content_hash, &draft.album_artist_assignments)?;
@@ -497,7 +500,7 @@ fn insert_track_artist_assignments(
     Ok(())
 }
 
-fn load_album_artist_assignments_on(
+pub(crate) fn load_album_artist_assignments_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
 ) -> Result<HashMap<String, Vec<ArtistAssignment>>, DbError> {

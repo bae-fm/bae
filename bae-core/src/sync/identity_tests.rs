@@ -432,8 +432,8 @@ async fn draft_crediting(device: &TestDevice, artist_id: &str) {
                  VALUES ('draft', '/Album');
              INSERT INTO import_candidate_edit \
                  (content_hash, album_title, album_year, year, format, label, \
-                  catalog_number, country, barcode, author) \
-                 VALUES ('draft', 'Album', '', '', '', '', '', '', '', 'person');
+                  catalog_number, country, barcode, author, draft_blank, draft_valid) \
+                 VALUES ('draft', 'Album', '', '', '', '', '', '', '', 'person', 0, 1);
              INSERT INTO import_candidate_album_artist_assignment \
                  (content_hash, position, assignment_kind, artist_id) \
                  VALUES ('draft', 0, 'existing', '{artist_id}');"

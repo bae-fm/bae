@@ -1,11 +1,12 @@
 //! The import tab's list, read as columns.
 //!
 //! The whole queue is read on every rerun — a few short columns per scanned
-//! folder, per boundary and per stored verdict, plus each verdict's match rows,
+//! folder, per boundary, per draft and per stored verdict, plus each draft's
+//! album artists and each verdict's match rows,
 //! which is what says how many pressings it named, and, while the view filters,
 //! each Done row's library title, artists and year, which is what the filter
 //! tests it against — and nothing else: no files, no cue sheets, no boundary
-//! trees, no fetched releases. Ordering the list
+//! trees, no fetched releases, no draft tracks, no covers. Ordering the list
 //! uses folder dates or natural-order paths, keeping each folder group's rows
 //! together. The list interleaves group headers with three kinds of entry, so
 //! the ordering and the offsets are worked out in Rust by
@@ -86,7 +87,6 @@ pub struct CandidateStateListRow {
     pub metadata_author: crate::import::MetadataAuthor,
     pub metadata_draft_valid: bool,
     pub metadata_summary: Option<crate::import::TriageMetadataSummary>,
-    pub selected_cover: Option<crate::import::CoverSelection>,
 }
 
 /// Every column the queue is placed from, in one read.
@@ -345,14 +345,43 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
 }
 
 fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateStateListRow>, DbError> {
-    let mut drafts = super::import_state::load_drafts_on(sql, None)?;
-    let mut covers = super::import_state::load_covers_on(sql, None)?;
+    // The draft as the list shows it — its album title and artists, whether
+    // it is blank, whether it is valid — read off its columns, never the
+    // draft whole: its tracks and their artists are the pane's to read.
+    let mut drafts: HashMap<String, (String, bool, bool, crate::import::MetadataAuthor)> = sql
+        .query(
+            "SELECT content_hash, album_title, draft_blank, draft_valid, author \
+             FROM import_candidate_edit",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, bool>(2)?,
+                    row.get::<_, bool>(3)?,
+                    row.get::<_, String>(4)?,
+                ))
+            },
+        )?
+        .into_iter()
+        .map(|(content_hash, album_title, blank, valid, author)| {
+            Ok((
+                content_hash,
+                (
+                    album_title,
+                    blank,
+                    valid,
+                    super::import_state::author_of(&author)?,
+                ),
+            ))
+        })
+        .collect::<Result<_, DbError>>()?;
+    let mut album_artists = super::import_state::load_album_artist_assignments_on(sql, None)?;
     // Every match row, not a count and a lead row: how many *pressings* a
     // verdict named is what the Ready rule asks, and which row each match
     // belongs to is what its own run decided.
     let mut matches = load_matches_on(sql, None)?;
     let mut provenances = load_provenance_on(sql, None)?;
-    let mut authors = super::import_state::load_authors_on(sql, None)?;
     let mut verdicts: HashMap<String, VerdictSummary> = HashMap::new();
     for row in sql.query(
         "SELECT content_hash, kind, track_count FROM import_candidate_verdict",
@@ -406,24 +435,22 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     )? {
         let verdict = verdicts.remove(&content_hash);
         let metadata_provenance = provenances.remove(&content_hash);
-        let metadata_draft = drafts.remove(&content_hash).ok_or_else(|| {
-            DbError::Message(format!(
-                "candidate {content_hash} has no editable metadata draft"
-            ))
-        })?;
-        let metadata_author = authors.remove(&content_hash).ok_or_else(|| {
-            DbError::Message(format!(
-                "candidate {content_hash} has no editable metadata draft"
-            ))
-        })?;
+        let (album_title, draft_blank, metadata_draft_valid, metadata_author) =
+            drafts.remove(&content_hash).ok_or_else(|| {
+                DbError::Message(format!(
+                    "candidate {content_hash} has no editable metadata draft"
+                ))
+            })?;
         metadata_author
             .check_provenance(metadata_provenance.as_ref())
             .map_err(|error| DbError::Message(format!("candidate {content_hash}: {error}")))?;
-        let release_edit = metadata_draft.release_edit();
-        let metadata_draft_valid = release_edit.shape().is_ok();
-        let metadata_summary =
-            crate::import::TriageMetadataSummary::of(&release_edit, metadata_provenance.clone());
-        let selected_cover = covers.remove(&content_hash);
+        let album_artist_assignments = album_artists.remove(&content_hash).unwrap_or_default();
+        let metadata_summary = crate::import::TriageMetadataSummary::of_columns(
+            album_title,
+            album_artist_assignments,
+            draft_blank,
+            metadata_provenance.as_ref(),
+        );
         states.insert(
             content_hash,
             CandidateStateListRow {
@@ -433,7 +460,6 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 metadata_author,
                 metadata_draft_valid,
                 metadata_summary,
-                selected_cover,
             },
         );
     }
