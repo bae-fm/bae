@@ -99,7 +99,10 @@ impl LibraryManager {
         // Resize to a ≤600px JPEG thumbnail, then build the row from that output:
         // the stored bytes, their format, size and hash all describe the thumbnail,
         // not the source.
-        let bytes = crate::util::cover::resize_cover(&bytes)
+        // Decoding and re-encoding the image is CPU work.
+        let bytes = tokio::task::spawn_blocking(move || crate::util::cover::resize_cover(&bytes))
+            .await
+            .map_err(|e| LibraryError::Import(format!("cover resize task failed: {e}")))?
             .map_err(|e| LibraryError::Import(format!("Failed to resize cover: {e}")))?;
         let mut library_image = DbLibraryImage::cover(
             release_id,

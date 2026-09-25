@@ -756,8 +756,15 @@ impl ImportService {
         // `cloud_path` extension from the same row.
         let cover_winner = match cover_candidate {
             Some(candidate) => {
-                let bytes = crate::util::cover::resize_cover(&candidate.bytes)
-                    .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
+                // Decoding and re-encoding the image is CPU work.
+                let source = candidate.bytes;
+                let bytes =
+                    tokio::task::spawn_blocking(move || crate::util::cover::resize_cover(&source))
+                        .await
+                        .map_err(|e| crate::import::ImportError::Internal {
+                            detail: format!("cover resize task failed: {e}"),
+                        })?
+                        .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
                 let image = crate::db::DbLibraryImage::cover(
                     &db_release.id,
                     &library_manager.new_id(),
