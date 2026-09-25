@@ -10,7 +10,7 @@
 //! these into the display-ready `AlbumDetail`, `ReleaseDetail`, `AlbumSummary`,
 //! `ReleaseStorageSummary`, and `SearchResults` of `crate::album_detail`, which
 //! is what the bridge and event payloads carry. (`crate::queue::QueueItem` is
-//! built directly by `db::get_queue_items` — it has no raw counterpart here.)
+//! built directly by the queue catalog read — it has no raw counterpart here.)
 
 use crate::import::Catalog;
 use crate::util::content_type::ContentType;

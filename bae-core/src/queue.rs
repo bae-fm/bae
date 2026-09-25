@@ -1,8 +1,8 @@
 //! Resolved types for the playback queue — the display-ready shapes the bridge
-//! and UI event payloads carry. `db::get_queue_items` builds a [`QueueItem`]
+//! and UI event payloads carry. The queue catalog read builds a [`QueueItem`]
 //! directly from a SQL aggregate.
 
-/// How much of the context's not-yet-played tail `resolve_queue_projection`
+/// How much of the context's not-yet-played tail the queue value
 /// resolves eagerly. The tail is library-scaled (a `Library` source's tail is
 /// every remaining library track); resolving only the first window keeps
 /// the queue value bounded regardless of library size. The rest is read in

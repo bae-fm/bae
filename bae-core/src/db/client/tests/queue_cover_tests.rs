@@ -49,13 +49,14 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
 }
 
 async fn cover_of(db: &Database, track_id: &str) -> Option<crate::album_detail::ImageRef> {
-    let items = db
-        .get_queue_items(&[QueueEntry {
+    let items = super::queue_items(
+        db,
+        &[QueueEntry {
             id: QueueEntryId(format!("entry-{track_id}")),
             track_id: track_id.to_string(),
-        }])
-        .await
-        .unwrap();
+        }],
+    )
+    .await;
     assert_eq!(items.len(), 1);
     items[0].cover_image.clone()
 }

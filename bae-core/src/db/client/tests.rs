@@ -157,6 +157,17 @@ async fn watched_root() -> (super::Database, tempfile::TempDir, String) {
 /// Run one statement against the test database and panic if it fails. Spelled
 /// out at a call site, the closure and its `map`/`map_err` are five lines that
 /// say nothing about the write; only the SQL and the ids bound into it do.
+/// `entries` resolved the way the live queue resolves them: through the queue
+/// catalog query's first read, joined onto the entries.
+async fn queue_items(
+    db: &super::Database,
+    entries: &[crate::playback::QueueEntry],
+) -> Vec<crate::queue::QueueItem> {
+    let mut live =
+        db.subscribe_queue_catalog(super::QueueCatalogRequest::for_entries(entries, None));
+    live.next().await.into_result().unwrap().items(entries)
+}
+
 async fn exec(db: &super::Database, sql: &str, args: &[&str]) {
     let sql = sql.to_string();
     let args: Vec<String> = args.iter().map(|arg| arg.to_string()).collect();

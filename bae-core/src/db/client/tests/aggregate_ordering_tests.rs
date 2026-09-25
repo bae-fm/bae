@@ -206,13 +206,14 @@ async fn queue_db() -> (Database, tempfile::TempDir) {
 #[tokio::test]
 async fn queue_items_order_track_artist_names_inside_the_aggregate() {
     let (db, _tmp) = queue_db().await;
-    let items = db
-        .get_queue_items(&[QueueEntry {
+    let items = super::queue_items(
+        &db,
+        &[QueueEntry {
             id: QueueEntryId(ENTRY_A.to_string()),
             track_id: TRACK_A.to_string(),
-        }])
-        .await
-        .unwrap();
+        }],
+    )
+    .await;
 
     assert_eq!(items.len(), 1);
     assert_eq!(

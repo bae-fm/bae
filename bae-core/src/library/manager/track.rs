@@ -76,41 +76,6 @@ impl LibraryManager {
         Ok(track_ids)
     }
 
-    pub async fn get_queue_items(
-        &self,
-        entries: &[QueueEntry],
-    ) -> Result<Vec<QueueItem>, LibraryError> {
-        let items = self.database.get_queue_items(entries).await?;
-        // Each entry resolves to at most one item; a shortfall is entries whose
-        // track has no metadata (deleted from the library but still queued — a
-        // deletion-consistency gap). The pure DB layer logs each; the manager,
-        // which holds the diagnostics sink, counts them.
-        let dropped = entries.len().saturating_sub(items.len());
-        for _ in 0..dropped {
-            self.diagnostics.event(TelemetryEvent::Anomaly {
-                kind: crate::diagnostics::AnomalyKind::QueueTrackNoMetadata,
-            });
-        }
-        Ok(items)
-    }
-
-    /// Resolve the manual lane in full, plus only the first `QUEUE_UPCOMING_WINDOW`
-    /// entries of the context's upcoming tail; the rest is delivered by
-    /// `AppServices::subscribe_queue_upcoming_values`. That tail is library-scaled — a
-    /// `Library` source's tail is every remaining track — so the slice happens
-    /// *before* the resolve, not after. That is what keeps this bounded regardless
-    /// of library size.
-    pub async fn resolve_queue_projection(
-        &self,
-        projection: crate::playback::PlaybackQueueProjection,
-    ) -> Result<crate::queue::ResolvedQueueSnapshot, LibraryError> {
-        let catalog = self
-            .database
-            .get_queue_catalog(queue_catalog_request(&projection))
-            .await?;
-        Ok(self.resolve_queue_catalog(projection, catalog))
-    }
-
     pub(crate) fn subscribe_queue_catalog(
         &self,
         initial: crate::db::QueueCatalogRequest,
@@ -138,6 +103,13 @@ impl LibraryManager {
         items
     }
 
+    /// The queue value: the manual lane in full, and only the first
+    /// `QUEUE_UPCOMING_WINDOW` entries of the context's upcoming tail — the
+    /// rest is read by `AppServices::subscribe_queue_upcoming`. That tail is
+    /// library-scaled — a `Library` source's tail is every remaining track —
+    /// so `catalog` is read for the window only (see
+    /// [`queue_catalog_request`]), which keeps this bounded regardless of
+    /// library size.
     pub(crate) fn resolve_queue_catalog(
         &self,
         projection: crate::playback::PlaybackQueueProjection,

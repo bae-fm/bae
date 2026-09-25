@@ -448,6 +448,21 @@ async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<Stri
     track_ids
 }
 
+/// `projection` resolved the way the live queue value resolves it: the queue
+/// catalog query's first read for what it shows, joined onto it.
+async fn resolve_queue(
+    manager: &LibraryManager,
+    projection: crate::playback::PlaybackQueueProjection,
+) -> crate::queue::ResolvedQueueSnapshot {
+    let catalog = manager
+        .subscribe_queue_catalog(crate::library::manager::queue_catalog_request(&projection))
+        .next()
+        .await
+        .into_result()
+        .unwrap();
+    manager.resolve_queue_catalog(projection, catalog)
+}
+
 /// A `Library`-source context projection whose upcoming tail is `track_ids`,
 /// in order, each wrapped in a freshly-minted per-instance entry id.
 fn context_projection_over(track_ids: &[String]) -> crate::playback::ContextProjection {
@@ -465,12 +480,12 @@ fn context_projection_over(track_ids: &[String]) -> crate::playback::ContextProj
     }
 }
 
-/// `resolve_queue_projection` resolves only the first `QUEUE_UPCOMING_WINDOW`
+/// The queue value resolves only the first `QUEUE_UPCOMING_WINDOW`
 /// entries of a library-scaled context tail, not the whole thing — the
 /// windowing this feature exists for — while still reporting the tail's real
 /// length via `upcoming_total` and preserving order.
 #[tokio::test]
-async fn resolve_queue_projection_windows_a_library_scaled_context_tail() {
+async fn queue_value_windows_a_library_scaled_context_tail() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let track_ids = seed_release_tracks(&manager, crate::queue::QUEUE_UPCOMING_WINDOW + 50).await;
 
@@ -481,7 +496,7 @@ async fn resolve_queue_projection_windows_a_library_scaled_context_tail() {
         has_previous: false,
         revision: 7,
     };
-    let snapshot = manager.resolve_queue_projection(projection).await.unwrap();
+    let snapshot = resolve_queue(&manager, projection).await;
     let context = snapshot.context.expect("a context was set");
 
     assert_eq!(
@@ -513,7 +528,7 @@ async fn resolve_queue_projection_windows_a_library_scaled_context_tail() {
 /// A context tail shorter than the window resolves in full, and
 /// `upcoming_total` still matches its real (smaller) length.
 #[tokio::test]
-async fn resolve_queue_projection_shorter_than_window_resolves_it_all() {
+async fn queue_value_shorter_than_window_resolves_it_all() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let track_ids = seed_release_tracks(&manager, 5).await;
 
@@ -524,7 +539,7 @@ async fn resolve_queue_projection_shorter_than_window_resolves_it_all() {
         has_previous: false,
         revision: 1,
     };
-    let snapshot = manager.resolve_queue_projection(projection).await.unwrap();
+    let snapshot = resolve_queue(&manager, projection).await;
     let context = snapshot.context.expect("a context was set");
     assert_eq!(context.upcoming.len(), 5);
     assert_eq!(context.upcoming_total, 5);
@@ -533,7 +548,7 @@ async fn resolve_queue_projection_shorter_than_window_resolves_it_all() {
 /// The manual lane is explicit and user-curated, not library-scaled — it
 /// resolves in full even when it is larger than the context window.
 #[tokio::test]
-async fn resolve_queue_projection_resolves_manual_lane_in_full_regardless_of_window() {
+async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let track_ids = seed_release_tracks(&manager, crate::queue::QUEUE_UPCOMING_WINDOW + 10).await;
 
@@ -554,7 +569,7 @@ async fn resolve_queue_projection_resolves_manual_lane_in_full_regardless_of_win
         has_previous: false,
         revision: 0,
     };
-    let snapshot = manager.resolve_queue_projection(projection).await.unwrap();
+    let snapshot = resolve_queue(&manager, projection).await;
     assert_eq!(
         snapshot.manual.len(),
         manual_count,
@@ -596,7 +611,12 @@ async fn a_reordered_queue_reads_the_same_tracks_and_resolves_from_one_read() {
         "the same tracks in another order are the same request"
     );
 
-    let read = manager.database.get_queue_catalog(request).await.unwrap();
+    let read = manager
+        .subscribe_queue_catalog(request)
+        .next()
+        .await
+        .into_result()
+        .unwrap();
     let resolved = manager.resolve_queue_catalog(reordered, read);
     let shown: Vec<(&str, &str)> = resolved
         .manual

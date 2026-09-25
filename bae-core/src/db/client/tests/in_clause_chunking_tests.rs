@@ -111,7 +111,7 @@ async fn track_id_queries_merge_chunks() {
             track_id: track_id.clone(),
         })
         .collect();
-    let items = db.get_queue_items(&entries).await.unwrap();
+    let items = super::queue_items(&db, &entries).await;
     let resolved_track_ids: Vec<&str> = items.iter().map(|item| item.track_id.as_str()).collect();
     let expected_track_ids: Vec<&str> = requested
         .iter()

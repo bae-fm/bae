@@ -45,7 +45,6 @@ use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::library::save::SaveService;
 use crate::library::sync_controller::SyncController;
-use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
 use crate::sync::S3ConfigData;
 use coven::ClockRef;

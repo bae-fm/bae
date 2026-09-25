@@ -1,32 +1,6 @@
 use super::*;
 
 impl Database {
-    /// One `QueueItem` per entry, in order, each carrying the entry's per-instance
-    /// id and its track's album/artist display metadata. A track queued twice
-    /// resolves twice — the metadata is fetched once and joined onto every entry of
-    /// that track. Entries whose track is not found are skipped.
-    ///
-    /// The cover is the track's own release's, not the album's primary release's,
-    /// so a queued track from a non-primary release shows that release's art — the
-    /// same rule `playback_info_from_track_release` applies to the playing track.
-    /// Its `covers` row joins in here rather than in a second query, giving each
-    /// entry the versioned reference the UI caches art under; a release with no
-    /// cover row yields `None`.
-    pub async fn get_queue_items(&self, entries: &[QueueEntry]) -> Result<Vec<QueueItem>, DbError> {
-        if entries.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let entries = entries.to_vec();
-        self.read(move |sql| {
-            let track_ids: BTreeSet<String> =
-                entries.iter().map(|entry| entry.track_id.clone()).collect();
-            Ok((queue_metadata_on(&sql, &track_ids)?, entries))
-        })
-        .process(|(metadata, entries)| Ok(resolve_queue_entries(&metadata, &entries)))
-        .await
-    }
-
     /// Follow the display rows for the tracks `initial` names. The queue
     /// changes by pointing the same query at new tracks through its request
     /// handle, not by opening another one; a queue change that plays the same
@@ -41,13 +15,6 @@ impl Database {
                 queue_catalog_on(&sql, request).map_err(CovenError::from)
             })
             .process(|_, projection| Ok(projection))
-    }
-
-    pub(crate) async fn get_queue_catalog(
-        &self,
-        request: QueueCatalogRequest,
-    ) -> Result<QueueCatalogProjection, DbError> {
-        self.read(move |sql| queue_catalog_on(&sql, &request)).await
     }
 
     /// Write the single device-local `playback_state` row (id = 'current'),
@@ -173,6 +140,13 @@ impl Database {
     }
 }
 
+/// Each track's queue display metadata: its album and artist names, duration,
+/// and its own release's cover. The cover is the track's own release's, not
+/// the album's primary release's, so a queued track from a non-primary release
+/// shows that release's art — the same rule `playback_info_from_track_release`
+/// applies to the playing track. Its `covers` row joins in here rather than in
+/// a second query, giving each entry the versioned reference the UI caches art
+/// under; a release with no cover row yields `None`.
 fn queue_metadata_on(
     sql: &SqlReadContext<'_>,
     track_ids: &BTreeSet<String>,
