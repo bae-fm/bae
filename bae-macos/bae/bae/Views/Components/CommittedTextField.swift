@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import Combine
 import SwiftUI
@@ -63,7 +64,9 @@ struct CommittedTextField: View {
     var monospaced: Bool = false
     var chrome: FieldChrome.Style = .boxed
     var fillsWidth = false
-    var font: Font = .system(size: 13)
+    var font: NSFont = .systemFont(ofSize: 13)
+    /// The typed value's color. The placeholder takes its own, by role.
+    var textColor: NSColor = .controlTextColor
     var placeholderRole: PlaceholderRole = .hint
     /// Present on surfaces that can replace the stored value while this field
     /// is focused. Other editors commit through focus, Return, and pause only.
@@ -78,8 +81,11 @@ struct CommittedTextField: View {
     private var draft: String = ""
     @State
     private var pending: Task<Void, Never>?
-    @FocusState
-    private var focused: Bool
+    /// Whether the field is being edited: AppKit's answer, reported by the
+    /// field as it gains and loses its field editor. Setting it false ends
+    /// the editing.
+    @State
+    private var focused = false
     @State
     private var suppressNextBlurCommit = false
 
@@ -137,47 +143,51 @@ struct CommittedTextField: View {
     /// the field's bounds.
     private static let cellInset: CGFloat = 2
 
-    /// The field, sized by a hidden Text of the same font and content.
+    /// The field, laid out by a hidden Text of the same font and content and
+    /// drawn in exactly the frame that Text takes.
     ///
-    /// The `NSTextField` behind a plain `TextField` clips to its own bounds,
-    /// and on a remount SwiftUI can hand it a height measured before `.font`
-    /// applied — the top of a 22-point title cut off after a round trip
-    /// through the metadata browsers. A Text measures from the font every
-    /// time, and its height is the field's exact single-line height for every
-    /// font the fields use, so the Text lays the field out and the field is
-    /// drawn over it. The width follows the text unless the caller asks the
-    /// editor to fill its column.
+    /// A SwiftUI `TextField` sizes its `NSTextField` itself, and that size is
+    /// not the field's own: a hosting now and then gives an empty 12.5-point
+    /// fact field the 26-point height of the album title beside it, or the
+    /// title the 16-point height of a track row, while AppKit measures the
+    /// field at its own font's height throughout. The field draws its text
+    /// placed by that borrowed height — half a point off, or with the top
+    /// of a 22-point title cut away. A Text measures from its font every
+    /// time, so the Text lays the field out and the editor below fills that
+    /// frame and nothing else. The width follows the text unless the caller
+    /// asks the editor to fill its column.
     private var field: some View {
         Text(verbatim: draft.isEmpty ? placeholder : draft)
-            .font(draft.isEmpty || !monospaced ? font : font.monospaced())
+            .font(Font(draft.isEmpty ? font : valueFont))
             .lineLimit(1)
             .padding(.horizontal, Self.cellInset)
             .hidden()
             .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
             .overlay {
-                // The value takes the monospaced design; the prompt keeps
-                // `font` as given, so an empty mark is the same glyph in every
-                // field.
-                TextField(placeholder, text: $draft, prompt: prompt)
-                    .textFieldStyle(.plain)
-                    .font(monospaced ? font.monospaced() : font)
-                    .focused($focused)
-                    .onSubmit { startCommit(draft) }
+                CommittedTextEditor(
+                    text: $draft,
+                    focused: $focused,
+                    placeholder: placeholder,
+                    placeholderRole: placeholderRole,
+                    font: valueFont,
+                    placeholderFont: font,
+                    textColor: textColor,
+                    onSubmit: { startCommit(draft) }
+                )
             }
     }
 
-    /// What the field shows while empty, by the placeholder's role. `nil`
-    /// leaves the system placeholder in place.
-    private var prompt: Text? {
-        switch placeholderRole {
-        case .hint:
-            nil
-        case .emptyMark:
-            // Gone while editing, so the caret sits alone at the leading edge.
-            Text(focused ? "" : placeholder)
-                .font(font)
-                .foregroundStyle(.tertiary)
-        }
+    /// The value takes the monospaced design; the placeholder keeps `font`
+    /// as given, so an empty mark is the same glyph in every field.
+    private var valueFont: NSFont {
+        guard monospaced,
+            let descriptor = font.fontDescriptor.withDesign(.monospaced),
+            let monospacedFont = NSFont(
+                descriptor: descriptor,
+                size: font.pointSize
+            )
+        else { return font }
+        return monospacedFont
     }
 
     /// Send `text` unless it is already what is stored — a focus change over
@@ -190,6 +200,139 @@ struct CommittedTextField: View {
     func commit(_ text: String) async {
         guard text != value else { return }
         await onCommit(text)
+    }
+}
+
+/// The `NSTextField` a committed field edits in, sized to exactly what its
+/// caller proposes: the frame of the Text that lays the field out.
+private struct CommittedTextEditor: NSViewRepresentable {
+    @Binding
+    var text: String
+    @Binding
+    var focused: Bool
+    let placeholder: String
+    let placeholderRole: CommittedTextField.PlaceholderRole
+    let font: NSFont
+    let placeholderFont: NSFont
+    let textColor: NSColor
+    let onSubmit: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeNSView(context: Context) -> EditorField {
+        let field = EditorField()
+        field.isBordered = false
+        field.isBezeled = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.lineBreakMode = .byClipping
+        field.cell?.isScrollable = true
+        field.cell?.wraps = false
+        field.delegate = context.coordinator
+        field.onEditingChange = { [coordinator = context.coordinator] editing in
+            if coordinator.parent.focused != editing {
+                coordinator.parent.focused = editing
+            }
+        }
+        return field
+    }
+
+    func updateNSView(_ field: EditorField, context: Context) {
+        context.coordinator.parent = self
+        if field.stringValue != text {
+            field.stringValue = text
+        }
+        field.font = font
+        field.textColor = textColor
+        field.isEnabled = context.environment.isEnabled
+        switch placeholderRole {
+        case .hint:
+            field.placeholderString = placeholder
+        case .emptyMark:
+            // Gone while editing, so the caret sits alone at the leading edge.
+            field.placeholderAttributedString =
+                focused
+                ? nil
+                : NSAttributedString(
+                    string: placeholder,
+                    attributes: [
+                        .font: placeholderFont,
+                        .foregroundColor: NSColor.tertiaryLabelColor,
+                    ]
+                )
+        }
+        if !focused, field.isEditing {
+            field.window?.makeFirstResponder(nil)
+        }
+    }
+
+    /// Exactly the proposed size: the field fills the frame the Text laid
+    /// out, and never reports a height of its own. As an overlay it is
+    /// always proposed that frame; it has no other size to offer.
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        nsView: EditorField,
+        context: Context
+    ) -> CGSize? {
+        proposal.replacingUnspecifiedDimensions(by: .zero)
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: CommittedTextEditor
+
+        init(_ parent: CommittedTextEditor) {
+            self.parent = parent
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSTextField else {
+                return
+            }
+            parent.text = field.stringValue
+        }
+
+        /// Return commits and the field stays in editing. AppKit's own
+        /// Return ends the editing and begins it again, which would report
+        /// a blur between the two and send the value twice.
+        func control(
+            _ control: NSControl,
+            textView: NSTextView,
+            doCommandBy selector: Selector
+        ) -> Bool {
+            guard selector == #selector(NSResponder.insertNewline(_:)) else {
+                return false
+            }
+            parent.onSubmit()
+            return true
+        }
+    }
+
+    /// A text field that says when it gains and loses its field editor —
+    /// which is what "focused" is for a field a person types into.
+    final class EditorField: NSTextField {
+        var onEditingChange: ((Bool) -> Void)?
+
+        /// Whether the field's editor is the window's first responder.
+        var isEditing: Bool {
+            guard let editor = currentEditor() else { return false }
+            return window?.firstResponder === editor
+        }
+
+        override func becomeFirstResponder() -> Bool {
+            let became = super.becomeFirstResponder()
+            if became {
+                onEditingChange?(true)
+            }
+            return became
+        }
+
+        override func textDidEndEditing(_ notification: Notification) {
+            super.textDidEndEditing(notification)
+            onEditingChange?(false)
+        }
     }
 }
 

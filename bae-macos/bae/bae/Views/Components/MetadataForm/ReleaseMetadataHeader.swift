@@ -122,7 +122,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
                 placeholder: String(localized: "Album title"),
                 value: values.albumTitle,
                 chrome: .inline,
-                font: .system(size: 22, weight: .semibold),
+                font: .systemFont(ofSize: 22, weight: .semibold),
                 editingCommands: editingCommands,
                 onCommit: { await writer.setField(.albumTitle, $0) },
             )
@@ -144,11 +144,11 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
                     placeholder: String(localized: "Year"),
                     value: values.albumYear,
                     chrome: .inline,
-                    font: .system(size: 13),
+                    font: .systemFont(ofSize: 13),
+                    textColor: .secondaryLabelColor,
                     editingCommands: editingCommands,
                     onCommit: { await writer.setField(.albumYear, $0) },
                 )
-                .foregroundStyle(.secondary)
                 .frame(width: 72)
             }
             audioFacts()
@@ -254,7 +254,7 @@ struct ReleasePressingFieldsGrid: View {
             value: text,
             monospaced: monospaced,
             chrome: .inline,
-            font: .system(size: 12.5),
+            font: .systemFont(ofSize: 12.5),
             placeholderRole: .emptyMark,
             editingCommands: editingCommands,
             onCommit: { await writer.setField(field, $0) },

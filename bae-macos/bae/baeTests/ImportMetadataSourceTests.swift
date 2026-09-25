@@ -473,7 +473,11 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             XCTAssertLessThan(frame.minY, cover.maxY)
             XCTAssertGreaterThan(frame.maxY, cover.minY)
         }
-        let releaseFields = fields.filter { $0.placeholderString == "\u{2014}" }
+        // The empty mark is an attributed placeholder: it carries its own
+        // colour and the field's plain font.
+        let releaseFields = fields.filter {
+            $0.placeholderAttributedString?.string == "\u{2014}"
+        }
         XCTAssertEqual(releaseFields.count, 6)
         for field in releaseFields {
             let frame = field.convert(field.bounds, to: host)

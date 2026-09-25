@@ -160,15 +160,7 @@ struct EditMetadataSheetTests {
             layout: .cue,
             shared: false
         )
-        #expect(cueFiles.map(placement(of:)) == files.map(placement(of:)))
-    }
-
-    /// Where a title field sits in its row: its origin and width. Its height
-    /// is left out because a title field hosted on a 1x display settles at
-    /// 15 or 16 points independently in each hosting, and a row's placement
-    /// is what these comparisons are about.
-    private func placement(of frame: CGRect) -> [CGFloat] {
-        [frame.minX, frame.minY, frame.width]
+        #expect(cueFiles == files)
     }
 
     @MainActor
