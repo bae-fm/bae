@@ -574,6 +574,65 @@ mod tests {
         destination[..encoded.len()].copy_from_slice(&encoded);
     }
 
+    /// Placeholder JPEG bytes: a start-of-image marker, an APP0 marker and
+    /// a scan marker whose `0xff` bytes each need an unsynchronisation guard
+    /// byte, and an end-of-image marker.
+    const PLACEHOLDER_JPEG: &[u8] = &[
+        0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, b'J', b'F', b'I', b'F', 0x00, 0xff, 0x00, 0xff,
+        0xda, 0x12, 0x34, 0xff, 0xd9,
+    ];
+
+    /// ID3v2 unsynchronisation: a `0x00` after every `0xff` that precedes a
+    /// byte of `0xe0` or more, or a `0x00`.
+    fn unsynchronise(data: &[u8]) -> Vec<u8> {
+        let mut out = Vec::with_capacity(data.len() * 2);
+        for (index, byte) in data.iter().enumerate() {
+            out.push(*byte);
+            let next = data.get(index + 1).copied();
+            if *byte == 0xff && next.is_some_and(|next| next >= 0xe0 || next == 0x00) {
+                out.push(0x00);
+            }
+        }
+        out
+    }
+
+    /// An ID3v2.4 tag the way some taggers write one: the header's
+    /// unsynchronisation flag set, and each frame unsynchronised with a data
+    /// length indicator (frame flags `0x0003`). A title frame follows the
+    /// picture so a misread picture size shows up as a lost title.
+    fn unsynchronised_id3v24_mp3(jpeg: &[u8]) -> Vec<u8> {
+        fn frame(id: &[u8; 4], data: &[u8]) -> Vec<u8> {
+            let stored = unsynchronise(data);
+            let mut frame = Vec::new();
+            frame.extend_from_slice(id);
+            frame.extend_from_slice(&synchsafe(4 + stored.len()));
+            frame.extend_from_slice(&[0x00, 0x03]);
+            frame.extend_from_slice(&synchsafe(data.len()));
+            frame.extend(stored);
+            frame
+        }
+        let mut picture = vec![0x00];
+        picture.extend_from_slice(b"image/jpeg\0");
+        picture.push(0x03);
+        picture.push(0x00);
+        picture.extend_from_slice(jpeg);
+        let mut title = vec![0x03];
+        title.extend_from_slice("Track Alpha".as_bytes());
+
+        let mut frames = frame(b"APIC", &picture);
+        frames.extend(frame(b"TIT2", &title));
+
+        let mut file = b"ID3\x04\x00\x80".to_vec();
+        file.extend_from_slice(&synchsafe(frames.len()));
+        file.extend(frames);
+        let existing_tag_size = 10
+            + PLACEHOLDER_MP3[6..10]
+                .iter()
+                .fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
+        file.extend_from_slice(&PLACEHOLDER_MP3[existing_tag_size..]);
+        file
+    }
+
     fn snapshot(embedded_cover: Option<EmbeddedCoverFact>) -> FileTagSnapshot {
         FileTagSnapshot {
             scan_generation: 1,
@@ -600,6 +659,24 @@ mod tests {
                 embedded_cover: None,
             })
         }
+    }
+
+    #[test]
+    fn embedded_cover_in_an_unsynchronised_id3v24_tag_reads_as_the_original_image() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("01.mp3");
+        std::fs::write(&path, unsynchronised_id3v24_mp3(PLACEHOLDER_JPEG)).unwrap();
+
+        let (bytes, content_type) = read_embedded_cover(std::slice::from_ref(&path))
+            .unwrap()
+            .expect("the tag carries a picture");
+
+        assert_eq!(content_type, ContentType::Jpeg);
+        assert_eq!(bytes, PLACEHOLDER_JPEG);
+        assert_eq!(
+            LoftyFileTagReader.read(&path).unwrap().title.as_deref(),
+            Some("Track Alpha")
+        );
     }
 
     #[test]

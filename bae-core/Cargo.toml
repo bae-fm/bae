@@ -118,7 +118,7 @@ ndk = { version = "0.9", features = ["audio"] }
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 chardetng = "0.1"
 encoding_rs = "0.8"
-lofty = "0.24"
+lofty = "0.25"
 notify = "8.2.0"
 notify-debouncer-full = "0.7.0"
 strsim = "0.11"
