@@ -81,11 +81,15 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
         {
             HStack(alignment: .top, spacing: ReleaseMetadataLayout.coverSpacing)
             {
+                // Clipped to the slot here, whatever the caller's cover does:
+                // a non-square image fills the slot and is cut to it rather
+                // than spilling over the identity column.
                 cover()
                     .frame(
                         width: ReleaseMetadataLayout.coverSize,
                         height: ReleaseMetadataLayout.coverSize
                     )
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 ReleaseAlbumIdentityEditor(
                     values: values,
                     writer: writer,
