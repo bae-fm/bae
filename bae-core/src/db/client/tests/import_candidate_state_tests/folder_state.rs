@@ -108,85 +108,244 @@ async fn imported_content_hash_lookup_uses_its_partial_index() {
     );
 }
 
+/// One stored folder reading: `folder` under `root` read as `decision`,
+/// yielding `items`, under a reading begun now.
+async fn commit_reading(
+    db: &Database,
+    root: &str,
+    folder: &str,
+    decision: crate::import::folder_scanner::FolderReleaseDecision,
+    items: Vec<crate::import::folder_scanner::ScanItem>,
+) -> Result<crate::db::FolderReadingWrite, coven::DbError> {
+    let stamp = db.begin_folder_reading(root).await?;
+    commit_reading_under(db, root, folder, decision, items, stamp).await
+}
+
+async fn commit_reading_under(
+    db: &Database,
+    root: &str,
+    folder: &str,
+    decision: crate::import::folder_scanner::FolderReleaseDecision,
+    items: Vec<crate::import::folder_scanner::ScanItem>,
+    stamp: crate::db::FolderReadingStamp,
+) -> Result<crate::db::FolderReadingWrite, coven::DbError> {
+    db.commit_folder_reading(crate::db::FolderReadingCommit {
+        watched_folder_path: root.to_string(),
+        folder: folder.to_string(),
+        stamp,
+        decision: (
+            crate::import::folder_scanner::FolderReleaseDecisionKey {
+                watched_folder_path: root.to_string(),
+                relative_folder_path: folder.to_string(),
+            },
+            decision,
+        ),
+        scanned_decisions: Vec::new(),
+        items: items
+            .into_iter()
+            .map(|item| crate::db::ScanItemToWrite {
+                item,
+                file_metadata: None,
+                folder_date: None,
+            })
+            .collect(),
+    })
+    .await
+}
+
+/// `root` scanned to completion with `Box/CD1`, `Box/CD2` and a sibling
+/// `Other`, returning the generation that scan stamped.
+async fn scanned_box_and_sibling(db: &Database, root: &str) -> u64 {
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    for name in ["Box/CD1", "Box/CD2", "Other"] {
+        db.save_folder_scan_item(root, generation, &scanned_candidate(root, name))
+            .await
+            .unwrap()
+            .expect("the scan generation is current");
+    }
+    db.finish_folder_scan(root, generation, None)
+        .await
+        .unwrap()
+        .expect("the scan generation is current");
+    generation
+}
+
+async fn stored_keys(db: &Database, root: &str) -> Vec<String> {
+    let mut keys: Vec<String> = db
+        .load_folder_scan_items(root)
+        .await
+        .unwrap()
+        .iter()
+        .filter_map(crate::import::folder_scanner::ScanItem::persisted_key)
+        .collect();
+    keys.sort();
+    keys
+}
+
+async fn row_generation(db: &Database, root: &str, name: &str) -> i64 {
+    let path = std::path::Path::new(root)
+        .join(name)
+        .to_string_lossy()
+        .into_owned();
+    db.read(move |sql| {
+        Ok(sql.query_row(
+            "SELECT generation FROM scan_candidate WHERE path = ?",
+            [path],
+            |row| row.get::<_, i64>(0),
+        )?)
+    })
+    .await
+    .unwrap()
+}
+
+fn key_of(root: &str, name: &str) -> String {
+    std::path::Path::new(root)
+        .join(name)
+        .to_string_lossy()
+        .into_owned()
+}
+
+/// Combining a folder and keeping it separate each trade the folder's entries
+/// for the other reading's in the write that stores the decision; the sibling
+/// folder is neither rewritten nor restamped.
 #[tokio::test]
-async fn folder_decisions_remove_contradictory_scan_rows_before_failed_rescan() {
-    use crate::import::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
+async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decision() {
+    use crate::import::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionAuthor};
 
     let (db, _tmp) = empty_db().await;
     let root = &host_root("/mounted/library");
-    db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
-    for name in ["Box/CD1", "Box/CD2"] {
-        let item = scanned_candidate(root, name);
-        db.save_folder_scan_item(root, generation, &item)
-            .await
-            .unwrap();
-    }
-    let key = FolderReleaseDecisionKey {
-        watched_folder_path: root.to_string(),
-        relative_folder_path: "Box".to_string(),
-    };
-    let (combine_generation, combine_removals) = db
-        .set_folder_release_decisions(&[(key.clone(), FolderReleaseDecision::CombineAsOneRelease)], crate::import::folder_scanner::FolderReleaseDecisionAuthor::User)
-        .await
-        .unwrap();
+    let scanned = scanned_box_and_sibling(&db, root).await;
+    let sibling_generation = row_generation(&db, root, "Other").await;
+
+    let combined = commit_reading(
+        &db,
+        root,
+        "Box",
+        FolderReleaseDecision::CombineAsOneRelease,
+        vec![combined_candidate(root, "Box")],
+    )
+    .await
+    .unwrap();
     assert_eq!(
-        combine_removals,
+        combined.pruned,
+        vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2")]
+    );
+    assert_eq!(
+        stored_keys(&db, root).await,
+        vec![key_of(root, "Box"), key_of(root, "Other")]
+    );
+    assert_eq!(
+        db.load_folder_release_decisions(root).await.unwrap().get("Box"),
+        Some((
+            FolderReleaseDecision::CombineAsOneRelease,
+            FolderReleaseDecisionAuthor::User
+        ))
+    );
+    assert_eq!(row_generation(&db, root, "Other").await, sibling_generation);
+    let snapshot = &db.load_folder_scan_snapshots().await.unwrap()[0];
+    assert!(snapshot.generation > scanned);
+    assert_eq!(snapshot.status, crate::import::FolderScanStatus::Complete);
+
+    let separated = commit_reading(
+        &db,
+        root,
+        "Box",
+        FolderReleaseDecision::KeepAsSeparateReleases,
         vec![
-            scanned_candidate(root, "Box/CD1").persisted_key().unwrap(),
-            scanned_candidate(root, "Box/CD2").persisted_key().unwrap(),
+            scanned_candidate(root, "Box/CD1"),
+            scanned_candidate(root, "Box/CD2"),
+        ],
+    )
+    .await
+    .unwrap();
+    assert_eq!(separated.pruned, vec![key_of(root, "Box")]);
+    assert_eq!(
+        stored_keys(&db, root).await,
+        vec![
+            key_of(root, "Box/CD1"),
+            key_of(root, "Box/CD2"),
+            key_of(root, "Other")
         ]
     );
-    db.finish_folder_scan(root, combine_generation, Some("share disconnected"))
-        .await
-        .unwrap();
-    assert!(db.load_folder_scan_snapshots().await.unwrap()[0]
-        .items
-        .is_empty());
     assert_eq!(
-        db.load_folder_release_decisions(root)
-            .await
-            .unwrap()
-            .get("Box"),
+        db.load_folder_release_decisions(root).await.unwrap().get("Box"),
         Some((
-
-            FolderReleaseDecision::CombineAsOneRelease,
-
-            crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
-
-        ))
-    );
-
-    let generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(root, generation, &combined_candidate(root, "Box"))
-        .await
-        .unwrap();
-    let (separate_generation, separate_removals) = db
-        .set_folder_release_decisions(&[(key, FolderReleaseDecision::KeepAsSeparateReleases)], crate::import::folder_scanner::FolderReleaseDecisionAuthor::User)
-        .await
-        .unwrap();
-    assert_eq!(
-        separate_removals,
-        vec![combined_candidate(root, "Box").persisted_key().unwrap()]
-    );
-    db.finish_folder_scan(root, separate_generation, Some("share disconnected"))
-        .await
-        .unwrap();
-    assert!(db.load_folder_scan_snapshots().await.unwrap()[0]
-        .items
-        .is_empty());
-    assert_eq!(
-        db.load_folder_release_decisions(root)
-            .await
-            .unwrap()
-            .get("Box"),
-        Some((
-
             FolderReleaseDecision::KeepAsSeparateReleases,
-
-            crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
-
+            FolderReleaseDecisionAuthor::User
         ))
+    );
+    assert_eq!(row_generation(&db, root, "Other").await, sibling_generation);
+}
+
+/// A reading taken before something else wrote the root's entries describes
+/// a store that is gone: storing it fails, and writes nothing.
+#[tokio::test]
+async fn a_folder_reading_taken_before_the_root_moved_stores_nothing() {
+    use crate::import::folder_scanner::FolderReleaseDecision;
+
+    let (db, _tmp) = empty_db().await;
+    let root = &host_root("/mounted/library");
+    scanned_box_and_sibling(&db, root).await;
+    let stamp = db.begin_folder_reading(root).await.unwrap();
+    let moved = db.begin_folder_scan(root).await.unwrap();
+
+    let error = commit_reading_under(
+        &db,
+        root,
+        "Box",
+        FolderReleaseDecision::CombineAsOneRelease,
+        vec![combined_candidate(root, "Box")],
+        stamp,
+    )
+    .await
+    .err()
+    .expect("a reading of a root that moved is refused");
+    assert!(error.to_string().contains("changed while it was being read again"), "{error}");
+    assert!(db.load_folder_release_decisions(root).await.unwrap().get("Box").is_none());
+    assert_eq!(db.load_folder_scan_snapshots().await.unwrap()[0].generation, moved);
+    assert_eq!(
+        stored_keys(&db, root).await,
+        vec![
+            key_of(root, "Box/CD1"),
+            key_of(root, "Box/CD2"),
+            key_of(root, "Other")
+        ]
+    );
+}
+
+/// A reading that fails partway through its write leaves the decision, the
+/// entries and the root's generation as they were.
+#[tokio::test]
+async fn a_folder_reading_that_fails_partway_rolls_back_whole() {
+    use crate::import::folder_scanner::{FolderReleaseDecision, ScanItem};
+
+    let (db, _tmp) = empty_db().await;
+    let root = &host_root("/mounted/library");
+    let generation = scanned_box_and_sibling(&db, root).await;
+    let ScanItem::Valid(mut foreign) = combined_candidate(root, "Box") else {
+        panic!("the fixture is a valid candidate");
+    };
+    foreign.watched_folder_path = host_root("/other/library");
+
+    assert!(commit_reading(
+        &db,
+        root,
+        "Box",
+        FolderReleaseDecision::CombineAsOneRelease,
+        vec![ScanItem::Valid(foreign)],
+    )
+    .await
+    .is_err());
+    assert!(db.load_folder_release_decisions(root).await.unwrap().get("Box").is_none());
+    assert_eq!(db.load_folder_scan_snapshots().await.unwrap()[0].generation, generation);
+    assert_eq!(
+        stored_keys(&db, root).await,
+        vec![
+            key_of(root, "Box/CD1"),
+            key_of(root, "Box/CD2"),
+            key_of(root, "Other")
+        ]
     );
 }
 
@@ -209,53 +368,6 @@ async fn removed_and_readded_root_rejects_items_from_its_old_registration() {
 }
 
 #[tokio::test]
-async fn folder_decision_failure_rolls_back_decision_entries_and_generation() {
-    use crate::import::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
-
-    let (db, _tmp) = empty_db().await;
-    let root = &host_root("/mounted/library");
-    db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Box/CD1"))
-        .await
-        .unwrap();
-    db.call(|conn| {
-        conn.execute(
-            "UPDATE folder_scan_generation_sequence SET last_generation = ?",
-            [i64::MAX],
-        )?;
-        Ok(())
-    })
-    .await
-    .unwrap();
-
-    let result = db
-        .set_folder_release_decisions(&[(
-            FolderReleaseDecisionKey {
-                watched_folder_path: root.to_string(),
-                relative_folder_path: "Box".to_string(),
-            },
-            FolderReleaseDecision::CombineAsOneRelease,
-        )], crate::import::folder_scanner::FolderReleaseDecisionAuthor::User)
-        .await;
-    assert!(result.is_err());
-
-    assert!(db
-        .load_folder_release_decisions(root)
-        .await
-        .unwrap()
-        .get("Box")
-        .is_none());
-    let snapshots = db.load_folder_scan_snapshots().await.unwrap();
-    assert_eq!(snapshots[0].generation, generation);
-    assert_eq!(snapshots[0].items.len(), 1);
-    assert_eq!(
-        snapshots[0].items[0].persisted_key(),
-        scanned_candidate(root, "Box/CD1").persisted_key()
-    );
-}
-
-#[tokio::test]
 async fn removing_watched_root_cascades_all_local_folder_state() {
     let (db, _tmp) = empty_db().await;
     let root = &host_root("/mounted/library");
@@ -263,13 +375,13 @@ async fn removing_watched_root_cascades_all_local_folder_state() {
     db.set_import_candidate_skipped(root, "Collection/Release", true)
         .await
         .unwrap();
-    db.set_folder_release_decision(
+    store_user_folder_decision(
+    &db,
         &crate::import::folder_scanner::FolderReleaseDecisionKey {
             watched_folder_path: root.to_string(),
             relative_folder_path: "Collection".to_string(),
         },
         crate::import::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases,
-        crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
     )
     .await
     .unwrap();
@@ -510,14 +622,13 @@ async fn corrupt_relative_folder_keys_fail_when_loaded() {
         .set_import_candidate_skipped(&root, "a//b", true)
         .await
         .is_err());
-    assert!(db
-        .set_folder_release_decision(
+    assert!(store_user_folder_decision(
+        &db,
             &crate::import::folder_scanner::FolderReleaseDecisionKey {
                 watched_folder_path: root.clone(),
                 relative_folder_path: "a/./b".to_string(),
             },
             crate::import::folder_scanner::FolderReleaseDecision::CombineAsOneRelease,
-            crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
         )
         .await
         .is_err());

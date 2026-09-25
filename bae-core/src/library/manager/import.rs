@@ -250,12 +250,7 @@ impl LibraryManager {
         folder_date: Option<crate::import::folder_scanner::FolderDate>,
         reader: &dyn crate::import::file_tag_snapshot::FileTagReader,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
-        let prefill_with_file_metadata =
-            self.config_handle.config().prefs.prefill_with_file_metadata;
-        let file_metadata = match prefill_with_file_metadata {
-            true => self.file_metadata_seed(item, generation, reader).await?,
-            false => None,
-        };
+        let file_metadata = self.scan_item_seed(item, generation, reader).await?;
         Ok(self
             .database
             .save_folder_scan_item_with_seed(
@@ -266,6 +261,20 @@ impl LibraryManager {
                 folder_date,
             )
             .await?)
+    }
+
+    /// What a candidate a pass is about to store under `generation` starts
+    /// from: its own file tags when the pre-fill is on, nothing otherwise.
+    pub(crate) async fn scan_item_seed(
+        &self,
+        item: &crate::import::folder_scanner::ScanItem,
+        generation: u64,
+        reader: &dyn crate::import::file_tag_snapshot::FileTagReader,
+    ) -> Result<Option<crate::import::file_metadata_seed::FileMetadataSeed>, LibraryError> {
+        if !self.config_handle.config().prefs.prefill_with_file_metadata {
+            return Ok(None);
+        }
+        self.file_metadata_seed(item, generation, reader).await
     }
 
     /// The folder read as its own files describe it, for a candidate this scan
@@ -554,21 +563,6 @@ impl LibraryManager {
             .await?)
     }
 
-    pub async fn set_folder_release_decision(
-        &self,
-        key: &crate::import::folder_scanner::FolderReleaseDecisionKey,
-        decision: crate::import::folder_scanner::FolderReleaseDecision,
-    ) -> Result<u64, LibraryError> {
-        Ok(self
-            .database
-            .set_folder_release_decision(
-                key,
-                decision,
-                crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
-            )
-            .await?)
-    }
-
     /// Store the reading a scan settled on for one folder. Never disturbs the
     /// scan that produced it, and never replaces the user's own answer.
     pub async fn record_scanned_folder_release_decision(
@@ -582,20 +576,24 @@ impl LibraryManager {
             .await?)
     }
 
-    pub async fn set_folder_release_decisions(
+    /// Begin reading one folder of a watched root again.
+    pub(crate) async fn begin_folder_reading(
         &self,
-        decisions: &[(
-            crate::import::folder_scanner::FolderReleaseDecisionKey,
-            crate::import::folder_scanner::FolderReleaseDecision,
-        )],
-    ) -> Result<(u64, Vec<String>), LibraryError> {
+        watched_folder_path: &str,
+    ) -> Result<crate::db::FolderReadingStamp, LibraryError> {
         Ok(self
             .database
-            .set_folder_release_decisions(
-                decisions,
-                crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
-            )
+            .begin_folder_reading(watched_folder_path)
             .await?)
+    }
+
+    /// Store one folder's new reading, with the decision that changed it, as
+    /// one write.
+    pub(crate) async fn commit_folder_reading(
+        &self,
+        commit: crate::db::FolderReadingCommit,
+    ) -> Result<crate::db::FolderReadingWrite, LibraryError> {
+        Ok(self.database.commit_folder_reading(commit).await?)
     }
 
     pub async fn load_folder_release_decisions(

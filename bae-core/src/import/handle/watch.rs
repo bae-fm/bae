@@ -143,6 +143,9 @@ impl ImportServiceHandle {
             .map_err(|detail| crate::import::ImportError::Watch { detail })
     }
 
+    /// Read the folder `key` names as `decision`. Returns once the decision
+    /// and the candidates it gives are stored — in one write, which also
+    /// removes the candidates of the reading it replaces.
     pub async fn set_folder_release_decision(
         &self,
         key: FolderReleaseDecisionKey,

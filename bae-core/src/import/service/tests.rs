@@ -117,6 +117,9 @@ struct FakeScanStarter {
 
 struct FakeStartedScan {
     path: PathBuf,
+    /// The folder reading this pass stands for, with the caller it answers;
+    /// `None` for a pass over the whole root.
+    reading: Option<FolderReadingRequest>,
     cancellation: crate::import::folder_scanner::ScanCancellation,
     completion: Option<tokio::sync::oneshot::Sender<()>>,
     abort: tokio::task::AbortHandle,
@@ -129,7 +132,7 @@ impl FakeScanStarter {
             started: Arc::new(tokio::sync::Notify::new()),
         };
         let captured = fake.clone();
-        let starter: RootScanStarter = Arc::new(move |id, path, completion| {
+        let starter: RootScanStarter = Arc::new(move |id, path, pass, completion| {
             let cancellation = crate::import::folder_scanner::ScanCancellation::new();
             let (finish, finished) = tokio::sync::oneshot::channel();
             let started_path = path.clone();
@@ -143,6 +146,10 @@ impl FakeScanStarter {
             });
             captured.scans.lock().unwrap().push(FakeStartedScan {
                 path: started_path,
+                reading: match pass {
+                    RootPass::WholeRoot => None,
+                    RootPass::Folder(request) => Some(request),
+                },
                 cancellation: cancellation.clone(),
                 completion: Some(finish),
                 abort: task.abort_handle(),
@@ -162,14 +169,33 @@ impl FakeScanStarter {
     }
 
     /// End the scan at `index`. A scan reports what it found on the event
-    /// stream, not here, so there is no outcome to hand back.
+    /// stream, not here, so there is no outcome to hand back. A folder
+    /// reading tells its caller it was stored.
     fn complete(&self, index: usize) {
+        if let Some(reading) = self.scans.lock().unwrap()[index].reading.take() {
+            reading.answer(Ok(()));
+        }
         self.scans.lock().unwrap()[index]
             .completion
             .take()
             .expect("fake scan has not completed")
             .send(())
             .expect("coordinator still waits for the fake scan");
+    }
+
+    /// The folder decision the pass at `index` stores, or `None` for a pass
+    /// over the whole root.
+    fn reading(
+        &self,
+        index: usize,
+    ) -> Option<(
+        crate::import::FolderReleaseDecisionKey,
+        crate::import::FolderReleaseDecision,
+    )> {
+        self.scans.lock().unwrap()[index]
+            .reading
+            .as_ref()
+            .map(|reading| reading.target().clone())
     }
 
     /// The root the scan at `index` was started for.
@@ -487,5 +513,6 @@ impl TestScan {
 include!("tests/coordinator.rs");
 include!("tests/cover_and_rescan.rs");
 include!("tests/edits_and_formats.rs");
+include!("tests/folder_reading.rs");
 include!("tests/progressive_scan.rs");
 include!("tests/reading_progress.rs");

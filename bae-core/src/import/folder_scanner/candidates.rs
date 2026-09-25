@@ -76,6 +76,16 @@ impl ScanItem {
             Self::Decided { .. } => None,
         }
     }
+
+    /// The root-relative path the list shows for this entry, or `None` for a
+    /// folder reading, which the list shows on the entries it settles.
+    pub(crate) fn display_path(&self) -> Option<&str> {
+        match self {
+            Self::Discovered(candidate) | Self::Valid(candidate) => Some(&candidate.display_path),
+            Self::Invalid(candidate) => Some(&candidate.display_path),
+            Self::Decided { .. } => None,
+        }
+    }
 }
 
 /// Which files a folder boundary owns.
@@ -281,6 +291,18 @@ impl FolderReleaseDecisions {
         relative_folder_path: &str,
     ) -> Option<(FolderReleaseDecision, FolderReleaseDecisionAuthor)> {
         self.0.get(relative_folder_path).copied()
+    }
+
+    /// Read `relative_folder_path` as `decision`, whatever was stored for it —
+    /// the reading a decision about to be stored gives.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn insert(
+        &mut self,
+        relative_folder_path: String,
+        decision: FolderReleaseDecision,
+        author: FolderReleaseDecisionAuthor,
+    ) {
+        self.0.insert(relative_folder_path, (decision, author));
     }
 }
 

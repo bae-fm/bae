@@ -31,6 +31,27 @@ async fn current_mapping_preparation(
     )
 }
 
+/// Store the person's answer for how one folder reads, alone: the row a
+/// fixture needs beside the entries it writes itself. The service never stores
+/// a decision without the candidates it gives — that is
+/// `commit_folder_reading`.
+async fn store_user_folder_decision(
+    db: &Database,
+    key: &crate::import::folder_scanner::FolderReleaseDecisionKey,
+    decision: crate::import::folder_scanner::FolderReleaseDecision,
+) -> Result<(), coven::DbError> {
+    let key = key.clone();
+    db.call(move |sql| {
+        crate::db::client::folder_scans::store_folder_release_decision(
+            sql,
+            &key,
+            decision,
+            crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
+        )
+    })
+    .await
+}
+
 include!("import_candidate_state_tests/verdicts_and_bindings.rs");
 include!("import_candidate_state_tests/folder_state.rs");
 include!("import_candidate_state_tests/pane_rows.rs");

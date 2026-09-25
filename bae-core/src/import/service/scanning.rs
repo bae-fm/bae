@@ -100,6 +100,72 @@ impl ImportService {
         }))
     }
 
+    /// Tell the runtime and the list what one stored scan item changed: the
+    /// entries it displaced, then the item itself. A write that left the row as
+    /// it was is told to nobody.
+    pub(super) async fn announce_scan_write(
+        item: ScanItem,
+        write: &crate::db::ScanItemWrite,
+        skipped: &HashSet<String>,
+        services: &crate::import::ImportServices,
+    ) -> Result<(), crate::import::ImportError> {
+        if !write.changed() {
+            return Ok(());
+        }
+        let event_tx = &services.event_tx;
+        for candidate_key in write.superseded_keys() {
+            event_tx.send(crate::import::handle::ImportEvent::Scan(
+                ScanEvent::CandidateRemoved {
+                    candidate_key: candidate_key.clone(),
+                },
+            ));
+        }
+        // The write stores the item as it stands and never changes its
+        // variant, so the variant still says which announcement it earns.
+        let actionable = matches!(item, ScanItem::Valid(_));
+        match item {
+            // Registry skip state and imported content hashes are joined onto
+            // the walk's folder facts here, on the way out.
+            ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
+                let skipped =
+                    skipped.contains(&crate::import::watched_folder::candidate_relative_path(
+                        &candidate.watched_folder_path,
+                        &candidate.path,
+                    )?);
+                let is_added = services
+                    .library_manager
+                    .is_content_hash_imported(&candidate.files.content_hash())
+                    .await?;
+                event_tx.send(crate::import::handle::ImportEvent::Scan(if actionable {
+                    ScanEvent::FolderCandidate {
+                        candidate,
+                        skipped,
+                        is_added,
+                    }
+                } else {
+                    ScanEvent::CandidateDiscovered {
+                        candidate,
+                        skipped,
+                        is_added,
+                    }
+                }));
+            }
+            // Invalid candidates have no tab state, so they need no stamping.
+            ScanItem::Invalid(candidate) => {
+                event_tx.send(crate::import::handle::ImportEvent::Scan(
+                    ScanEvent::InvalidCandidate(candidate),
+                ));
+            }
+            ScanItem::Decided { .. } => {
+                return Err(crate::import::ImportError::Internal {
+                    detail: "a folder reading is stored as a decision, not as a scan entry"
+                        .into(),
+                })
+            }
+        }
+        Ok(())
+    }
+
     pub(super) async fn cancel_and_join_folder_walk(
         root: &Path,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
@@ -336,9 +402,6 @@ impl ImportService {
                 }
                 item => item,
             };
-            // Which announcement the item earns, read before the write, which
-            // stores the item as it stands and never changes its variant.
-            let actionable = matches!(item, ScanItem::Valid(_));
             let Some(persisted) =
                 Self::persist_scan_item(root, generation, &item, services).await?
             else {
@@ -353,54 +416,11 @@ impl ImportService {
             if !write.changed() {
                 continue;
             }
-            let superseded_keys = write.superseded_keys().to_vec();
-            displaced_keys.extend(superseded_keys.iter().cloned());
-            for candidate_key in superseded_keys {
-                event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                        candidate_key,
-                    }),
-                );
+            displaced_keys.extend(write.superseded_keys().iter().cloned());
+            if let Some(display_path) = item.display_path() {
+                written_keys.push(display_path.to_string());
             }
-            match item {
-                // Registry skip state and imported content hashes are joined
-                // onto the walk's folder facts here, on the way out.
-                ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
-                    written_keys.push(candidate.display_path.clone());
-                    let skipped =
-                        skipped.contains(&crate::import::watched_folder::candidate_relative_path(
-                            &candidate.watched_folder_path,
-                            &candidate.path,
-                        )?);
-                    let is_added = library_manager
-                        .is_content_hash_imported(&candidate.files.content_hash())
-                        .await?;
-                    event_tx.send(crate::import::handle::ImportEvent::Scan(if actionable {
-                            ScanEvent::FolderCandidate {
-                                candidate,
-                                skipped,
-                                is_added,
-                            }
-                        } else {
-                            ScanEvent::CandidateDiscovered {
-                                candidate,
-                                skipped,
-                                is_added,
-                            }
-                        }),
-                    );
-                }
-                // Invalid candidates have no tab state, so they need no stamping.
-                ScanItem::Invalid(candidate) => {
-                    written_keys.push(candidate.display_path.clone());
-                    event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::InvalidCandidate(
-                            candidate,
-                        )),
-                    );
-                }
-                ScanItem::Decided { .. } => {
-                    unreachable!("a folder reading is not stored as a scan entry")
-                }
-            }
+            Self::announce_scan_write(item, &write, &skipped, services).await?;
         }
 
         // The walk finished (or failed) once its sender dropped and closed the

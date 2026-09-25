@@ -632,12 +632,9 @@ where
     let mut direct_scope_files = root_listing.files;
 
     for child in root_listing.directories {
-        let child_scan = scan_directory(&walk, &child, true, &mut on_directory, &mut on_item)?;
+        let child_scan = scan_top_level_folder(&walk, &child, &mut on_directory, &mut on_item)?;
         if !child_scan.contains_audio {
             direct_scope_files.extend(child_scan.all_files.iter().cloned());
-        }
-        if !child_scan.nodes_emitted {
-            emit_projected_nodes(child_scan.nodes, &mut on_item);
         }
     }
 
@@ -653,6 +650,80 @@ where
             emit_projected_nodes(vec![node], &mut on_item);
         }
     }
+    Ok(())
+}
+
+/// Read one folder directly under the watched root, and say everything it
+/// yields.
+///
+/// This is the unit a root is read in. How a folder deep inside reads depends
+/// on every folder above it — a kept-separate ancestor names itself on each
+/// row, an undecided wrapper names itself as where the rows could be read as
+/// one, and a wrapper with one release below it lends that release its own
+/// files — and each of those depends on how many releases its other children
+/// yield. The root itself does none of that: it is never a release and never
+/// decides, so what one of its folders yields depends on nothing outside it.
+fn scan_top_level_folder<R, F, D>(
+    walk: &Walk<'_, R>,
+    folder: &Path,
+    on_directory: &mut D,
+    on_item: &mut F,
+) -> Result<ScannedDirectory, FolderScanError>
+where
+    R: DirectoryReader + ?Sized,
+    F: FnMut(ScanItem),
+    D: FnMut(PathBuf),
+{
+    let mut scanned = scan_directory(walk, folder, true, on_directory, on_item)?;
+    if !scanned.nodes_emitted {
+        emit_projected_nodes(std::mem::take(&mut scanned.nodes), on_item);
+    }
+    Ok(scanned)
+}
+
+/// Read one folder directly under `root` again, exactly as a whole-root pass
+/// reads it, without reading anything else under the root.
+///
+/// What a folder deeper down yields is decided by the folders above it up to
+/// here and by nothing beside this one (see [`scan_top_level_folder`]), so this
+/// is the least that must be read again once any folder in it reads another
+/// way.
+pub(crate) fn scan_top_level_folder_with_reader<R, F>(
+    reader: &R,
+    root: &Path,
+    folder: &Path,
+    stored: &StoredCandidateEdits,
+    decisions: &FolderReleaseDecisions,
+    cancellation: &ScanCancellation,
+    mut on_item: F,
+) -> Result<(), FolderScanError>
+where
+    R: DirectoryReader + ?Sized,
+    F: FnMut(ScanItem),
+{
+    cancellation.check()?;
+    let mut components = folder.components();
+    if !matches!(
+        (components.next(), components.next()),
+        (Some(std::path::Component::Normal(_)), None)
+    ) {
+        return Err(FolderScanError::Other(format!(
+            "{} is not a folder directly under the watched root",
+            folder.display()
+        )));
+    }
+    let watched_folder_path = root.to_string_lossy().into_owned();
+    let walk = Walk {
+        scan: ScanRoot {
+            root,
+            watched_folder_path: &watched_folder_path,
+            stored,
+            cancellation,
+        },
+        reader,
+        decisions,
+    };
+    scan_top_level_folder(&walk, folder, &mut |_| {}, &mut on_item)?;
     Ok(())
 }
 

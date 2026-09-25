@@ -13,6 +13,7 @@ pub(super) mod columns;
 mod dates;
 mod progress;
 pub(super) mod read;
+mod reading;
 pub(super) mod write;
 
 use super::import_state::next_folder_scan_generation;
@@ -28,6 +29,7 @@ pub(super) use self::read::{
     load_candidate_file_tag_snapshot, load_item_by_key, load_resolved_boundaries, stored_entries,
 };
 pub(super) use self::write::{delete_entry, insert_candidate_files, StoredEntry};
+pub(crate) use self::reading::{FolderReadingCommit, FolderReadingStamp, FolderReadingWrite};
 
 /// The entry at `entry_key`, on whichever connection the caller holds — the
 /// read connection for a query, the write transaction for a decision that has
@@ -282,12 +284,6 @@ impl Database {
     ) -> Result<Option<ScanItemWrite>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         let generation = generation_column(generation)?;
-        let Some(entry_key) = item.persisted_key() else {
-            return Err(DbError::Message(
-                "a folder reading is stored as a decision, not as a scan entry".to_string(),
-            ));
-        };
-        validate_scan_item_ownership(&watched_folder_path, &entry_key, item)?;
         let item = item.clone();
         let observed_at = self.inner.clock.now().timestamp_millis();
         if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
@@ -295,104 +291,18 @@ impl Database {
         }
         self.call(move |sql| {
             ensure_generation(sql, &watched_folder_path, generation)?;
-            let discovery = dates::CandidateDiscovery::observe(
-                sql,
-                &watched_folder_path,
-                &entry_key,
-                folder_date,
-                observed_at,
-            )?;
-            // A re-walk rewrites every candidate it finds, and each one arrives
-            // tentative before it arrives valid — tentative meaning "seen
-            // before its enclosing folder was understood". A row that is
-            // already a settled release has been understood; sending it back
-            // through that window would take it out of the list and the tab
-            // counts until the valid write lands a moment later, which is the
-            // swing a viewer sees while a folder rescans. The stored row
-            // stands and only takes this generation's stamp, so the completion
-            // prune keeps it; the valid write that follows replaces it whole.
-            //
-            // A candidate this scan is seeing for the first time has nothing
-            // stored, so it still appears tentative — which is the only thing
-            // tentative is for. A row this scan decides is hidden after all is
-            // removed by the boundary that hides it, which supersedes by key
-            // and does not care which kind the row was.
-            if matches!(item, ScanItem::Discovered(_))
-                && read::candidate_is_valid(sql, &watched_folder_path, &entry_key)?
-            {
-                write::touch_candidate(sql, &watched_folder_path, &entry_key, generation)?;
-                discovery.store(sql, &watched_folder_path, &entry_key)?;
-                return Ok(Some(ScanItemWrite::Unchanged));
-            }
-            // A walk of a folder nobody has touched produces exactly the items
-            // already stored for it. Rewriting one of those would mean a
-            // transaction, an announcement, and every reader of the import list
-            // rebuilding it — per row, per pass, forever, over a folder that did
-            // not change. So the row keeps its place and takes only this
-            // generation's stamp, which is all the completion prune asks of it.
-            if load_scan_item_on(sql, &entry_key)?.as_ref() == Some(&item) {
-                write::touch_candidate(sql, &watched_folder_path, &entry_key, generation)?;
-                discovery.store(sql, &watched_folder_path, &entry_key)?;
-                return Ok(Some(ScanItemWrite::Unchanged));
-            }
-            // Rewriting the row takes the file-tag reading hanging off it, and
-            // the draft that reading projected outlives the rewrite. So a write
-            // that brings no reading of its own carries the stored one across —
-            // onto a row that still holds the files it was read from, and only
-            // there. A folder that now fails validation holds no files at all,
-            // and one whose audio changed holds other files; either way the
-            // reading describes what the row no longer is, and it goes with the
-            // row it belonged to.
-            let carried = match file_metadata.is_some() {
-                true => None,
-                false => read::load_file_tag_snapshot(sql, &watched_folder_path, &entry_key)?
-                    .filter(|snapshot| item_was_read_for(&item, snapshot)),
-            };
-            let stored = stored_entries(sql, &watched_folder_path)?;
-            let keys: Vec<StoredEntryKey> = stored
-                .iter()
-                .map(|(key, entry)| StoredEntryKey {
-                    key: key.clone(),
-                    covers_whole_folder: matches!(
-                        entry,
-                        StoredEntry::Candidate {
-                            whole_folder: true,
-                            ..
-                        }
-                    ),
-                })
-                .collect();
-            let removed_keys = crate::import::candidates::superseded_entry_keys(&keys, &item);
-            let stored: HashMap<&str, &StoredEntry> = stored
-                .iter()
-                .map(|(key, entry)| (key.as_str(), entry))
-                .collect();
-            // The item's own prior row goes first: an item is written whole,
-            // so what stood under its key is replaced rather than merged with.
-            for key in std::iter::once(&entry_key).chain(removed_keys.iter()) {
-                if let Some(entry) = stored.get(key.as_str()) {
-                    delete_entry(sql, &watched_folder_path, entry)?;
-                }
-            }
-            write::insert_item(
+            write_scan_item(
                 sql,
                 &watched_folder_path,
                 generation,
-                &item,
-                file_metadata.as_ref(),
-            )?;
-            if let Some(snapshot) = carried {
-                write::replace_candidate_file_tag_snapshot(
-                    sql,
-                    &watched_folder_path,
-                    &entry_key,
-                    &snapshot,
-                )?;
-            }
-            discovery.store(sql, &watched_folder_path, &entry_key)?;
-            Ok(Some(ScanItemWrite::Stored {
-                superseded_keys: removed_keys,
-            }))
+                &ScanItemToWrite {
+                    item,
+                    file_metadata,
+                    folder_date,
+                },
+                observed_at,
+            )
+            .map(Some)
         })
         .await
     }
@@ -556,6 +466,139 @@ impl Database {
     }
 }
 
+/// One scan item as a pass hands it to the store: the entry, the file-tag
+/// reading that seeds a candidate stored for the first time, and the date the
+/// folder carries.
+pub(crate) struct ScanItemToWrite {
+    pub(crate) item: ScanItem,
+    /// The draft the folder's own tags project, the reading it came from, and
+    /// the cover those tags embed. A candidate that already has a draft keeps
+    /// it — a rescan re-reads files, not decisions.
+    pub(crate) file_metadata: Option<crate::import::file_metadata_seed::FileMetadataSeed>,
+    pub(crate) folder_date: Option<crate::import::folder_scanner::FolderDate>,
+}
+
+/// Write one scan item under `generation`, inside the caller's transaction,
+/// deleting the entries it supersedes. The caller has already checked that
+/// `generation` is the one this write may stamp.
+fn write_scan_item(
+    sql: &SqlContext<'_, '_>,
+    watched_folder_path: &str,
+    generation: i64,
+    to_write: &ScanItemToWrite,
+    observed_at: i64,
+) -> Result<ScanItemWrite, DbError> {
+    let ScanItemToWrite {
+        item,
+        file_metadata,
+        folder_date,
+    } = to_write;
+    let Some(entry_key) = item.persisted_key() else {
+        return Err(DbError::Message(
+            "a folder reading is stored as a decision, not as a scan entry".to_string(),
+        ));
+    };
+    validate_scan_item_ownership(watched_folder_path, &entry_key, item)?;
+    let discovery = dates::CandidateDiscovery::observe(
+        sql,
+        watched_folder_path,
+        &entry_key,
+        *folder_date,
+        observed_at,
+    )?;
+    // A re-walk rewrites every candidate it finds, and each one arrives
+    // tentative before it arrives valid — tentative meaning "seen
+    // before its enclosing folder was understood". A row that is
+    // already a settled release has been understood; sending it back
+    // through that window would take it out of the list and the tab
+    // counts until the valid write lands a moment later, which is the
+    // swing a viewer sees while a folder rescans. The stored row
+    // stands and only takes this generation's stamp, so the completion
+    // prune keeps it; the valid write that follows replaces it whole.
+    //
+    // A candidate this scan is seeing for the first time has nothing
+    // stored, so it still appears tentative — which is the only thing
+    // tentative is for. A row this scan decides is hidden after all is
+    // removed by the boundary that hides it, which supersedes by key
+    // and does not care which kind the row was.
+    if matches!(item, ScanItem::Discovered(_))
+        && read::candidate_is_valid(sql, watched_folder_path, &entry_key)?
+    {
+        write::touch_candidate(sql, watched_folder_path, &entry_key, generation)?;
+        discovery.store(sql, watched_folder_path, &entry_key)?;
+        return Ok(ScanItemWrite::Unchanged);
+    }
+    // A walk of a folder nobody has touched produces exactly the items
+    // already stored for it. Rewriting one of those would mean a
+    // transaction, an announcement, and every reader of the import list
+    // rebuilding it — per row, per pass, forever, over a folder that did
+    // not change. So the row keeps its place and takes only this
+    // generation's stamp, which is all the completion prune asks of it.
+    if load_scan_item_on(sql, &entry_key)?.as_ref() == Some(item) {
+        write::touch_candidate(sql, watched_folder_path, &entry_key, generation)?;
+        discovery.store(sql, watched_folder_path, &entry_key)?;
+        return Ok(ScanItemWrite::Unchanged);
+    }
+    // Rewriting the row takes the file-tag reading hanging off it, and
+    // the draft that reading projected outlives the rewrite. So a write
+    // that brings no reading of its own carries the stored one across —
+    // onto a row that still holds the files it was read from, and only
+    // there. A folder that now fails validation holds no files at all,
+    // and one whose audio changed holds other files; either way the
+    // reading describes what the row no longer is, and it goes with the
+    // row it belonged to.
+    let carried = match file_metadata.is_some() {
+        true => None,
+        false => read::load_file_tag_snapshot(sql, watched_folder_path, &entry_key)?
+            .filter(|snapshot| item_was_read_for(item, snapshot)),
+    };
+    let stored = stored_entries(sql, watched_folder_path)?;
+    let keys: Vec<StoredEntryKey> = stored
+        .iter()
+        .map(|(key, entry)| StoredEntryKey {
+            key: key.clone(),
+            covers_whole_folder: matches!(
+                entry,
+                StoredEntry::Candidate {
+                    whole_folder: true,
+                    ..
+                }
+            ),
+        })
+        .collect();
+    let removed_keys = crate::import::candidates::superseded_entry_keys(&keys, item);
+    let stored: HashMap<&str, &StoredEntry> = stored
+        .iter()
+        .map(|(key, entry)| (key.as_str(), entry))
+        .collect();
+    // The item's own prior row goes first: an item is written whole,
+    // so what stood under its key is replaced rather than merged with.
+    for key in std::iter::once(&entry_key).chain(removed_keys.iter()) {
+        if let Some(entry) = stored.get(key.as_str()) {
+            delete_entry(sql, watched_folder_path, entry)?;
+        }
+    }
+    write::insert_item(
+        sql,
+        watched_folder_path,
+        generation,
+        item,
+        file_metadata.as_ref(),
+    )?;
+    if let Some(snapshot) = carried {
+        write::replace_candidate_file_tag_snapshot(
+            sql,
+            watched_folder_path,
+            &entry_key,
+            &snapshot,
+        )?;
+    }
+    discovery.store(sql, watched_folder_path, &entry_key)?;
+    Ok(ScanItemWrite::Stored {
+        superseded_keys: removed_keys,
+    })
+}
+
 pub(super) fn load_folder_scan_items_on(
     sql: &SqlReadContext<'_>,
     watched_folder_path: &str,
@@ -687,6 +730,37 @@ pub(super) fn validate_scan_item_ownership(
             validate_decision_key_ownership(watched_folder_path, key)?;
         }
     }
+    Ok(())
+}
+
+/// Store how one folder reads. Either author's answer lands where nothing is
+/// stored; a scan's own reading never replaces the person's.
+pub(super) fn store_folder_release_decision(
+    sql: &SqlContext<'_, '_>,
+    key: &FolderReleaseDecisionKey,
+    decision: crate::import::folder_scanner::FolderReleaseDecision,
+    author: crate::import::folder_scanner::FolderReleaseDecisionAuthor,
+) -> Result<(), DbError> {
+    crate::import::watched_folder::validate_relative_path(&key.relative_folder_path)?;
+    let author = match author {
+        crate::import::folder_scanner::FolderReleaseDecisionAuthor::User => "user",
+        crate::import::folder_scanner::FolderReleaseDecisionAuthor::Heuristic => "heuristic",
+    };
+    sql.execute(
+        "INSERT INTO folder_release_decisions \
+             (watched_folder_path, relative_folder_path, decision, author) \
+         VALUES (?, ?, ?, ?) \
+         ON CONFLICT(watched_folder_path, relative_folder_path) DO UPDATE SET \
+             decision = excluded.decision, author = excluded.author \
+         WHERE excluded.author = 'user' \
+             OR folder_release_decisions.author != 'user'",
+        params![
+            key.watched_folder_path,
+            key.relative_folder_path,
+            columns::decision_text(decision),
+            author
+        ],
+    )?;
     Ok(())
 }
 

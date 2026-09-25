@@ -196,10 +196,10 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     .await
     .expect("queued decision and removal deadlocked");
 
-    assert_eq!(
-        decision.unwrap(),
-        Err(format!("{} is no longer watched", root.display()))
-    );
+    // The decision either reads a folder that is not there or hears the
+    // root is being removed, depending on which the coordinator reaches
+    // first; what matters is that it is answered, and that it is no success.
+    assert!(decision.unwrap().is_err());
     removal.unwrap();
     tokio::task::spawn_blocking(move || handle.stop_and_join())
         .await

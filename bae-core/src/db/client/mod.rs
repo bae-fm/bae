@@ -53,6 +53,9 @@ mod records;
 desktop_only! {
     mod folder_scans;
     pub use folder_scans::ScanItemWrite;
+    pub(crate) use folder_scans::{
+        FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, ScanItemToWrite,
+    };
     mod import_combinations;
     mod import_content_hash;
     mod import_list;

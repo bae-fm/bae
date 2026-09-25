@@ -35,8 +35,8 @@ impl ImportService {
             scan.services.library_manager.clone(),
         ));
         let scan_for_starter = scan.clone();
-        let starter: RootScanStarter = Arc::new(move |id, path, completion_tx| {
-            spawn_root_scan(id, path, scan_for_starter.clone(), completion_tx)
+        let starter: RootScanStarter = Arc::new(move |id, path, pass, completion_tx| {
+            spawn_root_pass(id, path, pass, scan_for_starter.clone(), completion_tx)
         });
         Self::start_watcher_with_starter(cmd_rx, fs_rx, scan.services, starter, removal_backend)
     }
@@ -141,78 +141,10 @@ impl ImportService {
                                 completion,
                             } => {
                                 let path = PathBuf::from(&target.0.watched_folder_path);
-                                if active_roots.is_being_removed(&path) {
-                                    if completion
-                                        .send(Err(format!(
-                                            "{} is being removed",
-                                            path.display()
-                                        )))
-                                        .is_err()
-                                    {
-                                        debug!("folder decision caller dropped during removal");
-                                    }
-                                    continue;
-                                }
-                                // What a pass over this folder is reading is
-                                // about to change, so it is replaced by one that
-                                // reads the decision this is about to write.
-                                active_roots.requeue_scan(&path);
-                                let _commit = folder_state_commit.lock().await;
-                                let stored_items = match library_manager
-                                    .load_folder_scan_items(&target.0.watched_folder_path)
-                                    .await
-                                {
-                                    Ok(items) => items,
-                                    Err(error) => {
-                                        if completion.send(Err(error.to_string())).is_err() {
-                                            debug!("folder decision caller dropped before the stored scan was read");
-                                        }
-                                        continue;
-                                    }
-                                };
-                                if !crate::import::candidates::names_a_current_folder_reading(
-                                    &stored_items,
-                                    &target.0,
-                                ) {
-                                    if completion
-                                        .send(Err(format!(
-                                            "{} is not a current release boundary",
-                                            target.0.relative_folder_path
-                                        )))
-                                        .is_err()
-                                    {
-                                        debug!("folder decision caller dropped before validation");
-                                    }
-                                    continue;
-                                };
-                                let decisions = vec![target];
-                                match library_manager
-                                    .set_folder_release_decisions(&decisions)
-                                    .await
-                                {
-                                    Ok((_, superseded)) => {
-                                        for candidate_key in superseded {
-                                            event_tx.send(crate::import::handle::ImportEvent::Scan(
-                                                    ScanEvent::CandidateRemoved {
-                                                        candidate_key,
-                                                    },
-                                                ),
-                                            );
-                                        }
-                                        active_roots.wait_for_next_scan(
-                                            path,
-                                            RootScanCause::Asked(
-                                                "a folder release decision changed",
-                                            ),
-                                            completion,
-                                        );
-                                    }
-                                    Err(error) => {
-                                        if completion.send(Err(error.to_string())).is_err() {
-                                            debug!("folder decision caller dropped before persistence failed");
-                                        }
-                                    }
-                                }
+                                active_roots.change_folder_reading(
+                                    path,
+                                    FolderReadingRequest::new(target, completion),
+                                );
                             }
                             WatcherCommand::Remove { path, completion } => {
                                 active_roots.remove(path, completion);

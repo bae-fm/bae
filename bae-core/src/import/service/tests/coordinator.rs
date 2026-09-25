@@ -459,44 +459,88 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
     ));
 }
 
+/// A decision replaces the whole-root pass it arrives during: that pass is
+/// cancelled, the folder reading runs once it has stopped, and the root is
+/// read whole again afterwards because the cancelled pass left it half read.
 #[tokio::test]
-async fn coordinator_decision_waits_for_cancelled_scan_before_starting_replacement() {
+async fn coordinator_decision_replaces_a_running_root_pass_and_owes_it_again() {
     let harness = CoordinatorHarness::new().await;
     let root = rescan_and_wait(&harness, "/music").await;
-    let decision_result = request_group_decision(&harness, &root);
+    let mut decision_result = Box::pin(request_group_decision(&harness, &root));
     harness.scans.wait_for_cancellation(0).await;
     assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
+
     harness.scans.complete(0);
     harness.scans.wait_for_count(2).await;
-    assert!(!harness.scans.cancellation(1).is_cancelled());
+    assert_eq!(
+        harness.scans.reading(1).map(|(key, _)| key.relative_folder_path),
+        Some("Group".to_string()),
+        "the pass after the cancelled one is the folder reading"
+    );
+    assert!(
+        tokio::time::timeout(Duration::from_millis(50), decision_result.as_mut())
+            .await
+            .is_err(),
+        "the decision was answered before its reading was stored"
+    );
     harness.scans.complete(1);
     assert_eq!(decision_result.await.unwrap(), Ok(()));
+
+    harness.scans.wait_for_count(3).await;
+    assert!(harness.scans.reading(2).is_none(), "the root is read whole again");
+    harness.scans.complete(2);
     harness.shutdown().await;
 }
 
+/// A decision on an idle root reads only its folder, and a second decision
+/// waits for the first rather than cancelling it. Nothing reads the whole
+/// root afterwards: nothing asked for that.
 #[tokio::test]
-async fn coordinator_decision_validates_after_the_cancelled_scan_releases_its_commit() {
+async fn coordinator_decisions_on_an_idle_root_run_one_after_another() {
+    let harness = CoordinatorHarness::new().await;
+    let root = root_path("/music");
+    let first = request_group_decision(&harness, &root);
+    harness.scans.wait_for_count(1).await;
+    assert!(harness.scans.reading(0).is_some());
+    let second = request_group_decision(&harness, &root);
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    assert!(!harness.scans.cancellation(0).is_cancelled());
+    assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
+
+    harness.scans.complete(0);
+    assert_eq!(first.await.unwrap(), Ok(()));
+    harness.scans.wait_for_count(2).await;
+    assert!(harness.scans.reading(1).is_some());
+    harness.scans.complete(1);
+    assert_eq!(second.await.unwrap(), Ok(()));
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    assert_eq!(harness.scans.scans.lock().unwrap().len(), 2);
+    harness.shutdown().await;
+}
+
+/// A decision still queued when its root is removed hears that, rather than
+/// waiting on a reading that will never run.
+#[tokio::test]
+async fn coordinator_queued_decision_hears_its_root_is_being_removed() {
     let harness = CoordinatorHarness::new().await;
     let root = rescan_and_wait(&harness, "/music").await;
-
-    let commit = harness.folder_state_commit.clone().lock_owned().await;
     let decision_result = request_group_decision(&harness, &root);
     harness.scans.wait_for_cancellation(0).await;
+    let (completion, removal_result) = tokio::sync::oneshot::channel();
     harness
-        .library_manager
-        .remove_watched_import_folder(&root.to_string_lossy())
-        .await
-        .unwrap()
-        .expect("the root was watched");
-    drop(commit);
+        .commands
+        .send(WatcherCommand::Remove {
+            path: root.clone(),
+            completion,
+        })
+        .unwrap();
 
     assert_eq!(
         decision_result.await.unwrap(),
-        Err("Group is not a current release boundary".to_string())
+        Err(format!("{} is being removed", root.display()))
     );
     harness.scans.complete(0);
-    harness.scans.wait_for_count(2).await;
-    harness.scans.complete(1);
+    assert_eq!(removal_result.await.unwrap(), Ok(()));
     harness.shutdown().await;
 }
 

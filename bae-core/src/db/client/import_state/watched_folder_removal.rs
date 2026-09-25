@@ -1,4 +1,5 @@
 use super::*;
+use crate::db::client::folder_scans::stored_entries;
 
 impl Database {
     /// Stop watching the folder `path` names. Keyed the same way as the add,

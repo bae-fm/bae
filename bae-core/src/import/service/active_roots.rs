@@ -41,12 +41,81 @@ enum RootActivity {
     Removing(RootRemovalSchedule),
 }
 
+/// What one pass over a root reads.
+pub(super) enum RootPass {
+    /// Every folder under the root.
+    WholeRoot,
+    /// One folder whose reading the person changed: the decision and the
+    /// candidates it gives are stored together, and nothing else is read.
+    Folder(FolderReadingRequest),
+}
+
+/// A person's answer for how one folder reads, and who hears whether it was
+/// stored.
+pub(super) struct FolderReadingRequest {
+    target: (
+        crate::import::folder_scanner::FolderReleaseDecisionKey,
+        crate::import::folder_scanner::FolderReleaseDecision,
+    ),
+    completion: RefreshCompletion,
+}
+
+impl FolderReadingRequest {
+    pub(super) fn new(
+        target: (
+            crate::import::folder_scanner::FolderReleaseDecisionKey,
+            crate::import::folder_scanner::FolderReleaseDecision,
+        ),
+        completion: RefreshCompletion,
+    ) -> Self {
+        Self { target, completion }
+    }
+
+    /// The folder and how it is to read.
+    pub(super) fn target(
+        &self,
+    ) -> &(
+        crate::import::folder_scanner::FolderReleaseDecisionKey,
+        crate::import::folder_scanner::FolderReleaseDecision,
+    ) {
+        &self.target
+    }
+
+    /// Tell whoever asked what became of it.
+    pub(super) fn answer(self, result: Result<(), String>) {
+        if self.completion.send(result).is_err() {
+            debug!(
+                "folder decision caller for {} dropped before it was answered",
+                self.target.0.relative_folder_path
+            );
+        }
+    }
+}
+
 struct RootScanSchedule {
     id: u64,
     scan: RootScanTask,
+    /// Whether the running pass reads the whole root. A folder reading that
+    /// arrives meanwhile replaces such a pass rather than waiting it out; a
+    /// running folder reading is short and is waited for.
+    whole_root: bool,
+    /// A whole-root pass is owed once the running pass and every queued
+    /// folder reading are over.
     pending: bool,
     current_waiters: Vec<RefreshCompletion>,
     followup_waiters: Vec<RefreshCompletion>,
+    /// Folder readings waiting their turn, in the order they were asked for.
+    readings: std::collections::VecDeque<FolderReadingRequest>,
+}
+
+/// What a root's next pass inherits from the one before it: the whole-root
+/// pass still owed, the callers waiting on that pass, and the folder readings
+/// still queued.
+#[derive(Default)]
+struct Queued {
+    pending: bool,
+    followup_waiters: Vec<RefreshCompletion>,
+    readings: std::collections::VecDeque<FolderReadingRequest>,
 }
 
 struct RootRemovalSchedule {
@@ -129,38 +198,47 @@ impl ActiveRoots {
             }
             None => {
                 info!("folder scan of {} starting: {cause}", path.display());
-                self.start_scan(path, waiter.into_iter().collect());
+                self.start_pass(
+                    path,
+                    RootPass::WholeRoot,
+                    waiter.into_iter().collect(),
+                    Queued::default(),
+                );
             }
         }
     }
 
-    /// Cancel the pass over `path` and queue a successor: what it is reading is
-    /// about to change under it. Everyone waiting on it moves to the successor,
-    /// which is the pass that will see the new state.
-    pub(super) fn requeue_scan(&mut self, path: &Path) {
-        let Some(RootActivity::Scanning(schedule)) = self.roots.get_mut(path) else {
-            return;
-        };
-        schedule.scan.cancellation.cancel();
-        schedule.pending = true;
-        schedule
-            .followup_waiters
-            .append(&mut schedule.current_waiters);
-    }
-
-    /// Tell `waiter` when this root's next pass is over: the successor already
-    /// queued behind a running pass, or one started now.
-    pub(super) fn wait_for_next_scan(
-        &mut self,
-        path: PathBuf,
-        cause: RootScanCause,
-        waiter: RefreshCompletion,
-    ) {
-        if let Some(RootActivity::Scanning(schedule)) = self.roots.get_mut(&path) {
-            schedule.followup_waiters.push(waiter);
-            return;
+    /// Store a person's answer for how one folder under `path` reads, with
+    /// the candidates it gives, as the root's next pass.
+    ///
+    /// A whole-root pass under way is cancelled and owed again afterwards:
+    /// it would otherwise write the folder's old reading after the new one
+    /// landed, and it has left the root half read. A folder reading under way
+    /// is let finish, and this one follows it.
+    pub(super) fn change_folder_reading(&mut self, path: PathBuf, request: FolderReadingRequest) {
+        match self.roots.get_mut(&path) {
+            Some(RootActivity::Scanning(schedule)) => {
+                if schedule.whole_root {
+                    schedule.scan.cancellation.cancel();
+                    schedule.pending = true;
+                    schedule
+                        .followup_waiters
+                        .append(&mut schedule.current_waiters);
+                }
+                schedule.readings.push_back(request);
+            }
+            Some(RootActivity::Removing(_)) => {
+                request.answer(Err(format!("{} is being removed", path.display())));
+            }
+            None => {
+                self.start_pass(
+                    path,
+                    RootPass::Folder(request),
+                    Vec::new(),
+                    Queued::default(),
+                );
+            }
         }
-        self.request_scan(path, cause, Some(waiter));
     }
 
     /// A pass reported itself over. Whoever was waiting for it hears so, and a
@@ -188,13 +266,30 @@ impl ActiveRoots {
                 debug!("folder refresh caller dropped before completion");
             }
         }
-        if schedule.pending {
+        let mut queued = Queued {
+            pending: schedule.pending,
+            followup_waiters: std::mem::take(&mut schedule.followup_waiters),
+            readings: std::mem::take(&mut schedule.readings),
+        };
+        if let Some(reading) = queued.readings.pop_front() {
+            self.start_pass(
+                completion.path,
+                RootPass::Folder(reading),
+                Vec::new(),
+                queued,
+            );
+        } else if queued.pending {
             info!(
                 "folder scan of {} starting again: one was queued while it ran",
                 completion.path.display()
             );
-            let waiters = std::mem::take(&mut schedule.followup_waiters);
-            self.start_scan(completion.path, waiters);
+            let waiters = std::mem::take(&mut queued.followup_waiters);
+            self.start_pass(
+                completion.path,
+                RootPass::WholeRoot,
+                waiters,
+                Queued::default(),
+            );
         }
     }
 
@@ -221,6 +316,11 @@ impl ActiveRoots {
                 .drain(..)
                 .chain(schedule.followup_waiters.drain(..))
                 .collect();
+            // A queued reading is answered now: nothing will read the folder
+            // again, whatever becomes of the removal.
+            for reading in schedule.readings.drain(..) {
+                reading.answer(Err(format!("{} is being removed", path.display())));
+            }
             scan = Some(schedule.scan);
         }
         self.next_removal_id += 1;
@@ -289,7 +389,12 @@ impl ActiveRoots {
             RootRemovalResult::Failed(error) => {
                 // The root is still watched, so it goes back to being read, and
                 // the refresh callers the removal took over wait on that pass.
-                self.start_scan(completion.path, removal.scan_waiters);
+                self.start_pass(
+                    completion.path,
+                    RootPass::WholeRoot,
+                    removal.scan_waiters,
+                    Queued::default(),
+                );
                 RemovalOutcome::Failed {
                     error,
                     callers: removal.completions,
@@ -318,6 +423,9 @@ impl ActiveRoots {
             };
             schedule.scan.cancellation.cancel();
             schedule.pending = false;
+            for reading in schedule.readings.drain(..) {
+                reading.answer(Err("folder scan service stopped".to_string()));
+            }
             for waiter in schedule
                 .current_waiters
                 .drain(..)
@@ -359,19 +467,29 @@ impl ActiveRoots {
         }
     }
 
-    /// Start a pass over `path`, with the callers it is to answer when it ends.
-    fn start_scan(&mut self, path: PathBuf, waiters: Vec<RefreshCompletion>) {
+    /// Start a pass over `path`, with the callers it is to answer when it ends
+    /// and what is queued behind it.
+    fn start_pass(
+        &mut self,
+        path: PathBuf,
+        pass: RootPass,
+        waiters: Vec<RefreshCompletion>,
+        queued: Queued,
+    ) {
         self.next_scan_id += 1;
         let id = self.next_scan_id;
-        let scan = (self.starter)(id, path.clone(), self.scan_completions.clone());
+        let whole_root = matches!(pass, RootPass::WholeRoot);
+        let scan = (self.starter)(id, path.clone(), pass, self.scan_completions.clone());
         self.roots.insert(
             path,
             RootActivity::Scanning(RootScanSchedule {
                 id,
                 scan,
-                pending: false,
+                whole_root,
+                pending: queued.pending,
                 current_waiters: waiters,
-                followup_waiters: Vec::new(),
+                followup_waiters: queued.followup_waiters,
+                readings: queued.readings,
             }),
         );
     }

@@ -28,6 +28,7 @@ use tracing::{debug, error, info, warn};
 
 mod active_roots;
 mod cover_image;
+mod folder_reading;
 mod folder_watcher;
 mod format_prep;
 mod importing;
@@ -36,7 +37,8 @@ mod reconcile;
 mod scanning;
 
 use active_roots::{
-    ActiveRoots, RemovalOutcome, RootRemovalBackend, RootScanCause, ServiceRootRemovalBackend,
+    ActiveRoots, FolderReadingRequest, RemovalOutcome, RootPass, RootRemovalBackend,
+    RootScanCause, ServiceRootRemovalBackend,
 };
 use folder_watcher::FolderWatchSnapshot;
 mod coordinator;
@@ -337,7 +339,9 @@ struct RootScanCompletion {
 }
 
 type RootScanStarter = Arc<
-    dyn Fn(u64, PathBuf, mpsc::UnboundedSender<RootScanCompletion>) -> RootScanTask + Send + Sync,
+    dyn Fn(u64, PathBuf, RootPass, mpsc::UnboundedSender<RootScanCompletion>) -> RootScanTask
+        + Send
+        + Sync,
 >;
 
 /// What one folder scan runs on: the import service's shared dependencies, plus
@@ -358,6 +362,63 @@ impl ScanServices {
             folder_watcher,
         }
     }
+}
+
+/// Start one pass over `path`: the whole root, or one folder whose reading
+/// changed.
+fn spawn_root_pass(
+    id: u64,
+    path: PathBuf,
+    pass: RootPass,
+    scan: ScanServices,
+    completion_tx: mpsc::UnboundedSender<RootScanCompletion>,
+) -> RootScanTask {
+    match pass {
+        RootPass::WholeRoot => spawn_root_scan(id, path, scan, completion_tx),
+        RootPass::Folder(request) => {
+            spawn_folder_reading(id, path, request, scan, completion_tx)
+        }
+    }
+}
+
+/// Change how one folder under `path` reads, and tell the person who asked
+/// whether it was stored.
+fn spawn_folder_reading(
+    id: u64,
+    path: PathBuf,
+    request: FolderReadingRequest,
+    scan: ScanServices,
+    completion_tx: mpsc::UnboundedSender<RootScanCompletion>,
+) -> RootScanTask {
+    let cancellation = crate::import::folder_scanner::ScanCancellation::new();
+    let reading_cancellation = cancellation.clone();
+    let task = tokio::spawn(async move {
+        let target = request.target().clone();
+        let result =
+            ImportService::change_folder_reading(&path, &target, &scan, &reading_cancellation)
+                .await
+                // The caller hears a detail and reports it as a watch failure
+                // itself, so one that already is one is not said twice.
+                .map_err(|error| match error {
+                    crate::import::ImportError::Watch { detail } => detail,
+                    other => other.to_string(),
+                });
+        if let Err(error) = &result {
+            warn!(
+                "folder decision for {} under {} was not stored: {error}",
+                target.0.relative_folder_path,
+                path.display()
+            );
+        }
+        request.answer(result);
+        if completion_tx
+            .send(RootScanCompletion { id, path })
+            .is_err()
+        {
+            debug!("folder scan coordinator ended before a folder reading completed");
+        }
+    });
+    RootScanTask { cancellation, task }
 }
 
 fn spawn_root_scan(
