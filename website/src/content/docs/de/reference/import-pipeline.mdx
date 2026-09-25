@@ -31,7 +31,7 @@ Bei der direkten Eingabe werden keine Metadaten-E/A durchgeführt. Die Freigabe-
 
 ## Quellen
 
-MusicBrainz wird anonym mit einem strikten Takt von einer Anfrage pro Sekunde abgefragt. Discogs authentifiziert sich mit dem persönlichen Token des Benutzers aus dem Schlüsselbund, getaktet und innerhalb seiner Ratenlimits erneut versucht, und ein abgelehntes Token wird als solches gemeldet, damit die Oberfläche es anzeigen kann, statt Suchvorgänge still scheitern zu lassen. Antworten werden pro Sitzung gecacht, und das rohe JSON der Quelle, die gewinnt, wird in der Datenbank für spätere Neuinterpretation archiviert.
+MusicBrainz wird anonym mit einem strikten Takt von einer Anfrage pro Sekunde abgefragt. Discogs authentifiziert sich mit dem persönlichen Token des Benutzers aus dem Schlüsselbund, getaktet und innerhalb seiner Ratenlimits erneut versucht, und ein abgelehntes Token wird als solches gemeldet, damit die Oberfläche es anzeigen kann, statt Suchvorgänge still scheitern zu lassen. Antworten werden pro Sitzung gecacht. Wird ein Release gewählt, wird das, was bae aus seinen Dokumenten verwendet — Album- und Pressungsangaben, die vollständige Titelliste mit Mitwirkenden und Werken, die Cover-Optionen und wie andere Kataloge es nennen — einmal in die Datenbank extrahiert; das rohe JSON wird nicht aufbewahrt.
 
 ## Festschreiben
 

@@ -25,7 +25,7 @@ Tabelle completamente locali, mai dichiarate a coven:
 
 - **`playback_state`**: traccia corrente, posizione, coda, volume, ordine casuale e ripetizione. La riproduzione è un fatto del dispositivo.
 - **`imports`**: tracciamento delle operazioni di importazione.
-- **`source_release_payloads`**: JSON grezzo archiviato da MusicBrainz e Discogs, con chiave di rilascio del fornitore piuttosto che di rilascio locale, supporta il reset esatto e la reinterpretazione senza modificare il grafico del catalogo sincronizzato.
+- **`source_release`** e le tabelle sotto di essa: ciò che bae ha estratto da ogni pubblicazione MusicBrainz e Discogs recuperata — i dati dell’album e della stampa, la tracklist completa con crediti e opere, le copertine disponibili e come la chiamano gli altri cataloghi — con chiave di rilascio del fornitore piuttosto che di rilascio locale. Il JSON grezzo non viene conservato; qualsiasi dispositivo può recuperare di nuovo una pubblicazione.
 
 Ogni tabella sincronizzata porta una colonna `_updated_at` di clock logico ibrido, il registro con cui l'unione campo per campo di coven ordina le modifiche concorrenti; un test impone che l'insieme sincronizzato e l'insieme con clock siano esattamente uguali.
 

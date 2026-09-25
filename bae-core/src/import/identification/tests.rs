@@ -632,18 +632,30 @@ impl Fixture {
             })
     }
 
-    /// The archived MusicBrainz document for a release, if one was written.
-    async fn archived(&self, release_id: &str) -> Option<String> {
+    /// The stored MusicBrainz release, if a fetch stored one.
+    async fn stored_release(
+        &self,
+        release_id: &str,
+    ) -> Option<crate::import::source_release::SourceRelease> {
         self.manager
-            .source_release_payload_for_test(crate::import::PayloadSource::MusicBrainz, release_id)
+            .load_source_release(&crate::import::MetadataRef::new(
+                crate::import::Catalog::MusicBrainz,
+                release_id,
+            ))
             .await
             .unwrap()
     }
 
-    /// The archived Discogs document for a release, if one was written.
-    async fn archived_discogs(&self, release_id: &str) -> Option<String> {
+    /// The stored Discogs release, if a fetch stored one.
+    async fn stored_discogs_release(
+        &self,
+        release_id: &str,
+    ) -> Option<crate::import::source_release::SourceRelease> {
         self.manager
-            .source_release_payload_for_test(crate::import::PayloadSource::Discogs, release_id)
+            .load_source_release(&crate::import::MetadataRef::new(
+                crate::import::Catalog::Discogs,
+                release_id,
+            ))
             .await
             .unwrap()
     }
@@ -663,28 +675,30 @@ impl Fixture {
     /// Store a release directly, as a settle step would have — for a test that
     /// needs it present without anything having fetched it.
     async fn archive(&self, release_id: &str, group_id: &str, track_lengths: &[u64]) {
-        let now = crate::db::DbSourceReleasePayload {
-            source: crate::import::PayloadSource::MusicBrainz,
-            source_release_id: release_id.to_string(),
-            json: release_json(release_id, group_id, track_lengths),
-            fetched_at: fixed_now(),
-        };
         self.manager
-            .save_source_release_payloads_for_test(std::slice::from_ref(&now))
+            .save_source_release(&stored_pressing(release_id, group_id, track_lengths))
             .await
             .unwrap();
-        self.manager
-            .save_source_release(
-                &crate::import::payloads::ReleasePayloads::for_test(
-                    crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, release_id),
-                    now.json,
-                    Vec::new(),
-                )
-                .extract()
-                .unwrap(),
-            )
-            .await
-            .unwrap();
+    }
+
+    /// Store a release as a fetch whose request for the release's group
+    /// failed would have: the pressing's own facts, and the group named as
+    /// missing.
+    async fn archive_missing_its_group(
+        &self,
+        release_id: &str,
+        group_id: &str,
+        track_lengths: &[u64],
+    ) {
+        let mut release = stored_pressing(release_id, group_id, track_lengths);
+        release
+            .unfetched
+            .push(crate::import::source_release::UnfetchedDocument {
+                document: crate::import::PayloadSource::MusicBrainzReleaseGroup,
+                key: group_id.to_string(),
+                reason: crate::import::source_release::UnfetchedReason::Failed,
+            });
+        self.manager.save_source_release(&release).await.unwrap();
     }
 
     /// Store the verdict a settled lead produces, without running the pipeline.
@@ -858,6 +872,21 @@ impl Fixture {
         let row = self.stored_for(dir).await.expect("a row was stored");
         classify(&identify_result(&row).verdict)
     }
+}
+
+/// The release a lone MusicBrainz release document extracts to.
+fn stored_pressing(
+    release_id: &str,
+    group_id: &str,
+    track_lengths: &[u64],
+) -> crate::import::source_release::SourceRelease {
+    crate::import::payloads::ReleasePayloads::for_test(
+        crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, release_id),
+        release_json(release_id, group_id, track_lengths),
+        Vec::new(),
+    )
+    .extract()
+    .unwrap()
 }
 
 /// Whether a seeded settled verdict carries the pick a settle writes with it.

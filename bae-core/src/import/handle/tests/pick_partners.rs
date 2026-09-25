@@ -104,11 +104,11 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     assert!(
         handle
             .library_manager
-            .load_release_payloads(&partner)
+            .load_source_release(&partner)
             .await
             .unwrap()
             .is_some(),
-        "the partner's own documents are archived by the apply"
+        "the partner's own release is stored by the apply"
     );
     assert_eq!(
         handle
@@ -256,6 +256,17 @@ fn seed_mb_release(
     release_id: &str,
     release_group_id: &str,
 ) {
+    providers
+        .musicbrainz()
+        .seed_release_cache(release_id, mb_release_json(release_id, release_group_id));
+    providers.musicbrainz().seed_release_group_json_cache(
+        release_group_id,
+        serde_json::json!({ "id": release_group_id }).to_string(),
+    );
+}
+
+/// The release endpoint's document for [`seed_mb_release`]'s release.
+fn mb_release_json(release_id: &str, release_group_id: &str) -> String {
     let response = crate::musicbrainz::MbReleaseResponse {
         id: release_id.to_string(),
         title: "Album Title".to_string(),
@@ -301,12 +312,7 @@ fn seed_mb_release(
             darkened: false,
         },
     };
-    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    providers.musicbrainz().seed_release_cache(release_id, raw_json);
-    providers.musicbrainz().seed_release_group_json_cache(
-        release_group_id,
-        serde_json::json!({ "id": release_group_id }).to_string(),
-    );
+    serde_json::to_string(&response).expect("the test response serializes")
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -381,7 +387,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn applied_partner_identity_survives_archive_replacement() {
+async fn an_import_commits_what_its_picked_releases_store_now() {
     // The pick offers the partner's album address, which the archive holds
     // no image at.
     let archive = crate::util::http::serve_not_found().await;
@@ -397,8 +403,8 @@ async fn applied_partner_identity_survives_archive_replacement() {
         )
         .unwrap();
     let primary = "70000004";
-    let partner = "frozen-partner-release";
-    let group = "frozen-partner-group";
+    let partner = "refetched-partner-release";
+    let group = "refetched-partner-group";
     seed_discogs_release(handle.library_manager.providers(), primary);
     seed_mb_release(handle.library_manager.providers(), partner, group);
     let group_json = |allmusic: &str| {
@@ -422,14 +428,24 @@ async fn applied_partner_identity_survives_archive_replacement() {
         )
         .await
         .unwrap();
+    // The partner is fetched again after the pick, and its album now names
+    // another album on AllMusic: a pick references its releases rather than
+    // copying them, so the import commits what the partner says now.
     handle
         .library_manager
-        .save_source_release_payloads_for_test(&[crate::db::DbSourceReleasePayload {
-            source: crate::import::PayloadSource::MusicBrainzReleaseGroup,
-            source_release_id: group.into(),
-            json: group_json("mw222"),
-            fetched_at: handle.clock.now(),
-        }])
+        .save_source_release(
+            &crate::import::payloads::ReleasePayloads::for_test(
+                crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, partner),
+                mb_release_json(partner, group),
+                vec![crate::import::SourcePayload::new(
+                    crate::import::PayloadSource::MusicBrainzReleaseGroup,
+                    group,
+                    group_json("mw222"),
+                )],
+            )
+            .extract()
+            .unwrap(),
+        )
         .await
         .unwrap();
     let mut events = handle.subscribe_events();
@@ -449,6 +465,6 @@ async fn applied_partner_identity_survives_archive_replacement() {
             .iter()
             .find(|record| record.catalog() == crate::import::Catalog::AllMusic)
             .map(|record| record.key()),
-        Some("mw111")
+        Some("mw222")
     );
 }

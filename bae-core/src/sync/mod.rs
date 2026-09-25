@@ -109,7 +109,7 @@ pub const CACHE_BUDGETS: [(&str, u64); 3] = [
 /// (upload/download, the make-Remote/make-Local transitions, the locality-aware
 /// read), so bae hand-maintains no blob source.
 ///
-/// Excluded: the device-local tables (`source_release_payloads`,
+/// Excluded: the device-local tables (the `source_release` tables,
 /// `playback_state`, `import_candidate_state`) have no `_updated_at`, and
 /// coven's own bookkeeping tables live outside bae's migration entirely — bae
 /// never names them.
@@ -377,19 +377,30 @@ mod tests {
         );
     }
 
-    /// `source_release_payloads` holds re-fetchable provider documents, not the
-    /// user's library: syncing them would push megabytes of MusicBrainz and
-    /// Discogs JSON to every device to save each of them a lookup it can make
-    /// itself. Named for the same reason `import_candidate_state` is — so the
-    /// exclusion survives the table growing a clock column.
+    /// The `source_release` tables hold what bae extracted from catalog
+    /// releases it fetched, not the user's library: every device can fetch a
+    /// release itself. Named for the same reason `import_candidate_state` is —
+    /// so the exclusion survives a table growing a clock column.
     #[test]
-    fn source_release_payloads_are_not_synced() {
+    fn source_release_tables_are_not_synced() {
         let synced = synced_tables();
         let registered: BTreeSet<&str> = synced.iter().map(|t| t.name()).collect();
+        let source_release_tables: Vec<&str> = include_str!("../../migrations/001_initial.sql")
+            .lines()
+            .filter_map(|line| line.strip_prefix("CREATE TABLE IF NOT EXISTS "))
+            .filter_map(|rest| rest.split_whitespace().next())
+            .filter(|table| table.starts_with("source_release"))
+            .collect();
         assert!(
-            !registered.contains("source_release_payloads"),
-            "source_release_payloads is device-local and must never sync"
+            source_release_tables.len() > 1,
+            "the schema declares the source_release tables: {source_release_tables:?}"
         );
+        for table in source_release_tables {
+            assert!(
+                !registered.contains(table),
+                "{table} is device-local and must never sync"
+            );
+        }
     }
 
     #[test]

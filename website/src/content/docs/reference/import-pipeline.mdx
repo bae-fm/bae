@@ -41,7 +41,7 @@ Direct entry performs no metadata I/O. The blank draft's release and track field
 
 ## Sources
 
-MusicBrainz is queried anonymously with a strict one-request-per-second pace. Discogs authenticates with the user's personal token from the keyring, paced and retried within its rate limits, and a rejected token is reported as such so the UI can flag it rather than fail searches quietly. Responses are cached per session, and the raw JSON of whatever source wins is archived in the database for future re-interpretation.
+MusicBrainz is queried anonymously with a strict one-request-per-second pace. Discogs authenticates with the user's personal token from the keyring, paced and retried within its rate limits, and a rejected token is reported as such so the UI can flag it rather than fail searches quietly. Responses are cached per session. When a release is picked, what bae uses from its documents — its album and pressing facts, its full tracklist with credits and works, its cover options, and what other catalogs call it — is extracted into the database once; the raw JSON is not kept.
 
 ## Commit
 

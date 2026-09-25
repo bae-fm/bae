@@ -131,16 +131,8 @@ async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
     );
 }
 
-struct MemoryArchive(HashMap<DocumentKey, String>);
-
-impl ArchivedDocuments for MemoryArchive {
-    fn document(&self, source: PayloadSource, id: &str) -> Result<Option<String>, ImportError> {
-        Ok(self.0.get(&(source, id.to_owned())).cloned())
-    }
-}
-
 #[tokio::test]
-async fn cyclic_release_and_album_links_fetch_each_document_once_and_replay() {
+async fn cyclic_release_and_album_links_fetch_each_document_once() {
     let release = release_json(
         "cycle-release",
         Some("cycle-group"),
@@ -179,31 +171,22 @@ async fn cyclic_release_and_album_links_fetch_each_document_once_and_replay() {
     .unwrap();
 
     assert_eq!(server.requests(), expected);
-    let mut archived = HashMap::from([(
+    let mut fetched = HashMap::from([(
         (PayloadSource::MusicBrainz, selected.key.clone()),
         payloads.anchor.clone(),
     )]);
     for document in &payloads.supporting {
         assert!(
-            archived
+            fetched
                 .insert(
                     (document.source, document.source_release_id.clone()),
                     document.json.clone()
                 )
                 .is_none(),
-            "each archived key occurs once"
+            "each fetched key occurs once"
         );
     }
-    assert_eq!(archived.len(), 6);
-    let replay = load_documents(&MemoryArchive(archived), &selected)
-        .unwrap()
-        .unwrap();
-    assert_eq!(replay, payloads);
-    assert_eq!(
-        server.requests(),
-        expected,
-        "archive replay makes no provider requests"
-    );
+    assert_eq!(fetched.len(), 6);
 }
 
 #[tokio::test]
@@ -249,7 +232,7 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
 }
 
 #[tokio::test]
-async fn malformed_optional_group_is_skipped_online_and_from_the_archive() {
+async fn a_malformed_optional_group_is_skipped() {
     let selected = MetadataRef::new(Catalog::MusicBrainz, "optional-shape-release");
     let anchor = release_json(&selected.key, Some("optional-shape-group"), &[]);
     let server = ProviderServer::start(HashMap::from([
@@ -263,40 +246,21 @@ async fn malformed_optional_group_is_skipped_online_and_from_the_archive() {
         ),
     ]))
     .await;
-    let fetched = server.providers.fetch_payloads(None, &selected, CallPriority::Interactive)
+    let fetched = server
+        .providers
+        .fetch_payloads(None, &selected, CallPriority::Interactive)
         .await
         .unwrap();
     assert!(fetched.supporting.is_empty());
-    let archived = MemoryArchive(HashMap::from([
-        (
-            (PayloadSource::MusicBrainz, selected.key.clone()),
-            anchor.clone(),
-        ),
-        (
-            (
-                PayloadSource::MusicBrainzReleaseGroup,
-                "optional-shape-group".into(),
-            ),
-            "{}".into(),
-        ),
-    ]));
-    let replayed = load_documents(&archived, &selected).unwrap().unwrap();
-    assert_eq!(replayed, fetched);
-    let stored = ReleasePayloads {
-        release: selected,
-        anchor,
-        supporting: vec![SourcePayload::new(
-            PayloadSource::MusicBrainzReleaseGroup,
-            "optional-shape-group",
-            "{}".into(),
-        )],
-    };
-    let stored: ReleasePayloads =
-        serde_json::from_str(&serde_json::to_string(&stored).unwrap()).unwrap();
-    let enriched = server.providers.enrich_payloads(None, &stored, CallPriority::Interactive)
-    .await
-    .unwrap();
-    assert_eq!(enriched, fetched);
+    assert_eq!(
+        fetched.unfetched,
+        vec![crate::import::source_release::UnfetchedDocument {
+            document: PayloadSource::MusicBrainzReleaseGroup,
+            key: "optional-shape-group".into(),
+            reason: UnfetchedReason::Failed,
+        }],
+        "a group that does not read is a failed answer, asked again next time"
+    );
     assert_eq!(
         server.requests(),
         HashMap::from([
@@ -306,43 +270,102 @@ async fn malformed_optional_group_is_skipped_online_and_from_the_archive() {
     );
 }
 
+/// A reverse cross-reference whose document does not read is skipped, and
+/// the release keeps its own record.
 #[tokio::test]
-async fn malformed_archived_reverse_alias_does_not_block_enrichment() {
-    let stored = ReleasePayloads {
-        release: MetadataRef::new(Catalog::Discogs, "940001"),
-        anchor: serde_json::json!({"id":940001,"title":"Selected Album"}).to_string(),
-        supporting: vec![SourcePayload::new(
-            PayloadSource::MusicBrainzDiscogsXref,
-            "940001",
-            "{}".into(),
-        )],
-    };
+async fn a_malformed_reverse_alias_is_skipped() {
     let server = ProviderServer::start(HashMap::new()).await;
-    server.providers.musicbrainz().seed_discogs_url_lookup("940001", None);
-    let archive = MemoryArchive(HashMap::from([
-        (
-            (PayloadSource::Discogs, stored.release.key.clone()),
-            stored.anchor.clone(),
-        ),
-        (
-            (PayloadSource::MusicBrainzDiscogsXref, "940001".into()),
-            "{}".into(),
-        ),
-    ]));
-    let replayed = load_documents(&archive, &stored.release).unwrap().unwrap();
-    assert!(replayed.supporting.is_empty());
-    let stored: ReleasePayloads =
-        serde_json::from_str(&serde_json::to_string(&stored).unwrap()).unwrap();
-    let enriched = server.providers.enrich_payloads(None, &stored, CallPriority::Interactive)
-    .await
-    .unwrap();
-    assert!(enriched.supporting.is_empty());
-    assert_eq!(enriched.extract().unwrap().records().len(), 1);
+    server.providers.discogs().seed_release_cache(
+        "940001",
+        serde_json::json!({"id":940001,"title":"Selected Album"}).to_string(),
+    );
+    server
+        .providers
+        .musicbrainz()
+        .seed_discogs_url_lookup("940001", Some("mb-alias".into()));
+    server
+        .providers
+        .musicbrainz()
+        .seed_release_cache("mb-alias", "{}".into());
+    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let fetched = server
+        .providers
+        .fetch_payloads(
+            Some(&discogs),
+            &MetadataRef::new(Catalog::Discogs, "940001"),
+            CallPriority::Interactive,
+        )
+        .await
+        .unwrap();
+    assert!(fetched.supporting.is_empty());
+    assert_eq!(fetched.extract().unwrap().records().len(), 1);
     assert!(server.requests().is_empty());
 }
 
+/// What a fetch followed a link to and did not get is named with the
+/// release: a source that failed, and a Discogs document with no key to ask
+/// with. A catalog answering that there is none is not missing anything.
 #[tokio::test]
-async fn malformed_required_anchor_is_rejected_online_and_from_the_archive() {
+async fn documents_a_fetch_could_not_get_are_named() {
+    let selected = MetadataRef::new(Catalog::MusicBrainz, "missing-parts-release");
+    let server = ProviderServer::start(HashMap::from([
+        (
+            "/ws/2/release/missing-parts-release".into(),
+            (
+                200,
+                release_json(
+                    &selected.key,
+                    Some("missing-parts-group"),
+                    &["https://www.discogs.com/release/950001"],
+                ),
+            ),
+        ),
+        (
+            "/ws/2/release-group/missing-parts-group".into(),
+            (400, "Rejected group request".into()),
+        ),
+    ]))
+    .await;
+    let fetched = server
+        .providers
+        .fetch_payloads(None, &selected, CallPriority::Interactive)
+        .await
+        .unwrap();
+    let mut unfetched = fetched.unfetched.clone();
+    unfetched.sort_by_key(|document| document.key.clone());
+    assert_eq!(
+        unfetched,
+        vec![
+            crate::import::source_release::UnfetchedDocument {
+                document: PayloadSource::Discogs,
+                key: "950001".into(),
+                reason: UnfetchedReason::DiscogsNotConfigured,
+            },
+            crate::import::source_release::UnfetchedDocument {
+                document: PayloadSource::MusicBrainzReleaseGroup,
+                key: "missing-parts-group".into(),
+                reason: UnfetchedReason::Failed,
+            },
+        ]
+    );
+    let stored = fetched.extract().unwrap();
+    assert!(stored.fetch_could_add(false), "the failed group can be asked again");
+    let mut only_the_key_missing = stored.clone();
+    only_the_key_missing
+        .unfetched
+        .retain(|document| document.reason == UnfetchedReason::DiscogsNotConfigured);
+    assert!(
+        !only_the_key_missing.fetch_could_add(false),
+        "without a key, asking again gets no Discogs document"
+    );
+    assert!(
+        only_the_key_missing.fetch_could_add(true),
+        "with a key, the Discogs document can be asked for"
+    );
+}
+
+#[tokio::test]
+async fn a_malformed_required_anchor_is_rejected() {
     let selected = MetadataRef::new(Catalog::MusicBrainz, "required-shape-release");
     let server = ProviderServer::start(HashMap::from([(
         "/ws/2/release/required-shape-release".into(),
@@ -354,11 +377,6 @@ async fn malformed_required_anchor_is_rejected_online_and_from_the_archive() {
             .await
             .is_err()
     );
-    let archive = MemoryArchive(HashMap::from([(
-        (PayloadSource::MusicBrainz, selected.key.clone()),
-        "{}".into(),
-    )]));
-    assert!(load_documents(&archive, &selected).is_err());
     assert_eq!(
         server.requests(),
         HashMap::from([("/ws/2/release/required-shape-release".into(), 1)])

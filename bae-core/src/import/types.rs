@@ -85,24 +85,22 @@ pub fn is_the_only_asked_source(sources: &[CatalogAvailability], source: Catalog
     asked_sources(sources) == [source]
 }
 
-/// Which lookup produced a stored document, and therefore which entity's id the
-/// `source_release_payloads` row is keyed by.
+/// Which lookup produced a fetched document, and therefore which entity's id it
+/// is keyed by.
 ///
-/// Wider than [`Catalog`]: identifying one release fetches supporting
-/// documents that belong to other entities — its release group, a Discogs
-/// master — and each is keyed by the entity it describes so two releases that
-/// share one never store it twice.
+/// Wider than [`Catalog`]: fetching one release fetches supporting documents
+/// that belong to other entities — its release group, a Discogs master — and
+/// each is keyed by the entity it describes.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PayloadSource {
     /// A MusicBrainz release, by release id.
     MusicBrainz,
     /// A MusicBrainz release group, by group id.
     MusicBrainzReleaseGroup,
     /// A Discogs release, by release id. Also where a MusicBrainz-seeded
-    /// release's cross-reference lands: the id comes out of the stored
-    /// MusicBrainz document's url-rels, which is where it was found in the
-    /// first place.
+    /// release's cross-reference lands: the id comes out of the MusicBrainz
+    /// document's url-rels.
     Discogs,
     /// A Discogs master, by master id — read out of the Discogs release
     /// document that names it.
@@ -121,7 +119,7 @@ pub enum PayloadSource {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl PayloadSource {
-    /// The stored `source` column value.
+    /// The stored `document` column value of a document a fetch missed.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::MusicBrainz => "musicbrainz",
@@ -163,17 +161,10 @@ impl std::str::FromStr for PayloadSource {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl std::fmt::Display for PayloadSource {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
 /// One document a metadata lookup returned, carrying the entity it describes so
-/// the store can key it without re-reading it.
+/// the walk can key it without re-reading it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourcePayload {
     pub source: PayloadSource,
     pub source_release_id: String,
@@ -475,9 +466,8 @@ pub enum TrackArtistAssignments {
 /// never guesses that relationship from a name.
 ///
 /// Records and provenance are out of scope: the release's records and the
-/// release's metadata provenance are untouched. So are the archived provider
-/// documents, so a later re-projection can still re-seed from what the source
-/// said.
+/// release's metadata provenance are untouched. So is the stored catalog
+/// release, so a later reset can still re-seed from what the source said.
 ///
 /// For a release already in the library, `tracks` MUST have the same length as
 /// the release's existing tracks; that editor cannot add or remove tracks

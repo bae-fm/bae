@@ -205,7 +205,7 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
         "the lead was settled before the verdict was written"
     );
     assert!(
-        fixture.archived("mb-interactive-1").await.is_some(),
+        fixture.stored_release("mb-interactive-1").await.is_some(),
         "and its documents are archived under the release they describe"
     );
     assert_eq!(

@@ -12,13 +12,14 @@ use crate::import::release_metadata::{AlbumMetadata, ReleaseMetadata};
 use crate::import::source_release::{
     ArchiveRelease, ArtistCredit, CatalogFacts, EntryKind, PerformedWork, ReleaseCovers,
     RoleCredit, SourceMedium, SourceRelease, SourceWork, SourceWorkEvent, TracklistEntry,
+    UnfetchedDocument, UnfetchedReason,
 };
 use crate::import::{MetadataRef, ReleaseRecord};
 
 /// The tables under `source_release`, children before the tables they hang
 /// off. Deleting a release's mediums takes its entries, and with them their
 /// credits, roles and works.
-const CHILD_TABLES: [&str; 8] = [
+const CHILD_TABLES: [&str; 9] = [
     "source_release_album_artist",
     "source_release_link",
     "source_release_format",
@@ -27,6 +28,7 @@ const CHILD_TABLES: [&str; 8] = [
     "source_release_archive_group",
     "source_release_role",
     "source_release_medium",
+    "source_release_unfetched",
 ];
 
 fn unreadable(what: &str, value: impl std::fmt::Debug) -> DbError {
@@ -203,6 +205,22 @@ pub(super) fn replace_source_release_on(
             "INSERT INTO source_release_archive_group (catalog, release_id, position, group_id) \
              VALUES (?, ?, ?, ?)",
             params![catalog, key, position as i64, group],
+        )?;
+    }
+    for unfetched in &release.unfetched {
+        sql.execute(
+            "INSERT INTO source_release_unfetched (catalog, release_id, document, key, reason) \
+             VALUES (?, ?, ?, ?, ?)",
+            params![
+                catalog,
+                key,
+                unfetched.document.as_str(),
+                unfetched.key,
+                match unfetched.reason {
+                    UnfetchedReason::Failed => "failed",
+                    UnfetchedReason::DiscogsNotConfigured => "discogs_not_configured",
+                },
+            ],
         )?;
     }
     let mut numbering = Numbering::default();
@@ -503,7 +521,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         },
         other => return Err(unreadable("catalog", other.as_str())),
     };
-    let other_records = sql
+    let mut other_records: Vec<ReleaseRecord> = sql
         .query(
             "SELECT record_catalog, kind, key, album_key FROM source_release_record \
              WHERE catalog = ? AND release_id = ?",
@@ -527,6 +545,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
             }
         })
         .collect::<Result<_, DbError>>()?;
+    other_records.sort_by_key(|record| crate::import::source_release::catalog_rank(record.catalog()));
     let mut covers = ReleaseCovers {
         release: Vec::new(),
         album: Vec::new(),
@@ -564,6 +583,33 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         |row| row.get(0),
     )?;
     let mediums = load_mediums(sql, catalog, key)?;
+    let unfetched = sql
+        .query(
+            "SELECT document, key, reason FROM source_release_unfetched \
+             WHERE catalog = ? AND release_id = ? ORDER BY document, key",
+            params![catalog, key],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            },
+        )?
+        .into_iter()
+        .map(|(document, document_key, reason)| {
+            Ok(UnfetchedDocument {
+                document: crate::import::PayloadSource::from_str(&document)
+                    .map_err(|_| unreadable("unfetched document", &document))?,
+                key: document_key,
+                reason: match reason.as_str() {
+                    "failed" => UnfetchedReason::Failed,
+                    "discogs_not_configured" => UnfetchedReason::DiscogsNotConfigured,
+                    other => return Err(unreadable("unfetched reason", other)),
+                },
+            })
+        })
+        .collect::<Result<_, DbError>>()?;
     Ok(Some(SourceRelease {
         release: release.clone(),
         source_group_id,
@@ -581,6 +627,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         archive_groups,
         mediums,
         catalog: catalog_facts,
+        unfetched,
     }))
 }
 

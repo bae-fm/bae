@@ -31,7 +31,7 @@ CUE sheet ஒரு audio image ஐ பாதை list ஆக மாற்று�
 
 ## Sources
 
-MusicBrainz strict one-request-per-second pace உடன் anonymously queried செய்யப்படும். Discogs keyring இல் உள்ள பயனர்'s personal டோக்கன் கொண்டு authenticate செய்கிறது; அதன் rate limits உள்ளே paced மற்றும் retried செய்யப்படும்; rejected டோக்கன் UI அமைதியாக searches fail ஆகாமல் flag செய்ய reported ஆகும். Responses per session cached; வென்ற மூலம் இன் raw JSON எதிர்கால re-interpretation க்கு தரவுத்தளம் இல் archived செய்யப்படும்.
+MusicBrainz strict one-request-per-second pace உடன் anonymously queried செய்யப்படும். Discogs keyring இல் உள்ள பயனர்'s personal டோக்கன் கொண்டு authenticate செய்கிறது; அதன் rate limits உள்ளே paced மற்றும் retried செய்யப்படும்; rejected டோக்கன் UI அமைதியாக searches fail ஆகாமல் flag செய்ய reported ஆகும். Responses per session cached. ஒரு release தேர்ந்தெடுக்கப்பட்டதும், அதன் documents இலிருந்து bae பயன்படுத்துவது — album மற்றும் pressing விவரங்கள், credits மற்றும் works உடன் முழு tracklist, cover தேர்வுகள், மற்ற catalogs அதை என்ன பெயரில் அழைக்கின்றன — ஒருமுறை தரவுத்தளம் இல் எடுத்து வைக்கப்படும்; raw JSON வைக்கப்படுவதில்லை.
 
 ## Commit
 

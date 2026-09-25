@@ -146,10 +146,10 @@ impl Database {
     /// deliberately untouched. Caller decides whether to reseed the
     /// metadata.
     ///
-    /// Nothing is done to the archived provider documents: they are keyed by
-    /// the *catalog's* release, so re-pointing the records at a different one
-    /// already reads a different row. There is no stale payload to wipe, and
-    /// the rows this release used may be another candidate's.
+    /// Nothing is done to the stored catalog releases: they are keyed by the
+    /// *catalog's* release, so re-pointing the records at a different one
+    /// already reads a different row. There is nothing stale to wipe, and the
+    /// rows this release used may be another candidate's.
     pub async fn set_records_atomic(
         &self,
         release_id: &str,

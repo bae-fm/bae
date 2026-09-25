@@ -31,7 +31,7 @@ Při přímém zadávání nedochází k žádnému vstupu/výstupu metadat. Pol
 
 ## Zdroje
 
-MusicBrainz se dotazuje anonymně s přísným tempem jeden požadavek za sekundu. Discogs se ověřuje osobním tokenem uživatele z klíčenky, dávkuje se a opakuje v rámci svých rychlostních limitů a odmítnutý token se nahlásí jako takový, aby ho uživatelské rozhraní mohlo označit místo tichého selhávání hledání. Odpovědi se ukládají do mezipaměti pro relaci a surový JSON zdroje, který vyhraje, se archivuje v databázi pro budoucí znovuvýklad.
+MusicBrainz se dotazuje anonymně s přísným tempem jeden požadavek za sekundu. Discogs se ověřuje osobním tokenem uživatele z klíčenky, dávkuje se a opakuje v rámci svých rychlostních limitů a odmítnutý token se nahlásí jako takový, aby ho uživatelské rozhraní mohlo označit místo tichého selhávání hledání. Odpovědi se ukládají do mezipaměti pro relaci. Když vyberete vydání, to, co bae z jeho dokumentů používá — údaje o albu a lisování, celý seznam skladeb s autory a díly, možnosti obalu a jak ho nazývají ostatní katalogy — se jednou vytáhne do databáze; surový JSON se neuchovává.
 
 ## Uložení
 

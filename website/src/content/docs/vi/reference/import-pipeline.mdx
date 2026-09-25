@@ -31,7 +31,7 @@ Thẻ của tệp đọc các thẻ âm thanh và siêu dữ liệu CUE nhồi n
 
 ## Nguồn
 
-MusicBrainz được truy vấn ẩn danh với nhịp nghiêm ngặt một yêu cầu mỗi giây. Discogs xác thực bằng token cá nhân của người dùng từ keyring, được điều tiết và thử lại trong giới hạn tốc độ của nó, và token bị từ chối được báo đúng như vậy để giao diện có thể gắn cờ thay vì để tìm kiếm thất bại im lặng. Phản hồi được lưu đệm theo phiên, và JSON thô của bất kỳ nguồn nào thắng được lưu trữ trong cơ sở dữ liệu cho diễn giải lại sau này.
+MusicBrainz được truy vấn ẩn danh với nhịp nghiêm ngặt một yêu cầu mỗi giây. Discogs xác thực bằng token cá nhân của người dùng từ keyring, được điều tiết và thử lại trong giới hạn tốc độ của nó, và token bị từ chối được báo đúng như vậy để giao diện có thể gắn cờ thay vì để tìm kiếm thất bại im lặng. Phản hồi được lưu đệm theo phiên. Khi một bản phát hành được chọn, những gì bae dùng từ tài liệu của nó — thông tin album và bản ép, danh sách bài hát đầy đủ kèm người tham gia và tác phẩm, các lựa chọn bìa, và tên các danh mục khác gọi nó — được trích xuất vào cơ sở dữ liệu một lần; JSON thô không được giữ lại.
 
 ## Ghi
 

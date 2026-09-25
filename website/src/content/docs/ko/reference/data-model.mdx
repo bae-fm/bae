@@ -25,7 +25,7 @@ schema에서 동기화되는 중심부는 다음과 같습니다.
 
 - **`playback_state`**: 현재 트랙, 위치, 대기열, 볼륨, 셔플과 반복입니다. 재생은 기기의 사실입니다.
 - **`imports`**: 가져오기 작업 추적입니다.
-- **`source_release_payloads`**: MusicBrainz 및 Discogs에서 아카이브된 원시 JSON, 로컬 릴리스가 아닌 공급자 릴리스에 의해 키가 지정됩니다. 동기화된 카탈로그 그래프를 변경하지 않고 정확한 리셋 및 재해석을 지원합니다.
+- **`source_release`** 및 그 아래 테이블: bae가 가져온 각 MusicBrainz 및 Discogs 릴리스에서 추출한 것 — 앨범과 프레싱 정보, 크레디트와 작품을 포함한 전체 트랙리스트, 커버 후보, 다른 카탈로그에서 부르는 이름 — 으로, 로컬 릴리스가 아닌 공급자 릴리스에 의해 키가 지정됩니다. raw JSON은 보관하지 않으며, 어느 기기든 릴리스를 다시 가져올 수 있습니다.
 
 모든 synced table은 `_updated_at` hybrid-logical-clock column을 가집니다. coven이 동시 편집을 필드별로 병합할 때 이 register로 순서를 정합니다. 테스트는 synced set과 clock-carrying set이 정확히 같은지 확인합니다.
 

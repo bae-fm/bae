@@ -8,12 +8,11 @@ use coven::{FixedClock, SequentialIdProvider};
 
 /// The release a MusicBrainz document extracts to, read by itself.
 fn mb_release(response: &MbReleaseResponse) -> crate::import::source_release::SourceRelease {
-    serde_json::from_value::<crate::import::payloads::ReleasePayloads>(serde_json::json!({
-        "release": crate::import::MetadataRef::new(Catalog::MusicBrainz, &response.id),
-        "anchor": serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
-        "supporting": [],
-    }))
-    .expect("archived fixture deserializes")
+    crate::import::payloads::ReleasePayloads::for_test(
+        crate::import::MetadataRef::new(Catalog::MusicBrainz, &response.id),
+        serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
+        Vec::new(),
+    )
     .extract()
     .expect("the MusicBrainz fixture extracts")
 }
@@ -27,12 +26,11 @@ fn mb_detail(response: &MbReleaseResponse) -> Result<ImportSearchReleaseDetail, 
 fn discogs_detail(json: &str, audio: &[u64]) -> ImportSearchReleaseDetail {
     let release = crate::discogs::client::parse_discogs_release_json(json)
         .expect("the Discogs fixture parses");
-    serde_json::from_value::<crate::import::payloads::ReleasePayloads>(serde_json::json!({
-        "release": crate::import::MetadataRef::new(Catalog::Discogs, &release.id),
-        "anchor": json,
-        "supporting": [],
-    }))
-    .expect("archived fixture deserializes")
+    crate::import::payloads::ReleasePayloads::for_test(
+        crate::import::MetadataRef::new(Catalog::Discogs, &release.id),
+        json.to_string(),
+        Vec::new(),
+    )
     .extract()
     .expect("the Discogs fixture extracts")
     .detail_for_audio(audio, &[])

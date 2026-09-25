@@ -90,7 +90,7 @@ async fn a_failed_settle_is_stored_without_partial_documents() {
         Some(TerminalVerdict::Failed { .. })
     ));
     assert!(
-        fixture.archived("mb-order-1").await.is_none(),
+        fixture.stored_release("mb-order-1").await.is_none(),
         "and nothing half-written is left behind"
     );
 
@@ -117,21 +117,27 @@ async fn a_failed_settle_is_stored_without_partial_documents() {
         "the stored failure is not retried automatically"
     );
     assert!(
-        fixture.archived("mb-order-1").await.is_none(),
+        fixture.stored_release("mb-order-1").await.is_none(),
         "an automatic pass leaves the failed settle untouched"
     );
 }
 
-/// Explicitly applying a settled release keeps its archived pressing and fetches
-/// a missing parent. Opening the resulting candidate reads both documents offline.
+/// Explicitly applying a settled release whose group failed to fetch fetches
+/// the release again, parent and all. Opening the resulting candidate reads
+/// the stored release offline.
 #[tokio::test(flavor = "multi_thread")]
-async fn applying_a_settled_candidate_fetches_missing_parent_then_reads_offline() {
+async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offline() {
     let fixture = Fixture::new("offline-open").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
 
-    // The pressing exists only in the archive; its parent can be fetched.
+    // The stored pressing names its group as missing; both can be fetched.
+    fixture.provider.route(
+        "/release/mb-offline-1?",
+        200,
+        release_json("mb-offline-1", "rg-offline-1", &[probed, 0]),
+    );
     fixture.provider.route(
         "/release-group/rg-offline-1?",
         200,
@@ -142,7 +148,7 @@ async fn applying_a_settled_candidate_fetches_missing_parent_then_reads_offline(
         .to_string(),
     );
     fixture
-        .archive("mb-offline-1", "rg-offline-1", &[probed, 0])
+        .archive_missing_its_group("mb-offline-1", "rg-offline-1", &[probed, 0])
         .await;
     fixture
         .store_settled_verdict(&dir, "mb-offline-1", "rg-offline-1", probed)
@@ -162,20 +168,17 @@ async fn applying_a_settled_candidate_fetches_missing_parent_then_reads_offline(
             },
         )
         .await
-        .expect("a settled candidate opens from what identification archived");
+        .expect("a settled candidate opens once its release is fetched again");
 
     let after_apply = fixture.provider.requests().len();
+    let stored = fixture
+        .stored_release("mb-offline-1")
+        .await
+        .expect("the release stays stored");
     assert!(
-        fixture
-            .manager
-            .source_release_payload_for_test(
-                crate::import::PayloadSource::MusicBrainzReleaseGroup,
-                "rg-offline-1"
-            )
-            .await
-            .unwrap()
-            .is_some(),
-        "the fetched parent is archived"
+        stored.unfetched.is_empty(),
+        "the group fetched this time: {:?}",
+        stored.unfetched
     );
     let detail = fixture
         .pane(&dir)
@@ -202,15 +205,21 @@ async fn applying_a_settled_candidate_fetches_missing_parent_then_reads_offline(
             crate::import::cover_art::ARCHIVE
         )],
         "the pressing states no front image of its own, so the album's is the \
-         only option — and it is read off the stored document, not asked for"
+         only option — and it is read off the stored release, not asked for"
+    );
+    let requested = &fixture.provider.requests()[before..];
+    assert_eq!(requested.len(), 3, "{requested:?}");
+    assert!(
+        requested[0].starts_with("/ws/2/release/mb-offline-1?"),
+        "{requested:?}"
     );
     assert_eq!(
-        &fixture.provider.requests()[before..],
+        &requested[1..],
         &[
             "/ws/2/release-group/rg-offline-1?inc=artist-credits+url-rels&fmt=json".to_string(),
             "/release-group/rg-offline-1/front".to_string(),
         ],
-        "selection fetches the missing parent and cover without re-fetching the pressing"
+        "selection fetches the release again, parent and all, then the cover"
     );
 }
 
@@ -265,7 +274,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     );
 
     assert!(
-        fixture.archived("mb-manual-1").await.is_none(),
+        fixture.stored_release("mb-manual-1").await.is_none(),
         "nothing has fetched this release yet"
     );
 
@@ -283,7 +292,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
         .expect("a manual pick fetches");
 
     assert!(
-        fixture.archived("mb-manual-1").await.is_some(),
+        fixture.stored_release("mb-manual-1").await.is_some(),
         "and archives the release it fetched"
     );
 
@@ -384,11 +393,11 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
         "the stored pick claims the Discogs record of the same pressing"
     );
     assert!(
-        fixture.archived("mb-paired-1").await.is_some(),
+        fixture.stored_release("mb-paired-1").await.is_some(),
         "the primary's documents are archived"
     );
     assert!(
-        fixture.archived_discogs("70000101").await.is_some(),
+        fixture.stored_discogs_release("70000101").await.is_some(),
         "and so are the partner's, so every source the pick claims reads offline"
     );
     assert_eq!(
@@ -486,7 +495,7 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
         "the stored pick claims the Discogs record the barcode alone found"
     );
     assert!(
-        fixture.archived_discogs("70000102").await.is_some(),
+        fixture.stored_discogs_release("70000102").await.is_some(),
         "and the partner's documents are archived with the primary's"
     );
     assert_eq!(
@@ -590,8 +599,8 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
         "and the draft carries the year only the Discogs document states"
     );
     assert!(
-        fixture.archived_discogs("70000103").await.is_some()
-            && fixture.archived("mb-paired-3").await.is_some(),
+        fixture.stored_discogs_release("70000103").await.is_some()
+            && fixture.stored_release("mb-paired-3").await.is_some(),
         "both sources the pick claims are archived, whichever of them leads"
     );
 }

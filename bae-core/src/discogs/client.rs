@@ -66,8 +66,8 @@ impl Discogs {
 
     /// Pre-populate a release document, so a test can drive `prepare_release`
     /// without an HTTP call. `raw_json` is the endpoint's own answer: it is
-    /// what gets archived, what a later projection replays from, and what the
-    /// client parses here, so those three cannot disagree.
+    /// what the fetch extracts the stored release from and what the client
+    /// parses here, so the two cannot disagree.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn seed_release_cache(&self, id: &str, raw_json: String) {
         self.seed_response(&release_url(id), 200, raw_json);
@@ -422,8 +422,8 @@ fn track_to_model(track: TrackResponse) -> DiscogsTrack {
 }
 
 /// Raw Discogs release JSON to the public `DiscogsRelease`. The same projection
-/// `get_release` applies to a fresh response, exposed as a free function so an
-/// archived `source_release_payloads` row can be replayed without re-fetching.
+/// `get_release` applies to a fresh response, exposed as a free function so a
+/// release fetch's documents are read the way the client reads them.
 pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, DiscogsError> {
     let release: ReleaseResponse = serde_json::from_str(raw_json)?;
     let tracklist = release

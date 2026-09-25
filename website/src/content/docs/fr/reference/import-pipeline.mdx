@@ -31,7 +31,7 @@ Les champs de sortie et de piste du brouillon vierge sont modifiables immédiate
 
 ## Sources
 
-MusicBrainz est interrogé anonymement avec un rythme strict d’une requête par seconde. Discogs s’authentifie avec le jeton personnel de l’utilisateur depuis le trousseau, en respectant son débit et en réessayant dans ses limites, et un jeton refusé est signalé comme tel afin que l’interface puisse l’indiquer plutôt que de laisser les recherches échouer en silence. Les réponses sont mises en cache par session, et le JSON brut de la source qui gagne est archivé dans la base de données pour une future réinterprétation.
+MusicBrainz est interrogé anonymement avec un rythme strict d’une requête par seconde. Discogs s’authentifie avec le jeton personnel de l’utilisateur depuis le trousseau, en respectant son débit et en réessayant dans ses limites, et un jeton refusé est signalé comme tel afin que l’interface puisse l’indiquer plutôt que de laisser les recherches échouer en silence. Les réponses sont mises en cache par session. Quand une sortie est choisie, ce que bae utilise de ses documents — les informations d’album et de pressage, la liste complète des pistes avec crédits et œuvres, les choix de pochette et le nom que lui donnent les autres catalogues — est extrait une fois dans la base de données ; le JSON brut n’est pas conservé.
 
 ## Validation
 

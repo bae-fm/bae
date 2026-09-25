@@ -89,7 +89,7 @@ async fn a_pick_stores_the_result_and_the_sweep_leaves_it_alone() {
     let key = dir.to_string_lossy().into_owned();
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
-    // Nothing is routed: the pick reads the archived document, and a sweep
+    // Nothing is routed: the pick reads the stored release, and a sweep
     // that decided to run this candidate would have to look the disc ID up.
     fixture
         .archive("mb-chosen", "rg-chosen", &[probed, 0])

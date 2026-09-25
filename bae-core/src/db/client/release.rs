@@ -132,10 +132,9 @@ impl Database {
     /// by `track_updates` (existing track ID → edited row), plus a full replace of
     /// the `album_artists` and `track_artists` links.
     ///
-    /// Deliberately untouched: `source_release_payloads` (the archived provider
-    /// document is what the source said, independent of a user edit) and
-    /// the release's records and where the draft was read (a record is orthogonal to
-    /// editable metadata).
+    /// Deliberately untouched: the stored catalog release (what the source
+    /// said, independent of a user edit) and the release's records and where
+    /// the draft was read (a record is orthogonal to editable metadata).
     #[allow(clippy::too_many_arguments)]
     pub async fn update_release_metadata_user_edit(
         &self,

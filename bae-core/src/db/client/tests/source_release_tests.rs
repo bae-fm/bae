@@ -153,7 +153,14 @@ fn discogs_documents() -> ReleasePayloads {
 #[tokio::test]
 async fn a_stored_release_reads_back_as_it_was_extracted() {
     let (db, _tmp) = empty_db().await;
-    let musicbrainz = musicbrainz_documents().extract().unwrap();
+    let mut musicbrainz = musicbrainz_documents().extract().unwrap();
+    musicbrainz
+        .unfetched
+        .push(crate::import::source_release::UnfetchedDocument {
+            document: PayloadSource::Discogs,
+            key: "4242".to_string(),
+            reason: crate::import::source_release::UnfetchedReason::DiscogsNotConfigured,
+        });
     let performed = &musicbrainz.mediums[0].entries[0].works[0].work;
     let crate::import::source_release::SourceWorkEvent::Part { work: parent, .. } =
         &performed.events[1]

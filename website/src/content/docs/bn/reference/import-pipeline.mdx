@@ -31,7 +31,7 @@ CUE sheet এক অডিও ইমেজকে ট্র্যাক-তাল
 
 ## উৎস
 
-MusicBrainz নাম না দিয়ে strict one-request-per-second গতিতে queried হয়। Discogs keyring থেকে ব্যবহারকারী-এর personal টোকেন দিয়ে authenticate করে, নিজের rate limit-এর মধ্যে paced ও retried হয়, আর rejected টোকেন সেইভাবেই reported হয় যাতে UI সেটি flag করতে পারে, search চুপচাপ fail না করে। Response প্রতি session-এ cached হয়, আর যে উৎস জেতে তার raw JSON ভবিষ্যৎ re-interpretation-এর জন্য ডেটাবেস-এ archived হয়।
+MusicBrainz নাম না দিয়ে strict one-request-per-second গতিতে queried হয়। Discogs keyring থেকে ব্যবহারকারী-এর personal টোকেন দিয়ে authenticate করে, নিজের rate limit-এর মধ্যে paced ও retried হয়, আর rejected টোকেন সেইভাবেই reported হয় যাতে UI সেটি flag করতে পারে, search চুপচাপ fail না করে। Response প্রতি session-এ cached হয়। কোনো release বেছে নিলে, তার documents থেকে bae যা ব্যবহার করে — album ও pressing-এর তথ্য, credits ও works সহ পুরো tracklist, cover-এর বিকল্প, আর অন্য catalog তাকে কী নামে চেনে — তা একবারই ডেটাবেস-এ extract করা হয়; raw JSON রাখা হয় না।
 
 ## সংরক্ষণ
 

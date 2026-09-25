@@ -1,20 +1,21 @@
 use super::*;
 use crate::import::ParsedAlbum;
+use chrono::{DateTime, Utc};
 use coven::{FixedClock, SequentialIdProvider};
 use serde_json::json;
 
 fn selected(urls: &[&str]) -> ReleasePayloads {
-    ReleasePayloads {
-        release: MetadataRef::new(Catalog::MusicBrainz, "selected-release"),
-        anchor: json!({
+    ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::MusicBrainz, "selected-release"),
+        json!({
             "id":"selected-release", "title":"Selected Album", "date":"2005",
             "artist-credit":[{"name":"Selected Artist","artist":{"id":"artist-id","name":"Selected Artist"}}],
             "media":[{"format":"Vinyl","tracks":[{"number":"A1","title":"First Track"},{"number":"B1","title":"Second Track"}]}],
             "relations":urls.iter().map(|url| json!({"url":{"resource":url}})).collect::<Vec<_>>(),
             "cover-art-archive":{"front":false,"darkened":false}
         }).to_string(),
-        supporting: vec![],
-    }
+        vec![],
+    )
 }
 
 fn pressing(id: u64, parent: Option<u64>) -> SourcePayload {

@@ -71,7 +71,7 @@ impl MetadataResult {
     /// The release a person chose, as a result. No lookup produced it — they
     /// found it — so it carries the release document's own facts and nothing
     /// about a signal. Its tracklist is listed because choosing a release is
-    /// what archives its documents.
+    /// what fetches and stores it.
     pub(crate) fn of_pick(detail: &ImportSearchReleaseDetail) -> Self {
         Self {
             source: detail.source,

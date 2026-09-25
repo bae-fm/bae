@@ -832,28 +832,3 @@ impl DbAudioFormat {
         self
     }
 }
-
-/// One archived provider document, keyed by the source entity it describes.
-/// Written before the verdict that names the release and read back after it
-/// commits, so fields we don't map today can be extracted later without
-/// re-fetching.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DbSourceReleasePayload {
-    pub source: crate::import::PayloadSource,
-    pub source_release_id: String,
-    pub json: String,
-    pub fetched_at: DateTime<Utc>,
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl DbSourceReleasePayload {
-    pub fn new(payload: &crate::import::SourcePayload, now: DateTime<Utc>) -> Self {
-        DbSourceReleasePayload {
-            source: payload.source,
-            source_release_id: payload.source_release_id.clone(),
-            json: payload.json.clone(),
-            fetched_at: now,
-        }
-    }
-}

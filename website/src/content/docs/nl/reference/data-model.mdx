@@ -25,7 +25,7 @@ Volledig lokale tabellen, nooit aan coven gedeclareerd:
 
 - **`playback_state`**: huidige track, positie, wachtrij, volume, shuffle en repeat. Afspelen is een apparaatfeit.
 - **`imports`**: tracking van importbewerkingen.
-- **`source_release_payloads`**: gearchiveerde onbewerkte JSON van MusicBrainz en Discogs, gecodeerd door providerrelease in plaats van door een lokale release.Het ondersteunt exacte reset en herinterpretatie zonder de gesynchroniseerde catalogusgrafiek te wijzigen.
+- **`source_release`** en de tabellen eronder: wat bae heeft geëxtraheerd uit elke opgehaalde release van MusicBrainz en Discogs — album- en persgegevens, de volledige tracklijst met credits en werken, hoesopties en hoe andere catalogi hem noemen — gecodeerd door providerrelease in plaats van door een lokale release. De ruwe JSON wordt niet bewaard; elk apparaat kan een release opnieuw ophalen.
 
 Elke gesynchroniseerde tabel draagt een `_updated_at` hybrid-logical-clock-kolom, het register waarmee coven gelijktijdige bewerkingen veld voor veld ordent; een test dwingt af dat de gesynchroniseerde set en de klokdragende set exact gelijk zijn.
 

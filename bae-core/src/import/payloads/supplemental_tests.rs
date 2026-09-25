@@ -1,5 +1,6 @@
 use super::*;
 use crate::import::ParsedAlbum;
+use chrono::{DateTime, Utc};
 use coven::{FixedClock, SequentialIdProvider};
 use serde_json::json;
 
@@ -15,9 +16,9 @@ fn parse(payloads: &ReleasePayloads) -> Result<ParsedAlbum, ImportError> {
 }
 
 fn selected_release() -> ReleasePayloads {
-    ReleasePayloads {
-        release: MetadataRef::new(Catalog::Discogs, "7811"),
-        anchor: json!({
+    ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        json!({
             "id":7811, "master_id":7822, "title":"Selected Album", "year":0,
             "artists":[{"id":7833,"name":"Selected Artist"}],
             "formats":[{"name":"Vinyl"}],
@@ -27,8 +28,8 @@ fn selected_release() -> ReleasePayloads {
             ]
         })
         .to_string(),
-        supporting: vec![],
-    }
+        vec![],
+    )
 }
 
 fn supplemental_credits() -> serde_json::Value {
@@ -103,15 +104,15 @@ fn malformed_linked_release_credit_keeps_its_pressing_fields_and_valid_credit() 
 
 #[test]
 fn malformed_selected_release_credit_is_still_rejected() {
-    let payloads = ReleasePayloads {
-        release: MetadataRef::new(Catalog::MusicBrainz, "selected-release"),
-        anchor: json!({"id":"selected-release","title":"Selected Album",
+    let payloads = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::MusicBrainz, "selected-release"),
+        json!({"id":"selected-release","title":"Selected Album",
             "artist-credit":supplemental_credits(),
             "media":[{"format":"CD","tracks":[{"number":"1","title":"First Track"}]}],
             "cover-art-archive":{"front":false,"darkened":false}})
         .to_string(),
-        supporting: vec![],
-    };
+        vec![],
+    );
     assert!(matches!(
         parse(&payloads),
         Err(ImportError::SourceData {
@@ -133,18 +134,20 @@ fn malformed_optional_documents_do_not_block_extraction() {
         ),
         (PayloadSource::Wikidata, "{}"),
     ] {
-        let mut payloads = selected_release();
-        payloads
-            .supporting
-            .push(SourcePayload::new(source, "7811", malformed.into()));
-        payloads.supporting.push(SourcePayload::new(
+        let selected = selected_release();
+        let mut supporting = selected.supporting.clone();
+        supporting.push(SourcePayload::new(source, "7811", malformed.into()));
+        supporting.push(SourcePayload::new(
             PayloadSource::DiscogsMaster,
             "7822",
             json!({"id":7822,"title":"Parent Album","year":1979}).to_string(),
         ));
-        // Reading a set admits its supporting documents the way a fetch does.
-        let payloads: ReleasePayloads =
-            serde_json::from_str(&serde_json::to_string(&payloads).unwrap()).unwrap();
+        // A fetch admits each supporting document as it arrives.
+        let payloads = ReleasePayloads::for_test(
+            selected.release.clone(),
+            selected.anchor.clone(),
+            supporting,
+        );
         let parsed = parse(&payloads).unwrap_or_else(|error| panic!("{source:?}: {error}"));
         assert_eq!(parsed.album.title, "Selected Album");
         assert_eq!(parsed.album.year, Some(1979));
@@ -156,15 +159,9 @@ fn malformed_optional_documents_do_not_block_extraction() {
             "Selected Album"
         );
         assert_eq!(
-            payloads
-                .rows(
-                    DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-                        .unwrap()
-                        .with_timezone(&Utc)
-                )
-                .len(),
-            2,
-            "only usable documents are archived"
+            payloads.supporting.len(),
+            1,
+            "only usable documents are admitted"
         );
     }
 }

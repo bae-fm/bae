@@ -25,7 +25,7 @@ schema வின் synced heart:
 
 - **`playback_state`**: தற்போதைய பாதை, நிலை, வரிசை, volume, shuffle and repeat. Playback என்பது சாதனம் fact.
 - **`imports`**: இறக்குமதி operation tracking.
-- ** `source_release_payloads` **: MusicBrainz மற்றும் Discogs ல் இருந்து காப்பகப்படுத்தப்பட்ட கச்சா JSON, உள்ளமை வெளியீட்டிற்காக அல்ல, வழங்குநர் வெளியீட்டிற்காக விசையிடப்பட்டது. இது சரியான மீட்டமைப்பு மற்றும் ஒத்திசைந்த அட்டவணை வரைபடத்தை மாற்றாமல் மறு- விளக்கத்திற்கு ஆதரவளிக்கிறது.
+- **`source_release`** மற்றும் அதன் கீழுள்ள tables: bae கொண்டுவந்த ஒவ்வொரு MusicBrainz மற்றும் Discogs release இலிருந்தும் எடுத்தவை — album மற்றும் pressing விவரங்கள், credits மற்றும் works உடன் முழு tracklist, cover தேர்வுகள், மற்ற catalogs அதை என்ன பெயரில் அழைக்கின்றன — உள்ளமை வெளியீட்டிற்காக அல்ல, வழங்குநர் வெளியீட்டிற்காக விசையிடப்பட்டது. raw JSON வைக்கப்படுவதில்லை; எந்தச் சாதனமும் release ஐ மீண்டும் கொண்டுவரலாம்.
 
 ஒவ்வொரு synced அட்டவணை உம் `_updated_at` hybrid-logical-clock column கொண்டிருக்கும்; concurrent edits ஐ coven புலம்-by-புலம் merge செய்ய அதுவே register. synced set மற்றும் clock-carrying set துல்லியமாக equal என்பதைக் test enforce செய்கிறது.
 

@@ -31,7 +31,7 @@ Doğrudan giriş meta veri I/O yapmaz. Boş taslağın serbest bırakma ve izlem
 
 ## Kaynaklar
 
-MusicBrainz anonim olarak, saniyede bir istek temposuyla sorgulanır. Discogs, kullanıcının keyring'deki kişisel token'ıyla kimlik doğrular; hız sınırları içinde aralıklı gönderilir ve yeniden denenir. Reddedilen token bu şekilde bildirilir, böylece UI aramaları sessizce başarısız kılmak yerine işaretleyebilir. Yanıtlar oturum başına önbelleğe alınır ve kazanan kaynağın ham JSON'u gelecekte yeniden yorumlama için veritabanına arşivlenir.
+MusicBrainz anonim olarak, saniyede bir istek temposuyla sorgulanır. Discogs, kullanıcının keyring'deki kişisel token'ıyla kimlik doğrular; hız sınırları içinde aralıklı gönderilir ve yeniden denenir. Reddedilen token bu şekilde bildirilir, böylece UI aramaları sessizce başarısız kılmak yerine işaretleyebilir. Yanıtlar oturum başına önbelleğe alınır. Bir yayın seçildiğinde, bae'nin belgelerinden kullandığı şeyler — albüm ve baskı bilgileri, katkılar ve eserlerle birlikte tam parça listesi, kapak seçenekleri ve diğer kataloglarda nasıl anıldığı — bir kez veritabanına çıkarılır; ham JSON saklanmaz.
 
 ## Kayıt
 

@@ -25,7 +25,7 @@ Tabele w pełni lokalne, nigdy niedeklarowane do coven:
 
 - **`playback_state`**: bieżący utwór, pozycja, kolejka, głośność, losowanie i powtarzanie. Odtwarzanie jest faktem urządzenia.
 - **`imports`**: śledzenie operacji importu.
-- **`source_release_payloads`**: zarchiwizowane surowe JSON z MusicBrainz i Discogs, kluczowane przez wydanie dostawcy, a nie przez wydanie lokalne.Obsługuje dokładne resetowanie i ponowną interpretację bez zmiany zsynchronizowanego wykresu katalogu.
+- **`source_release`** i tabele pod nią: to, co bae wyodrębnił z każdego pobranego wydania z MusicBrainz i Discogs — dane albumu i tłoczenia, pełna lista utworów z twórcami i dziełami, opcje okładki oraz to, jak nazywają je inne katalogi — kluczowane przez wydanie dostawcy, a nie przez wydanie lokalne. Surowy JSON nie jest przechowywany; każde urządzenie może pobrać wydanie ponownie.
 
 Każda synchronizowana tabela niesie kolumnę `_updated_at` z hybrydowym zegarem logicznym, rejestr, według którego coven porządkuje równoległe edycje pole po polu; test wymusza, że zestaw synchronizowany i zestaw niosący zegar są dokładnie równe.
 

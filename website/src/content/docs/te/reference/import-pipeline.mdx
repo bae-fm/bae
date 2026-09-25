@@ -31,7 +31,7 @@ CUE sheet ఒక audio image ను ట్రాక్ list గా మార్�
 
 ## Sources
 
-MusicBrainz anonymous గా strict one-request-per-second pace తో query అవుతుంది. Discogs వాడుకరి personal టోకెన్ తో keyring నుంచి authenticate అవుతుంది, తన rate limits లో pace మరియు retry అవుతుంది, rejected టోకెన్ అలానే report అవుతుంది కాబట్టి UI searches నిశ్శబ్దంగా fail కాకుండా flag చేయగలదు. Responses per session క్యాష్ అవుతాయి, గెలిచిన మూలం raw JSON భవిష్యత్తులో మళ్లీ అర్థం చేసుకోవడానికి డేటాబేస్ లో archive అవుతుంది.
+MusicBrainz anonymous గా strict one-request-per-second pace తో query అవుతుంది. Discogs వాడుకరి personal టోకెన్ తో keyring నుంచి authenticate అవుతుంది, తన rate limits లో pace మరియు retry అవుతుంది, rejected టోకెన్ అలానే report అవుతుంది కాబట్టి UI searches నిశ్శబ్దంగా fail కాకుండా flag చేయగలదు. Responses per session క్యాష్ అవుతాయి. ఒక release ఎంచుకున్నప్పుడు, దాని documents నుండి bae వాడేది — album మరియు pressing వివరాలు, credits మరియు works తో పూర్తి tracklist, cover ఎంపికలు, ఇతర catalogs దాన్ని ఏమని పిలుస్తాయో — ఒక్కసారి డేటాబేస్ లోకి తీయబడుతుంది; raw JSON ఉంచబడదు.
 
 ## Commit
 

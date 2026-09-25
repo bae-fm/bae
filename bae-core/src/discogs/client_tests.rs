@@ -208,12 +208,11 @@ fn release_barcode_reaches_pressing_metadata() {
     let release = parse_discogs_release_json(json).unwrap();
     assert_eq!(release.barcode.as_deref(), Some("0 12345 67890 5"));
     let payloads: crate::import::payloads::ReleasePayloads =
-        serde_json::from_value(serde_json::json!({
-            "release": crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "123"),
-            "anchor": json,
-            "supporting": [],
-        }))
-        .unwrap();
+        crate::import::payloads::ReleasePayloads::for_test(
+            crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "123"),
+            json.to_string(),
+            Vec::new(),
+        );
     assert_eq!(
         payloads
             .extract()

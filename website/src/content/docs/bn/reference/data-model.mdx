@@ -25,7 +25,7 @@ bae-এর তালিকা সাধারণ SQLite, [coven](https://coven.b
 
 - **`playback_state`**: current track, position, queue, volume, shuffle ও repeat। Playback একটি device fact।
 - **`imports`**: ইম্পোর্টের কাজ tracking।
-- **`source_release_payloads`**: MusicBrainz এবং Discogs থেকে আর্কাইভকৃত কাঁচা JSON, স্থানীয় মুক্তির পরিবর্তে প্রদানকারীর মুক্তি দ্বারা কী করা। এটি সুসংগত ক্যাটালগ গ্রাফ পরিবর্তন না করেই সঠিকভাবে পুনঃনির্ধারণ এবং পুনরায় ব্যাখ্যা সমর্থন করে।
+- **`source_release`** ও তার অধীনের টেবিলগুলো: bae যে প্রতিটি MusicBrainz ও Discogs release fetch করেছে তা থেকে extract করা তথ্য — album ও pressing-এর তথ্য, credits ও works সহ পুরো tracklist, cover-এর বিকল্প, আর অন্য catalog তাকে কী নামে চেনে — স্থানীয় release-এর বদলে প্রদানকারীর release দ্বারা keyed। raw JSON রাখা হয় না; যেকোনো ডিভাইস release আবার fetch করতে পারে।
 
 প্রতিটি সিঙ্ক হওয়া table `_updated_at` hybrid-logical-clock column বহন করে, যেটি coven-এর field-by-field merge concurrent edit order করতে ব্যবহার করে; একটি test নিশ্চিত করে synced set এবং clock-carrying set ঠিক এক।
 

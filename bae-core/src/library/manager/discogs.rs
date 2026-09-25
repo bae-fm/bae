@@ -45,21 +45,11 @@ impl DiscogsSession {
     async fn fetch_payloads(
         &self,
         release: &crate::import::MetadataRef,
-        stored: Option<&crate::import::payloads::ReleasePayloads>,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-        match stored {
-            Some(stored) => {
-                self.providers
-                    .enrich_payloads(self.client.as_deref(), stored, priority)
-                    .await
-            }
-            None => {
-                self.providers
-                    .fetch_payloads(self.client.as_deref(), release, priority)
-                    .await
-            }
-        }
+        self.providers
+            .fetch_payloads(self.client.as_deref(), release, priority)
+            .await
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -240,20 +230,16 @@ impl LibraryManager {
     pub(crate) async fn fetch_release_payloads(
         &self,
         release: &crate::import::MetadataRef,
-        stored: Option<&crate::import::payloads::ReleasePayloads>,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
         match self.discogs_session() {
-            Ok(session) => session.fetch_payloads(release, stored, priority).await,
+            Ok(session) => session.fetch_payloads(release, priority).await,
             Err(error) if release.catalog == crate::import::Catalog::MusicBrainz => {
                 warn!(
                     release_id = %release.key,
                     "Discogs cross-reference unavailable while fetching MusicBrainz release: {error}"
                 );
-                match stored {
-                    Some(stored) => self.providers.enrich_payloads(None, stored, priority).await,
-                    None => self.providers.fetch_payloads(None, release, priority).await,
-                }
+                self.providers.fetch_payloads(None, release, priority).await
             }
             Err(error) => Err(error.into()),
         }

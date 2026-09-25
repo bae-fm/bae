@@ -31,7 +31,7 @@ CUE sheet는 하나의 audio image를 트랙 목록으로 바꿉니다. Parser�
 
 ## 소스
 
-MusicBrainz는 익명으로, 초당 한 요청의 엄격한 속도로 조회됩니다. Discogs는 keyring에 있는 사용자의 personal token으로 인증하고, 제한 안에서 속도를 조절하며 재시도합니다. 거부된 token은 그대로 보고되어 UI가 조용히 검색에 실패하지 않고 표시할 수 있습니다. 응답은 session별로 cache되며, 이긴 source의 raw JSON은 나중에 다시 해석할 수 있도록 데이터베이스에 보관됩니다.
+MusicBrainz는 익명으로, 초당 한 요청의 엄격한 속도로 조회됩니다. Discogs는 keyring에 있는 사용자의 personal token으로 인증하고, 제한 안에서 속도를 조절하며 재시도합니다. 거부된 token은 그대로 보고되어 UI가 조용히 검색에 실패하지 않고 표시할 수 있습니다. 응답은 session별로 cache됩니다. 릴리스를 고르면, bae가 그 문서에서 쓰는 것 — 앨범과 프레싱 정보, 크레디트와 작품을 포함한 전체 트랙리스트, 커버 후보, 다른 카탈로그에서 부르는 이름 — 이 한 번 데이터베이스로 추출되며, raw JSON은 보관하지 않습니다.
 
 ## 커밋
 

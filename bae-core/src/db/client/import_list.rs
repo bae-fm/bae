@@ -3,7 +3,7 @@
 //! The whole queue is read on every rerun — a few short columns per scanned
 //! folder, per boundary and per stored verdict, plus each verdict's match rows,
 //! which is what says how many pressings it named — and nothing else: no files,
-//! no cue sheets, no boundary trees, no archived documents. Ordering the list
+//! no cue sheets, no boundary trees, no fetched releases. Ordering the list
 //! uses folder dates or natural-order paths, keeping each folder group's rows
 //! together. The list interleaves group headers with three kinds of entry, so
 //! the ordering and the offsets are worked out in Rust by

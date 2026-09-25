@@ -152,35 +152,6 @@ impl LibraryManager {
         .await
     }
 
-    #[cfg(test)]
-    pub(crate) async fn source_release_payload_for_test(
-        &self,
-        source: crate::import::PayloadSource,
-        release_id: &str,
-    ) -> Result<Option<String>, LibraryError> {
-        Ok(self
-            .database
-            .load_source_release_payloads(&[(source, release_id.to_string())])
-            .await?
-            .remove(&(source, release_id.to_string())))
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn save_source_release_payloads_for_test(
-        &self,
-        rows: &[crate::db::DbSourceReleasePayload],
-    ) -> Result<(), LibraryError> {
-        self.database.save_source_release_payloads(rows).await?;
-        Ok(())
-    }
-
-    pub(crate) async fn load_release_payloads(
-        &self,
-        release: &crate::import::MetadataRef,
-    ) -> Result<Option<crate::import::payloads::ReleasePayloads>, crate::import::ImportError> {
-        crate::import::payloads::load(&self.database, release).await
-    }
-
     /// The fetched release `release` names, as its extraction stored it, or
     /// `None` when nothing has fetched it.
     pub(crate) async fn load_source_release(
@@ -195,13 +166,6 @@ impl LibraryManager {
         release: &crate::import::source_release::SourceRelease,
     ) -> Result<(), LibraryError> {
         Ok(self.database.save_source_release(release).await?)
-    }
-
-    pub(crate) async fn store_release_payloads(
-        &self,
-        payloads: &crate::import::payloads::ReleasePayloads,
-    ) -> Result<(), LibraryError> {
-        crate::import::payloads::store(&self.database, payloads, self.clock.now()).await
     }
 
     pub async fn load_watched_import_folders(

@@ -675,12 +675,13 @@ async fn load_existing_artist_assignments(
     Ok(out)
 }
 
-/// Prepare a release: fetch its documents, expanding its archived set through
-/// known relationships, and store what they extract to. Takes the bare
-/// `LibraryManager` because the sweep and library re-identification do not
-/// hold an `ImportServiceHandle`.
+/// The release `release_ref` names, stored: as a fetch already stored it, or
+/// fetched now — its documents and every one they link to — and stored as
+/// they extract. A stored release is fetched again only when that could add
+/// what its fetch missed. Takes the bare `LibraryManager` because the sweep
+/// and library re-identification do not hold an `ImportServiceHandle`.
 ///
-/// Every path that needs a release it may not have archived comes here: the
+/// Every path that needs a release it may not have stored comes here: the
 /// sweep settling a lead in the background, selection preparing the candidate,
 /// and re-identify pointing a library release at a new one. The import worker
 /// consumes only the candidate revision those preparation paths already stored.
@@ -689,11 +690,16 @@ pub(crate) async fn prepare_release(
     release_ref: &MetadataRef,
     priority: CallPriority,
 ) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
-    let stored = library_manager.load_release_payloads(release_ref).await?;
+    if let Some(stored) = library_manager.load_source_release(release_ref).await? {
+        let discogs_configured = library_manager
+            .can_fetch_releases_from(crate::import::Catalog::Discogs)?;
+        if !stored.fetch_could_add(discogs_configured) {
+            return Ok(stored);
+        }
+    }
     let payloads = library_manager
-        .fetch_release_payloads(release_ref, stored.as_ref(), priority)
+        .fetch_release_payloads(release_ref, priority)
         .await?;
-    library_manager.store_release_payloads(&payloads).await?;
     let release = payloads.extract()?;
     library_manager.save_source_release(&release).await?;
     Ok(release)

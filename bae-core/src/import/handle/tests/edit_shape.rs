@@ -144,12 +144,11 @@ fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
 /// The editor seed for a release, exactly as the pane builds it: the commit
 /// worker's own `ParsedAlbum`, projected into the editor's shape.
 fn seed_for(response: &crate::musicbrainz::MbReleaseResponse) -> crate::import::ReleaseUserEdit {
-    let parsed = serde_json::from_value::<crate::import::payloads::ReleasePayloads>(serde_json::json!({
-        "release": crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, &response.id),
-        "anchor": serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
-        "supporting": [],
-    }))
-    .expect("archived fixture deserializes")
+    let parsed = crate::import::payloads::ReleasePayloads::for_test(
+        crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, &response.id),
+        serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
+        Vec::new(),
+    )
     .extract()
     .unwrap()
     .parsed(

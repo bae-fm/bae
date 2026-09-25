@@ -6,18 +6,17 @@
 // source claim, so it needs no seeding. Each test's manager has its own
 // providers, so what one test seeds no other test sees.
 
-/// The archived documents under one source release's own key.
-async fn archived_for(
+/// The stored release under one source release's own key.
+async fn stored_for(
     manager: &LibraryManager,
-    source: crate::import::PayloadSource,
-    source_release_id: &str,
-) -> Option<String> {
+    catalog: Catalog,
+    release_id: &str,
+) -> Option<crate::import::source_release::SourceRelease> {
     manager
         .database
-        .load_source_release_payloads(&[(source, source_release_id.to_string())])
+        .load_source_release(&crate::import::MetadataRef::new(catalog, release_id))
         .await
         .unwrap()
-        .remove(&(source, source_release_id.to_string()))
 }
 
 #[tokio::test]
@@ -80,15 +79,24 @@ async fn re_identify_with_file_metadata_clears_identities_and_moves_album() {
         .await
         .unwrap();
 
-    // The source release this one was seeded from has an archived document.
+    // The source release this one was seeded from is stored.
     manager
         .database
-        .save_source_release_payloads(&[crate::db::DbSourceReleasePayload {
-            source: crate::import::PayloadSource::MusicBrainz,
-            source_release_id: "mb-rel-1".to_string(),
-            json: r#"{"id":"mb-rel-1"}"#.to_string(),
-            fetched_at: Utc::now(),
-        }])
+        .save_source_release(
+            &crate::import::payloads::ReleasePayloads::for_test(
+                crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-rel-1"),
+                serde_json::json!({
+                    "id": "mb-rel-1",
+                    "title": "Album",
+                    "artist-credit": [{ "name": "Artist" }],
+                    "cover-art-archive": { "front": false, "darkened": false }
+                })
+                .to_string(),
+                Vec::new(),
+            )
+            .extract()
+            .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -127,18 +135,14 @@ async fn re_identify_with_file_metadata_clears_identities_and_moves_album() {
         .unwrap()
         .unwrap();
     assert!(updated.draft_from_tags);
-    // The archived document describes `mb-rel-1`, not this release, and is
+    // The stored release describes `mb-rel-1`, not this release, and is
     // shared with every candidate that matched it. Dropping the pointer is what
     // stops it being read here; nothing deletes it.
     assert!(
-        archived_for(
-            &manager,
-            crate::import::PayloadSource::MusicBrainz,
-            "mb-rel-1"
-        )
-        .await
-        .is_some(),
-        "documents are keyed by the source release, so re-pointing must not delete them"
+        stored_for(&manager, Catalog::MusicBrainz, "mb-rel-1")
+            .await
+            .is_some(),
+        "releases are keyed by the source release, so re-pointing must not delete them"
     );
 }
 
@@ -239,15 +243,12 @@ async fn re_identify_release_exact_archives_the_picked_release() {
         .unwrap();
     insert_n_tracks(&manager.database, &release.id, 3).await;
 
-    // Cache the picked release so `prepare_release` skips the network. The raw
-    // JSON is what gets archived under the picked release's own key.
+    // Cache the picked release so `prepare_release` skips the network.
     let new_release_id = "exact-re-identify-mb-rel-new";
     let new_group_id = "exact-re-identify-mb-group-new";
     let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 3);
-    // What the archive holds is what the client returned, so the projection that
-    // replays it later reads the same release the cache handed over now.
     let new_raw_json = serde_json::to_string(&new_response).unwrap();
-    manager.providers().musicbrainz().seed_release_cache(new_release_id, new_raw_json.clone());
+    manager.providers().musicbrainz().seed_release_cache(new_release_id, new_raw_json);
     manager
         .providers()
         .musicbrainz()
@@ -290,27 +291,16 @@ async fn re_identify_release_exact_archives_the_picked_release() {
         .unwrap();
     assert!(!updated.draft_from_tags);
 
-    // The picked release's documents are archived under its own key, which is
-    // what the new pointer names.
-    assert_eq!(
-        archived_for(
-            &manager,
-            crate::import::PayloadSource::MusicBrainz,
-            new_release_id
-        )
+    // The picked release is stored under its own key, which is what the new
+    // pointer names, with its release group fetched alongside it.
+    let stored = stored_for(&manager, Catalog::MusicBrainz, new_release_id)
         .await
-        .as_deref(),
-        Some(new_raw_json.as_str())
-    );
+        .expect("the picked release is stored");
+    assert_eq!(stored.source_group_id.as_deref(), Some(new_group_id));
     assert!(
-        archived_for(
-            &manager,
-            crate::import::PayloadSource::MusicBrainzReleaseGroup,
-            new_group_id
-        )
-        .await
-        .is_some(),
-        "the release group is archived alongside the release"
+        stored.unfetched.is_empty(),
+        "the release group was fetched alongside the release: {:?}",
+        stored.unfetched
     );
 }
 
@@ -757,16 +747,12 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     );
     assert_eq!(discogs.key(), discogs_release_id);
 
-    // The partner's documents are archived under its own key, so a later
-    // reset or read of that record needs no network.
+    // The partner is stored under its own key, so a later reset or read of
+    // that record needs no network.
     assert!(
-        archived_for(
-            &manager,
-            crate::import::PayloadSource::Discogs,
-            discogs_release_id
-        )
-        .await
-        .is_some(),
-        "the partner's own document is archived by the re-identify"
+        stored_for(&manager, Catalog::Discogs, discogs_release_id)
+            .await
+            .is_some(),
+        "the partner's own release is stored by the re-identify"
     );
 }

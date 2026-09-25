@@ -1,10 +1,11 @@
 use super::*;
+use crate::import::source_release::UnfetchedReason;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 pub(super) type DocumentKey = (PayloadSource, String);
 
-/// The related entities named by one document. Online fetching and archive
-/// replay follow these same edges; neither enumerates an album's pressings.
+/// The related entities named by one document — the edges a fetch follows. It
+/// never enumerates an album's pressings.
 pub(super) fn related_documents(
     source: PayloadSource,
     key: &str,
@@ -90,9 +91,9 @@ pub(super) fn related_documents(
     Ok(next)
 }
 
-/// Optional documents have one admission policy for network lookups, archived
-/// reads, and frozen metadata applications. Parser failures discard that
-/// document; the required anchor still uses `related_documents` directly.
+/// Optional documents have one admission policy: a parser failure discards
+/// that document. The required anchor still uses `related_documents`
+/// directly.
 pub(super) fn supporting_document_edges(
     source: PayloadSource,
     key: &str,
@@ -160,6 +161,7 @@ impl DocumentTraversal {
                 release: release.clone(),
                 anchor,
                 supporting: Vec::new(),
+                unfetched: Vec::new(),
             },
             queue,
             seen: HashSet::from([(source, release.key.clone())]),
@@ -185,6 +187,26 @@ impl DocumentTraversal {
             self.payloads.supporting.push(document);
         }
     }
+
+    fn missing(&mut self, source: PayloadSource, key: String, reason: UnfetchedReason) {
+        self.payloads.unfetched.push(UnfetchedDocument {
+            document: source,
+            key,
+            reason,
+        });
+    }
+}
+
+/// What asking for one document came to.
+enum Fetched {
+    Document(String),
+    /// The catalog answered that there is none to give.
+    Absent,
+    /// A Discogs document, and no Discogs client to ask with.
+    DiscogsNotConfigured,
+    /// The same entity was asked for under another key in this walk and its
+    /// source failed.
+    FailedEarlier,
 }
 
 struct FetchDocuments<'a> {
@@ -201,13 +223,13 @@ impl FetchDocuments<'_> {
         &mut self,
         source: PayloadSource,
         id: &str,
-    ) -> Result<Option<String>, ImportError> {
+    ) -> Result<Fetched, ImportError> {
         let key = (source, id.to_owned());
         if let Some(json) = self.documents.get(&key) {
-            return Ok(Some(json.clone()));
+            return Ok(Fetched::Document(json.clone()));
         }
         if !self.attempted_musicbrainz.insert(key.clone()) {
-            return Ok(None);
+            return Ok(Fetched::FailedEarlier);
         }
         let json = match source {
             PayloadSource::MusicBrainz => {
@@ -224,16 +246,16 @@ impl FetchDocuments<'_> {
             _ => unreachable!("MusicBrainz entity fetch requires a release or group"),
         };
         self.documents.insert(key, json.clone());
-        Ok(Some(json))
+        Ok(Fetched::Document(json))
     }
 
     async fn document(
         &mut self,
         source: PayloadSource,
         id: &str,
-    ) -> Result<Option<String>, ImportError> {
+    ) -> Result<Fetched, ImportError> {
         if let Some(json) = self.documents.get(&(source, id.to_owned())) {
-            return Ok(Some(json.clone()));
+            return Ok(Fetched::Document(json.clone()));
         }
         let json = match source {
             PayloadSource::MusicBrainz | PayloadSource::MusicBrainzReleaseGroup => {
@@ -241,13 +263,13 @@ impl FetchDocuments<'_> {
             }
             PayloadSource::Discogs => {
                 let Some(client) = self.discogs else {
-                    return Ok(None);
+                    return Ok(Fetched::DiscogsNotConfigured);
                 };
                 client.get_release(id, self.priority).await?.1
             }
             PayloadSource::DiscogsMaster => {
                 let Some(client) = self.discogs else {
-                    return Ok(None);
+                    return Ok(Fetched::DiscogsNotConfigured);
                 };
                 client.get_master(id, self.priority).await?.1
             }
@@ -266,7 +288,7 @@ impl FetchDocuments<'_> {
                     _ => unreachable!(),
                 };
                 let Some((pages, _raw)) = found else {
-                    return Ok(None);
+                    return Ok(Fetched::Absent);
                 };
                 let mut unique = Vec::new();
                 for page in pages {
@@ -283,7 +305,7 @@ impl FetchDocuments<'_> {
                             "MusicBrainz URL has ambiguous counterparts; no identity claimed"
                         );
                     }
-                    return Ok(None);
+                    return Ok(Fetched::Absent);
                 };
                 let canonical = match page {
                     CatalogPage::Release {
@@ -298,10 +320,10 @@ impl FetchDocuments<'_> {
                         "URL lookup returns only MusicBrainz targets of the requested kind"
                     ),
                 };
-                let Some(json) = self.musicbrainz_document(canonical.0, canonical.1).await? else {
-                    return Ok(None);
-                };
-                json
+                match self.musicbrainz_document(canonical.0, canonical.1).await? {
+                    Fetched::Document(json) => json,
+                    other => return Ok(other),
+                }
             }
             PayloadSource::Wikidata => self
                 .wikidata
@@ -313,19 +335,17 @@ impl FetchDocuments<'_> {
                 })?,
         };
         self.documents.insert((source, id.to_owned()), json.clone());
-        Ok(Some(json))
+        Ok(Fetched::Document(json))
     }
 }
 
 /// The documents `release` links to, asked of MusicBrainz, Wikidata and —
-/// when a client is given — Discogs. `stored` is what is archived already,
-/// which is read rather than asked for again.
+/// when a client is given — Discogs.
 pub(crate) async fn fetch_documents(
     musicbrainz: &crate::musicbrainz::MusicBrainz,
     wikidata: &crate::wikidata::Wikidata,
     discogs: Option<&DiscogsClient>,
     release: &MetadataRef,
-    stored: Option<&ReleasePayloads>,
     priority: CallPriority,
 ) -> Result<ReleasePayloads, ImportError> {
     let mut fetcher = FetchDocuments {
@@ -336,88 +356,38 @@ pub(crate) async fn fetch_documents(
         documents: HashMap::new(),
         attempted_musicbrainz: HashSet::new(),
     };
-    if let Some(stored) = stored {
-        fetcher.documents.insert(
-            (
-                PayloadSource::release_of(release.catalog),
-                release.key.clone(),
-            ),
-            stored.anchor.clone(),
-        );
-        fetcher
-            .documents
-            .extend(stored.supporting.iter().map(|document| {
-                (
-                    (document.source, document.source_release_id.clone()),
-                    document.json.clone(),
-                )
-            }));
-        for document in stored.supporting.iter() {
-            let canonical = match document.source {
-                PayloadSource::MusicBrainzDiscogsXref => {
-                    let release: MbReleaseResponse =
-                        serde_json::from_str(&document.json).map_err(mb_data)?;
-                    Some((PayloadSource::MusicBrainz, release.id))
-                }
-                PayloadSource::MusicBrainzDiscogsMasterXref => {
-                    let group =
-                        crate::musicbrainz::parse_release_group(&document.json).map_err(mb_data)?;
-                    Some((PayloadSource::MusicBrainzReleaseGroup, group.id))
-                }
-                _ => None,
-            };
-            if let Some(canonical) = canonical {
-                fetcher
-                    .documents
-                    .entry(canonical)
-                    .or_insert_with(|| document.json.clone());
-            }
-        }
-    }
-    let anchor_key = (
-        PayloadSource::release_of(release.catalog),
-        release.key.clone(),
-    );
-    if release.catalog == Catalog::Discogs && discogs.is_none() && stored.is_none() {
-        return Err(ImportError::DiscogsNotConfigured);
-    }
-    let anchor = fetcher
-        .document(anchor_key.0, &anchor_key.1)
+    let anchor = match fetcher
+        .document(PayloadSource::release_of(release.catalog), &release.key)
         .await?
-        .ok_or(ImportError::DiscogsNotConfigured)?;
+    {
+        Fetched::Document(json) => json,
+        Fetched::DiscogsNotConfigured => return Err(ImportError::DiscogsNotConfigured),
+        Fetched::Absent | Fetched::FailedEarlier => {
+            unreachable!("a release's own document is asked for first and by its own id")
+        }
+    };
     let mut traversal = DocumentTraversal::new(release, anchor)?;
     while let Some((source, key)) = traversal.next() {
         match fetcher.document(source, &key).await {
-            Ok(Some(json)) => traversal.accept(SourcePayload::new(source, key, json)),
-            Ok(None) => {
-                tracing::debug!(?source, entity = key, "Supporting metadata document is unavailable");
+            Ok(Fetched::Document(json)) => traversal.accept(SourcePayload::new(source, key, json)),
+            Ok(Fetched::Absent) => {
+                tracing::debug!(?source, entity = key, "Supporting metadata document does not exist");
+            }
+            Ok(Fetched::DiscogsNotConfigured) => {
+                tracing::debug!(?source, entity = key, "Supporting Discogs document needs a Discogs key");
+                traversal.missing(source, key, UnfetchedReason::DiscogsNotConfigured);
+            }
+            Ok(Fetched::FailedEarlier) => {
+                tracing::debug!(?source, entity = key, "Supporting metadata document failed under another key");
+                traversal.missing(source, key, UnfetchedReason::Failed);
             }
             Err(error) => {
                 warn!(?source, entity = key, %error, "Supporting metadata could not be fetched");
+                traversal.missing(source, key, UnfetchedReason::Failed);
             }
         }
     }
     Ok(traversal.payloads)
-}
-
-pub(super) fn load_documents(
-    documents: &impl ArchivedDocuments,
-    release: &MetadataRef,
-) -> Result<Option<ReleasePayloads>, ImportError> {
-    let source = PayloadSource::release_of(release.catalog);
-    let Some(anchor) = documents.document(source, &release.key)? else {
-        return Ok(None);
-    };
-    let mut traversal = DocumentTraversal::new(release, anchor)?;
-    while let Some((source, key)) = traversal.next() {
-        match documents.document(source, &key)? {
-            Some(json) => traversal.accept(SourcePayload::new(source, key, json)),
-            None => {
-                tracing::debug!(?source, entity = key, "Supporting metadata document is absent from the archive");
-            }
-        }
-    }
-    Ok(Some(traversal.payloads))
 }
 
 #[cfg(test)]

@@ -12,12 +12,11 @@ fn map(
     supporting: Vec<crate::import::SourcePayload>,
 ) -> Result<ParsedAlbum, ImportError> {
     let payloads: crate::import::payloads::ReleasePayloads =
-        serde_json::from_value(serde_json::json!({
-            "release": MetadataRef::new(Catalog::MusicBrainz, &response.id),
-            "anchor": serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
-            "supporting": supporting,
-        }))
-        .expect("archived fixture deserializes");
+        crate::import::payloads::ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::MusicBrainz, &response.id),
+        serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
+        supporting,
+    );
     let clock = FixedClock(
         chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
@@ -94,12 +93,11 @@ fn map_for_audio(
     audio_durations_ms: &[u64],
 ) -> Result<ParsedAlbum, ImportError> {
     let payloads: crate::import::payloads::ReleasePayloads =
-        serde_json::from_value(serde_json::json!({
-            "release": MetadataRef::new(Catalog::MusicBrainz, &response.id),
-            "anchor": serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
-            "supporting": [],
-        }))
-        .expect("archived fixture deserializes");
+        crate::import::payloads::ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::MusicBrainz, &response.id),
+        serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
+        Vec::new(),
+    );
     let clock = FixedClock(
         chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()

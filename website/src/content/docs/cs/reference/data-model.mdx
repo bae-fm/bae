@@ -25,7 +25,7 @@ Plně místní tabulky, nikdy nedeklarované pro coven:
 
 - **`playback_state`**: aktuální stopa, pozice, fronta, hlasitost, náhodné pořadí a opakování. Přehrávání je fakt zařízení.
 - **`imports`**: sledování importních operací.
-- **`source_release_payloads`**: archivované surové JSON z MusicBrainz a Discogs, klíčované podle vydání poskytovatele spíše než podle místního vydání.Podporuje přesné resetování a reinterpretaci bez změny synchronizovaného grafu katalogu.
+- **`source_release`** a tabulky pod ní: co bae vytáhl z každého vydání z MusicBrainz a Discogs, které stáhl — údaje o albu a lisování, celý seznam skladeb s autory a díly, možnosti obalu a jak ho nazývají ostatní katalogy — klíčované podle vydání poskytovatele, ne podle místního vydání. Surový JSON se neuchovává; každé zařízení si vydání může stáhnout znovu.
 
 Každá synchronizovaná tabulka nese sloupec `_updated_at` s hybridními logickými hodinami, registr, podle kterého coven řadí souběžné úpravy po polích; test vynucuje, že synchronizovaná množina a množina nesoucí hodiny jsou přesně stejné.
 

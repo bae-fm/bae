@@ -31,7 +31,7 @@ La entrada directa no realiza ninguna E/S de metadatos. Los campos de liberació
 
 ## Fuentes
 
-MusicBrainz se consulta anónimamente con un ritmo estricto de una solicitud por segundo. Discogs se autentica con el token personal del usuario desde el llavero, se espacia y reintenta dentro de sus límites de frecuencia, y un token rechazado se reporta como tal para que la UI pueda señalarlo en vez de que las búsquedas fallen en silencio. Las respuestas se guardan en caché por sesión, y el JSON sin procesar de la fuente que gane se archiva en la base de datos para reinterpretación futura.
+MusicBrainz se consulta anónimamente con un ritmo estricto de una solicitud por segundo. Discogs se autentica con el token personal del usuario desde el llavero, se espacia y reintenta dentro de sus límites de frecuencia, y un token rechazado se reporta como tal para que la UI pueda señalarlo en vez de que las búsquedas fallen en silencio. Las respuestas se guardan en caché por sesión. Cuando se elige un lanzamiento, lo que bae usa de sus documentos —los datos del álbum y del prensaje, la lista completa de pistas con créditos y obras, las opciones de portada y cómo lo llaman otros catálogos— se extrae a la base de datos una sola vez; el JSON sin procesar no se guarda.
 
 ## Confirmacion
 

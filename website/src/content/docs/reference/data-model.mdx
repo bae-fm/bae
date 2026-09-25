@@ -25,7 +25,7 @@ Fully local tables, never declared to coven:
 
 - **`playback_state`**: current track, position, queue, volume, shuffle and repeat. Playback is a device fact.
 - **`imports`**: import operation tracking.
-- **`source_release_payloads`**: archived raw JSON from MusicBrainz and Discogs, keyed by provider release rather than by a local release. It supports exact reset and re-interpretation without changing the synced catalog graph.
+- **`source_release`** and the tables under it: what bae extracted from each MusicBrainz and Discogs release it fetched — album and pressing facts, the full tracklist with credits and works, cover options, and what other catalogs call it — keyed by the provider release rather than by a local release. The raw JSON is not kept; any device can fetch a release again.
 
 Every synced table carries an `_updated_at` hybrid-logical-clock column, the register coven's field-by-field merge orders concurrent edits by; a test enforces that the synced set and the clock-carrying set are exactly equal.
 

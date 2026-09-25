@@ -1,4 +1,6 @@
 use super::*;
+use crate::db::Database;
+use chrono::{DateTime, Utc};
 use coven::{FixedClock, SequentialIdProvider};
 use serde_json::json;
 use std::sync::Arc;
@@ -62,26 +64,29 @@ async fn database() -> (Database, tempfile::TempDir) {
     (db, temp)
 }
 
+/// A Discogs release's master names its MusicBrainz release group back, and
+/// the group names the album on other catalogs: the fetch follows the whole
+/// chain, and the release it stores reads back as it was extracted.
 #[tokio::test]
-async fn master_backlink_enriches_an_archived_release_and_replays_offline() {
-    let stored = ReleasePayloads {
-        release: MetadataRef::new(Catalog::Discogs, "7811"),
-        anchor: discogs(),
-        supporting: vec![SourcePayload::new(
-            PayloadSource::DiscogsMaster,
-            "7822",
-            master(),
-        )],
-    };
+async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
     let providers = crate::providers::Providers::offline();
+    providers.discogs().seed_release_cache("7811", discogs());
+    providers.discogs().seed_master_cache("7822", master());
     providers.musicbrainz().seed_discogs_url_lookup("7811", None);
     providers.musicbrainz().seed_discogs_master_url_lookup("7822", Some("album-group".into()));
     providers.musicbrainz().seed_release_group_json_cache("album-group", group());
     let client = DiscogsClient::new(providers.discogs().clone(), "test-token".into());
-    let enriched = providers.enrich_payloads(Some(&client), &stored, CallPriority::Interactive)
+    let fetched = providers
+        .fetch_payloads(
+            Some(&client),
+            &MetadataRef::new(Catalog::Discogs, "7811"),
+            CallPriority::Interactive,
+        )
         .await
+        .unwrap()
+        .extract()
         .unwrap();
-    let records = enriched.extract().unwrap().records();
+    let records = fetched.records();
     assert!(records
         .iter()
         .any(|record| record.url() == "https://musicbrainz.org/release-group/album-group"));
@@ -91,9 +96,7 @@ async fn master_backlink_enriches_an_archived_release_and_replays_offline() {
     assert!(!records
         .iter()
         .any(|record| record.catalog() == Catalog::MusicBrainz && record.release_ref().is_some()));
-    let parsed = enriched
-        .extract()
-        .unwrap()
+    let parsed = fetched
         .parsed(
             &[],
             &FixedClock(instant()),
@@ -116,40 +119,17 @@ async fn master_backlink_enriches_an_archived_release_and_replays_offline() {
         Some("artist-id")
     );
     let (db, _temp) = database().await;
-    store(&db, &enriched, instant()).await.unwrap();
-    let replay = load(&db, &stored.release).await.unwrap().unwrap();
-    assert_eq!(replay.extract().unwrap().records(), records);
-    let replayed = replay
-        .extract()
-        .unwrap()
-        .parsed(
-            &[],
-            &FixedClock(instant()),
-            &SequentialIdProvider::new("after"),
-        )
-        .unwrap();
-    assert_eq!(replayed.album.year, parsed.album.year);
-    assert_eq!(replayed.release.pressing, parsed.release.pressing);
-    assert_eq!(
-        replayed
-            .tracks
-            .iter()
-            .map(|track| (&track.title, track.side))
-            .collect::<Vec<_>>(),
-        parsed
-            .tracks
-            .iter()
-            .map(|track| (&track.title, track.side))
-            .collect::<Vec<_>>()
-    );
+    db.save_source_release(&fetched).await.unwrap();
+    let stored = db.load_source_release(fetched.release()).await.unwrap();
+    assert_eq!(stored, Some(fetched));
 }
 
 #[test]
 fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
-    let payloads = ReleasePayloads {
-        release: MetadataRef::new(Catalog::Discogs, "7811"),
-        anchor: discogs(),
-        supporting: vec![
+    let payloads = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        discogs(),
+        vec![
             SourcePayload::new(PayloadSource::MusicBrainzDiscogsXref, "7811", musicbrainz()),
             SourcePayload::new(PayloadSource::MusicBrainz, "linked-release", musicbrainz()),
             SourcePayload::new(PayloadSource::DiscogsMaster, "7822", master()),
@@ -159,7 +139,7 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
                 group(),
             ),
         ],
-    };
+    );
     let parsed = payloads
         .extract()
         .unwrap()
@@ -197,15 +177,15 @@ fn linked_album_fills_missing_title_and_artists_without_setting_pressing_year() 
     anchor["title"] = json!("");
     anchor["artists"] = json!([]);
     anchor["year"] = json!(0);
-    let payloads = ReleasePayloads {
-        release: MetadataRef::new(Catalog::Discogs, "7811"),
-        anchor: anchor.to_string(),
-        supporting: vec![SourcePayload::new(
+    let payloads = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        anchor.to_string(),
+        vec![SourcePayload::new(
             PayloadSource::DiscogsMaster,
             "7822",
             master(),
         )],
-    };
+    );
     let parsed = payloads
         .extract()
         .unwrap()
@@ -221,34 +201,41 @@ fn linked_album_fills_missing_title_and_artists_without_setting_pressing_year() 
     assert_eq!(parsed.release.pressing.year, None);
 }
 
+/// A cross-reference the catalog no longer answers is gone from the release
+/// once it is fetched again: the new extraction replaces the old one whole.
 #[tokio::test]
-async fn replacing_a_reverse_answer_removes_an_obsolete_pressing_alias_atomically() {
+async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
     let (db, _temp) = database().await;
-    let mut payloads = ReleasePayloads {
-        release: MetadataRef::new(Catalog::Discogs, "7811"),
-        anchor: discogs(),
-        supporting: vec![SourcePayload::new(
+    let with_alias = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        discogs(),
+        vec![SourcePayload::new(
             PayloadSource::MusicBrainzDiscogsXref,
             "7811",
             musicbrainz(),
         )],
-    };
-    store(&db, &payloads, instant()).await.unwrap();
-    assert!(load(&db, &payloads.release)
+    );
+    db.save_source_release(&with_alias.extract().unwrap())
+        .await
+        .unwrap();
+    assert!(db
+        .load_source_release(&with_alias.release)
         .await
         .unwrap()
         .unwrap()
-        .extract().unwrap()
         .records()
         .iter()
         .any(|record| record.catalog() == Catalog::MusicBrainz && record.release_ref().is_some()));
-    payloads.supporting.clear();
-    store(&db, &payloads, instant()).await.unwrap();
-    assert!(!load(&db, &payloads.release)
+    let without_alias =
+        ReleasePayloads::for_test(MetadataRef::new(Catalog::Discogs, "7811"), discogs(), Vec::new());
+    db.save_source_release(&without_alias.extract().unwrap())
+        .await
+        .unwrap();
+    assert!(!db
+        .load_source_release(&without_alias.release)
         .await
         .unwrap()
         .unwrap()
-        .extract().unwrap()
         .records()
         .iter()
         .any(|record| record.catalog() == Catalog::MusicBrainz));
@@ -256,15 +243,15 @@ async fn replacing_a_reverse_answer_removes_an_obsolete_pressing_alias_atomicall
 
 #[test]
 fn linked_release_album_date_survives_an_unavailable_parent_document() {
-    let payloads = ReleasePayloads {
-        release: MetadataRef::new(Catalog::Discogs, "7811"),
-        anchor: discogs(),
-        supporting: vec![SourcePayload::new(
+    let payloads = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        discogs(),
+        vec![SourcePayload::new(
             PayloadSource::MusicBrainzDiscogsXref,
             "7811",
             musicbrainz(),
         )],
-    };
+    );
     let parsed = payloads
         .extract()
         .unwrap()
@@ -283,15 +270,15 @@ fn selected_album_credits_keep_every_artist_in_detail_and_import() {
     let mut anchor: serde_json::Value = serde_json::from_str(&discogs()).unwrap();
     anchor["artists"] =
         json!([{ "id":7833, "name":"Selected Artist" }, { "id":7834, "name":"Second Artist" }]);
-    let payloads = ReleasePayloads {
-        release: MetadataRef::new(Catalog::Discogs, "7811"),
-        anchor: anchor.to_string(),
-        supporting: vec![SourcePayload::new(
+    let payloads = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        anchor.to_string(),
+        vec![SourcePayload::new(
             PayloadSource::MusicBrainzDiscogsXref,
             "7811",
             musicbrainz(),
         )],
-    };
+    );
     assert_eq!(
         payloads.extract().unwrap().detail_for_audio(&[], &[]).unwrap().artist.as_deref(),
         Some("Selected Artist, Second Artist")
@@ -316,23 +303,30 @@ fn selected_album_credits_keep_every_artist_in_detail_and_import() {
     assert_eq!(parsed.album_artists.len(), 1);
 }
 
+/// A parent a later fetch could not obtain does not come back from the
+/// earlier fetch: the stored release is the later fetch's, whole.
 #[tokio::test]
-async fn unavailable_supporting_document_does_not_return_during_archive_replay() {
+async fn an_unavailable_supporting_document_does_not_return_from_an_earlier_fetch() {
     let (db, _temp) = database().await;
-    let mut payloads = ReleasePayloads {
-        release: MetadataRef::new(Catalog::Discogs, "7811"),
-        anchor: discogs(),
-        supporting: vec![SourcePayload::new(
+    let earlier = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        discogs(),
+        vec![SourcePayload::new(
             PayloadSource::DiscogsMaster,
             "7822",
             master(),
         )],
-    };
-    store(&db, &payloads, instant()).await.unwrap();
-    // A fresh lookup could not obtain the parent. Its replay must describe
-    // the same metadata application, without a previously cached parent.
-    payloads.supporting.clear();
-    store(&db, &payloads, instant()).await.unwrap();
-    let replay = load(&db, &payloads.release).await.unwrap().unwrap();
-    assert_eq!(replay, payloads);
+    );
+    db.save_source_release(&earlier.extract().unwrap())
+        .await
+        .unwrap();
+    let later =
+        ReleasePayloads::for_test(MetadataRef::new(Catalog::Discogs, "7811"), discogs(), Vec::new())
+            .extract()
+            .unwrap();
+    db.save_source_release(&later).await.unwrap();
+    assert_eq!(
+        db.load_source_release(later.release()).await.unwrap(),
+        Some(later)
+    );
 }

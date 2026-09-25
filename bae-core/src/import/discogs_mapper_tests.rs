@@ -23,6 +23,7 @@ fn stored(release: &DiscogsRelease) -> SourceRelease {
             formats: release.format.clone(),
             release_roles: release_roles(release),
         },
+        unfetched: Vec::new(),
     }
 }
 

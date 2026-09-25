@@ -2,7 +2,7 @@
 //! time.
 //!
 //! The tab used to be one whole-queue value — every candidate with its files,
-//! its cue sheets, its boundary trees and every archived document — rebuilt on
+//! its cue sheets, its boundary trees and every fetched release — rebuilt on
 //! every commit and carried across the bridge twice. What the list actually
 //! shows is a placement per row and a handful of columns, so that is what the
 //! read gathers: [`crate::db::ImportQueueRows`] is placement columns and
@@ -351,8 +351,8 @@ pub struct ImportCandidateDetailProjection {
     /// What the stored verdict classified to. `None` with no stored verdict
     /// for the candidate's current file shape.
     pub answer: Option<QueueClassification>,
-    /// The identity the row leads with: the pick's archived documents where
-    /// there is a pick, the verdict's lead otherwise.
+    /// The identity the row leads with: the pick's stored release where there
+    /// is a pick, the verdict's lead otherwise.
     pub matched: Option<MatchedRelease>,
     pub metadata_provenance: Option<MetadataProvenance>,
     /// Who wrote the draft, which decides whether a valid one is the answer.
@@ -360,10 +360,10 @@ pub struct ImportCandidateDetailProjection {
     pub metadata_revision: u64,
     /// The library release this candidate's bytes were imported as.
     pub imported_release: Option<ImportedRelease>,
-    /// The picked release as its archived documents describe it. `None` with
-    /// no pick, and for a folder read as its own tags.
+    /// The picked release as its stored release describes it. `None` with no
+    /// pick, and for a folder read as its own tags.
     pub release: Option<ImportSearchReleaseDetail>,
-    /// Every catalog the pick's archived documents describe the release in,
+    /// Every catalog the pick's stored releases describe the release in,
     /// in the order surfaces list catalogs. Empty with no pick.
     pub records: Vec<crate::import::ReleaseRecord>,
     /// Whether the picked release is already in the library.

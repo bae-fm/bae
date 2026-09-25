@@ -25,7 +25,7 @@ Schema 中會同步的核心：
 
 - **`playback_state`**：目前曲目、位置、佇列、音量、隨機播放與重複播放。播放是裝置事實。
 - **`imports`**：匯入操作追蹤。
-- ** `source_release_payloads` ** : 从MusicBrainz和Discogs存档的原始JSON, 按提供商发布而不是本地发布键入,支持在不更改同步目录图形的情况下进行精确重置和重新解释。
+- **`source_release`** 及其下屬資料表：bae 從每個取得過的 MusicBrainz 與 Discogs 發行中擷取的內容——專輯與壓片資訊、含署名與作品的完整曲目表、封面選項，以及其他目錄對它的稱呼——以提供者發行而非本地發行作為鍵。原始 JSON 不會保存；任何裝置都能重新取得發行。
 
 每個同步表都帶有 `_updated_at` hybrid-logical-clock 欄位，也就是 coven 逐欄合併並行編輯時排序的 register；測試會強制同步表集合與帶有 clock 的表集合完全相等。
 

@@ -25,7 +25,7 @@ Potpuno lokalne tablice, nikad prijavljene covenu:
 
 - **`playback_state`**: trenutačna pjesma, položaj, red čekanja, glasnoća, nasumični redoslijed i ponavljanje. Reprodukcija je činjenica uređaja.
 - **`imports`**: praćenje operacije uvoza.
-- **`source_release_payloads`**: arhivirani sirovi JSON iz MusicBrainz i Discogs, ključan prema izdavateljskom izdanju, a ne prema lokalnom izdanju.Podržava točno resetiranje i ponovnu interpretaciju bez mijenjanja sinkroniziranog grafikona kataloga.
+- **`source_release`** i tablice pod njom: što je bae izvukao iz svakog dohvaćenog izdanja s MusicBrainza i Discogsa — podaci o albumu i prešanju, cijeli popis pjesama sa zaslugama i djelima, mogućnosti omota i kako ga zovu drugi katalozi — ključano prema izdanju pružatelja, a ne prema lokalnom izdanju. Sirovi JSON se ne čuva; svaki uređaj može ponovno dohvatiti izdanje.
 
 Svaka sinkronizirana tablica nosi `_updated_at` stupac hibridnog logičkog sata, registar prema kojem covenovo spajanje polje po polje redoslijedi istodobne izmjene; test provjerava da su sinkronizirani skup i skup koji nosi sat točno jednaki.
 

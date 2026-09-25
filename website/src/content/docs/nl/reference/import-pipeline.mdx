@@ -31,7 +31,7 @@ Direct invoeren voert geen I/O van metagegevens uit. De vrijgave- en trackvelden
 
 ## Bronnen
 
-MusicBrainz wordt anoniem bevraagd met een strak tempo van een verzoek per seconde. Discogs authenticeert met de persoonlijke token van de gebruiker uit de sleutelbos, gedoseerd en opnieuw geprobeerd binnen zijn rate limits, en een geweigerde token wordt als zodanig gerapporteerd zodat de UI hem kan markeren in plaats van zoekopdrachten stil te laten falen. Antwoorden worden per sessie gecachet, en de ruwe JSON van welke bron ook wint wordt in de database gearchiveerd voor latere herinterpretatie.
+MusicBrainz wordt anoniem bevraagd met een strak tempo van een verzoek per seconde. Discogs authenticeert met de persoonlijke token van de gebruiker uit de sleutelbos, gedoseerd en opnieuw geprobeerd binnen zijn rate limits, en een geweigerde token wordt als zodanig gerapporteerd zodat de UI hem kan markeren in plaats van zoekopdrachten stil te laten falen. Antwoorden worden per sessie gecachet. Wanneer een release gekozen wordt, wordt wat bae uit de documenten gebruikt — album- en persgegevens, de volledige tracklijst met credits en werken, de hoesopties en hoe andere catalogi hem noemen — één keer naar de database geëxtraheerd; de ruwe JSON wordt niet bewaard.
 
 ## Commit
 

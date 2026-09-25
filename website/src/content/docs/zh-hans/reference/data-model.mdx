@@ -25,7 +25,7 @@ schema 的同步核心：
 
 - **`playback_state`**：当前曲目、位置、队列、音量、随机和重复。播放是设备事实。
 - **`imports`**：导入操作跟踪。
-- ** `source_release_payloads` ** : 从MusicBrainz和Discogs存档的原始JSON, 按提供商发布而不是本地发布键入,支持在不更改同步目录图形的情况下进行精确重置和重新解释。
+- **`source_release`** 及其下属表：bae 从每个获取过的 MusicBrainz 和 Discogs 发行中提取的内容——专辑和压制信息、含署名与作品的完整曲目表、封面选项，以及其他目录对它的称呼——按提供商发行而不是本地发行作为键。原始 JSON 不会保存；任何设备都可以重新获取发行。
 
 每个同步表都带 `_updated_at` hybrid-logical-clock 列，这是 coven 的逐字段合并用来排序并发编辑的 register；测试会保证同步表集合与带 clock 的表集合完全相等。
 

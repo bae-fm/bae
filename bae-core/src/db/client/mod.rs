@@ -64,7 +64,6 @@ desktop_only! {
     pub(crate) use import_state::{
         CandidateLookupUpdate, CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
     };
-    mod payloads;
     mod source_releases;
 }
 mod playback;

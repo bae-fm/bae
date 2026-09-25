@@ -4,7 +4,7 @@
 //! entry sits, which group it joins, which tab it counts against, whether the
 //! filter keeps it, and — for the chrome — the Ready set and the group keys.
 //! Nothing here reads a file,
-//! a cue sheet, a boundary tree or an archived document; those are loaded for
+//! a cue sheet, a boundary tree or a fetched release; those are loaded for
 //! the items inside the requested windows and nowhere else.
 
 use super::{
@@ -424,7 +424,7 @@ fn place_row(
         selectable: action_basis.importable_at_rest(),
         action_basis,
         matched: verdict.and_then(MatchedRelease::of_summary),
-        // The records are read off the pick's archived documents, which the
+        // The records are read off the pick's stored releases, which the
         // queue never opens: the window that materialises the row reads them
         // and builds the reading over again.
         reading: crate::import::triage::TriageReading::of(

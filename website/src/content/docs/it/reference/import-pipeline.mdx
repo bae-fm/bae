@@ -31,7 +31,7 @@ I campi di rilascio e traccia della bozza vuota sono modificabili immediatamente
 
 ## Fonti
 
-MusicBrainz viene interrogato anonimamente con un ritmo rigido di una richiesta al secondo. Discogs si autentica con il token personale dell'utente dal portachiavi, dosa e ritenta entro i suoi limiti di frequenza, e un token rifiutato viene riportato come tale così la UI può segnalarlo invece di far fallire le ricerche in silenzio. Le risposte sono memorizzate in cache per sessione, e il JSON grezzo della fonte vincente viene archiviato nel database per reinterpretazioni future.
+MusicBrainz viene interrogato anonimamente con un ritmo rigido di una richiesta al secondo. Discogs si autentica con il token personale dell'utente dal portachiavi, dosa e ritenta entro i suoi limiti di frequenza, e un token rifiutato viene riportato come tale così la UI può segnalarlo invece di far fallire le ricerche in silenzio. Le risposte sono memorizzate in cache per sessione. Quando si sceglie una pubblicazione, ciò che bae usa dei suoi documenti — i dati dell’album e della stampa, la tracklist completa con crediti e opere, le copertine disponibili e come la chiamano gli altri cataloghi — viene estratto una volta nel database; il JSON grezzo non viene conservato.
 
 ## Commit
 

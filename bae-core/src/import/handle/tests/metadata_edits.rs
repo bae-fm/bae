@@ -444,22 +444,6 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
             },
         }));
 
-    // Another lookup may replace the shared cache; the applied draft owns
-    // the documents its credits came from.
-    handle
-        .library_manager
-        .save_source_release_payloads_for_test(&[crate::db::DbSourceReleasePayload::new(
-            &crate::import::SourcePayload::new(
-                crate::import::PayloadSource::Discogs,
-                source_release_id.clone(),
-                serde_json::json!({ "id": source_release_id.parse::<u64>().unwrap(),
-                    "title": "Revised release", "artists": [], "tracklist": [] })
-                .to_string(),
-            ),
-            handle.clock.now(),
-        )])
-        .await
-        .unwrap();
     let mut events = handle.subscribe_events();
     let import_id = handle
         .start_import(&key, crate::import::StorageMode::Local, false)

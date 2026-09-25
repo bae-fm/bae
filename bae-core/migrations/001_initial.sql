@@ -7,8 +7,7 @@
 -- and store-write ledgers) are created by coven's MIGRATION_SQL, not here.
 --
 -- Sections: the library, playback, watched folders and their scans, import
--- candidates, identification, the catalog releases lookups fetched, and the
--- catalog documents lookups cached.
+-- candidates, identification, and the catalog releases lookups fetched.
 
 -- ── The library ───────────────────────────────────────────────────────────────
 
@@ -1625,29 +1624,17 @@ CREATE TABLE IF NOT EXISTS source_release_work_composer (
         REFERENCES source_release_work (catalog, release_id, node) ON DELETE CASCADE
 ) STRICT;
 
--- ── Catalog documents ─────────────────────────────────────────────────────────
-
--- The provider responses a lookup fetched, kept as returned so a draft can be
--- re-read without asking again.
-CREATE TABLE IF NOT EXISTS source_release_payloads (
-    -- Which lookup produced this document, and therefore what
-    -- `source_release_id` names:
-    --   'musicbrainz'                     the release itself
-    --   'musicbrainz_release_group'       its release group, by group id
-    --   'discogs'                         a Discogs release
-    --   'discogs_master'                  a Discogs master, by master id
-    --   'musicbrainz_discogs_xref'        the MusicBrainz release cross-linked
-    --                                     to a Discogs one, by the *Discogs*
-    --                                     release id — MusicBrainz's URL lookup
-    --                                     found it, so nothing in the Discogs
-    --                                     document names it back
-    --   'wikidata'                        the Wikidata item a MusicBrainz
-    --                                     release or release group links to,
-    --                                     by item id
-    source TEXT NOT NULL,
-    source_release_id TEXT NOT NULL,
-    -- The document as the provider returned it.
-    json TEXT NOT NULL CHECK (json_valid(json)),
-    fetched_at TEXT NOT NULL,
-    PRIMARY KEY (source, source_release_id)
+-- The supporting documents a fetch followed a link to and did not get, whose
+-- facts the release's rows lack: 'failed' where the source was asked and
+-- failed, 'discogs_not_configured' for a Discogs document with no key to ask
+-- with. Fetching the release again replaces them with what it gets.
+CREATE TABLE IF NOT EXISTS source_release_unfetched (
+    catalog    TEXT NOT NULL,
+    release_id TEXT NOT NULL,
+    document   TEXT NOT NULL,
+    key        TEXT NOT NULL CHECK (key <> ''),
+    reason     TEXT NOT NULL CHECK (reason IN ('failed', 'discogs_not_configured')),
+    PRIMARY KEY (catalog, release_id, document, key),
+    FOREIGN KEY (catalog, release_id)
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
 ) STRICT;

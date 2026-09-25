@@ -25,7 +25,7 @@ Tamamen yerel tablolar, coven'e asla bildirilmez:
 
 - **`playback_state`**: geçerli parça, konum, kuyruk, ses seviyesi, shuffle ve repeat. Çalma bir aygıt gerçeğidir.
 - **`imports`**: içe aktarma işlemi takibi.
-- **`source_release_payloads`**: arşivlenmiş ham JSON MusicBrainz ve Discogs'den, yerel bir yayınlama yerine sağlayıcı yayınlaması ile anahtarlanmış. Doğrudan yeniden başlatma ve yeniden yorumlamayı senkronize katalog grafiği değiştirmeden destekler.
+- **`source_release`** ve altındaki tablolar: bae'nin getirdiği her MusicBrainz ve Discogs yayınından çıkardıkları — albüm ve baskı bilgileri, katkılar ve eserlerle birlikte tam parça listesi, kapak seçenekleri ve diğer kataloglarda nasıl anıldığı — yerel bir yayın yerine sağlayıcı yayını ile anahtarlanmış. Ham JSON saklanmaz; her cihaz bir yayını yeniden getirebilir.
 
 Her eşzamanlanan tablo bir `_updated_at` hybrid-logical-clock sütunu taşır; coven'in alan alan birleştirmesi eşzamanlı düzenlemeleri bu register ile sıralar. Bir test, eşzamanlanan küme ile saat taşıyan kümenin tam olarak eşit olduğunu denetler.
 

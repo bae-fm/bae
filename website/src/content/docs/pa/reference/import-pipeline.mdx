@@ -31,7 +31,7 @@ CUE sheet ਇੱਕ ਸ਼ਬਦ image ਨੂੰ ਟ੍ਰੈਕ list ਬਣਾ�
 
 ## ਸਰੋਤ
 
-MusicBrainz strict ਇੱਕ-request-per-second pace ਨਾਲ ਗੁਮਨਾਮ ਪੁੱਛਿਆ ਹੈ। Discogs ਵਰਤੋਂਕਾਰ ਦੇ keyring ਤੋਂ personal token ਨਾਲ authenticate ਕਰਦਾ ਹੈ, ਆਪਣੇ ਦਰ limits ਵਿੱਚ ਗਤੀਬੱਧ ਅਤੇ retried, ਅਤੇ rejected token ਇਸੇ ਤਰ੍ਹਾਂ ਰਿਪੋਰਟ ਹੁੰਦਾ ਹੈ ਤਾਂ ਜੋ UI ਇਸਨੂੰ ਝੰਡਾ ਕਰ ਸਕੇ, searches ਚੁੱਪਚਾਪ fail ਨਾ ਹੋਣ। Responses per ਸੈਸ਼ਨ ਅਸਥਾਈ ਰੱਖੇ ਹਨ, ਅਤੇ ਜੋ ਵੀ ਸਰੋਤ ਜਿੱਤਦਾ ਹੈ ਉਸਦਾ ਕੱਚਾ JSON ਭਵਿੱਖੀ re-interpretation ਲਈ database ਵਿੱਚ ਸੰਭਾਲਿਆ ਹੈ।
+MusicBrainz strict ਇੱਕ-request-per-second pace ਨਾਲ ਗੁਮਨਾਮ ਪੁੱਛਿਆ ਹੈ। Discogs ਵਰਤੋਂਕਾਰ ਦੇ keyring ਤੋਂ personal token ਨਾਲ authenticate ਕਰਦਾ ਹੈ, ਆਪਣੇ ਦਰ limits ਵਿੱਚ ਗਤੀਬੱਧ ਅਤੇ retried, ਅਤੇ rejected token ਇਸੇ ਤਰ੍ਹਾਂ ਰਿਪੋਰਟ ਹੁੰਦਾ ਹੈ ਤਾਂ ਜੋ UI ਇਸਨੂੰ ਝੰਡਾ ਕਰ ਸਕੇ, searches ਚੁੱਪਚਾਪ fail ਨਾ ਹੋਣ। Responses per ਸੈਸ਼ਨ ਅਸਥਾਈ ਰੱਖੇ ਹਨ। ਜਦੋਂ ਕੋਈ release ਚੁਣੀ ਜਾਂਦੀ ਹੈ, ਉਸਦੇ documents ਵਿੱਚੋਂ bae ਜੋ ਵਰਤਦਾ ਹੈ — album ਅਤੇ pressing ਦੀ ਜਾਣਕਾਰੀ, credits ਅਤੇ works ਸਮੇਤ ਪੂਰੀ tracklist, cover ਦੇ ਵਿਕਲਪ, ਅਤੇ ਹੋਰ catalogs ਉਸਨੂੰ ਕੀ ਕਹਿੰਦੇ ਹਨ — ਉਹ ਇੱਕ ਵਾਰ database ਵਿੱਚ ਕੱਢਿਆ ਜਾਂਦਾ ਹੈ; ਕੱਚਾ JSON ਨਹੀਂ ਰੱਖਿਆ ਜਾਂਦਾ।
 
 ## Commit
 

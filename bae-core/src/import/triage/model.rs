@@ -301,7 +301,7 @@ pub enum TriageReading {
 
 impl TriageReading {
     /// How a row reads, from the draft it carries, where that draft came
-    /// from, and the records the pick's archived documents describe it in.
+    /// from, and the records the pick's stored releases describe it in.
     ///
     /// `Unidentified` is exactly a row with no summary: the draft is blank and
     /// no catalog has been applied, so the row has a folder and nothing else.
@@ -365,8 +365,8 @@ pub struct TriageRow {
     /// The metadata provenance already applied to this candidate. `None` while no
     /// source has been selected.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
-    /// How the row's text column reads, with every catalog the pick's
-    /// archived documents describe the release in.
+    /// How the row's text column reads, with every catalog the pick's stored
+    /// releases describe the release in.
     pub reading: TriageReading,
 }
 

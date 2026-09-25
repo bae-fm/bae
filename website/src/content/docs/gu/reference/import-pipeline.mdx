@@ -31,7 +31,7 @@ CUE sheet એક audio image ને track list માં ફેરવે છે.
 
 ## Sources
 
-MusicBrainz strict one-request-per-second pace સાથે anonymously queried છે. Discogs user ના keyring માંથી personal token સાથે authenticate કરે છે, તેના rate limits અંદર paced અને retried છે, અને rejected token તે તરીકે reported થાય છે જેથી UI તેને flag કરી શકે, searches શાંતિથી fail નહીં થાય. Responses per session cached છે, અને જે source wins કરે તેનું raw JSON future re-interpretation માટે database માં archived છે.
+MusicBrainz strict one-request-per-second pace સાથે anonymously queried છે. Discogs user ના keyring માંથી personal token સાથે authenticate કરે છે, તેના rate limits અંદર paced અને retried છે, અને rejected token તે તરીકે reported થાય છે જેથી UI તેને flag કરી શકે, searches શાંતિથી fail નહીં થાય. Responses per session cached છે. કોઈ release પસંદ થાય ત્યારે, તેના documents માંથી bae જે વાપરે છે — album અને pressing ની વિગતો, credits અને works સાથેની આખી tracklist, cover ના વિકલ્પો, અને બીજા catalogs તેને શું કહે છે — તે એક જ વાર database માં extract થાય છે; raw JSON રાખવામાં આવતું નથી.
 
 ## Commit
 

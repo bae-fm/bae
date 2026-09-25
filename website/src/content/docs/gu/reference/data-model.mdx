@@ -25,7 +25,7 @@ Schema નું synced heart:
 
 - **`playback_state`**: current track, position, queue, volume, shuffle અને repeat. Playback device fact છે.
 - **`imports`**: import operation tracking.
-- **`source_release_payloads`**: MusicBrainz અને Discogs માંથી કાચા JSON ની પેટી, સ્થાનિક રિલીઝની જગ્યાએ પૂરૂં પાડનાર રિલીઝ દ્વારા કી થયેલ છે. તે સુમેળ થયેલ કેટેલોગ ગ્રાફને બદલ્યા વગર ચોક્કસ પુનઃસુયોજન અને પુનઃવ્યાખ્યાયિતને આધાર આપે છે.
+- **`source_release`** અને તેની નીચેની tables: bae એ fetch કરેલી દરેક MusicBrainz અને Discogs release માંથી extract કરેલું — album અને pressing ની વિગતો, credits અને works સાથેની આખી tracklist, cover ના વિકલ્પો, અને બીજા catalogs તેને શું કહે છે — સ્થાનિક release ની જગ્યાએ પૂરૂં પાડનાર release દ્વારા કી થયેલ છે. raw JSON રાખવામાં આવતું નથી; કોઈ પણ ઉપકરણ release ફરીથી fetch કરી શકે છે.
 
 દરેક synced table `_updated_at` hybrid-logical-clock column ધરાવે છે, register જેનાથી coven concurrent edits ને field-by-field merge order કરે છે; test enforce કરે છે કે synced set અને clock-carrying set exactly equal છે.
 

@@ -370,12 +370,11 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
 #[test]
 fn the_lengths_a_source_states_do_not_decide() {
     let payloads: crate::import::payloads::ReleasePayloads =
-        serde_json::from_value(serde_json::json!({
-            "release": crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-1"),
-            "anchor": release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
-            "supporting": [],
-        }))
-        .unwrap();
+        crate::import::payloads::ReleasePayloads::for_test(
+        crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-1"),
+        release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
+        Vec::new(),
+    );
     let source = payloads.extract().unwrap().source_tracks_for_audio(&[]);
     assert_eq!(source, SourceTracks::Listed { count: 3 });
     assert_eq!(

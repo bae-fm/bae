@@ -396,9 +396,9 @@ impl LibraryManager {
     /// track's explicit assignments becomes the `position` column on the
     /// `album_artists` / `track_artists` rows.
     ///
-    /// archived provider documents, the release records, and where the draft was read
-    /// are deliberately not touched. Identity is orthogonal to
-    /// metadata; the cached source payload stays put.
+    /// The stored catalog release, the release records, and where the draft was
+    /// read are deliberately not touched. Identity is orthogonal to metadata;
+    /// what the source said stays put.
     ///
     /// Ungated on purpose: a release reseeded from sparse file tags carries a
     /// blank-but-editable title and artist, which the user fills in the editor.

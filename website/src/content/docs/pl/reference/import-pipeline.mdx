@@ -31,7 +31,7 @@ Wprowadzanie bezpośrednie nie wykonuje żadnych operacji I/O metadanych. Pola w
 
 ## Źródła
 
-MusicBrainz jest odpytywany anonimowo w ścisłym tempie jednego żądania na sekundę. Discogs uwierzytelnia się osobistym tokenem użytkownika z pęku kluczy, mieści się w limitach i ponawia w ich ramach, a odrzucony token jest zgłaszany jako taki, żeby interfejs mógł go oznaczyć zamiast po cichu psuć wyszukiwania. Odpowiedzi są cache'owane per sesja, a surowy JSON źródła, które wygrało, jest archiwizowany w bazie danych do przyszłej ponownej interpretacji.
+MusicBrainz jest odpytywany anonimowo w ścisłym tempie jednego żądania na sekundę. Discogs uwierzytelnia się osobistym tokenem użytkownika z pęku kluczy, mieści się w limitach i ponawia w ich ramach, a odrzucony token jest zgłaszany jako taki, żeby interfejs mógł go oznaczyć zamiast po cichu psuć wyszukiwania. Odpowiedzi są cache'owane per sesja. Gdy wybierzesz wydanie, to, czego bae używa z jego dokumentów — dane albumu i tłoczenia, pełna lista utworów z twórcami i dziełami, opcje okładki oraz to, jak nazywają je inne katalogi — jest raz wyodrębniane do bazy danych; surowy JSON nie jest przechowywany.
 
 ## Zapis
 

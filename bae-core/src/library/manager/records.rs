@@ -22,7 +22,7 @@ impl LibraryManager {
     /// its current one.
     ///
     /// `new_records` is empty (file metadata), or carries the already-cross-linked
-    /// rows, one per catalog. Nothing about the archived provider documents
+    /// rows, one per catalog. Nothing about the stored catalog releases
     /// changes: they are keyed by the catalog's release, so re-pointing at
     /// another one already reads other rows, and the rows this release used may
     /// be another candidate's.

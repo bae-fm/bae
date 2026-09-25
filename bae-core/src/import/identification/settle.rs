@@ -342,8 +342,8 @@ fn sole_pressing(
 /// already carries, and a full fetch of every pressing on the list would buy a
 /// classification that cannot change.
 ///
-/// A release some other candidate already settled costs nothing: its documents
-/// are read back and the tracklist re-derived from them.
+/// A release some other candidate already settled costs nothing: its stored
+/// release is read back and the tracklist re-derived from it.
 ///
 /// `priority` is the run's own: a candidate a person asked for fetches its lead
 /// ahead of the queue's background calls, so the verdict they are watching for

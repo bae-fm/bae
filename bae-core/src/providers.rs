@@ -85,26 +85,6 @@ impl Providers {
             &self.wikidata,
             discogs,
             release,
-            None,
-            priority,
-        )
-        .await
-    }
-
-    /// An archived release with whatever its documents link to that the
-    /// archive does not hold yet.
-    pub(crate) async fn enrich_payloads(
-        &self,
-        discogs: Option<&DiscogsClient>,
-        stored: &ReleasePayloads,
-        priority: CallPriority,
-    ) -> Result<ReleasePayloads, ImportError> {
-        crate::import::payloads::fetch_documents(
-            &self.musicbrainz,
-            &self.wikidata,
-            discogs,
-            stored.release(),
-            Some(stored),
             priority,
         )
         .await

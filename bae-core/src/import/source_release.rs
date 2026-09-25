@@ -48,6 +48,26 @@ pub struct SourceRelease {
     pub(crate) archive_groups: Vec<String>,
     pub(crate) mediums: Vec<SourceMedium>,
     pub(crate) catalog: CatalogFacts,
+    /// The supporting documents the fetch named and could not get, whose
+    /// facts are missing from the ones above.
+    pub(crate) unfetched: Vec<UnfetchedDocument>,
+}
+
+/// One document a fetch followed a link to and did not get.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnfetchedDocument {
+    pub(crate) document: crate::import::PayloadSource,
+    pub(crate) key: String,
+    pub(crate) reason: UnfetchedReason,
+}
+
+/// Why a linked document is missing from a fetched release.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnfetchedReason {
+    /// Its source was asked and failed.
+    Failed,
+    /// It is a Discogs document and this library held no Discogs key.
+    DiscogsNotConfigured,
 }
 
 /// The images a release's documents offer, in the order a picker shows them.
@@ -200,6 +220,17 @@ impl SourceRelease {
     /// The release these facts describe.
     pub fn release(&self) -> &MetadataRef {
         &self.release
+    }
+
+    /// Whether fetching this release again could add what its fetch missed: a
+    /// document whose source failed, or a Discogs document now that a key is
+    /// held. Anything else missing is what the catalogs answered, and asking
+    /// again answers the same.
+    pub(crate) fn fetch_could_add(&self, discogs_configured: bool) -> bool {
+        self.unfetched.iter().any(|document| match document.reason {
+            UnfetchedReason::Failed => true,
+            UnfetchedReason::DiscogsNotConfigured => discogs_configured,
+        })
     }
 
     /// Every catalog identity known for this release at pressing or album
@@ -497,7 +528,7 @@ impl AppliedSource {
     }
 }
 
-fn catalog_rank(catalog: Catalog) -> usize {
+pub(crate) fn catalog_rank(catalog: Catalog) -> usize {
     Catalog::ALL
         .iter()
         .position(|known| *known == catalog)
