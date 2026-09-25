@@ -496,6 +496,46 @@ async fn pin_release_pins_the_cover_and_counts_its_bytes() {
     assert_eq!(last.fraction, 1.0, "the bar lands on its denominator");
 }
 
+/// A pin the provider refuses — bad credentials, a missing bucket — is about
+/// the cloud setup the person fixes, not an internal fault.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let home = connect_test_cloud(&manager).await;
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("pin-refused"),
+        "Pin Refused",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.drain_uploads_expecting_work().await.unwrap();
+    let file_id = release_files(&manager, &release.id).await[0].id.clone();
+    manager
+        .evict_blob_for_test(&manager.release_file_row_blob_ref(&file_id).await.unwrap())
+        .await
+        .unwrap();
+
+    for failure in [
+        coven::StorageBackendFailure::Authentication,
+        coven::StorageBackendFailure::ContainerNotFound,
+    ] {
+        home.fail_exact_stream_reads_with(Some(failure));
+        let error = manager
+            .pin_release_blobs_with_progress(&release.id, |_| {})
+            .await
+            .expect_err("the provider refuses the read");
+
+        assert_eq!(
+            error.category(),
+            crate::ui::UiErrorCategory::Credentials,
+            "{failure:?}: {error}"
+        );
+    }
+}
+
 /// A pin that cannot reach the cloud is a network failure the person retries
 /// once they are back online, not an internal fault: coven's typed reason
 /// reaches the category the UI renders.

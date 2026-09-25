@@ -181,10 +181,14 @@ pub(super) fn make_local_category(error: &coven::MakeLocalError) -> crate::ui::U
 
 /// A blob read that could not reach the cloud is retried; one the cloud
 /// refused is about its credentials or setup; the rest are this device's own
-/// store or files.
+/// store or files. When the provider's own answer is why the read failed,
+/// coven names it and that decides.
 pub(super) fn blob_category(error: &coven::BlobCacheError) -> crate::ui::UiErrorCategory {
     use crate::ui::UiErrorCategory as C;
     use coven::BlobCacheError as E;
+    if let Some(failure) = error.backend_failure() {
+        return backend_failure_category(failure);
+    }
     match error {
         E::Storage(error) => storage_category(error),
         E::StorageSetup(_) => C::Credentials,
@@ -206,11 +210,28 @@ pub(super) fn blob_category(error: &coven::BlobCacheError) -> crate::ui::UiError
     }
 }
 
-/// Classify a cloud storage failure: one that never reached the backend is
-/// retried, a storage configuration coven refused is about the cloud setup.
-/// coven keeps the backend's own answer (bad credentials, missing bucket) in a
-/// kind it does not export, so a refusal the backend gave reads as internal
-/// until it does.
+/// What the storage provider's answer asks of the person: a refusal about the
+/// account or its setup (credentials, permission, a missing bucket, the wrong
+/// region, a full quota, a bad configuration) is fixed in the cloud settings;
+/// a transport failure is retried.
+fn backend_failure_category(failure: coven::StorageBackendFailure) -> crate::ui::UiErrorCategory {
+    use crate::ui::UiErrorCategory as C;
+    use coven::StorageBackendFailure as F;
+    match failure {
+        F::Authentication
+        | F::PermissionDenied
+        | F::ContainerNotFound
+        | F::RegionMismatch
+        | F::QuotaExceeded
+        | F::Configuration => C::Credentials,
+        F::Transport => C::Network,
+        F::Internal => C::Internal,
+    }
+}
+
+/// Classify a cloud storage failure with no provider answer behind it: one
+/// that never reached the backend is retried, a storage configuration coven
+/// refused is about the cloud setup.
 fn storage_category(error: &coven::StorageError) -> crate::ui::UiErrorCategory {
     use crate::ui::UiErrorCategory as C;
     if error.is_transport() {
