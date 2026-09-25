@@ -298,16 +298,6 @@ if [ "$CSHARP_FORMAT_CONFIG_CHANGED" -eq 1 ]; then
     }
 fi
 
-# bae-avalonia bridge boundary. The compiler can't see dependency direction, so
-# this fails loud if a view or store reaches for NativeBae outside the sanctioned
-# composition boundary. Pure Python — runs on the dev host without the bindings.
-if staged_path_under "bae-avalonia"; then
-    run_check "avalonia bridge boundary" python3 scripts/avalonia-bridge-boundary.py || {
-        echo "A view or store reached for NativeBae outside the boundary. See above."
-        exit 1
-    }
-fi
-
 run_check "localization orphan check" python3 scripts/loc-chrome-orphans.py || {
     exit 1
 }

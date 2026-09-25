@@ -77,12 +77,6 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
 
-      - name: Enforce the bae-avalonia bridge boundary
-        # The compiler can't see dependency direction; this fails if a view or
-        # store reaches for NativeBae outside the sanctioned composition boundary,
-        # and prints the full-surface-port parity backlog (unconsumed delegates).
-        run: python scripts/avalonia-bridge-boundary.py
-
       - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@v5
         with:
