@@ -26,8 +26,10 @@ impl ImportService {
     /// longer holds that image is a candidate whose selection no longer
     /// describes it, and that is stated rather than replaced by some other
     /// image.
-    pub(super) fn pick_folder_cover(
-        &self,
+    ///
+    /// The read runs on a blocking thread, so a cover on a slow volume does not
+    /// stall the import worker's runtime.
+    pub(super) async fn pick_folder_cover(
         discovered_files: &[ScannedFile],
         selected_cover_path: &str,
     ) -> Result<Option<CoverCandidate>, crate::import::ImportError> {
@@ -47,12 +49,18 @@ impl ImportService {
                 ),
             })?;
 
-        let bytes = std::fs::read(&cover_file.path).map_err(|e| ImportError::LocalCover {
-            detail: format!(
-                "Failed to read cover art {}: {e}",
-                cover_file.path.display()
-            ),
-        })?;
+        let path = cover_file.path.clone();
+        let bytes = tokio::task::spawn_blocking(move || std::fs::read(&path))
+            .await
+            .map_err(|e| ImportError::Internal {
+                detail: format!("cover read task failed: {e}"),
+            })?
+            .map_err(|e| ImportError::LocalCover {
+                detail: format!(
+                    "Failed to read cover art {}: {e}",
+                    cover_file.path.display()
+                ),
+            })?;
 
         Ok(Some(CoverCandidate {
             bytes,

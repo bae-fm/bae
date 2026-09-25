@@ -654,12 +654,21 @@ impl ImportService {
             );
         }
 
-        let mut built_audio = Self::build_audio_formats(
-            tracks_to_files,
-            &file_ids,
-            self.clock.as_ref(),
-            self.ids.as_ref(),
-        )?;
+        // Byte landings seek through each CUE image with FFmpeg: blocking file
+        // reads, so they run off the worker's runtime.
+        let mut built_audio = {
+            let tracks = tracks_to_files.to_vec();
+            let file_ids = file_ids.clone();
+            let clock = self.clock.clone();
+            let ids = self.ids.clone();
+            tokio::task::spawn_blocking(move || {
+                Self::build_audio_formats(&tracks, &file_ids, clock.as_ref(), ids.as_ref())
+            })
+            .await
+            .map_err(|e| crate::import::ImportError::Internal {
+                detail: format!("audio format task failed: {e}"),
+            })??
+        };
         let source_file_sizes: HashMap<PathBuf, u64> = discovered_files
             .iter()
             .map(|file| (file.path.clone(), file.size))
@@ -726,7 +735,9 @@ impl ImportService {
                     })
                 }
             },
-            Some(CoverSelection::Local(path)) => self.pick_folder_cover(discovered_files, path)?,
+            Some(CoverSelection::Local(path)) => {
+                Self::pick_folder_cover(discovered_files, path).await?
+            }
             Some(CoverSelection::Embedded(_)) => {
                 embedded_cover
                     .take()

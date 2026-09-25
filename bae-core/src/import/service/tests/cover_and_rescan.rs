@@ -52,9 +52,8 @@ async fn explicit_bmp_cover_is_rejected() {
         ScannedFile::new(jpg.clone(), "front.jpg".to_string(), 9, 1),
     ];
 
-    let error = test
-        .service
-        .pick_folder_cover(&discovered, "cover.bmp")
+    let error = ImportService::pick_folder_cover(&discovered, "cover.bmp")
+        .await
         .unwrap_err();
     assert!(matches!(
         error,
@@ -216,9 +215,8 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
         1,
     )];
 
-    let err = test
-        .service
-        .pick_folder_cover(&discovered, "cover.bmp")
+    let err = ImportService::pick_folder_cover(&discovered, "cover.bmp")
+        .await
         .unwrap_err();
 
     assert!(
@@ -229,11 +227,8 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
-    let test = setup_import_service().await;
-
-    let err = test
-        .service
-        .pick_folder_cover(&[], "cover.bmp")
+    let err = ImportService::pick_folder_cover(&[], "cover.bmp")
+        .await
         .unwrap_err();
 
     assert!(
@@ -382,7 +377,7 @@ async fn unreadable_selected_cover_is_an_error() {
         1,
     )];
 
-    let result = test.service.pick_folder_cover(&discovered, "cover.jpg");
+    let result = ImportService::pick_folder_cover(&discovered, "cover.jpg").await;
 
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o600)).unwrap();
     let err = result.unwrap_err();
