@@ -6,6 +6,29 @@ use crate::import::ImportServiceHandle;
 use crate::playback::PlaybackHandle;
 use std::sync::Arc;
 
+/// One track's stored audio, open for a single decode into a
+/// [`DecodedSink`](crate::audio_codec::DecodedSink).
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub struct TrackDecode {
+    decode: crate::playback::stream_pipeline::StreamDecodeParams,
+    sample_rate: u32,
+    channels: u32,
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl TrackDecode {
+    /// Decode the track into `sink`, announcing its stored format first.
+    /// Blocking; run it off the async runtime.
+    pub fn run_to_sink(
+        &self,
+        sink: &mut dyn crate::audio_codec::DecodedSink,
+        cancel: Arc<std::sync::atomic::AtomicBool>,
+    ) -> Result<(), String> {
+        self.decode
+            .run_to_sink(self.sample_rate, self.channels, sink, cancel)
+    }
+}
+
 macro_rules! delegate_sync {
     ($field:ident, $name:ident => $target:ident($($arg:ident: $ty:ty),* $(,)?) -> $ret:ty) => {
         pub fn $name(&self, $($arg: $ty),*) -> $ret {
@@ -421,6 +444,41 @@ impl AppServices {
         );
         buffer
     }
+    /// Open `audio`'s stored audio for one decode start to finish (a
+    /// transcode): a stream per file its segments read, each segment seeked
+    /// the way playback seeks it. The streams close when the returned decode
+    /// is dropped.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub fn open_track_decode(&self, audio: &crate::library::ResolvedTrackAudio) -> TrackDecode {
+        use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
+
+        let mut streams: std::collections::HashMap<&str, crate::playback::SharedSparseBuffer> =
+            std::collections::HashMap::new();
+        let segments = audio
+            .segments
+            .iter()
+            .map(|segment| {
+                let buffer = streams
+                    .entry(segment.file_id.as_str())
+                    .or_insert_with(|| {
+                        self.open_release_file_stream(&segment.file_id, segment.file_size)
+                    })
+                    .clone();
+                SegmentDecodeParams::new(buffer, segment.span, 0)
+            })
+            .collect();
+        TrackDecode {
+            decode: StreamDecodeParams::new(
+                segments,
+                audio.content_type != crate::util::content_type::ContentType::Ape,
+                0,
+                0,
+            ),
+            sample_rate: audio.sample_rate,
+            channels: audio.channels,
+        }
+    }
+
     pub fn get_sync_status(&self) -> crate::library::SyncStatusSnapshot {
         self.inner.manager.get_sync_status()
     }

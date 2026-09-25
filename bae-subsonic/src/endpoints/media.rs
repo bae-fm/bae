@@ -10,7 +10,7 @@ use axum::extract::{Query, State};
 use axum::http::header::{ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
-use bae_core::audio_codec::{decode_audio_to_sink, StreamEncodeFormat, StreamingEncoder};
+use bae_core::audio_codec::{StreamEncodeFormat, StreamingEncoder};
 use bae_core::config::SaveCodec;
 use bae_core::db::LibraryImageType;
 use bae_core::library::AppServices;
@@ -195,42 +195,7 @@ async fn stream_transcode(
     let codec = transcode_codec(requested_format, max_bitrate);
     let (encode_format, content_type) = stream_encode_format(&codec)?;
 
-    // One sparse buffer per distinct backing file; a CUE-image track's segments
-    // share a file, so it opens once.
-    let mut buffers: Vec<(String, SharedSparseBuffer)> = Vec::new();
-    for segment in &audio.segments {
-        if buffers.iter().any(|(id, _)| id == &segment.file_id) {
-            continue;
-        }
-        let file = services
-            .get_file_by_id(&segment.file_id)
-            .await
-            .map_err(lib_err)?
-            .ok_or_else(SubError::not_found)?;
-        let size = u64::try_from(file.file_size)
-            .map_err(|_| SubError::generic(format!("file {} has a negative size", file.id)))?;
-        buffers.push((
-            segment.file_id.clone(),
-            services.open_release_file_stream(&segment.file_id, size),
-        ));
-    }
-
-    let segments: Vec<(SharedSparseBuffer, Option<u64>, Option<u64>)> = audio
-        .segments
-        .iter()
-        .map(|segment| {
-            let buffer = buffers
-                .iter()
-                .find(|(id, _)| id == &segment.file_id)
-                .map(|(_, buffer)| buffer.clone())
-                .expect("every segment's file was opened above");
-            (
-                buffer,
-                Some(segment.span.start_sample),
-                segment.span.end_sample,
-            )
-        })
-        .collect();
+    let decode = services.open_track_decode(&audio);
 
     let (tx, rx) = mpsc::channel::<Result<Bytes, std::io::Error>>(4);
     let cancel = Arc::new(AtomicBool::new(false));
@@ -239,13 +204,9 @@ async fn stream_transcode(
         let sink = ChannelSink { tx: tx.clone() };
         let mut encoder =
             StreamingEncoder::streaming(encode_format, Box::new(sink), cancel.clone());
-        for (buffer, start, end) in segments {
-            if let Err(error) =
-                decode_audio_to_sink(buffer, start, end, &mut encoder, cancel.clone())
-            {
-                warn!("subsonic transcode of {track_id_owned} failed to decode: {error}");
-                return; // dropping tx ends the body
-            }
+        if let Err(error) = decode.run_to_sink(&mut encoder, cancel.clone()) {
+            warn!("subsonic transcode of {track_id_owned} failed to decode: {error}");
+            return; // dropping tx ends the body
         }
         if let Err(error) = encoder.finish() {
             warn!("subsonic transcode of {track_id_owned} failed to finish: {error}");
