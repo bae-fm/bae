@@ -35,7 +35,7 @@ struct NarrowedOutDisclosure: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    Text("\(narrowedOut.count) more releases")
+                    Text("\(Int(narrowedOut.count)) more releases")
                 }
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
