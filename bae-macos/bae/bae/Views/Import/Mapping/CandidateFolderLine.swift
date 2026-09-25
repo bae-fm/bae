@@ -19,8 +19,8 @@ struct CandidateFolderLine: View {
 
     static func label(for tab: BridgeTriageTab) -> String {
         return switch tab {
-        case .pending: String(localized: "Pending")
-        case .done: String(localized: "Done")
+        case .pending: String(localized: "Found")
+        case .done: String(localized: "Imported")
         case .skipped: String(localized: "Skipped")
         }
     }

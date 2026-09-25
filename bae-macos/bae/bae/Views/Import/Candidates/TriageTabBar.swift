@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The Pending / Done / Skipped tab bar above the candidate list.
+/// The Found / Imported / Skipped tab bar above the candidate list.
 /// Three equal segments, each a label plus a count badge from core's
 /// `BridgeTriageTabCounts` — never an array length, which drifts the moment a
 /// filter is applied.
@@ -12,15 +12,14 @@ struct TriageTabBar: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            segment(.pending, "Pending", Int(counts.pending))
-            segment(.done, "Done", Int(counts.done))
-            segment(.skipped, "Skipped", Int(counts.skipped))
+            segment(.pending, Int(counts.pending))
+            segment(.done, Int(counts.done))
+            segment(.skipped, Int(counts.skipped))
         }
     }
 
     private func segment(
         _ tab: BridgeTriageTab,
-        _ label: LocalizedStringKey,
         _ count: Int
     ) -> some View {
         let isActive = activeTab == tab
@@ -28,7 +27,7 @@ struct TriageTabBar: View {
             activeTab = tab
         } label: {
             HStack(spacing: 4) {
-                Text(label)
+                Text(verbatim: CandidateFolderLine.label(for: tab))
                     .font(.system(size: 12.5, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)

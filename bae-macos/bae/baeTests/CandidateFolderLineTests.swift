@@ -33,7 +33,7 @@ final class CandidateFolderLineTests: XCTestCase {
 
         XCTAssertEqual(
             CandidateFolderLine.label(for: .pending),
-            "Pending"
+            "Found"
         )
         let placed = try await SnapshotTestSupport.capturePNG(
             placedHost,

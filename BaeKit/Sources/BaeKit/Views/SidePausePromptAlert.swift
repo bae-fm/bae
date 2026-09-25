@@ -100,10 +100,20 @@ private struct SidePausePromptCard: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Toggle("Pause between sides and discs", isOn: $keepPausing)
-                #if os(macOS)
-                    .toggleStyle(.checkbox)
-                #endif
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle("Pause between sides and discs", isOn: $keepPausing)
+                    #if os(macOS)
+                        .toggleStyle(.checkbox)
+                    #endif
+                // Unchecking turns the setting off, which also ends these
+                // prompts, so the card says where to turn it back on.
+                if !keepPausing {
+                    Text("You can turn this back on in Settings › Playback.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
 
             HStack(spacing: 10) {
                 Spacer()
