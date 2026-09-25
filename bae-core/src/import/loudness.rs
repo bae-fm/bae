@@ -265,16 +265,37 @@ impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
     }
 }
 
+/// Open a stream over one source file for the tracks that read it. `None` when
+/// its non-UTF-8 path cannot be carried by the reader; its tracks stay
+/// unmeasured. The fill task owns the open handle and closes it once the
+/// returned buffer is dropped. A read failure fails the buffer with the read's
+/// error, which the decode reading it returns as its outcome.
+fn open_source_stream(path: &std::path::Path, size: u64) -> Option<SharedSparseBuffer> {
+    let Some(path_str) = path.to_str() else {
+        warn!("loudness: non-UTF-8 path {path:?}; its tracks stay unmeasured");
+        return None;
+    };
+    let buffer = create_sparse_buffer(size);
+    let error_path = path.to_path_buf();
+    Box::new(LocalReader::new(path_str)).start_reading(
+        buffer.clone(),
+        Box::new(move |error| {
+            warn!("loudness: streaming {error_path:?} failed: {error}");
+        }),
+    );
+    Some(buffer)
+}
+
 /// Measure each track's loudness + true peak and the album's combined loudness,
 /// attaching the per-track measurements to `audio_formats` and returning the
 /// album-level `(loudness_lufs, peak_linear)`.
 ///
 /// Each track's window is decoded and measured on a blocking thread (FFmpeg
 /// decode is blocking CPU work). A file's compressed bytes stream through one
-/// shared `SparseStreamingBuffer` across its tracks (the tracks of a CUE
-/// image); the fill keeps a window ahead of the decode and evicts behind it,
-/// and decoding one track window at a time bounds transient PCM memory to a
-/// single track.
+/// `SparseStreamingBuffer` for the run of tracks that read it (the tracks of a
+/// CUE image), opened when that run starts and closed when it ends; the fill
+/// keeps a window ahead of the decode and evicts behind it, and decoding one
+/// track window at a time bounds transient PCM memory to a single track.
 ///
 /// A track whose decode/measure fails, or that is too quiet to have a usable
 /// loudness, keeps NULL loudness/peak and still imports — the skip is logged with
@@ -303,41 +324,25 @@ pub(super) async fn measure_loudness(
 ) -> Result<LoudnessResult, crate::import::ImportError> {
     use ebur128::EbuR128;
 
-    // Stream once per file and share across its tracks (every CUE track of one
-    // image reads the same sparse buffer; the fill evicts what the decodes have
-    // passed, so only a window of compressed bytes stays resident). Sizes come
-    // from the scan facts the import already validated. A non-UTF-8 path the
-    // reader can't carry yields `None`, so its tracks stay unmeasured; a read
-    // failure fails the buffer with the read's error, which the decode reading
-    // it returns as its outcome.
-    let path_by_file_id: HashMap<String, PathBuf> = file_ids
-        .iter()
-        .map(|(path, id)| (id.clone(), path.clone()))
-        .collect();
-    let mut file_buffers: HashMap<String, Option<SharedSparseBuffer>> = HashMap::new();
-    for (file_id, path) in &path_by_file_id {
+    // Every source's validated size is established before any is opened, so a
+    // missing size fails the pass before a single file is read.
+    let mut sources: HashMap<String, (PathBuf, u64)> = HashMap::new();
+    for (path, file_id) in file_ids {
         let size =
             *source_file_sizes
                 .get(path)
                 .ok_or_else(|| crate::import::ImportError::Internal {
                     detail: format!("validated source size is missing for {}", path.display()),
                 })?;
-        file_buffers.entry(file_id.clone()).or_insert_with(|| {
-            let Some(path_str) = path.to_str() else {
-                warn!("loudness: non-UTF-8 path {path:?}; its tracks stay unmeasured");
-                return None;
-            };
-            let buffer = create_sparse_buffer(size);
-            let error_path = path.clone();
-            Box::new(LocalReader::new(path_str)).start_reading(
-                buffer.clone(),
-                Box::new(move |error| {
-                    warn!("loudness: streaming {error_path:?} failed: {error}");
-                }),
-            );
-            Some(buffer)
-        });
+        sources.insert(file_id.clone(), (path.clone(), size));
     }
+    // The streams of exactly the track being measured, by file id, so the files
+    // held open never exceed one track's segments however many tracks the
+    // candidate has. A file opens when the first track that reads it is
+    // measured and closes when the pass reaches a track that does not read it.
+    // Consecutive tracks of one CUE image share its stream, so the image opens
+    // once for the run of its tracks.
+    let mut open_streams: HashMap<String, SharedSparseBuffer> = HashMap::new();
 
     // The bar uses actual frame work rather than equal track slices: a candidate
     // is determinate only when every track provides a usable sample-window or
@@ -408,10 +413,24 @@ pub(super) async fn measure_loudness(
         // Frames in this track's window: the sample window when known, else
         // duration × sample rate. With neither, the whole bar is indeterminate.
         let total_frames = track_total_frames[idx];
+        open_streams.retain(|file_id, _| {
+            segments
+                .iter()
+                .any(|segment| &segment.file_id == file_id)
+        });
         let mut decode_segments = Vec::new();
         let mut missing_segment = false;
         for segment in &segments {
-            let Some(buffer) = file_buffers.get(&segment.file_id).and_then(|b| b.clone()) else {
+            let stream = match open_streams.get(&segment.file_id) {
+                Some(buffer) => Some(buffer.clone()),
+                None => sources
+                    .get(&segment.file_id)
+                    .and_then(|(path, size)| open_source_stream(path, *size))
+                    .inspect(|buffer| {
+                        open_streams.insert(segment.file_id.clone(), buffer.clone());
+                    }),
+            };
+            let Some(buffer) = stream else {
                 warn!(
                     "loudness: cannot read segment source file {} for track {}; track stays unmeasured",
                     segment.file_id,
