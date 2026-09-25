@@ -693,6 +693,9 @@ pub(crate) async fn prepare_release(
         .fetch_release_payloads(release_ref, stored.as_ref(), priority)
         .await?;
     library_manager.store_release_payloads(&payloads).await?;
+    library_manager
+        .save_source_release(&payloads.extract()?)
+        .await?;
     Ok(payloads)
 }
 

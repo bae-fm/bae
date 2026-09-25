@@ -108,6 +108,17 @@ impl AppliedSource {
 }
 
 impl ReleasePayloads {
+    /// A set of documents a test states whole: the release's own and
+    /// whatever supporting documents it names.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn for_test(release: MetadataRef, anchor: String, supporting: Vec<SourcePayload>) -> Self {
+        Self {
+            release,
+            anchor,
+            supporting,
+        }
+    }
+
     /// The release these documents describe.
     pub fn release(&self) -> &MetadataRef {
         &self.release

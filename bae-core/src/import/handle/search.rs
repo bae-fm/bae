@@ -207,23 +207,22 @@ impl ImportServiceHandle {
         else {
             return Ok(RemoteCoverGallery::Unlinked);
         };
-        let mut claimed_payloads = Vec::new();
+        let mut claimed_releases = Vec::new();
         for claimed in std::iter::once(record).chain(partners) {
-            claimed_payloads.push(
+            claimed_releases.push(
                 self.library_manager
-                    .load_release_payloads(&claimed)
+                    .load_source_release(&claimed)
                     .await?
                     .ok_or_else(|| crate::import::ImportError::Internal {
                         detail: format!(
-                            "{key} names {} release {} without archived metadata",
+                            "{key} names {} release {} that nothing fetched",
                             claimed.catalog.as_str(),
                             claimed.key
                         ),
-                    })?
-                    .extract()?,
+                    })?,
             );
         }
-        let (primary, partners) = claimed_payloads
+        let (primary, partners) = claimed_releases
             .split_first()
             .expect("a pick claims at least its primary");
         Ok(RemoteCoverGallery::Linked(

@@ -65,6 +65,7 @@ desktop_only! {
         CandidateLookupUpdate, CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
     };
     mod payloads;
+    mod source_releases;
 }
 mod playback;
 pub(crate) use playback::QueueCatalogProjection;

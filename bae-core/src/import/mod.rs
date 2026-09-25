@@ -3,9 +3,8 @@
 desktop_only! {
     pub mod album_links;
     mod artist_assignments;
-    mod assemble;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod release_metadata;
+    pub(crate) mod assemble;
+    pub(crate) mod release_metadata;
     pub(crate) mod candidate_runtime;
     pub mod candidate_search;
     pub(crate) mod candidates;

@@ -188,19 +188,22 @@ async fn every_valid_candidate_is_sweepable() {
 }
 
 /// A candidate the user picked a release for leads with that release as its
-/// own archived documents describe it — not with whatever the verdict named.
+/// stored release describes it — not with whatever the verdict named.
 #[tokio::test]
-async fn a_picked_row_leads_with_the_archived_document() {
+async fn a_picked_row_leads_with_the_stored_release() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
 
-    db.save_source_release_payloads(&[DbSourceReleasePayload {
-        source: PayloadSource::MusicBrainz,
-        source_release_id: "mb-picked".to_string(),
-        json: musicbrainz_release("mb-picked", "Picked Album").to_string(),
-        fetched_at: fixed_now(),
-    }])
+    db.save_source_release(
+        &crate::import::payloads::ReleasePayloads::for_test(
+            crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
+            musicbrainz_release("mb-picked", "Picked Album").to_string(),
+            Vec::new(),
+        )
+        .extract()
+        .unwrap(),
+    )
     .await
     .unwrap();
     let draft = db

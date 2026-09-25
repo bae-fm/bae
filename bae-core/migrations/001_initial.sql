@@ -7,7 +7,8 @@
 -- and store-write ledgers) are created by coven's MIGRATION_SQL, not here.
 --
 -- Sections: the library, playback, watched folders and their scans, import
--- candidates, identification, and the catalog documents lookups cached.
+-- candidates, identification, the catalog releases lookups fetched, and the
+-- catalog documents lookups cached.
 
 -- ── The library ───────────────────────────────────────────────────────────────
 
@@ -1358,6 +1359,256 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_medium (
         REFERENCES import_candidate_match (content_hash, position, media_kind)
         ON DELETE CASCADE,
     CHECK (media_kind = 'per_medium' OR format IS NOT NULL)
+) STRICT;
+
+-- ── Catalog releases ──────────────────────────────────────────────────────────
+
+-- One catalog release bae fetched, with every fact the import reads about it
+-- extracted from the provider's documents when it was fetched. Device-local:
+-- any device can fetch a release again. Fetching it again replaces every row
+-- under it at once.
+CREATE TABLE IF NOT EXISTS source_release (
+    catalog            TEXT NOT NULL CHECK (catalog IN ('musicbrainz', 'discogs')),
+    release_id         TEXT NOT NULL CHECK (release_id <> ''),
+    -- The album the release's own catalog files it under: its MusicBrainz
+    -- release group or its Discogs master.
+    source_group_id    TEXT,
+    -- The album's facts: the release's own, and where it states none, what
+    -- its cross-referenced release and its album's documents state.
+    album_title        TEXT NOT NULL,
+    album_year         INTEGER,
+    -- The pressing's facts, resolved the same way.
+    year               INTEGER,
+    format             TEXT,
+    label              TEXT,
+    catalog_number     TEXT,
+    country            TEXT,
+    barcode            TEXT,
+    -- The MusicBrainz release whose Cover Art Archive gallery the picker
+    -- opens: this release, or the one a Discogs release is cross-referenced
+    -- to, with its release group.
+    archive_release_id TEXT,
+    archive_group_id   TEXT,
+    fetched_at         TEXT NOT NULL,
+    PRIMARY KEY (catalog, release_id),
+    CHECK (archive_release_id IS NOT NULL OR archive_group_id IS NULL)
+) STRICT;
+
+-- The album's artists, in credit order.
+CREATE TABLE IF NOT EXISTS source_release_album_artist (
+    catalog               TEXT NOT NULL,
+    release_id            TEXT NOT NULL,
+    position              INTEGER NOT NULL CHECK (position >= 0),
+    name                  TEXT NOT NULL,
+    sort_name             TEXT,
+    musicbrainz_artist_id TEXT,
+    discogs_artist_id     TEXT,
+    PRIMARY KEY (catalog, release_id, position),
+    FOREIGN KEY (catalog, release_id)
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- The releases on other catalogs a MusicBrainz release names as the same
+-- release, in relation order.
+CREATE TABLE IF NOT EXISTS source_release_link (
+    catalog      TEXT NOT NULL CHECK (catalog = 'musicbrainz'),
+    release_id   TEXT NOT NULL,
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    link_catalog TEXT NOT NULL CHECK (link_catalog <> ''),
+    link_key     TEXT NOT NULL CHECK (link_key <> ''),
+    PRIMARY KEY (catalog, release_id, position),
+    FOREIGN KEY (catalog, release_id)
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- A Discogs release's format names and qualifiers: one flat list that does
+-- not say which medium each describes.
+CREATE TABLE IF NOT EXISTS source_release_format (
+    catalog    TEXT NOT NULL CHECK (catalog = 'discogs'),
+    release_id TEXT NOT NULL,
+    position   INTEGER NOT NULL CHECK (position >= 0),
+    descriptor TEXT NOT NULL,
+    PRIMARY KEY (catalog, release_id, position),
+    FOREIGN KEY (catalog, release_id)
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- What another catalog says this release is ('pressing', with the album it
+-- files that pressing under) or what its album is ('album'). The release's
+-- own catalog is the release row itself.
+CREATE TABLE IF NOT EXISTS source_release_record (
+    catalog        TEXT NOT NULL,
+    release_id     TEXT NOT NULL,
+    record_catalog TEXT NOT NULL CHECK (record_catalog <> ''),
+    kind           TEXT NOT NULL CHECK (kind IN ('pressing', 'album')),
+    key            TEXT NOT NULL CHECK (key <> ''),
+    album_key      TEXT,
+    PRIMARY KEY (catalog, release_id, record_catalog),
+    FOREIGN KEY (catalog, release_id)
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE,
+    CHECK (record_catalog <> catalog),
+    CHECK (kind = 'pressing' OR album_key IS NULL)
+) STRICT;
+
+-- The images the release offers a picker: its pressing's own ('release'),
+-- then its album's ('album'), each in the order they are offered.
+CREATE TABLE IF NOT EXISTS source_release_cover (
+    catalog       TEXT NOT NULL,
+    release_id    TEXT NOT NULL,
+    scope         TEXT NOT NULL CHECK (scope IN ('release', 'album')),
+    position      INTEGER NOT NULL CHECK (position >= 0),
+    url           TEXT NOT NULL,
+    thumbnail_url TEXT NOT NULL,
+    label         TEXT NOT NULL,
+    source        TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
+    PRIMARY KEY (catalog, release_id, scope, position),
+    FOREIGN KEY (catalog, release_id)
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- The MusicBrainz release groups the album was read from, whose Cover Art
+-- Archive galleries the picker opens too.
+CREATE TABLE IF NOT EXISTS source_release_archive_group (
+    catalog    TEXT NOT NULL,
+    release_id TEXT NOT NULL,
+    position   INTEGER NOT NULL CHECK (position >= 0),
+    group_id   TEXT NOT NULL CHECK (group_id <> ''),
+    PRIMARY KEY (catalog, release_id, position),
+    FOREIGN KEY (catalog, release_id)
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- The composer credits a Discogs release states for itself rather than for
+-- one track, at their positions among its credits.
+CREATE TABLE IF NOT EXISTS source_release_role (
+    catalog               TEXT NOT NULL CHECK (catalog = 'discogs'),
+    release_id            TEXT NOT NULL,
+    position              INTEGER NOT NULL CHECK (position >= 0),
+    name                  TEXT NOT NULL,
+    sort_name             TEXT,
+    musicbrainz_artist_id TEXT,
+    discogs_artist_id     TEXT,
+    role                  TEXT,
+    PRIMARY KEY (catalog, release_id, position),
+    FOREIGN KEY (catalog, release_id)
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- Every medium of the release, in order. Only MusicBrainz states a medium's
+-- format; a Discogs release's mediums are the runs of rows its positions
+-- number as one disc.
+CREATE TABLE IF NOT EXISTS source_release_medium (
+    catalog    TEXT NOT NULL,
+    release_id TEXT NOT NULL,
+    position   INTEGER NOT NULL CHECK (position >= 0),
+    format     TEXT,
+    PRIMARY KEY (catalog, release_id, position),
+    FOREIGN KEY (catalog, release_id)
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- One row of a medium's tracklist. `entry` numbers the release's rows in
+-- tracklist order, a Discogs index's sub-tracks right after it with the index
+-- as their parent. A 'heading' titles the sub-track rows that follow it.
+CREATE TABLE IF NOT EXISTS source_release_entry (
+    catalog     TEXT NOT NULL,
+    release_id  TEXT NOT NULL,
+    entry       INTEGER NOT NULL CHECK (entry >= 0),
+    medium      INTEGER NOT NULL,
+    parent      INTEGER CHECK (parent IS NULL OR parent < entry),
+    kind        TEXT NOT NULL CHECK (kind IN ('track', 'heading', 'index')),
+    -- The position the catalog prints ('A1', '1-2'); NULL where it prints none.
+    position    TEXT CHECK (position IS NULL OR position <> ''),
+    -- MusicBrainz's own count of the track within its medium.
+    number      INTEGER,
+    -- NULL for a MusicBrainz track with no usable title, which reading
+    -- refuses.
+    title       TEXT,
+    duration_ms INTEGER CHECK (duration_ms IS NULL OR duration_ms >= 0),
+    PRIMARY KEY (catalog, release_id, entry),
+    FOREIGN KEY (catalog, release_id, medium)
+        REFERENCES source_release_medium (catalog, release_id, position) ON DELETE CASCADE,
+    FOREIGN KEY (catalog, release_id, parent)
+        REFERENCES source_release_entry (catalog, release_id, entry) ON DELETE CASCADE,
+    CHECK (kind = 'track' OR catalog = 'discogs'),
+    CHECK (parent IS NULL OR catalog = 'discogs')
+) STRICT;
+
+-- A row's display credits at their positions among its credits. The printed
+-- name heads a picker's row; the artist, where the catalog names one, is who
+-- is credited.
+CREATE TABLE IF NOT EXISTS source_release_entry_credit (
+    catalog               TEXT NOT NULL,
+    release_id            TEXT NOT NULL,
+    entry                 INTEGER NOT NULL,
+    position              INTEGER NOT NULL CHECK (position >= 0),
+    credited_name         TEXT NOT NULL,
+    name                  TEXT,
+    sort_name             TEXT,
+    musicbrainz_artist_id TEXT,
+    discogs_artist_id     TEXT,
+    PRIMARY KEY (catalog, release_id, entry, position),
+    FOREIGN KEY (catalog, release_id, entry)
+        REFERENCES source_release_entry (catalog, release_id, entry) ON DELETE CASCADE,
+    CHECK (name IS NOT NULL OR (sort_name IS NULL AND musicbrainz_artist_id IS NULL
+        AND discogs_artist_id IS NULL))
+) STRICT;
+
+-- A row's composer credits, at their positions among its relations or
+-- credits, with the words the catalog credits each with.
+CREATE TABLE IF NOT EXISTS source_release_entry_role (
+    catalog               TEXT NOT NULL,
+    release_id            TEXT NOT NULL,
+    entry                 INTEGER NOT NULL,
+    position              INTEGER NOT NULL CHECK (position >= 0),
+    name                  TEXT NOT NULL,
+    sort_name             TEXT,
+    musicbrainz_artist_id TEXT,
+    discogs_artist_id     TEXT,
+    role                  TEXT,
+    PRIMARY KEY (catalog, release_id, entry, position),
+    FOREIGN KEY (catalog, release_id, entry)
+        REFERENCES source_release_entry (catalog, release_id, entry) ON DELETE CASCADE
+) STRICT;
+
+-- The MusicBrainz works a track performs, each as that reference states it:
+-- a performed work hangs off its track at its position among the recording's
+-- relations; a part hangs off its work at its position among that work's
+-- relations, in the direction the relation runs.
+CREATE TABLE IF NOT EXISTS source_release_work (
+    catalog             TEXT NOT NULL CHECK (catalog = 'musicbrainz'),
+    release_id          TEXT NOT NULL,
+    node                INTEGER NOT NULL CHECK (node >= 0),
+    entry               INTEGER,
+    parent              INTEGER CHECK (parent IS NULL OR parent < node),
+    position            INTEGER NOT NULL CHECK (position >= 0),
+    direction           TEXT CHECK (direction IS NULL OR direction IN ('forward', 'backward')),
+    musicbrainz_work_id TEXT NOT NULL,
+    title               TEXT NOT NULL,
+    disambiguation      TEXT,
+    work_type           TEXT,
+    PRIMARY KEY (catalog, release_id, node),
+    FOREIGN KEY (catalog, release_id, entry)
+        REFERENCES source_release_entry (catalog, release_id, entry) ON DELETE CASCADE,
+    FOREIGN KEY (catalog, release_id, parent)
+        REFERENCES source_release_work (catalog, release_id, node) ON DELETE CASCADE,
+    CHECK ((entry IS NULL) <> (parent IS NULL)),
+    CHECK ((parent IS NULL) = (direction IS NULL))
+) STRICT;
+
+-- A work's composers, at their positions among the work's relations.
+CREATE TABLE IF NOT EXISTS source_release_work_composer (
+    catalog               TEXT NOT NULL,
+    release_id            TEXT NOT NULL,
+    node                  INTEGER NOT NULL,
+    position              INTEGER NOT NULL CHECK (position >= 0),
+    name                  TEXT NOT NULL,
+    sort_name             TEXT,
+    musicbrainz_artist_id TEXT,
+    discogs_artist_id     TEXT,
+    PRIMARY KEY (catalog, release_id, node, position),
+    FOREIGN KEY (catalog, release_id, node)
+        REFERENCES source_release_work (catalog, release_id, node) ON DELETE CASCADE
 ) STRICT;
 
 -- ── Catalog documents ─────────────────────────────────────────────────────────

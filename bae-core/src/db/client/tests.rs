@@ -261,3 +261,6 @@ mod folder_scan_live_query_tests;
 
 #[cfg(test)]
 mod file_tag_snapshot_tests;
+
+#[cfg(test)]
+mod source_release_tests;

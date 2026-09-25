@@ -1,14 +1,14 @@
 //! Turning item references into items, and reading one candidate whole.
 //!
 //! Everything expensive about the import tab lives here: a candidate's
-//! resolved boundaries, a boundary's tree, and the archived documents behind a
+//! resolved boundaries, a boundary's tree, and the fetched releases behind a
 //! pick. All three are read for the entries inside a requested window and for
 //! the one key a selection names — never for the queue.
 
 use super::super::folder_scans::load_resolved_boundaries;
 use super::super::import_combinations::{load_candidate_on, skipped_on};
 use super::super::import_state::{load_pane_rows_on, load_states_on};
-use super::super::payloads::load_release_payloads_on;
+use super::super::source_releases::load_source_release_on;
 use super::super::records::check_releases_in_library_on;
 use super::*;
 use crate::identify::{classify, TerminalVerdict, VerdictSummary};
@@ -75,8 +75,8 @@ pub(super) fn materialise(
                 } else {
                     None
                 };
-                // A decided identity outranks the verdict's lead. Its payloads
-                // are fetched in this snapshot and interpreted after release.
+                // A decided identity outranks the verdict's lead. Its releases
+                // are read in this snapshot and interpreted after it ends.
                 let picked = match row.metadata_provenance.as_ref() {
                     Some(seed) => picked_release(
                         sql,
@@ -179,17 +179,16 @@ impl WindowItemRows {
 
 pub(super) struct PickedReleaseRows {
     /// Every release the pick claims, the primary first and then its partners,
-    /// each with the documents archived for it. A release nothing archived
-    /// documents for is still listed: the pick claims it either way, and the
-    /// row says so.
+    /// each with its stored release. A release nothing fetched is still
+    /// listed: the pick claims it either way, and the row says so.
     claimed: Vec<(
         MetadataRef,
-        Option<crate::import::payloads::ReleasePayloads>,
+        Option<crate::import::source_release::SourceRelease>,
     )>,
     files: CategorizedFiles,
 }
 
-/// What the picked documents say: the release the row leads with, and every
+/// What the picked releases say: the release the row leads with, and every
 /// catalog that describes it.
 pub(super) struct PickedRelease {
     matched: Option<MatchedRelease>,
@@ -202,21 +201,9 @@ impl PickedReleaseRows {
             .map_err(|error| DbError::Message(error.to_string()))?;
         let audio_durations = crate::import::track_slots::audio_durations(&self.files, &durations)
             .map_err(|error| DbError::Message(error.to_string()))?;
-        let claimed = self
-            .claimed
-            .into_iter()
-            .map(|(release, payloads)| {
-                Ok((
-                    release,
-                    payloads
-                        .map(|payloads| payloads.extract())
-                        .transpose()
-                        .map_err(|error| DbError::Message(error.to_string()))?,
-                ))
-            })
-            .collect::<Result<Vec<_>, DbError>>()?;
         let records = crate::import::source_release::claimed_records(
-            &claimed
+            &self
+                .claimed
                 .iter()
                 .map(|(release, fetched)| (release.clone(), fetched.as_ref()))
                 .collect::<Vec<_>>(),
@@ -225,7 +212,7 @@ impl PickedReleaseRows {
         // partner's own release is not a second set of them. Its artwork is
         // another matter: a row's cover is the pick's, so the partners go to
         // the detail that carries the cover options.
-        let mut claimed = claimed.into_iter();
+        let mut claimed = self.claimed.into_iter();
         let (primary, fetched) = claimed.next().expect("a pick claims at least its primary");
         let partners: Vec<_> = claimed.filter_map(|(_, fetched)| fetched).collect();
         let matched = fetched
@@ -308,8 +295,8 @@ fn resolved_boundaries(
     )
 }
 
-/// Every release a pick claims, with the documents archived for each. `None`
-/// when the folder is read as its own tags, which claims no release at all.
+/// Every release a pick claims, with the stored release for each. `None` when
+/// the folder is read as its own tags, which claims no release at all.
 fn picked_release(
     sql: &SqlReadContext<'_>,
     pick: &MetadataProvenance,
@@ -318,12 +305,11 @@ fn picked_release(
     let MetadataProvenance::ExternalRelease { record, partners } = pick else {
         return Ok(None);
     };
-    let message = |error: crate::import::ImportError| DbError::Message(error.to_string());
     let claimed = std::iter::once(record.clone())
         .chain(partners.iter().cloned())
         .map(|release| {
-            let payloads = load_release_payloads_on(sql, &release).map_err(message)?;
-            Ok((release, payloads))
+            let fetched = load_source_release_on(sql, &release)?;
+            Ok((release, fetched))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
     Ok(Some(PickedReleaseRows {
@@ -397,14 +383,7 @@ pub(super) fn load_candidate_detail_on(
         .transpose()?;
     // Only identity keys are needed for the next SQL query. Track and artwork
     // processing runs after the snapshot ends.
-    let claimed = claimed_payloads_on(sql, &candidate, picked.as_ref())?
-        .iter()
-        .map(|payloads| {
-            payloads
-                .extract()
-                .map_err(|error| DbError::Message(error.to_string()))
-        })
-        .collect::<Result<Vec<_>, DbError>>()?;
+    let claimed = claimed_releases_on(sql, &candidate, picked.as_ref())?;
     // Every catalog record named by the picked releases.
     let records = crate::import::source_release::claimed_records(
         &claimed
@@ -555,30 +534,29 @@ pub(super) fn load_candidate_detail_on(
     }))
 }
 
-/// Read the documents of every release the pick claims in the pane's SQL
-/// snapshot, the primary first and then its partners.
+/// Read every release the pick claims in the pane's SQL snapshot, the primary
+/// first and then its partners.
 ///
-/// The primary's documents are what the draft was read from and what the pane
-/// leads with; together with the partners' they are what the release's
-/// records are read off. A stored pick always has readable documents — the
-/// pick write archives them first, for the primary and every partner alike —
-/// so a missing one is stated rather than served as half a pane.
-fn claimed_payloads_on(
+/// The primary is what the draft was read from and what the pane leads with;
+/// together with the partners it is what the release's records are read off.
+/// A stored pick always has its releases — the pick write fetches them first,
+/// for the primary and every partner alike — so a missing one is stated
+/// rather than served as half a pane.
+fn claimed_releases_on(
     sql: &SqlReadContext<'_>,
     candidate: &ReleaseCandidate,
     picked: Option<&MetadataProvenance>,
-) -> Result<Vec<crate::import::payloads::ReleasePayloads>, DbError> {
+) -> Result<Vec<crate::import::source_release::SourceRelease>, DbError> {
     let Some(MetadataProvenance::ExternalRelease { record, partners }) = picked else {
         return Ok(Vec::new());
     };
     std::iter::once(record.clone())
         .chain(partners.iter().cloned())
         .map(|release| {
-            load_release_payloads_on(sql, &release)
-                .map_err(|error| DbError::Message(error.to_string()))?
+            load_source_release_on(sql, &release)?
                 .ok_or_else(|| {
                     DbError::Message(format!(
-                        "{} is claimed for {} but nothing stored its lookups",
+                        "{} is claimed for {} but nothing fetched it",
                         release.key,
                         candidate.key()
                     ))

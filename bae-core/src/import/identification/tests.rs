@@ -660,8 +660,8 @@ impl Fixture {
             .expect("the fake Discogs key is stored");
     }
 
-    /// Archive a release's documents directly, as a settle step would have — for
-    /// a test that needs them present without anything having fetched them.
+    /// Store a release directly, as a settle step would have — for a test that
+    /// needs it present without anything having fetched it.
     async fn archive(&self, release_id: &str, group_id: &str, track_lengths: &[u64]) {
         let now = crate::db::DbSourceReleasePayload {
             source: crate::import::PayloadSource::MusicBrainz,
@@ -670,7 +670,19 @@ impl Fixture {
             fetched_at: fixed_now(),
         };
         self.manager
-            .save_source_release_payloads_for_test(&[now])
+            .save_source_release_payloads_for_test(std::slice::from_ref(&now))
+            .await
+            .unwrap();
+        self.manager
+            .save_source_release(
+                &crate::import::payloads::ReleasePayloads::for_test(
+                    crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, release_id),
+                    now.json,
+                    Vec::new(),
+                )
+                .extract()
+                .unwrap(),
+            )
             .await
             .unwrap();
     }

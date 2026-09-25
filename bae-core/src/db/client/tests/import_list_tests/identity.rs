@@ -4,7 +4,7 @@
 
 use super::*;
 
-/// Which catalogs describe a pick is read off its archived documents once:
+/// Which catalogs describe a pick is read off its stored release once:
 /// the queue's row and the pane's detail name the same records, in the order
 /// surfaces list catalogs — the pick's own, the release its document links,
 /// and the two its release group links.
@@ -13,20 +13,19 @@ async fn the_row_and_the_pane_name_the_same_records() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
-    db.save_source_release_payloads(&[
-        DbSourceReleasePayload {
-            source: PayloadSource::MusicBrainz,
-            source_release_id: "mb-linked".to_string(),
-            json: musicbrainz_release_linked_out("mb-linked", "mb-group").to_string(),
-            fetched_at: fixed_now(),
-        },
-        DbSourceReleasePayload {
-            source: PayloadSource::MusicBrainzReleaseGroup,
-            source_release_id: "mb-group".to_string(),
-            json: release_group_linked_out().to_string(),
-            fetched_at: fixed_now(),
-        },
-    ])
+    db.save_source_release(
+        &crate::import::payloads::ReleasePayloads::for_test(
+            crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-linked"),
+            musicbrainz_release_linked_out("mb-linked", "mb-group").to_string(),
+            vec![crate::import::SourcePayload::new(
+                PayloadSource::MusicBrainzReleaseGroup,
+                "mb-group",
+                release_group_linked_out().to_string(),
+            )],
+        )
+        .extract()
+        .unwrap(),
+    )
     .await
     .unwrap();
     let draft = db

@@ -181,6 +181,22 @@ impl LibraryManager {
         crate::import::payloads::load(&self.database, release).await
     }
 
+    /// The fetched release `release` names, as its extraction stored it, or
+    /// `None` when nothing has fetched it.
+    pub(crate) async fn load_source_release(
+        &self,
+        release: &crate::import::MetadataRef,
+    ) -> Result<Option<crate::import::source_release::SourceRelease>, LibraryError> {
+        Ok(self.database.load_source_release(release).await?)
+    }
+
+    pub(crate) async fn save_source_release(
+        &self,
+        release: &crate::import::source_release::SourceRelease,
+    ) -> Result<(), LibraryError> {
+        Ok(self.database.save_source_release(release).await?)
+    }
+
     pub(crate) async fn store_release_payloads(
         &self,
         payloads: &crate::import::payloads::ReleasePayloads,

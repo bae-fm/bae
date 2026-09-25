@@ -131,6 +131,14 @@ pub(crate) enum EntryKind {
 }
 
 impl EntryKind {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Track => "track",
+            Self::Heading => "heading",
+            Self::Index => "index",
+        }
+    }
+
     pub(crate) fn parse(value: &str) -> Option<Self> {
         match value {
             "track" => Some(Self::Track),
