@@ -10,7 +10,7 @@ final class CandidateFolderLineTests: XCTestCase {
         let size = NSSize(width: 520, height: 80)
         let (_, placedHost) = SnapshotTestSupport.hostInWindow(
             CandidateFolderLine(
-                placement: .ready,
+                tab: .pending,
                 folderName: "Release Folder",
                 folderPaths: ["/library/release-folder"],
                 onNavigateToPlacement: {}
@@ -21,7 +21,7 @@ final class CandidateFolderLineTests: XCTestCase {
         )
         let (_, unplacedHost) = SnapshotTestSupport.hostInWindow(
             CandidateFolderLine(
-                placement: nil,
+                tab: nil,
                 folderName: "Release Folder",
                 folderPaths: ["/library/release-folder"],
                 onNavigateToPlacement: {}
@@ -32,7 +32,7 @@ final class CandidateFolderLineTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            CandidateFolderLine.placementLabel(for: .ready),
+            CandidateFolderLine.label(for: .pending),
             "Pending"
         )
         let placed = try await SnapshotTestSupport.capturePNG(

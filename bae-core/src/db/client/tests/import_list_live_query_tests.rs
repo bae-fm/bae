@@ -253,6 +253,51 @@ async fn import_list_filter_finds_a_done_row_by_its_library_title() {
     assert_eq!(found.total_count, 1, "the new title finds the row");
 }
 
+/// The pane of a candidate its import put in the library is placed Done, which
+/// carries nothing of the candidate's draft: its Ready check and its draft's
+/// catalogs belong to a candidate still in the queue.
+#[tokio::test]
+async fn the_pane_of_an_imported_candidate_is_placed_done() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::watched_folder::host_root("/music");
+    let item = scan_candidate(root, "release");
+    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
+        unreachable!("the fixture builds a valid candidate");
+    };
+    let key = candidate.path.to_string_lossy().into_owned();
+    let content_hash = candidate.files.content_hash();
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    db.save_folder_scan_item(root, generation, &item)
+        .await
+        .unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+    let placement = |db: Database, key: String| async move {
+        db.load_import_candidate(&key)
+            .await
+            .unwrap()
+            .expect("the scanned candidate has a pane")
+            .resolve(&crate::import::TriageRuntimeFacts::default())
+            .placement
+    };
+
+    assert!(matches!(
+        placement(db.clone(), key.clone()).await,
+        crate::import::CandidatePanePlacement::Pending { .. }
+    ));
+
+    exec(
+        &db,
+        "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
+        &[content_hash.as_str(), RELEASE_ID],
+    )
+    .await;
+    assert_eq!(
+        placement(db.clone(), key).await,
+        crate::import::CandidatePanePlacement::Done
+    );
+}
+
 /// Moving the window is a request change, not a commit: the query reruns and
 /// says so without anything having been written.
 #[tokio::test]

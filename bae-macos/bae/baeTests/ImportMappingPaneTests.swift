@@ -780,12 +780,10 @@ struct ImportCommitControlsTests {
                 mapping: MappingFixtures.thirteenFileTable
             )
         )
-        var row = PreviewData.triageRowReadFromRecord
-        row.placement = .needsYou(
-            reason: .trackCountDisagrees(local: 13, source: 12)
+        candidate.placement = .pending(
+            readyCheck: .trackCountDisagrees(local: 13, source: 12),
+            records: []
         )
-        row.readyCheck = .trackCountDisagrees(local: 13, source: 12)
-        candidate.row = row
         let disagreeing =
             try await SnapshotTestSupport.recognizedText(
                 in: captureMappingPane(candidate: candidate, runtime: nil),
@@ -794,9 +792,7 @@ struct ImportCommitControlsTests {
             .map(\.text)
         #expect(disagreeing.carrying("13 in the folder, 12 on the release"))
 
-        row.placement = .ready
-        row.readyCheck = nil
-        candidate.row = row
+        candidate.placement = .pending(readyCheck: nil, records: [])
         let ready =
             try await SnapshotTestSupport.recognizedText(
                 in: captureMappingPane(candidate: candidate, runtime: nil),

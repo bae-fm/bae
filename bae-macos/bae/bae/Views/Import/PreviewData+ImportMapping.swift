@@ -392,41 +392,6 @@
             )
         }
 
-        /// The row the list places a preview candidate as.
-        static func paneRow(
-            folder: BridgeFolderCandidate,
-            metadataProvenance: BridgeMetadataProvenance?,
-            edit: BridgeRawReleaseEdit,
-            cover: BridgeCoverChoice?
-        ) -> BridgeTriageRow {
-            let placement: BridgeTriagePlacement =
-                metadataProvenance == nil && edit.albumTitle.isEmpty
-                ? .pending : .ready
-            return BridgeTriageRow(
-                candidateKey: folder.folderPath,
-                folderName: folder.sourceFolderName,
-                watchedFolderPath: folder.watchedFolderPath,
-                displayPath: folder.sourceFolderName,
-                resolvedBoundaries: [],
-                combineAncestorKey: nil,
-                actionable: true,
-                placement: placement,
-                readyCheck: nil,
-                actionBasis: BridgeCandidateActionBasis(
-                    actionable: true,
-                    placement: placement,
-                    lookupFailed: false
-                ),
-                matched: nil,
-                metadataSummary: nil,
-                coverThumbnail: cover?.thumbnailSource,
-                selectable: !edit.albumTitle.isEmpty,
-                importStatus: nil,
-                metadataProvenance: metadataProvenance,
-                reading: .unidentified,
-            )
-        }
-
         /// An untouched session opened on `presentation`.
         static func paneSession(
             presentation: BridgeMetadataPresentation
@@ -445,7 +410,7 @@
         }
 
         /// A candidate as the per-candidate read answers for it: the folder,
-        /// the row the list places it as, and everything the pane draws. The
+        /// where the queue places it, and everything the pane draws. The
         /// pane holds none of it — this is the one value it renders from.
         @MainActor
         static func paneCandidate(
@@ -463,12 +428,7 @@
                     candidate: folder,
                     actionable: true,
                     resumedIdentifyState: .idle,
-                    row: paneRow(
-                        folder: folder,
-                        metadataProvenance: metadataProvenance,
-                        edit: edit,
-                        cover: cover
-                    ),
+                    placement: .pending(readyCheck: nil, records: []),
                     live: BridgeCandidateLiveState(
                         identification: nil,
                         importing: false,

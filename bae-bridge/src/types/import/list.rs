@@ -138,8 +138,9 @@ pub struct BridgeImportCandidateDetail {
     /// what the pane shows when its runtime holds no run. `Idle` when nothing
     /// is stored for the candidate's current files.
     pub resumed_identify_state: BridgeIdentifyState,
-    /// The candidate's row as the tables place it.
-    pub row: BridgeTriageRow,
+    /// Where the queue places the candidate, with what the pane states beside
+    /// it.
+    pub placement: BridgeCandidatePanePlacement,
     /// What is running for the candidate right now, and the commands its row
     /// offers with it.
     pub live: BridgeCandidateLiveState,
@@ -185,6 +186,29 @@ pub struct BridgeImportCandidateDetail {
     /// `set_candidate_presentation`, `set_candidate_search_form` and
     /// `set_candidate_pane_error`; the next value of this carries it back.
     pub session: BridgeCandidateSession,
+}
+
+/// Where the queue places the candidate a pane shows, with what the pane
+/// states beside it. A Done candidate's pane is the library release it became,
+/// so it carries nothing the candidate's draft says.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeCandidatePanePlacement {
+    /// In Pending.
+    Pending {
+        /// The Ready check the candidate did not pass, stated beside its
+        /// Import.
+        ready_check: Option<crate::types::BridgeNeedsYou>,
+        /// Every catalog the draft was read from, in the order surfaces list
+        /// catalogs. Empty for a draft read from the files' tags, typed in, or
+        /// not there yet.
+        records: Vec<crate::types::BridgeReleaseRecord>,
+    },
+    /// Skipped, with every catalog the draft was read from.
+    Skipped {
+        records: Vec<crate::types::BridgeReleaseRecord>,
+    },
+    /// In the library.
+    Done,
 }
 
 /// Which surface the pane's metadata slot shows. Mirrors

@@ -86,32 +86,6 @@ mod triage_tests {
             Some(Some(40))
         );
     }
-
-    /// A placement's tab is the one core's own projection gives it, for every
-    /// variant — so `bridge_triage_tab` cannot become a second, divergent
-    /// rule.
-    #[test]
-    fn tab_of_placement_mirrors_core() {
-        use bae_core::import::{TriagePlacement, TriageTab};
-        for core in [
-            TriagePlacement::Pending,
-            TriagePlacement::Ready,
-            TriagePlacement::Failed,
-            TriagePlacement::NeedsYou {
-                reason: bae_core::identify::NeedsYou::SeveralMatches { count: 2 },
-            },
-            TriagePlacement::Done,
-            TriagePlacement::Skipped,
-        ] {
-            let expected = match core.tab() {
-                TriageTab::Pending => BridgeTriageTab::Pending,
-                TriageTab::Done => BridgeTriageTab::Done,
-                TriageTab::Skipped => BridgeTriageTab::Skipped,
-            };
-            let bridge = BridgeTriagePlacement::from_core(core);
-            assert_eq!(bridge_triage_tab(&bridge), expected);
-        }
-    }
 }
 
 /// Round-trips a fully-populated sample through `from_core` then `into_core` and

@@ -332,19 +332,6 @@ pub fn bridge_needs_you_key(needs_you: &BridgeNeedsYou) -> String {
     needs_you.loc_key().to_string()
 }
 
-/// Which tab a placement puts the row in — the filter a tab bar applies.
-#[uniffi::export]
-pub fn bridge_triage_tab(placement: &BridgeTriagePlacement) -> BridgeTriageTab {
-    match placement {
-        BridgeTriagePlacement::Pending
-        | BridgeTriagePlacement::Ready
-        | BridgeTriagePlacement::NeedsYou { .. }
-        | BridgeTriagePlacement::Failed => BridgeTriageTab::Pending,
-        BridgeTriagePlacement::Done => BridgeTriageTab::Done,
-        BridgeTriagePlacement::Skipped => BridgeTriageTab::Skipped,
-    }
-}
-
 /// Which signal produced a match.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMatchedSignal {

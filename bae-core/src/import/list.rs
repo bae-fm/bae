@@ -28,7 +28,7 @@ use super::release_candidate::ReleaseCandidate;
 use super::search::ImportSearchReleaseDetail;
 use super::triage::{
     import_status_of, place, CandidateActionBasis, CandidateLiveState, ImportedRow,
-    MatchedRelease, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriageRow,
+    TriageGroup, TriageImportStatus, TriageMetadataSummary, TriageRow,
     TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{MetadataProvenance, RawReleaseEdit};
@@ -365,9 +365,6 @@ pub struct ImportCandidateDetailProjection {
     /// What the stored verdict classified to. `None` with no stored verdict
     /// for the candidate's current file shape.
     pub answer: Option<QueueClassification>,
-    /// The identity the row leads with: the pick's stored release where there
-    /// is a pick, the verdict's lead otherwise.
-    pub matched: Option<MatchedRelease>,
     pub metadata_provenance: Option<MetadataProvenance>,
     /// Who wrote the draft, which decides whether a valid one is the answer.
     pub metadata_author: crate::import::MetadataAuthor,
@@ -423,7 +420,6 @@ impl ImportCandidateDetailProjection {
             is_added,
             resumed_identify_state,
             answer,
-            matched,
             metadata_provenance,
             metadata_author,
             metadata_revision,
@@ -472,32 +468,29 @@ impl ImportCandidateDetailProjection {
         );
         let action_basis = CandidateActionBasis::of(actionable, &placement, classification);
         let live = CandidateLiveState::of(&action_basis, facts.clone());
-        // The pick and the draft summary the row leads with, read once: its
-        // reading, its summary and its provenance all state the same fact.
-        let picked = metadata_provenance.clone().filter(|_| actionable);
-        let metadata_summary = TriageMetadataSummary::of(&metadata_draft, picked.clone());
-        let row = TriageRow {
-            candidate_key: candidate.key().into_owned(),
-            folder_name: candidate.name().to_string(),
-            watched_folder_path: candidate.watched_folder_path().to_string(),
-            display_path: candidate.display_path().to_string(),
-            resolved_boundaries: candidate.resolved_boundaries().to_vec(),
-            combine_ancestor_key: candidate.combine_ancestor_key().cloned(),
-            actionable,
-            selectable: action_basis.importable_at_rest(),
-            action_basis,
-            matched: matched.filter(|_| actionable),
-            reading: super::triage::TriageReading::of(
-                metadata_summary.as_ref(),
+        // The catalogs the draft was read from, as the row names them: only a
+        // draft read from a catalog's release names any.
+        let draft_records = || {
+            let picked = metadata_provenance.clone().filter(|_| actionable);
+            match super::triage::TriageReading::of(
+                TriageMetadataSummary::of(&metadata_draft, picked.clone()).as_ref(),
                 picked.as_ref(),
                 records,
-            ),
-            metadata_summary,
-            cover_thumbnail: None,
-            ready_check: super::triage::ready_check(&placement),
-            placement,
-            import_status,
-            metadata_provenance: picked,
+            ) {
+                super::triage::TriageReading::Identified { records } => records,
+                super::triage::TriageReading::Unidentified
+                | super::triage::TriageReading::Prefilled => Vec::new(),
+            }
+        };
+        let pane_placement = match placement.tab() {
+            TriageTab::Pending => CandidatePanePlacement::Pending {
+                ready_check: super::triage::ready_check(&placement),
+                records: draft_records(),
+            },
+            TriageTab::Skipped => CandidatePanePlacement::Skipped {
+                records: draft_records(),
+            },
+            TriageTab::Done => CandidatePanePlacement::Done,
         };
         let metadata_draft_is_blank = metadata_draft.is_blank();
         let composition_action = if is_added || facts.importing || facts.identifying() {
@@ -516,7 +509,7 @@ impl ImportCandidateDetailProjection {
         let import_status = if facts.importing {
             Some(CandidateImportStatus::Importing)
         } else {
-            row.import_status.clone().map(CandidateImportStatus::of)
+            import_status.map(CandidateImportStatus::of)
         };
         ImportCandidateDetail {
             composition_action,
@@ -525,7 +518,7 @@ impl ImportCandidateDetailProjection {
             skipped,
             is_added,
             resumed_identify_state,
-            row,
+            placement: pane_placement,
             live,
             import_status,
             release,
@@ -545,6 +538,30 @@ impl ImportCandidateDetailProjection {
             session,
         }
     }
+}
+
+/// Where the queue places the candidate a pane shows, with what the pane
+/// states beside it. A Done candidate's pane is the library release it became,
+/// so it carries nothing the candidate's draft says: the Ready check and the
+/// catalogs the draft was read from are a queued candidate's alone.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CandidatePanePlacement {
+    /// In Pending.
+    Pending {
+        /// The Ready check the candidate did not pass, stated beside its
+        /// Import: [`crate::import::triage::ready_check`] of its placement.
+        ready_check: Option<crate::identify::NeedsYou>,
+        /// Every catalog the draft was read from, in the order surfaces list
+        /// catalogs. Empty for a draft read from the files' tags, typed in,
+        /// or not there yet.
+        records: Vec<crate::import::ReleaseRecord>,
+    },
+    /// Skipped, with every catalog the draft was read from, as for Pending.
+    Skipped {
+        records: Vec<crate::import::ReleaseRecord>,
+    },
+    /// In the library.
+    Done,
 }
 
 /// Where a candidate's import stands for the pane that shows the candidate:
@@ -577,8 +594,9 @@ pub struct ImportCandidateDetail {
     pub skipped: bool,
     pub is_added: bool,
     pub resumed_identify_state: IdentifyState,
-    /// The candidate's row as the tables place it.
-    pub row: TriageRow,
+    /// Where the queue places the candidate, with what the pane states beside
+    /// it.
+    pub placement: CandidatePanePlacement,
     /// What is running for the candidate right now, and the commands its row
     /// offers with it.
     pub live: CandidateLiveState,

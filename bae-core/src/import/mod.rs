@@ -183,7 +183,8 @@ desktop_only! {
         ImportEventBus, ImportServiceHandle, ScanEvent,
     };
     pub use list::{
-        ActiveFolderScan, CandidateImportStatus, FolderScanActivity, FolderScanProgress,
+        ActiveFolderScan, CandidateImportStatus, CandidatePanePlacement, FolderScanActivity,
+        FolderScanProgress,
         ImportCandidateDetail,
         ImportCandidateDetailProjection, ImportCandidateListLocation, ImportListItem,
         ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,

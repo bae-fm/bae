@@ -441,7 +441,7 @@ extension MappingFixtures {
         candidateKey key: String = MappingFixtures.candidateKey,
         folderName: String = "Walkthrough",
         audioIdentity: String = "empty-audio-files",
-        reading: BridgeTriageReading = .unidentified
+        records: [BridgeReleaseRecord] = []
     ) -> BridgeImportCandidateDetail {
         let folder = sourceFolder(
             key: key,
@@ -452,12 +452,7 @@ extension MappingFixtures {
             candidate: folder,
             actionable: true,
             resumedIdentifyState: .idle,
-            row: row(
-                folder: folder,
-                edit: edit,
-                metadataProvenance: metadataProvenance,
-                reading: reading
-            ),
+            placement: .pending(readyCheck: nil, records: records),
             live: BridgeCandidateLiveState(
                 identification: nil,
                 importing: false,
@@ -492,41 +487,6 @@ extension MappingFixtures {
             lookupChoices: noLookupChoices,
             failure: failure,
             session: session(presentation: presentation)
-        )
-    }
-
-    /// The queue's row for that same folder — what the pane reads its title
-    /// and its placement from.
-    @MainActor
-    private static func row(
-        folder: BridgeFolderCandidate,
-        edit: BridgeRawReleaseEdit,
-        metadataProvenance: BridgeMetadataProvenance?,
-        reading: BridgeTriageReading
-    ) -> BridgeTriageRow {
-        let undecided = metadataProvenance == nil && edit.albumTitle.isEmpty
-        return BridgeTriageRow(
-            candidateKey: folder.folderPath,
-            folderName: folder.sourceFolderName,
-            watchedFolderPath: "/Music/Downloads",
-            displayPath: folder.sourceFolderName,
-            resolvedBoundaries: [],
-            combineAncestorKey: nil,
-            actionable: true,
-            placement: undecided ? .pending : .ready,
-            readyCheck: nil,
-            actionBasis: BridgeCandidateActionBasis(
-                actionable: true,
-                placement: undecided ? .pending : .ready,
-                lookupFailed: false
-            ),
-            matched: nil,
-            metadataSummary: nil,
-            coverThumbnail: nil,
-            selectable: !edit.albumTitle.isEmpty,
-            importStatus: nil,
-            metadataProvenance: metadataProvenance,
-            reading: reading
         )
     }
 
@@ -589,7 +549,7 @@ extension MappingFixtures {
         metadataProvenance: BridgeMetadataProvenance? = provenance,
         edit: BridgeRawReleaseEdit = albumEdit,
         presentation: BridgeMetadataPresentation = .draft,
-        reading: BridgeTriageReading = .unidentified
+        records: [BridgeReleaseRecord] = []
     ) -> ImportStore {
         let store = ImportStore()
         store.applyCandidateDetail(
@@ -599,7 +559,7 @@ extension MappingFixtures {
                 edit: edit,
                 metadataProvenance: metadataProvenance,
                 presentation: presentation,
-                reading: reading
+                records: records
             )
         )
         return store

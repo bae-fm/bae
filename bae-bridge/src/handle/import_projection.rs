@@ -577,6 +577,19 @@ impl crate::types::BridgeImportListSnapshot {
     }
 }
 
+mirror_enum! {
+    crate::types::BridgeCandidatePanePlacement = bae_core::import::CandidatePanePlacement,
+    from_core: fn,
+    variants: {
+        Pending {
+            ready_check: (opt crate::types::BridgeNeedsYou),
+            records: (each crate::types::BridgeReleaseRecord),
+        },
+        Skipped { records: (each crate::types::BridgeReleaseRecord) },
+        Done,
+    },
+}
+
 impl crate::types::BridgeImportCandidateDetail {
     pub(super) fn from_core(detail: bae_core::import::ImportCandidateDetail) -> Self {
         let bae_core::import::ImportCandidateDetail {
@@ -586,7 +599,7 @@ impl crate::types::BridgeImportCandidateDetail {
             skipped,
             is_added,
             resumed_identify_state,
-            row,
+            placement,
             live,
             import_status,
             release,
@@ -618,7 +631,7 @@ impl crate::types::BridgeImportCandidateDetail {
             resumed_identify_state: crate::types::BridgeIdentifyState::from_core(
                 resumed_identify_state,
             ),
-            row: crate::types::BridgeTriageRow::from_core(row),
+            placement: crate::types::BridgeCandidatePanePlacement::from_core(placement),
             live: crate::types::BridgeCandidateLiveState::from_core(live),
             import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
             release: release.map(crate::types::BridgeReleaseDetail::from_core),

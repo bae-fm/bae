@@ -216,7 +216,6 @@ private func detail(
     name: String,
     skipped: Bool = false,
     resumedIdentifyState: BridgeIdentifyState = .idle,
-    row: BridgeTriageRow? = nil,
     cover: BridgeCoverChoice? = nil,
     release: BridgeReleaseDetail? = nil,
     presentation: BridgeMetadataPresentation = .draft
@@ -230,7 +229,7 @@ private func detail(
         ),
         actionable: true,
         resumedIdentifyState: resumedIdentifyState,
-        row: row ?? readyRow(folderPath, title: name),
+        placement: .pending(readyCheck: nil, records: []),
         live: BridgeCandidateLiveState(
             identification: nil,
             importing: false,
@@ -283,8 +282,8 @@ struct ImportStoreCandidateDetailTests {
         #expect(read.displayName == "A")
         // With no run live the resumed state is what the pane shows.
         #expect(read.resumedIdentifyState == .notFoundAnywhere(run: nil))
-        #expect(read.row?.candidateKey == "/w1/a")
-        #expect(read.row?.importStatus == nil)
+        #expect(read.placement == .pending(readyCheck: nil, records: []))
+        #expect(read.importStatus == nil)
     }
 
     @MainActor
@@ -393,7 +392,6 @@ struct ImportStoreSidebarCoverTests {
                     folderPath: key,
                     watchedFolderPath: "/w",
                     name: "Subject",
-                    row: row,
                     cover: choice
                 )
             )

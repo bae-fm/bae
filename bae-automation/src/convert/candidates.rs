@@ -11,7 +11,7 @@ use std::collections::HashMap;
 /// A folder candidate with what is happening to it right now joined onto what
 /// the tables say: the identify state is the run in flight where there is one,
 /// else the state its stored verdict stands back up as, and the import status
-/// is the row's with the running attempt's progress filled in.
+/// is the detail's with the running attempt's progress filled in.
 pub(crate) fn automation_candidate_from_folder(
     folder: &ImportCandidateDetail,
     runtime: &HashMap<String, CandidateRuntimeSnapshot>,
@@ -49,7 +49,7 @@ pub(crate) fn automation_candidate_from_folder(
             identify_state: automation_identify_state(identify),
             signals: folder.signals.clone().map(AutomationSignals::from_core),
             import_status: automation_import_status(
-                folder.row.import_status.as_ref(),
+                folder.import_status.as_ref(),
                 live.and_then(|live| live.import.as_ref()),
             ),
         },
@@ -160,7 +160,7 @@ fn automation_candidate_common(
 /// Where the candidate's import stands: the attempt running now, with its
 /// progress, or else what the last one left in the tables.
 pub(crate) fn automation_import_status(
-    stored: Option<&TriageImportStatus>,
+    status: Option<&CandidateImportStatus>,
     in_flight: Option<&ImportInFlight>,
 ) -> Option<AutomationImportStatus> {
     if let Some(in_flight) = in_flight {
@@ -169,12 +169,17 @@ pub(crate) fn automation_import_status(
             step: in_flight.step.map(AutomationImportStep::from_core),
         });
     }
-    Some(match stored? {
-        TriageImportStatus::Complete { release } => AutomationImportStatus::Complete {
+    Some(match status? {
+        // Running, with no progress reported yet.
+        CandidateImportStatus::Importing => AutomationImportStatus::Importing {
+            progress_percent: None,
+            step: None,
+        },
+        CandidateImportStatus::Complete { release } => AutomationImportStatus::Complete {
             release_id: release.release_id.clone(),
             album_id: release.album_id.clone(),
         },
-        TriageImportStatus::Error { error } => AutomationImportStatus::Error {
+        CandidateImportStatus::Error { error } => AutomationImportStatus::Error {
             error: error.clone(),
         },
     })

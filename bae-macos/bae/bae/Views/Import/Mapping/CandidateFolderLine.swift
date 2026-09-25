@@ -9,14 +9,16 @@ import SwiftUI
 /// The name is selectable (a path is something people copy) and the glyph
 /// beside it is the control that shows the folder in Finder.
 struct CandidateFolderLine: View {
-    let placement: BridgeTriagePlacement?
+    /// The tab the queue places the folder on. `nil` for a folder the queue
+    /// does not hold.
+    let tab: BridgeTriageTab?
     let folderName: String
     /// The folder on disk — what the glyph reveals.
     let folderPaths: [String]
     let onNavigateToPlacement: () -> Void
 
-    static func placementLabel(for placement: BridgeTriagePlacement) -> String {
-        return switch bridgeTriageTab(placement: placement) {
+    static func label(for tab: BridgeTriageTab) -> String {
+        return switch tab {
         case .pending: String(localized: "Pending")
         case .done: String(localized: "Done")
         case .skipped: String(localized: "Skipped")
@@ -25,9 +27,9 @@ struct CandidateFolderLine: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            if let placement {
+            if let tab {
                 Button(action: onNavigateToPlacement) {
-                    Text(Self.placementLabel(for: placement))
+                    Text(Self.label(for: tab))
                         .font(.caption.weight(.medium))
                         .lineLimit(1)
                         .padding(.horizontal, 8)
@@ -65,7 +67,7 @@ struct CandidateFolderLine: View {
 #if DEBUG
     #Preview("Candidate folder line") {
         CandidateFolderLine(
-            placement: .ready,
+            tab: .pending,
             folderName:
                 "2010 \u{2013} Blue Sky Boys 1939\u{2013}1940 (256 kbps)",
             folderPaths: ["/Music/Blue Sky Boys"],

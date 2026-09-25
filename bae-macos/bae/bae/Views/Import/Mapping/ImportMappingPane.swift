@@ -56,7 +56,7 @@ struct ImportMappingPane: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 CandidateFolderLine(
-                    placement: candidate.row?.placement,
+                    tab: candidate.tab,
                     folderName: candidate.displayName,
                     folderPaths: candidate.sourceFolderPaths,
                     onNavigateToPlacement: {
@@ -105,7 +105,7 @@ struct ImportMappingPane: View {
         }
         return ImportCommitControls(
             unansweredCount: mapping.unansweredCount,
-            readyCheck: candidate.row?.readyCheck,
+            readyCheck: candidate.readyCheck,
             candidateKey: candidate.key,
             importStatus: candidate.importStatus,
             storageCloud: $storageCloud,

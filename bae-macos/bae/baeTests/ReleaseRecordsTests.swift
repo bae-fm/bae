@@ -45,7 +45,7 @@ struct ReleaseRecordsTests {
     func thePaneNamesItsCatalogsOnce() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable,
-            reading: .identified(records: PreviewData.releaseRecordsPair)
+            records: PreviewData.releaseRecordsPair
         )
         let candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]

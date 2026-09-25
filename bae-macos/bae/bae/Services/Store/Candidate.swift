@@ -361,10 +361,10 @@ struct Candidate: Equatable, Identifiable {
     /// The pane keeps no copy of any of it. A control writes through the
     /// importer, core commits, and the next value of this lands here.
     var detail: BridgeImportCandidateDetail?
-    /// How the sidebar places this candidate — the same row the list holds,
-    /// read by key alongside the folder. `nil` for a re-identify session,
-    /// which has no scanned folder and so no row.
-    var row: BridgeTriageRow?
+    /// Where the queue places this candidate, with what the pane states
+    /// beside it — read by key alongside the folder. `nil` for a re-identify
+    /// session, which has no scanned folder and so no place in the queue.
+    var placement: BridgeCandidatePanePlacement?
     /// What is running for this candidate right now and the commands it
     /// offers with it, read with its row. `nil` for a re-identify session.
     var live: BridgeCandidateLiveState?
@@ -422,7 +422,7 @@ struct Candidate: Equatable, Identifiable {
     }
 
     /// One read of a selected candidate: the folder, its resumed identify
-    /// state, and the row the sidebar places it as.
+    /// state, and where the queue places it.
     init(
         detail: BridgeImportCandidateDetail
     ) {
@@ -430,7 +430,7 @@ struct Candidate: Equatable, Identifiable {
         resumedIdentifyState = IdentifyState(
             bridge: detail.resumedIdentifyState
         )
-        row = detail.row
+        placement = detail.placement
         live = detail.live
         self.detail = detail
         session = CandidateSessionState(bridge: detail.session)
@@ -527,10 +527,26 @@ struct Candidate: Equatable, Identifiable {
     /// read from, in the order core lists them. Empty for a draft read from
     /// the files' own tags, typed in, or not there yet.
     var records: [BridgeReleaseRecord] {
-        switch row?.reading {
-        case .identified(let records): records
-        case .unidentified, .prefilled, nil: []
+        switch placement {
+        case .pending(_, let records), .skipped(let records): records
+        case .done, nil: []
         }
+    }
+
+    /// The tab the queue places this candidate on.
+    var tab: BridgeTriageTab? {
+        switch placement {
+        case .pending: .pending
+        case .skipped: .skipped
+        case .done: .done
+        case nil: nil
+        }
+    }
+
+    /// The Ready check this candidate did not pass, stated beside its Import.
+    var readyCheck: BridgeNeedsYou? {
+        guard case .pending(let readyCheck, _) = placement else { return nil }
+        return readyCheck
     }
 
     var metadataDraftIsBlank: Bool {

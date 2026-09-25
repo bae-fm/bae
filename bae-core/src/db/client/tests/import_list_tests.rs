@@ -463,7 +463,6 @@ async fn a_verdict_from_another_revision_does_not_resume() {
         crate::identify::IdentifyState::Idle
     ));
     assert!(detail.answer.is_none());
-    assert!(detail.matched.is_none());
 }
 
 /// The sidebar owns the compact applied-draft projection. Closing the detail

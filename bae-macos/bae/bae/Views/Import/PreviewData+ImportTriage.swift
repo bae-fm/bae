@@ -794,6 +794,22 @@
             )
         }
 
+        /// Where the pane places a preview candidate, from the row the list
+        /// places it as.
+        static func panePlacement(
+            of row: BridgeTriageRow
+        ) -> BridgeCandidatePanePlacement {
+            let records: [BridgeReleaseRecord] =
+                if case .identified(let records) = row.reading { records }
+                else { [] }
+            return switch row.placement {
+            case .pending, .ready, .needsYou, .failed:
+                .pending(readyCheck: row.readyCheck, records: records)
+            case .skipped: .skipped(records: records)
+            case .done: .done
+            }
+        }
+
         @MainActor
         static func importTabScene() -> ImportPreviewFixture {
             let store = ImportStore()
@@ -801,7 +817,8 @@
             let rows = importTabRowsByKey()
             let live = importTabLiveStates()
             for var candidate in importTabCandidates {
-                candidate.row = rows[candidate.key]
+                candidate.placement = rows[candidate.key]
+                    .map(panePlacement(of:))
                 candidate.live = live[candidate.key]
                 store.selectedCandidates[candidate.key] = candidate
             }

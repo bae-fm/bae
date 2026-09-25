@@ -596,7 +596,7 @@ pub enum AutomationImportPhase {
 }
 
 /// Where a candidate's import stands, mirroring bae-core's
-/// `import::TriageImportStatus` with the running attempt's progress joined in.
+/// `import::CandidateImportStatus` with the running attempt's progress joined in.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationImportStatus {

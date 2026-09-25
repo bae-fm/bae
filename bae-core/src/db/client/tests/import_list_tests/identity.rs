@@ -77,8 +77,15 @@ async fn the_row_and_the_pane_name_the_same_records() {
         .unwrap()
         .expect("the scanned candidate has a pane")
         .resolve(&crate::import::TriageRuntimeFacts::default());
+    let crate::import::CandidatePanePlacement::Pending {
+        records: pane_records,
+        ..
+    } = &detail.placement
+    else {
+        panic!("a picked candidate is pending, got {:?}", detail.placement);
+    };
     assert_eq!(
-        detail.row.reading, row.reading,
-        "the pane's row names the records the queue's does"
+        pane_records, records,
+        "the pane names the records the queue's row does"
     );
 }

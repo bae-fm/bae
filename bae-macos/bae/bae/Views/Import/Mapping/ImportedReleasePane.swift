@@ -35,7 +35,7 @@ struct ImportedReleasePane: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 CandidateFolderLine(
-                    placement: candidate.row?.placement,
+                    tab: candidate.tab,
                     folderName: candidate.displayName,
                     folderPaths: candidate.sourceFolderPaths,
                     onNavigateToPlacement: {}
@@ -243,7 +243,7 @@ struct ImportingCandidatePane: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 CandidateFolderLine(
-                    placement: candidate.row?.placement,
+                    tab: candidate.tab,
                     folderName: candidate.displayName,
                     folderPaths: candidate.sourceFolderPaths,
                     onNavigateToPlacement: {}
