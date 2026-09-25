@@ -64,7 +64,7 @@ struct AlbumTrackListLayoutTests {
     }
 
     /// The track list over the pane's background, with nothing playing and
-    /// nothing loading, in a key window the capture can read pixels back from.
+    /// nothing loading, in a window the capture can read pixels back from.
     private func hostTrackList(
         release: ReleaseDetail,
         size: NSSize

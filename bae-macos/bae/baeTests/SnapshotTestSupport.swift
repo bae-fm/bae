@@ -5,9 +5,18 @@ import Vision
 
 /// Shared AppKit hosting + snapshot helpers for the view tests.
 enum SnapshotTestSupport {
-    /// Host `view` (sized to `size`) in a borderless key window. The caller keeps
-    /// the returned window alive for the test's duration and uses the host to
-    /// capture pixels or send events through the window.
+    /// Host `view` (sized to `size`) in a borderless window past the edge of
+    /// every display. The caller keeps the returned window alive for the
+    /// test's duration and uses the host to capture pixels or send events
+    /// through the window.
+    ///
+    /// The window never becomes key. Whether a window is key follows whether
+    /// the test host is the active app, which is whatever the person at the
+    /// machine last clicked: a prominent button drew its accent in one
+    /// capture and grey in the next, and two captures a test compared pixel
+    /// for pixel differed there. A window that is never key draws the same
+    /// controls every time. First responders and sent events do not need a
+    /// key window.
     ///
     /// The tree's layers are set to draw at `captureScale` as soon as they
     /// exist, so the redraw that a display at another scale needs happens
@@ -27,13 +36,23 @@ enum SnapshotTestSupport {
             backing: .buffered,
             defer: false
         )
+        window.setFrameOrigin(offscreenOrigin)
         window.contentView = host
-        window.makeKeyAndOrderFront(nil)
+        window.orderFront(nil)
         host.layoutSubtreeIfNeeded()
         if let layer = host.layer {
             rescale(layer)
         }
         return (window, host)
+    }
+
+    /// A window origin past the right edge of every display, so a hosted
+    /// view is never on the screen of the person running the suite: nothing
+    /// flashes while it runs, and their pointer never hovers a captured row.
+    @MainActor
+    private static var offscreenOrigin: NSPoint {
+        let right = NSScreen.screens.map(\.frame.maxX).max() ?? 0
+        return NSPoint(x: right + 1_000, y: 0)
     }
 
     /// Lay out `host` and capture it as PNG bytes for text recognition: the
@@ -248,15 +267,28 @@ enum SnapshotTestSupport {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }
 
-    /// Open and dismiss a SwiftUI-backed menu so its current items are available.
+    /// Have a SwiftUI-backed pop-up menu build its current items, without
+    /// showing it.
+    ///
+    /// SwiftUI fills the menu in the pop-up cell's delegate call that comes
+    /// just before the menu is shown, and in no earlier hook: neither the
+    /// menu delegate's update and open calls nor the will-pop-up
+    /// notification add an item. Opening the menu for real puts it on the
+    /// screen of the person running the suite, pulled in from wherever the
+    /// hosting window sits, so the helper makes that one call itself. A
+    /// system that stops making it leaves the menu empty, and the test
+    /// reading it fails on the missing items.
     @MainActor
     static func populateMenu(_ button: NSPopUpButton) {
-        let cancel = Timer(timeInterval: 0.1, repeats: false) { _ in
-            MainActor.assumeIsolated { button.menu?.cancelTracking() }
-        }
-        RunLoop.main.add(cancel, forMode: .common)
-        button.performClick(nil)
-        cancel.invalidate()
+        guard let menu = button.menu,
+            let cell = button.cell as? NSPopUpButtonCell,
+            let delegate = cell.value(forKey: "delegate") as? NSObject
+        else { return }
+        _ = delegate.perform(
+            NSSelectorFromString("popUpButtonCell:willShowMenu:"),
+            with: cell,
+            with: menu
+        )
     }
 
     /// One line of text Vision read off a capture: the words, and where on
@@ -373,5 +405,23 @@ extension Collection<String> {
 }
 
 private final class SnapshotTestWindow: NSWindow {
-    override var canBecomeKey: Bool { true }
+    /// A sheet — a confirmation dialog, an alert — brings the window it is
+    /// on onto a display, sliding it in from past the edge, and shows
+    /// itself there. Both stay transparent to the eye and to the pointer:
+    /// the test presses the sheet's buttons itself, and a capture draws the
+    /// views, not the window.
+    override func beginSheet(
+        _ sheetWindow: NSWindow,
+        completionHandler handler: ((NSApplication.ModalResponse) -> Void)? =
+            nil
+    ) {
+        for window in [self, sheetWindow] {
+            window.alphaValue = 0
+            window.ignoresMouseEvents = true
+        }
+        super.beginSheet(sheetWindow, completionHandler: handler)
+    }
+
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
 }

@@ -205,6 +205,21 @@ final class PopoverAnimationTests: XCTestCase {
                 .frame(width: 120, height: 80)
         )
         popover.contentViewController = contentViewController
+        // A popover is placed on a display whatever its anchor's window
+        // is, so the one this test opens is shown transparent to the eye
+        // and to the pointer; the test reads the popover, not its pixels.
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSPopover.willShowNotification,
+            object: popover,
+            queue: nil
+        ) { _ in
+            MainActor.assumeIsolated {
+                let window = contentViewController.view.window
+                window?.alphaValue = 0
+                window?.ignoresMouseEvents = true
+            }
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
         popover.show(
             relativeTo: anchor.bounds,
             of: anchor,
