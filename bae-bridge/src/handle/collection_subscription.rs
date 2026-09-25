@@ -161,7 +161,7 @@ impl crate::types::BridgeLibraryPageWindow {
         }
     }
 
-    fn into_core(self) -> bae_core::library::LibraryPageWindow {
+    pub(super) fn into_core(self) -> bae_core::library::LibraryPageWindow {
         bae_core::library::LibraryPageWindow {
             offset: self.offset,
             limit: self.limit,

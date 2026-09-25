@@ -193,7 +193,7 @@ internal sealed class PlaybackStore
         }
     }
 
-    private void ApplyContextPage(QueuePageKey key, object identity, BridgeQueueUpcomingPage page)
+    private void ApplyContextPage(QueuePageKey key, object identity, QueueUpcomingPage page)
     {
         if (!IsCurrentContextSubscription(key, identity) || page.Revision != Revision)
         {
@@ -467,3 +467,7 @@ internal sealed class PlaybackStore
 }
 
 internal readonly record struct QueuePageKey(int Offset, int End, ulong Revision);
+
+// One page of the context's upcoming tail and the queue revision it was sliced
+// from.
+internal sealed record QueueUpcomingPage(ulong Revision, BridgeQueueEntry[] Entries);

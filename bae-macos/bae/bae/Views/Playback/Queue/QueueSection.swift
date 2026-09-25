@@ -2,8 +2,8 @@ import BaeKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Range fetched around an unloaded context row as the queue scrolls, mirroring
-/// the page size `PlaybackStore.loadUpcomingRange`'s bridge call uses.
+/// The window read around an unloaded context row as the queue scrolls: what
+/// `PlaybackStore.loadUpcomingRange` adds to the store's one upcoming read.
 private let queueUpcomingLoadBatchSize = 100
 
 // periphery:ignore

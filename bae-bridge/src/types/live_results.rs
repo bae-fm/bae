@@ -55,7 +55,6 @@ callbacks! {
     ComposerDetailCallback: on_value(value: Option<BridgeComposerDetail>) + on_error;
     WorkDetailCallback: on_value(value: Option<BridgeWorkDetail>) + on_error;
     QueueCallback: on_value(value: BridgeQueueSnapshot) + on_error;
-    QueueUpcomingCallback: on_value(value: BridgeQueueUpcomingPage) + on_error;
     OutboxCallback: on_value(value: BridgeOutboxSnapshot) + on_error;
 
     #[cfg(feature = "cast")]

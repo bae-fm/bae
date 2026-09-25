@@ -55,7 +55,7 @@ internal sealed class QueueService
 
     /// <summary>Subscribe to one page of the context's upcoming tail past the
     /// window the queue value already carries.</summary>
-    public Func<uint, uint, Action<BridgeQueueUpcomingPage>, Action<Exception>, IDisposable?> SubscribeUpcomingPage { get; init; }
+    public Func<uint, uint, Action<QueueUpcomingPage>, Action<Exception>, IDisposable?> SubscribeUpcomingPage { get; init; }
         = (_, _, _, _) => throw new InvalidOperationException("QueueService stub: SubscribeUpcomingPage not wired");
 
     /// <summary>Wire every mutation through the open session's current handle.</summary>

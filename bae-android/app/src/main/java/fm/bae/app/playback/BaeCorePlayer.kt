@@ -34,7 +34,6 @@ import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeSidePausePrompt
-import uniffi.bae_bridge.QueueUpcomingCallback
 
 /** Now-playing snapshot the [fm.bae.app.ui.playback.NowPlayingBar] renders. */
 private const val TAG = "bae.BaeCorePlayer"
@@ -64,7 +63,7 @@ class BaeCorePlayer(
     private val appHandle: AppHandle,
     private val context: Context,
     private val scope: CoroutineScope,
-    private val queuePageSource: QueuePageSource = QueuePageSource(appHandle),
+    private val queueUpcomingSource: QueueUpcomingSource = QueueUpcomingSource(appHandle),
     /**
      * Whether the app currently has a foreground (started) Activity. Android
      * forbids starting a service from the background, so [ensurePlaybackService]
@@ -247,20 +246,23 @@ class BaeCorePlayer(
     private var manualEntries: List<Meta> = emptyList()
     private var contextLane: ContextLane? = null
 
-    /** Context-tail entries delivered past [ContextLane.entries]'s initial
-     *  window, keyed by absolute index. Replaced when the queue revision moves. */
+    /** Context-tail entries read past [ContextLane.entries]'s initial window, keyed by absolute
+     *  index: the latest upcoming value whose revision matches [queueRevision], and empty while
+     *  none does. */
     private var pagedUpcoming: Map<Int, QueueItem> = emptyMap()
 
-    /** The queue revision the current [manualEntries]/[contextLane] were built
-     *  from. Stamped onto every [loadUpcomingRange] fetch so a reply computed
-     *  under a since-superseded revision is dropped rather than merged. */
+    /** The queue revision the current [manualEntries]/[contextLane] were built from. Upcoming
+     *  values sliced from any other revision are not shown. */
     private var queueRevision: ULong = 0u
 
-    /** Live pages around the reported visible window. Moving the window evicts
-     *  both subscriptions and their rows. */
-    private var nextUpcomingSubscriptionIdentity = 0L
-    private val upcomingSubscriptions =
-        mutableMapOf<UpcomingPageKey, ActiveQueuePageSubscription>()
+    /** The context tail's windows past the initial one, read through one live query. */
+    private val upcoming =
+        QueueUpcomingWindows(queueUpcomingSource, scope) { revision ->
+            if (revision == queueRevision) {
+                pagedUpcoming = upcomingItems()
+                publish()
+            }
+        }
 
     /** Authoritative now-playing metadata from the latest Playing/Paused payload. */
     private var currentMeta: Meta? = null
@@ -633,15 +635,12 @@ class BaeCorePlayer(
             logger.warning("dropping queue value at revision $revision; revision $queueRevision is already applied")
             return
         }
-        val replacesPages = revision > queueRevision
         manualEntries = manualMetas
         contextLane = lane
-        if (replacesPages) {
-            upcomingSubscriptions.values.forEach { it.subscription.cancel() }
-            upcomingSubscriptions.clear()
-            pagedUpcoming = emptyMap()
+        if (revision > queueRevision) {
+            queueRevision = revision
+            pagedUpcoming = upcomingItems()
         }
-        queueRevision = revision
         entries = manualMetas + (lane?.entries ?: emptyList())
         this.hasNext = hasNext
         this.hasPrevious = hasPrevious
@@ -649,80 +648,23 @@ class BaeCorePlayer(
     }
 
     /**
-     * Subscribe to `[offset, offset + limit)` of the context's upcoming tail and
-     * merge every delivered page into [pagedUpcoming]. A no-op if that range
-     * already has a subscription. A newer queue revision cancels all prior page
-     * subscriptions. Errors retain the last page and are logged because this is
-     * background prefetch with no separate error UI.
+     * Read `[offset, offset + limit)` of the context's upcoming tail through the player's one
+     * upcoming read. See [QueueUpcomingWindows.load].
      */
-    suspend fun loadUpcomingRange(
+    fun loadUpcomingRange(
         offset: Int,
         limit: Int,
     ) {
         val lane = contextLane ?: return
-        val end = minOf(offset + limit, lane.upcomingTotal)
-        val key = UpcomingPageKey(offset until end, queueRevision)
-        if (offset < end && !upcomingSubscriptions.containsKey(key)) {
-            makeRoomForUpcomingPageNear(key.range)
-            val identity = ++nextUpcomingSubscriptionIdentity
-            upcomingSubscriptions[key] =
-                ActiveQueuePageSubscription(identity, QueuePageSubscription {})
-            val subscription =
-                queuePageSource.subscribe(
-                    offset.toUInt(),
-                    (end - offset).toUInt(),
-                    object : QueueUpcomingCallback {
-                        override fun onValue(value: uniffi.bae_bridge.BridgeQueueUpcomingPage) {
-                            scope.launch {
-                                if (upcomingSubscriptions[key]?.identity != identity) return@launch
-                                if (value.revision != queueRevision) {
-                                    logger.warning(
-                                        "dropping upcoming page for [$offset, $end): " +
-                                            "delivered for a since-superseded revision",
-                                    )
-                                    return@launch
-                                }
-                                val loaded =
-                                    value.entries
-                                        .mapIndexedNotNull { i, entry ->
-                                            entry.toEntry().toQueueItem()?.let { (offset + i) to it }
-                                        }.toMap()
-                                pagedUpcoming = pagedUpcoming + loaded
-                                publish()
-                            }
-                        }
-
-                        override fun onError(error: uniffi.bae_bridge.BridgeException) {
-                            scope.launch {
-                                if (upcomingSubscriptions[key]?.identity != identity) return@launch
-                                logger.error(
-                                    "upcoming range [$offset, $end) subscription failed",
-                                    error,
-                                )
-                            }
-                        }
-                    },
-                )
-            if (upcomingSubscriptions[key]?.identity == identity) {
-                upcomingSubscriptions[key] = ActiveQueuePageSubscription(identity, subscription)
-            } else {
-                subscription.cancel()
-            }
-        }
+        upcoming.load(offset until minOf(offset + limit, lane.upcomingTotal))
     }
 
-    private fun makeRoomForUpcomingPageNear(visibleRange: IntRange) {
-        while (upcomingSubscriptions.size >= MAX_UPCOMING_PAGE_SUBSCRIPTIONS) {
-            val visibleMidpoint = visibleRange.first + visibleRange.count() / 2
-            val key =
-                upcomingSubscriptions.keys.maxBy { candidate ->
-                    queuePageDistance(candidate.range, visibleMidpoint)
-                }
-            upcomingSubscriptions.remove(key)?.subscription?.cancel()
-            val initialCount = contextLane?.entries?.size ?: 0
-            pagedUpcoming = pagedUpcoming.filterKeys { it !in key.range || it < initialCount }
-        }
-    }
+    /** The upcoming entries read for the queue revision on screen, by absolute tail index. */
+    private fun upcomingItems(): Map<Int, QueueItem> =
+        upcoming
+            .entriesAt(queueRevision)
+            .mapNotNull { (index, entry) -> entry.toEntry().toQueueItem()?.let { index to it } }
+            .toMap()
 
     /**
      * Push the rebuilt projection: refresh the Media3 [State] for the session,
@@ -956,7 +898,6 @@ class BaeCorePlayer(
 
     fun closeSession() {
         systemHooks.detach()
-        upcomingSubscriptions.values.forEach { it.subscription.cancel() }
-        upcomingSubscriptions.clear()
+        upcoming.close()
     }
 }

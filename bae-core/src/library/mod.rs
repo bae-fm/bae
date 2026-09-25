@@ -8,6 +8,7 @@ pub mod manager;
 pub mod outbox_snapshot;
 mod outbox_snapshot_summary;
 pub mod output_snapshot;
+mod queue_upcoming;
 pub mod queued_releases;
 pub mod release_queue;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -34,6 +35,10 @@ pub use outbox_snapshot::{
     UploadIssue, UploadPhase, UploadProgress, UploadReleaseGroup, UploadState,
 };
 pub use output_snapshot::{OutputKind, OutputOp, OutputProgress, OutputSnapshot, OutputState};
+pub use queue_upcoming::{
+    QueueUpcomingSnapshot, QueueUpcomingSubscription, QueueUpcomingSubscriptionError,
+    QueueUpcomingWindow,
+};
 pub use queued_releases::QueuedReleases;
 pub use release_queue::{CountLabel, ReleaseQueue};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

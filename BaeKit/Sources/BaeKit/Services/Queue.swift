@@ -1,25 +1,24 @@
 import Foundation
 
-private final class QueueUpcomingValueSink: QueueUpcomingCallback,
-    @unchecked Sendable
-{
-    private let apply: @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
+/// The context's upcoming tail past the queue snapshot's first window, read
+/// through one live subscription: which windows it reads is changed in place,
+/// and each value answers every window at once, stamped with the queue revision
+/// it was sliced from.
+public struct QueueUpcomingQuery: Sendable {
+    public let setWindows: @Sendable ([BridgeLibraryPageWindow]) throws -> Void
+    public let next: @Sendable () async throws -> BridgeQueueUpcomingSnapshot
+    public let cancel: @Sendable () async -> Void
 
-    init(
-        apply: @escaping @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
+    public init(
+        setWindows:
+            @escaping @Sendable ([BridgeLibraryPageWindow]) throws -> Void,
+        next:
+            @escaping @Sendable () async throws -> BridgeQueueUpcomingSnapshot,
+        cancel: @escaping @Sendable () async -> Void
     ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(value: BridgeQueueUpcomingPage) {
-        Task { @MainActor in apply(value) }
-    }
-
-    func onError(error: BridgeError) {
-        Task { @MainActor in fail(error) }
+        self.setWindows = setWindows
+        self.next = next
+        self.cancel = cancel
     }
 }
 
@@ -44,16 +43,9 @@ public final class Queue: Sendable, Observable {
     public let skipToEntry: @Sendable (_ entryId: String) -> Void
     /// Flip the playing context between sequential and shuffled order.
     public let setShuffle: @Sendable (_ on: Bool) -> Void
-    /// Subscribe to one page of the context's upcoming tail past the initial
-    /// window. `offset` 0 is the first not-yet-played entry after the current
-    /// track.
-    public let subscribeUpcomingPage:
-        @Sendable (
-            _ offset: UInt32, _ limit: UInt32,
-            _ onValue:
-                @escaping @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void,
-            _ onError: @escaping @MainActor @Sendable (any Error) -> Void
-        ) -> any LiveSubscriptionProtocol
+    /// Open the live read of the context's upcoming tail. It reads no
+    /// windows until its first `setWindows`.
+    public let subscribeUpcoming: @Sendable () -> QueueUpcomingQuery
 
     public init(
         addToQueue: @escaping @Sendable ([String]) -> Void = { _ in },
@@ -71,14 +63,9 @@ public final class Queue: Sendable, Observable {
         },
         skipToEntry: @escaping @Sendable (String) -> Void = { _ in },
         setShuffle: @escaping @Sendable (Bool) -> Void = { _ in },
-        subscribeUpcomingPage:
-            @escaping @Sendable (
-                UInt32, UInt32,
-                @escaping @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void,
-                @escaping @MainActor @Sendable (any Error) -> Void
-            ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
-                fatalError("Queue upcoming-page subscription is not installed")
-            }
+        subscribeUpcoming: @escaping @Sendable () -> QueueUpcomingQuery = {
+            fatalError("Queue upcoming subscription is not installed")
+        }
     ) {
         self.addToQueue = addToQueue
         self.addNext = addNext
@@ -91,7 +78,7 @@ public final class Queue: Sendable, Observable {
         self.reorderEntry = reorderEntry
         self.skipToEntry = skipToEntry
         self.setShuffle = setShuffle
-        self.subscribeUpcomingPage = subscribeUpcomingPage
+        self.subscribeUpcoming = subscribeUpcoming
     }
 
     public convenience init(handle: any AppHandleProtocol) {
@@ -109,14 +96,12 @@ public final class Queue: Sendable, Observable {
             },
             skipToEntry: { handle.skipToEntry(entryId: $0) },
             setShuffle: { handle.setShuffle(on: $0) },
-            subscribeUpcomingPage: { offset, limit, onValue, onError in
-                handle.subscribeQueueUpcomingPage(
-                    offset: offset,
-                    limit: limit,
-                    callback: QueueUpcomingValueSink(
-                        apply: onValue,
-                        fail: onError
-                    )
+            subscribeUpcoming: {
+                let subscription = handle.subscribeQueueUpcoming()
+                return QueueUpcomingQuery(
+                    setWindows: { try subscription.setWindows(windows: $0) },
+                    next: { try await subscription.next() },
+                    cancel: { try? await subscription.cancel() }
                 )
             }
         )

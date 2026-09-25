@@ -3,12 +3,9 @@ import SwiftUI
 import os.log
 
 private let logger = Logger.bae("PlaybackStore")
-private let maximumUpcomingPageSubscriptions = 3
-
-private struct UpcomingPageKey: Hashable {
-    let range: Range<Int>
-    let revision: UInt64
-}
+/// How many windows of the context's upcoming tail stay read at once: the one
+/// around the visible rows and the two nearest it.
+private let maximumUpcomingWindows = 3
 
 /// Mirror of core's playback state. Retained value subscriptions are the writer:
 /// `nowPlaying`, `volume`, `isMuted`, `repeatMode`, `manualQueue`, and
@@ -37,24 +34,30 @@ public class PlaybackStore {
     /// fetched via `loadUpcomingRange`, live in `pagedUpcoming` — read either
     /// through `upcomingItem(at:)`.
     public var queueContext: QueuePlaybackContext?
-    /// Context-tail entries fetched past the initial window, keyed by their
-    /// absolute index in the tail. Replaced when the queue subscription
-    /// delivers a newer revision.
+    /// Context-tail entries read past the initial window, keyed by their
+    /// absolute index in the tail: the latest upcoming value whose revision
+    /// matches `revision`, and empty while none does.
     public var pagedUpcoming: [Int: QueueItem] = [:]
     /// The queue revision the current `manualQueue`/`queueContext` were resolved
-    /// from. Stamped onto every `loadUpcomingRange` fetch so a reply computed
-    /// under a since-superseded revision is dropped rather than merged.
+    /// from. Upcoming values sliced from any other revision are not shown.
     @ObservationIgnored
     public private(set) var revision: UInt64 = 0
-    /// Live pages around the reported visible window. Moving the window evicts
-    /// both subscriptions and their rows, so scroll history does not remain
-    /// subscribed or cached.
+    /// The one live read of the upcoming tail, opened by the first
+    /// `loadUpcomingRange`. Its windows move in place as the queue scrolls,
+    /// and the queue's revisions move it in core; neither opens another.
     @ObservationIgnored
-    private var upcomingSubscriptions:
-        [UpcomingPageKey: any LiveSubscriptionProtocol] =
-            [:]
+    private var upcomingQuery: QueueUpcomingQuery?
     @ObservationIgnored
-    private var upcomingSubscriptionIdentities: [UpcomingPageKey: UUID] = [:]
+    private var upcomingDeliveries: Task<Void, Never>?
+    /// The tail ranges the upcoming read covers, at most
+    /// `maximumUpcomingWindows`; loading one past that drops the one farthest
+    /// from it.
+    @ObservationIgnored
+    private var upcomingWindows: [Range<Int>] = []
+    /// The newest upcoming value, kept until the queue value of its revision
+    /// arrives when it lands first.
+    @ObservationIgnored
+    private var latestUpcoming: BridgeQueueUpcomingSnapshot?
 
     /// Current playback position. Updates at display rate during playback —
     /// far too frequent for `@Observable`; published as a Combine signal so
@@ -88,6 +91,13 @@ public class PlaybackStore {
     }
 
     public init() {}
+
+    deinit {
+        upcomingDeliveries?.cancel()
+        if let upcomingQuery {
+            Task { await upcomingQuery.cancel() }
+        }
+    }
 
     public var presentedSidePausePrompt: BridgeSidePausePrompt? {
         guard let prompt = nowPlaying.sidePausePrompt,
@@ -307,17 +317,11 @@ extension PlaybackStore {
             )
             return
         }
-        let replacesPages = snapshot.revision > revision
         manualQueue = snapshot.manual.map(QueueItem.init(bridge:))
         queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
-        revision = snapshot.revision
-        if replacesPages {
-            for subscription in upcomingSubscriptions.values {
-                subscription.cancel()
-            }
-            upcomingSubscriptions = [:]
-            upcomingSubscriptionIdentities = [:]
-            pagedUpcoming = [:]
+        if snapshot.revision > revision {
+            revision = snapshot.revision
+            showLatestUpcoming()
         }
     }
 
@@ -334,12 +338,11 @@ extension PlaybackStore {
         return pagedUpcoming[index]
     }
 
-    /// Subscribe to `[offset, offset + limit)` of the context's upcoming tail
-    /// and merge each delivered page into `pagedUpcoming`. A no-op when that
-    /// range already has a subscription. A page is applied only while its queue
-    /// revision matches the current snapshot; a newer snapshot cancels and
-    /// removes all prior page subscriptions. Errors retain the last page and
-    /// are logged because this is background prefetch with no separate error UI.
+    /// Read `[offset, offset + limit)` of the context's upcoming tail through
+    /// the store's one upcoming read, opening it on first use. A no-op when a
+    /// window already read covers the range. Past `maximumUpcomingWindows`,
+    /// the window farthest from this one is dropped from the read. Errors are
+    /// logged because this is background prefetch with no separate error UI.
     @MainActor
     public func loadUpcomingRange(offset: Int, limit: Int, queue: Queue) async {
         guard let context = queueContext else {
@@ -349,65 +352,94 @@ extension PlaybackStore {
         guard offset < end else {
             return
         }
-        let key = UpcomingPageKey(range: offset..<end, revision: revision)
-        if upcomingSubscriptions[key] != nil {
+        let range = offset..<end
+        if upcomingWindows.contains(where: {
+            $0.lowerBound <= range.lowerBound
+                && range.upperBound <= $0.upperBound
+        }) {
             return
         }
-        makeRoomForUpcomingPage(near: key.range)
-        let identity = UUID()
-        upcomingSubscriptionIdentities[key] = identity
-        upcomingSubscriptions[key] = queue.subscribeUpcomingPage(
-            UInt32(offset),
-            UInt32(end - offset),
-            { [weak self] page in
-                guard let self else { return }
-                guard self.upcomingSubscriptionIdentities[key] == identity
-                else {
-                    return
-                }
-                guard page.revision == self.revision else {
-                    logger.warning(
-                        "dropping upcoming page for [\(offset), \(end)): delivered for a since-superseded revision"
-                    )
-                    return
-                }
-                for (i, entry) in page.entries.enumerated() {
-                    self.pagedUpcoming[offset + i] = QueueItem(bridge: entry)
-                }
-            },
-            { [weak self] error in
-                guard self?.upcomingSubscriptionIdentities[key] == identity
-                else { return }
-                logger.warning(
-                    "upcoming range [\(offset), \(end)) subscription failed: \(error.localizedDescription)"
-                )
-            }
-        )
+        while upcomingWindows.count >= maximumUpcomingWindows {
+            let midpoint = range.lowerBound + range.count / 2
+            guard
+                let farthest = upcomingWindows.indices.max(by: {
+                    distance(from: upcomingWindows[$0], to: midpoint)
+                        < distance(from: upcomingWindows[$1], to: midpoint)
+                })
+            else { break }
+            upcomingWindows.remove(at: farthest)
+        }
+        upcomingWindows.append(range)
+        let query = openUpcomingQuery(queue: queue)
+        do {
+            try query.setWindows(
+                upcomingWindows.sorted { $0.lowerBound < $1.lowerBound }
+                    .map {
+                        BridgeLibraryPageWindow(
+                            offset: UInt64($0.lowerBound),
+                            limit: UInt64($0.count)
+                        )
+                    }
+            )
+        }
+        catch {
+            logger.warning(
+                "upcoming range [\(offset), \(end)) was not requested: \(error.localizedDescription)"
+            )
+        }
     }
 
     @MainActor
-    private func makeRoomForUpcomingPage(near visibleRange: Range<Int>) {
-        while upcomingSubscriptions.count >= maximumUpcomingPageSubscriptions {
-            let visibleMidpoint =
-                visibleRange.lowerBound + visibleRange.count / 2
-            guard
-                let key = upcomingSubscriptions.keys.max(by: { lhs, rhs in
-                    distance(from: lhs.range, to: visibleMidpoint)
-                        < distance(from: rhs.range, to: visibleMidpoint)
-                }),
-                let subscription = upcomingSubscriptions.removeValue(
-                    forKey: key
-                )
-            else {
-                return
-            }
-            subscription.cancel()
-            upcomingSubscriptionIdentities.removeValue(forKey: key)
-            for index in key.range
-            where index >= (queueContext?.upcoming.count ?? 0) {
-                pagedUpcoming.removeValue(forKey: index)
+    private func openUpcomingQuery(queue: Queue) -> QueueUpcomingQuery {
+        if let upcomingQuery {
+            return upcomingQuery
+        }
+        let query = queue.subscribeUpcoming()
+        upcomingQuery = query
+        upcomingDeliveries = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                do {
+                    let snapshot = try await query.next()
+                    guard let self else { return }
+                    self.applyUpcoming(snapshot)
+                }
+                catch {
+                    if !Task.isCancelled {
+                        logger.warning(
+                            "upcoming queue read failed: \(error.localizedDescription)"
+                        )
+                    }
+                    return
+                }
             }
         }
+        return query
+    }
+
+    @MainActor
+    private func applyUpcoming(_ snapshot: BridgeQueueUpcomingSnapshot) {
+        latestUpcoming = snapshot
+        guard snapshot.revision == revision else {
+            return
+        }
+        showLatestUpcoming()
+    }
+
+    /// Show the newest upcoming value when it was sliced from the queue
+    /// revision on screen, and nothing past the initial window otherwise:
+    /// its offsets count from another queue's tail.
+    private func showLatestUpcoming() {
+        guard let latestUpcoming, latestUpcoming.revision == revision else {
+            pagedUpcoming = [:]
+            return
+        }
+        var items: [Int: QueueItem] = [:]
+        for window in latestUpcoming.windows {
+            for (i, entry) in window.entries.enumerated() {
+                items[Int(window.window.offset) + i] = QueueItem(bridge: entry)
+            }
+        }
+        pagedUpcoming = items
     }
 
     private func distance(from range: Range<Int>, to index: Int) -> Int {

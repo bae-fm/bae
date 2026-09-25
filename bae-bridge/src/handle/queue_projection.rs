@@ -459,19 +459,6 @@ mirror_struct! {
     },
 }
 
-impl crate::types::BridgeQueueUpcomingPage {
-    pub(super) fn from_core(page: bae_core::queue::ResolvedQueueUpcomingPage) -> Self {
-        let bae_core::queue::ResolvedQueueUpcomingPage { revision, items } = page;
-        crate::types::BridgeQueueUpcomingPage {
-            revision,
-            entries: items
-                .into_iter()
-                .map(crate::types::BridgeQueueEntry::from_core)
-                .collect(),
-        }
-    }
-}
-
 impl crate::types::BridgeSyncStatusSnapshot {
     pub(super) fn from_core(snapshot: bae_core::library::SyncStatusSnapshot) -> Self {
         let can_reconnect = snapshot

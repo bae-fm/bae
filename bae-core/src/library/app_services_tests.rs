@@ -113,110 +113,151 @@ async fn queue_value_with_context(services: &AppServices) -> crate::queue::Resol
     }
 }
 
-async fn upcoming_page(
-    services: &AppServices,
-    offset: u32,
-    limit: u32,
-) -> crate::queue::ResolvedQueueUpcomingPage {
-    let mut values =
-        services.subscribe_queue_upcoming_values(&tokio::runtime::Handle::current(), offset, limit);
-    tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
-        .await
-        .expect("upcoming-page subscription delivers")
-        .expect("upcoming-page subscription stays open")
-        .expect("upcoming page resolves")
+fn windows(windows: &[(u64, u64)]) -> crate::library::LibraryPageWindows {
+    windows
+        .iter()
+        .map(|&(offset, limit)| crate::library::LibraryPageWindow { offset, limit })
+        .collect()
 }
 
-/// The upcoming-page subscription slices a real, actor-resolved context
-/// tail in order and stamps the page with the same revision as the queue
-/// value that selected it.
+/// The subscription's next value that `accept` takes, skipping the ones
+/// before it — the value for the empty initial window set, or one resolved
+/// before the queue reached the state a test drives it to.
+async fn upcoming_until(
+    subscription: &crate::library::QueueUpcomingSubscription,
+    accept: impl Fn(&crate::library::QueueUpcomingSnapshot) -> bool,
+) -> crate::library::QueueUpcomingSnapshot {
+    loop {
+        let value = tokio::time::timeout(std::time::Duration::from_secs(5), subscription.next())
+            .await
+            .expect("upcoming subscription delivers")
+            .expect("upcoming windows resolve");
+        if accept(&value) {
+            return value;
+        }
+    }
+}
+
+fn window_track_ids(snapshot: &crate::library::QueueUpcomingSnapshot) -> Vec<Vec<&str>> {
+    snapshot
+        .windows
+        .iter()
+        .map(|window| {
+            window
+                .items
+                .iter()
+                .map(|item| item.track_id.as_str())
+                .collect()
+        })
+        .collect()
+}
+
+/// One subscription reads every requested window of a real, actor-resolved
+/// context tail in one value, each in order, stamped with the revision of the
+/// queue value the windows were sliced from.
 #[tokio::test]
-async fn queue_upcoming_subscription_slices_and_orders_a_live_context_tail() {
+async fn queue_upcoming_reads_every_window_of_a_live_context_tail_in_one_value() {
     let (services, track_ids, _temp_dir) = playing_app_services(12).await;
+    let queue = queue_value_with_context(&services).await;
+    let subscription = services.subscribe_queue_upcoming(&tokio::runtime::Handle::current());
 
-    let snapshot = queue_value_with_context(&services).await;
-    let page = upcoming_page(&services, 2, 5).await;
+    subscription
+        .set_windows(windows(&[(2, 3), (7, 2)]))
+        .unwrap();
+    let value = upcoming_until(&subscription, |value| value.windows.len() == 2).await;
 
+    assert_eq!(value.revision, queue.revision);
+    // track_ids[0] is playing, so the tail is track_ids[1..]; offset 2 into
+    // it is track_ids[3].
     assert_eq!(
-        page.revision, snapshot.revision,
-        "the page is stamped with the same revision as the live queue's own snapshot"
-    );
-    let page_track_ids: Vec<&str> = page.items.iter().map(|i| i.track_id.as_str()).collect();
-    // track_ids[0] is the currently playing track, so the context tail
-    // is track_ids[1..]; offset 2 into that tail lands on track_ids[3].
-    let expected: Vec<&str> = track_ids[3..8].iter().map(String::as_str).collect();
-    assert_eq!(
-        page_track_ids, expected,
-        "the slice preserves the tail's order"
+        window_track_ids(&value),
+        vec![
+            track_ids[3..6]
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            track_ids[8..10]
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+        ]
     );
 }
 
-/// A limit reaching past the live tail's end clamps to what remains, and
-/// an offset past the end returns no items rather than erroring — both
-/// through the real `AppServices` -> `PlaybackHandle` -> `PlaybackQueue`
-/// chain, not `clamp_upcoming_page` called directly.
+/// A window reaching past the tail's end holds what remains, and one that
+/// starts past it holds nothing.
 #[tokio::test]
-async fn queue_upcoming_subscription_clamps_to_the_live_tails_end() {
-    let (services, track_ids, _temp_dir) = playing_app_services(12).await;
-    let snapshot = queue_value_with_context(&services).await;
-
-    // The tail has 11 entries (track_ids[1..12]); offset 9 has only 2
-    // left, so a limit of 100 clamps down to those 2.
-    let page = upcoming_page(&services, 9, 100).await;
-    let page_track_ids: Vec<&str> = page.items.iter().map(|i| i.track_id.as_str()).collect();
-    assert_eq!(
-        page_track_ids,
-        vec![track_ids[10].as_str(), track_ids[11].as_str()],
-        "the limit clamps to what remains instead of erroring"
-    );
-
-    let empty_page = upcoming_page(&services, 50, 10).await;
-    assert!(
-        empty_page.items.is_empty(),
-        "an offset past the tail's end yields no items"
-    );
-    assert_eq!(
-        empty_page.revision, snapshot.revision,
-        "both subscriptions project the current queue revision"
-    );
-}
-
-async fn next_upcoming_page(
-    values: &mut tokio::sync::mpsc::UnboundedReceiver<
-        Result<crate::queue::ResolvedQueueUpcomingPage, crate::library::LibraryError>,
-    >,
-) -> crate::queue::ResolvedQueueUpcomingPage {
-    tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
-        .await
-        .expect("upcoming-page subscription delivers")
-        .expect("upcoming-page subscription stays open")
-        .expect("upcoming page resolves")
-}
-
-/// A queue change that leaves the page's slice of the context tail alone
-/// still reaches the page: the same query's read is stamped with the new
-/// revision, so the page keeps matching the queue the UI is rendering.
-#[tokio::test]
-async fn queue_upcoming_page_follows_a_revision_that_leaves_its_slice_alone() {
+async fn queue_upcoming_clamps_windows_to_the_live_tails_end() {
     let (services, track_ids, _temp_dir) = playing_app_services(12).await;
     queue_value_with_context(&services).await;
-    let mut values =
-        services.subscribe_queue_upcoming_values(&tokio::runtime::Handle::current(), 2, 5);
-    let first = next_upcoming_page(&mut values).await;
+    let subscription = services.subscribe_queue_upcoming(&tokio::runtime::Handle::current());
 
-    // The manual lane is not part of the context tail this page slices.
-    services.playback_add_to_queue(vec![track_ids[0].clone()]);
+    // The tail has 11 entries (track_ids[1..12]).
+    subscription
+        .set_windows(windows(&[(9, 100), (50, 10)]))
+        .unwrap();
+    let value = upcoming_until(&subscription, |value| value.windows.len() == 2).await;
 
-    let restamped = loop {
-        let page = next_upcoming_page(&mut values).await;
-        if page.revision != first.revision {
-            break page;
-        }
-    };
     assert_eq!(
-        restamped.items, first.items,
-        "the slice itself is unchanged"
+        window_track_ids(&value),
+        vec![vec![track_ids[10].as_str(), track_ids[11].as_str()], vec![]]
     );
+}
+
+/// Moving the windows moves the same subscription: the value for the new
+/// windows arrives on it, and the old windows are gone from it.
+#[tokio::test]
+async fn queue_upcoming_moves_its_windows_in_place() {
+    let (services, track_ids, _temp_dir) = playing_app_services(12).await;
+    queue_value_with_context(&services).await;
+    let subscription = services.subscribe_queue_upcoming(&tokio::runtime::Handle::current());
+
+    subscription.set_windows(windows(&[(0, 2)])).unwrap();
+    upcoming_until(&subscription, |value| value.windows.len() == 1).await;
+
+    subscription.set_windows(windows(&[(4, 2)])).unwrap();
+    let moved = upcoming_until(&subscription, |value| {
+        value.windows.first().map(|window| window.window.offset) == Some(4)
+    })
+    .await;
+    assert_eq!(
+        moved.windows.len(),
+        1,
+        "the earlier window is no longer read"
+    );
+    assert_eq!(
+        window_track_ids(&moved),
+        vec![vec![track_ids[5].as_str(), track_ids[6].as_str()]]
+    );
+}
+
+/// A queue revision reaches the windows through the subscription that is
+/// already open: one that leaves the windows' entries alone restamps the
+/// same items, and one that moves the tail redelivers the windows' new
+/// entries.
+#[tokio::test]
+async fn queue_upcoming_follows_queue_revisions_without_resubscribing() {
+    let (services, track_ids, _temp_dir) = playing_app_services(12).await;
+    let queue = queue_value_with_context(&services).await;
+    let subscription = services.subscribe_queue_upcoming(&tokio::runtime::Handle::current());
+    subscription.set_windows(windows(&[(2, 3)])).unwrap();
+    let first = upcoming_until(&subscription, |value| value.windows.len() == 1).await;
+
+    // The manual lane is not part of the context tail the windows slice.
+    services.playback_add_to_queue(vec![track_ids[0].clone()]);
+    let restamped = upcoming_until(&subscription, |value| value.revision > first.revision).await;
+    assert_eq!(
+        restamped.windows, first.windows,
+        "the windows' entries are unchanged"
+    );
+
+    // Dropping the context empties the tail the windows slice.
+    services.playback_clear_playing_from();
+    let cleared = upcoming_until(&subscription, |value| {
+        value.windows.iter().all(|window| window.items.is_empty())
+    })
+    .await;
+    assert!(cleared.revision > queue.revision);
 }
 
 #[test]

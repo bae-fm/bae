@@ -83,6 +83,31 @@ fn replace_transitioning_release_ids(current: &mut Vec<String>, mut next: Vec<St
     true
 }
 
+/// Each requested window of `projection`'s upcoming tail with the entries in
+/// it, clamped to the tail's end.
+fn upcoming_slices<'a>(
+    projection: &'a crate::playback::PlaybackQueueProjection,
+    requested: &crate::library::LibraryPageWindows,
+) -> Vec<(
+    crate::library::LibraryPageWindow,
+    &'a [crate::playback::QueueEntry],
+)> {
+    let tail = projection
+        .context
+        .as_ref()
+        .map(|context| context.upcoming.as_slice())
+        .unwrap_or(&[]);
+    requested
+        .iter()
+        .map(|window| {
+            (
+                window.clone(),
+                crate::queue::clamp_upcoming_page(tail, window.offset, window.limit),
+            )
+        })
+        .collect()
+}
+
 impl std::fmt::Debug for AppServices {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppServices")
@@ -535,74 +560,97 @@ impl AppServices {
         rx
     }
 
-    pub fn subscribe_queue_upcoming_values(
+    /// The context's upcoming tail, read in the windows the subscription is
+    /// asked for — none until the first [`set_windows`]. One catalog query
+    /// serves every window: a new window set or a queue revision points it at
+    /// the tracks now in those windows, and one that leaves those tracks
+    /// alone resolves the read it already has.
+    ///
+    /// [`set_windows`]: crate::library::QueueUpcomingSubscription::set_windows
+    pub fn subscribe_queue_upcoming(
         &self,
         runtime_handle: &tokio::runtime::Handle,
-        offset: u32,
-        limit: u32,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<
-        Result<crate::queue::ResolvedQueueUpcomingPage, crate::library::LibraryError>,
-    > {
+    ) -> crate::library::QueueUpcomingSubscription {
+        let (windows_tx, mut windows) =
+            tokio::sync::watch::channel(crate::library::LibraryPageWindows::new());
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
         let query_runtime = runtime_handle.clone();
-        runtime_handle.spawn(async move {
+        let task = runtime_handle.spawn(async move {
             let manager = &services.inner.manager;
             let mut queue_values = services.inner.playback.subscribe_queue_values();
             let mut projection = queue_values.borrow_and_update().clone();
-            let slice = |projection: &crate::playback::PlaybackQueueProjection| {
-                let tail = projection
-                    .context
-                    .as_ref()
-                    .map(|context| context.upcoming.as_slice())
-                    .unwrap_or(&[]);
-                crate::queue::clamp_upcoming_page(tail, offset, limit).to_vec()
-            };
-            let page_request = |projection: &crate::playback::PlaybackQueueProjection| {
-                crate::db::QueueCatalogRequest::for_entries(&slice(projection), None)
-            };
-            let page = |projection: &crate::playback::PlaybackQueueProjection,
-                        read: &crate::db::QueueCatalogProjection| {
-                crate::queue::ResolvedQueueUpcomingPage {
+            let mut requested = windows.borrow_and_update().clone();
+            let catalog_request =
+                |projection: &crate::playback::PlaybackQueueProjection,
+                 requested: &crate::library::LibraryPageWindows| {
+                    crate::db::QueueCatalogRequest::for_entries(
+                        upcoming_slices(projection, requested)
+                            .into_iter()
+                            .flat_map(|(_, entries)| entries),
+                        None,
+                    )
+                };
+            let snapshot = |projection: &crate::playback::PlaybackQueueProjection,
+                            requested: &crate::library::LibraryPageWindows,
+                            read: &crate::db::QueueCatalogProjection| {
+                crate::library::QueueUpcomingSnapshot {
                     revision: projection.revision,
-                    items: manager.resolve_queue_entries(read, &slice(projection)),
+                    windows: upcoming_slices(projection, requested)
+                        .into_iter()
+                        .map(|(window, entries)| crate::library::QueueUpcomingWindow {
+                            window,
+                            items: manager.resolve_queue_entries(read, entries),
+                        })
+                        .collect(),
                 }
             };
-            let mut request = page_request(&projection);
+            let mut request = catalog_request(&projection, &requested);
             let mut catalog = reconfigurable_live_query_events(
                 &query_runtime,
                 manager.subscribe_queue_catalog(request.clone()),
             );
-            // The page last read for `request`: a queue change that leaves
-            // this slice alone still stamps the page with its new revision.
-            let mut current = None;
+            // The catalog last read for `request`: a queue revision or a
+            // window change that shows the same tracks resolves it again
+            // without another read.
+            let mut current: Option<crate::db::QueueCatalogProjection> = None;
             loop {
                 tokio::select! {
                     event = catalog.recv() => {
                         let Some(result) = event else { return };
-                        let value = result.map(|read: crate::db::QueueCatalogProjection| {
-                            let value = page(&projection, &read);
+                        let value = result.map(|read| {
+                            let value = snapshot(&projection, &requested, &read);
                             current = Some(read);
                             value
                         });
                         if tx.send(value).is_err() { return; }
+                        continue;
                     }
                     changed = queue_values.changed() => {
                         if changed.is_err() { return; }
                         projection = queue_values.borrow_and_update().clone();
-                        let next = page_request(&projection);
-                        if next != request {
-                            request = next;
-                            current = None;
-                            catalog.set(request.clone());
-                        } else if let Some(read) = current.as_ref() {
-                            if tx.send(Ok(page(&projection, read))).is_err() { return; }
-                        }
+                    }
+                    changed = windows.changed() => {
+                        if changed.is_err() { return; }
+                        requested = windows.borrow_and_update().clone();
+                    }
+                }
+                let next = catalog_request(&projection, &requested);
+                if next != request {
+                    request = next;
+                    current = None;
+                    catalog.set(request.clone());
+                } else if let Some(read) = current.as_ref() {
+                    if tx
+                        .send(Ok(snapshot(&projection, &requested, read)))
+                        .is_err()
+                    {
+                        return;
                     }
                 }
             }
         });
-        rx
+        crate::library::QueueUpcomingSubscription::new(windows_tx, rx, task)
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

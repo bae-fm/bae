@@ -5,8 +5,8 @@
 /// How much of the context's not-yet-played tail `resolve_queue_projection`
 /// resolves eagerly. The tail is library-scaled (a `Library` source's tail is
 /// every remaining library track); resolving only the first window keeps
-/// the queue value bounded regardless of library size. The rest is delivered
-/// through page subscriptions.
+/// the queue value bounded regardless of library size. The rest is read in
+/// the windows a [`crate::library::QueueUpcomingSubscription`] is asked for.
 pub const QUEUE_UPCOMING_WINDOW: usize = 100;
 
 /// Display-ready queue entry. `entry_id` is per-instance, so the UI keys each row
@@ -39,7 +39,8 @@ pub struct ResolvedContext {
     pub source_title: Option<String>,
     pub shuffled: bool,
     /// The first [`QUEUE_UPCOMING_WINDOW`] entries of the tail — not the whole
-    /// tail. Later indices are delivered by page subscriptions.
+    /// tail. Later indices are read by a
+    /// [`crate::library::QueueUpcomingSubscription`].
     pub upcoming: Vec<QueueItem>,
     /// The full length of the not-yet-played tail, including entries beyond
     /// `upcoming`. The UI renders a placeholder for every index up to this and
@@ -57,20 +58,9 @@ pub struct ResolvedQueueSnapshot {
     pub has_next: bool,
     pub has_previous: bool,
     /// The `PlaybackQueue` revision this snapshot was resolved from. A UI
-    /// stamps its fetched upcoming-pages with this and drops any page whose
-    /// revision no longer matches — the newer queue value already reset the
-    /// view.
+    /// shows the upcoming windows past the first only while they carry this
+    /// same revision, since their offsets count from this queue's tail.
     pub revision: u64,
-}
-
-/// One page of the context's upcoming tail, fetched by offset/limit — the
-/// counterpart to `ResolvedContext.upcoming` for indices past the initial
-/// window. `revision` is the `PlaybackQueue` revision the page was computed
-/// from; a UI drops the page if its own snapshot's revision has since moved on.
-#[derive(Debug, Clone)]
-pub struct ResolvedQueueUpcomingPage {
-    pub revision: u64,
-    pub items: Vec<QueueItem>,
 }
 
 /// Clamp an offset/limit page request against `tail`'s bounds: an offset past
@@ -79,11 +69,15 @@ pub struct ResolvedQueueUpcomingPage {
 /// the current track — the same coordinate space as `ResolvedContext.upcoming`.
 pub fn clamp_upcoming_page(
     tail: &[crate::playback::QueueEntry],
-    offset: u32,
-    limit: u32,
+    offset: u64,
+    limit: u64,
 ) -> &[crate::playback::QueueEntry] {
-    let start = (offset as usize).min(tail.len());
-    let end = start.saturating_add(limit as usize).min(tail.len());
+    let start = usize::try_from(offset)
+        .unwrap_or(usize::MAX)
+        .min(tail.len());
+    let end = start
+        .saturating_add(usize::try_from(limit).unwrap_or(usize::MAX))
+        .min(tail.len());
     &tail[start..end]
 }
 

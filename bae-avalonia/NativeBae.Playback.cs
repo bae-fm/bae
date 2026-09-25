@@ -78,20 +78,62 @@ internal static partial class NativeBae
 
     internal static void QueueClearPlayingFrom(AppHandle handle) => handle.ClearPlayingFrom();
 
-    internal static LiveSubscription SubscribeQueueUpcomingPage(
+    // One page of the context's upcoming tail, read through an upcoming
+    // subscription asked for just this page's window. Disposing cancels the
+    // pending read and frees the subscription.
+    internal static IDisposable SubscribeQueueUpcomingPage(
         AppHandle handle,
         uint offset,
         uint limit,
-        Action<BridgeQueueUpcomingPage> onValue,
-        Action<Exception> onError) =>
-        handle.SubscribeQueueUpcomingPage(offset, limit, new QueueUpcomingSink(onValue, onError));
-
-    private sealed class QueueUpcomingSink(
-        Action<BridgeQueueUpcomingPage> onValue,
-        Action<Exception> onError) : QueueUpcomingCallback
+        Action<QueueUpcomingPage> onValue,
+        Action<Exception> onError)
     {
-        public void OnValue(BridgeQueueUpcomingPage value) => onValue(value);
-        public void OnError(BridgeException error) => onError(error);
+        var subscription = handle.SubscribeQueueUpcoming();
+        var page = new UpcomingPage(subscription);
+        try
+        {
+            subscription.SetWindows([new BridgeLibraryPageWindow(offset, limit)]);
+        }
+        catch (BridgeException error)
+        {
+            onError(error);
+            return page;
+        }
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                BridgeQueueUpcomingSnapshot snapshot;
+                try
+                {
+                    snapshot = await subscription.Next();
+                }
+                catch (BridgeException.Cancelled)
+                {
+                    return;
+                }
+                catch (BridgeException error)
+                {
+                    onError(error);
+                    return;
+                }
+                onValue(new QueueUpcomingPage(
+                    snapshot.Revision,
+                    snapshot.Windows.SelectMany(window => window.Entries).ToArray()));
+            }
+        });
+        return page;
+    }
+
+    private sealed class UpcomingPage(QueueUpcomingSubscription subscription) : IDisposable
+    {
+        public void Dispose()
+        {
+            // Cancelling settles the pending read so the loop ends; freeing the
+            // object afterwards releases what core held for it.
+            _ = subscription.Cancel();
+            subscription.Dispose();
+        }
     }
 
     internal static void AddReleaseToQueue(AppHandle handle, string releaseId) => handle.AddReleaseToQueue(releaseId);

@@ -57,63 +57,114 @@ struct PlaybackStoreQueueRevisionTests {
     }
 }
 
-@Suite("PlaybackStore queue page window")
-struct PlaybackStoreQueuePageWindowTests {
-    @MainActor
-    @Test("moving the visible window cancels and evicts old queue pages")
-    func boundsSubscriptions() async {
-        let recorder = QueuePageSubscriptionRecorder()
-        let queue = Queue(
-            subscribeUpcomingPage: { offset, _, onValue, _ in
-                recorder.make(offset: Int(offset), onValue: onValue)
-            }
+/// An upcoming read the test drives: it records every window request and
+/// hands `next` whatever the test delivers.
+private final class UpcomingFeed: @unchecked Sendable {
+    private let lock = NSLock()
+    private var opened = 0
+    private var requests: [[BridgeLibraryPageWindow]] = []
+    private var pending: [BridgeQueueUpcomingSnapshot] = []
+    private var waiter:
+        CheckedContinuation<BridgeQueueUpcomingSnapshot, any Error>?
+
+    var openedCount: Int { lock.withLock { opened } }
+    var requested: [[BridgeLibraryPageWindow]] { lock.withLock { requests } }
+
+    func query() -> QueueUpcomingQuery {
+        lock.withLock { opened += 1 }
+        return QueueUpcomingQuery(
+            setWindows: { [self] windows in
+                lock.withLock { requests.append(windows) }
+            },
+            next: { [self] in
+                try await withCheckedThrowingContinuation { continuation in
+                    let ready: BridgeQueueUpcomingSnapshot? = lock.withLock {
+                        if pending.isEmpty {
+                            waiter = continuation
+                            return nil
+                        }
+                        return pending.removeFirst()
+                    }
+                    if let ready { continuation.resume(returning: ready) }
+                }
+            },
+            cancel: {}
         )
-        let store = PlaybackStore()
-        store.queueContext = QueuePlaybackContext(
-            kind: .library,
-            sourceTitle: nil,
-            shuffled: false,
-            upcoming: [],
-            upcomingTotal: 500
-        )
-
-        await store.loadUpcomingRange(offset: 0, limit: 60, queue: queue)
-        await store.loadUpcomingRange(offset: 100, limit: 60, queue: queue)
-        await store.loadUpcomingRange(offset: 200, limit: 60, queue: queue)
-        await store.loadUpcomingRange(offset: 300, limit: 60, queue: queue)
-
-        #expect(recorder.maximumActive <= 3)
-        #expect(recorder.subscriptions[0]?.cancelled == true)
-        #expect(store.upcomingItem(at: 0) == nil)
-
-        recorder.deliver(offset: 0)
-
-        #expect(store.upcomingItem(at: 0) == nil)
     }
 
-    @MainActor
-    @Test("an evicted queue page cannot overwrite a same-range replacement")
-    func sameRangeReplacementRejectsOldValue() async {
-        let recorder = QueuePageSubscriptionRecorder()
-        let queue = Queue(
-            subscribeUpcomingPage: { offset, _, onValue, onError in
-                recorder.make(
-                    offset: Int(offset),
-                    onValue: onValue,
-                    onError: onError
+    func deliver(revision: UInt64, offset: UInt64, entryId: String) {
+        let snapshot = BridgeQueueUpcomingSnapshot(
+            revision: revision,
+            windows: [
+                BridgeQueueUpcomingWindow(
+                    window: BridgeLibraryPageWindow(offset: offset, limit: 1),
+                    entries: [
+                        BridgeQueueEntry(
+                            entryId: entryId,
+                            trackId: "track-\(entryId)",
+                            title: "Track Title",
+                            artistNames: "Artist Name",
+                            durationClock: nil,
+                            albumTitle: "Album Title",
+                            coverImage: nil
+                        )
+                    ]
                 )
-            }
+            ]
         )
-        let store = PlaybackStore()
-        store.queueContext = QueuePlaybackContext(
-            kind: .library,
-            sourceTitle: nil,
-            shuffled: false,
-            upcoming: [],
-            upcomingTotal: 500
-        )
+        let waiter:
+            CheckedContinuation<BridgeQueueUpcomingSnapshot, any Error>? =
+                lock.withLock {
+                    if let waiter = self.waiter {
+                        self.waiter = nil
+                        return waiter
+                    }
+                    pending.append(snapshot)
+                    return nil
+                }
+        waiter?.resume(returning: snapshot)
+    }
+}
 
-        for offset in [0, 100, 200, 300, 0] {
+private func libraryContext(upcomingTotal: Int) -> BridgePlaybackContext {
+    BridgePlaybackContext(
+        kind: .library,
+        sourceTitle: nil,
+        shuffled: false,
+        upcoming: [],
+        upcomingTotal: UInt64(upcomingTotal)
+    )
+}
+
+private func contextSnapshot(revision: UInt64) -> BridgeQueueSnapshot {
+    BridgeQueueSnapshot(
+        manual: [],
+        context: libraryContext(upcomingTotal: 500),
+        hasNext: true,
+        hasPrevious: false,
+        revision: revision
+    )
+}
+
+@MainActor
+private func waitUntil(_ predicate: @MainActor () -> Bool) async {
+    for _ in 0..<500 {
+        if predicate() { return }
+        await Task.yield()
+    }
+}
+
+@Suite("PlaybackStore upcoming windows")
+struct PlaybackStoreUpcomingWindowTests {
+    @MainActor
+    @Test("scrolling the queue moves one upcoming read's windows")
+    func scrollingMovesOneRead() async {
+        let feed = UpcomingFeed()
+        let queue = Queue(subscribeUpcoming: { feed.query() })
+        let store = PlaybackStore()
+        store.applyQueueSnapshot(contextSnapshot(revision: 1))
+
+        for offset in [0, 100, 200, 300] {
             await store.loadUpcomingRange(
                 offset: offset,
                 limit: 60,
@@ -121,93 +172,55 @@ struct PlaybackStoreQueuePageWindowTests {
             )
         }
 
-        recorder.deliver(offset: 0, subscription: 0, entryId: "old")
-        #expect(store.upcomingItem(at: 0) == nil)
+        #expect(feed.openedCount == 1)
+        #expect(
+            feed.requested.last == [
+                BridgeLibraryPageWindow(offset: 100, limit: 60),
+                BridgeLibraryPageWindow(offset: 200, limit: 60),
+                BridgeLibraryPageWindow(offset: 300, limit: 60),
+            ],
+            "the window farthest from the newest one is dropped"
+        )
 
-        recorder.deliver(offset: 0, subscription: 1, entryId: "new")
-        #expect(store.upcomingItem(at: 0)?.entryId == "new")
-    }
-}
-
-private final class QueuePageSubscriptionRecorder: @unchecked Sendable {
-    private let lock = NSLock()
-    private var recordedSubscriptions: [Int: [QueuePageTestSubscription]] = [:]
-    private var callbacks:
-        [Int: [@MainActor @Sendable (BridgeQueueUpcomingPage) -> Void]] = [:]
-    private var recordedMaximumActive = 0
-
-    var subscriptions: [Int: QueuePageTestSubscription] {
-        lock.withLock {
-            recordedSubscriptions.compactMapValues(\.last)
-        }
-    }
-
-    var maximumActive: Int {
-        lock.withLock { recordedMaximumActive }
-    }
-
-    func make(
-        offset: Int,
-        onValue:
-            @escaping @MainActor @Sendable (BridgeQueueUpcomingPage) -> Void,
-        onError _: @escaping @MainActor @Sendable (any Error) -> Void = { _ in }
-    ) -> QueuePageTestSubscription {
-        let subscription = QueuePageTestSubscription()
-        lock.withLock {
-            recordedSubscriptions[offset, default: []].append(subscription)
-            callbacks[offset, default: []].append(onValue)
-            recordedMaximumActive = max(
-                recordedMaximumActive,
-                recordedSubscriptions.values.flatMap { $0 }
-                    .count {
-                        !$0.cancelled
-                    }
-            )
-        }
-        return subscription
-    }
-
-    @MainActor
-    func deliver(offset: Int) {
-        deliver(offset: offset, subscription: 0, entryId: "evicted")
-    }
-
-    @MainActor
-    func deliver(offset: Int, subscription: Int, entryId: String) {
-        let callback = lock.withLock { callbacks[offset]?[subscription] }
-        callback?(
-            BridgeQueueUpcomingPage(
-                revision: 0,
-                entries: [
-                    BridgeQueueEntry(
-                        entryId: entryId,
-                        trackId: "track-\(entryId)",
-                        title: "Track Title",
-                        artistNames: "Artist Name",
-                        durationClock: nil,
-                        albumTitle: "Album Title",
-                        coverImage: nil
-                    )
-                ]
-            )
+        await store.loadUpcomingRange(offset: 210, limit: 20, queue: queue)
+        #expect(
+            feed.requested.count == 4,
+            "a range a read window covers requests nothing"
         )
     }
-}
 
-private final class QueuePageTestSubscription: LiveSubscriptionProtocol,
-    @unchecked Sendable
-{
-    private let lock = NSLock()
-    private var isCancelled = false
+    @MainActor
+    @Test(
+        "an upcoming value shows only at the queue revision it was sliced from"
+    )
+    func upcomingFollowsQueueRevision() async {
+        let feed = UpcomingFeed()
+        let queue = Queue(subscribeUpcoming: { feed.query() })
+        let store = PlaybackStore()
+        store.applyQueueSnapshot(contextSnapshot(revision: 1))
+        await store.loadUpcomingRange(offset: 100, limit: 60, queue: queue)
 
-    var cancelled: Bool {
-        lock.withLock { isCancelled }
-    }
+        feed.deliver(revision: 1, offset: 100, entryId: "first")
+        await waitUntil { store.upcomingItem(at: 100) != nil }
+        #expect(store.upcomingItem(at: 100)?.entryId == "first")
 
-    func cancel() {
-        lock.withLock {
-            isCancelled = true
-        }
+        // The value for the next revision lands before the queue value does.
+        feed.deliver(revision: 2, offset: 100, entryId: "second")
+        await waitUntil { store.upcomingItem(at: 100)?.entryId != "first" }
+        #expect(
+            store.upcomingItem(at: 100)?.entryId == "first",
+            "a value ahead of the queue on screen waits for it"
+        )
+
+        store.applyQueueSnapshot(contextSnapshot(revision: 2))
+        #expect(store.upcomingItem(at: 100)?.entryId == "second")
+
+        store.applyQueueSnapshot(contextSnapshot(revision: 3))
+        #expect(
+            store.upcomingItem(at: 100) == nil,
+            "a queue revision the read has not reached shows no stale entries"
+        )
+        #expect(feed.openedCount == 1)
     }
 }
 

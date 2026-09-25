@@ -15,10 +15,10 @@ use crate::types::{
     BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig, BridgeCoverSelection,
     BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource,
     BridgeMakeReleasesRemoteOutcome, BridgePairingDevice, BridgePlaybackValues,
-    BridgePreviewTarget, BridgeQueueSnapshot, BridgeQueueUpcomingPage, BridgeRelease,
-    BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig,
-    BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter, BridgeStoragePage,
-    BridgeStorageRow, BridgeStorageSort, BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup,
+    BridgePreviewTarget, BridgeQueueSnapshot, BridgeRelease, BridgeReleaseRoleSummary,
+    BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults,
+    BridgeSortCriterion, BridgeStorageFilter, BridgeStoragePage, BridgeStorageRow,
+    BridgeStorageSort, BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup,
     BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary,
     BridgeWorkSummary, BridgeWorkTrackSummary,
 };
@@ -126,6 +126,7 @@ mod library_projection;
 mod live;
 mod playback_persistence;
 mod queue_projection;
+mod queue_upcoming;
 mod service_status;
 mod sync_status;
 mod ui_events;

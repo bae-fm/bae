@@ -137,23 +137,6 @@ impl AppHandle {
         )
     }
 
-    pub fn subscribe_queue_upcoming_page(
-        &self,
-        offset: u32,
-        limit: u32,
-        callback: Box<dyn crate::types::QueueUpcomingCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_channel(
-            move |services, runtime| {
-                services.subscribe_queue_upcoming_values(runtime, offset, limit)
-            },
-            move |value| match value {
-                Ok(value) => callback.on_value(BridgeQueueUpcomingPage::from_core(value)),
-                Err(error) => callback.on_error(BridgeError::internal(error)),
-            },
-        )
-    }
-
     pub fn subscribe_playback_values(
         &self,
         callback: Box<dyn crate::types::PlaybackValuesCallback>,

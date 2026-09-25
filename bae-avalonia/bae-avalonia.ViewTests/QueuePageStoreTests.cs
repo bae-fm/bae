@@ -28,7 +28,7 @@ public sealed class QueuePageStoreTests
         Assert.True(source.MaximumActive <= 3);
         Assert.True(source.Subscriptions[100][0].IsDisposed);
 
-        source.Subscriptions[100][0].Deliver(new BridgeQueueUpcomingPage(
+        source.Subscriptions[100][0].Deliver(new QueueUpcomingPage(
             Revision: 1,
             Entries: new[] { Entry("evicted") }));
         Dispatcher.UIThread.RunJobs();
@@ -71,7 +71,7 @@ public sealed class QueuePageStoreTests
         public IDisposable Subscribe(
             uint offset,
             uint _,
-            Action<BridgeQueueUpcomingPage> onValue,
+            Action<QueueUpcomingPage> onValue,
             Action<Exception> onError)
         {
             var subscription = new Subscription(onValue, onError);
@@ -101,13 +101,13 @@ public sealed class QueuePageStoreTests
     }
 
     private sealed class Subscription(
-        Action<BridgeQueueUpcomingPage> onValue,
+        Action<QueueUpcomingPage> onValue,
         Action<Exception> onError) : IDisposable
     {
         public bool IsDisposed { get; private set; }
         public event Action? Disposed;
 
-        public void Deliver(BridgeQueueUpcomingPage page) => onValue(page);
+        public void Deliver(QueueUpcomingPage page) => onValue(page);
 
         public void Fail(Exception error) => onError(error);
 
