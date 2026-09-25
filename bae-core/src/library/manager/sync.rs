@@ -106,9 +106,12 @@ impl LibraryManager {
 
     pub async fn unlock_cloud_home(&self, serialized_master_key: &str) -> Result<(), LibraryError> {
         self.sync.unlock_cloud_home(serialized_master_key).await?;
-        self.config_handle
-            .config()
-            .save_active_library(&self.app_dir)?;
+        let config = self.config_handle.config().clone();
+        let app_dir = self.app_dir.clone();
+        match tokio::task::spawn_blocking(move || config.save_active_library(&app_dir)).await {
+            Ok(saved) => saved?,
+            Err(error) => std::panic::resume_unwind(error.into_panic()),
+        }
         Ok(())
     }
 

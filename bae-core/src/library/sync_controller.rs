@@ -413,7 +413,8 @@ impl SyncController {
             .setup_s3_cloud_home(proposed, data.access_key, data.secret_key)
             .await?;
         self.config_handle
-            .update_store(move |config| config.cloud_home = connected.cloud_home)?;
+            .update_store_off_runtime(move |config| config.cloud_home = connected.cloud_home)
+            .await?;
         info!("Saved S3 sync configuration");
         self.diagnostics
             .event(TelemetryEvent::CloudProviderConnected {
@@ -446,7 +447,8 @@ impl SyncController {
             .setup_oauth_cloud_home(proposed, cancel_rx)
             .await?;
         self.config_handle
-            .update_store(move |config| config.cloud_home = connected.cloud_home)?;
+            .update_store_off_runtime(move |config| config.cloud_home = connected.cloud_home)
+            .await?;
         self.diagnostics
             .event(TelemetryEvent::CloudProviderConnected { provider });
         Ok(())
@@ -471,7 +473,8 @@ impl SyncController {
             .setup_cloudkit_cloud_home(proposed, ops)
             .await?;
         self.config_handle
-            .update_store(move |config| config.cloud_home = connected.cloud_home)?;
+            .update_store_off_runtime(move |config| config.cloud_home = connected.cloud_home)
+            .await?;
         info!("Configured CloudKit cloud provider");
         self.diagnostics
             .event(TelemetryEvent::CloudProviderConnected {
@@ -490,7 +493,8 @@ impl SyncController {
 
         self.database.disconnect_cloud_home().await?;
         self.config_handle
-            .update_store(|c| c.cloud_home = Default::default())?;
+            .update_store_off_runtime(|c| c.cloud_home = Default::default())
+            .await?;
         if let Some(provider) = provider {
             self.diagnostics
                 .event(TelemetryEvent::CloudProviderDisconnected { provider });

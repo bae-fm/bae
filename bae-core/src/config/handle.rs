@@ -61,6 +61,19 @@ impl ConfigHandle {
         self.update_with(|config| edit(&mut config.inner), Config::write_store_config)
     }
 
+    /// [`Self::update_store`] from async code: the write, a durable replace
+    /// of `config.yaml`, runs on a blocking thread.
+    pub(crate) async fn update_store_off_runtime(
+        self: &std::sync::Arc<Self>,
+        edit: impl FnOnce(&mut coven::Config) + Send + 'static,
+    ) -> Result<(), ConfigError> {
+        let handle = std::sync::Arc::clone(self);
+        match tokio::task::spawn_blocking(move || handle.update_store(edit)).await {
+            Ok(result) => result,
+            Err(error) => std::panic::resume_unwind(error.into_panic()),
+        }
+    }
+
     /// Edit bae's preferences, persist them to `preferences.yaml`, and publish
     /// the new state to subscribers. The write path for every bae setting.
     pub fn update_preferences(
