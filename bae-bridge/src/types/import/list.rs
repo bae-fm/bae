@@ -142,7 +142,7 @@ pub struct BridgeImportCandidateDetail {
     /// Where the candidate's import stands for the pane: the one running now,
     /// or what the last one left in the tables.
     pub import_status: Option<BridgeCandidateImportStatus>,
-    /// The picked release as its archived documents describe it. `None` with
+    /// The picked release as its stored release rows describe it. `None` with
     /// no pick, and for a folder read as its own tags.
     pub release: Option<BridgeReleaseDetail>,
     /// Whether the picked release is already in the library.

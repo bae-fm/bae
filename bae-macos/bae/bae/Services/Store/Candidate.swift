@@ -434,7 +434,7 @@ struct Candidate: Equatable, Identifiable {
         )
     }
 
-    /// The selected external release as its archived documents describe it.
+    /// The selected external release as its stored release rows describe it.
     var release: BridgeReleaseDetail? {
         detail?.release
     }

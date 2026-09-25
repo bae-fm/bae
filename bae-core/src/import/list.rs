@@ -19,7 +19,7 @@
 //! right now — a run queued or in flight, an import that owns it — moves no row
 //! between tabs and reorders nothing, so it is not an input to the list: each
 //! row reads it from its own subscription, as a
-//! [`CandidateLiveState`](super::triage::CandidateLiveState).
+//! [`CandidateLiveState`].
 
 use super::cover_art::{CoverChoice, RemoteCover};
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};

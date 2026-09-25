@@ -38,7 +38,7 @@ public sealed class ImportCandidate
     /// core commits, and the next value of this lands here.</summary>
     internal BridgeImportCandidateDetail? Detail { get; set; }
 
-    /// <summary>The picked release as its archived documents describe it.</summary>
+    /// <summary>The picked release as its stored release rows describe it.</summary>
     internal BridgeReleaseDetail? Release => Detail?.Release;
 
     /// <summary>What identified the picked release, each entry naming the file
