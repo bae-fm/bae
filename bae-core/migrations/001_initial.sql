@@ -178,6 +178,10 @@ CREATE TABLE IF NOT EXISTS releases (
     -- Whether the stored metadata was read off the folder's own file tags
     -- rather than a catalog record.
     draft_from_tags INTEGER NOT NULL DEFAULT 0 CHECK (draft_from_tags IN (0, 1)),
+    -- The catalog of the record (in `release_records`) the stored metadata was
+    -- read from, or NULL. One value per release, so two devices choosing
+    -- different records while apart merge to one of them.
+    draft_catalog TEXT,
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE
 ) STRICT;
 
@@ -301,8 +305,8 @@ CREATE INDEX IF NOT EXISTS idx_release_artist_roles_release ON release_artist_ro
 CREATE INDEX IF NOT EXISTS idx_release_artist_roles_artist ON release_artist_roles(artist_id);
 
 -- The catalog entries that describe a release: one per catalog, naming either
--- the pressing itself or the album it belongs to. Exactly one per release may
--- be the record the stored metadata was read from.
+-- the pressing itself or the album it belongs to. The one the stored metadata
+-- was read from is `releases.draft_catalog`.
 CREATE TABLE IF NOT EXISTS release_records (
     id          TEXT NOT NULL PRIMARY KEY,
     release_id  TEXT NOT NULL,
@@ -310,11 +314,10 @@ CREATE TABLE IF NOT EXISTS release_records (
     key         TEXT NOT NULL,
     album_key   TEXT,
     url         TEXT NOT NULL CHECK (url <> ''),
-    reads_draft INTEGER NOT NULL CHECK (reads_draft IN (0, 1)),
     _updated_at TEXT NOT NULL,
     created_at  TEXT NOT NULL,
     kind        TEXT NOT NULL CHECK (kind IN ('pressing', 'album')),
-    CHECK (kind = 'pressing' OR (album_key IS NULL AND reads_draft = 0)),
+    CHECK (kind = 'pressing' OR album_key IS NULL),
     UNIQUE (release_id, catalog),
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
@@ -323,9 +326,6 @@ CREATE INDEX IF NOT EXISTS idx_release_records_catalog_key ON release_records (c
 
 CREATE INDEX IF NOT EXISTS idx_release_records_catalog_album ON release_records
     (catalog, CASE WHEN kind = 'album' THEN key ELSE album_key END);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_release_records_reads_draft
-    ON release_records (release_id) WHERE reads_draft = 1;
 
 -- The tracks of a release, in playing order.
 CREATE TABLE IF NOT EXISTS tracks (

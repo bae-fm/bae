@@ -240,9 +240,11 @@ pub(super) fn get_release_records_on(
 ) -> Result<Vec<crate::import::ReleaseRecord>, DbError> {
     let mut records = sql.query(
         r#"
-            SELECT catalog, kind, key, album_key, reads_draft
-            FROM release_records
-            WHERE release_id = ?
+            SELECT rr.catalog, rr.kind, rr.key, rr.album_key,
+                   rr.catalog IS r.draft_catalog AS reads_draft
+            FROM release_records rr
+            JOIN releases r ON r.id = rr.release_id
+            WHERE rr.release_id = ?
             "#,
         params![release_id],
         |row| {

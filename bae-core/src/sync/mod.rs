@@ -21,6 +21,11 @@ pub(crate) mod upload_observer;
 
 pub mod membership;
 
+#[cfg(test)]
+mod identity_tests;
+#[cfg(test)]
+pub(crate) mod test_devices;
+
 use coven::{BlobDecl, RowIdentity, SyncedTable};
 use coven::{CacheFill, Provenance};
 
@@ -117,18 +122,20 @@ pub const CACHE_BUDGETS: [(&str, u64); 3] = [
 /// Passed to [`coven::Coven::builder`], which attaches the capture session to
 /// exactly these tables when the library is opened.
 pub fn synced_tables() -> Vec<SyncedTable> {
+    // A join row whose identity is the fact it states (an album credit, a
+    // release's record in one catalog) carries an id computed from that fact
+    // (`db::identity`), so two devices stating one fact write one row.
     vec![
         SyncedTable::new("artists", RowIdentity::IndependentUuid).gated_by_descendants(),
         SyncedTable::new("albums", RowIdentity::IndependentUuid).gated_by_descendants(),
-        SyncedTable::new("album_artists", RowIdentity::IndependentUuid).gated_through("album_id"),
+        SyncedTable::new("album_artists", RowIdentity::SharedKey).gated_through("album_id"),
         SyncedTable::new("releases", RowIdentity::IndependentUuid).gated_by("remote"),
-        SyncedTable::new("release_records", RowIdentity::IndependentUuid)
-            .gated_through("release_id"),
+        SyncedTable::new("release_records", RowIdentity::SharedKey).gated_through("release_id"),
         SyncedTable::new("tracks", RowIdentity::IndependentUuid).gated_through("release_id"),
         SyncedTable::new("track_artists", RowIdentity::IndependentUuid).gated_through("track_id"),
         SyncedTable::new("works", RowIdentity::IndependentUuid).gated_by_descendants(),
-        SyncedTable::new("work_artists", RowIdentity::IndependentUuid).gated_through("artist_id"),
-        SyncedTable::new("work_parts", RowIdentity::IndependentUuid).gated_through("child_work_id"),
+        SyncedTable::new("work_artists", RowIdentity::SharedKey).gated_through("artist_id"),
+        SyncedTable::new("work_parts", RowIdentity::SharedKey).gated_through("child_work_id"),
         SyncedTable::new("track_works", RowIdentity::IndependentUuid).gated_through("track_id"),
         SyncedTable::new("release_artist_roles", RowIdentity::IndependentUuid)
             .gated_through("release_id"),

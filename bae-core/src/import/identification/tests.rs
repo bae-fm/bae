@@ -337,7 +337,6 @@ impl Fixture {
         let database = Database::new_test(
             temp.path().join("test.db").to_str().unwrap(),
             clock.clone(),
-            ids.clone(),
         )
         .await
         .unwrap();

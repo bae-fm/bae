@@ -483,13 +483,7 @@ impl LibraryManager {
 
         let mut album_artists: Vec<DbAlbumArtist> = Vec::new();
         for (i, artist_id) in album_artist_ids.iter().enumerate().skip(1) {
-            album_artists.push(DbAlbumArtist::new(
-                &album_id,
-                artist_id,
-                i as i32,
-                self.ids.new_id(),
-                now,
-            ));
+            album_artists.push(DbAlbumArtist::new(&album_id, artist_id, i as i32, now));
         }
 
         // Track artists have no FK on `tracks` — every artist (primary or

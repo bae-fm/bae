@@ -65,7 +65,6 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
     let later = Database::from_handle(
         db.inner.handle.clone(),
         Arc::new(FixedClock(fixed_now() + chrono::Duration::days(1))),
-        db.inner.ids.clone(),
     );
     let generation = later.begin_folder_scan(&root).await.unwrap();
     for name in ["A", "B", "C"] {

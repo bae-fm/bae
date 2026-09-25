@@ -6,13 +6,11 @@ use crate::import::folder_scanner::{
 // canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
 // real ids are, so these fixtures carry UUIDs too. Each constant is named
 // for the moniker it replaced, so assertions still read by name.
-const AA_SHARED: &str = "a98ba9aa-a32b-4716-842f-5505dee028f0"; // was "aa-shared"
 const ALBUM_1: &str = "9644b84d-94b2-4b3b-863a-d6583931920c"; // was "9fd7bfa8-3c7c-4026-8559-da66af02f636"
 const ALBUM_1999: &str = "88f57246-3e65-4eb9-8d36-ee8d40326cfc"; // was "album-1999"
 const ALBUM_2001_LOWER: &str = "88183677-683b-485e-8224-f6a328c233c7"; // was "album-2001-lower"
 const ALBUM_2001_UPPER: &str = "a663cff7-fad7-45b1-8469-5f77af82ddb8"; // was "album-2001-upper"
 const ALBUM_A: &str = "a67c03ad-425f-45e9-8279-0144c852aaa5"; // was "album-a"
-const ALBUM_ARTIST_1: &str = "288a78d6-b93d-4b4e-8452-fb678e33c2e8"; // was "album-artist-1"
 const ALBUM_JUNCTION: &str = "7e6f42e7-8952-48e6-89bf-d1bcc611176d"; // was "album-junction"
 const ALBUM_NEW: &str = "7d40ec33-80aa-4ab5-8010-78b55943ad81"; // was "album-new"
 const ALBUM_NULL: &str = "c6648d5a-617e-4b69-87da-b7f1c4fb5e65"; // was "album-null"
@@ -69,7 +67,6 @@ const TRACK_ROLE_A: &str = "fa0c8483-f09a-4b69-8903-b1ebcdc31322"; // was "track
 const TRACK_UNDERSCORE: &str = "b2930937-dae6-4719-8150-aa61422eeeac"; // was "track-underscore"
 const TRACK_WORK_A: &str = "d410a973-6a19-4ad3-87d8-b0c8c13d6015"; // was "track-work-a"
 const WORK_A: &str = "432c8996-8af0-43dc-868a-822a256f65c4"; // was "work-a"
-const WORK_ARTIST_A: &str = "ec41a8cd-a9a4-473e-8b70-d78168aefd8e"; // was "work-artist-a"
 const WORK_CHILD_A: &str = "f63d8e66-6a81-4a67-8005-1fbe870f27eb"; // was "work-child-a"
 const WORK_PARENT_A: &str = "6b05af7a-ee0c-4f12-8938-1d5536697271"; // was "work-parent-a"
 
@@ -81,7 +78,6 @@ async fn temp_db() -> (super::Database, tempfile::TempDir) {
     let db = super::Database::new_test(
         tmp.path().join("test.db").to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();
@@ -149,7 +145,6 @@ async fn empty_db() -> (super::Database, tempfile::TempDir) {
     let db = super::Database::new_test(
         tmp.path().join("test.db").to_str().unwrap(),
         std::sync::Arc::new(coven::FixedClock(fixed_now())),
-        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();
@@ -248,7 +243,7 @@ mod import_candidate_state_tests;
 mod import_list_tests;
 
 #[cfg(test)]
-mod injected_ids_tests;
+mod fact_ids_tests;
 
 #[cfg(test)]
 mod queue_cover_tests;

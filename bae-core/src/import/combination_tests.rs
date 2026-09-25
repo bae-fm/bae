@@ -238,7 +238,6 @@ async fn stored_selection() -> (crate::db::Database, tempfile::TempDir, Vec<Fold
     let db = crate::db::Database::new_test(
         temp.path().join("test.db").to_str().unwrap(),
         std::sync::Arc::new(coven::FixedClock(clock)),
-        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();

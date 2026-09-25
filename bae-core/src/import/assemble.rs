@@ -223,7 +223,6 @@ fn find_or_push_artist(
 pub(crate) fn album_artist_links(
     album_id: &str,
     artists: &[DbArtist],
-    ids: &dyn IdProvider,
     now: DateTime<Utc>,
 ) -> Vec<DbAlbumArtist> {
     artists
@@ -231,7 +230,7 @@ pub(crate) fn album_artist_links(
         .enumerate()
         .skip(1)
         .map(|(position, artist)| {
-            DbAlbumArtist::new(album_id, &artist.id, position as i32, ids.new_id(), now)
+            DbAlbumArtist::new(album_id, &artist.id, position as i32, now)
         })
         .collect()
 }
@@ -256,7 +255,6 @@ fn push_work_part(
     parent_work_id: &str,
     child_work_id: &str,
     source: Catalog,
-    ids: &dyn IdProvider,
     now: DateTime<Utc>,
 ) {
     if pools
@@ -271,7 +269,6 @@ fn push_work_part(
         child_work_id,
         pools.work_parts.len() as i32,
         source,
-        ids.new_id(),
         now,
     ));
 }
@@ -308,7 +305,7 @@ fn push_work_graph(
     };
 
     if let Some(parent_work_id) = parent {
-        push_work_part(pools, parent_work_id, &work_id, source, ids, now);
+        push_work_part(pools, parent_work_id, &work_id, source, now);
     }
 
     if node.events.is_empty()
@@ -337,7 +334,6 @@ fn push_work_graph(
                         &artist_id,
                         pools.work_artists.len() as i32,
                         source,
-                        ids.new_id(),
                         now,
                     ));
                 }
@@ -346,7 +342,7 @@ fn push_work_graph(
                 PartDirection::Backward => {
                     // `work` is this node's parent.
                     let parent_id = push_work_ref(work, None, source, pools, ids, now);
-                    push_work_part(pools, &parent_id, &work_id, source, ids, now);
+                    push_work_part(pools, &parent_id, &work_id, source, now);
                 }
                 PartDirection::Forward => {
                     // `work` is a child of this node; `push_work_ref` creates the
@@ -391,7 +387,7 @@ fn push_work_ref(
                 })
                 .clone();
             if let Some(parent_work_id) = parent {
-                push_work_part(pools, parent_work_id, &work_id, source, ids, now);
+                push_work_part(pools, parent_work_id, &work_id, source, now);
             }
             work_id
         }
@@ -574,7 +570,7 @@ pub(crate) fn assemble_parsed_album(
         AlbumArtistScope::ReleaseCredits => &artists[..release_artist_count],
         AlbumArtistScope::FullPool => &artists[..],
     };
-    let album_artists = album_artist_links(&album.id, album_artist_slice, ids, now);
+    let album_artists = album_artist_links(&album.id, album_artist_slice, now);
 
     ParsedAlbum {
         album,

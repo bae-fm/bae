@@ -457,7 +457,6 @@ impl Database {
 
         let now_dt = self.inner.clock.now();
         let now = now_dt.to_rfc3339();
-        let ids = Arc::clone(&self.inner.ids);
         let replacement_outcomes = Arc::new(Mutex::new(Vec::new()));
         let replacement_outcomes_for_write = Arc::clone(&replacement_outcomes);
         self.inner
@@ -530,9 +529,7 @@ impl Database {
                     // none does. The records are uniquely keyed on
                     // `(release_id, catalog)`, so a release never carries two
                     // rows for one catalog.
-                    for record in &records {
-                        insert_release_record_row(tx, &release.id, record, ids.new_id(), &reg, &now)?;
-                    }
+                    write_release_records(tx, &release.id, &records, &reg, &now)?;
 
                     // Works are globally identified; they go in before their links.
                     for work in &works {

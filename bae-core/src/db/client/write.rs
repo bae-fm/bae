@@ -100,7 +100,7 @@ pub(super) fn insert_album_artist_row(
         VALUES (?, ?, ?, ?, ?, ?)
         "#,
         params![
-            aa.id,
+            aa.id(),
             aa.album_id,
             aa.artist_id,
             aa.position,
@@ -259,7 +259,7 @@ pub(super) fn insert_work_artist_row(
         VALUES (?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
-            link.id,
+            link.id(),
             link.work_id,
             link.artist_id,
             link.position,
@@ -285,7 +285,7 @@ pub(super) fn insert_work_part_row(
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
-            part.id,
+            part.id(),
             part.parent_work_id,
             part.child_work_id,
             part.position,
@@ -711,45 +711,66 @@ pub(super) fn resolve_artist_cloud_path(
     crate::storage::readable_path::artist_cloud_path(artist_id, blob_id, content_type)
 }
 
-/// Insert one record row. Shared by the atomic import path
-/// (`finalize_import_atomic` / `set_records_atomic`, inside a transaction) and
-/// `insert_release_records` (on the connection directly).
-pub(super) fn insert_release_record_row(
+/// Write `records` as `release_id`'s records, replacing any it had, and set the
+/// catalog its draft was read from. Shared by the atomic import path
+/// (`finalize_import_atomic` / `set_records_atomic`) and the test seam
+/// `insert_release_records`. Each row's id is its `(release, catalog)`, so a
+/// device that writes the same record set another device wrote writes the same
+/// rows.
+pub(super) fn write_release_records(
     conn: &SqlContext<'_, '_>,
     release_id: &str,
-    record: &crate::import::ReleaseRecord,
-    id: String,
+    records: &[crate::import::ReleaseRecord],
     reg: &str,
     now: &str,
 ) -> Result<(), DbError> {
-    let (kind, album_key) = match record {
-        crate::import::ReleaseRecord::Pressing { album_key, .. } => {
-            ("pressing", album_key.as_deref())
-        }
-        crate::import::ReleaseRecord::Album { .. } => ("album", None),
-    };
+    let mut draft_catalogs = records
+        .iter()
+        .filter(|record| record.reads_draft())
+        .map(|record| record.catalog());
+    let draft_catalog = draft_catalogs.next().map(|catalog| catalog.as_str());
+    if draft_catalogs.next().is_some() {
+        return Err(DbError::Message(format!(
+            "release {release_id} names more than one record its draft was read from"
+        )));
+    }
     conn.execute(
-        r#"
-        INSERT INTO release_records (
-            id, release_id, catalog, kind, key, album_key,
-            url, reads_draft, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            id,
-            release_id,
-            record.catalog().as_str(),
-            kind,
-            record.key(),
-            album_key,
-            record.url(),
-            record.reads_draft(),
-            reg,
-            now,
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
+        "DELETE FROM release_records WHERE release_id = ?",
+        params![release_id],
+    )?;
+    for record in records {
+        let (kind, album_key) = match record {
+            crate::import::ReleaseRecord::Pressing { album_key, .. } => {
+                ("pressing", album_key.as_deref())
+            }
+            crate::import::ReleaseRecord::Album { .. } => ("album", None),
+        };
+        conn.execute(
+            r#"
+            INSERT INTO release_records (
+                id, release_id, catalog, kind, key, album_key,
+                url, _updated_at, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+            params![
+                crate::db::identity::release_record_id(release_id, record.catalog()),
+                release_id,
+                record.catalog().as_str(),
+                kind,
+                record.key(),
+                album_key,
+                record.url(),
+                reg,
+                now,
+            ],
+        )?;
+    }
+    conn.execute(
+        "UPDATE releases SET draft_catalog = ?, _updated_at = ? \
+         WHERE id = ? AND draft_catalog IS NOT ?",
+        params![draft_catalog, reg, release_id, draft_catalog],
+    )?;
+    Ok(())
 }
 
 /// Replace every `album_artists` row for `album_id` with `artists` (delete then
@@ -769,7 +790,14 @@ pub(super) fn replace_album_artists(
         conn.execute(
             r#"INSERT INTO album_artists (id, album_id, artist_id, position, _updated_at, created_at)
             VALUES (?, ?, ?, ?, ?, ?)"#,
-            params![aa.id, album_id, aa.artist_id, aa.position, reg, now],
+            params![
+                crate::db::identity::album_artist_id(album_id, &aa.artist_id),
+                album_id,
+                aa.artist_id,
+                aa.position,
+                reg,
+                now
+            ],
         )?;
     }
     Ok(())

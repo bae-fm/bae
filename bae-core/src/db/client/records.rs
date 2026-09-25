@@ -4,10 +4,9 @@
 use super::*;
 
 impl Database {
-    /// Insert one or more record rows for an existing release.
-    /// Idempotent at the unique key (release_id, catalog) — duplicates surface
-    /// as unique-violation errors. Used for writing records outside of the
-    /// atomic import path.
+    /// Test seam: write a release's records outside the atomic import path,
+    /// replacing any it had.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_release_records(
         &self,
         release_id: &str,
@@ -16,13 +15,9 @@ impl Database {
         let release_id = release_id.to_string();
         let records = records.to_vec();
         let now = self.inner.clock.now().to_rfc3339();
-        let ids = Arc::clone(&self.inner.ids);
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            for record in &records {
-                insert_release_record_row(&sql, &release_id, record, ids.new_id(), &reg, &now)?;
-            }
-            Ok(())
+            write_release_records(&sql, &release_id, &records, &reg, &now)
         })
         .await
     }
@@ -166,7 +161,6 @@ impl Database {
         let new_album = new_album.cloned();
         let now_dt = self.inner.clock.now();
         let now = now_dt.to_rfc3339();
-        let ids = Arc::clone(&self.inner.ids);
 
         self.call_sql(move |sql| {
             let tx = &sql;
@@ -179,9 +173,8 @@ impl Database {
             if let Some(album) = &new_album {
                 insert_album_row(tx, album, &reg)?;
 
-                // Copy album_artists from the source. Each row gets a fresh
-                // PK from the injected id provider, like every other id in the
-                // codebase, and is rebound to the new album. The UNIQUE(album_id,
+                // Copy album_artists from the source, rebound to the new album
+                // (each row's id is its `(album, artist)`). The UNIQUE(album_id,
                 // artist_id) constraint is satisfied because we're inserting
                 // into a different album. If the source is about to be
                 // deleted (sole release moved), the SELECT still sees the
@@ -199,20 +192,13 @@ impl Database {
                     },
                 )?;
                 for (artist_id, position) in source_artists {
-                    let album_artist =
-                        DbAlbumArtist::new(&album.id, &artist_id, position, ids.new_id(), now_dt);
+                    let album_artist = DbAlbumArtist::new(&album.id, &artist_id, position, now_dt);
                     insert_album_artist_row(tx, &album_artist, &reg)?;
                 }
             }
 
-            // 2. Replace the records.
-            tx.execute(
-                "DELETE FROM release_records WHERE release_id = ?",
-                params![release_id],
-            )?;
-            for record in &new_records {
-                insert_release_record_row(tx, &release_id, record, ids.new_id(), &reg, &now)?;
-            }
+            // 2. Replace the records and the catalog the draft was read from.
+            write_release_records(tx, &release_id, &new_records, &reg, &now)?;
 
             // 3. Update release: album and where its draft was read.
             tx.execute(

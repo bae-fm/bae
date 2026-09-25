@@ -17,13 +17,9 @@ use tempfile::TempDir;
 async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
+        .await
+        .unwrap();
 
     let artist = DbArtist {
         id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),

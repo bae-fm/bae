@@ -611,7 +611,6 @@ async fn test_database() -> (Database, tempfile::TempDir) {
     let database = Database::new_test(
         path.to_str().expect("a UTF-8 temp path"),
         Arc::new(FixedClock(now())),
-        Arc::new(SequentialIdProvider::new("payload")),
     )
     .await
     .expect("the test database opens");

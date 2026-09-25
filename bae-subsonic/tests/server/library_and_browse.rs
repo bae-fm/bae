@@ -109,7 +109,6 @@ async fn new_manager() -> (LibraryManager, TempDir) {
     let database = Database::new_test(
         db_dir.join("test.db").to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .expect("database");

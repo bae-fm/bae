@@ -32,7 +32,6 @@ async fn setup_import_service() -> TestService {
     let database = Database::new_test(
         db_path.to_str().unwrap(),
         Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();

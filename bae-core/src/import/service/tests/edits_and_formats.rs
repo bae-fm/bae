@@ -467,7 +467,6 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
                     "artist-kept-work",
                     0,
                     crate::import::Catalog::MusicBrainz,
-                    "kept-work-artist".into(),
                     now,
                 ),
                 crate::db::DbWorkArtist::new(
@@ -475,7 +474,6 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
                     "artist-dropped-work",
                     0,
                     crate::import::Catalog::MusicBrainz,
-                    "dropped-work-artist".into(),
                     now,
                 ),
             ],
@@ -485,7 +483,6 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
                     "kept-child",
                     0,
                     crate::import::Catalog::MusicBrainz,
-                    "kept-part".into(),
                     now,
                 ),
                 crate::db::DbWorkPart::new(
@@ -493,7 +490,6 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
                     "dropped-child",
                     0,
                     crate::import::Catalog::MusicBrainz,
-                    "dropped-part".into(),
                     now,
                 ),
             ],

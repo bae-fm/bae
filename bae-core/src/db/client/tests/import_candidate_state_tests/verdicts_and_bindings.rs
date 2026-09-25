@@ -563,7 +563,6 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let reopened = Database::new_test(
         path.to_str().unwrap(),
         Arc::new(FixedClock(fixed_now())),
-        Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();

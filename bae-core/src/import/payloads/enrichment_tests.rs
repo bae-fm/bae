@@ -57,7 +57,6 @@ async fn database() -> (Database, tempfile::TempDir) {
     let db = Database::new_test(
         temp.path().join("library.db").to_str().unwrap(),
         Arc::new(FixedClock(instant())),
-        Arc::new(SequentialIdProvider::new("enrichment")),
     )
     .await
     .unwrap();

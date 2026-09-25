@@ -13,7 +13,6 @@ async fn subscription() -> (ImportListSubscription, tempfile::TempDir) {
             .to_str()
             .expect("a UTF-8 temp path"),
         std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .expect("the test database opens");

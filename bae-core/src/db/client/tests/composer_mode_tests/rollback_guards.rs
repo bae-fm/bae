@@ -76,7 +76,6 @@ async fn fail_import_and_delete_release_retains_replay_owned_image_blobs() {
     // The failed release also credits artist-shared, so both artists are
     // rollback candidates; only artist-exclusive should be deleted.
     let album_artists = vec![DbAlbumArtist {
-        id: AA_SHARED.to_string(),
         album_id: ALBUM_A.to_string(),
         artist_id: ARTIST_SHARED.to_string(),
         position: 1,

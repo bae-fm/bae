@@ -38,8 +38,14 @@ large_enum_variant = "allow"
 # coven: bae's data layer (local-first store + cloud sync). Pinned by rev here so
 # every crate that touches it (bae-core, and bae-bridge's CloudKit adapter, which
 # implements coven's CloudKitOps) resolves the same instance. bae reaches coven
-# only through this facade — in tests too, via its InMemoryCloudHome double.
+# only through this facade, in tests too via its InMemoryCloudHome double — with
+# one exception below.
 coven = { git = "https://github.com/bae-fm/coven", rev = "f9a8e2302493898d17baeaf94a17ff4c6c9f2ace" }
+# Test-only: joining a second device over an in-memory cloud home
+# (`joining::join_with_device_pairing_over_test_home`) exists only in this crate;
+# the facade re-exports the production join but not its test-home counterpart.
+# bae-core's two-device sync tests need it to put a second device on a library.
+coven-domain = { git = "https://github.com/bae-fm/coven", rev = "f9a8e2302493898d17baeaf94a17ff4c6c9f2ace" }
 # HTTP
 reqwest = { version = "0.13", default-features = false }
 # Logging

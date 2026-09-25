@@ -571,7 +571,6 @@ fn apply_user_edit_to_seed(
             &db_album.id,
             &artist_id,
             position as i32,
-            ids.new_id(),
             now,
         ));
     }

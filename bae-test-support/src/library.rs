@@ -34,7 +34,6 @@ async fn open_test_db(dir: &std::path::Path) -> bae_core::db::Database {
             .to_str()
             .expect("test database path is valid UTF-8"),
         std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .expect("open the test database")

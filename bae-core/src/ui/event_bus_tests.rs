@@ -22,7 +22,6 @@ async fn services() -> (AppServices, TempDir) {
             .to_str()
             .expect("a UTF-8 temp path"),
         Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
     )
     .await
     .expect("the test database opens");

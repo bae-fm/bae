@@ -1,4 +1,5 @@
 mod client;
+pub mod identity;
 mod models;
 pub(crate) use client::QueueCatalogProjection;
 pub use client::{

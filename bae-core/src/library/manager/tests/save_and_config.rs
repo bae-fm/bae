@@ -196,7 +196,6 @@ async fn setup_forget_library_manager_at(
         StoreDir::new(home.to_path_buf()),
         config.inner.clone(),
         Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
         crate::sync::synced_tables(),
         None,
     )

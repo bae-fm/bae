@@ -435,7 +435,6 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
                 &album_a.id,
                 artist_id,
                 position,
-                Uuid::new_v4().to_string(),
                 Utc::now(),
             ))
             .await

@@ -404,7 +404,6 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         &composer.id,
         0,
         crate::import::Catalog::MusicBrainz,
-        WORK_ARTIST_A.to_string(),
         now,
     )];
     let track_works = vec![DbTrackWork::new(

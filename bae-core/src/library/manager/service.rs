@@ -76,7 +76,7 @@ impl LibraryManager {
                 other => coven::DbError::Message(other.to_string()),
             })?;
         Ok(Self::assemble(
-            Database::from_handle(handle, clock.clone(), ids.clone()),
+            Database::from_handle(handle, clock.clone()),
             app_dir,
             config_handle,
             clock,

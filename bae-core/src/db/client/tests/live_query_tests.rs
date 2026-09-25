@@ -54,7 +54,6 @@ async fn browsable_sync_db(path: &std::path::Path, device_id: &str) -> Database 
         library_dir,
         config,
         Arc::new(SystemClock),
-        Arc::new(coven::UuidProvider),
         crate::sync::synced_tables(),
         None,
     )
@@ -563,10 +562,10 @@ async fn release_library_status_subscription_delivers_identity_changes() {
     exec(
         &db,
         "INSERT INTO release_records
-         (id, release_id, catalog, kind, key, album_key, url, reads_draft,
+         (id, release_id, catalog, kind, key, album_key, url,
           _updated_at, created_at)
          VALUES (?1, ?2, 'musicbrainz', 'pressing', 'source-release-1', 'source-group-1',
-                 'https://musicbrainz.org/release/source-release-1', 1,
+                 'https://musicbrainz.org/release/source-release-1',
                  'identity-v1', '2026-01-01T00:00:00Z')",
         &[IDENTITY_ID, RELEASE_ID],
     )
@@ -581,7 +580,7 @@ async fn release_library_status_subscription_delivers_identity_changes() {
     assert_eq!(updated.album_id.as_deref(), Some(ALBUM_ID));
 
     exec(&db,
-        "UPDATE release_records SET kind = 'album', key = 'source-group-1', album_key = NULL, reads_draft = 0, url = 'https://musicbrainz.org/release-group/source-group-1' WHERE id = ?1",
+        "UPDATE release_records SET kind = 'album', key = 'source-group-1', album_key = NULL, url = 'https://musicbrainz.org/release-group/source-group-1' WHERE id = ?1",
         &[IDENTITY_ID],
     ).await;
     let album_only = tokio::time::timeout(Duration::from_secs(2), live.next())

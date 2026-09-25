@@ -209,7 +209,6 @@ mod tests {
         let database = Database::new_test(
             db_dir.join("test.db").to_str().unwrap(),
             Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidProvider),
         )
         .await
         .expect("database");

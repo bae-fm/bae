@@ -76,7 +76,6 @@ impl DbArtist {
 /// Links artists to albums (many-to-many).
 #[derive(Debug, Clone)]
 pub struct DbAlbumArtist {
-    pub id: String,
     pub album_id: String,
     pub artist_id: String,
     /// Order of this artist in multi-artist albums (0-indexed)
@@ -110,7 +109,6 @@ pub struct DbWork {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbWorkArtist {
-    pub id: String,
     pub work_id: String,
     pub artist_id: String,
     pub position: i32,
@@ -120,7 +118,6 @@ pub struct DbWorkArtist {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbWorkPart {
-    pub id: String,
     pub parent_work_id: String,
     pub child_work_id: String,
     pub position: i32,
@@ -548,15 +545,14 @@ impl DbAudioSegment {
     }
 }
 impl DbAlbumArtist {
-    pub fn new(
-        album_id: &str,
-        artist_id: &str,
-        position: i32,
-        id: String,
-        now: DateTime<Utc>,
-    ) -> Self {
+    /// The credit's row id: one artist's credit on one album is one row on
+    /// every device.
+    pub fn id(&self) -> String {
+        crate::db::identity::album_artist_id(&self.album_id, &self.artist_id)
+    }
+
+    pub fn new(album_id: &str, artist_id: &str, position: i32, now: DateTime<Utc>) -> Self {
         DbAlbumArtist {
-            id,
             album_id: album_id.to_string(),
             artist_id: artist_id.to_string(),
             position,
@@ -583,16 +579,19 @@ impl DbTrackArtist {
 }
 
 impl DbWorkArtist {
+    /// The credit's row id, the same on every device that records it.
+    pub fn id(&self) -> String {
+        crate::db::identity::work_artist_id(&self.work_id, &self.artist_id, self.position)
+    }
+
     pub fn new(
         work_id: &str,
         artist_id: &str,
         position: i32,
         source: Catalog,
-        id: String,
         now: DateTime<Utc>,
     ) -> Self {
         DbWorkArtist {
-            id,
             work_id: work_id.to_string(),
             artist_id: artist_id.to_string(),
             position,
@@ -603,16 +602,19 @@ impl DbWorkArtist {
 }
 
 impl DbWorkPart {
+    /// The membership's row id, the same on every device that records it.
+    pub fn id(&self) -> String {
+        crate::db::identity::work_part_id(&self.parent_work_id, &self.child_work_id)
+    }
+
     pub fn new(
         parent_work_id: &str,
         child_work_id: &str,
         position: i32,
         source: Catalog,
-        id: String,
         now: DateTime<Utc>,
     ) -> Self {
         DbWorkPart {
-            id,
             parent_work_id: parent_work_id.to_string(),
             child_work_id: child_work_id.to_string(),
             position,

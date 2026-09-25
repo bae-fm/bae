@@ -61,6 +61,45 @@ impl Database {
             .map(|upload| (upload.attempt_count, upload.last_failure.is_some())))
     }
 
+    /// Connect a device that joined over an injected cloud home: coven resolves
+    /// the store key from the custody the join installed it into.
+    pub async fn connect_sync_with_test_home_custody_for_test(
+        &self,
+        home: Arc<dyn coven::ExactCloudHome>,
+    ) -> Result<(), coven::SyncError> {
+        self.inner
+            .handle
+            .connect_sync_with_test_home_custody(home)
+            .await
+    }
+
+    /// Pause this device's sync loop, keeping its cloud home connected, so two
+    /// devices can write while neither sees the other.
+    pub fn stop_sync_for_test(&self) {
+        self.inner.handle.stop_sync();
+    }
+
+    /// Write rows into this device's local-only tables — state no sync ever
+    /// carries — the way the import pane's own writers would leave them.
+    pub async fn execute_local_sql_for_test(&self, statements: &str) -> Result<(), DbError> {
+        let statements = statements.to_string();
+        self.call_sql(move |sql| {
+            sql.execute_batch(&statements)?;
+            Ok(())
+        })
+        .await
+    }
+
+    /// Answer one text-valued query against this device's library.
+    pub async fn query_texts_for_test(&self, query: &str) -> Result<Vec<String>, DbError> {
+        let query = query.to_string();
+        self.read(move |sql| {
+            sql.query(&query, [], |row| row.get::<_, String>(0))
+                .map_err(DbError::from)
+        })
+        .await
+    }
+
     pub async fn pending_and_blocked_writes_for_test(
         &self,
     ) -> Result<(String, String), CovenError> {

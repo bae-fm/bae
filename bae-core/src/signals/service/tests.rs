@@ -138,7 +138,6 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
     let database = crate::db::Database::new_test(
         tmp.path().join("test.db").to_str().unwrap(),
         clock.clone(),
-        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();
