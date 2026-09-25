@@ -10,71 +10,40 @@
 //! and requires the source files held open at once to stay within a constant
 //! and none of them to remain open once the import is done.
 
+use bae_core::open_files_peak::OpenFilesPeak;
 use bae_test_support as support;
 
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::path::Path;
+use std::time::Instant;
 
 const DISCS: usize = 3;
 const TRACKS_PER_DISC: usize = 100;
 
-/// Descriptors the import may hold above the idle library's, whatever the
-/// track count: the file being read, the decode's source, and the library's
-/// own connections and pipes. The soft limit is set this far above the
-/// descriptors already open, so an import that exceeds it fails outright.
-const HEADROOM: usize = 48;
-
 /// Source files the import may hold open at once, whatever the track count:
-/// the one being read or decoded, and the one before it while its stream
-/// closes.
-const MAX_SOURCES_OPEN: usize = 2;
-
-/// The descriptors this process holds open: every entry of `/dev/fd`, which
-/// includes the one the listing itself opens, so every reading is off by the
-/// same one. `None` when the listing itself is refused for want of a
-/// descriptor.
-fn open_fds() -> Option<Vec<i32>> {
-    let entries = fs::read_dir("/dev/fd").ok()?;
-    Some(
-        entries
-            .filter_map(|entry| entry.ok()?.file_name().to_str()?.parse().ok())
-            .collect(),
-    )
+/// it measures as many tracks at once as there are cores, and each track reads
+/// one file here.
+fn max_sources_open() -> usize {
+    std::thread::available_parallelism()
+        .expect("available parallelism")
+        .get()
 }
 
-/// The file descriptor `fd` refers to, when it is a file with a path (not a
-/// socket, pipe, or kqueue, and still open).
-fn fd_path(fd: i32) -> Option<PathBuf> {
-    #[cfg(target_os = "macos")]
-    {
-        let mut buf = vec![0u8; libc::PATH_MAX as usize];
-        // SAFETY: F_GETPATH writes at most PATH_MAX bytes into `buf`.
-        if unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_mut_ptr()) } != 0 {
-            return None;
-        }
-        let len = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
-        Some(PathBuf::from(
-            String::from_utf8_lossy(&buf[..len]).into_owned(),
-        ))
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        fs::read_link(format!("/proc/self/fd/{fd}")).ok()
-    }
+/// Descriptors the import may hold above the idle library's, whatever the
+/// track count: its source files, and the library's own connections and
+/// pipes. The soft limit is set this far above the descriptors already open,
+/// so an import that exceeds it fails outright.
+fn headroom() -> usize {
+    max_sources_open() + 32
 }
 
-/// How many descriptors are open in all, and how many of them are files under
-/// `dir`.
-fn count_open(dir: &Path) -> Option<(usize, usize)> {
-    let fds = open_fds()?;
-    let under_dir = fds
-        .iter()
-        .filter(|&&fd| fd_path(fd).is_some_and(|path| path.starts_with(dir)))
-        .count();
-    Some((fds.len(), under_dir))
+/// The highest descriptor number this process holds open.
+fn highest_open_fd() -> usize {
+    fs::read_dir("/dev/fd")
+        .expect("list /dev/fd")
+        .filter_map(|entry| entry.ok()?.file_name().to_str()?.parse().ok())
+        .max()
+        .expect("stdio is open")
 }
 
 /// The process's soft descriptor limit lowered for the test's duration and
@@ -107,55 +76,6 @@ impl Drop for LoweredFileLimit {
     fn drop(&mut self) {
         // SAFETY: restores the limit read in `to`.
         unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &self.original) };
-    }
-}
-
-/// Samples the open descriptors on its own thread until stopped, keeping the
-/// highest total and the most files under the source folder it saw at once.
-struct FdPeakSampler {
-    stop: Arc<AtomicBool>,
-    peak_total: Arc<AtomicUsize>,
-    peak_sources: Arc<AtomicUsize>,
-    thread: Option<std::thread::JoinHandle<()>>,
-}
-
-impl FdPeakSampler {
-    fn start(source_dir: PathBuf) -> Self {
-        let stop = Arc::new(AtomicBool::new(false));
-        let peak_total = Arc::new(AtomicUsize::new(0));
-        let peak_sources = Arc::new(AtomicUsize::new(0));
-        let thread = std::thread::spawn({
-            let stop = stop.clone();
-            let peak_total = peak_total.clone();
-            let peak_sources = peak_sources.clone();
-            move || {
-                while !stop.load(Ordering::Relaxed) {
-                    // A listing refused for want of a descriptor is itself the
-                    // limit being hit; the import's own failure reports it.
-                    if let Some((total, sources)) = count_open(&source_dir) {
-                        peak_total.fetch_max(total, Ordering::Relaxed);
-                        peak_sources.fetch_max(sources, Ordering::Relaxed);
-                    }
-                    std::thread::sleep(Duration::from_millis(1));
-                }
-            }
-        });
-        Self {
-            stop,
-            peak_total,
-            peak_sources,
-            thread: Some(thread),
-        }
-    }
-
-    /// (peak total descriptors, peak source files open at once)
-    fn finish(mut self) -> (usize, usize) {
-        self.stop.store(true, Ordering::Relaxed);
-        self.thread.take().unwrap().join().unwrap();
-        (
-            self.peak_total.load(Ordering::Relaxed),
-            self.peak_sources.load(Ordering::Relaxed),
-        )
     }
 }
 
@@ -202,14 +122,9 @@ async fn a_box_set_import_holds_a_bounded_number_of_files_open() {
         support::start_test_import(tokio::runtime::Handle::current(), library_manager.clone())
             .await;
 
-    // Descriptors report canonical paths (`/private/var/...` on macOS).
-    let source_dir = album_dir.canonicalize().expect("canonical album dir");
-    let before = open_fds().expect("list descriptors");
-    let baseline = before.len();
-    let highest_fd = *before.iter().max().expect("stdio is open") as usize;
-    let _limit = LoweredFileLimit::to((highest_fd + 1 + HEADROOM) as libc::rlim_t);
+    let _limit = LoweredFileLimit::to((highest_open_fd() + 1 + headroom()) as libc::rlim_t);
 
-    let sampler = FdPeakSampler::start(source_dir.clone());
+    let sampler = OpenFilesPeak::start(&album_dir);
     let started = Instant::now();
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
@@ -222,22 +137,23 @@ async fn a_box_set_import_holds_a_bounded_number_of_files_open() {
         .expect("import command is accepted");
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let result = support::try_wait_for_import_complete(&mut progress_rx).await;
-    let (peak_total, peak_sources) = sampler.finish();
+    let peak_sources = sampler.finish();
     eprintln!(
-        "open descriptors over {} tracks in {:.1?}: baseline {baseline}, peak {peak_total}; \
-         source files open at once: at most {peak_sources}",
+        "{} tracks imported in {:.1?} with at most {peak_sources} source files open at once",
         DISCS * TRACKS_PER_DISC,
         started.elapsed()
     );
 
     let (release_id, _album_id) = result.unwrap_or_else(|error| {
         panic!(
-            "the box set import failed under a soft limit of {HEADROOM} spare descriptors: {error}"
+            "the box set import failed under a soft limit of {} spare descriptors: {error}",
+            headroom()
         )
     });
     assert!(
-        peak_sources <= MAX_SOURCES_OPEN,
-        "the import held {peak_sources} source files open at once"
+        peak_sources <= max_sources_open(),
+        "the import held {peak_sources} source files open at once, over {} cores",
+        max_sources_open()
     );
     let tracks = library_manager
         .get_tracks_for_release(&release_id)
@@ -245,19 +161,6 @@ async fn a_box_set_import_holds_a_bounded_number_of_files_open() {
         .expect("read imported tracks");
     assert_eq!(tracks.len(), DISCS * TRACKS_PER_DISC);
 
-    // Every source file the import opened is closed once it is done. The
-    // library's own descriptors (its store connections) are not the import's
-    // and may stay.
-    let deadline = Instant::now() + Duration::from_secs(5);
-    loop {
-        let (_, sources_open) = count_open(&source_dir).expect("list descriptors");
-        if sources_open == 0 {
-            break;
-        }
-        assert!(
-            Instant::now() < deadline,
-            "{sources_open} source files stayed open after the import finished"
-        );
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    }
+    // Every source file the import opened is closed once it is done.
+    coven::assert_no_open_files_under(&album_dir);
 }

@@ -1,43 +1,34 @@
 use super::*;
+use crate::playback::sparse_buffer::create_sparse_buffer;
+
+fn progress(event_tx: &crate::import::handle::ImportEventBus, total: Option<u64>) -> LoudnessProgress {
+    LoudnessProgress::new(event_tx, "test", "release-1", "import-1", total)
+}
 
 fn sink_with(total: Option<u64>, done: u64, errors: u32) -> LoudnessProgressSink {
     let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());
-    LoudnessProgressSink {
-        state: None,
-        error: None,
-        total_frames: total,
-        done_frames: done,
-        frames_done_before: 0,
-        scan_total_frames: total,
-        decode_error_count: errors,
-        discarded_packet_count: 0,
-        frames_since_emit: 0,
-        progress: LoudnessProgress::new(&event_tx, "test", "release-1", "import-1"),
-    }
+    let mut sink = LoudnessProgressSink::new(total, progress(&event_tx, total));
+    sink.done_frames = done;
+    sink.decode_error_count = errors;
+    sink
 }
 
 #[test]
 fn measured_frames_control_progress_value_and_determinacy() {
     let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());
     let mut rx = event_tx.subscribe();
-    let emit = |total_frames, done_frames, frames_done_before, scan_total_frames| {
-        LoudnessProgressSink {
-            state: None,
-            error: None,
-            total_frames,
-            done_frames,
-            frames_done_before,
-            scan_total_frames,
-            decode_error_count: 0,
-            discarded_packet_count: 0,
-            frames_since_emit: 0,
-            progress: LoudnessProgress::new(&event_tx, "test", "release-1", "import-1"),
-        }
-        .emit();
-    };
 
-    emit(Some(900), 450, 100, Some(1_000));
-    emit(None, 44_100, 100, None);
+    // 100 frames of earlier tracks are done; this track has measured 450 of
+    // its 900.
+    let determinate = progress(&event_tx, Some(1_000));
+    determinate.advance(100);
+    let mut sink = LoudnessProgressSink::new(Some(900), determinate);
+    sink.done_frames = 450;
+    sink.emit();
+    // A track with no expected frame count makes the scan indeterminate.
+    let mut sink = LoudnessProgressSink::new(None, progress(&event_tx, None));
+    sink.done_frames = 44_100;
+    sink.emit();
 
     let mut percents = Vec::new();
     while let Ok(event) = rx.try_recv() {
@@ -53,9 +44,9 @@ fn measured_frames_control_progress_value_and_determinacy() {
         }
     }
 
-    // The determinate scan is 55% through; the indeterminate one has no
-    // percent to report, so the row's percent stands where it was.
-    assert_eq!(percents, vec![55]);
+    // The determinate scan passes 10% and stands at 55%; the indeterminate
+    // one has no percent to report, so the row's percent stands where it was.
+    assert_eq!(percents, vec![10, 55]);
 }
 
 /// The broken signature: a gross frame shortfall (a truncated body under a
@@ -248,6 +239,7 @@ async fn measure(
 ) -> LoudnessResult {
     measure_loudness(
         event_tx,
+        NonZeroUsize::MIN,
         audio_formats,
         audio_segments,
         file_ids,
@@ -282,6 +274,7 @@ async fn measure_failure(path: &std::path::Path, size: u64) -> crate::import::Im
 
     let result = measure_loudness(
         &event_tx,
+        NonZeroUsize::MIN,
         &mut audio_formats,
         &audio_segments,
         &file_ids,
@@ -505,5 +498,142 @@ async fn measure_loudness_leaves_ungated_track_unmeasured() {
     assert!(
         result.album_loudness_lufs.is_none(),
         "no measured track means no album loudness"
+    );
+}
+
+/// Run the pass at `parallelism` over tracks whose sources were copied into
+/// `dir`, returning the most source files it held open at once. Every source
+/// is closed by the time the pass returns.
+async fn peak_open_sources(
+    dir: &std::path::Path,
+    parallelism: usize,
+    audio_formats: &mut [crate::db::DbAudioFormat],
+    audio_segments: &[crate::db::DbAudioSegment],
+    file_ids: &HashMap<PathBuf, String>,
+    tracks: &[TrackFile],
+) -> usize {
+    let event_tx = crate::import::ImportEventBus::new(1024, crate::import::CandidateRuntime::default());
+    let source_file_sizes: HashMap<PathBuf, u64> = file_ids
+        .keys()
+        .map(|path| (path.clone(), std::fs::metadata(path).unwrap().len()))
+        .collect();
+    let sampler = crate::open_files_peak::OpenFilesPeak::start(dir);
+    let result = measure_loudness(
+        &event_tx,
+        NonZeroUsize::new(parallelism).unwrap(),
+        audio_formats,
+        audio_segments,
+        file_ids,
+        &source_file_sizes,
+        tracks,
+        "cand",
+        "release-1",
+        "import-1",
+    )
+    .await
+    .expect("the pass measures every track");
+    let peak = sampler.finish();
+    coven::assert_no_open_files_under(dir);
+    assert!(result.broken.is_empty(), "{:?}", result.broken);
+    peak
+}
+
+/// Each track's measured loudness, in track order.
+fn track_loudness(audio_formats: &[crate::db::DbAudioFormat]) -> Vec<Option<f64>> {
+    audio_formats
+        .iter()
+        .map(|format| format.track_loudness_lufs)
+        .collect()
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn measure_loudness_holds_at_most_parallelism_track_files_open() {
+    crate::audio_codec::init();
+    let dir = tempfile::tempdir().unwrap();
+    let fixture = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
+    let count = 24;
+    let mut audio_formats = Vec::new();
+    let mut audio_segments = Vec::new();
+    let mut file_ids = HashMap::new();
+    let mut tracks = Vec::new();
+    for n in 0..count {
+        let path = dir.path().join(format!("{n:02} Track.flac"));
+        std::fs::copy(&fixture, &path).unwrap();
+        let path = path.canonicalize().unwrap();
+        audio_formats.push(audio_format(&format!("track-{n}"), &format!("af-{n}")));
+        let mut segment = whole_file_main_segment(&format!("af-{n}"), &format!("file-{n}"));
+        segment.end_sample = Some(44_100);
+        audio_segments.push(segment);
+        file_ids.insert(path.clone(), format!("file-{n}"));
+        tracks.push(standalone_track(&format!("track-{n}"), &path));
+    }
+
+    let mut measured = Vec::new();
+    for parallelism in [1, 4] {
+        let mut formats = audio_formats.clone();
+        let peak = peak_open_sources(
+            dir.path(),
+            parallelism,
+            &mut formats,
+            &audio_segments,
+            &file_ids,
+            &tracks,
+        )
+        .await;
+        assert!(
+            (1..=parallelism).contains(&peak),
+            "{peak} of {count} track files open at once at parallelism {parallelism}"
+        );
+        measured.push(track_loudness(&formats));
+    }
+    assert!(measured[0].iter().all(Option::is_some), "every track is measured");
+    assert_eq!(measured[0], measured[1], "measuring at once changes no result");
+}
+
+/// Every track of one image reads it through one open file, however many
+/// of them are measured at once.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn measure_loudness_reads_a_cue_image_through_one_open_file() {
+    crate::audio_codec::init();
+    let dir = tempfile::tempdir().unwrap();
+    let image = dir.path().join("Test Album.flac");
+    std::fs::copy(cue_flac_fixture("Test Album.flac"), &image).unwrap();
+    let image = image.canonicalize().unwrap();
+    let count = 12u64;
+    let mut audio_formats = Vec::new();
+    let mut audio_segments = Vec::new();
+    let mut tracks = Vec::new();
+    for n in 0..count {
+        audio_formats.push(audio_format(&format!("track-{n}"), &format!("af-{n}")));
+        let mut segment = whole_file_main_segment(&format!("af-{n}"), "image");
+        segment.start_sample = (n * 2 * 44_100) as i64;
+        segment.end_sample = Some(((n * 2 + 1) * 44_100) as i64);
+        audio_segments.push(segment);
+        tracks.push(standalone_track(&format!("track-{n}"), &image));
+    }
+    let file_ids = HashMap::from([(image.clone(), "image".to_string())]);
+
+    let mut measured = Vec::new();
+    for parallelism in [1, 4] {
+        let mut formats = audio_formats.clone();
+        let peak = peak_open_sources(
+            dir.path(),
+            parallelism,
+            &mut formats,
+            &audio_segments,
+            &file_ids,
+            &tracks,
+        )
+        .await;
+        assert_eq!(peak, 1, "the image is one open file at parallelism {parallelism}");
+        measured.push(track_loudness(&formats));
+    }
+    assert!(
+        measured[0].iter().any(Option::is_some),
+        "the image's audible tracks are measured"
+    );
+    assert_eq!(
+        measured[0], measured[1],
+        "tracks sharing the image's stream measure as they do one at a time"
     );
 }

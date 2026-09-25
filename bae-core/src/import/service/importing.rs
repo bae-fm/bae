@@ -646,8 +646,15 @@ impl ImportService {
         // Unconditional: `import::loudness` compiles under the same predicate this
         // module does, so there is no configuration where the import runs and the
         // measurement doesn't. A `cfg` here could say otherwise, and once did.
+        // Decoding is CPU work: measure as many tracks at once as there are
+        // cores, which also bounds the source files open at once.
+        let parallelism = std::thread::available_parallelism().unwrap_or_else(|error| {
+            warn!("could not read the available parallelism ({error}); measuring one track at a time");
+            std::num::NonZeroUsize::MIN
+        });
         let loudness = crate::import::loudness::measure_loudness(
             &self.event_tx,
+            parallelism,
             &mut built_audio.audio_formats,
             &built_audio.audio_segments,
             &file_ids,

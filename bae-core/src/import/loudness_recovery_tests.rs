@@ -74,6 +74,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
 
     let result = measure_loudness(
         &event_tx,
+        NonZeroUsize::MIN,
         &mut formats,
         &segments,
         &file_ids,

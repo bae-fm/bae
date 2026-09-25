@@ -118,7 +118,31 @@ pub trait AudioDataReader: Send + 'static {
     /// of the whole file. A cloud blob's bytes are decrypted once, when the
     /// reader opens its stream (under the library key on an opaque home, verbatim
     /// on a browsable one); the windows are then read from that plaintext.
-    fn start_reading(self: Box<Self>, buffer: SharedSparseBuffer, on_error: FillErrorHandler);
+    ///
+    /// Returns the fill task, which holds the source open until the buffer is
+    /// stopped or dropped. A caller that must know the source is closed awaits
+    /// [`FillTask::ended`] after stopping the buffer; one that need not drops it.
+    fn start_reading(
+        self: Box<Self>,
+        buffer: SharedSparseBuffer,
+        on_error: FillErrorHandler,
+    ) -> FillTask;
+}
+
+/// The task filling a buffer from its source. It holds the source open until
+/// the buffer is stopped or dropped; dropping this detaches it.
+pub struct FillTask(tokio::task::JoinHandle<()>);
+
+impl FillTask {
+    /// Wait for the fill to end, which is when its source is closed. A panic
+    /// in the fill resumes here.
+    pub async fn ended(self) {
+        if let Err(error) = self.0.await {
+            if error.is_panic() {
+                std::panic::resume_unwind(error.into_panic());
+            }
+        }
+    }
 }
 
 /// Reads a file the caller names by path: a file being previewed, or an
@@ -156,10 +180,14 @@ fn report_fill_failure(on_error: FillErrorHandler, error: Arc<PlaybackError>) {
 }
 
 impl AudioDataReader for LocalReader {
-    fn start_reading(self: Box<Self>, buffer: SharedSparseBuffer, on_error: FillErrorHandler) {
+    fn start_reading(
+        self: Box<Self>,
+        buffer: SharedSparseBuffer,
+        on_error: FillErrorHandler,
+    ) -> FillTask {
         let path = self.path;
 
-        tokio::spawn(async move {
+        FillTask(tokio::spawn(async move {
             use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
             let file = match tokio::fs::File::open(&path).await {
@@ -209,7 +237,7 @@ impl AudioDataReader for LocalReader {
             if let Err(e) = result {
                 report_fill_failure(on_error, e);
             }
-        });
+        }))
     }
 }
 
@@ -305,7 +333,11 @@ impl CovenBlobReader {
 }
 
 impl AudioDataReader for CovenBlobReader {
-    fn start_reading(self: Box<Self>, buffer: SharedSparseBuffer, on_error: FillErrorHandler) {
+    fn start_reading(
+        self: Box<Self>,
+        buffer: SharedSparseBuffer,
+        on_error: FillErrorHandler,
+    ) -> FillTask {
         let CovenBlobReader {
             db,
             file_id,
@@ -315,7 +347,7 @@ impl AudioDataReader for CovenBlobReader {
         } = *self;
         let buffer_id = buffer.id();
 
-        tokio::spawn(async move {
+        FillTask(tokio::spawn(async move {
             // Bind the exact-row blob reference once for this reader, from the live
             // `release_files` row; the stream opened from it is bound to that exact
             // row version, so a later row replacement can't redirect a read. A missing
@@ -440,7 +472,7 @@ impl AudioDataReader for CovenBlobReader {
             if let Err(e) = result {
                 report_fill_failure(on_error, e);
             }
-        });
+        }))
     }
 }
 

@@ -19,6 +19,9 @@ pub mod source;
 pub mod sparse_buffer;
 pub mod stream_pipeline;
 pub mod track_stream;
+// Whole-release passes (import loudness, release saves) are desktop-only.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) mod track_sources;
 
 #[cfg(feature = "test-utils")]
 pub use audio_output::{
