@@ -28,12 +28,13 @@ struct CandidateLiveStateReader<Content: View>: View {
     }
 
     var body: some View {
+        let subscription = Subscription(key: key, basis: basis)
         content(live)
-            .task(id: Subscription(key: key, basis: basis)) {
+            .task(id: subscription) {
                 guard let importer else { return }
                 for await value in importer.candidateLiveStates(
-                    key,
-                    basis: basis
+                    subscription.key,
+                    basis: subscription.basis
                 ) {
                     live = value
                 }
