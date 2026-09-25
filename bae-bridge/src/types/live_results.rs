@@ -55,10 +55,6 @@ callbacks! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     OutputCallback: on_value(value: BridgeOutputSnapshot);
 
-    /// One candidate as the pane reads it. `None` once the key names no scanned
-    /// folder, which is what clears a selection.
-    #[cfg(feature = "desktop")]
-    ImportCandidateCallback: on_value(value: Option<BridgeImportCandidateDetail>) + on_error;
     /// What every candidate has in flight: one `Updated` per key already running
     /// when the subscription opens, then one call per change — `Updated` as a key
     /// advances, `Removed` once nothing is running for it, and `Reset` carrying

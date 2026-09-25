@@ -84,9 +84,12 @@ impl LibraryManager {
 
     pub(crate) fn subscribe_import_candidate(
         &self,
-        key: &str,
-    ) -> coven::LiveQuery<Option<crate::import::ImportCandidateDetailProjection>> {
-        self.database.subscribe_import_candidate(key)
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<String>,
+        Option<crate::import::ImportCandidateDetailProjection>,
+    > {
+        self.database.subscribe_import_candidate(initial)
     }
 
     /// Record the pane's per-candidate state between visits.

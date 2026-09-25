@@ -61,24 +61,6 @@ impl AppHandle {
         })
     }
 
-    /// One candidate as the pane reads it, and every later read of it.
-    pub fn subscribe_import_candidate(
-        &self,
-        candidate_key: String,
-        callback: Box<dyn crate::types::ImportCandidateCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_channel(
-            move |services, runtime| {
-                services.subscribe_import_candidate_values(runtime, candidate_key)
-            },
-            move |value| match value {
-                Ok(value) => callback
-                    .on_value(value.map(crate::types::BridgeImportCandidateDetail::from_core)),
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
-    }
-
     /// What is running for one candidate and the commands its row offers with
     /// it, now and on every change. `basis` is the row's own; a row delivered
     /// again with a different one subscribes again.

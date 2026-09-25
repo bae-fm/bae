@@ -21,6 +21,18 @@ impl CandidateFactsWatch {
         &self.facts
     }
 
+    /// Watch `key` from now on, its facts read as they stand. The runtime
+    /// stream stays the one taken at the start, so no change is missed.
+    pub(crate) fn set_key(&mut self, key: String) {
+        self.facts = self
+            .import
+            .candidate_runtime(&key)
+            .as_ref()
+            .map(TriageRuntimeFacts::of)
+            .unwrap_or_default();
+        self.key = key;
+    }
+
     /// Wait for the key's facts to change, and return them. A change to
     /// another key, or to a part of this key's runtime the facts do not read —
     /// a progress tick within a running import — is passed over. `None` once

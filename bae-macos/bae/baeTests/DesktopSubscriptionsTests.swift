@@ -3,81 +3,33 @@ import Testing
 
 @testable import bae
 
-private final class ImportSelectionHandle: AppHandle, @unchecked Sendable {
-    private var candidateCallback: (any ImportCandidateCallback)?
-    private(set) var identifyCalls: [String] = []
-
-    init() {
-        super.init(noHandle: AppHandle.NoHandle())
-    }
-
-    required init(unsafeFromHandle handle: UInt64) {
-        super.init(unsafeFromHandle: handle)
-    }
-
-    override func subscribeImportCandidate(
-        candidateKey _: String,
-        callback: any ImportCandidateCallback
-    ) -> LiveSubscription {
-        candidateCallback = callback
-        return ImportSelectionSubscription()
-    }
-
-    override func rerunIdentifyForCandidate(candidateKey: String) {
-        identifyCalls.append(candidateKey)
-    }
-
-    func deliver(_ detail: BridgeImportCandidateDetail) {
-        candidateCallback?.onValue(value: detail)
-    }
-
-    /// The key names no scanned folder any more.
-    func deliverNothing() {
-        candidateCallback?.onValue(value: nil)
-    }
-}
-
-private final class ImportSelectionSubscription: LiveSubscription,
-    @unchecked Sendable
-{
-    init() {
-        super.init(noHandle: LiveSubscription.NoHandle())
-    }
-
-    required init(unsafeFromHandle handle: UInt64) {
-        super.init(unsafeFromHandle: handle)
-    }
-
-    override func cancel() {}
-}
-
 @MainActor
 @Suite("Import candidate selection")
 struct DesktopSubscriptionsTests {
-    @Test("selecting an unseeded candidate never starts identification")
-    func selectionDoesNotIdentify() async {
-        let handle = ImportSelectionHandle()
-        let store = ImportStore()
+    @Test("moving the selection moves its reads, and only growth opens more")
+    func selectionMovesItsReads() async {
+        let feed = DetailFeed<BridgeImportCandidateDetail>()
         let observations = ImportSelectionObservations(
-            appHandle: handle,
-            importStore: store,
+            open: { feed.query() },
+            importStore: ImportStore(),
             uiStore: UiStore()
         )
 
-        observations.selectionChanged([MappingFixtures.candidateKey])
-        handle.deliver(
-            MappingFixtures.detail(
-                mapping: nil,
-                edit: MappingFixtures.blankEdit,
-                metadataProvenance: nil
-            )
-        )
-        for _ in 0..<100 where store.selectedCandidates.isEmpty {
-            await Task.yield()
-        }
+        observations.selectionChanged(["candidate-a"])
+        observations.selectionChanged(["candidate-b"])
+        #expect(feed.opened == 1)
+        #expect(feed.requested == ["candidate-a", "candidate-b"])
 
-        #expect(store.selectedCandidates.count == 1)
-        #expect(handle.identifyCalls.isEmpty)
+        observations.selectionChanged(["candidate-b", "candidate-c"])
+        #expect(feed.opened == 2)
+
+        observations.selectionChanged(["candidate-c"])
+        await waitForStoreUpdate { feed.isCancelled(read: 0) }
+        #expect(
+            feed.isCancelled(read: 0),
+            "the read a smaller selection frees ends"
+        )
+        #expect(!feed.isCancelled(read: 1))
     }
 
     /// A pick is about a folder. When the read says there is no such folder
@@ -85,19 +37,17 @@ struct DesktopSubscriptionsTests {
     @Test("a folder that is gone cancels the pick made on it")
     func aGoneFolderCancelsThePick() async throws {
         let key = MappingFixtures.candidateKey
-        let handle = ImportSelectionHandle()
+        let feed = DetailFeed<BridgeImportCandidateDetail>()
         let store = ImportStore()
         let observations = ImportSelectionObservations(
-            appHandle: handle,
+            open: { feed.query() },
             importStore: store,
             uiStore: UiStore()
         )
 
         observations.selectionChanged([key])
-        handle.deliver(MappingFixtures.detail(mapping: nil))
-        for _ in 0..<100 where store.selectedCandidates.isEmpty {
-            await Task.yield()
-        }
+        feed.emit(id: key, value: MappingFixtures.detail(mapping: nil))
+        await waitForStoreUpdate { !store.selectedCandidates.isEmpty }
         _ = try #require(
             store.beginMetadataApplication(
                 key: key,
@@ -105,10 +55,9 @@ struct DesktopSubscriptionsTests {
             )
         )
 
-        handle.deliverNothing()
-        for _ in 0..<100
-        where store.metadataApplicationSession(forKey: key) != nil {
-            await Task.yield()
+        feed.emit(id: key, value: nil)
+        await waitForStoreUpdate {
+            store.metadataApplicationSession(forKey: key) == nil
         }
 
         #expect(store.metadataApplicationSession(forKey: key) == nil)

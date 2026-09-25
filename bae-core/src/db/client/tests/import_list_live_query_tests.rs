@@ -335,3 +335,43 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
         "a commit the list reads nothing from delivers no value"
     );
 }
+
+/// The pane's candidate read moves between candidates on one subscription:
+/// each value answers the key set last, and no key reads nothing.
+#[tokio::test]
+async fn import_candidate_moves_between_candidates_on_one_subscription() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::watched_folder::host_root("/music");
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    let mut keys = Vec::new();
+    for name in ["first", "second"] {
+        let item = scan_candidate(root, name);
+        let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
+            unreachable!("the fixture builds a valid candidate");
+        };
+        keys.push(candidate.path.to_string_lossy().into_owned());
+        db.save_folder_scan_item(root, generation, &item)
+            .await
+            .unwrap();
+    }
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+
+    let mut live = db.subscribe_import_candidate(None);
+    let requests = live.requests();
+    assert!(
+        live.next().await.into_result().unwrap().is_none(),
+        "no key reads nothing"
+    );
+
+    for (key, name) in keys.iter().zip(["first", "second"]) {
+        requests.set(Some(key.clone())).unwrap();
+        let read = live.next().await;
+        assert_eq!(read.request().as_deref(), Some(key.as_str()));
+        let detail = read.into_result().unwrap().expect("the candidate reads");
+        assert_eq!(detail.candidate.name(), name);
+    }
+
+    requests.set(None).unwrap();
+    assert!(live.next().await.into_result().unwrap().is_none());
+}

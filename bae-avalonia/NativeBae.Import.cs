@@ -23,22 +23,35 @@ internal static partial class NativeBae
         handle.SubscribeImportList(view);
 
     /// <summary>One candidate as the pane reads it, and every later read of
-    /// it. A null value means the key names no scanned folder any more.</summary>
-    internal static LiveSubscription SubscribeImportCandidate(
+    /// it, through a candidate read set to just that key. A null value means
+    /// the key names no scanned folder any more.</summary>
+    internal static IDisposable SubscribeImportCandidate(
         AppHandle handle,
         string candidateKey,
         Action<BridgeImportCandidateDetail?> onValue,
-        Action<Exception> onError) =>
-        handle.SubscribeImportCandidate(
-            candidateKey,
-            new ImportCandidateSink(onValue, onError));
-
-    private sealed class ImportCandidateSink(
-        Action<BridgeImportCandidateDetail?> onValue,
-        Action<Exception> onError) : ImportCandidateCallback
+        Action<Exception> onError)
     {
-        public void OnValue(BridgeImportCandidateDetail? value) => onValue(value);
-        public void OnError(BridgeException error) => onError(error);
+        var subscription = handle.SubscribeImportCandidate();
+        try
+        {
+            subscription.SetId(candidateKey);
+        }
+        catch (BridgeException error)
+        {
+            onError(error);
+        }
+        return ReadEachValue(
+            subscription,
+            subscription.Cancel,
+            subscription.Next,
+            snapshot =>
+            {
+                if (snapshot.Id == candidateKey)
+                {
+                    onValue(snapshot.Value);
+                }
+            },
+            onError);
     }
 
     /// <summary>What is in flight for one key right now — the read a control

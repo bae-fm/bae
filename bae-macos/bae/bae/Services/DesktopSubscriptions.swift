@@ -34,108 +34,106 @@ private final class CandidateRuntimeSink: CandidateRuntimeCallback,
     }
 }
 
-private final class ImportCandidateSink: ImportCandidateCallback,
-    @unchecked Sendable
-{
-    private let apply:
-        @MainActor @Sendable (BridgeImportCandidateDetail?) -> Void
-    private let fail: @MainActor @Sendable (BridgeError) -> Void
-
-    init(
-        apply:
-            @escaping @MainActor @Sendable (BridgeImportCandidateDetail?)
-            -> Void,
-        fail: @escaping @MainActor @Sendable (BridgeError) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(value: BridgeImportCandidateDetail?) {
-        Task { @MainActor in apply(value) }
-    }
-
-    func onError(error: BridgeError) {
-        Task { @MainActor in fail(error) }
-    }
-}
-
-/// The reads behind the selected import candidates: one per selected key,
-/// opened when the key is selected and closed when it leaves the selection.
-/// A read that says the folder is gone drops the key from the selection, which
-/// is what clears a row the scan removed.
+/// The reads behind the selected import candidates: one read per selected
+/// key, each a read whose key moves in place. A selection that moves to other
+/// candidates moves the reads it has instead of closing them and opening new
+/// ones; only a selection that grows opens more, and one that shrinks closes
+/// what it no longer needs. Each candidate keeps a read of its own because
+/// each changes on its own. A read that says the folder is gone drops the key
+/// from the selection, which is what clears a row the scan removed.
 @MainActor
 final class ImportSelectionObservations {
-    private struct Observation {
-        let identity: UUID
-        let subscription: LiveSubscription
-    }
-
-    private let appHandle: AppHandle
+    private let open: () -> DetailQuery<BridgeImportCandidateDetail>
     private let importStore: ImportStore
     private let uiStore: UiStore
-    private var observations: [String: Observation] = [:]
+    private var readers: [DetailReader<BridgeImportCandidateDetail>] = []
 
     init(
-        appHandle: AppHandle,
+        open: @escaping () -> DetailQuery<BridgeImportCandidateDetail>,
         importStore: ImportStore,
         uiStore: UiStore
     ) {
-        self.appHandle = appHandle
+        self.open = open
         self.importStore = importStore
         self.uiStore = uiStore
     }
 
-    func selectionChanged(_ keys: Set<String>) {
-        for key in observations.keys where !keys.contains(key) {
-            observations.removeValue(forKey: key)?.subscription.cancel()
-            importStore.selectedCandidates.removeValue(forKey: key)
-        }
-        for key in keys where observations[key] == nil {
-            observe(key)
-        }
-    }
-
-    private func observe(_ key: String) {
-        let identity = UUID()
-        let subscription = appHandle.subscribeImportCandidate(
-            candidateKey: key,
-            callback: ImportCandidateSink(
-                apply: { [weak self] detail in
-                    self?.deliver(detail, key: key, identity: identity)
-                },
-                fail: { [weak self] error in
-                    self?.uiStore.showError(error)
-                }
-            )
-        )
-        observations[key] = Observation(
-            identity: identity,
-            subscription: subscription
-        )
-    }
-
-    private func deliver(
-        _ detail: BridgeImportCandidateDetail?,
-        key: String,
-        identity: UUID
+    convenience init(
+        appHandle: AppHandle,
+        importStore: ImportStore,
+        uiStore: UiStore
     ) {
-        guard observations[key]?.identity == identity else { return }
+        self.init(
+            open: {
+                let subscription = appHandle.subscribeImportCandidate()
+                return DetailQuery(
+                    setId: { try subscription.setId(id: $0) },
+                    next: {
+                        let snapshot = try await subscription.next()
+                        return DetailDelivery(
+                            id: snapshot.id,
+                            value: snapshot.value
+                        )
+                    },
+                    cancel: { try? await subscription.cancel() }
+                )
+            },
+            importStore: importStore,
+            uiStore: uiStore
+        )
+    }
+
+    func selectionChanged(_ keys: Set<String>) {
+        var free: [DetailReader<BridgeImportCandidateDetail>] = []
+        var shown: Set<String> = []
+        for reader in readers {
+            if let key = reader.id, keys.contains(key) {
+                shown.insert(key)
+                continue
+            }
+            if let key = reader.id {
+                importStore.selectedCandidates.removeValue(forKey: key)
+            }
+            free.append(reader)
+        }
+        for key in keys.subtracting(shown).sorted() {
+            if let reader = free.popLast() {
+                reader.show(key)
+            }
+            else {
+                let reader = makeReader()
+                readers.append(reader)
+                reader.show(key)
+            }
+        }
+        for reader in free {
+            reader.close()
+            readers.removeAll { $0 === reader }
+        }
+    }
+
+    private func makeReader() -> DetailReader<BridgeImportCandidateDetail> {
+        DetailReader(
+            open: open,
+            onValue: { [weak self] key, detail in
+                self?.deliver(detail, key: key)
+            },
+            onError: { [weak self] _, error in
+                self?.uiStore.showError(error)
+            }
+        )
+    }
+
+    private func deliver(_ detail: BridgeImportCandidateDetail?, key: String) {
         guard let detail else {
             // The key names no scanned folder any more, so nothing can be done
             // with it: a pick made on it has nothing left to claim, and the
-            // key leaves the selection, which closes this read.
+            // key leaves the selection, which frees this read.
             importStore.cancelMetadataApplication(forKey: key)
             uiStore.removeFolderCandidateSelection([key])
             return
         }
         importStore.applyCandidateDetail(key: key, detail: detail)
-    }
-
-    deinit {
-        for observation in observations.values {
-            observation.subscription.cancel()
-        }
     }
 }
 

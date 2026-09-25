@@ -563,19 +563,22 @@ impl Database {
             .await
     }
 
-    /// One candidate as the pane reads it, live. `None` once the key names no
-    /// scanned folder, which is what clears a selection.
+    /// The candidate `initial` names, as the pane reads it, live; no key reads
+    /// nothing. `None` once the key names no scanned folder, which is what
+    /// clears a selection. The pane moves to another candidate through the
+    /// request handle, not another query.
     pub(crate) fn subscribe_import_candidate(
         &self,
-        key: &str,
-    ) -> coven::LiveQuery<Option<ImportCandidateDetailProjection>> {
-        let key = key.to_string();
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<ImportCandidateDetailProjection>>
+    {
         self.inner
             .handle
-            .subscribe(move |sql| {
-                window::load_candidate_detail_on(&sql, &key).map_err(CovenError::from)
+            .subscribe_reconfigurable(initial, |key, sql| match key {
+                None => Ok(None),
+                Some(key) => window::load_candidate_detail_on(&sql, key).map_err(CovenError::from),
             })
-            .process(|process| {
+            .process(|_, process| {
                 process
                     .map(|process| process())
                     .transpose()

@@ -316,65 +316,74 @@ impl AppServices {
 
     /// One candidate as the pane reads it, and every later read of it. `None`
     /// once the key names no scanned folder, which is what clears a selection.
-    pub fn subscribe_import_candidate_values(
+    /// The import pane's candidate as it changes, read for the key the
+    /// subscription is set to: its rows, and what is running for it. Another
+    /// candidate is a new key on the same read.
+    pub fn subscribe_import_candidate(
         &self,
         runtime_handle: &tokio::runtime::Handle,
-        key: String,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<
-        Result<Option<ImportCandidateDetail>, crate::library::LibraryError>,
-    > {
+    ) -> crate::library::DetailSubscription<ImportCandidateDetail> {
+        let (key_tx, mut keys) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let mut watch = self.inner.import.watch_candidate_facts(key.clone());
-        let mut query = self.inner.manager.subscribe_import_candidate(&key);
-        runtime_handle.spawn(async move {
+        let manager = self.inner.manager.clone();
+        let query_runtime = runtime_handle.clone();
+        let import = self.inner.import.clone();
+        let task = runtime_handle.spawn(async move {
+            let mut key = keys.borrow_and_update().clone();
+            // What is running for the key, watched once there is one.
+            let mut watch = key
+                .clone()
+                .map(|key| import.watch_candidate_facts(key));
+            let mut query = reconfigurable_live_query_events(
+                &query_runtime,
+                manager.subscribe_import_candidate(key.clone()),
+            );
             let mut projection: Option<ImportCandidateDetailProjection> = None;
-            let deliver = |projection: &Option<ImportCandidateDetailProjection>,
-                           facts: &TriageRuntimeFacts| {
-                projection
-                    .clone()
-                    .map(|projection| projection.resolve(facts))
-            };
             loop {
-                tokio::select! {
-                    value = query.next() => match value {
-                        Ok(value) => {
-                            projection = value;
-                            if tx
-                                .send(Ok(deliver(&projection, watch.facts())))
-                                .is_err()
-                            {
-                                return;
+                let value = tokio::select! {
+                    event = query.recv() => match event {
+                        None => return,
+                        Some(Ok(read)) => {
+                            projection = read;
+                            let facts = watch.as_ref().map(|watch| watch.facts().clone()).unwrap_or_default();
+                            Ok(projection.clone().map(|read| read.resolve(&facts)))
+                        }
+                        Some(Err(error)) => Err(error),
+                    },
+                    facts = async {
+                        match watch.as_mut() {
+                            Some(watch) => watch.changed().await,
+                            None => std::future::pending().await,
+                        }
+                    } => {
+                        let Some(facts) = facts else { return };
+                        let Some(read) = projection.clone() else { continue };
+                        Ok(Some(read.resolve(&facts)))
+                    }
+                    changed = keys.changed() => {
+                        if changed.is_err() { return; }
+                        key = keys.borrow_and_update().clone();
+                        projection = None;
+                        if let Some(key) = &key {
+                            match watch.as_mut() {
+                                Some(watch) => watch.set_key(key.clone()),
+                                None => watch = Some(import.watch_candidate_facts(key.clone())),
                             }
                         }
-                        Err(error) => {
-                            let error = match error {
-                                coven::CovenError::Database(error) => *error,
-                                other => coven::DbError::Message(other.to_string()),
-                            };
-                            if tx
-                                .send(Err(crate::library::LibraryError::Database(error)))
-                                .is_err()
-                            {
-                                return;
-                            }
-                        }
-                    },
-                    facts = watch.changed() => {
-                        let Some(facts) = facts else {
-                            return;
-                        };
-                        if projection.is_some()
-                            && tx
-                                .send(Ok(deliver(&projection, &facts)))
-                                .is_err()
-                        {
-                            return;
-                        }
-                    },
+                        query.set(key.clone());
+                        continue;
+                    }
+                };
+                let value = value.map(|value| crate::library::DetailSnapshot {
+                    id: key.clone(),
+                    value,
+                });
+                if tx.send(value).is_err() {
+                    return;
                 }
             }
         });
-        rx
+        crate::library::DetailSubscription::new(key_tx, rx, task)
     }
 }
 
