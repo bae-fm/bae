@@ -395,37 +395,6 @@ async fn deleting_a_release_mid_upload_leaves_no_orphan() {
     );
 }
 
-/// The import rollback removes the release through the same host write every
-/// other deletion uses, so it records the same unwind: a failed cloud import
-/// leaves nothing queued against the release it just took back out.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn a_failed_import_rollback_leaves_no_orphan() {
-    let (manager, _temp_dir, release, _file_id) = queued_upload_fixture("rolled-back").await;
-    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
-
-    manager
-        .fail_import_and_delete_release(&release.id)
-        .await
-        .expect("roll the failed import back");
-
-    let snapshot = manager
-        .outbox_snapshot()
-        .await
-        .expect("the outbox still reads after the rolled-back release is gone");
-    assert_eq!(snapshot.total.cancelling, 1, "the unwind is recorded");
-    manager.drain_uploads_for_test().await.unwrap();
-    assert!(
-        manager
-            .outbox_snapshot()
-            .await
-            .unwrap()
-            .upload_groups
-            .is_empty(),
-        "and the drain finished it",
-    );
-}
-
 /// A cover upload is carried by the `covers` row whose primary key is the
 /// release id, while its immutable cloud blob has a distinct id. The queue must
 /// identify and size the blob itself rather than mistaking the release id for

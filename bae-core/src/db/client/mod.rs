@@ -69,7 +69,7 @@ pub(crate) use blobs::{OutboxDisplayContext, OutboxDisplayRequest};
 pub(crate) use playback::{QueueCatalogProjection, QueueCatalogRequest};
 mod release;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use release::ImportRows;
+pub(crate) use release::{ImportRows, RemoteImport};
 mod release_deletion;
 pub use release_deletion::ReleaseDeletion;
 mod release_projection;

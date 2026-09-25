@@ -1,4 +1,3 @@
-mod rollback_guards;
 use super::super::*;
 use super::*;
 
@@ -170,6 +169,7 @@ async fn commit_import(
         commit.primary_release_id,
         crate::config::HomeStorage::Opaque,
         commit.replacement_deletes,
+        None,
     )
     .await
     .unwrap()
@@ -247,6 +247,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
             None,
             crate::config::HomeStorage::Opaque,
             &[],
+            None,
         )
         .await
         .expect_err("the final transaction must re-check the queued metadata revision");
@@ -484,55 +485,6 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     assert_eq!(track_role_count, 1);
 }
 
-#[tokio::test]
-async fn fail_import_and_delete_release_removes_finalized_import_state_atomically() {
-    let (db, tmp) = super::temp_db().await;
-    let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-
-    let artist = test_artist(ARTIST_A, "Artist Name A", now);
-    db.insert_artist(&artist).await.unwrap();
-
-    let album = test_album(ALBUM_A, "Album Title A", &artist.id, now);
-    let release = test_release(RELEASE_A, &album.id, now);
-    let (track_files, file) = standalone_track_file(
-        &tmp,
-        test_track(TRACK_A, &release.id, "Track Title A", now),
-        FILE_A,
-        "Track Title A.flac",
-        now,
-    )
-    .await;
-
-    commit_import(
-        &db,
-        &release,
-        Commit {
-            album: Some(&album),
-            track_files: &track_files,
-            files: vec![file],
-            primary_release_id: Some((&album.id, &release.id)),
-            ..Default::default()
-        },
-    )
-    .await;
-    assert!(db.external_blob(FILE_A).await.unwrap().is_some());
-
-    db.fail_import_and_delete_release(RELEASE_A).await.unwrap();
-
-    assert!(db.find_release_by_id(RELEASE_A).await.unwrap().is_none());
-    assert!(db.find_album_by_id(ALBUM_A).await.unwrap().is_none());
-    // The registration was keyed by the `release_files` row, so the row
-    // going takes it with it — there is no "is the ref still there?" left to
-    // ask once the row is gone.
-    assert!(db
-        .get_files_for_release(RELEASE_A)
-        .await
-        .unwrap()
-        .is_empty());
-}
-
 /// Reimport replacing one of several releases in an album: the prior release
 /// leaves, the album survives, and a `primary_release_id` pointing at the
 /// departed release goes NULL — read paths fall back to the first release left.
@@ -587,58 +539,3 @@ async fn finalize_replacement_of_last_release_empties_prior_album() {
     assert!(db.find_release_by_id(REL_NEW).await.unwrap().is_some());
 }
 
-/// Failed-import rollback of one of several releases in an album: the album
-/// survives, a `primary_release_id` pointing at the failed release goes NULL,
-/// and the sibling release is untouched.
-#[tokio::test]
-async fn fail_import_and_delete_release_in_surviving_album_clears_dangling_primary() {
-    let (db, tmp) = super::temp_db().await;
-    let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-
-    let artist = test_artist(ARTIST_A, "Artist Name A", now);
-    db.insert_artist(&artist).await.unwrap();
-
-    let album = test_album(ALBUM_A, "Album Title A", &artist.id, now);
-    let release = DbRelease::new_test(&album.id, REL_A);
-    let (track_files, file) = standalone_track_file(
-        &tmp,
-        test_track(TRACK_A, &release.id, "Track Title A", now),
-        FILE_A,
-        "Track Title A.flac",
-        now,
-    )
-    .await;
-
-    // Finalize the import, pointing the album's primary at the release
-    // this import created.
-    commit_import(
-        &db,
-        &release,
-        Commit {
-            album: Some(&album),
-            track_files: &track_files,
-            files: vec![file],
-            primary_release_id: Some((&album.id, &release.id)),
-            ..Default::default()
-        },
-    )
-    .await;
-
-    // A sibling release in the same album keeps it alive through the
-    // rollback.
-    let sibling = DbRelease::new_test(&album.id, REL_B);
-    db.insert_release(&sibling).await.unwrap();
-
-    db.fail_import_and_delete_release(REL_A).await.unwrap();
-
-    let surviving = db
-        .find_album_by_id(ALBUM_A)
-        .await
-        .unwrap()
-        .expect("album survives while sibling remains");
-    assert_eq!(surviving.primary_release_id, None);
-    assert!(db.find_release_by_id(REL_A).await.unwrap().is_none());
-    assert!(db.find_release_by_id(REL_B).await.unwrap().is_some());
-}

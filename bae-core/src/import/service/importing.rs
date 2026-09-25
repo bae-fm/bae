@@ -738,7 +738,14 @@ impl ImportService {
         self.emit_phase_progress(run, &db_release.id, None, ImportPhase::Finalizing);
 
         let remote_intent = matches!(storage_mode, StorageMode::Remote);
-        library_manager
+        // A Remote import is made Remote in the same write that creates it —
+        // the same flow the "Make Remote" action runs afterwards: coven uploads
+        // each file from its external (in-place) source, and on the last flips
+        // `remote` true, drops the external refs, and re-emits the subtree (the
+        // cover rides along). The user's original files stay where they are.
+        // Recording needs no cloud connection, so a Remote import offline
+        // commits and uploads once one exists.
+        let outbox_revision = library_manager
             .finalize_import_atomic(
                 commit_guard,
                 new_album,
@@ -764,42 +771,9 @@ impl ImportService {
                 &artist_images,
                 cover_rel_id,
                 replacement_plans,
+                remote_intent.then_some(crate::db::RemoteImport { pin }),
             )
             .await?;
-
-        // A Remote import transitions to the cloud in the background — the same
-        // flow the "Make Remote" action runs: coven uploads each file from its
-        // external (in-place) source, and on the last flips `remote` true, drops
-        // the external refs, and re-emits the subtree (the cover rides along). The
-        // user's original files stay where they are — coven never deletes a
-        // user-provided source. This runs BEFORE the events below so the outbox
-        // already holds the upload by the time any consumer observes the release
-        // or `Complete`.
-        let outbox_revision = if remote_intent {
-            match library_manager.coven_make_remote(&db_release.id, pin).await {
-                Ok(revision) => Some(revision),
-                Err(e) => {
-                    let remote_error = format!(
-                        "Remote import of {} could not start its cloud upload: {e}",
-                        db_release.id
-                    );
-                    if let Err(delete_error) = library_manager
-                        .fail_import_and_delete_release(&db_release.id)
-                        .await
-                    {
-                        return Err(crate::import::ImportError::Internal {
-                            detail: format!(
-                                "{remote_error}; removing the release it had already finalized failed: {delete_error}"
-                            ),
-                        });
-                    }
-                    tracing::warn!("{remote_error}");
-                    return Err(crate::import::ImportError::Db(e));
-                }
-            }
-        } else {
-            None
-        };
 
         let progress = if remote_intent {
             ImportProgress::RemoteUploadQueued {

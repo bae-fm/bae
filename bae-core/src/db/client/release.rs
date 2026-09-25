@@ -1,11 +1,7 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use super::import_state::require_import_commit_guard;
 use super::*;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod fail_import;
 mod storage;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-use fail_import::*;
 
 /// The row lists an import commit writes around its release — the artist, work,
 /// role, audio-format, and record rows that hang off it.
@@ -13,6 +9,15 @@ use fail_import::*;
 /// One group rather than thirteen parameters: each is a plain list the caller
 /// either has or does not, and `Default` is every one of them empty, so a
 /// caller names only the lists it actually fills.
+/// A release an import makes Remote from the start. See
+/// `Database::finalize_import_atomic`.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RemoteImport {
+    /// Keep the uploaded bytes pinned for offline.
+    pub(crate) pin: bool,
+}
+
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Default)]
 pub(crate) struct ImportRows<'a> {
@@ -414,6 +419,9 @@ impl Database {
         // `cloud_path` computed inside this transaction, ready when the gate flips.
         storage: crate::config::HomeStorage,
         replacement_deletes: &[ReleaseDeletion],
+        // `Some` for a release that goes Remote from the start: its uploads
+        // and intent are recorded in this same write.
+        remote: Option<RemoteImport>,
     ) -> Result<Vec<ImportReplacementOutcome>, DbError> {
         let album = album.cloned();
         let release = release.clone();
@@ -582,6 +590,16 @@ impl Database {
                     // this tx) so it is ready when the gate flips; an opaque home
                     // leaves it NULL and coven hashes the id. A populated key on a
                     // Local row is harmless.
+                    // Every blob-bearing row of the release in the order its
+                    // uploads are admitted: the cover, then the files in the
+                    // natural order every file list shows.
+                    let mut upload_files: Vec<(String, String)> = files
+                        .iter()
+                        .map(|file| (file.row.original_filename.clone(), file.row.id.clone()))
+                        .collect();
+                    upload_files.sort_by(|(a_name, a_id), (b_name, b_id)| {
+                        natord::compare_ignore_case(a_name, b_name).then_with(|| a_id.cmp(b_id))
+                    });
                     for prepared in files {
                         let crate::import::service::PreparedImportFile {
                             row: mut file,
@@ -649,6 +667,27 @@ impl Database {
                         )?;
                     }
 
+                    // A Remote import records its make-Remote with its rows, so
+                    // the release never commits Local with the choice lost, and
+                    // recording needs no cloud connection.
+                    if let Some(RemoteImport { pin }) = &remote {
+                        let album_title: String = tx.query_row(
+                            "SELECT title FROM albums WHERE id = ?",
+                            params![release.album_id],
+                            |row| row.get(0),
+                        )?;
+                        let mut blob_rows: Vec<(&str, &str)> = Vec::new();
+                        if library_image.is_some() {
+                            blob_rows.push(("covers", release.id.as_str()));
+                        }
+                        blob_rows.extend(
+                            upload_files
+                                .iter()
+                                .map(|(_, id)| ("release_files", id.as_str())),
+                        );
+                        tx.make_remote("releases", &release.id, &album_title, *pin, &blob_rows)?;
+                    }
+
 
                     Ok(())
                 },
@@ -708,139 +747,6 @@ impl Database {
         let release_id = release_id.to_string();
         self.read(move |sql| ReleaseDeletion::plan_on(&sql, &release_id))
             .await
-    }
-
-    /// Mark an import failed and remove the release it finalized. Used when
-    /// remote-import upload setup fails after finalize: the release was never
-    /// announced to the library, and its audio files are the user's in-place
-    /// source files, so this clears coven's external refs without queuing any file
-    /// deletion.
-    ///
-    /// That is also why this path MAY sweep the orphaned artists/works it finds
-    /// where `delete_release_with_cleanup` must not: the rolled-back release was
-    /// never remote, so the swept rows had no kept descendants and coven's outbound
-    /// gate cuts their DELETEs from the changeset — the sweep never leaves this
-    /// device.
-    ///
-    /// The rollback drops the cover/artist-image rows, and the host-provided image
-    /// blobs those rows carried must be reclaimed from coven's on-device store. A
-    /// bare row DELETE reclaims nothing — coven's local-blob cleanup is intent-
-    /// driven, and an intent is created only for a blob **declared** deleted in a
-    /// write batch. So this reads the exact delete set and its blobs first
-    /// (`plan_fail_import_deletion`), then in one atomic [`CovenHandle::write`]
-    /// declares those blob deletions and deletes the rows: the blobs are referenced
-    /// when the batch opens (so coven binds a row cleanup intent) and unreferenced
-    /// when it commits (so the intent records), reclaiming the local bytes.
-    ///
-    /// Planning needs a read because blob declarations are fixed before coven
-    /// opens the write. The write recomputes that plan inside its serialized SQL
-    /// transaction and aborts atomically if anything changed between the two.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn fail_import_and_delete_release(&self, release_id: &str) -> Result<(), DbError> {
-        self.fail_import_and_delete_release_after_planning(release_id, || async {})
-            .await
-    }
-
-    #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
-    pub(crate) async fn fail_import_and_delete_release_after_planning_for_test<F, Fut>(
-        &self,
-        release_id: &str,
-        after_planning: F,
-    ) -> Result<(), DbError>
-    where
-        F: FnOnce() -> Fut,
-        Fut: std::future::Future<Output = ()>,
-    {
-        self.fail_import_and_delete_release_after_planning(release_id, after_planning)
-            .await
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    async fn fail_import_and_delete_release_after_planning<F, Fut>(
-        &self,
-        release_id: &str,
-        after_planning: F,
-    ) -> Result<(), DbError>
-    where
-        F: FnOnce() -> Fut,
-        Fut: std::future::Future<Output = ()>,
-    {
-        let release_id = release_id.to_string();
-        let plan = self
-            .read(move |sql| plan_fail_import_deletion(&sql, &release_id))
-            .await?;
-        after_planning().await;
-        let declared = plan.image_blobs.clone();
-        self.inner
-            .handle
-            .write_with_blobs(
-                move |w| {
-                    for (namespace, blob_id, cloud_path) in declared {
-                        w.delete_blob(crate::sync::image_blob_ref(namespace, &blob_id, cloud_path));
-                    }
-                    Ok(())
-                },
-                move |sql| {
-                    let current = plan_fail_import_deletion(&sql, &plan.release_id)
-                        .map_err(CovenError::from)?;
-                    if current != plan {
-                        return Err(CovenError::from(DbError::Message(format!(
-                            "failed-import rollback plan for {} changed after planning",
-                            plan.release_id
-                        ))));
-                    }
-                    let FailImportDeletion {
-                        release_id,
-                        album_id,
-                        delete_album,
-                        orphaned_work_ids,
-                        orphaned_artist_ids,
-                        image_blobs: _,
-                        file_ids,
-                    } = plan;
-                    let reg = sql.stamp();
-                    // Drop each file's external-file registration while its row is
-                    // still there to bind: the rollback leaves the user's own
-                    // source files alone, it only stops coven pointing at them.
-                    for file_id in &file_ids {
-                        sql.clear_external_blob("release_files", file_id)
-                            .map_err(CovenError::from)?;
-                    }
-                    // Dropping the release cascades its tracks, links, and `covers`
-                    // row; the declared cover blob is unreferenced once it commits.
-                    sql.execute("DELETE FROM releases WHERE id = ?", params![release_id])
-                        .map_err(CovenError::from)?;
-                    if delete_album {
-                        sql.execute("DELETE FROM albums WHERE id = ?", params![album_id])
-                            .map_err(CovenError::from)?;
-                    } else {
-                        // The album keeps other releases; only clear a
-                        // `primary_release_id` that pointed at the removed release.
-                        sql.execute(
-                            "UPDATE albums SET primary_release_id = NULL, _updated_at = ? \
-                             WHERE id = ? AND primary_release_id = ?",
-                            params![reg, album_id, release_id],
-                        )
-                        .map_err(CovenError::from)?;
-                    }
-                    // Delete the planned orphaned works and artists by id: the plan
-                    // determined each is referenced only within this deleted
-                    // subtree, so removing them strands nothing. Each artist delete
-                    // cascades its `artist_images` row, freeing the declared blob.
-                    for work_id in &orphaned_work_ids {
-                        sql.execute("DELETE FROM works WHERE id = ?", params![work_id])
-                            .map_err(CovenError::from)?;
-                    }
-                    for artist_id in &orphaned_artist_ids {
-                        sql.execute("DELETE FROM artists WHERE id = ?", params![artist_id])
-                            .map_err(CovenError::from)?;
-                    }
-                    Ok(())
-                },
-            )
-            .await
-            .map(|_| ())
-            .map_err(Self::coven_error)
     }
 
     /// Find release by ID. Caller-provided ID — may not exist.

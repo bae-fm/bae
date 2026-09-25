@@ -397,7 +397,9 @@ impl LibraryManager {
 
     /// Insert all of an import's data in one transaction, so the release either
     /// exists complete or does not exist at all. Nothing of it is in the DB yet
-    /// except the import record.
+    /// except the import record. A Remote import (`remote`) records its
+    /// make-Remote in the same write and gets back the outbox revision that
+    /// shows its uploads queued.
     ///
     /// Track rows come straight off `tracks_to_files` — each `TrackFile` owns the
     /// `DbTrack` (with its populated `duration_ms`) that gets inserted. There is no
@@ -415,7 +417,8 @@ impl LibraryManager {
         artist_images: &[(&DbLibraryImage, &[u8])],
         primary_release_id: Option<(&str, &str)>,
         replacement_plans: &[ImportReplacementPlan],
-    ) -> Result<(), LibraryError> {
+        remote: Option<crate::db::RemoteImport>,
+    ) -> Result<Option<u64>, LibraryError> {
         // The home's storage mode decides the blob layout (opaque hashed-by-id vs.
         // browsable readable paths); the manager owns config, so it reads the mode
         // here rather than threading it from the importer.
@@ -437,11 +440,17 @@ impl LibraryManager {
                 primary_release_id,
                 storage,
                 &replacement_deletes,
+                remote,
             )
             .await?;
-        if !replacement_plans.is_empty() {
-            self.emit_outbox_changed().await;
-        }
+        // The outbox value that already shows the queued uploads (or the
+        // replaced releases' unwinding), whose revision a Remote import hands
+        // back as its receipt.
+        let outbox_revision = if remote.is_some() || !replacement_plans.is_empty() {
+            Some(self.emit_outbox_changed().await)
+        } else {
+            None
+        };
         for plan in replacement_plans {
             if !plan.track_ids.is_empty() {
                 self.emit(LibraryEvent::TracksDeleted {
@@ -449,7 +458,7 @@ impl LibraryManager {
                 });
             }
         }
-        Ok(())
+        Ok(outbox_revision.filter(|_| remote.is_some()))
     }
 
     /// Every stored candidate row, keyed by content hash. The queue is a few
@@ -597,21 +606,5 @@ impl LibraryManager {
             .database
             .load_folder_release_decisions(watched_folder_path)
             .await?)
-    }
-
-    /// Remove the release a failed import had already finalized, in one DB
-    /// operation.
-    pub async fn fail_import_and_delete_release(
-        &self,
-        release_id: &str,
-    ) -> Result<(), LibraryError> {
-        // The DB layer deletes the release subtree and declares the cover/artist-
-        // image blobs it orphans as deletions in the same coven write batch, so
-        // coven records the durable local-cleanup intents that reclaim their
-        // on-device bytes. Nothing to evict here.
-        self.database
-            .fail_import_and_delete_release(release_id)
-            .await?;
-        Ok(())
     }
 }

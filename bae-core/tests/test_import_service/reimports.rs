@@ -219,49 +219,15 @@ async fn a_remote_imported_folder_is_refused_a_second_import() {
     );
 }
 
-/// The remote-transition rollback: the mirror of the local unit test
-/// `failed_import_before_finalize_leaves_only_import_audit_row`, but one stage
-/// later. The release is finalized (status Importing), then the cloud
-/// transition fails and `run_import` calls `fail_import_and_delete_release`. A
-/// Remote import with no sync provider connected fails at exactly that point
-/// (`coven_make_remote` returns `SyncNotReady`) — the honest injection for a
-/// post-finalize transition failure, since the upload itself is deferred to the
-/// drain and never runs synchronously. The rollback must delete the
-/// just-finalized release and its album, mark the import Failed with its release
-/// link cleared, and leave a pre-existing release untouched.
+/// A Remote import records its make-Remote in the write that creates the
+/// release, so it needs no cloud connection: with none connected the import
+/// commits, its uploads wait in the outbox, and the release is on its way to
+/// the cloud rather than rolled back.
 #[tokio::test]
-async fn remote_transition_failure_rolls_back_finalized_release() {
+async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
     support::tracing_init();
-    // No cloud/sync connected, so the make-Remote transition fails.
     let f = ImportFixture::new().await;
 
-    // A prior local release already in the library; the failed remote import
-    // below must not touch it.
-    let prior_dir = f.temp_path().join("prior");
-    fs::create_dir_all(&prior_dir).unwrap();
-    generate_tagged_album_files(
-        &prior_dir,
-        "Prior Album",
-        "Prior Artist",
-        None,
-        &[TaggedTrack {
-            filename: "01 Prior Track.flac",
-            title: "Prior Track",
-            track_number: 1,
-        }],
-    );
-    let (prior_release_id, _) = import_folder(
-        &f,
-        &prior_dir,
-        None,
-        StorageMode::Local,
-        MetadataProvenance::FileMetadata,
-    )
-    .await
-    .expect("prior local import succeeds");
-
-    // The remote import: finalize commits the release (status Importing), then
-    // coven_make_remote fails because sync was never connected.
     let album_dir = f.temp_path().join("remote");
     fs::create_dir_all(&album_dir).unwrap();
     generate_tagged_album_files(
@@ -276,41 +242,29 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
         }],
     );
 
-    let import_id = f.ids.new_id();
-    f.handle
-        .send_command(ImportCommand {
-            storage_mode: StorageMode::Remote,
-            ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileMetadata)
-        })
-        .await
-        .unwrap();
-    let mut progress_rx = f.handle.subscribe_import(import_id.clone());
-    let error = support::try_wait_for_import_complete(&mut progress_rx)
-        .await
-        .expect_err("remote transition without a sync provider fails");
-    assert!(
-        error.contains("make release") && error.contains("sync is not running"),
-        "unexpected error: {error}"
-    );
+    let (release_id, _) = import_folder(
+        &f,
+        &album_dir,
+        None,
+        StorageMode::Remote,
+        MetadataProvenance::FileMetadata,
+    )
+    .await
+    .expect("a Remote import commits with no cloud connected");
 
-    // The rollback deleted the finalized remote release, its album, and the
-    // artist row that finalize inserted for it; only the prior release, album,
-    // and artist remain. The remote import's artist is referenced by nothing
-    // else, so leaving it behind would orphan a row on every failed remote
-    // import.
-    let (release_count, album_count, artist_count) =
-        f.db.library_row_counts_for_test().await.unwrap();
-    assert_eq!(release_count, 1, "only the prior release remains");
-    assert_eq!(album_count, 1, "only the prior album remains");
-    assert_eq!(
-        artist_count, 1,
-        "only the prior artist remains; the rolled-back import's artist row is gone",
-    );
+    let release = f
+        .db
+        .find_release_by_id(&release_id)
+        .await
+        .unwrap()
+        .expect("the release is committed");
+    assert!(!release.remote, "its uploads have not run yet");
+    let outbox = f.library_manager.outbox_snapshot().await.unwrap();
     assert!(
-        f.db.find_release_by_id(&prior_release_id)
-            .await
-            .unwrap()
-            .is_some(),
-        "the prior release is untouched by the failed remote import",
+        outbox
+            .upload_groups
+            .iter()
+            .any(|group| group.release_id == release_id),
+        "its uploads wait in the outbox"
     );
 }

@@ -14,7 +14,7 @@ pub use client::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{
     CandidateLookupUpdate, CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras,
-    CandidateSaved, CandidateScanExpectation, ImportRows, ScannedCandidateKey,
+    CandidateSaved, CandidateScanExpectation, ImportRows, RemoteImport, ScannedCandidateKey,
 };
 pub use client::{Database, ImportReplacementOutcome, ReleaseDeletion};
 pub(crate) use client::{
