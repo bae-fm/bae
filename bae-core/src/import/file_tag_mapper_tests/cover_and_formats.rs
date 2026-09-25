@@ -204,9 +204,19 @@ fn copy_with_picture(
     dest
 }
 
+/// The cover a file's tag read carries.
+fn embedded_cover(
+    path: &std::path::Path,
+) -> Result<Option<(Vec<u8>, ContentType)>, crate::import::ImportError> {
+    use crate::import::file_tag_snapshot::FileTagReader;
+    crate::import::file_tag_snapshot::LoftyFileTagReader
+        .read(path)
+        .map(|read| read.embedded_cover)
+}
+
 /// An embedded front cover is read and mapped to its `ContentType`.
 #[test]
-fn read_embedded_cover_returns_front_cover() {
+fn tag_read_cover_returns_front_cover() {
     let temp = TempDir::new().unwrap();
     let f = copy_with_picture(
         temp.path(),
@@ -215,25 +225,25 @@ fn read_embedded_cover_returns_front_cover() {
         lofty::picture::MimeType::Jpeg,
         JPEG_BYTES,
     );
-    let (bytes, content_type) = read_embedded_cover(&[f]).unwrap().expect("cover present");
+    let (bytes, content_type) = embedded_cover(&f).unwrap().expect("cover present");
     assert_eq!(bytes, JPEG_BYTES);
     assert_eq!(content_type, ContentType::Jpeg);
 }
 
 /// No embedded picture → None (the caller falls through to no cover).
 #[test]
-fn read_embedded_cover_none_when_no_picture() {
+fn tag_read_cover_none_when_no_picture() {
     let temp = TempDir::new().unwrap();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
     let dest = temp.path().join("01.flac");
     fs::copy(&src, &dest).unwrap();
-    assert!(read_embedded_cover(&[dest]).unwrap().is_none());
+    assert!(embedded_cover(&dest).unwrap().is_none());
 }
 
 /// When a file carries both a back and a front cover, the front cover
 /// wins regardless of which was pushed first.
 #[test]
-fn read_embedded_cover_prefers_front_over_other() {
+fn tag_read_cover_prefers_front_over_other() {
     use lofty::config::WriteOptions;
     use lofty::picture::{MimeType, Picture, PictureType};
 
@@ -260,7 +270,7 @@ fn read_embedded_cover_prefers_front_over_other() {
     tagged.insert_tag(tag);
     tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
 
-    let (bytes, content_type) = read_embedded_cover(&[dest])
+    let (bytes, content_type) = embedded_cover(&dest)
         .unwrap()
         .expect("cover present");
     assert_eq!(bytes, JPEG_BYTES, "front cover wins over back");
@@ -270,7 +280,7 @@ fn read_embedded_cover_prefers_front_over_other() {
 /// With no front cover, the first embedded picture of any type is used —
 /// a back-cover-only file still yields a cover to seed.
 #[test]
-fn read_embedded_cover_falls_back_to_non_front_picture() {
+fn tag_read_cover_falls_back_to_non_front_picture() {
     let temp = TempDir::new().unwrap();
     let f = copy_with_picture(
         temp.path(),
@@ -279,7 +289,7 @@ fn read_embedded_cover_falls_back_to_non_front_picture() {
         lofty::picture::MimeType::Jpeg,
         JPEG_BYTES,
     );
-    let (bytes, content_type) = read_embedded_cover(&[f]).unwrap().expect("cover present");
+    let (bytes, content_type) = embedded_cover(&f).unwrap().expect("cover present");
     assert_eq!(bytes, JPEG_BYTES, "back cover used when no front cover");
     assert_eq!(content_type, ContentType::Jpeg);
 }
@@ -287,7 +297,7 @@ fn read_embedded_cover_falls_back_to_non_front_picture() {
 /// A picture in an unsupported MIME (lofty `Tiff`) maps to None rather
 /// than being stored as a cover the library can't render.
 #[test]
-fn read_embedded_cover_none_for_unsupported_mime() {
+fn tag_read_cover_none_for_unsupported_mime() {
     let temp = TempDir::new().unwrap();
     let f = copy_with_picture(
         temp.path(),
@@ -296,7 +306,7 @@ fn read_embedded_cover_none_for_unsupported_mime() {
         lofty::picture::MimeType::Tiff,
         &[0x49, 0x49, 0x2A, 0x00],
     );
-    assert!(read_embedded_cover(&[f]).unwrap().is_none());
+    assert!(embedded_cover(&f).unwrap().is_none());
 }
 
 #[test]
@@ -334,53 +344,11 @@ fn unsupported_front_picture_does_not_hide_supported_embedded_cover() {
         );
         tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
 
-        let expected = Some((bytes.to_vec(), expected_type));
         assert_eq!(
-            read_embedded_cover(std::slice::from_ref(&dest)).unwrap(),
-            expected
-        );
-        use crate::import::file_tag_snapshot::FileTagReader;
-        assert_eq!(
-            crate::import::file_tag_snapshot::LoftyFileTagReader
-                .read(&dest)
-                .unwrap()
-                .embedded_cover,
-            expected
+            embedded_cover(&dest).unwrap(),
+            Some((bytes.to_vec(), expected_type))
         );
     }
-}
-
-#[test]
-fn read_embedded_cover_returns_err_when_audio_file_cannot_open() {
-    let temp = TempDir::new().unwrap();
-    let missing = temp.path().join("missing.flac");
-
-    let err = read_embedded_cover(std::slice::from_ref(&missing)).unwrap_err();
-
-    assert!(
-        matches!(&err, ImportError::FileTags { detail }
-            if detail.contains("failed to open")
-                && detail.contains("for embedded cover read")
-                && detail.contains(&missing.display().to_string())),
-        "expected embedded-cover open error, got {err:?}"
-    );
-}
-
-#[test]
-fn read_embedded_cover_returns_err_when_audio_tags_cannot_be_read() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("test-fixtures")
-        .join("audio-format")
-        .join("placeholder-dsd.dsf");
-
-    let err = read_embedded_cover(std::slice::from_ref(&path)).unwrap_err();
-
-    assert!(
-        matches!(&err, ImportError::FileTags { detail }
-            if detail.contains("failed to read embedded cover tags")
-                && detail.contains(&path.display().to_string())),
-        "expected embedded-cover tag-read error, got {err:?}"
-    );
 }
 
 #[test]

@@ -29,8 +29,6 @@ use coven::Clock;
 use coven::IdProvider;
 use std::path::{Path, PathBuf};
 
-pub use super::file_tag_snapshot::read_embedded_cover;
-
 /// Map the embedded tags of a rip's audio files to a `ParsedAlbum`.
 ///
 /// `audio_files` is the rip's audio files in order; that order is the fallback

@@ -12,7 +12,7 @@ use lofty::tag::TagType;
 use lofty::TextEncoding;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::UNIX_EPOCH;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -457,30 +457,6 @@ pub(crate) fn year_from_tag(tag: &lofty::tag::Tag) -> Option<u16> {
     None
 }
 
-pub fn read_embedded_cover(
-    audio_files: &[PathBuf],
-) -> Result<Option<(Vec<u8>, ContentType)>, ImportError> {
-    for path in audio_files {
-        let probe = Probe::open(path).map_err(|error| ImportError::FileTags {
-            detail: format!(
-                "failed to open {} for embedded cover read: {error}",
-                path.display()
-            ),
-        })?;
-        let tagged = probe.read().map_err(|error| {
-            ImportError::file_tags("read embedded cover tags from", path, error)
-        })?;
-        if let Some(cover) = tagged
-            .primary_tag()
-            .or_else(|| tagged.first_tag())
-            .and_then(embedded_cover_from_tag)
-        {
-            return Ok(Some(cover));
-        }
-    }
-    Ok(None)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -667,8 +643,10 @@ mod tests {
         let path = dir.path().join("01.mp3");
         std::fs::write(&path, unsynchronised_id3v24_mp3(PLACEHOLDER_JPEG)).unwrap();
 
-        let (bytes, content_type) = read_embedded_cover(std::slice::from_ref(&path))
+        let (bytes, content_type) = LoftyFileTagReader
+            .read(&path)
             .unwrap()
+            .embedded_cover
             .expect("the tag carries a picture");
 
         assert_eq!(content_type, ContentType::Jpeg);
