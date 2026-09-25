@@ -30,6 +30,45 @@ CREATE INDEX IF NOT EXISTS idx_artists_discogs_id ON artists (discogs_artist_id)
 
 CREATE INDEX IF NOT EXISTS idx_artists_mb_id ON artists (musicbrainz_artist_id);
 
+-- Two library artists the user confirmed are one: `id` is the absorbed artist,
+-- `into_artist_id` the one it became. Both rows stay, so a credit another
+-- device gave the absorbed artist while apart still has its parent; every read
+-- shows an artist through `merged_artist_survivors`.
+CREATE TABLE IF NOT EXISTS artist_merges (
+    id TEXT PRIMARY KEY,
+    into_artist_id TEXT NOT NULL,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    CHECK (id <> into_artist_id),
+    FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE,
+    FOREIGN KEY (into_artist_id) REFERENCES artists (id) ON DELETE CASCADE
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_artist_merges_into ON artist_merges (into_artist_id);
+
+-- Every merged artist and the artist it now shows as: the end of its chain of
+-- merges. Devices that merged one pair in opposite directions while apart leave
+-- a cycle; it shows as the smallest id in it, the same on every device. An
+-- artist absent here shows as itself.
+CREATE VIEW IF NOT EXISTS merged_artist_survivors AS
+WITH RECURSIVE hop(start, current, depth) AS (
+    SELECT id, into_artist_id, 1 FROM artist_merges
+    UNION ALL
+    SELECT hop.start, merge.into_artist_id, hop.depth + 1
+    FROM hop JOIN artist_merges merge ON merge.id = hop.current
+    WHERE hop.depth < 64
+),
+resolved(artist_id, survivor_id) AS (
+    SELECT start,
+           COALESCE(
+               MIN(CASE WHEN current NOT IN (SELECT id FROM artist_merges) THEN current END),
+               MIN(current)
+           )
+    FROM hop
+    GROUP BY start
+)
+SELECT artist_id, survivor_id FROM resolved WHERE artist_id <> survivor_id;
+
 -- One stored picture per artist, keyed by the artist it belongs to.
 CREATE TABLE IF NOT EXISTS artist_images (
     -- The artist id this image belongs to (1:1).

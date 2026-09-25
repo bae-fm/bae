@@ -25,22 +25,43 @@ impl Database {
         .await
     }
 
+    /// The artist a Discogs artist id names, as it shows after any merge.
     pub async fn get_artist_by_discogs_id(
         &self,
         discogs_artist_id: &str,
     ) -> Result<Option<DbArtist>, DbError> {
-        self.get_artist_by_sql(
-            "SELECT * FROM artists WHERE discogs_artist_id = ?",
-            discogs_artist_id.to_string(),
-        )
-        .await
+        self.get_artist_by_catalog_id("discogs_artist_id", discogs_artist_id)
+            .await
     }
 
+    /// The artist a MusicBrainz artist id names, as it shows after any merge.
     pub async fn get_artist_by_mb_id(&self, mb_id: &str) -> Result<Option<DbArtist>, DbError> {
-        self.get_artist_by_sql(
-            "SELECT * FROM artists WHERE musicbrainz_artist_id = ?",
-            mb_id.to_string(),
-        )
+        self.get_artist_by_catalog_id("musicbrainz_artist_id", mb_id)
+            .await
+    }
+
+    /// The artist whose `column` holds `catalog_id`, followed through any
+    /// merge to the artist it shows as.
+    async fn get_artist_by_catalog_id(
+        &self,
+        column: &'static str,
+        catalog_id: &str,
+    ) -> Result<Option<DbArtist>, DbError> {
+        let catalog_id = catalog_id.to_string();
+        self.read(move |sql| {
+            sql.query_row(
+                &format!(
+                    "SELECT a.* FROM artists a WHERE a.id IN ( \
+                         SELECT {} FROM artists named WHERE named.{column} = ?1) \
+                     ORDER BY a.id LIMIT 1",
+                    shown_artist_id("named.id")
+                ),
+                params![catalog_id],
+                row_to_artist,
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
         .await
     }
 
@@ -101,12 +122,16 @@ impl Database {
         let track_id = track_id.to_string();
         self.read(move |sql| {
             sql.query(
-                r#"
+                &format!(
+                    r#"
                         SELECT a.* FROM artists a
-                        JOIN track_artists ta ON a.id = ta.artist_id
+                        JOIN track_artists ta ON a.id = {}
                         WHERE ta.track_id = ?
-                        ORDER BY ta.position
+                        GROUP BY a.id
+                        ORDER BY MIN(ta.position)
                         "#,
+                    shown_artist_id("ta.artist_id")
+                ),
                 params![track_id],
                 row_to_artist,
             )
@@ -131,14 +156,16 @@ impl Database {
         let query = query.to_string();
         self.read(move |sql| {
             sql.query(
-                r#"
+                &format!(
+                    r#"
                     SELECT *
                     FROM artists
-                    WHERE id = ?1
+                    WHERE {shown}
+                      AND (id = ?1
                        OR discogs_artist_id = ?1
                        OR musicbrainz_artist_id = ?1
                        OR instr(lower(name), lower(?1)) > 0
-                       OR instr(lower(COALESCE(sort_name, '')), lower(?1)) > 0
+                       OR instr(lower(COALESCE(sort_name, '')), lower(?1)) > 0)
                     ORDER BY
                         CASE
                             WHEN id = ?1
@@ -154,6 +181,8 @@ impl Database {
                         id
                     LIMIT ?2
                     "#,
+                    shown = artist_is_shown("artists")
+                ),
                 params![query, limit as i64],
                 row_to_artist,
             )
@@ -551,14 +580,16 @@ fn find_artist_detail_on(
     let albums_query = format!(
         "{select} \
          FROM albums a \
-         WHERE a.artist_id = ?1 \
+         WHERE ({primary} = ?1 \
             OR EXISTS ( \
                 SELECT 1 FROM album_artists aa \
-                WHERE aa.album_id = a.id AND aa.artist_id = ?1 \
-            ) \
+                WHERE aa.album_id = a.id AND {additional} = ?1 \
+            )) \
          ORDER BY CASE WHEN a.year IS NULL THEN 1 ELSE 0 END, \
                   a.year, a.title COLLATE NOCASE, a.id",
-        select = album_summary_select()
+        select = album_summary_select(),
+        primary = shown_artist_id("a.artist_id"),
+        additional = shown_artist_id("aa.artist_id"),
     );
     let albums = sql.query(&albums_query, params![artist_id], AlbumSummaryRow::read)?;
     Ok(Some(ArtistDetailRows { artist, albums }))
@@ -598,7 +629,10 @@ fn find_composer_detail_on(
     };
     let works = sql.query(
         &work_summary_query(
-            Some("JOIN work_artists wa_filter ON wa_filter.work_id = w.id AND wa_filter.artist_id = ?"),
+            Some(&format!(
+                "JOIN work_artists wa_filter ON wa_filter.work_id = w.id AND {} = ?",
+                shown_artist_id("wa_filter.artist_id")
+            )),
             Some("ORDER BY w.title"),
         ),
         params![composer.artist.id],
@@ -639,8 +673,9 @@ fn find_composer_detail_on(
          FROM release_artist_roles rar
          JOIN releases r ON r.id = rar.release_id
          JOIN albums a ON a.id = r.album_id
-         WHERE rar.artist_id = ? AND {}
+         WHERE {} = ? AND {}
          ORDER BY a.title, r.created_at, rar.position",
+        shown_artist_id("rar.artist_id"),
         unlinked_release_composer_role_predicate("rar")
     );
     let unlinked_release_roles =
@@ -682,10 +717,11 @@ fn find_composer_detail_on(
          JOIN tracks t ON t.id = tar.track_id
          JOIN releases r ON r.id = t.release_id
          JOIN albums a ON a.id = r.album_id
-         JOIN artists art ON art.id = tar.artist_id
-         WHERE tar.artist_id = ? AND {}
+         JOIN artists art ON art.id = {shown}
+         WHERE {shown} = ? AND {}
          ORDER BY a.title, r.created_at, t.position, tar.position",
-        unlinked_track_composer_role_predicate("tar")
+        unlinked_track_composer_role_predicate("tar"),
+        shown = shown_artist_id("tar.artist_id"),
     );
     let unlinked_track_roles = sql.query(
         &track_roles_query,

@@ -159,6 +159,7 @@ pub(super) fn plan_fail_import_deletion<Q: QueryOne + QueryRows>(
              OR EXISTS(SELECT 1 FROM release_artist_roles WHERE artist_id = ?1 AND release_id != ?4)
              OR EXISTS(SELECT 1 FROM track_artist_roles WHERE artist_id = ?1
                         AND track_id NOT IN (SELECT id FROM tracks WHERE release_id = ?4))
+             OR EXISTS(SELECT 1 FROM artist_merges WHERE id = ?1 OR into_artist_id = ?1)
              OR EXISTS(SELECT 1 FROM import_candidate_album_artist_assignment
                         WHERE assignment_kind = 'existing' AND artist_id = ?1)
              OR EXISTS(SELECT 1 FROM import_candidate_track_artist_assignment

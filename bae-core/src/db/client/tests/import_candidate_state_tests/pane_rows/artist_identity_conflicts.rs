@@ -217,18 +217,21 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     let survivor = db.find_artist_by_id(&discogs.id).await.unwrap().unwrap();
     assert_eq!(survivor.discogs_artist_id.as_deref(), Some("discogs-1"));
     assert_eq!(survivor.musicbrainz_artist_id.as_deref(), Some("mb-1"));
+    // The absorbed artist stays, recorded as merged, and every credit shows
+    // the survivor once.
     assert!(db
         .find_artist_by_id(&musicbrainz.id)
         .await
         .unwrap()
-        .is_none());
+        .is_some());
     assert_eq!(
-        db.find_album_by_id(&album.id)
+        db.get_artists_for_album(&album.id)
             .await
             .unwrap()
-            .unwrap()
-            .artist_id,
-        discogs.id
+            .into_iter()
+            .map(|artist| artist.id)
+            .collect::<Vec<_>>(),
+        vec![discogs.id.clone()]
     );
     let absorbed_id = musicbrainz.id.clone();
     let survivor_id = discogs.id.clone();
@@ -236,13 +239,8 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     let (absorbed_references, survivor_image_blob, pending_album_artists, pending_track_artists) =
         db.read(move |sql| {
             let mut absorbed_references = 0_i64;
+            // Only this device's drafts move; shared credits stay as written.
             for table in [
-                "albums",
-                "album_artists",
-                "track_artists",
-                "work_artists",
-                "release_artist_roles",
-                "track_artist_roles",
                 "import_candidate_album_artist_assignment",
                 "import_candidate_track_artist_assignment",
             ] {

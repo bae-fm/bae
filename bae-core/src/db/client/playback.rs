@@ -184,18 +184,24 @@ fn queue_metadata_on(
                 r.id AS cover_image_id, c._updated_at AS cover_version, \
                 COALESCE( \
                     NULLIF(( \
-                        SELECT GROUP_CONCAT(art.name, ', ' ORDER BY ta.position) \
-                        FROM track_artists ta \
-                        JOIN artists art ON art.id = ta.artist_id \
-                        WHERE ta.track_id = t.id \
+                        SELECT GROUP_CONCAT(art.name, ', ' ORDER BY credit.position) \
+                        FROM ( \
+                            SELECT {track_artist} AS artist_id, MIN(ta.position) AS position \
+                            FROM track_artists ta \
+                            WHERE ta.track_id = t.id \
+                            GROUP BY 1 \
+                        ) credit \
+                        JOIN artists art ON art.id = credit.artist_id \
                     ), ''), \
-                    (SELECT art_primary.name FROM artists art_primary WHERE art_primary.id = a.artist_id) \
+                    (SELECT art_primary.name FROM artists art_primary WHERE art_primary.id = {primary}) \
                 ) AS artist_names \
              FROM tracks t \
              JOIN releases r ON r.id = t.release_id \
              JOIN albums a ON a.id = r.album_id \
              LEFT JOIN covers c ON c.id = r.id \
-             WHERE t.id IN ({placeholders})"
+             WHERE t.id IN ({placeholders})",
+            track_artist = shown_artist_id("ta.artist_id"),
+            primary = shown_artist_id("a.artist_id"),
         );
         meta_by_track.extend(sql.query(
             &query,

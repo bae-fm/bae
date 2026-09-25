@@ -127,6 +127,8 @@ pub fn synced_tables() -> Vec<SyncedTable> {
     // (`db::identity`), so two devices stating one fact write one row.
     vec![
         SyncedTable::new("artists", RowIdentity::IndependentUuid).gated_by_descendants(),
+        // A merge record is keyed by the artist it absorbs and travels with it.
+        SyncedTable::new("artist_merges", RowIdentity::SharedKey).gated_through("id"),
         SyncedTable::new("albums", RowIdentity::IndependentUuid).gated_by_descendants(),
         SyncedTable::new("album_artists", RowIdentity::SharedKey).gated_through("album_id"),
         SyncedTable::new("releases", RowIdentity::IndependentUuid).gated_by("remote"),
@@ -322,6 +324,7 @@ mod tests {
             BTreeSet::from([
                 ("album_artists", "album_id"),
                 ("artist_images", "id"),
+                ("artist_merges", "id"),
                 ("audio_format_segments", "audio_format_id"),
                 ("audio_formats", "track_id"),
                 ("covers", "id"),

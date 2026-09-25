@@ -465,7 +465,8 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
         .await
         .unwrap();
     let names: Vec<&str> = new_album_artists.iter().map(|a| a.name.as_str()).collect();
-    assert_eq!(names, vec!["Primary", "Primary", "Secondary"]);
+    // The primary is credited twice (the album row and position 0) and shows once.
+    assert_eq!(names, vec!["Primary", "Secondary"]);
 }
 
 #[tokio::test]

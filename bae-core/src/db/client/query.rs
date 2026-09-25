@@ -233,6 +233,21 @@ pub(super) fn cleanup_album_after_release_removal_on(
     Ok(false)
 }
 
+/// The id of the artist `artist_id` (an SQL expression) shows as: the survivor
+/// of its merges, or itself.
+pub(super) fn shown_artist_id(artist_id: &str) -> String {
+    format!(
+        "COALESCE((SELECT survivor_id FROM merged_artist_survivors \
+                   WHERE artist_id = {artist_id}), {artist_id})"
+    )
+}
+
+/// Whether the `artists` row aliased `alias` shows as itself — it was not
+/// merged into another artist — so listings include it.
+pub(super) fn artist_is_shown(alias: &str) -> String {
+    format!("{alias}.id NOT IN (SELECT artist_id FROM merged_artist_survivors)")
+}
+
 pub(super) fn composer_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
     let release_unlinked = unlinked_release_composer_role_predicate("rar");
     let track_unlinked = unlinked_track_composer_role_predicate("tar");
@@ -247,28 +262,32 @@ pub(super) fn composer_summary_query(filter: Option<&str>, tail: Option<&str>) -
                 COUNT(DISTINCT linked.id) AS linked_release_count,
                 (
                     SELECT COUNT(*) FROM release_artist_roles rar
-                    WHERE rar.artist_id = composer.id
+                    WHERE {release_role_artist} = composer.id
                       AND {release_unlinked}
                 ) + (
                     SELECT COUNT(*) FROM track_artist_roles tar
-                    WHERE tar.artist_id = composer.id
+                    WHERE {track_role_artist} = composer.id
                       AND {track_unlinked}
                 ) AS unlinked_credit_count
          FROM artists composer
-         LEFT JOIN work_artists wa ON wa.artist_id = composer.id
+         LEFT JOIN work_artists wa ON {work_artist} = composer.id
          LEFT JOIN track_works tw ON tw.work_id = wa.work_id
          LEFT JOIN tracks linked_track ON linked_track.id = tw.track_id
          LEFT JOIN releases linked ON linked.id = linked_track.release_id
          ",
+        release_role_artist = shown_artist_id("rar.artist_id"),
+        track_role_artist = shown_artist_id("tar.artist_id"),
+        work_artist = shown_artist_id("wa.artist_id"),
     );
     if let Some(filter) = filter {
         query.push_str(filter);
     }
-    query.push_str(
+    query.push_str(&format!(
         "
          GROUP BY composer.id, composer.name, composer.sort_name, composer.discogs_artist_id, composer.musicbrainz_artist_id, composer.created_at
-         HAVING work_count > 0 OR unlinked_credit_count > 0",
-    );
+         HAVING {} AND (work_count > 0 OR unlinked_credit_count > 0)",
+        artist_is_shown("composer")
+    ));
     if let Some(tail) = tail {
         query.push('\n');
         query.push_str(tail);
@@ -282,7 +301,7 @@ pub(super) fn composer_summary_query(filter: Option<&str>, tail: Option<&str>) -
 /// track-level credits (`track_artists`) don't confer it. Various Artists gets no
 /// special case: it is a real `artists` row and lists like any other artist.
 pub(super) fn artist_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
-    let mut query = String::from(
+    let mut query = format!(
         "SELECT ar.id AS artist_id,
                 ar.name AS artist_name,
                 ar.sort_name AS artist_sort_name,
@@ -292,11 +311,13 @@ pub(super) fn artist_summary_query(filter: Option<&str>, tail: Option<&str>) -> 
                 COUNT(DISTINCT link.album_id) AS album_count
          FROM artists ar
          JOIN (
-             SELECT artist_id, id AS album_id FROM albums
+             SELECT {primary} AS artist_id, a.id AS album_id FROM albums a
              UNION
-             SELECT artist_id, album_id FROM album_artists
+             SELECT {additional} AS artist_id, aa.album_id FROM album_artists aa
          ) link ON link.artist_id = ar.id
          ",
+        primary = shown_artist_id("a.artist_id"),
+        additional = shown_artist_id("aa.artist_id"),
     );
     if let Some(filter) = filter {
         query.push_str(filter);
@@ -344,14 +365,16 @@ pub(super) fn unlinked_composer_role_predicate(
             SELECT 1 FROM work_artists wa_unlinked_{scope}
             JOIN track_works tw_unlinked_{scope} ON tw_unlinked_{scope}.work_id = wa_unlinked_{scope}.work_id
             {track_join}
-            WHERE wa_unlinked_{scope}.artist_id = {role_alias}.artist_id
+            WHERE {work_artist} = {role_artist}
               AND {linked_target_column} = {role_alias}.{role_target_column}
-        )"
+        )",
+        work_artist = shown_artist_id(&format!("wa_unlinked_{scope}.artist_id")),
+        role_artist = shown_artist_id(&format!("{role_alias}.artist_id")),
     )
 }
 
 pub(super) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
-    let mut query = String::from(
+    let mut query = format!(
         "SELECT w.id AS work_id,
                 w.title AS work_title,
                 w.disambiguation AS work_disambiguation,
@@ -374,16 +397,21 @@ pub(super) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> St
                     LIMIT 1
                 ) AS representative_release_id,
                 (
-                    SELECT GROUP_CONCAT(composer.name, ', ' ORDER BY wa.position)
-                    FROM work_artists wa
-                    JOIN artists composer ON composer.id = wa.artist_id
-                    WHERE wa.work_id = w.id
+                    SELECT GROUP_CONCAT(composer.name, ', ' ORDER BY credit.position)
+                    FROM (
+                        SELECT {work_artist} AS artist_id, MIN(wa.position) AS position
+                        FROM work_artists wa
+                        WHERE wa.work_id = w.id
+                        GROUP BY 1
+                    ) credit
+                    JOIN artists composer ON composer.id = credit.artist_id
                 ) AS composer_names,
                 COUNT(DISTINCT tr.release_id) AS linked_release_count
          FROM works w
          LEFT JOIN track_works tw ON tw.work_id = w.id
          LEFT JOIN tracks tr ON tr.id = tw.track_id
          ",
+        work_artist = shown_artist_id("wa.artist_id"),
     );
     if let Some(filter) = filter {
         query.push_str(filter);
@@ -748,26 +776,37 @@ pub(super) fn storage_filter_where(filter: StorageFilter, uploading_count: usize
     }
 }
 
-pub(super) fn album_artist_names_sql() -> &'static str {
-    "(SELECT CASE \
-        WHEN primary_name = '' THEN extra_names \
-        WHEN extra_names = '' THEN primary_name \
-        ELSE primary_name || ', ' || extra_names \
-    END \
-    FROM ( \
-        SELECT \
-            COALESCE(( \
-                SELECT art_primary.name \
-                FROM artists art_primary \
-                WHERE art_primary.id = a.artist_id \
-            ), '') AS primary_name, \
-            COALESCE(( \
-                SELECT GROUP_CONCAT(ar.name, ', ' ORDER BY aa.position) \
-                FROM album_artists aa \
-                JOIN artists ar ON ar.id = aa.artist_id \
-                WHERE aa.album_id = a.id \
-            ), '') AS extra_names \
-    ))"
+/// The album's credited artists as they show after merges, primary first and
+/// each once.
+pub(super) fn album_artist_names_sql() -> String {
+    format!(
+        "(SELECT CASE \
+            WHEN primary_name = '' THEN extra_names \
+            WHEN extra_names = '' THEN primary_name \
+            ELSE primary_name || ', ' || extra_names \
+        END \
+        FROM ( \
+            SELECT \
+                COALESCE(( \
+                    SELECT art_primary.name \
+                    FROM artists art_primary \
+                    WHERE art_primary.id = {primary} \
+                ), '') AS primary_name, \
+                COALESCE(( \
+                    SELECT GROUP_CONCAT(ar.name, ', ' ORDER BY credit.position) \
+                    FROM ( \
+                        SELECT {additional} AS artist_id, MIN(aa.position) AS position \
+                        FROM album_artists aa \
+                        WHERE aa.album_id = a.id \
+                        GROUP BY 1 \
+                    ) credit \
+                    JOIN artists ar ON ar.id = credit.artist_id \
+                    WHERE credit.artist_id IS NOT {primary} \
+                ), '') AS extra_names \
+        ))",
+        primary = shown_artist_id("a.artist_id"),
+        additional = shown_artist_id("aa.artist_id"),
+    )
 }
 
 pub(super) fn album_release_ids_json_sql() -> &'static str {
@@ -800,11 +839,14 @@ pub(super) fn album_summary_select() -> String {
 
 /// The `art_sort` join clause for album-summary queries that sort by an
 /// artist-derived column; empty otherwise.
-pub(super) fn album_summary_artist_join(needs_artist_join: bool) -> &'static str {
+pub(super) fn album_summary_artist_join(needs_artist_join: bool) -> String {
     if needs_artist_join {
-        "JOIN artists art_sort ON a.artist_id = art_sort.id"
+        format!(
+            "JOIN artists art_sort ON art_sort.id = {}",
+            shown_artist_id("a.artist_id")
+        )
     } else {
-        ""
+        String::new()
     }
 }
 

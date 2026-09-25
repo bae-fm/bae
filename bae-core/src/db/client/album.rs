@@ -456,13 +456,14 @@ fn search_library_on(
                    {release_ids} AS release_ids_json,
                    art.name as artist_name
             FROM albums a
-            JOIN artists art ON a.artist_id = art.id
+            JOIN artists art ON art.id = {primary}
             WHERE a.title LIKE ? ESCAPE '\'
                OR art.name LIKE ? ESCAPE '\'
             ORDER BY a.title
             LIMIT ?
             "#,
-        release_ids = album_release_ids_json_sql()
+        release_ids = album_release_ids_json_sql(),
+        primary = shown_artist_id("a.artist_id"),
     );
     let albums = sql.query(&album_query, params![pattern, pattern, limit], |row| {
         Ok(AlbumSearchRow {
@@ -475,17 +476,20 @@ fn search_library_on(
         })
     })?;
     let tracks = sql.query(
-        r#"
+        &format!(
+            r#"
             SELECT t.id, t.title, t.duration_ms, t.release_id,
                    r.album_id, a.title as album_title, art.name as artist_name
             FROM tracks t
             JOIN releases r ON t.release_id = r.id
             JOIN albums a ON r.album_id = a.id
-            JOIN artists art ON a.artist_id = art.id
+            JOIN artists art ON art.id = {}
             WHERE t.title LIKE ? ESCAPE '\'
             ORDER BY t.title
             LIMIT ?
             "#,
+            shown_artist_id("a.artist_id")
+        ),
         params![pattern, limit],
         |row| {
             Ok(DbTrackSearchResult {

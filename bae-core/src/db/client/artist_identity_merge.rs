@@ -4,9 +4,13 @@ use super::*;
 
 impl Database {
     /// Consolidate the two library artists named by a candidate's persisted
-    /// identity conflict. Every library and pending-import reference moves in
-    /// the same database commit; the failed candidate becomes ready again only
-    /// if the absorbed artist has been removed successfully.
+    /// identity conflict. The absorbed artist is recorded as merged into the
+    /// survivor (`artist_merges`), the survivor takes its source ids and image,
+    /// and this device's drafts and conflicts move to the survivor, all in one
+    /// database commit; the failed candidate becomes ready again with it.
+    /// Neither artist row is deleted and no library credit is rewritten: both
+    /// are shared with devices that may be crediting the absorbed artist while
+    /// apart, and every read shows the survivor.
     pub async fn merge_import_artist_identity_conflict(
         &self,
         content_hash: &str,
@@ -14,8 +18,11 @@ impl Database {
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let surviving_artist_id = surviving_artist_id.to_string();
+        let now = self.inner.clock.now().to_rfc3339();
         let plan = self
-            .read(move |sql| plan_artist_identity_merge(&sql, &content_hash, &surviving_artist_id))
+            .read(move |sql| {
+                plan_artist_identity_merge(&sql, &content_hash, &surviving_artist_id, &now)
+            })
             .await?;
         let deleted_image = plan.deleted_image.clone();
         self.inner
@@ -32,6 +39,7 @@ impl Database {
                         &sql,
                         &plan.content_hash,
                         &plan.surviving_artist_id,
+                        &plan.now,
                     )
                     .map_err(CovenError::from)?;
                     if current != plan {
@@ -58,13 +66,19 @@ struct ArtistIdentityMergePlan {
     musicbrainz_artist_id: String,
     surviving_sort_name: Option<String>,
     move_absorbed_image: bool,
+    /// The absorbed artist's image row goes: moved to the survivor, or
+    /// superseded by the survivor's own.
+    absorbed_image_leaves: bool,
     deleted_image: Option<coven::BlobRef>,
+    /// `created_at` for the merge record.
+    now: String,
 }
 
 fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
     sql: &Q,
     content_hash: &str,
     surviving_artist_id: &str,
+    now: &str,
 ) -> Result<ArtistIdentityMergePlan, DbError> {
     let conflict = sql
         .query_row(
@@ -156,6 +170,7 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
     let surviving_image = image(surviving_artist_id)?;
     let absorbed_image = image(&absorbed_artist_id)?;
     let move_absorbed_image = surviving_image.is_none() && absorbed_image.is_some();
+    let absorbed_image_leaves = absorbed_image.is_some();
     let deleted_image = match (surviving_image, absorbed_image) {
         (Some(surviving), Some(absorbed)) if surviving.id != absorbed.id => Some(absorbed),
         _ => None,
@@ -169,7 +184,9 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
         musicbrainz_artist_id,
         surviving_sort_name,
         move_absorbed_image,
+        absorbed_image_leaves,
         deleted_image,
+        now: now.to_string(),
     })
 }
 
@@ -187,7 +204,7 @@ fn apply_artist_identity_merge(
     // Another selected candidate can have failed on the same pair. Clear every
     // conflict that becomes one artist after this merge, then retarget any
     // conflict that still names a different third artist. This removes every
-    // restrictive conflict reference before the absorbed artist is deleted.
+    // conflict that would otherwise still name two artists that are now one.
     sql.execute(
         "DELETE FROM import_candidate_failure WHERE content_hash IN (\
              SELECT content_hash FROM import_candidate_artist_identity_conflict \
@@ -218,42 +235,33 @@ fn apply_artist_identity_merge(
         )?;
     }
 
-    sql.execute(
-        "UPDATE albums SET artist_id = ?, _updated_at = ? WHERE artist_id = ?",
-        params![plan.surviving_artist_id, reg, plan.absorbed_artist_id],
-    )?;
-    for (table, unique_columns, carries_update_stamp) in [
-        ("album_artists", &["album_id"][..], true),
-        ("track_artists", &["track_id"][..], true),
-        ("work_artists", &["work_id", "position"][..], true),
-        (
-            "release_artist_roles",
-            &["release_id", "position", "source"][..],
-            true,
-        ),
-        (
-            "track_artist_roles",
-            &["track_id", "position", "source"][..],
-            true,
-        ),
+    if plan.absorbed_image_leaves {
+        sql.execute(
+            "DELETE FROM artist_images WHERE id = ?",
+            [&plan.absorbed_artist_id],
+        )?;
+    }
+
+    // Drafts and conflicts are this device's alone: they move to the survivor.
+    // Library credits are shared and stay as written, since another device may
+    // be crediting the absorbed artist right now; reads show every credit
+    // through `merged_artist_survivors`.
+    for (table, unique_columns) in [
         (
             "import_candidate_album_artist_assignment",
             &["content_hash"][..],
-            false,
         ),
         (
             "import_candidate_track_artist_assignment",
             &["content_hash", "track_id"][..],
-            false,
         ),
     ] {
-        merge_artist_references(
+        merge_local_artist_references(
             sql,
             table,
             unique_columns,
             &plan.surviving_artist_id,
             &plan.absorbed_artist_id,
-            carries_update_stamp.then_some(reg.as_str()),
         )?;
     }
 
@@ -270,25 +278,35 @@ fn apply_artist_identity_merge(
             "artist identity merge updated {changed} surviving artists; expected exactly one"
         )));
     }
-    let deleted = sql.execute(
-        "DELETE FROM artists WHERE id = ?",
-        [&plan.absorbed_artist_id],
+    // The absorbed artist stays, recorded as merged: a chain that ended at it
+    // now ends at the survivor.
+    sql.execute(
+        "UPDATE artist_merges SET into_artist_id = ?1, _updated_at = ?2 \
+         WHERE into_artist_id = ?3",
+        params![plan.surviving_artist_id, reg, plan.absorbed_artist_id],
     )?;
-    if deleted != 1 {
-        return Err(DbError::Message(format!(
-            "artist identity merge deleted {deleted} absorbed artists; expected exactly one"
-        )));
-    }
+    sql.execute(
+        "INSERT INTO artist_merges (id, into_artist_id, _updated_at, created_at) \
+         VALUES (?1, ?2, ?3, ?4) \
+         ON CONFLICT (id) DO UPDATE SET \
+             into_artist_id = excluded.into_artist_id, \
+             _updated_at = excluded._updated_at",
+        params![
+            plan.absorbed_artist_id,
+            plan.surviving_artist_id,
+            reg,
+            plan.now
+        ],
+    )?;
     Ok(())
 }
 
-fn merge_artist_references(
+fn merge_local_artist_references(
     sql: &SqlContext<'_, '_>,
     table: &str,
     unique_columns: &[&str],
     surviving_artist_id: &str,
     absorbed_artist_id: &str,
-    reg: Option<&str>,
 ) -> Result<(), DbError> {
     let same_reference = unique_columns
         .iter()
@@ -303,21 +321,9 @@ fn merge_artist_references(
         ),
         params![absorbed_artist_id, surviving_artist_id],
     )?;
-    match reg {
-        Some(reg) => {
-            sql.execute(
-                &format!(
-                    "UPDATE {table} SET artist_id = ?1, _updated_at = ?2 WHERE artist_id = ?3"
-                ),
-                params![surviving_artist_id, reg, absorbed_artist_id],
-            )?;
-        }
-        None => {
-            sql.execute(
-                &format!("UPDATE {table} SET artist_id = ?1 WHERE artist_id = ?2"),
-                params![surviving_artist_id, absorbed_artist_id],
-            )?;
-        }
-    }
+    sql.execute(
+        &format!("UPDATE {table} SET artist_id = ?1 WHERE artist_id = ?2"),
+        params![surviving_artist_id, absorbed_artist_id],
+    )?;
     Ok(())
 }

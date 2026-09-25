@@ -25,19 +25,26 @@ pub(super) fn get_artists_for_album_on(
     album_id: &str,
 ) -> Result<Vec<DbArtist>, DbError> {
     // Primary artist from FK (sort_key = -1 so it's first), then additional
-    // artists from the junction table ordered by position.
+    // artists from the junction table ordered by position. Each credit shows
+    // the artist it resolves to after merges, once, at its first position.
     sql.query(
-        r#"
-            SELECT a.*, -1 AS sort_key FROM artists a
-            JOIN albums alb ON alb.artist_id = a.id
-            WHERE alb.id = ?
-            UNION ALL
-            SELECT a.*, aa.position AS sort_key FROM artists a
-            JOIN album_artists aa ON a.id = aa.artist_id
-            WHERE aa.album_id = ?
-            ORDER BY sort_key
+        &format!(
+            r#"
+            SELECT a.* FROM artists a
+            JOIN (
+                SELECT {primary} AS artist_id, -1 AS sort_key
+                FROM albums alb WHERE alb.id = ?1
+                UNION ALL
+                SELECT {additional} AS artist_id, aa.position AS sort_key
+                FROM album_artists aa WHERE aa.album_id = ?1
+            ) credit ON credit.artist_id = a.id
+            GROUP BY a.id
+            ORDER BY MIN(credit.sort_key)
             "#,
-        params![album_id, album_id],
+            primary = shown_artist_id("alb.artist_id"),
+            additional = shown_artist_id("aa.artist_id"),
+        ),
+        params![album_id],
         row_to_artist,
     )
     .map_err(DbError::from)
@@ -117,7 +124,7 @@ pub(super) fn get_tracks_with_artists_for_release_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<(DbTrack, Option<DbArtist>)>, DbError> {
-    let joined = sql.query(
+    let query = format!(
         "SELECT
             track.id AS track_id,
             track.release_id AS track_release_id,
@@ -135,20 +142,20 @@ pub(super) fn get_tracks_with_artists_for_release_on(
             artist.created_at AS artist_created_at
          FROM tracks track
          LEFT JOIN track_artists ta ON ta.track_id = track.id
-         LEFT JOIN artists artist ON artist.id = ta.artist_id
+         LEFT JOIN artists artist ON artist.id = {}
          WHERE track.release_id = ?
          ORDER BY track.position, track.id, ta.position",
-        params![release_id],
-        |row| {
-            let track = row_to_track_with_prefix(row, "track_")?;
-            let artist_id: Option<String> = row.get("artist_id")?;
-            let artist = match artist_id {
-                Some(_) => Some(row_to_artist_with_prefix(row, "artist_")?),
-                None => None,
-            };
-            Ok((track, artist))
-        },
-    )?;
+        shown_artist_id("ta.artist_id")
+    );
+    let joined = sql.query(&query, params![release_id], |row| {
+        let track = row_to_track_with_prefix(row, "track_")?;
+        let artist_id: Option<String> = row.get("artist_id")?;
+        let artist = match artist_id {
+            Some(_) => Some(row_to_artist_with_prefix(row, "artist_")?),
+            None => None,
+        };
+        Ok((track, artist))
+    })?;
 
     Ok(joined)
 }
@@ -163,11 +170,14 @@ fn process_tracks(joined: Vec<(DbTrack, Option<DbArtist>)>) -> Vec<DbTrackWithAr
             });
         }
         if let Some(artist) = artist {
-            tracks
+            let artists = &mut tracks
                 .last_mut()
                 .expect("the row's track was just pushed")
-                .artists
-                .push(artist);
+                .artists;
+            // Two credits can resolve to one artist after a merge.
+            if !artists.iter().any(|credited| credited.id == artist.id) {
+                artists.push(artist);
+            }
         }
     }
 

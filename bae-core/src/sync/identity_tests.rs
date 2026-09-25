@@ -214,3 +214,125 @@ fn the_same_record_set_on_two_devices_merges() {
         assert_nothing_held(&devices);
     });
 }
+
+/// Record, on `device`, the import failure where one incoming artist matched
+/// two library artists — the state the identity merge consolidates.
+async fn record_identity_conflict(device: &TestDevice, discogs_artist: &str, mb_artist: &str) {
+    device
+        .database()
+        .execute_local_sql_for_test(&format!(
+            "INSERT INTO import_candidate_state (content_hash, folder_path) \
+                 VALUES ('conflict', '/Album');
+             INSERT INTO import_candidate_failure (content_hash, error, failed_at) \
+                 VALUES ('conflict', 'artist identity', '2026-01-01T00:00:00Z');
+             INSERT INTO import_candidate_artist_identity_conflict \
+                 (content_hash, incoming_artist_name, discogs_artist_id, musicbrainz_artist_id, \
+                  discogs_library_artist_id, musicbrainz_library_artist_id) \
+                 VALUES ('conflict', 'Artist', '{DISCOGS_ARTIST}', '{MB_ARTIST}', \
+                         '{discogs_artist}', '{mb_artist}');"
+        ))
+        .await
+        .unwrap();
+}
+
+/// A draft on `device` that names `artist_id` as its album artist — local
+/// import-pane state no sync carries.
+async fn draft_crediting(device: &TestDevice, artist_id: &str) {
+    device
+        .database()
+        .execute_local_sql_for_test(&format!(
+            "INSERT INTO import_candidate_state (content_hash, folder_path) \
+                 VALUES ('draft', '/Album');
+             INSERT INTO import_candidate_edit \
+                 (content_hash, album_title, album_year, year, format, label, \
+                  catalog_number, country, barcode, author) \
+                 VALUES ('draft', 'Album', '', '', '', '', '', '', '', 'person');
+             INSERT INTO import_candidate_album_artist_assignment \
+                 (content_hash, position, assignment_kind, artist_id) \
+                 VALUES ('draft', 0, 'existing', '{artist_id}');"
+        ))
+        .await
+        .unwrap();
+}
+
+/// Device A confirms that its Discogs artist and its MusicBrainz artist are
+/// one artist while device B has a draft crediting the Discogs one. B's own
+/// draft never stops it from taking A's library.
+#[test]
+fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
+    run_two_device_test(|| async {
+        let devices = TwoDevices::pair().await;
+        let (discogs, album_id, release_id) = remote_album_by(
+            devices.a(),
+            catalog_artist(None, Some(DISCOGS_ARTIST)),
+            "Album",
+        )
+        .await;
+        let (musicbrainz, _, other_release) =
+            remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Other").await;
+        releases_on_both(&devices, &[&release_id, &other_release]).await;
+        draft_crediting(devices.b(), &discogs).await;
+
+        record_identity_conflict(devices.a(), &discogs, &musicbrainz).await;
+        devices
+            .a()
+            .manager()
+            .merge_import_artist_identity_conflict("conflict", &musicbrainz)
+            .await
+            .unwrap();
+
+        devices.converge("SELECT id FROM artists").await;
+        for database in [devices.a().database(), devices.b().database()] {
+            assert_eq!(
+                album_artist_ids(database, &album_id).await,
+                vec![musicbrainz.clone()]
+            );
+        }
+        assert_nothing_held(&devices);
+    });
+}
+
+/// Device A merges two artists while device B, apart, credits the absorbed
+/// one on a new album. Both writes land: B's album is credited to the one
+/// merged artist on both devices.
+#[test]
+fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
+    run_two_device_test(|| async {
+        let devices = TwoDevices::pair().await;
+        let (discogs, _, release_id) = remote_album_by(
+            devices.a(),
+            catalog_artist(None, Some(DISCOGS_ARTIST)),
+            "Album",
+        )
+        .await;
+        let (musicbrainz, _, other_release) =
+            remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Other").await;
+        releases_on_both(&devices, &[&release_id, &other_release]).await;
+
+        devices.pause();
+        record_identity_conflict(devices.a(), &discogs, &musicbrainz).await;
+        devices
+            .a()
+            .manager()
+            .merge_import_artist_identity_conflict("conflict", &musicbrainz)
+            .await
+            .unwrap();
+        let (credited, new_album, new_release) = remote_album_by(
+            devices.b(),
+            catalog_artist(None, Some(DISCOGS_ARTIST)),
+            "New",
+        )
+        .await;
+        assert_eq!(credited, discogs, "B credits the artist it already has");
+        devices.resume().await;
+
+        releases_on_both(&devices, &[&release_id, &other_release, &new_release]).await;
+        for database in [devices.a().database(), devices.b().database()] {
+            assert_eq!(
+                album_artist_ids(database, &new_album).await,
+                vec![musicbrainz.clone()]
+            );
+        }
+        assert_nothing_held(&devices);
+    });
+}

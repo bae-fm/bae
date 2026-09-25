@@ -135,7 +135,7 @@ impl Database {
 
         let query = storage_page_query(
             &order_by,
-            artist_sort_join,
+            &artist_sort_join,
             page_where,
             usize::from(queue_ordered) * uploading.len(),
         );
@@ -164,7 +164,7 @@ impl Database {
         let page_where = if queue_ordered { "" } else { &where_clause };
         let query = storage_page_query(
             &order_by,
-            artist_sort_join,
+            &artist_sort_join,
             page_where,
             usize::from(queue_ordered) * uploading.len(),
         );
