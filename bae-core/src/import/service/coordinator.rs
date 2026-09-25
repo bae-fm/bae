@@ -1,10 +1,15 @@
 //! Deciding when a watched root is read.
 //!
 //! Every way a scan can be asked for arrives here: a command, a filesystem
-//! event, a watch failure, the periodic tick, and — for a folder on a network
-//! volume, which has no watch worth the name — the cheap check that stands in
-//! for walking it. What each root has going is [`ActiveRoots`]'s; this decides
-//! what to ask it for.
+//! event, a watch failure or a watch that lost track, and — for a folder on a
+//! network volume, which has no watch worth the name — the periodic cheap
+//! check that stands in for walking it. What each root has going is
+//! [`ActiveRoots`]'s; this decides what to ask it for.
+//!
+//! A whole root is read only when something asks for all of it: the folder
+//! was added or refreshed, the app started, or the watch failed or lost track.
+//! A change on disk, or one the cheap check found, reads again only the
+//! folders directly under the root that it reached (see [`root_change`]).
 //!
 //! Reading a root is [`super::scanning`]'s; this decides that it happens.
 
@@ -13,9 +18,10 @@ use super::*;
 impl ImportService {
     /// The folder-watch reconciliation task. A `Rescan` command re-scans a folder
     /// (the handle sends one right after installing the folder's OS watch, and on
-    /// every `scan_watched_folders` call), and a debounced filesystem change under
-    /// a watched folder re-scans it too. Every re-scan reconciles what it finds
-    /// against the candidates already recorded for that folder —
+    /// every `scan_watched_folders` call), and a debounced filesystem change
+    /// under a watched folder reads again the folders it reached. Every re-scan
+    /// reconciles what it finds against the candidates already recorded for
+    /// that folder —
     /// `FolderCandidate` for what's on disk, `CandidateRemoved` for what's gone —
     /// so changes propagate beyond the first scan.
     ///
@@ -68,7 +74,8 @@ impl ImportService {
             // meanwhile. The answer comes back here, and only a "yes" becomes a
             // scan. One check per root at a time: `checking` is what says one is
             // already out.
-            let (checked_tx, mut checked_rx) = mpsc::unbounded_channel::<PathBuf>();
+            let (checked_tx, mut checked_rx) =
+                mpsc::unbounded_channel::<(PathBuf, Option<Vec<PathBuf>>)>();
             let mut checking: HashSet<PathBuf> = HashSet::new();
             let period = crate::import::volume::CHECK_PERIOD;
             let mut periodic = tokio::time::interval_at(tokio::time::Instant::now() + period, period);
@@ -232,23 +239,69 @@ impl ImportService {
                                 continue;
                             }
                         };
-                        let changed = changed_paths(&events);
+                        // A backend that lost track of what changed — FSEvents
+                        // dropping events, inotify's queue overflowing — says so
+                        // with an event of its own, and the paths it names (if
+                        // any) are only where to start: everything under them
+                        // may have changed unseen.
                         let roots = watched_roots(&library_manager).await;
-                        let affected = affected_roots(&changed, &roots);
-                        if !affected.is_empty() {
-                            let summary = changed_events_summary(&events);
-                            for root in affected {
+                        let dropped: Vec<&Path> = events
+                            .iter()
+                            .filter(|event| event.need_rescan())
+                            .flat_map(|event| event.paths.iter().map(PathBuf::as_path))
+                            .collect();
+                        let lost_track = events.iter().any(|event| event.need_rescan());
+                        let mut reread = HashSet::new();
+                        if lost_track {
+                            let dropped: Vec<PathBuf> =
+                                dropped.iter().map(|path| path.to_path_buf()).collect();
+                            for root in roots_for_watch_error(&dropped, &roots) {
+                                reread.insert(root.clone());
                                 active_roots.request_scan(
                                     root,
-                                    RootScanCause::FsChange(summary.clone()),
+                                    RootScanCause::EventsDropped,
                                     None,
                                 );
                             }
                         }
+                        let changed = changed_paths(&events);
+                        let affected = affected_roots(&changed, &roots);
+                        let summary = changed_events_summary(&events);
+                        for root in affected {
+                            if reread.contains(&root) {
+                                continue;
+                            }
+                            let under: Vec<&Path> = changed
+                                .iter()
+                                .copied()
+                                .filter(|path| path.starts_with(&root))
+                                .collect();
+                            let holds = holds_its_own_release(&library_manager, &root).await;
+                            request_change(
+                                &mut active_roots,
+                                root.clone(),
+                                root_change(&root, &under, holds),
+                                RootScanCause::FsChange(summary.clone()),
+                            );
+                        }
                     }
-                    Some(root) = checked_rx.recv() => {
+                    Some((root, changes)) = checked_rx.recv() => {
                         checking.remove(&root);
-                        active_roots.request_scan(root, RootScanCause::NetworkFolderMoved, None);
+                        let change = match changes {
+                            None => RootChange::WholeRoot,
+                            Some(changes) => {
+                                let changes: Vec<&Path> =
+                                    changes.iter().map(PathBuf::as_path).collect();
+                                let holds = holds_its_own_release(&library_manager, &root).await;
+                                root_change(&root, &changes, holds)
+                            }
+                        };
+                        request_change(
+                            &mut active_roots,
+                            root,
+                            change,
+                            RootScanCause::NetworkFolderMoved,
+                        );
                     }
                     _ = periodic.tick() => {
                         let roots = watched_roots(&library_manager).await;
@@ -257,14 +310,14 @@ impl ImportService {
                                 continue;
                             }
                             // A folder on this machine's own disk has a watch
-                            // that reports every change to it, so the tick is
-                            // only a backstop and re-reading is what it does. A
-                            // folder on a network volume has no such watch: the
-                            // tick is the only thing that will notice, and it
-                            // asks the cheap question first rather than walking
-                            // a share every quarter of an hour to learn nothing.
+                            // that reports every change to it, and says so
+                            // when it loses track, so there is nothing for the
+                            // tick to do. A folder on a network volume has no
+                            // such watch: the tick is the only thing that will
+                            // notice, and it asks the cheap question first
+                            // rather than walking a share every quarter of an
+                            // hour to learn nothing.
                             if volume_kind(&root) == VolumeKind::Local {
-                                active_roots.request_scan(root, RootScanCause::Timer, None);
                                 continue;
                             }
                             if !checking.insert(root.clone()) {
@@ -290,19 +343,20 @@ impl ImportService {
                                         Vec::new()
                                     }
                                 };
-                                let moved = tokio::task::spawn_blocking(move || {
-                                    directories_changed(&recorded)
+                                let answer_root = checked_root.clone();
+                                let changes = tokio::task::spawn_blocking(move || {
+                                    network_changes(&answer_root, &recorded)
                                 })
                                 .await
-                                .unwrap_or(true);
-                                if !moved {
+                                .unwrap_or(None);
+                                if changes.as_ref().is_some_and(Vec::is_empty) {
                                     debug!(
                                         "network folder {} is as the last scan left it",
                                         checked_root.display()
                                     );
                                     return;
                                 }
-                                if answer.send(checked_root).is_err() {
+                                if answer.send((checked_root, changes)).is_err() {
                                     debug!("folder scan coordinator ended before a check landed");
                                 }
                             });
@@ -312,6 +366,41 @@ impl ImportService {
             }
             });
         })
+    }
+}
+
+/// Ask for what `change` says `root` needs read.
+fn request_change(
+    active_roots: &mut ActiveRoots,
+    root: PathBuf,
+    change: RootChange,
+    cause: RootScanCause,
+) {
+    match change {
+        RootChange::WholeRoot => active_roots.request_scan(root, cause, None),
+        RootChange::Folders(folders) => {
+            if folders.is_empty() {
+                debug!(
+                    "a change under {} reaches nothing a scan reads: {cause}",
+                    root.display()
+                );
+            }
+            active_roots.request_folders(root, folders, cause);
+        }
+    }
+}
+
+/// Whether `root` holds tracks of its own. A store that cannot say is read as
+/// yes, which reads the whole root rather than one folder: the answer that is
+/// right either way.
+async fn holds_its_own_release(library_manager: &LibraryManager, root: &Path) -> bool {
+    let root_key = root.to_string_lossy();
+    match library_manager.load_folder_scan_item(&root_key).await {
+        Ok(item) => item.is_some(),
+        Err(error) => {
+            warn!("could not read whether {root_key} holds a release of its own: {error}");
+            true
+        }
     }
 }
 

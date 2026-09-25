@@ -148,6 +148,18 @@ impl FolderWatcher {
         root: &Path,
         seen: &HashSet<PathBuf>,
     ) -> Result<(), ImportError> {
+        self.retain_directories_under(root, root, seen)
+    }
+
+    /// Drop the watch on every directory under `scope` — inside `root` — that
+    /// a completed reading of `scope` did not reach. Directories outside it
+    /// were not looked at, so their watches stand.
+    pub(crate) fn retain_directories_under(
+        &self,
+        root: &Path,
+        scope: &Path,
+        seen: &HashSet<PathBuf>,
+    ) -> Result<(), ImportError> {
         if uses_recursive_root_watch() {
             return Ok(());
         }
@@ -158,7 +170,11 @@ impl FolderWatcher {
         let Some(installed) = ready.installed.get_mut(root) else {
             return Ok(());
         };
-        let stale: Vec<_> = installed.difference(seen).cloned().collect();
+        let stale: Vec<_> = installed
+            .iter()
+            .filter(|directory| directory.starts_with(scope) && !seen.contains(*directory))
+            .cloned()
+            .collect();
         for directory in &stale {
             match ready.backend.unwatch(directory) {
                 Ok(()) => {}

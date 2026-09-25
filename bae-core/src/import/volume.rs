@@ -9,8 +9,8 @@
 
 use std::path::Path;
 
-/// How often a watched folder is re-read, and so how long a change made on a
-/// network volume can go unnoticed. Named here because the list tells the user
+/// How often a watched folder on a network volume is checked, and so how long
+/// a change made there from elsewhere can go unnoticed. Named here because the list tells the user
 /// this number and it must be the one the coordinator actually uses.
 pub(crate) const CHECK_PERIOD: std::time::Duration = std::time::Duration::from_secs(15 * 60);
 
@@ -26,16 +26,18 @@ pub(crate) enum VolumeKind {
     /// change to it, so the watch is the change source.
     Local,
     /// A volume served over the network. Its filesystem watch reports only what
-    /// this machine does to it, so the folder is re-read on a schedule instead
+    /// this machine does to it, so the folder is checked on a schedule instead
     /// — cheaply, by asking each directory whether it has been touched.
     Network,
 }
 
 /// The volume `path` lives on, or `Local` where this platform will not say.
 ///
-/// Answering wrongly costs a folder the watch it could have had, or leaves it
-/// with one that reports half its changes — never correctness, because every
-/// watched folder is re-read on a schedule either way.
+/// Only a network folder is checked on a schedule: a local one's watch reports
+/// every change, and says so when it loses track. So a network volume read as
+/// local is a folder whose changes made elsewhere go unnoticed, and each
+/// platform below answers from what the system says of the volume rather than
+/// from how its path is spelled wherever it can.
 pub(crate) fn volume_kind(path: &Path) -> VolumeKind {
     platform::volume_kind(path)
 }
@@ -59,20 +61,27 @@ pub(crate) fn directory_modified_at(path: &Path) -> Option<i64> {
     }
 }
 
-/// Whether anything under a root has been touched since the walk that recorded
-/// `directories` — each a path and the mtime it had.
+/// Which of the directories a walk recorded — each a path and the mtime it
+/// had — have been touched since, or `None` when nothing was recorded.
 ///
 /// A directory's mtime moves when a file in it is created, removed or renamed,
 /// and creating a directory moves its parent's, so the recorded set answers for
-/// the whole tree below the root. An empty set is a root nothing was recorded
-/// for, which is not an answer: it reads as changed, and the caller walks.
-pub(crate) fn directories_changed(directories: &[(String, i64)]) -> bool {
+/// the whole tree below the root. A directory that is gone is touched. An empty
+/// set is a root nothing was recorded for, which is not an answer at all, and
+/// the caller walks.
+pub(crate) fn changed_directories(
+    directories: &[(String, i64)],
+) -> Option<Vec<std::path::PathBuf>> {
     if directories.is_empty() {
-        return true;
+        return None;
     }
-    directories
-        .iter()
-        .any(|(path, recorded)| directory_modified_at(Path::new(path)) != Some(*recorded))
+    Some(
+        directories
+            .iter()
+            .filter(|(path, recorded)| directory_modified_at(Path::new(path)) != Some(*recorded))
+            .map(|(path, _)| std::path::PathBuf::from(path))
+            .collect(),
+    )
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -127,6 +136,8 @@ mod platform {
         0x0187,      // AUTOFS — a mount point standing in for a remote one
         0x0173_4950, // 9P
         0x012F_F7B7, // Coda
+        0x6573_5546, // FUSE — sshfs, rclone and the like mount shares this way;
+                     // a local disk behind FUSE only gains the cheap check.
     ];
 
     pub(super) fn volume_kind(path: &Path) -> VolumeKind {
@@ -156,15 +167,28 @@ mod platform {
     use std::path::Path;
 
     /// A UNC path names a server and a share, so it is network by spelling.
-    ///
-    /// A network share mapped to a drive letter is not caught here — telling
-    /// those apart needs `GetDriveTypeW`, and the crate that exposes it is a
-    /// dependency for one call. Such a folder keeps the watch it has today,
-    /// which is the behaviour every folder had before this.
+    /// A drive letter is whatever Windows says its drive is — a share mapped
+    /// to a letter spells like a local disk, and is only told apart by asking.
     pub(super) fn volume_kind(path: &Path) -> VolumeKind {
-        let text = path.to_string_lossy();
-        let unc = text.starts_with("\\\\") || text.starts_with("//");
-        if unc {
+        use std::os::windows::ffi::OsStrExt;
+        use std::path::{Component, Prefix};
+
+        let Some(Component::Prefix(prefix)) = path.components().next() else {
+            return VolumeKind::Local;
+        };
+        let letter = match prefix.kind() {
+            Prefix::UNC(..) | Prefix::VerbatimUNC(..) => return VolumeKind::Network,
+            Prefix::Disk(letter) | Prefix::VerbatimDisk(letter) => letter,
+            Prefix::Verbatim(_) | Prefix::DeviceNS(_) => return VolumeKind::Local,
+        };
+        let drive_root: Vec<u16> = std::ffi::OsStr::new(&format!("{}:\\", letter as char))
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        // SAFETY: `drive_root` is a NUL-terminated wide string that outlives
+        // the call, which only reads it.
+        let kind = unsafe { windows_sys::Win32::Storage::FileSystem::GetDriveTypeW(drive_root.as_ptr()) };
+        if kind == windows_sys::Win32::System::WindowsProgramming::DRIVE_REMOTE {
             VolumeKind::Network
         } else {
             VolumeKind::Local
@@ -214,7 +238,7 @@ mod tests {
     }
 
     /// The cheap check answers "nothing moved" only for a set it recorded and
-    /// still finds exactly as it left it. A directory that was written to, one
+    /// still finds exactly as it left it, and otherwise names what moved. A directory that was written to, one
     /// that is gone, and a root nothing was recorded for all read as changed —
     /// each of those has to end in a walk, because none of them is evidence
     /// that the folder is as it was.
@@ -232,18 +256,22 @@ mod tests {
             )]
         };
         let untouched = recorded(&album);
-        assert!(!directories_changed(&untouched));
+        assert_eq!(changed_directories(&untouched), Some(Vec::new()));
 
-        assert!(
-            directories_changed(&[]),
+        assert_eq!(
+            changed_directories(&[]),
+            None,
             "nothing recorded is not an answer"
         );
-        assert!(
-            directories_changed(&[(temp.path().join("Gone").to_string_lossy().into_owned(), 0,)]),
+        let gone = temp.path().join("Gone");
+        assert_eq!(
+            changed_directories(&[(gone.to_string_lossy().into_owned(), 0)]),
+            Some(vec![gone]),
             "a directory that is gone is a change"
         );
-        assert!(
-            directories_changed(&[(album.to_string_lossy().into_owned(), 1)]),
+        assert_eq!(
+            changed_directories(&[(album.to_string_lossy().into_owned(), 1)]),
+            Some(vec![album]),
             "an mtime that does not match is a change"
         );
     }

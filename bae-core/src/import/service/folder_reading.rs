@@ -1,15 +1,20 @@
-//! Changing how one folder reads.
+//! Reading one folder under a watched root again.
 //!
-//! "Keep as separate releases" and "combine as one release" trade the folder's
-//! candidates for the ones the other reading gives. The decision and those
-//! candidates are one fact, so they are stored in one write: the new reading
-//! is taken first, off the commit lock, and stored together with the decision
-//! — the old candidates leave in the same transaction the new ones arrive in.
-//!
-//! Only the folder directly under the root that holds the changed folder is
-//! read again; see
+//! Two things change what one folder yields without touching anything beside
+//! it: the person decides how it reads ("keep as separate releases", "combine
+//! as one release"), or its contents change on disk. Either way only the folder
+//! directly under the root that holds the change is read again — see
 //! [`crate::import::folder_scanner::scan_top_level_folder_with_reader`] for why
-//! that folder and nothing less.
+//! that folder and nothing less — and what it now yields is stored in one
+//! write: the new candidates arrive in the transaction the old ones leave in,
+//! together with the decision when there is one.
+//!
+//! The reading is taken off the commit lock and stored under it. The root is
+//! the pass's alone while it runs — the coordinator starts nothing else over it
+//! — so what can move under the reading is the store written from elsewhere: a
+//! file decision on one of the folder's candidates, or anything that advanced
+//! the root's generation. Either fails the write rather than storing a reading
+//! of a folder that is no longer the one read.
 
 use super::*;
 use crate::import::folder_scanner::{
@@ -19,24 +24,14 @@ use crate::import::folder_scanner::{
 impl ImportService {
     /// Store `target` together with the candidates its folder reads as under
     /// it.
-    ///
-    /// The root is this pass's alone while it runs — the coordinator starts
-    /// nothing else over it — so what can move under the reading is the store
-    /// written from elsewhere: a file decision on one of the folder's
-    /// candidates, or anything that advanced the root's generation. Either
-    /// fails the commit rather than storing a reading of a folder that is no
-    /// longer the one read.
     pub(super) async fn change_folder_reading(
         root: &Path,
         target: &(FolderReleaseDecisionKey, FolderReleaseDecision),
         scan: &ScanServices,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
     ) -> Result<(), crate::import::ImportError> {
-        let started = std::time::Instant::now();
-        let services = &scan.services;
-        let library_manager = &services.library_manager;
         let root_key = root.to_string_lossy().into_owned();
-        let (key, decision) = target;
+        let (key, _) = target;
         if key.watched_folder_path != root_key {
             return Err(crate::import::ImportError::Internal {
                 detail: format!(
@@ -56,8 +51,11 @@ impl ImportService {
                 detail: format!("{root_key} is never a release, so it has no reading to change"),
             });
         };
-
-        let stored_items = library_manager.load_folder_scan_items(&root_key).await?;
+        let stored_items = scan
+            .services
+            .library_manager
+            .load_folder_scan_items(&root_key)
+            .await?;
         if !crate::import::candidates::names_a_current_folder_reading(&stored_items, key) {
             return Err(crate::import::ImportError::Watch {
                 detail: format!(
@@ -66,36 +64,115 @@ impl ImportService {
                 ),
             });
         }
+        Self::read_folder_again(root, &folder, Some(target), scan, cancellation).await
+    }
+
+    /// Read again each folder directly under `root` whose contents changed
+    /// on disk, storing each in a write of its own.
+    ///
+    /// A folder that cannot be read or stored is said so — as the root's
+    /// status, and on the event stream — and the others are read regardless:
+    /// each one's write stands on its own.
+    pub(super) async fn read_changed_folders(
+        root: &Path,
+        folders: &std::collections::BTreeSet<String>,
+        scan: &ScanServices,
+        cancellation: &crate::import::folder_scanner::ScanCancellation,
+    ) {
+        for folder in folders {
+            if cancellation.is_cancelled() {
+                return;
+            }
+            let Err(error) = Self::read_folder_again(root, folder, None, scan, cancellation).await
+            else {
+                continue;
+            };
+            if cancellation.is_cancelled() {
+                return;
+            }
+            let message = format!("{folder} could not be read again: {error}");
+            warn!("{}: {message}", root.display());
+            match scan
+                .services
+                .library_manager
+                .current_folder_scan_generation(&root.to_string_lossy())
+                .await
+            {
+                Ok(Some(generation)) => {
+                    if let Err(status_error) =
+                        Self::record_scan_failure(root, generation, message.clone(), &scan.services)
+                            .await
+                    {
+                        error!(
+                            "{}'s failed reading could not be stored: {status_error}",
+                            root.display()
+                        );
+                        Self::announce_scan_failure(root, message, &scan.services.event_tx);
+                    }
+                }
+                Ok(None) => Self::announce_scan_failure(root, message, &scan.services.event_tx),
+                Err(status_error) => {
+                    error!(
+                        "{}'s generation could not be read to store a failed reading: \
+                         {status_error}",
+                        root.display()
+                    );
+                    Self::announce_scan_failure(root, message, &scan.services.event_tx);
+                }
+            }
+        }
+    }
+
+    /// Read `folder` — directly under `root` — again as `decision`, when there
+    /// is one, reads it, and store what it yields in one write.
+    ///
+    /// A folder that is no longer there yields nothing, which removes every
+    /// entry that was under it. The root itself must be there: a root that
+    /// cannot be read is not a root whose folders all went away.
+    async fn read_folder_again(
+        root: &Path,
+        folder: &str,
+        decision: Option<&(FolderReleaseDecisionKey, FolderReleaseDecision)>,
+        scan: &ScanServices,
+        cancellation: &crate::import::folder_scanner::ScanCancellation,
+    ) -> Result<(), crate::import::ImportError> {
+        let started = std::time::Instant::now();
+        let services = &scan.services;
+        let library_manager = &services.library_manager;
+        let root_key = root.to_string_lossy().into_owned();
         let stamp = library_manager.begin_folder_reading(&root_key).await?;
         let stored_edits = library_manager.load_stored_candidate_edits().await?;
         let mut decisions = library_manager
             .load_folder_release_decisions(&root_key)
             .await?;
-        decisions.insert(
-            key.relative_folder_path.clone(),
-            *decision,
-            FolderReleaseDecisionAuthor::User,
-        );
+        if let Some((key, decision)) = decision {
+            decisions.insert(
+                key.relative_folder_path.clone(),
+                *decision,
+                FolderReleaseDecisionAuthor::User,
+            );
+        }
         let skipped = library_manager
             .load_skipped_import_candidates(&root_key)
             .await?;
 
         let directories = services.directories.clone();
+        let watcher = scan.folder_watcher.clone();
         let walk_root = root.to_path_buf();
-        let walk_folder = PathBuf::from(&folder);
+        let walk_folder = PathBuf::from(folder);
         let walk_cancellation = cancellation.clone();
+        let wants_folder = decision.is_some();
         let walked = tokio::task::spawn_blocking(move || {
-            let mut items = Vec::new();
-            crate::import::folder_scanner::scan_top_level_folder_with_reader(
+            read_top_level_folder(
                 directories.as_ref(),
+                &watcher,
                 &walk_root,
                 &walk_folder,
                 &stored_edits,
                 &decisions,
                 &walk_cancellation,
-                |item| items.push(item),
+                wants_folder,
             )
-            .map(|()| items)
         })
         .await
         .map_err(|error| crate::import::ImportError::Internal {
@@ -104,8 +181,8 @@ impl ImportService {
         let read_at = started.elapsed();
 
         let mut scanned_decisions = Vec::new();
-        let mut items = Vec::with_capacity(walked.len());
-        for item in walked {
+        let mut items = Vec::with_capacity(walked.items.len());
+        for item in walked.items {
             let path = match &item {
                 ScanItem::Decided { key, decision } => {
                     scanned_decisions.push((key.clone(), *decision));
@@ -138,10 +215,7 @@ impl ImportService {
         let locked_at = started.elapsed();
         if cancellation.is_cancelled() {
             return Err(crate::import::ImportError::Internal {
-                detail: format!(
-                    "the decision for {} was cancelled before it was stored",
-                    key.relative_folder_path
-                ),
+                detail: format!("reading {folder} again was cancelled before it was stored"),
             });
         }
         // The walk read each candidate with the file decisions stored then. One
@@ -167,11 +241,12 @@ impl ImportService {
         let crate::db::FolderReadingWrite { writes, pruned } = library_manager
             .commit_folder_reading(crate::db::FolderReadingCommit {
                 watched_folder_path: root_key,
-                folder: folder.clone(),
+                folder: folder.to_string(),
                 stamp,
-                decision: target.clone(),
+                decision: decision.cloned(),
                 scanned_decisions,
                 items,
+                directories: walked.directory_mtimes,
             })
             .await?;
         let committed_at = started.elapsed();
@@ -190,14 +265,112 @@ impl ImportService {
                 ));
         }
         debug!(
-            "folder decision for {} under {} stored in {:?}: read {folder} in {read_at:?}, \
-             dates and tags by {prepared_at:?}, commit lock by {locked_at:?}, stored by \
-             {committed_at:?}; {changed} entries written, {unchanged} unchanged, pruned \
-             {pruned:?}",
-            key.relative_folder_path,
+            "{folder} under {} read again{} in {:?}: read in {read_at:?}, dates and tags by \
+             {prepared_at:?}, commit lock by {locked_at:?}, stored by {committed_at:?}; \
+             {changed} entries written, {unchanged} unchanged, pruned {pruned:?}",
             root.display(),
+            decision
+                .map(|(key, decision)| format!(
+                    " as {decision:?} for {}",
+                    key.relative_folder_path
+                ))
+                .unwrap_or_default(),
             started.elapsed(),
         );
         Ok(())
     }
+}
+
+/// What reading one folder directly under a root yielded: its entries in the
+/// order the walk yielded them, and every directory in it with the mtime it
+/// had — `None` when one could not be read, which leaves the next cheap check
+/// nothing to conclude from.
+struct TopLevelReading {
+    items: Vec<ScanItem>,
+    directory_mtimes: Option<Vec<(String, i64)>>,
+}
+
+/// Read `folder` under `root` on the calling thread, keeping the watch on
+/// every directory in it and on nothing it no longer holds.
+///
+/// A folder that is not there yields nothing, unless the reading was asked
+/// for by name — a decision about a folder that went away is refused, not
+/// stored as an empty reading.
+#[allow(clippy::too_many_arguments)]
+fn read_top_level_folder(
+    reader: &dyn crate::import::folder_scanner::DirectoryReader,
+    watcher: &FolderWatcher,
+    root: &Path,
+    folder: &Path,
+    stored_edits: &crate::import::folder_scanner::StoredCandidateEdits,
+    decisions: &crate::import::folder_scanner::FolderReleaseDecisions,
+    cancellation: &crate::import::folder_scanner::ScanCancellation,
+    wants_folder: bool,
+) -> Result<TopLevelReading, crate::import::ImportError> {
+    if !std::fs::metadata(root)
+        .map_err(|source| crate::import::folder_scanner::FolderScanError::io(root, source))?
+        .is_dir()
+    {
+        return Err(crate::import::folder_scanner::FolderScanError::NotADirectory {
+            path: root.to_path_buf(),
+        }
+        .into());
+    }
+    let absolute = root.join(folder);
+    let present = match std::fs::metadata(&absolute) {
+        Ok(metadata) => metadata.is_dir(),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
+        Err(source) => {
+            return Err(crate::import::folder_scanner::FolderScanError::io(&absolute, source).into())
+        }
+    };
+    let mut seen = HashSet::new();
+    let mut directory_mtimes = Some(Vec::new());
+    let mut items = Vec::new();
+    if present {
+        let mut watch_failures = Vec::new();
+        crate::import::folder_scanner::scan_top_level_folder_with_reader(
+            reader,
+            root,
+            folder,
+            stored_edits,
+            decisions,
+            cancellation,
+            |directory| {
+                match (directory_mtimes.as_mut(), directory_modified_at(&directory)) {
+                    (Some(recorded), Some(modified_at)) => {
+                        recorded.push((directory.to_string_lossy().into_owned(), modified_at))
+                    }
+                    (Some(_), None) => directory_mtimes = None,
+                    (None, _) => {}
+                }
+                if let Err(error) = watcher.install_directory(root, &directory) {
+                    watch_failures.push(format!("{}: {error}", directory.display()));
+                }
+                seen.insert(directory);
+            },
+            |item| items.push(item),
+        )?;
+        if !watch_failures.is_empty() {
+            warn!(
+                "folder watch unavailable under {} ({}); a refresh reads it again",
+                absolute.display(),
+                watch_failures.join(", ")
+            );
+        }
+    } else if wants_folder {
+        return Err(crate::import::ImportError::Watch {
+            detail: format!("{} is no longer there", absolute.display()),
+        });
+    }
+    if let Err(error) = watcher.retain_directories_under(root, &absolute, &seen) {
+        warn!(
+            "could not reconcile folder watches under {}: {error}",
+            absolute.display()
+        );
+    }
+    Ok(TopLevelReading {
+        items,
+        directory_mtimes,
+    })
 }

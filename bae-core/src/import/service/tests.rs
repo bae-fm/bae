@@ -120,6 +120,9 @@ struct FakeStartedScan {
     /// The folder reading this pass stands for, with the caller it answers;
     /// `None` for a pass over the whole root.
     reading: Option<FolderReadingRequest>,
+    /// The folders this pass reads again because they changed on disk;
+    /// `None` for any other pass.
+    folders: Option<std::collections::BTreeSet<String>>,
     cancellation: crate::import::folder_scanner::ScanCancellation,
     completion: Option<tokio::sync::oneshot::Sender<()>>,
     abort: tokio::task::AbortHandle,
@@ -144,12 +147,15 @@ impl FakeScanStarter {
                     .send(RootScanCompletion { id, path })
                     .expect("coordinator still receives completions");
             });
+            let (reading, folders) = match pass {
+                RootPass::WholeRoot => (None, None),
+                RootPass::Decision(request) => (Some(request), None),
+                RootPass::Folders(folders) => (None, Some(folders)),
+            };
             captured.scans.lock().unwrap().push(FakeStartedScan {
                 path: started_path,
-                reading: match pass {
-                    RootPass::WholeRoot => None,
-                    RootPass::Folder(request) => Some(request),
-                },
+                reading,
+                folders,
                 cancellation: cancellation.clone(),
                 completion: Some(finish),
                 abort: task.abort_handle(),
@@ -196,6 +202,15 @@ impl FakeScanStarter {
             .reading
             .as_ref()
             .map(|reading| reading.target().clone())
+    }
+
+    /// The folders the pass at `index` reads again, or `None` for a pass
+    /// that is not a reading of changed folders.
+    fn folders(&self, index: usize) -> Option<Vec<String>> {
+        self.scans.lock().unwrap()[index]
+            .folders
+            .as_ref()
+            .map(|folders| folders.iter().cloned().collect())
     }
 
     /// The root the scan at `index` was started for.

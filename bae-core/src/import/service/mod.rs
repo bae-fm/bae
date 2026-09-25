@@ -42,7 +42,7 @@ use active_roots::{
 };
 use folder_watcher::FolderWatchSnapshot;
 mod coordinator;
-use crate::import::volume::{directories_changed, directory_modified_at, volume_kind, VolumeKind};
+use crate::import::volume::{changed_directories, directory_modified_at, volume_kind, VolumeKind};
 pub(crate) use folder_watcher::FolderWatcher;
 
 use format_prep::resolve_file_content_type;
@@ -281,6 +281,105 @@ fn reports_a_change(kind: &notify::EventKind) -> bool {
     }
 }
 
+/// What a set of changed paths under one watched root asks to be read again.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum RootChange {
+    /// The root itself: something only a pass over all of it reads right.
+    WholeRoot,
+    /// These folders directly under the root, and nothing else. Empty when no
+    /// change reaches anything a scan reads.
+    Folders(std::collections::BTreeSet<String>),
+}
+
+/// What `changed` — paths under `root` — asks to be read again.
+///
+/// A folder directly under the root is the unit a root is read in (see
+/// [`crate::import::folder_scanner::scan_top_level_folder_with_reader`]), so a
+/// change anywhere inside one is a reading of that folder, and a folder that
+/// went away is one whose reading is now empty. The root is read whole only
+/// where a change reaches the root's own release: the root itself changed, an
+/// audio file directly in it came or went, or the root already holds tracks of
+/// its own — whose release takes in the files of every audio-free folder
+/// beside them, so no folder under it reads on its own. A change to a hidden
+/// entry reaches nothing, because the scan never lists one; nor does a file
+/// directly in the root beside no tracks, which belongs to no release.
+fn root_change(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> RootChange {
+    let mut folders = std::collections::BTreeSet::new();
+    for path in changed {
+        let Ok(relative) = path.strip_prefix(root) else {
+            continue;
+        };
+        let names: Vec<String> = relative
+            .components()
+            .map(|component| component.as_os_str().to_string_lossy().into_owned())
+            .collect();
+        if names.iter().any(|name| name.starts_with('.')) {
+            continue;
+        }
+        let Some(first) = names.first() else {
+            return RootChange::WholeRoot;
+        };
+        if holds_its_own_release {
+            return RootChange::WholeRoot;
+        }
+        let entry = root.join(first);
+        match std::fs::symlink_metadata(&entry).map(|_| entry.is_dir()) {
+            Ok(true) => {
+                folders.insert(first.clone());
+            }
+            Ok(false) => {
+                if crate::import::folder_scanner::is_audio_file(&entry) {
+                    return RootChange::WholeRoot;
+                }
+            }
+            Err(_) => {
+                if names.len() == 1 && crate::import::folder_scanner::is_audio_file(&entry) {
+                    return RootChange::WholeRoot;
+                }
+                folders.insert(first.clone());
+            }
+        }
+    }
+    RootChange::Folders(folders)
+}
+
+/// What the cheap check of a network folder found moved, as paths the same
+/// reading as a filesystem event's applies to — or `None` when it cannot say
+/// and the root has to be walked.
+///
+/// A directory under the root that moved names itself. The root moving says a
+/// folder directly in it came or went, or a file directly in it did: the
+/// folders that came or went are found by listing the root against what was
+/// recorded, and a root with audio directly in it is named itself, since which
+/// of its files moved is not something the record can tell.
+fn network_changes(root: &Path, recorded: &[(String, i64)]) -> Option<Vec<PathBuf>> {
+    let moved = changed_directories(recorded)?;
+    let mut changes = Vec::new();
+    for directory in moved {
+        if directory != root {
+            changes.push(directory);
+            continue;
+        }
+        let listing = std::fs::read_dir(root).ok()?;
+        let mut present = HashSet::new();
+        for entry in listing {
+            let path = entry.ok()?.path();
+            if path.is_dir() {
+                present.insert(path);
+            } else if crate::import::folder_scanner::is_audio_file(&path) {
+                changes.push(root.to_path_buf());
+            }
+        }
+        let known: HashSet<PathBuf> = recorded
+            .iter()
+            .map(|(path, _)| PathBuf::from(path))
+            .filter(|path| path.parent() == Some(root))
+            .collect();
+        changes.extend(present.symmetric_difference(&known).cloned());
+    }
+    Some(changes)
+}
+
 /// The watched roots that contain at least one of the `changed` paths, in
 /// `roots` order and without duplicates.
 fn affected_roots(changed: &[&Path], roots: &[PathBuf]) -> Vec<PathBuf> {
@@ -375,9 +474,10 @@ fn spawn_root_pass(
 ) -> RootScanTask {
     match pass {
         RootPass::WholeRoot => spawn_root_scan(id, path, scan, completion_tx),
-        RootPass::Folder(request) => {
+        RootPass::Decision(request) => {
             spawn_folder_reading(id, path, request, scan, completion_tx)
         }
+        RootPass::Folders(folders) => spawn_changed_folders(id, path, folders, scan, completion_tx),
     }
 }
 
@@ -416,6 +516,28 @@ fn spawn_folder_reading(
             .is_err()
         {
             debug!("folder scan coordinator ended before a folder reading completed");
+        }
+    });
+    RootScanTask { cancellation, task }
+}
+
+/// Read again the folders under `path` whose contents changed.
+fn spawn_changed_folders(
+    id: u64,
+    path: PathBuf,
+    folders: std::collections::BTreeSet<String>,
+    scan: ScanServices,
+    completion_tx: mpsc::UnboundedSender<RootScanCompletion>,
+) -> RootScanTask {
+    let cancellation = crate::import::folder_scanner::ScanCancellation::new();
+    let reading_cancellation = cancellation.clone();
+    let task = tokio::spawn(async move {
+        ImportService::read_changed_folders(&path, &folders, &scan, &reading_cancellation).await;
+        if completion_tx
+            .send(RootScanCompletion { id, path })
+            .is_err()
+        {
+            debug!("folder scan coordinator ended before changed folders were read");
         }
     });
     RootScanTask { cancellation, task }

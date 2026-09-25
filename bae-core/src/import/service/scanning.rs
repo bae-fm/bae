@@ -30,7 +30,7 @@ impl ImportService {
     /// generation row could not be opened, or the status write on top of it
     /// failed. The user still has to hear that the folder they just added was
     /// not read, so the event goes out even when nothing durable can.
-    fn announce_scan_failure(
+    pub(super) fn announce_scan_failure(
         root: &Path,
         message: String,
         event_tx: &crate::import::handle::ImportEventBus,

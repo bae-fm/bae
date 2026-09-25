@@ -223,6 +223,18 @@ impl Database {
         .await
     }
 
+    /// The root's generation, for a caller that records a failure against
+    /// whichever generation stands now.
+    pub(crate) async fn current_folder_scan_generation(
+        &self,
+        watched_folder_path: &str,
+    ) -> Result<Option<u64>, DbError> {
+        self.current_scan_generation(watched_folder_path)
+            .await?
+            .map(|generation| columns::to_u64(generation, "a folder scan root's generation"))
+            .transpose()
+    }
+
     /// The root's generation as the read connection sees it. A scan that is no
     /// longer the root's writes nothing, and finding that out is a read — the
     /// writes below open only once this generation is the one in force.

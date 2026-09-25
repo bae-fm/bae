@@ -357,10 +357,10 @@ async fn a_file_opened_under_a_watched_root_starts_no_scan() {
 }
 
 /// The other half of the rule above: the close that ended a write is how a
-/// finished copy announces itself on Linux, so it re-scans the root it landed
-/// under.
+/// finished copy announces itself on Linux, so it reads again the folder it
+/// landed in — that folder, and nothing else under the root.
 #[tokio::test]
-async fn a_finished_write_under_a_watched_root_starts_a_scan() {
+async fn a_finished_write_under_a_watched_root_reads_its_folder_again() {
     use notify::event::{AccessKind, AccessMode};
 
     let harness = CoordinatorHarness::new().await;
@@ -374,6 +374,61 @@ async fn a_finished_write_under_a_watched_root_starts_a_scan() {
 
     harness.scans.wait_for_count(1).await;
     assert_eq!(harness.scans.path(0), root_path("/music"));
+    assert_eq!(harness.scans.folders(0), Some(vec!["Album".to_string()]));
+
+    harness.scans.complete(0);
+    harness.shutdown().await;
+}
+
+/// Changes that arrive while a folder is being read again are folded into
+/// one reading afterwards: each changed folder once, whatever the burst.
+#[tokio::test]
+async fn changes_during_a_folder_reading_are_read_once_afterwards() {
+    let harness = CoordinatorHarness::new().await;
+    let change = |folder: &str, file: &str| {
+        Ok(vec![debounced_event(
+            notify::EventKind::Create(notify::event::CreateKind::File),
+            root_path("/music").join(folder).join(file),
+        )])
+    };
+    harness.fs_events.send(change("One", "01.flac")).unwrap();
+    harness.scans.wait_for_count(1).await;
+    for (folder, file) in [("Two", "01.flac"), ("Two", "02.flac"), ("One", "03.flac")] {
+        harness.fs_events.send(change(folder, file)).unwrap();
+    }
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
+
+    harness.scans.complete(0);
+    harness.scans.wait_for_count(2).await;
+    assert_eq!(
+        harness.scans.folders(1),
+        Some(vec!["One".to_string(), "Two".to_string()])
+    );
+    harness.scans.complete(1);
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    assert_eq!(harness.scans.scans.lock().unwrap().len(), 2);
+    harness.shutdown().await;
+}
+
+/// A watch that says it lost track of changes — FSEvents dropping events,
+/// inotify's queue overflowing — names no folder, so every root it could
+/// have been watching is read whole.
+#[tokio::test]
+async fn a_watch_that_lost_track_reads_the_root_whole() {
+    let harness = CoordinatorHarness::new().await;
+    harness
+        .fs_events
+        .send(Ok(vec![notify_debouncer_full::DebouncedEvent::new(
+            notify::Event::new(notify::EventKind::Other).set_flag(notify::event::Flag::Rescan),
+            std::time::Instant::now(),
+        )]))
+        .unwrap();
+
+    harness.scans.wait_for_count(1).await;
+    assert_eq!(harness.scans.path(0), root_path("/music"));
+    assert_eq!(harness.scans.folders(0), None);
+    assert!(harness.scans.reading(0).is_none(), "the root is read whole");
 
     harness.scans.complete(0);
     harness.shutdown().await;

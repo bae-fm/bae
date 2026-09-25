@@ -198,7 +198,8 @@ pub fn bridge_network_folder_watch_key() -> String {
     "core.import.folder.network_watch".to_string()
 }
 
-/// How often a watched folder is re-read, in whole minutes.
+/// How often a watched folder on a network volume is checked, in whole
+/// minutes.
 #[cfg(feature = "desktop")]
 #[uniffi::export]
 pub fn bridge_network_folder_check_minutes() -> u32 {

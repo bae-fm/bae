@@ -829,11 +829,12 @@ async fn a_pass_records_the_directories_it_read() {
         .into_iter()
         .collect::<Vec<_>>()
     );
-    assert!(!super::directories_changed(&recorded));
+    assert_eq!(super::changed_directories(&recorded), Some(Vec::new()));
 
-    // And a file written into one of them is a change the check reports.
+    // And a file written into one of them is a change the check reports, in
+    // that directory and nowhere else.
     std::fs::write(album.join("02.flac"), flac()).unwrap();
-    assert!(super::directories_changed(&recorded));
+    assert_eq!(super::changed_directories(&recorded), Some(vec![album.clone()]));
 }
 
 /// The two fixture tracks that carry real Vorbis comments — an album, its

@@ -348,3 +348,158 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
         decisions_before
     );
 }
+
+/// A change inside a folder under the root is a reading of that folder; the
+/// root is read whole only where the change reaches the root's own release.
+#[test]
+fn a_change_reads_the_folder_it_is_in_and_the_root_only_where_it_must() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path();
+    write_disc(&root.join("Artist").join("Album"), 1);
+    std::fs::write(root.join("notes.txt"), b"notes").unwrap();
+    let folders = |names: &[&str]| {
+        RootChange::Folders(names.iter().map(|name| name.to_string()).collect())
+    };
+    let change = |paths: &[PathBuf], holds: bool| {
+        let paths: Vec<&Path> = paths.iter().map(PathBuf::as_path).collect();
+        root_change(root, &paths, holds)
+    };
+
+    assert_eq!(
+        change(&[root.join("Artist/Album/02.flac")], false),
+        folders(&["Artist"]),
+        "a file inside a folder reads that folder"
+    );
+    assert_eq!(
+        change(&[root.join("Gone/Album/01.flac"), root.join("Gone")], false),
+        folders(&["Gone"]),
+        "a folder that went away is read as empty"
+    );
+    assert_eq!(
+        change(&[root.join("Artist/.DS_Store"), root.join(".hidden")], false),
+        folders(&[]),
+        "a hidden entry is never listed, so it changes nothing"
+    );
+    assert_eq!(
+        change(&[root.join("notes.txt")], false),
+        folders(&[]),
+        "a file beside no tracks at the root belongs to no release"
+    );
+    assert_eq!(
+        change(&[root.join("01.flac")], false),
+        RootChange::WholeRoot,
+        "audio directly in the root is the root's own release"
+    );
+    assert_eq!(
+        change(&[root.join("Artist/Album/02.flac")], true),
+        RootChange::WholeRoot,
+        "a root with tracks of its own takes in every folder beside them"
+    );
+    assert_eq!(
+        change(&[root.to_path_buf()], false),
+        RootChange::WholeRoot,
+        "the root itself changing is the whole root"
+    );
+}
+
+/// The cheap check of a network folder names what moved: a nested folder
+/// that was written to, and a folder that came directly under the root.
+#[tokio::test]
+async fn the_network_check_names_the_folders_that_moved() {
+    let fixture = DecisionFixture::new(["Disc 1", "Disc 2"], 1).await;
+    let root = &fixture.root;
+    let recorded = fixture
+        .manager()
+        .load_folder_scan_directories(&root.to_string_lossy())
+        .await
+        .unwrap();
+    assert_eq!(network_changes(root, &recorded), Some(Vec::new()));
+
+    write_disc(&root.join("Artist/Album/Disc 1"), 2);
+    write_disc(&root.join("New/Record"), 1);
+    let mut changes = network_changes(root, &recorded).expect("the record answers");
+    changes.sort();
+    let changes: Vec<&Path> = changes.iter().map(PathBuf::as_path).collect();
+    assert_eq!(
+        root_change(root, &changes, false),
+        RootChange::Folders(
+            ["Artist".to_string(), "New".to_string()]
+                .into_iter()
+                .collect()
+        )
+    );
+}
+
+/// A folder whose contents changed is read again alone, in a write of its
+/// own: a new track lands, a folder that went away takes its entries with
+/// it, a new folder brings its own, and nothing else under the root is read.
+#[tokio::test]
+async fn changed_folders_are_read_again_and_nothing_beside_them() {
+    let fixture = DecisionFixture::new(["Disc 1", "Disc 2"], 1).await;
+    let root = &fixture.root;
+    let album = root.join("Artist").join("Album");
+    let album_before = fixture
+        .manager()
+        .load_folder_scan_item(&album.to_string_lossy())
+        .await
+        .unwrap();
+
+    write_disc(&root.join("Other").join("Record"), 2);
+    write_disc(&root.join("New").join("Record"), 1);
+    let folders = ["New".to_string(), "Other".to_string()].into_iter().collect();
+    ImportService::read_changed_folders(
+        root,
+        &folders,
+        &fixture.scan.services,
+        &fixture.scan.cancellation,
+    )
+    .await;
+
+    assert_eq!(
+        fixture.stored_paths().await,
+        vec![
+            "Artist/Album".to_string(),
+            "New/Record".to_string(),
+            "Other/Record".to_string(),
+        ]
+    );
+    let other = fixture
+        .manager()
+        .load_folder_scan_item(&root.join("Other/Record").to_string_lossy())
+        .await
+        .unwrap();
+    let Some(ScanItem::Valid(other)) = other else {
+        panic!("the changed folder is a valid candidate: {other:?}");
+    };
+    assert_eq!(other.track_count(), 2, "the new track landed");
+    let read = fixture.listing.take();
+    assert!(
+        read.iter()
+            .all(|folder| folder.starts_with(root.join("New"))
+                || folder.starts_with(root.join("Other"))),
+        "only the changed folders are read: {read:?}"
+    );
+    assert_eq!(
+        fixture
+            .manager()
+            .load_folder_scan_item(&album.to_string_lossy())
+            .await
+            .unwrap(),
+        album_before,
+        "the folder beside them is untouched"
+    );
+
+    std::fs::remove_dir_all(root.join("New")).unwrap();
+    ImportService::read_changed_folders(
+        root,
+        &["New".to_string()].into_iter().collect(),
+        &fixture.scan.services,
+        &fixture.scan.cancellation,
+    )
+    .await;
+    assert_eq!(
+        fixture.stored_paths().await,
+        vec!["Artist/Album".to_string(), "Other/Record".to_string()],
+        "a folder that went away takes its entries with it"
+    );
+}

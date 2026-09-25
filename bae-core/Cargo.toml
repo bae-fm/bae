@@ -145,6 +145,12 @@ cpal = "0.15"
 ffmpeg-next = { version = "8.1", default-features = false, features = ["codec", "format", "software-resampling"] }
 ffmpeg-sys-next = { version = "8.1", default-features = false, features = ["avcodec", "avformat", "swresample"] }
 
+# Whether a watched folder is on a network volume (src/import/volume.rs): a
+# drive letter mapped to a share looks local by spelling, and only
+# `GetDriveTypeW` tells it apart.
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem", "Win32_System_WindowsProgramming"] }
+
 [dev-dependencies]
 # Shared integration-test helpers. A real crate rather than a `tests/support`
 # include so they compile once and `dead_code` stays armed on them; the cycle

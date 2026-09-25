@@ -688,18 +688,21 @@ where
 /// here and by nothing beside this one (see [`scan_top_level_folder`]), so this
 /// is the least that must be read again once any folder in it reads another
 /// way.
-pub(crate) fn scan_top_level_folder_with_reader<R, F>(
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn scan_top_level_folder_with_reader<R, F, D>(
     reader: &R,
     root: &Path,
     folder: &Path,
     stored: &StoredCandidateEdits,
     decisions: &FolderReleaseDecisions,
     cancellation: &ScanCancellation,
+    mut on_directory: D,
     mut on_item: F,
 ) -> Result<(), FolderScanError>
 where
     R: DirectoryReader + ?Sized,
     F: FnMut(ScanItem),
+    D: FnMut(PathBuf),
 {
     cancellation.check()?;
     let mut components = folder.components();
@@ -723,7 +726,7 @@ where
         reader,
         decisions,
     };
-    scan_top_level_folder(&walk, folder, &mut |_| {}, &mut on_item)?;
+    scan_top_level_folder(&walk, folder, &mut on_directory, &mut on_item)?;
     Ok(())
 }
 

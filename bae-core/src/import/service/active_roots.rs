@@ -10,6 +10,7 @@
 //! [`super::scanning`]'s.
 
 use super::*;
+use std::collections::BTreeSet;
 
 /// A refresh, folder-decision or removal caller waiting to hear that what it
 /// asked for is over.
@@ -47,7 +48,10 @@ pub(super) enum RootPass {
     WholeRoot,
     /// One folder whose reading the person changed: the decision and the
     /// candidates it gives are stored together, and nothing else is read.
-    Folder(FolderReadingRequest),
+    Decision(FolderReadingRequest),
+    /// Folders directly under the root whose contents changed on disk, each
+    /// read again and stored in a write of its own. Nothing else is read.
+    Folders(BTreeSet<String>),
 }
 
 /// A person's answer for how one folder reads, and who hears whether it was
@@ -106,16 +110,21 @@ struct RootScanSchedule {
     followup_waiters: Vec<RefreshCompletion>,
     /// Folder readings waiting their turn, in the order they were asked for.
     readings: std::collections::VecDeque<FolderReadingRequest>,
+    /// Folders directly under the root that changed on disk while this pass
+    /// ran, owed a reading once it and the queued decisions are over. Folded
+    /// into one set, so a burst of changes to one folder reads it once.
+    changed: BTreeSet<String>,
 }
 
 /// What a root's next pass inherits from the one before it: the whole-root
-/// pass still owed, the callers waiting on that pass, and the folder readings
-/// still queued.
+/// pass still owed, the callers waiting on that pass, the folder readings
+/// still queued, and the folders that changed meanwhile.
 #[derive(Default)]
 struct Queued {
     pending: bool,
     followup_waiters: Vec<RefreshCompletion>,
     readings: std::collections::VecDeque<FolderReadingRequest>,
+    changed: BTreeSet<String>,
 }
 
 struct RootRemovalSchedule {
@@ -208,6 +217,44 @@ impl ActiveRoots {
         }
     }
 
+    /// Read again the folders directly under `path` that changed on disk.
+    ///
+    /// Whatever the root has going, they join the folders already owed a
+    /// reading; a pass over the whole root that is still owed will read them
+    /// anyway. A root on its way out is read no more.
+    pub(super) fn request_folders(
+        &mut self,
+        path: PathBuf,
+        folders: BTreeSet<String>,
+        cause: RootScanCause,
+    ) {
+        if folders.is_empty() {
+            return;
+        }
+        match self.roots.get_mut(&path) {
+            Some(RootActivity::Scanning(schedule)) => {
+                info!(
+                    "reading {folders:?} under {} again once the pass running is over: {cause}",
+                    path.display()
+                );
+                schedule.changed.extend(folders);
+            }
+            Some(RootActivity::Removing(_)) => {}
+            None => {
+                info!(
+                    "reading {folders:?} under {} again: {cause}",
+                    path.display()
+                );
+                self.start_pass(
+                    path,
+                    RootPass::Folders(folders),
+                    Vec::new(),
+                    Queued::default(),
+                );
+            }
+        }
+    }
+
     /// Store a person's answer for how one folder under `path` reads, with
     /// the candidates it gives, as the root's next pass.
     ///
@@ -233,7 +280,7 @@ impl ActiveRoots {
             None => {
                 self.start_pass(
                     path,
-                    RootPass::Folder(request),
+                    RootPass::Decision(request),
                     Vec::new(),
                     Queued::default(),
                 );
@@ -270,11 +317,20 @@ impl ActiveRoots {
             pending: schedule.pending,
             followup_waiters: std::mem::take(&mut schedule.followup_waiters),
             readings: std::mem::take(&mut schedule.readings),
+            changed: std::mem::take(&mut schedule.changed),
         };
         if let Some(reading) = queued.readings.pop_front() {
             self.start_pass(
                 completion.path,
-                RootPass::Folder(reading),
+                RootPass::Decision(reading),
+                Vec::new(),
+                queued,
+            );
+        } else if !queued.pending && !queued.changed.is_empty() {
+            let folders = std::mem::take(&mut queued.changed);
+            self.start_pass(
+                completion.path,
+                RootPass::Folders(folders),
                 Vec::new(),
                 queued,
             );
@@ -479,6 +535,12 @@ impl ActiveRoots {
         self.next_scan_id += 1;
         let id = self.next_scan_id;
         let whole_root = matches!(pass, RootPass::WholeRoot);
+        // A pass over the whole root reads every folder that changed.
+        let changed = if whole_root {
+            BTreeSet::new()
+        } else {
+            queued.changed
+        };
         let scan = (self.starter)(id, path.clone(), pass, self.scan_completions.clone());
         self.roots.insert(
             path,
@@ -490,6 +552,7 @@ impl ActiveRoots {
                 current_waiters: waiters,
                 followup_waiters: queued.followup_waiters,
                 readings: queued.readings,
+                changed,
             }),
         );
     }
@@ -530,8 +593,10 @@ pub(super) enum RootScanCause {
     /// The watcher itself failed, so the root is re-read to catch up on
     /// whatever it missed.
     WatchError,
-    /// The periodic sweep.
-    Timer,
+    /// The filesystem watch said it lost track of changes under the root —
+    /// FSEvents dropping events, inotify's queue overflowing — so the root is
+    /// re-read to catch up on whatever it missed.
+    EventsDropped,
     /// The periodic check of a network folder found a directory that moved.
     /// Such a folder has no watch worth the name, so this is the only thing
     /// that notices a change made on the server or by another machine.
@@ -545,7 +610,7 @@ impl std::fmt::Display for RootScanCause {
         match self {
             Self::FsChange(events) => write!(f, "filesystem change ({events})"),
             Self::WatchError => write!(f, "the folder watcher reported an error"),
-            Self::Timer => write!(f, "the periodic sweep"),
+            Self::EventsDropped => write!(f, "the folder watch lost track of changes"),
             Self::NetworkFolderMoved => {
                 write!(f, "the periodic check found a directory that moved")
             }

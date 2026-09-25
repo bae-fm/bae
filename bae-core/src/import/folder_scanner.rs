@@ -168,7 +168,7 @@ pub enum FolderScanError {
 }
 
 impl FolderScanError {
-    fn io(path: impl Into<PathBuf>, source: io::Error) -> Self {
+    pub(crate) fn io(path: impl Into<PathBuf>, source: io::Error) -> Self {
         Self::Io {
             path: path.into(),
             source,

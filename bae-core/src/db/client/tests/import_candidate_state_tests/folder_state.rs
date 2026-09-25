@@ -133,13 +133,13 @@ async fn commit_reading_under(
         watched_folder_path: root.to_string(),
         folder: folder.to_string(),
         stamp,
-        decision: (
+        decision: Some((
             crate::import::folder_scanner::FolderReleaseDecisionKey {
                 watched_folder_path: root.to_string(),
                 relative_folder_path: folder.to_string(),
             },
             decision,
-        ),
+        )),
         scanned_decisions: Vec::new(),
         items: items
             .into_iter()
@@ -149,6 +149,7 @@ async fn commit_reading_under(
                 folder_date: None,
             })
             .collect(),
+        directories: Some(Vec::new()),
     })
     .await
 }

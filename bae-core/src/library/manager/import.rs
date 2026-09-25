@@ -579,6 +579,18 @@ impl LibraryManager {
             .await?)
     }
 
+    /// The generation `watched_folder_path` stands at, or `None` for a root
+    /// that has never been read.
+    pub(crate) async fn current_folder_scan_generation(
+        &self,
+        watched_folder_path: &str,
+    ) -> Result<Option<u64>, LibraryError> {
+        Ok(self
+            .database
+            .current_folder_scan_generation(watched_folder_path)
+            .await?)
+    }
+
     /// Begin reading one folder of a watched root again.
     pub(crate) async fn begin_folder_reading(
         &self,

@@ -32,13 +32,18 @@ pub(crate) struct FolderReadingCommit {
     /// everything below it is this reading's, and nothing outside it is.
     pub(crate) folder: String,
     pub(crate) stamp: FolderReadingStamp,
-    /// The person's answer for the folder whose reading changed.
-    pub(crate) decision: (FolderReleaseDecisionKey, FolderReleaseDecision),
+    /// The person's answer for the folder whose reading changed, when that is
+    /// why the folder was read again.
+    pub(crate) decision: Option<(FolderReleaseDecisionKey, FolderReleaseDecision)>,
     /// How the walk read folders nothing was stored for. Never replaces an
     /// answer the person gave.
     pub(crate) scanned_decisions: Vec<(FolderReleaseDecisionKey, FolderReleaseDecision)>,
     /// Every entry the folder yields, in the order the walk yielded them.
     pub(crate) items: Vec<ScanItemToWrite>,
+    /// Every directory in the folder with the mtime it had, replacing what
+    /// was recorded under it — or `None` when one could not be read, which
+    /// clears the root's record so the next cheap check walks.
+    pub(crate) directories: Option<Vec<(String, i64)>>,
 }
 
 /// What storing one folder's reading did.
@@ -100,6 +105,7 @@ impl Database {
             decision,
             scanned_decisions,
             items,
+            directories,
         } = commit;
         crate::import::watched_folder::validate_relative_path(&folder)?;
         if folder.contains('/') {
@@ -108,7 +114,7 @@ impl Database {
             )));
         }
         let folder_path = Path::new(&watched_folder_path).join(&folder);
-        for (key, _) in std::iter::once(&decision).chain(scanned_decisions.iter()) {
+        for (key, _) in decision.iter().chain(scanned_decisions.iter()) {
             validate_decision_key_ownership(&watched_folder_path, key)?;
             if !Path::new(&key.watched_folder_path)
                 .join(&key.relative_folder_path)
@@ -150,12 +156,14 @@ impl Database {
                     folder_path.display()
                 )));
             }
-            store_folder_release_decision(
-                sql,
-                &decision.0,
-                decision.1,
-                FolderReleaseDecisionAuthor::User,
-            )?;
+            if let Some((key, decision)) = &decision {
+                store_folder_release_decision(
+                    sql,
+                    key,
+                    *decision,
+                    FolderReleaseDecisionAuthor::User,
+                )?;
+            }
             for (key, decision) in &scanned_decisions {
                 store_folder_release_decision(
                     sql,
@@ -195,6 +203,44 @@ impl Database {
                         whole_folder: false,
                     },
                 )?;
+            }
+            let recorded: Vec<String> = sql.query(
+                "SELECT path FROM folder_scan_directory WHERE watched_folder_path = ?",
+                [&watched_folder_path],
+                |row| row.get::<_, String>(0),
+            )?;
+            match &directories {
+                Some(directories) => {
+                    for path in recorded
+                        .iter()
+                        .filter(|path| Path::new(path).starts_with(&folder_path))
+                    {
+                        sql.execute(
+                            "DELETE FROM folder_scan_directory \
+                             WHERE watched_folder_path = ? AND path = ?",
+                            params![watched_folder_path, path],
+                        )?;
+                    }
+                    for (path, modified_at) in directories {
+                        if !Path::new(path).starts_with(&folder_path) {
+                            return Err(DbError::Message(format!(
+                                "recorded directory {path} is outside {}",
+                                folder_path.display()
+                            )));
+                        }
+                        sql.execute(
+                            "INSERT INTO folder_scan_directory \
+                                 (watched_folder_path, path, modified_at) VALUES (?, ?, ?)",
+                            params![watched_folder_path, path, modified_at],
+                        )?;
+                    }
+                }
+                None => {
+                    sql.execute(
+                        "DELETE FROM folder_scan_directory WHERE watched_folder_path = ?",
+                        [&watched_folder_path],
+                    )?;
+                }
             }
             Ok(FolderReadingWrite { writes, pruned })
         })
