@@ -92,9 +92,6 @@ pub struct BridgeImportQueueSummary {
     pub group_keys: Vec<BridgeFolderReleaseDecisionKey>,
     /// The Ready rows matching the view's filter, in queue order.
     pub ready: Vec<BridgeReadyRowRef>,
-    /// The rows among `ready` whose draft was read from a catalog's release,
-    /// in the same order.
-    pub identified: Vec<BridgeReadyRowRef>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

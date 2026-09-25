@@ -196,11 +196,6 @@ struct ImportCandidateListContent: View {
     /// Skip (or unskip) the candidate at `key`. Wired to the row context menu.
     let onSkip: (_ key: String, _ skipped: Bool) -> Void
     let onReveal: (_ key: String) -> Void
-    /// Import the highlighted Ready candidates.
-    let onImportSelected: () -> Void
-    /// Import the highlighted Ready candidates whose draft was read from a
-    /// catalog's release.
-    let onImportIdentified: () -> Void
 
     @Environment(UiStore.self)
     private var uiStore
@@ -432,35 +427,7 @@ struct ImportCandidateListContent: View {
     @ViewBuilder
     private func tabList(_ proxy: ScrollViewProxy) -> some View {
         if let list = listSlot.list {
-            switch uiStore.importCandidateTab {
-            case .pending:
-                VStack(spacing: 0) {
-                    entryList(list, proxy: proxy)
-                    if !selectedReadyKeys.isEmpty {
-                        Divider()
-                        TriageFootBar(
-                            selectedCount: selectedReadyKeys.count,
-                            selectedIdentifiedCount: selectedIdentifiedKeys
-                                .count,
-                            readyCount: summary.ready.count,
-                            onSelectAll: {
-                                selectedKeys = Set(
-                                    summary.ready.map(\.candidateKey)
-                                )
-                            },
-                            onSelectNone: { selectedKeys = [] },
-                            onImport: {
-                                onImportSelected()
-                            },
-                            onImportIdentified: {
-                                onImportIdentified()
-                            }
-                        )
-                    }
-                }
-            case .done, .skipped:
-                entryList(list, proxy: proxy)
-            }
+            entryList(list, proxy: proxy)
         }
     }
 }
@@ -468,15 +435,6 @@ struct ImportCandidateListContent: View {
 /// The list itself. In an extension so the view's body and the chrome it
 /// builds — tabs, filter, folders — read as one piece above them.
 extension ImportCandidateListContent {
-    private var selectedReadyKeys: Set<String> {
-        let currentReady = Set(summary.ready.map(\.candidateKey))
-        return selectedKeys.intersection(currentReady)
-    }
-
-    private var selectedIdentifiedKeys: Set<String> {
-        selectedKeys.intersection(summary.identified.map(\.candidateKey))
-    }
-
     /// Virtualized rows over the paged list: each visible position loads the
     /// page it sits in and renders whatever core put at that offset.
     private func entryList(
@@ -797,9 +755,7 @@ extension ImportCandidateListContent {
             onRefreshFolder: { _ in },
             onReleaseDecision: { _, _ in },
             onSkip: { _, _ in },
-            onReveal: { _ in },
-            onImportSelected: {},
-            onImportIdentified: {}
+            onReveal: { _ in }
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)
@@ -824,9 +780,7 @@ extension ImportCandidateListContent {
             onRefreshFolder: { _ in },
             onReleaseDecision: { _, _ in },
             onSkip: { _, _ in },
-            onReveal: { _ in },
-            onImportSelected: {},
-            onImportIdentified: {}
+            onReveal: { _ in }
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)

@@ -594,8 +594,7 @@ struct ImportListPageSourceTests {
                 folderScanStatuses: [],
                 folderScanActivity: nil,
                 groupKeys: [],
-                ready: [],
-                identified: []
+                ready: []
             ),
             requestRevision: requestRevision,
             cause: .requestChanged

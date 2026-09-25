@@ -479,7 +479,6 @@ impl crate::types::BridgeImportQueueSummary {
             watched_folders,
             group_keys,
             ready,
-            identified,
         } = summary;
         let bae_core::import::FolderScanProgress { statuses, activity } = folder_scans;
         Self {
@@ -498,10 +497,6 @@ impl crate::types::BridgeImportQueueSummary {
                 .map(crate::types::BridgeFolderReleaseDecisionKey::from_core)
                 .collect(),
             ready: ready
-                .into_iter()
-                .map(crate::types::BridgeReadyRowRef::from_core)
-                .collect(),
-            identified: identified
                 .into_iter()
                 .map(crate::types::BridgeReadyRowRef::from_core)
                 .collect(),

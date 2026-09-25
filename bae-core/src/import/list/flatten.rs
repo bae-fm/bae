@@ -427,7 +427,7 @@ fn place_row(
         // The records are read off the pick's stored releases, which the
         // queue never opens: the window that materialises the row reads them
         // and builds the reading over again.
-        reading: crate::import::triage::TriageReading::of(
+        reading: TriageReading::of(
             state.and_then(|state| state.metadata_summary.as_ref()),
             metadata_provenance.as_ref(),
             Vec::new(),
@@ -563,7 +563,6 @@ fn summarise(
     let mut group_keys = Vec::new();
     let mut seen_groups = HashSet::new();
     let mut ready = Vec::new();
-    let mut identified = Vec::new();
     for entry in ordered {
         if let Some(group) = &entry.group {
             if seen_groups.insert(group.key.clone()) {
@@ -575,17 +574,13 @@ fn summarise(
         };
         let row = &placed[index].row;
         if entry.matches_filter && row.selectable {
-            let reference = ReadyRowRef {
+            ready.push(ReadyRowRef {
                 candidate_key: row.candidate_key.clone(),
                 cover_thumbnail_url: row
                     .matched
                     .as_ref()
                     .and_then(|matched| matched.cover_thumbnail_url.clone()),
-            };
-            if matches!(row.reading, TriageReading::Identified { .. }) {
-                identified.push(reference.clone());
-            }
-            ready.push(reference);
+            });
         }
     }
     ImportQueueSummary {
@@ -593,7 +588,6 @@ fn summarise(
         watched_folders: rows.watched_folders.clone(),
         group_keys,
         ready,
-        identified,
     }
 }
 

@@ -665,8 +665,7 @@ public sealed class ImportSectionViewTests
                     CandidateKey,
                     null),
             }
-            : Array.Empty<BridgeReadyRowRef>(),
-        Identified: Array.Empty<BridgeReadyRowRef>());
+            : Array.Empty<BridgeReadyRowRef>());
 
     // A window carrying one of each item kind, with the group header core emits
     // before the run of rows it holds.
@@ -703,8 +702,7 @@ public sealed class ImportSectionViewTests
         FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>(),
         FolderScanActivity: null,
         GroupKeys: new[] { PreviewData.ImportGroupKey },
-        Ready: Array.Empty<BridgeReadyRowRef>(),
-        Identified: Array.Empty<BridgeReadyRowRef>());
+        Ready: Array.Empty<BridgeReadyRowRef>());
 
     private static BridgeOutboxSnapshot Outbox(
         ulong revision,

@@ -381,9 +381,7 @@ extension ImportCandidateViewportTests {
             onRefreshFolder: { _ in },
             onReleaseDecision: { _, _ in },
             onSkip: { _, _ in },
-            onReveal: { _ in },
-            onImportSelected: {},
-            onImportIdentified: {}
+            onReveal: { _ in }
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)

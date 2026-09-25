@@ -41,8 +41,7 @@ class ImportStore {
         folderScanStatuses: [],
         folderScanActivity: nil,
         groupKeys: [],
-        ready: [],
-        identified: []
+        ready: []
     )
 
     /// The fault each watched root was last reported as having. A summary is

@@ -18,9 +18,7 @@ extension ImportView {
                 setFolderReleaseDecision(key, decision)
             },
             onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
-            onReveal: revealCandidateSources,
-            onImportSelected: importReadyCandidates,
-            onImportIdentified: importIdentifiedCandidates,
+            onReveal: revealCandidateSources
         )
     }
 

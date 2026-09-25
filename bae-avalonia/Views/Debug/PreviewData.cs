@@ -194,8 +194,7 @@ internal static class PreviewData
         FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>(),
         FolderScanActivity: null,
         GroupKeys: groupKeys.ToArray(),
-        Ready: ready.ToArray(),
-        Identified: Array.Empty<BridgeReadyRowRef>());
+        Ready: ready.ToArray());
 
     private static BridgeTriageRow ImportRow(string name, string displayPath) =>
         new(
