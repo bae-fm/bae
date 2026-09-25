@@ -62,13 +62,25 @@ fn live_query_error(error: coven::CovenError) -> crate::library::LibraryError {
 }
 
 /// [`LiveQueryEvents`] for a query whose request changes while it runs: the
-/// query lives on its own task, each event arrives with the request it
-/// answered, and [`set`](Self::set) points the same query at a new request
-/// instead of opening another one.
+/// query lives on its own task, and [`set`](Self::set) points the same query at
+/// a new request instead of opening another one.
+///
+/// Every subscriber through here shows only the newest request, so
+/// [`recv`](Self::recv) hands over only events that answer the request last
+/// set. Coven delivers a read that finished after its request was replaced —
+/// that is what keeps a request changing faster than one read from starving
+/// the query — and marks it with the revision it answered; one older than the
+/// revision [`set`](Self::set) got back is skipped here, and the read for the
+/// newest request follows.
 pub(super) struct ReconfigurableLiveQueryEvents<Request, T> {
-    events:
-        tokio::sync::mpsc::UnboundedReceiver<(Request, Result<T, crate::library::LibraryError>)>,
+    events: tokio::sync::mpsc::UnboundedReceiver<(
+        coven::LiveQueryRevision,
+        Result<T, crate::library::LibraryError>,
+    )>,
     requests: coven::LiveQueryRequests<Request>,
+    /// The revision of the request last set; events answering an older one
+    /// are not delivered. `None` while the initial request is the only one.
+    newest: Option<coven::LiveQueryRevision>,
     task: tokio::task::JoinHandle<()>,
 }
 
@@ -76,16 +88,22 @@ impl<Request, T> ReconfigurableLiveQueryEvents<Request, T>
 where
     Request: Clone + PartialEq,
 {
-    pub(super) async fn recv(
-        &mut self,
-    ) -> Option<(Request, Result<T, crate::library::LibraryError>)> {
-        self.events.recv().await
+    /// The next result for the newest request, or `None` once the query ends.
+    pub(super) async fn recv(&mut self) -> Option<Result<T, crate::library::LibraryError>> {
+        loop {
+            let (revision, result) = self.events.recv().await?;
+            if self.newest.is_none_or(|newest| revision == newest) {
+                return Some(result);
+            }
+        }
     }
 
-    pub(super) fn set(&self, request: Request) {
-        self.requests
-            .set(request)
-            .expect("the query task retains its subscription while this handle lives");
+    pub(super) fn set(&mut self, request: Request) {
+        self.newest = Some(
+            self.requests
+                .set(request)
+                .expect("the query task retains its subscription while this handle lives"),
+        );
     }
 }
 
@@ -108,9 +126,9 @@ where
     let task = runtime_handle.spawn(async move {
         loop {
             let event = query.next().await;
-            let request = event.request().clone();
+            let revision = event.revision();
             if tx
-                .send((request, event.into_result().map_err(live_query_error)))
+                .send((revision, event.into_result().map_err(live_query_error)))
                 .is_err()
             {
                 return;
@@ -120,6 +138,7 @@ where
     ReconfigurableLiveQueryEvents {
         events,
         requests,
+        newest: None,
         task,
     }
 }

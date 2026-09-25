@@ -350,7 +350,7 @@ impl AppServices {
                 let value = tokio::select! {
                     event = query.recv() => match event {
                         None => return,
-                        Some((_, Ok(projection))) => {
+                        Some(Ok(projection)) => {
                             match pins.watch(LibraryManager::storage_page_pin_files(&projection)).await {
                                 Ok(pinned) => {
                                     last = Some((projection.clone(), pinned.clone()));
@@ -359,7 +359,7 @@ impl AppServices {
                                 Err(error) => Err(error),
                             }
                         }
-                        Some((_, Err(error))) => Err(error),
+                        Some(Err(error)) => Err(error),
                     },
                     answer = pins.changed() => match (answer, last.as_mut()) {
                         (Ok(pinned), Some((projection, last_pinned))) => {
@@ -508,10 +508,7 @@ impl AppServices {
             loop {
                 tokio::select! {
                     event = catalog.recv() => {
-                        let Some((answered, result)) = event else { return };
-                        // A read for entries the queue has since moved past;
-                        // the read for the current ones follows.
-                        if answered != request { continue; }
+                        let Some(result) = event else { return };
                         let value = result.map(|read: crate::db::QueueCatalogProjection| {
                             current = Some(read.clone());
                             manager.resolve_queue_catalog(projection.clone(), read)
@@ -582,10 +579,7 @@ impl AppServices {
             loop {
                 tokio::select! {
                     event = catalog.recv() => {
-                        let Some((answered, result)) = event else { return };
-                        // A read for a slice the queue has since moved past;
-                        // the read for the current one follows.
-                        if answered != request { continue; }
+                        let Some(result) = event else { return };
                         let value = result.map(|read: crate::db::QueueCatalogProjection| {
                             current = Some(read.clone());
                             page(&projection, &request, read)
