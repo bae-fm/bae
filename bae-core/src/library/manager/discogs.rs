@@ -392,6 +392,20 @@ impl LibraryManager {
     /// stored key, built the first time it is needed — reading the key off the
     /// keyring once rather than on every call — and reused until the key is
     /// set or cleared.
+    /// Whether a release on `catalog` can be fetched now: MusicBrainz always
+    /// can, and Discogs can when this library holds a key it may ask with.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn can_fetch_releases_from(
+        &self,
+        catalog: crate::import::Catalog,
+    ) -> Result<bool, LibraryError> {
+        match catalog {
+            crate::import::Catalog::MusicBrainz => Ok(true),
+            crate::import::Catalog::Discogs => Ok(self.discogs_session()?.client.is_some()),
+            other => unreachable!("nothing fetches releases from {}", other.as_str()),
+        }
+    }
+
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     fn discogs_session(&self) -> Result<DiscogsSession, LibraryError> {
         let providers = self.providers.clone();

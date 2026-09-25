@@ -851,7 +851,7 @@ fn load_works<S: QueryOne + QueryRows>(
 impl Database {
     /// The stored release `release` names, or `None` when nothing has
     /// fetched it.
-    pub(crate) async fn load_source_release(
+    pub async fn load_source_release(
         &self,
         release: &MetadataRef,
     ) -> Result<Option<SourceRelease>, DbError> {

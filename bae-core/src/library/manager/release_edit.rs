@@ -32,14 +32,9 @@ impl LibraryManager {
             .ok_or_else(|| {
                 LibraryError::Import(format!("Album '{}' not found", release.album_id))
             })?;
-        // There is something to reset to when the draft was read from
-        // somewhere: a catalog's document, or the files' own tags.
-        let can_reset_to_source = release.draft_from_tags
-            || context
-                .detail
-                .records
-                .iter()
-                .any(|record| record.reads_draft());
+        let can_reset_to_source = self
+            .can_reset_to_source(release.draft_from_tags, &context.detail.records)
+            .await?;
         let display = crate::album_detail::ReleaseEditDisplayContext::from_raw(&context.detail)?;
         let cover = cover_ref_for(&self.database, release_id).await?;
 
@@ -106,6 +101,45 @@ impl LibraryManager {
             cover,
             display,
         })
+    }
+
+    /// Whether [`Self::reset_release_edit_to_source`] can re-read what the
+    /// draft was read from: the files' own tags, or the catalog release its
+    /// reading record names — stored on this device, or one it can fetch.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    async fn can_reset_to_source(
+        &self,
+        draft_from_tags: bool,
+        records: &[crate::import::ReleaseRecord],
+    ) -> Result<bool, LibraryError> {
+        if draft_from_tags {
+            return Ok(true);
+        }
+        let Some(release) = records
+            .iter()
+            .find(|record| record.reads_draft())
+            .map(|record| {
+                record
+                    .release_ref()
+                    .expect("only a pressing reads the draft")
+            })
+        else {
+            return Ok(false);
+        };
+        if self.database.load_source_release(release).await?.is_some() {
+            return Ok(true);
+        }
+        self.can_fetch_releases_from(release.catalog)
+    }
+
+    /// The mobile builds re-read no release: resetting is a desktop editor's.
+    #[cfg(any(target_os = "ios", target_os = "android"))]
+    async fn can_reset_to_source(
+        &self,
+        _draft_from_tags: bool,
+        _records: &[crate::import::ReleaseRecord],
+    ) -> Result<bool, LibraryError> {
+        Ok(false)
     }
 
     /// Re-project the stored source into the editor's raw form while retaining

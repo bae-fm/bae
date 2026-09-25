@@ -134,8 +134,9 @@ impl LibraryManager {
     /// Read-only — the editor populates its form from the result, and the user
     /// re-edits or saves through `apply_release_metadata_user_edit`.
     ///
-    /// - A record reads the draft — re-project the archived provider documents
-    ///   under the same rules import uses, from the pressing that record names.
+    /// - A record reads the draft — re-read the release that record names under
+    ///   the same rules import uses: as stored on this device, or fetched and
+    ///   stored now when this device never fetched it.
     /// - The draft came off the files' tags — re-read the embedded tags from the
     ///   release's local audio files. Errors if they aren't reachable on disk
     ///   (cloud-only, no local copy).
@@ -159,26 +160,27 @@ impl LibraryManager {
         let draft_record = records.iter().find(|record| record.reads_draft());
         let parsed = match (draft_record, release.draft_from_tags) {
             (Some(record), _) => {
-                // The record names which archived document seeded this release,
-                // and the documents are keyed by exactly that — so what is read
-                // back cannot belong to a pressing the release was pointed away
+                // The record names which release seeded this one, and stored
+                // releases are keyed by exactly that — so what is read back
+                // cannot belong to a pressing the release was pointed away
                 // from.
                 let release_ref = record
                     .release_ref()
                     .expect("only a pressing reads the draft");
-                let payloads = crate::import::payloads::load(&self.database, release_ref)
-                    .await?
-                    .ok_or_else(|| {
-                        LibraryError::Import(format!(
-                            "no archived {} payload for release '{release_id}' (catalog release {})",
-                            record.catalog().as_str(),
-                            record.key()
-                        ))
-                    })?
-                    .extract()?;
+                let source = match self.database.load_source_release(release_ref).await? {
+                    Some(stored) => stored,
+                    None => {
+                        crate::import::service::prepare_release(
+                            self,
+                            release_ref,
+                            crate::util::rate_limiter::CallPriority::Interactive,
+                        )
+                        .await?
+                    }
+                };
                 let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
                 parsed_for_existing_release(
-                    &payloads,
+                    &source,
                     record.catalog(),
                     &existing_tracks,
                     self.clock.as_ref(),

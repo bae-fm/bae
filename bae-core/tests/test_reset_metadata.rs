@@ -1,30 +1,25 @@
 #![cfg(feature = "test-utils")]
 //! Reset metadata to source. Verifies `LibraryManager::reset_metadata_to_source`
-//! re-runs the seeding projection from the archived provider documents and
-//! returns the projected `ReleaseUserEdit` shape — without writing the DB or
-//! touching the release's records.
+//! re-runs the seeding projection from the stored release — fetching it first
+//! on a device that never did — and returns the projected `ReleaseUserEdit`
+//! shape, without writing the release's rows or touching its records.
 use bae_test_support as support;
 
-use bae_core::db::{
-    Database, DbAlbum, DbArtist, DbFile, DbRelease, DbSourceReleasePayload, DbTrack, Pressing,
-};
-use bae_core::import::{
-    ArtistAssignment, Catalog, MetadataRef, NewArtistSeed, PayloadSource, ReleaseRecord,
-};
+use bae_core::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease, DbTrack, Pressing};
+use bae_core::import::payloads::ReleasePayloads;
+use bae_core::import::{ArtistAssignment, Catalog, MetadataRef, NewArtistSeed, ReleaseRecord};
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
 use std::path::PathBuf;
 use uuid::Uuid;
 
-/// Archive one provider document under the source entity it describes, as a
-/// fetch would.
-async fn seed_payload(db: &Database, source: PayloadSource, source_release_id: &str, json: String) {
-    db.save_source_release_payloads(&[DbSourceReleasePayload {
-        source,
-        source_release_id: source_release_id.to_string(),
-        json,
-        fetched_at: Utc::now(),
-    }])
+/// Store the release a lone provider document describes, as a fetch would.
+async fn seed_release(db: &Database, catalog: Catalog, release_id: &str, json: String) {
+    db.save_source_release(
+        &ReleasePayloads::for_test(MetadataRef::new(catalog, release_id), json, Vec::new())
+            .extract()
+            .unwrap(),
+    )
     .await
     .unwrap();
 }
@@ -92,7 +87,7 @@ fn record_read_from(catalog: Catalog, key: &str, group: &str) -> ReleaseRecord {
     )
 }
 
-/// What a release says it was read from: a catalog's document, the files' own
+/// What a release says it was read from: a catalog's release, the files' own
 /// tags, or nothing.
 enum DraftSource {
     Record(ReleaseRecord),
@@ -100,11 +95,31 @@ enum DraftSource {
     Nothing,
 }
 
+/// Resetting is offered exactly when it can happen: the draft came off the
+/// files' tags, or off a release this device holds or can fetch. MusicBrainz
+/// can always be asked; Discogs only with a key, and this library holds none.
 #[tokio::test]
 async fn edit_seed_exposes_reset_eligibility_from_where_the_draft_was_read() {
     let (lm, db, _tmp) = support::setup_test_library().await;
     let artist = make_artist("Artist Name");
     db.insert_artist(&artist).await.unwrap();
+    seed_release(
+        &db,
+        Catalog::Discogs,
+        "4242",
+        discogs_release_json(
+            4242,
+            "Album Title",
+            999,
+            "Artist Name",
+            1985,
+            "Label Name",
+            "CAT-1",
+            "JP",
+            &["Track Title"],
+        ),
+    )
+    .await;
 
     for (index, (source, expected)) in [
         (
@@ -116,8 +131,12 @@ async fn edit_seed_exposes_reset_eligibility_from_where_the_draft_was_read() {
             true,
         ),
         (
-            DraftSource::Record(record_read_from(Catalog::Discogs, "discogs-release", "909")),
+            DraftSource::Record(record_read_from(Catalog::Discogs, "4242", "909")),
             true,
+        ),
+        (
+            DraftSource::Record(record_read_from(Catalog::Discogs, "4343", "909")),
+            false,
         ),
         (DraftSource::FileMetadata, true),
         (DraftSource::Nothing, false),
@@ -166,8 +185,8 @@ async fn resetting_a_source_less_release_reports_that_it_has_no_provenance() {
 // ── MusicBrainz ─────────────────────────────────────────────────────────
 
 /// Build a minimal-but-valid MB release JSON with a release group, an
-/// artist credit, and one track per supplied title. Mirrors the shape
-/// identification archives in `source_release_payloads`.
+/// artist credit, and one track per supplied title — the release endpoint's
+/// own shape.
 fn mb_release_json(
     release_id: &str,
     release_group_id: &str,
@@ -235,7 +254,7 @@ fn mb_release_json(
 }
 
 #[tokio::test]
-async fn reset_mb_returns_full_pressing_data_from_cache() {
+async fn reset_mb_returns_full_pressing_data_from_the_stored_release() {
     let (lm, db, _tmp) = support::setup_test_library().await;
 
     let artist = make_artist("Original Artist");
@@ -261,9 +280,9 @@ async fn reset_mb_returns_full_pressing_data_from_cache() {
     .await
     .unwrap();
 
-    seed_payload(
+    seed_release(
         &db,
-        PayloadSource::MusicBrainz,
+        Catalog::MusicBrainz,
         "mb-release-1",
         mb_release_json(
             "mb-release-1",
@@ -323,8 +342,8 @@ async fn reset_mb_returns_full_pressing_data_from_cache() {
 // ── Discogs ─────────────────────────────────────────────────────────────
 
 /// Discogs API response shape, in the subset `parse_discogs_release_json`
-/// reads. Lets tests hand-roll cached payloads without going through the
-/// HTTP client.
+/// reads. Lets tests hand-roll a release without going through the HTTP
+/// client.
 fn discogs_release_json(
     release_id: u64,
     title: &str,
@@ -366,7 +385,7 @@ fn discogs_release_json(
 }
 
 #[tokio::test]
-async fn reset_discogs_returns_full_pressing_data_from_cache() {
+async fn reset_discogs_returns_full_pressing_data_from_the_stored_release() {
     let (lm, db, _tmp) = support::setup_test_library().await;
 
     let artist = make_artist("Original Artist");
@@ -390,9 +409,9 @@ async fn reset_discogs_returns_full_pressing_data_from_cache() {
     .await
     .unwrap();
 
-    seed_payload(
+    seed_release(
         &db,
-        PayloadSource::Discogs,
+        Catalog::Discogs,
         "12345",
         discogs_release_json(
             12345,
@@ -528,8 +547,62 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
     assert!(saved.draft_from_tags);
 }
 
+/// A device that never fetched the release the draft was read from — the
+/// release synced here from the device that imported it — fetches it when
+/// asked to reset, stores it, and resets from it.
 #[tokio::test]
-async fn reset_mb_missing_archived_payload_errors() {
+async fn reset_fetches_a_release_this_device_never_stored() {
+    let (lm, db, _tmp) = support::setup_test_library().await;
+
+    let artist = make_artist("Artist");
+    let album = make_album(&artist.id, "Album");
+    let release = make_release(&album.id);
+    let track = make_track(&release.id, 1, "Original Track");
+
+    db.insert_artist(&artist).await.unwrap();
+    db.insert_album(&album).await.unwrap();
+    db.insert_release(&release).await.unwrap();
+    db.insert_track(&track).await.unwrap();
+    db.insert_release_records(
+        &release.id,
+        &[record_read_from(
+            Catalog::MusicBrainz,
+            "mb-release-remote",
+            "mb-rg-remote",
+        )],
+    )
+    .await
+    .unwrap();
+    lm.providers().musicbrainz().seed_release_cache(
+        "mb-release-remote",
+        mb_release_json(
+            "mb-release-remote",
+            "mb-rg-remote",
+            "Fetched Album",
+            "Fetched Artist",
+            &["Fetched Track"],
+        ),
+    );
+
+    let edit = lm.reset_metadata_to_source(&release.id).await.unwrap();
+
+    assert_eq!(edit.album_title, "Fetched Album");
+    assert_eq!(edit.tracks[0].title, "Fetched Track");
+    let stored = db
+        .load_source_release(&MetadataRef::new(Catalog::MusicBrainz, "mb-release-remote"))
+        .await
+        .unwrap();
+    assert!(
+        stored.is_some(),
+        "the fetched release is stored for the next read"
+    );
+}
+
+/// A release this device neither holds nor can fetch — a Discogs release, and
+/// no Discogs key — cannot be reset to, and says why rather than resetting to
+/// anything else.
+#[tokio::test]
+async fn reset_to_a_release_that_cannot_be_fetched_fails_loud() {
     let (lm, db, _tmp) = support::setup_test_library().await;
 
     let artist = make_artist("Artist");
@@ -539,15 +612,9 @@ async fn reset_mb_missing_archived_payload_errors() {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
-    // The record names the release the draft was read from; nothing is
-    // archived under it, which is what resetting has to say it cannot do.
     db.insert_release_records(
         &release.id,
-        &[record_read_from(
-            Catalog::MusicBrainz,
-            "mb-release-missing",
-            "mb-rg-missing",
-        )],
+        &[record_read_from(Catalog::Discogs, "4343", "909")],
     )
     .await
     .unwrap();
@@ -555,23 +622,18 @@ async fn reset_mb_missing_archived_payload_errors() {
     let err = lm
         .reset_metadata_to_source(&release.id)
         .await
-        .expect_err("a record with nothing archived under it should error");
-    let msg = err.to_string();
+        .expect_err("a release that cannot be fetched cannot be reset to");
     assert!(
-        msg.contains("no archived musicbrainz payload"),
-        "unexpected error: {msg}"
-    );
-    assert!(
-        msg.contains("mb-release-missing"),
-        "the error names the source release nothing was archived for: {msg}"
+        err.to_string().contains("Discogs API key not configured"),
+        "unexpected error: {err}"
     );
 }
 
-/// `set_identity` can redirect provenance to a different
-/// pressing without fetching it. The documents are keyed by the source
-/// release, so the previous pressing's cannot be read in the new one's place:
-/// reset finds nothing under the new pointer and says so, rather than
-/// surfacing the wrong pressing's fields without telling the user.
+/// The records can be pointed at a different pressing without fetching it.
+/// Stored releases are keyed by the source release, so the previous
+/// pressing's cannot be read in the new one's place: reset reads the pressing
+/// the record names, fetching it, rather than surfacing the wrong pressing's
+/// fields.
 #[tokio::test]
 async fn reset_mb_reads_only_the_pressing_the_pointer_names() {
     let (lm, db, _tmp) = support::setup_test_library().await;
@@ -580,10 +642,12 @@ async fn reset_mb_reads_only_the_pressing_the_pointer_names() {
     let album = make_album(&artist.id, "Album");
     // The record says we want pressing Y…
     let release = make_release(&album.id);
+    let track = make_track(&release.id, 1, "Original Track");
 
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
+    db.insert_track(&track).await.unwrap();
 
     db.insert_release_records(
         &release.id,
@@ -596,12 +660,11 @@ async fn reset_mb_reads_only_the_pressing_the_pointer_names() {
     .await
     .unwrap();
 
-    // …and the only archived document is pressing X's, the one it was pointed
-    // away from. Documents are keyed by the source release, so nothing under Y
-    // was ever written and X's cannot be read in its place.
-    seed_payload(
+    // …and the only stored release is pressing X, the one it was pointed away
+    // from.
+    seed_release(
         &db,
-        PayloadSource::MusicBrainz,
+        Catalog::MusicBrainz,
         "mb-release-X",
         mb_release_json(
             "mb-release-X",
@@ -612,15 +675,18 @@ async fn reset_mb_reads_only_the_pressing_the_pointer_names() {
         ),
     )
     .await;
-
-    let err = lm
-        .reset_metadata_to_source(&release.id)
-        .await
-        .expect_err("a pointer with no archived payload should error");
-    let msg = err.to_string();
-    assert!(
-        msg.contains("no archived musicbrainz payload"),
-        "unexpected error: {msg}"
+    lm.providers().musicbrainz().seed_release_cache(
+        "mb-release-Y",
+        mb_release_json(
+            "mb-release-Y",
+            "mb-rg-1",
+            "Pointed Pressing",
+            "Artist",
+            &["Pointed Track"],
+        ),
     );
-    assert!(msg.contains("mb-release-Y"), "missing pointer id in: {msg}");
+
+    let edit = lm.reset_metadata_to_source(&release.id).await.unwrap();
+    assert_eq!(edit.album_title, "Pointed Pressing");
+    assert_eq!(edit.tracks[0].title, "Pointed Track");
 }
