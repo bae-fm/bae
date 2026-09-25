@@ -117,9 +117,7 @@ pub(crate) fn sheet_track_duration_ms(
             detail: format!("{sheet_id} no longer describes a track {}", index + 1),
         })?;
     let audio = analysis
-        .audio_files
-        .iter()
-        .find(|file| file.file_reference == cue_track.file_reference)
+        .audio_file(&cue_track.file_reference)
         .ok_or_else(|| ImportError::UnusableFile {
             detail: format!(
                 "{sheet_id} track {} references missing audio {}",

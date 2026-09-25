@@ -70,10 +70,8 @@ fn track_fits_audio(track: &crate::cue_flac::CueTrack, audio: &ScannedFile) -> b
 
 fn sheet_fits_resolved_audio(sheet: &CueSheet, resolved: &[(&str, &ScannedFile)]) -> bool {
     sheet.playable_tracks().all(|track| {
-        resolved
-            .iter()
-            .find(|(reference, _)| *reference == track.file_reference)
-            .is_some_and(|(_, audio)| track_fits_audio(track, audio))
+        super::files::resolved_audio_for(resolved, track)
+            .is_some_and(|audio| track_fits_audio(track, audio))
     })
 }
 

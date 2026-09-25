@@ -515,14 +515,23 @@ pub struct BoundTrackSheet<'a> {
     pub disc: SheetDisc,
 }
 
+/// The audio a sheet track plays from, among the sheet's `FILE` references
+/// resolved to scanned audio.
+pub(super) fn resolved_audio_for<'a>(
+    resolved: &[(&str, &'a ScannedFile)],
+    track: &crate::cue_flac::CueTrack,
+) -> Option<&'a ScannedFile> {
+    resolved
+        .iter()
+        .find(|(file_reference, _)| *file_reference == track.file_reference)
+        .map(|(_, audio)| *audio)
+}
+
 impl<'a> BoundTrackSheet<'a> {
     /// The audio one of the sheet's tracks plays from.
     pub fn audio_for(&self, track: &crate::cue_flac::CueTrack) -> &'a ScannedFile {
-        self.audio_files
-            .iter()
-            .find(|(file_reference, _)| *file_reference == track.file_reference)
+        resolved_audio_for(&self.audio_files, track)
             .expect("a bound sheet resolved every playable track's audio")
-            .1
     }
 
     /// Whether this sheet carves the release's tracks out of its container.

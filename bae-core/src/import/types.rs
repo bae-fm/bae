@@ -657,6 +657,17 @@ pub struct CueFlacAnalysis {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl CueFlacAnalysis {
+    /// The audio a `FILE` directive of the sheet names, as the scan resolved
+    /// and probed it.
+    pub(crate) fn audio_file(&self, file_reference: &str) -> Option<&CueAnalyzedAudioFile> {
+        self.audio_files
+            .iter()
+            .find(|file| file.file_reference == file_reference)
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug)]
 pub struct CueAnalyzedAudioFile {
     pub file_reference: String,

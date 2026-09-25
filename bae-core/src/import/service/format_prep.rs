@@ -104,31 +104,16 @@ fn cue_track_by_playable_index(
         })
 }
 
-fn cue_file_probe<'a>(
+/// The scanned audio file a `FILE` directive of the sheet names. Every file
+/// a bound sheet names was resolved and probed by the scan.
+fn cue_audio_file<'a>(
     cue_pair: &'a CueFlacAnalysis,
     file_reference: &str,
-) -> Result<&'a ProbeResult, ImportError> {
+) -> Result<&'a crate::import::types::CueAnalyzedAudioFile, ImportError> {
     cue_pair
-        .audio_files
-        .iter()
-        .find(|file| file.file_reference == file_reference)
-        .map(|file| &file.probe)
+        .audio_file(file_reference)
         .ok_or_else(|| ImportError::Internal {
             detail: format!("CUE references audio without scan facts: {file_reference}"),
-        })
-}
-
-fn cue_file_path<'a>(
-    cue_pair: &'a CueFlacAnalysis,
-    file_reference: &str,
-) -> Result<&'a Path, ImportError> {
-    cue_pair
-        .audio_files
-        .iter()
-        .find(|file| file.file_reference == file_reference)
-        .map(|file| file.path.as_path())
-        .ok_or_else(|| ImportError::Internal {
-            detail: format!("CUE references unmapped audio file: {file_reference}"),
         })
 }
 
@@ -163,9 +148,9 @@ fn cue_audio_pregap(
     let crate::cue_flac::CuePregap::Audio(index) = &cue_track.pregap else {
         return Ok(None);
     };
-    let probe = cue_file_probe(cue_pair, &index.file_reference)?;
-    let path = cue_file_path(cue_pair, &index.file_reference)?;
-    ensure_probe_audio_format(path, probe)?;
+    let audio = cue_audio_file(cue_pair, &index.file_reference)?;
+    let probe = &audio.probe;
+    ensure_probe_audio_format(&audio.path, probe)?;
     let sample_rate = u64::from(probe.sample_rate);
     let start_sample = crate::cue_flac::cue_frames_to_samples(index.frames, sample_rate);
     let end_sample = if index.file_reference == cue_track.file_reference {
@@ -207,10 +192,9 @@ fn cue_backed_audio_format(
     now: chrono::DateTime<chrono::Utc>,
 ) -> Result<DbAudioFormat, ImportError> {
     let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
-    let cue_path = cue_file_path(cue_pair, &cue_track.file_reference)?;
-
-    let probe = cue_file_probe(cue_pair, &cue_track.file_reference)?;
-    ensure_probe_audio_format(cue_path, probe)?;
+    let audio = cue_audio_file(cue_pair, &cue_track.file_reference)?;
+    let probe = &audio.probe;
+    ensure_probe_audio_format(&audio.path, probe)?;
     let audio_pregap = cue_audio_pregap(cue_pair, cue_index)?;
     let audio_pregap_ms = audio_pregap
         .as_ref()
@@ -381,14 +365,17 @@ impl ImportService {
         now: chrono::DateTime<chrono::Utc>,
     ) -> Result<Vec<DbAudioSegment>, ImportError> {
         let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
-        let main_path = cue_file_path(cue_pair, &cue_track.file_reference)?;
-        let probe = cue_file_probe(cue_pair, &cue_track.file_reference)?;
+        let main_audio = cue_audio_file(cue_pair, &cue_track.file_reference)?;
+        let main_path = main_audio.path.as_path();
+        let probe = &main_audio.probe;
         ensure_probe_audio_format(main_path, probe)?;
         let sample_rate = probe.sample_rate as u64;
         let mut segments = Vec::new();
 
         if let Some(pregap) = cue_audio_pregap(cue_pair, cue_index)? {
-            let pregap_path = cue_file_path(cue_pair, &pregap.file_reference)?;
+            let pregap_path = cue_audio_file(cue_pair, &pregap.file_reference)?
+                .path
+                .as_path();
             let pregap_file_id =
                 file_ids
                     .get(pregap_path)
