@@ -675,7 +675,9 @@ impl ArtistAssignment {
         }
     }
 
-    /// The name the artist is shown by.
+    /// The name the artist is shown by — what the desktop import list's
+    /// filter tests a row's credits against.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn name(&self) -> &str {
         match self {
             Self::Existing { artist } => &artist.name,
