@@ -166,6 +166,7 @@ telemetry_value_enum! {
         Seek => "seek",
         Pause => "pause",
         Resume => "resume",
+        CancelSidePauseCountdown => "cancel_side_pause_countdown",
         Stop => "stop",
         SetShuffle => "set_shuffle",
         SetRepeat => "set_repeat",

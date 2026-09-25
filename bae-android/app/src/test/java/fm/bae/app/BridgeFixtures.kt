@@ -29,6 +29,7 @@ import uniffi.bae_bridge.BridgeSaveFilenameToken
 import uniffi.bae_bridge.BridgeSavePregapPlacement
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSearchResults
+import uniffi.bae_bridge.BridgeSidePauseCountdown
 import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeSourceAvailability
 import uniffi.bae_bridge.BridgeSubsonicConfig
@@ -268,6 +269,7 @@ object BridgeFixtures {
             libraryName = "bae Library",
             libraryPath = "/tmp/lib",
             pauseBetweenSides = false,
+            sidePauseCountdown = BridgeSidePauseCountdown.OFF,
             maxConcurrentUploads = 3u,
             maxConcurrentDownloads = 3u,
             identifyAutomatically = true,

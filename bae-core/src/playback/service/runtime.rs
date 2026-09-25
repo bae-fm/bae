@@ -631,12 +631,15 @@ impl PlaybackService {
     /// track, and position. The crash-safe row stays current either way: track
     /// loads, stops, and queue edits write it immediately, and active playback
     /// writes it at most once a second.
+    /// `clock` is the service's time source for side-pause countdowns;
+    /// production passes one over the library's wall clock.
     pub(crate) fn start(
         library_manager: LibraryManager,
         queue_ids: coven::IdRef,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
+        clock: crate::playback::PlaybackClockRef,
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
@@ -645,6 +648,7 @@ impl PlaybackService {
             position_update_interval_ms,
             restore_playback,
             None,
+            clock,
         )
     }
 
@@ -659,6 +663,7 @@ impl PlaybackService {
         position_update_interval_ms: u32,
         restore_playback: bool,
         audio_device: Box<dyn AudioOutputDevice>,
+        clock: crate::playback::PlaybackClockRef,
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
@@ -667,6 +672,7 @@ impl PlaybackService {
             position_update_interval_ms,
             restore_playback,
             Some(audio_device),
+            clock,
         )
     }
 
@@ -677,6 +683,7 @@ impl PlaybackService {
         position_update_interval_ms: u32,
         restore_playback: bool,
         custom_device: Option<Box<dyn AudioOutputDevice>>,
+        clock: crate::playback::PlaybackClockRef,
     ) -> PlaybackHandle {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
         let progress_handle = PlaybackProgressHandle::new(progress_rx, runtime_handle.clone());
@@ -750,6 +757,7 @@ impl PlaybackService {
                             last_position_persist: None,
                             first_audio_pending: None,
                             renderer: Renderer::Local,
+                            clock,
                         };
                         // "Restore on launch" off starts with nothing in playback; the
                         // row is kept either way — it stays the crash-safe resume point.
@@ -784,10 +792,15 @@ impl PlaybackService {
         let mut library_event_rx = self.library_manager.subscribe_events();
         let mut audio_event_tick = tokio::time::interval(std::time::Duration::from_millis(10));
         audio_event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        let mut countdown = side_countdown::SideCountdownWait::new();
         loop {
+            countdown.follow(self.side_pause_countdown_deadline(), self.clock.as_ref());
             tokio::select! {
                 _ = audio_event_tick.tick(), if self.output.is_some() => {
                     self.drain_current_audio_events().await;
+                }
+                deadline = countdown.elapsed(), if countdown.is_armed() => {
+                    self.side_pause_countdown_elapsed(deadline).await;
                 }
                 Some(command) = self.command_rx.recv() => {
             // One event per user-intent command, at the point the loop picks it
@@ -795,6 +808,9 @@ impl PlaybackService {
             // `None` and ship nothing.
             if let Some(kind) = playback_command_kind(&command) {
                 self.record_telemetry(TelemetryEvent::PlaybackCommand { command: kind });
+            }
+            if cancels_side_pause_countdown(&command) {
+                self.cancel_side_pause_countdown();
             }
             match command {
                 PlaybackCommand::Play(track_id) => {
@@ -922,6 +938,9 @@ impl PlaybackService {
                 }
                 PlaybackCommand::Resume => {
                     self.resume().await;
+                }
+                PlaybackCommand::CancelSidePauseCountdown => {
+                    self.cancel_side_pause_countdown();
                 }
                 PlaybackCommand::Stop => {
                     self.stop().await;

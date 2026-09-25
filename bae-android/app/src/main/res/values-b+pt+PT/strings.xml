@@ -94,6 +94,8 @@
     <string name="sync_blocked_circle_operation">Alteração de partilha</string>
     <string name="sync_blocked_reclaim">Limpeza da nuvem</string>
     <string name="settings_pause_between_sides">Pausa entre lados e discos</string>
+    <string name="settings_side_pause_countdown">Contagem decrescente</string>
+    <string name="settings_side_pause_countdown_off">Desligado</string>
     <string name="settings_restore_on_launch">Restaurar ao iniciar</string>
     <string name="settings_restore_on_launch_help">Restaura a faixa, a posição, a fila e o volume da última sessão quando a app abre.</string>
     <string name="settings_playback">Reprodução</string>

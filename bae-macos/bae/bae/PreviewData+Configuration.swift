@@ -49,8 +49,8 @@
             ]
         }
 
-        /// A preview ConfigStore with the given library-width, casting, and
-        /// Discogs settings — the previews that vary them build their own;
+        /// A preview ConfigStore with the given library-width, side-pause,
+        /// casting, and Discogs settings — the previews that vary them build their own;
         /// everything else creates the default through `configStore()` above.
         /// A configured Discogs key is the ordinary library, so the token
         /// stands validated unless a preview asks for the other case.
@@ -62,6 +62,7 @@
         @MainActor
         static func makeConfigStore(
             libraryFullWidth: Bool,
+            pauseBetweenSides: Bool = false,
             castEnabled: Bool = false,
             discogsUsable: Bool = true,
             musicBrainz: BridgeSourceAvailability = .on,
@@ -73,7 +74,8 @@
                         libraryId: "lib-preview",
                         libraryName: "Preview Library",
                         libraryPath: "/preview",
-                        pauseBetweenSides: false,
+                        pauseBetweenSides: pauseBetweenSides,
+                        sidePauseCountdown: .off,
                         maxConcurrentUploads: 3,
                         maxConcurrentDownloads: 3,
                         identifyAutomatically: true,

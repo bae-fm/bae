@@ -215,6 +215,7 @@ impl AppServices {
     delegate_sync!(manager, cloud_home_key_state => cloud_home_key_state() -> Result<coven::CloudHomeKeyState, crate::library::LibraryError>);
     delegate_sync!(manager, set_max_concurrent_uploads => set_max_concurrent_uploads(n: u32) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_max_concurrent_downloads => set_max_concurrent_downloads(n: u32) -> Result<(), crate::config::ConfigError>);
+    delegate_sync!(manager, set_side_pause_countdown => set_side_pause_countdown(countdown: crate::config::SidePauseCountdown) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_show_remaining_time => set_show_remaining_time(enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_library_full_width => set_library_full_width(enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_identify_automatically => set_identify_automatically(enabled: bool) -> Result<(), crate::config::ConfigError>);
@@ -368,6 +369,7 @@ impl AppServices {
     delegate_sync!(playback, playback_play_library_shuffled => play_library_shuffled() -> ());
     delegate_sync!(playback, playback_pause => pause() -> ());
     delegate_sync!(playback, playback_resume => resume() -> ());
+    delegate_sync!(playback, playback_cancel_side_pause_countdown => cancel_side_pause_countdown() -> ());
     delegate_sync!(playback, playback_stop => stop() -> ());
     delegate_sync!(playback, playback_next => next() -> ());
     delegate_sync!(playback, playback_previous => previous() -> ());

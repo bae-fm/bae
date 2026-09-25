@@ -15,7 +15,14 @@ impl LibraryManager {
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
+            self.playback_clock(),
         )
+    }
+
+    /// The playback service's time source over this library's injected wall
+    /// clock.
+    fn playback_clock(&self) -> crate::playback::PlaybackClockRef {
+        Arc::new(crate::playback::WallPlaybackClock::new(self.clock.clone()))
     }
 
     /// Start playback over a caller-supplied audio device instead of the
@@ -30,6 +37,27 @@ impl LibraryManager {
         restore_playback: bool,
         audio_device: Box<dyn crate::playback::audio_output::AudioOutputDevice>,
     ) -> crate::playback::PlaybackHandle {
+        self.start_playback_service_with_clock(
+            runtime_handle,
+            position_update_interval_ms,
+            restore_playback,
+            audio_device,
+            self.playback_clock(),
+        )
+    }
+
+    /// [`Self::start_playback_service_with_audio_device`] with the service's
+    /// time source supplied too, so a test decides when a side-pause countdown
+    /// runs out.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn start_playback_service_with_clock(
+        &self,
+        runtime_handle: tokio::runtime::Handle,
+        position_update_interval_ms: u32,
+        restore_playback: bool,
+        audio_device: Box<dyn crate::playback::audio_output::AudioOutputDevice>,
+        clock: crate::playback::PlaybackClockRef,
+    ) -> crate::playback::PlaybackHandle {
         crate::playback::PlaybackService::start_with_audio_device(
             self.clone(),
             self.ids.clone(),
@@ -37,6 +65,7 @@ impl LibraryManager {
             position_update_interval_ms,
             restore_playback,
             audio_device,
+            clock,
         )
     }
 

@@ -19,6 +19,7 @@ enum PreviewData {
                     libraryName: "Preview Library",
                     libraryPath: "/preview",
                     pauseBetweenSides: false,
+                    sidePauseCountdown: .off,
                     maxConcurrentUploads: 3,
                     maxConcurrentDownloads: 3,
                     identifyAutomatically: true,

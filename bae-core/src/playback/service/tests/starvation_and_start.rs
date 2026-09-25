@@ -270,16 +270,17 @@ async fn playback_state_mapping() {
         }
     ));
 
-    let prompt = PlaybackSidePausePrompt {
-        id: "id".to_string(),
-        title_key: SIDE_PAUSE_TITLE_KEY,
-        side_label: "B".to_string(),
-    };
     service.slot = active_slot(
         test_prepared_track("t", buffer),
         TrackPhase::Paused(PausePhase::SideEnded(SidePauseDecision {
             track_id: "next".to_string(),
-            prompt,
+            boundary: SideBoundary {
+                id: "id".to_string(),
+                title_key: SIDE_PAUSE_TITLE_KEY,
+                countdown_key: SIDE_PAUSE_COUNTDOWN_KEY,
+                side_label: "B".to_string(),
+            },
+            resumes_at: None,
         })),
     );
     assert!(matches!(

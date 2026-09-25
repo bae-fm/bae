@@ -229,6 +229,7 @@ struct LibrarySessionOpenerTests {
             libraryName: "Test Library",
             libraryPath: "/tmp/test",
             pauseBetweenSides: false,
+            sidePauseCountdown: .off,
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
             identifyAutomatically: true,

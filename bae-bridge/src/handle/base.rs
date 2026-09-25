@@ -251,6 +251,12 @@ forward! { sync this => {
         this.services.playback_resume();
     }
 
+    /// Stop a running side-pause countdown and stay paused at the boundary —
+    /// the prompt's Close. Play still starts the next side.
+    fn cancel_side_pause_countdown() {
+        this.services.playback_cancel_side_pause_countdown();
+    }
+
     fn stop() {
         this.services.playback_stop();
     }

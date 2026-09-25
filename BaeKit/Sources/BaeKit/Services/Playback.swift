@@ -8,6 +8,9 @@ import Foundation
 public final class Playback: Sendable, Observable {
     public let pause: @Sendable () -> Void
     public let resume: @Sendable () -> Void
+    /// Stop a running side-pause countdown and stay paused at the boundary.
+    /// Play still starts the next side.
+    public let cancelSidePauseCountdown: @Sendable () -> Void
     public let nextTrack: @Sendable () -> Void
     public let previousTrack: @Sendable () -> Void
     public let seekByRatio: @Sendable (_ ratio: Double) -> Void
@@ -28,6 +31,8 @@ public final class Playback: Sendable, Observable {
     /// no-op (logged in core).
     public let playLibraryShuffled: @Sendable () -> Void
     public let setPauseBetweenSides: @Sendable (_ enabled: Bool) throws -> Void
+    public let setSidePauseCountdown:
+        @Sendable (_ countdown: BridgeSidePauseCountdown) throws -> Void
     /// Whether the seek bar's leading label counts down the time remaining.
     /// A synced preference, so the bar writes it here rather than to a local
     /// store, and reads it back off the config mirror.
@@ -36,6 +41,7 @@ public final class Playback: Sendable, Observable {
     public init(
         pause: @escaping @Sendable () -> Void = {},
         resume: @escaping @Sendable () -> Void = {},
+        cancelSidePauseCountdown: @escaping @Sendable () -> Void = {},
         nextTrack: @escaping @Sendable () -> Void = {},
         previousTrack: @escaping @Sendable () -> Void = {},
         seekByRatio: @escaping @Sendable (Double) -> Void = { _ in },
@@ -54,12 +60,17 @@ public final class Playback: Sendable, Observable {
         setPauseBetweenSides: @escaping @Sendable (Bool) throws -> Void = {
             _ in
         },
+        setSidePauseCountdown:
+            @escaping @Sendable (BridgeSidePauseCountdown) throws -> Void = {
+                _ in
+            },
         setShowRemainingTime: @escaping @Sendable (Bool) throws -> Void = {
             _ in
         }
     ) {
         self.pause = pause
         self.resume = resume
+        self.cancelSidePauseCountdown = cancelSidePauseCountdown
         self.nextTrack = nextTrack
         self.previousTrack = previousTrack
         self.seekByRatio = seekByRatio
@@ -70,6 +81,7 @@ public final class Playback: Sendable, Observable {
         self.playReleases = playReleases
         self.playLibraryShuffled = playLibraryShuffled
         self.setPauseBetweenSides = setPauseBetweenSides
+        self.setSidePauseCountdown = setSidePauseCountdown
         self.setShowRemainingTime = setShowRemainingTime
     }
 
@@ -77,6 +89,7 @@ public final class Playback: Sendable, Observable {
         self.init(
             pause: { handle.pause() },
             resume: { handle.resume() },
+            cancelSidePauseCountdown: { handle.cancelSidePauseCountdown() },
             nextTrack: { handle.nextTrack() },
             previousTrack: { handle.previousTrack() },
             seekByRatio: { handle.seekByRatio(ratio: $0) },
@@ -94,6 +107,9 @@ public final class Playback: Sendable, Observable {
             playLibraryShuffled: { handle.playLibraryShuffled() },
             setPauseBetweenSides: {
                 try handle.setPauseBetweenSides(enabled: $0)
+            },
+            setSidePauseCountdown: {
+                try handle.setSidePauseCountdown(countdown: $0)
             },
             setShowRemainingTime: {
                 try handle.setShowRemainingTime(enabled: $0)
@@ -127,9 +143,10 @@ extension Playback {
 
 extension Playback {
     /// Answer the side/disc pause prompt. An unchecked pause-between-sides box
-    /// turns the setting off; a checked one leaves it as it is. Play resumes
-    /// even when that write fails — the failure is thrown after, for the
-    /// caller to show.
+    /// turns the setting off; a checked one leaves it as it is. Play starts the
+    /// next side now; Close stays paused and stops any countdown, so the next
+    /// side waits for Play. Either happens even when the setting write fails —
+    /// the failure is thrown after, for the caller to show.
     public func answerSidePausePrompt(keepPausing: Bool, play: Bool) throws {
         var writeError: (any Error)?
         if !keepPausing {
@@ -142,6 +159,9 @@ extension Playback {
         }
         if play {
             resume()
+        }
+        else {
+            cancelSidePauseCountdown()
         }
         if let writeError {
             throw writeError

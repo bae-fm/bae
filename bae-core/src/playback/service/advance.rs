@@ -176,11 +176,26 @@ impl PlaybackService {
         };
 
         Ok(self
-            .side_pause_prompt_for_infos(&current, &next_info)
-            .map(|prompt| SidePauseDecision {
+            .side_boundary_for_infos(&current, &next_info)
+            .map(|boundary| SidePauseDecision {
                 track_id: next_track_id,
-                prompt,
+                boundary,
+                resumes_at: self.side_pause_countdown_from_now(),
             }))
+    }
+
+    /// When a side pause starting now ends on its own, per the countdown
+    /// setting — `None` when it waits for Play.
+    fn side_pause_countdown_from_now(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+        let length = self
+            .library_manager
+            .get_config()
+            .prefs
+            .side_pause_countdown
+            .duration()?;
+        let length =
+            chrono::Duration::from_std(length).expect("a side-pause countdown fits a duration");
+        Some(self.clock.now() + length)
     }
 
     pub(super) async fn playback_info_for_side_pause(
@@ -202,19 +217,19 @@ impl PlaybackService {
         current: &PlaybackPreparedTrack,
         next: &PlaybackPreparedTrack,
     ) -> bool {
-        self.side_pause_prompt_for_infos(&current.track_info, &next.track_info)
+        self.side_boundary_for_infos(&current.track_info, &next.track_info)
             .is_some()
     }
 
-    pub(super) fn side_pause_prompt_for_infos(
+    pub(super) fn side_boundary_for_infos(
         &self,
         current: &PlaybackTrackInfo,
         next: &PlaybackTrackInfo,
-    ) -> Option<PlaybackSidePausePrompt> {
+    ) -> Option<SideBoundary> {
         if !self.side_pause_enabled() {
             return None;
         }
-        side_pause_prompt_between(current, next)
+        side_boundary_between(current, next)
     }
 
     pub(super) fn side_pause_enabled(&self) -> bool {
@@ -284,13 +299,13 @@ impl PlaybackService {
         let Some(front) = self.playback_queue.front().map(str::to_string) else {
             error!("side-pause resume expected {pending_track_id}, but the queue is empty");
             self.telemetry_anomaly(AnomalyKind::SidePauseDesync);
-            self.demote_side_pause_to_manual();
+            self.abandon_side_pause();
             return;
         };
         if front != pending_track_id {
             error!("side-pause resume expected {pending_track_id}, but queue front is {front}");
             self.telemetry_anomaly(AnomalyKind::SidePauseDesync);
-            self.demote_side_pause_to_manual();
+            self.abandon_side_pause();
             return;
         }
         match self.playback_queue.apply(|queue| queue.next_entry()) {
@@ -306,9 +321,55 @@ impl PlaybackService {
             other => {
                 error!("side-pause resume expected Play for {pending_track_id}, got {other:?}");
                 self.telemetry_anomaly(AnomalyKind::SidePauseDesync);
-                self.demote_side_pause_to_manual();
+                self.abandon_side_pause();
             }
         }
+    }
+
+    /// When the running side-pause countdown ends, or `None` when no countdown
+    /// runs (not side-paused, or a pause that waits for Play). Read from the
+    /// phase every time, so anything that leaves the side pause ends the
+    /// countdown with it.
+    pub(super) fn side_pause_countdown_deadline(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+        match &self.slot {
+            PlaybackSlot::Active(cur) => match &cur.phase {
+                TrackPhase::Paused(PausePhase::SideEnded(decision)) => decision.resumes_at,
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// Stop a running side-pause countdown, keeping playback paused at the
+    /// boundary, and emit so every UI stops counting. A no-op — no emission —
+    /// when no countdown runs.
+    pub(super) fn cancel_side_pause_countdown(&mut self) {
+        let PlaybackSlot::Active(cur) = &mut self.slot else {
+            return;
+        };
+        let TrackPhase::Paused(PausePhase::SideEnded(decision)) = &mut cur.phase else {
+            return;
+        };
+        if decision.resumes_at.take().is_some() {
+            info!("side-pause countdown cancelled; waiting for Play");
+            self.emit_state();
+        }
+    }
+
+    /// The countdown that ends at `deadline` ran out: start the next side the
+    /// way Play does. Dropped when that countdown is no longer the one running
+    /// — the run loop re-arms its wait from the phase before each command, so
+    /// this is the guard against one that ended in the same turn.
+    pub(super) async fn side_pause_countdown_elapsed(
+        &mut self,
+        deadline: chrono::DateTime<chrono::Utc>,
+    ) {
+        if self.side_pause_countdown_deadline() != Some(deadline) {
+            debug!("ignoring a side-pause countdown that is no longer running");
+            return;
+        }
+        info!("side-pause countdown ran out; starting the next side");
+        self.resume().await;
     }
 
     /// The track a side-pause resumes into, if the current phase is a side-pause.
@@ -325,15 +386,25 @@ impl PlaybackService {
     }
 
     /// Demote a side-pause to a plain manual pause without emitting. Used when a
-    /// queue mutation invalidates the pending next side, or on a side-pause
-    /// resume that can no longer find its target — the UI keeps showing the last
-    /// emitted state (still paused) while the machine forgets the side-pause.
+    /// queue mutation invalidates the pending next side — the UI keeps showing
+    /// the last emitted state (still paused) while the machine forgets the
+    /// side-pause. A countdown the pause carried was already cancelled, and
+    /// announced, before the mutation ran (`cancels_side_pause_countdown`).
     pub(super) fn demote_side_pause_to_manual(&mut self) {
         if let PlaybackSlot::Active(cur) = &mut self.slot {
             if matches!(cur.phase, TrackPhase::Paused(PausePhase::SideEnded(_))) {
                 cur.phase = TrackPhase::Paused(PausePhase::Manual);
             }
         }
+    }
+
+    /// A side-pause resume that can no longer find its target: demote to a
+    /// plain manual pause and say so. Unlike a queue edit's silent demotion,
+    /// this emits — the resume may have come from a countdown running out, and
+    /// a UI still showing that countdown would sit at zero with nothing coming.
+    fn abandon_side_pause(&mut self) {
+        self.demote_side_pause_to_manual();
+        self.emit_state();
     }
 
     /// If the preloaded track is no longer the queue front (a mutation inserted

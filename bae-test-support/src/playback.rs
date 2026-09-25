@@ -104,10 +104,41 @@ pub fn start_capture_playback(
     library_manager: &bae_core::library::LibraryManager,
     device: TestAudioDevice,
 ) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
-    let (capture_device, capture_stream_rx): (
-        Box<dyn bae_core::playback::AudioOutputDevice>,
-        CaptureStreamRx,
-    ) = match device {
+    let (capture_device, capture_stream_rx) = capture_device(device);
+    let handle = library_manager.start_playback_service_with_audio_device(
+        tokio::runtime::Handle::current(),
+        100,
+        true,
+        capture_device,
+    );
+    (handle, capture_stream_rx)
+}
+
+/// [`start_capture_playback`] on a playback clock the test supplies, so the
+/// test decides when a side-pause countdown runs out.
+pub fn start_capture_playback_with_clock(
+    library_manager: &bae_core::library::LibraryManager,
+    device: TestAudioDevice,
+    clock: bae_core::playback::PlaybackClockRef,
+) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
+    let (capture_device, capture_stream_rx) = capture_device(device);
+    let handle = library_manager.start_playback_service_with_clock(
+        tokio::runtime::Handle::current(),
+        100,
+        true,
+        capture_device,
+        clock,
+    );
+    (handle, capture_stream_rx)
+}
+
+fn capture_device(
+    device: TestAudioDevice,
+) -> (
+    Box<dyn bae_core::playback::AudioOutputDevice>,
+    CaptureStreamRx,
+) {
+    match device {
         TestAudioDevice::Capture => {
             let (device, rx) = bae_core::playback::CaptureAudioDevice::new();
             (Box::new(device), rx)
@@ -116,14 +147,7 @@ pub fn start_capture_playback(
             let (device, rx) = bae_core::playback::RealtimeCaptureAudioDevice::new();
             (Box::new(device), rx)
         }
-    };
-    let handle = library_manager.start_playback_service_with_audio_device(
-        tokio::runtime::Handle::current(),
-        100,
-        true,
-        capture_device,
-    );
-    (handle, capture_stream_rx)
+    }
 }
 
 /// Awaits the next capture buffer minted by `create_stream`. Buffers are

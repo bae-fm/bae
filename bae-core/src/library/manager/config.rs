@@ -33,6 +33,14 @@ impl LibraryManager {
     pref_setter!(set_pause_between_sides, pause_between_sides: bool);
 
     pref_setter!(
+        /// Whether a side or disc pause ends on its own after a countdown, and
+        /// how long. Read when playback pauses at a boundary, so a change applies
+        /// from the next pause on.
+        set_side_pause_countdown,
+        side_pause_countdown: crate::config::SidePauseCountdown
+    );
+
+    pref_setter!(
         /// Whether the seek bar's leading label counts down the time remaining
         /// instead of showing the time elapsed.
         set_show_remaining_time,

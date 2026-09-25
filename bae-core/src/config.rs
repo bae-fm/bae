@@ -110,6 +110,37 @@ pub enum ReplayGainMode {
     Album,
 }
 
+/// How long a side or disc pause waits before the next side starts on its
+/// own — exactly the choices the settings offer. `Off` waits for Play.
+///
+/// Read only when `pause_between_sides` is on; the choice is kept while that
+/// setting is off, so turning pausing back on brings the countdown back too.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SidePauseCountdown {
+    Off,
+    Seconds5,
+    Seconds15,
+    Seconds30,
+    Seconds45,
+    Seconds60,
+}
+
+impl SidePauseCountdown {
+    /// How long the pause lasts before the next side starts, or `None` when it
+    /// waits for Play.
+    pub fn duration(self) -> Option<std::time::Duration> {
+        let seconds = match self {
+            Self::Off => return None,
+            Self::Seconds5 => 5,
+            Self::Seconds15 => 15,
+            Self::Seconds30 => 30,
+            Self::Seconds45 => 45,
+            Self::Seconds60 => 60,
+        };
+        Some(std::time::Duration::from_secs(seconds))
+    }
+}
+
 /// Which catalogs this library asks. One flag per
 /// [`Catalog::LOOKUP`](crate::import::Catalog::LOOKUP) member, all on by
 /// default.
@@ -337,6 +368,9 @@ pub struct Preferences {
     /// Defaults to `true`: a side break is part of how the release was made,
     /// so bae plays it unless the person turns it off.
     pub pause_between_sides: bool,
+    /// Whether a side or disc pause ends on its own after a countdown, and how
+    /// long it is. Defaults to `Off`: the pause waits for Play.
+    pub side_pause_countdown: SidePauseCountdown,
     /// How many blob uploads coven's upload drain runs at once. Device-local: a
     /// concurrency limit reflects one machine's link and CPU, so unlike most
     /// preferences it does not follow the user across devices.
@@ -391,6 +425,7 @@ impl Default for Preferences {
             default_track_save_preset: "flac".to_string(),
             default_release_save_preset: "flac".to_string(),
             pause_between_sides: true,
+            side_pause_countdown: SidePauseCountdown::Off,
             max_concurrent_uploads: default_transfer_concurrency(),
             max_concurrent_downloads: default_transfer_concurrency(),
             show_remaining_time: false,

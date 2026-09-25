@@ -94,6 +94,8 @@
     <string name="sync_blocked_circle_operation">Delingsændring</string>
     <string name="sync_blocked_reclaim">Skyoprydning</string>
     <string name="settings_pause_between_sides">Pause mellem sider og diske</string>
+    <string name="settings_side_pause_countdown">Nedtælling</string>
+    <string name="settings_side_pause_countdown_off">Fra</string>
     <string name="settings_restore_on_launch">Gendan ved start</string>
     <string name="settings_restore_on_launch_help">Gendanner sporet, positionen, køen og lydstyrken fra sidste session, når appen åbnes.</string>
     <string name="settings_playback">Afspilning</string>

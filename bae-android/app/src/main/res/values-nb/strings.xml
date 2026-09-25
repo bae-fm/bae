@@ -94,6 +94,8 @@
     <string name="sync_blocked_circle_operation">Delingsendring</string>
     <string name="sync_blocked_reclaim">Skyopprydding</string>
     <string name="settings_pause_between_sides">Pause mellom sider og plater</string>
+    <string name="settings_side_pause_countdown">Nedtelling</string>
+    <string name="settings_side_pause_countdown_off">Av</string>
     <string name="settings_restore_on_launch">Gjenopprett ved oppstart</string>
     <string name="settings_restore_on_launch_help">Gjenoppretter sporet, posisjonen, køen og volumet fra forrige økt når appen åpnes.</string>
     <string name="settings_playback">Avspilling</string>

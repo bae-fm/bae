@@ -7,9 +7,10 @@ const RELEASE_THAT_WAS_DELETED: &str = "763072b0-643f-4469-8ac7-799c4550a769"; /
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, StorageMode};
 use bae_core::library::LibraryManager;
+use bae_core::config::SidePauseCountdown;
 use bae_core::playback::{
-    PlaybackPauseReason, PlaybackProgress, PlaybackState, RepeatMode, DISC_PAUSE_TITLE_KEY,
-    SIDE_PAUSE_TITLE_KEY,
+    PlaybackPauseReason, PlaybackProgress, PlaybackSideCountdown, PlaybackState, RepeatMode,
+    DISC_PAUSE_TITLE_KEY, SIDE_PAUSE_COUNTDOWN_KEY, SIDE_PAUSE_TITLE_KEY,
 };
 use bae_test_support as support;
 use coven::{IdProvider, SequentialIdProvider};

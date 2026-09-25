@@ -228,8 +228,14 @@ fn playback_service_over(
         last_position_persist: None,
         first_audio_pending: None,
         renderer: Renderer::Local,
+        clock: Arc::new(crate::playback::ManualPlaybackClock::new(test_clock_start())),
     };
     (service, progress_rx)
+}
+
+/// Where a test's playback clock starts.
+fn test_clock_start() -> chrono::DateTime<chrono::Utc> {
+    "2026-01-01T00:00:00Z".parse().unwrap()
 }
 
 /// Build a `StreamPipeline` over a fresh source for the prepared track's fmt —
@@ -377,3 +383,4 @@ include!("tests/buffers_and_loading.rs");
 include!("tests/starvation_and_start.rs");
 include!("tests/queue_and_diagnostics.rs");
 include!("tests/remote_output.rs");
+include!("tests/side_pause_countdown.rs");

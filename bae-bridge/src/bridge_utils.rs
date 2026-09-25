@@ -3,8 +3,8 @@ use crate::types::BridgeOutputKind;
 use crate::types::{
     BridgeCatalog, BridgeConfig, BridgeDiscogsTokenStatus, BridgeLookupCatalogSetting,
     BridgeMcpConfig, BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveFilenameToken,
-    BridgeSavePregapPlacement, BridgeSavePreset, BridgeSourceAvailability, BridgeSubsonicConfig,
-    BridgeSyncConfig, BridgeSyncProvider,
+    BridgeSavePregapPlacement, BridgeSavePreset, BridgeSidePauseCountdown,
+    BridgeSourceAvailability, BridgeSubsonicConfig, BridgeSyncConfig, BridgeSyncProvider,
 };
 
 mirror_enum! {
@@ -209,6 +209,7 @@ impl BridgeConfig {
             default_track_save_preset,
             default_release_save_preset,
             pause_between_sides,
+            side_pause_countdown,
             max_concurrent_uploads,
             max_concurrent_downloads,
             identify_automatically,
@@ -239,6 +240,7 @@ impl BridgeConfig {
             library_name: inner.store_name.clone(),
             library_path: config.library_path().to_string_lossy().to_string(),
             pause_between_sides: *pause_between_sides,
+            side_pause_countdown: BridgeSidePauseCountdown::from_core(*side_pause_countdown),
             max_concurrent_uploads: max_concurrent_uploads.get(),
             max_concurrent_downloads: max_concurrent_downloads.get(),
             identify_automatically: *identify_automatically,

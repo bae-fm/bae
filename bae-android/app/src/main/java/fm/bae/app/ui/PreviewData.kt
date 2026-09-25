@@ -285,6 +285,7 @@ object PreviewData {
             id = "prompt-1",
             titleKey = "core.playback.pause.side_ended.title",
             sideLabel = "B",
+            countdown = null,
         )
 
     fun galleryItem(

@@ -26,11 +26,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -39,8 +42,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,9 +64,11 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeRepeatMode
+import uniffi.bae_bridge.BridgeSideCountdown
 import uniffi.bae_bridge.bridgeNextRepeatMode
 
 private val logger = BaeLogger("bae.NowPlayingBar")
@@ -167,7 +174,11 @@ private fun RowScope.NowPlayingTrackInfo(
     }
 }
 
-/** [SidePauseAlert] wired to write the setting off through [session]. */
+/**
+ * [SidePauseAlert] wired to [session]: Play resumes through the player, Close
+ * stops core's countdown, and an unchecked box writes the setting off.
+ */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 private fun SidePauseAlert(
     session: OpenLibrary,
@@ -191,32 +202,44 @@ private fun SidePauseAlert(
                 }
             }
         },
+        onPlay = { session.playback.play() },
+        onClose = { session.appHandle.cancelSidePauseCountdown() },
     )
 }
 
 /**
  * The prompt core raises when playback pauses at the end of a side or disc. Its
  * checkbox mirrors the "Pause between sides and discs" setting and starts
- * checked — the prompt only appears while the setting is on. Dismissing it with
+ * checked — the prompt only appears while the setting is on. Answering it with
  * the box unchecked calls [onTurnOffPauseBetweenSides]; a checked box changes
- * nothing.
+ * nothing. Play starts the next side now ([onPlay]); Close, or dismissing the
+ * dialog, stays paused and stops any countdown ([onClose]), so the next side
+ * waits for Play.
+ *
+ * While core counts down to the next side, the dialog shows the seconds left,
+ * read from core's deadline against [nowMs] — the dialog only shows the time;
+ * core starts the side.
  */
 @Composable
 fun SidePauseAlert(
     track: fm.bae.app.playback.NowPlaying,
     onTurnOffPauseBetweenSides: () -> Unit,
+    onPlay: () -> Unit,
+    onClose: () -> Unit,
+    nowMs: () -> Long = System::currentTimeMillis,
 ) {
     val context = LocalContext.current
     var dismissedPromptId by remember { mutableStateOf<String?>(null) }
     val prompt = track.sidePausePrompt
     if (prompt != null && dismissedPromptId != prompt.id) {
         var keepPausing by remember(prompt.id) { mutableStateOf(true) }
-        val dismiss = {
+        val answer = { play: Boolean ->
             dismissedPromptId = prompt.id
             if (!keepPausing) onTurnOffPauseBetweenSides()
+            if (play) onPlay() else onClose()
         }
         AlertDialog(
-            onDismissRequest = dismiss,
+            onDismissRequest = { answer(false) },
             title = {
                 Text(
                     context.coreString(
@@ -228,6 +251,9 @@ fun SidePauseAlert(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(context.coreString("core.playback.pause.message"))
+                    prompt.countdown?.let { countdown ->
+                        SidePauseCountdownLine(countdown = countdown, nowMs = nowMs)
+                    }
                     Row(
                         modifier =
                             Modifier
@@ -246,13 +272,61 @@ fun SidePauseAlert(
                 }
             },
             confirmButton = {
-                PrimaryButton(onClick = dismiss) {
+                PrimaryButton(onClick = { answer(true) }) {
+                    Text(stringResource(R.string.play))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { answer(false) }) {
                     Text(stringResource(R.string.close))
                 }
             },
         )
     }
 }
+
+/**
+ * The line counting down to the next side, redrawn as each whole second before
+ * core's deadline runs out. A polite live region, so a screen reader hears the
+ * new count without losing its place.
+ */
+@Composable
+private fun SidePauseCountdownLine(
+    countdown: BridgeSideCountdown,
+    nowMs: () -> Long,
+) {
+    val context = LocalContext.current
+    var now by remember(countdown.resumesAtMs) { mutableLongStateOf(nowMs()) }
+    LaunchedEffect(countdown.resumesAtMs) {
+        while (now < countdown.resumesAtMs) {
+            // Wake as the next whole second before the deadline passes.
+            val untilNextSecond = (countdown.resumesAtMs - now) % MILLIS_PER_SECOND
+            delay(if (untilNextSecond == 0L) MILLIS_PER_SECOND else untilNextSecond)
+            now = nowMs()
+        }
+    }
+    Text(
+        text =
+            context.coreString(
+                countdown.messageKey,
+                mapOf("seconds" to sideCountdownSecondsLeft(countdown.resumesAtMs, now)),
+            ),
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+    )
+}
+
+/**
+ * Whole seconds from [nowMs] until [resumesAtMs], rounded up so the line never
+ * reads 0 while the side has yet to start, and never below 0.
+ */
+internal fun sideCountdownSecondsLeft(
+    resumesAtMs: Long,
+    nowMs: Long,
+): Long = (maxOf(0L, resumesAtMs - nowMs) + MILLIS_PER_SECOND - 1) / MILLIS_PER_SECOND
+
+private const val MILLIS_PER_SECOND = 1_000L
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
@@ -333,6 +407,8 @@ private fun SidePauseAlertPreview() {
                     sidePausePrompt = PreviewData.sidePausePrompt(),
                 ),
             onTurnOffPauseBetweenSides = {},
+            onPlay = {},
+            onClose = {},
         )
     }
 }

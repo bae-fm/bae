@@ -95,6 +95,8 @@
     <string name="sync_blocked_circle_operation">Modificare de partajare</string>
     <string name="sync_blocked_reclaim">Curățare cloud</string>
     <string name="settings_pause_between_sides">Pauză între fețe și discuri</string>
+    <string name="settings_side_pause_countdown">Numărătoare inversă</string>
+    <string name="settings_side_pause_countdown_off">Oprit</string>
     <string name="settings_restore_on_launch">Restaurează la pornire</string>
     <string name="settings_restore_on_launch_help">Restaurează piesa, poziția, coada și volumul din ultima sesiune când se deschide aplicația.</string>
     <string name="settings_playback">Redare</string>

@@ -253,6 +253,7 @@ fn preferences_require_every_field() {
         "default_track_save_preset",
         "default_release_save_preset",
         "pause_between_sides",
+        "side_pause_countdown",
         "max_concurrent_uploads",
         "max_concurrent_downloads",
         "show_remaining_time",
@@ -313,6 +314,7 @@ save_presets:
 default_track_save_preset: flac
 default_release_save_preset: flac
 pause_between_sides: true
+side_pause_countdown: Off
 max_concurrent_uploads: 3
 max_concurrent_downloads: 3
 show_remaining_time: false
@@ -839,5 +841,58 @@ fn changing_a_preference_leaves_coven_config_readable_by_coven() {
     assert_eq!(
         coven::Config::load_from_config_yaml(&store_dir).unwrap(),
         config.to_coven()
+    );
+}
+
+/// Every countdown choice a person can pick is written to `preferences.yaml`
+/// and read back unchanged.
+#[test]
+fn side_pause_countdown_round_trips_through_preferences_yaml() {
+    for countdown in [
+        SidePauseCountdown::Off,
+        SidePauseCountdown::Seconds5,
+        SidePauseCountdown::Seconds15,
+        SidePauseCountdown::Seconds30,
+        SidePauseCountdown::Seconds45,
+        SidePauseCountdown::Seconds60,
+    ] {
+        let tmp = TempDir::new().unwrap();
+        let config = make_test_config("lib-countdown", tmp.path().to_path_buf());
+        config.save_store_config().unwrap();
+        let handle = ConfigHandle::new(config);
+
+        handle
+            .update_preferences(|prefs| prefs.side_pause_countdown = countdown)
+            .unwrap();
+
+        assert_eq!(
+            read_preferences(tmp.path()).unwrap().side_pause_countdown,
+            countdown
+        );
+    }
+}
+
+#[test]
+fn side_pause_countdown_duration_is_the_offered_length() {
+    assert_eq!(SidePauseCountdown::Off.duration(), None);
+    assert_eq!(
+        SidePauseCountdown::Seconds5.duration(),
+        Some(Duration::from_secs(5))
+    );
+    assert_eq!(
+        SidePauseCountdown::Seconds15.duration(),
+        Some(Duration::from_secs(15))
+    );
+    assert_eq!(
+        SidePauseCountdown::Seconds30.duration(),
+        Some(Duration::from_secs(30))
+    );
+    assert_eq!(
+        SidePauseCountdown::Seconds45.duration(),
+        Some(Duration::from_secs(45))
+    );
+    assert_eq!(
+        SidePauseCountdown::Seconds60.duration(),
+        Some(Duration::from_secs(60))
     );
 }

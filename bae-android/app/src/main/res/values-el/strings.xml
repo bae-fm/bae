@@ -94,6 +94,8 @@
     <string name="sync_blocked_circle_operation">Αλλαγή κοινής χρήσης</string>
     <string name="sync_blocked_reclaim">Εκκαθάριση cloud</string>
     <string name="settings_pause_between_sides">Παύση ανάμεσα σε πλευρές και δίσκους</string>
+    <string name="settings_side_pause_countdown">Αντίστροφη μέτρηση</string>
+    <string name="settings_side_pause_countdown_off">Ανενεργό</string>
     <string name="settings_restore_on_launch">Επαναφορά κατά την εκκίνηση</string>
     <string name="settings_restore_on_launch_help">Επαναφέρει το κομμάτι, τη θέση, την ουρά και την ένταση της τελευταίας συνεδρίας όταν ανοίγει η εφαρμογή.</string>
     <string name="settings_playback">Αναπαραγωγή</string>

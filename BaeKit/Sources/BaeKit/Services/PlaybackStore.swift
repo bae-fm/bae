@@ -518,6 +518,32 @@ extension BridgeSidePausePrompt {
     }
 }
 
+extension BridgeSideCountdown {
+    /// When the next side starts.
+    public var resumesAt: Date {
+        Date(timeIntervalSince1970: TimeInterval(resumesAtMs) / 1000)
+    }
+
+    /// Whole seconds until the next side starts at `now`, rounded up so the
+    /// line never reads 0 while the side has yet to start, and never below 0.
+    public func secondsLeft(at now: Date) -> Int {
+        let nowMs = Int64((now.timeIntervalSince1970 * 1000).rounded(.down))
+        let remainingMs = max(0, resumesAtMs - nowMs)
+        return Int((remainingMs + 999) / 1000)
+    }
+
+    /// The line counting down to the next side at `now`, worded by core for a
+    /// side or a disc. Formatted against the current locale so the seconds
+    /// take the locale's plural form.
+    public func line(at now: Date) -> String {
+        String(
+            format: localizedCoreString(messageKey),
+            locale: Locale.current,
+            secondsLeft(at: now)
+        )
+    }
+}
+
 public enum NowPlaying {
     case stopped
     /// A track is being prepared. `target` is the loading track's own metadata

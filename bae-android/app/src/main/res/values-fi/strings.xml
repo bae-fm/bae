@@ -94,6 +94,8 @@
     <string name="sync_blocked_circle_operation">Jakamisen muutos</string>
     <string name="sync_blocked_reclaim">Pilven siivous</string>
     <string name="settings_pause_between_sides">Tauko puolten ja levyjen välissä</string>
+    <string name="settings_side_pause_countdown">Lähtölaskenta</string>
+    <string name="settings_side_pause_countdown_off">Pois</string>
     <string name="settings_restore_on_launch">Palauta käynnistyksessä</string>
     <string name="settings_restore_on_launch_help">Palauttaa edellisen istunnon raidan, kohdan, jonon ja äänenvoimakkuuden, kun ohjelma avataan.</string>
     <string name="settings_playback">Toisto</string>

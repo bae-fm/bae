@@ -22,6 +22,13 @@ struct PlaybackSettingsTab: View {
                         uiStore.showError(error)
                     }
                 )
+                SidePauseCountdownPicker(
+                    configStore: configStore,
+                    setCountdown: playback.setSidePauseCountdown,
+                    showError: { @MainActor error in
+                        uiStore.showError(error)
+                    }
+                )
                 Toggle("Restore on launch", isOn: $persistPlayback)
             } footer: {
                 Text(

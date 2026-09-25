@@ -162,6 +162,66 @@ mod conversion_roundtrip {
     }
 
     #[test]
+    fn config_carries_every_side_pause_countdown_choice_both_ways() {
+        use bae_core::config::{Config, SidePauseCountdown as Core};
+
+        for (core, bridge) in [
+            (Core::Off, BridgeSidePauseCountdown::Off),
+            (Core::Seconds5, BridgeSidePauseCountdown::Seconds5),
+            (Core::Seconds15, BridgeSidePauseCountdown::Seconds15),
+            (Core::Seconds30, BridgeSidePauseCountdown::Seconds30),
+            (Core::Seconds45, BridgeSidePauseCountdown::Seconds45),
+            (Core::Seconds60, BridgeSidePauseCountdown::Seconds60),
+        ] {
+            let mut config = Config::with_defaults(
+                "library".to_string(),
+                "device".to_string(),
+                std::path::PathBuf::from("/library"),
+                "Library".to_string(),
+            );
+            config.prefs.side_pause_countdown = core;
+
+            assert_eq!(
+                BridgeConfig::from_core(&config).side_pause_countdown,
+                bridge
+            );
+            assert_eq!(bridge.into_core(), core);
+        }
+    }
+
+    #[test]
+    fn side_pause_prompt_carries_its_countdown_deadline_in_epoch_millis() {
+        use bae_core::playback::{
+            PlaybackSideCountdown, PlaybackSidePausePrompt, DISC_PAUSE_COUNTDOWN_KEY,
+            DISC_PAUSE_TITLE_KEY,
+        };
+
+        let resumes_at = "2026-01-01T00:00:05Z".parse().unwrap();
+        let prompt = BridgeSidePausePrompt::from_core(PlaybackSidePausePrompt {
+            id: "next:1:Cd".to_string(),
+            title_key: DISC_PAUSE_TITLE_KEY,
+            side_label: "1".to_string(),
+            countdown: Some(PlaybackSideCountdown {
+                resumes_at,
+                message_key: DISC_PAUSE_COUNTDOWN_KEY,
+            }),
+        });
+
+        assert_eq!(
+            prompt,
+            BridgeSidePausePrompt {
+                id: "next:1:Cd".to_string(),
+                title_key: DISC_PAUSE_TITLE_KEY.to_string(),
+                side_label: "1".to_string(),
+                countdown: Some(BridgeSideCountdown {
+                    resumes_at_ms: 1_767_225_605_000,
+                    message_key: DISC_PAUSE_COUNTDOWN_KEY.to_string(),
+                }),
+            }
+        );
+    }
+
+    #[test]
     fn cloud_setup_failure_reason_crosses_the_bridge_unchanged() {
         use bae_core::ui::UiErrorCategory;
         use coven::CloudHomeSetupFailure as Core;

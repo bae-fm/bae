@@ -96,6 +96,13 @@ are from the same release, and their side or disc numbers differ. The prompt
 names the medium and the side letter or disc number that ended. Pressing Play
 starts the next side or disc. Digital downloads do not pause at disc boundaries.
 
+With `side_pause_countdown` set to a length (5, 15, 30, 45, or 60 seconds), the
+pause also ends on its own: core sets the deadline when it pauses, the prompt
+carries it so every UI counts down to the same moment, and core starts the next
+side when it passes — the same path as Play. Close keeps the pause and stops
+the countdown; any other transport command, seek, queue edit, preview, or
+renderer switch stops it too.
+
 Shuffling closes this gate; unshuffling reopens it. Looping a sided release
 under context repeat prompts at the wrap — the last side ended, flip back to
 side A.

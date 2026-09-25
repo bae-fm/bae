@@ -74,6 +74,7 @@ mod preview;
 mod queue_commands;
 mod renderer;
 mod seek;
+mod side_countdown;
 mod slot;
 mod starvation;
 mod state;
@@ -83,12 +84,13 @@ use crate::playback::stream_pipeline::{
     cancel_and_join_decoder, log_stream_diagnostic, report_dropped_audio_events, spawn_decoder,
     DecodeFailureReport, DecoderSetup, SegmentDecodeParams, StreamDecodeParams,
 };
-use api::SidePauseDecision;
 pub(crate) use api::{dispatch_command, PlaybackCommand};
 pub use api::{
-    LoadingTrack, PlaybackHandle, PlaybackPauseReason, PlaybackSidePausePrompt, PlaybackState,
-    PlaybackTrackInfo, PlaybackTrackSide, DISC_PAUSE_TITLE_KEY, SIDE_PAUSE_TITLE_KEY,
+    LoadingTrack, PlaybackHandle, PlaybackPauseReason, PlaybackSideCountdown,
+    PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo, PlaybackTrackSide,
+    DISC_PAUSE_COUNTDOWN_KEY, DISC_PAUSE_TITLE_KEY, SIDE_PAUSE_COUNTDOWN_KEY, SIDE_PAUSE_TITLE_KEY,
 };
+use api::{SideBoundary, SidePauseDecision};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
 use renderer::{RemoteConnect, Renderer};
 use slot::{LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase};
@@ -474,6 +476,9 @@ pub struct PlaybackService {
     /// Where the current track plays. `Local` by default; `play_on`/`stop_remote`
     /// switch it to a connected remote renderer (Cast or DLNA).
     renderer: Renderer,
+    /// When a side-pause countdown started and when it runs out. The countdown
+    /// itself lives in the side-pause phase; this only reads the time.
+    clock: crate::playback::PlaybackClockRef,
 }
 
 /// A pending first-audio timing: the load whose arrival at Playing it measures,
@@ -484,10 +489,12 @@ struct FirstAudioMeasurement {
     started_at: std::time::Instant,
 }
 
-fn side_pause_prompt_between(
+/// The side or disc boundary between `current` and `next`, or `None` when they
+/// play on the same side (or aren't on one release's sides at all).
+fn side_boundary_between(
     current: &PlaybackTrackInfo,
     next: &PlaybackTrackInfo,
-) -> Option<PlaybackSidePausePrompt> {
+) -> Option<SideBoundary> {
     if current.release_id != next.release_id {
         return None;
     }
@@ -496,19 +503,25 @@ fn side_pause_prompt_between(
     if current_side.number == next_side.number {
         return None;
     }
-    let (title_key, side_label) = match current_side.medium {
+    let (title_key, countdown_key, side_label) = match current_side.medium {
         PhysicalMedium::Vinyl | PhysicalMedium::Cassette => (
             SIDE_PAUSE_TITLE_KEY,
+            SIDE_PAUSE_COUNTDOWN_KEY,
             crate::util::format::side_letter(current_side.number),
         ),
-        PhysicalMedium::Cd => (DISC_PAUSE_TITLE_KEY, current_side.number.to_string()),
+        PhysicalMedium::Cd => (
+            DISC_PAUSE_TITLE_KEY,
+            DISC_PAUSE_COUNTDOWN_KEY,
+            current_side.number.to_string(),
+        ),
     };
-    Some(PlaybackSidePausePrompt {
+    Some(SideBoundary {
         id: format!(
             "{}:{}:{:?}",
             next.track_id, current_side.number, current_side.medium
         ),
         title_key,
+        countdown_key,
         side_label,
     })
 }
@@ -612,6 +625,9 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         }
         PlaybackCommand::Pause => Some(PlaybackCommandKind::Pause),
         PlaybackCommand::Resume => Some(PlaybackCommandKind::Resume),
+        PlaybackCommand::CancelSidePauseCountdown => {
+            Some(PlaybackCommandKind::CancelSidePauseCountdown)
+        }
         PlaybackCommand::Stop => Some(PlaybackCommandKind::Stop),
         PlaybackCommand::SetShuffle(_) => Some(PlaybackCommandKind::SetShuffle),
         PlaybackCommand::SetRepeatMode(_) => Some(PlaybackCommandKind::SetRepeat),
@@ -648,6 +664,67 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         PlaybackCommand::OutputDeviceChanged => None,
         #[cfg(any(test, feature = "test-utils"))]
         PlaybackCommand::GetQueueProjection(_) => None,
+    }
+}
+
+/// Whether a command stops a running side-pause countdown before it is
+/// handled. Every command a person uses to steer playback does: whatever they
+/// asked for, the next side must not then start on its own. Most of these also
+/// leave the side pause themselves (a new track, a manual pause, a stop); the
+/// rest keep it — a seek within the ended side, a queue edit that demotes it
+/// silently, a preview, a renderer switch — and without this the countdown would
+/// outlive the command. Resume is not here: it ends the pause by starting the
+/// next side, which is what the countdown was going to do. Internal commands,
+/// queries, and volume never touch it.
+fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
+    match command {
+        PlaybackCommand::Play(_)
+        | PlaybackCommand::PlayRelease { .. }
+        | PlaybackCommand::PlayReleases(_)
+        | PlaybackCommand::PlayLibraryShuffled
+        | PlaybackCommand::Pause
+        | PlaybackCommand::Stop
+        | PlaybackCommand::Next
+        | PlaybackCommand::Previous
+        | PlaybackCommand::Seek(_)
+        | PlaybackCommand::SeekByRatio(_)
+        | PlaybackCommand::AddToQueue(_)
+        | PlaybackCommand::AddNext(_)
+        | PlaybackCommand::AddReleaseToQueue(_)
+        | PlaybackCommand::AddReleaseNext(_)
+        | PlaybackCommand::InsertInQueue(_, _)
+        | PlaybackCommand::RemoveFromQueue(_)
+        | PlaybackCommand::ReorderQueue { .. }
+        | PlaybackCommand::ClearUpNext
+        | PlaybackCommand::ClearPlayingFrom
+        | PlaybackCommand::SetShuffle(_)
+        | PlaybackCommand::SkipTo(_)
+        | PlaybackCommand::PreviewPlay(_)
+        | PlaybackCommand::PlayOn(_)
+        | PlaybackCommand::PlayOnAirPlay(_)
+        | PlaybackCommand::StopRemote => true,
+        PlaybackCommand::Resume
+        | PlaybackCommand::CancelSidePauseCountdown
+        | PlaybackCommand::AutoAdvance { .. }
+        | PlaybackCommand::TrackReady { .. }
+        | PlaybackCommand::HaltOnError
+        | PlaybackCommand::ReadFailed { .. }
+        | PlaybackCommand::SetVolume(_)
+        | PlaybackCommand::SetMuted(_)
+        | PlaybackCommand::SetRepeatMode(_)
+        | PlaybackCommand::ReevaluateSidePauseStaging
+        | PlaybackCommand::PreviewStop
+        | PlaybackCommand::PreviewTogglePause
+        | PlaybackCommand::PreviewSeekByRatio(_)
+        | PlaybackCommand::PreviewCompleted
+        | PlaybackCommand::GetVolume(_)
+        | PlaybackCommand::Shutdown(_)
+        | PlaybackCommand::SaveState(_)
+        | PlaybackCommand::RemoteStatus(_) => false,
+        #[cfg(target_os = "macos")]
+        PlaybackCommand::OutputDeviceChanged => false,
+        #[cfg(any(test, feature = "test-utils"))]
+        PlaybackCommand::GetQueueProjection(_) => false,
     }
 }
 

@@ -33,9 +33,7 @@ impl PausePhase {
     pub(super) fn to_reason(&self) -> PlaybackPauseReason {
         match self {
             PausePhase::Manual => PlaybackPauseReason::Manual,
-            PausePhase::SideEnded(decision) => {
-                PlaybackPauseReason::SideEnded(decision.prompt.clone())
-            }
+            PausePhase::SideEnded(decision) => PlaybackPauseReason::SideEnded(decision.prompt()),
         }
     }
 }

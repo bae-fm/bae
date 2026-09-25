@@ -291,6 +291,9 @@ struct SidePauseTestFixture {
     track_ids: Vec<String>,
     release_id: String,
     capture_stream_rx: support::CaptureStreamRx,
+    /// The service's playback clock. Nothing moves it but the test, so a
+    /// side-pause countdown runs out exactly when the test says.
+    clock: Arc<bae_core::playback::ManualPlaybackClock>,
     _temp_dir: TempDir,
 }
 
@@ -299,6 +302,28 @@ impl SidePauseTestFixture {
         format: &str,
         positions: [&str; 3],
         pause_between_sides: bool,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_settings(
+            format,
+            positions,
+            pause_between_sides,
+            SidePauseCountdown::Off,
+        )
+        .await
+    }
+
+    /// A vinyl A1/A2/B1 fixture that pauses between sides with `countdown`.
+    async fn with_countdown(
+        countdown: SidePauseCountdown,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_settings("Vinyl", ["A1", "A2", "B1"], true, countdown).await
+    }
+
+    async fn with_settings(
+        format: &str,
+        positions: [&str; 3],
+        pause_between_sides: bool,
+        countdown: SidePauseCountdown,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let import_ids = SequentialIdProvider::new("side-pause-import");
         let import_id = import_ids.new_id();
@@ -311,6 +336,7 @@ impl SidePauseTestFixture {
             },
             |library_manager| {
                 library_manager.set_pause_between_sides(pause_between_sides)?;
+                library_manager.set_side_pause_countdown(countdown)?;
                 Ok(())
             },
         )
@@ -328,9 +354,13 @@ impl SidePauseTestFixture {
         // the decoder rather than arriving during playback. Pacing the sink to
         // wall-clock bounds how fast the boundary can arrive, and a loaded machine
         // can only slow that sink down, never speed it up.
-        let (playback_handle, capture_stream_rx) = support::start_capture_playback(
+        let clock = Arc::new(bae_core::playback::ManualPlaybackClock::new(
+            side_pause_clock_start(),
+        ));
+        let (playback_handle, capture_stream_rx) = support::start_capture_playback_with_clock(
             &library_manager,
             support::TestAudioDevice::RealtimeCapture,
+            clock.clone(),
         );
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
@@ -340,6 +370,7 @@ impl SidePauseTestFixture {
             track_ids: imported.track_ids,
             release_id: imported.release_id,
             capture_stream_rx,
+            clock,
             _temp_dir: imported.temp_dir,
         })
     }
@@ -449,6 +480,11 @@ impl SidePauseTestFixture {
     }
 }
 
+/// Where a side-pause fixture's playback clock starts.
+fn side_pause_clock_start() -> chrono::DateTime<chrono::Utc> {
+    "2026-01-01T00:00:00Z".parse().unwrap()
+}
+
 fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRelease {
     let mut release = create_test_album();
     release.id = format!("side-pause-{format}-{}", positions.join("_"));
@@ -467,6 +503,7 @@ fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRe
 // and AutoAdvance always start playing.
 
 include!("side_and_navigation.rs");
+include!("side_pause_countdown.rs");
 include!("cd_boundaries.rs");
 include!("queue_and_pregap.rs");
 include!("high_rate_and_restore.rs");

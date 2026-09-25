@@ -96,6 +96,8 @@
     <string name="sync_blocked_circle_operation">Zmena zdieľania</string>
     <string name="sync_blocked_reclaim">Vyčistenie cloudu</string>
     <string name="settings_pause_between_sides">Pauza medzi stranami a diskami</string>
+    <string name="settings_side_pause_countdown">Odpočítavanie</string>
+    <string name="settings_side_pause_countdown_off">Vypnuté</string>
     <string name="settings_restore_on_launch">Obnoviť pri spustení</string>
     <string name="settings_restore_on_launch_help">Pri otvorení aplikácie obnoví skladbu, pozíciu, poradie a hlasitosť z poslednej relácie.</string>
     <string name="settings_playback">Prehrávanie</string>

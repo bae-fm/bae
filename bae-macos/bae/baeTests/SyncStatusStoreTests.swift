@@ -130,6 +130,7 @@ struct SyncStatusStoreTests {
             libraryName: "Test Library",
             libraryPath: "/test",
             pauseBetweenSides: false,
+            sidePauseCountdown: .off,
             maxConcurrentUploads: 1,
             maxConcurrentDownloads: 1,
             identifyAutomatically: true,

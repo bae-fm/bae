@@ -2,6 +2,7 @@
 pub mod aaudio_output;
 pub mod airplay_output;
 pub mod audio_output;
+mod clock;
 mod context;
 #[cfg(not(target_os = "android"))]
 pub mod cpal_output;
@@ -32,6 +33,10 @@ pub use audio_output::{
     AudioError, AudioOutput, AudioOutputDevice, AudioState, AudioStream, CompletionEvent,
     PositionEvent,
 };
+#[cfg(any(test, feature = "test-utils"))]
+pub use clock::ManualPlaybackClock;
+pub(crate) use clock::WallPlaybackClock;
+pub use clock::{PlaybackClock, PlaybackClockRef, PlaybackSleep};
 pub use context::{ContextSource, ContextStart};
 pub use error::PlaybackError;
 pub use persisted::{repeat_to_str, source_to_str, PersistedPlayback};
@@ -47,9 +52,9 @@ pub use queue::{
 };
 pub use repeat_mode::RepeatMode;
 pub use service::{
-    LoadingTrack, PlaybackHandle, PlaybackPauseReason, PlaybackService, PlaybackSidePausePrompt,
-    PlaybackState, PlaybackTrackInfo, PlaybackTrackSide, DISC_PAUSE_TITLE_KEY,
-    SIDE_PAUSE_TITLE_KEY,
+    LoadingTrack, PlaybackHandle, PlaybackPauseReason, PlaybackService, PlaybackSideCountdown,
+    PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo, PlaybackTrackSide,
+    DISC_PAUSE_COUNTDOWN_KEY, DISC_PAUSE_TITLE_KEY, SIDE_PAUSE_COUNTDOWN_KEY, SIDE_PAUSE_TITLE_KEY,
 };
 pub use source::{TrackCrossing, TrackFmt};
 pub use sparse_buffer::SharedSparseBuffer;

@@ -6,6 +6,9 @@ pub struct BridgeConfig {
     pub library_name: String,
     pub library_path: String,
     pub pause_between_sides: bool,
+    /// Whether a side or disc pause ends on its own after a countdown, and how
+    /// long. Settings show it only while `pause_between_sides` is on.
+    pub side_pause_countdown: BridgeSidePauseCountdown,
     /// How many blob uploads run at once. Device-local; range 1..=8. Desktop
     /// exposes a control for it, mobile does not (mobile makes no uploads).
     pub max_concurrent_uploads: u32,
@@ -58,6 +61,25 @@ pub struct BridgeConfig {
     /// broken. Does not imply sync is working: runtime status lives in
     /// `BridgeSyncStatusSnapshot`, not config.
     pub sync: Option<BridgeSyncConfig>,
+}
+
+/// How long a side or disc pause waits before the next side starts on its
+/// own — exactly the choices Settings offer. `Off` waits for Play.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSidePauseCountdown {
+    Off,
+    Seconds5,
+    Seconds15,
+    Seconds30,
+    Seconds45,
+    Seconds60,
+}
+
+mirror_enum! {
+    BridgeSidePauseCountdown = bae_core::config::SidePauseCountdown,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Off, Seconds5, Seconds15, Seconds30, Seconds45, Seconds60 },
 }
 
 /// Whether Find online asks one catalog, and when it does not, why not. Mirrors

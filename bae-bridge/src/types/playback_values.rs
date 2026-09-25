@@ -49,6 +49,9 @@ pub struct BridgeSidePausePrompt {
     pub id: String,
     pub title_key: String,
     pub side_label: String,
+    /// The countdown to the next side starting on its own, or `None` when the
+    /// pause waits for Play.
+    pub countdown: Option<BridgeSideCountdown>,
 }
 
 impl BridgeSidePausePrompt {
@@ -57,11 +60,37 @@ impl BridgeSidePausePrompt {
             id,
             title_key,
             side_label,
+            countdown,
         } = prompt;
         Self {
             id,
             title_key: title_key.to_string(),
             side_label,
+            countdown: countdown.map(BridgeSideCountdown::from_core),
+        }
+    }
+}
+
+/// A running side-pause countdown. Core starts the next side when it runs out;
+/// a UI only counts down to `resumes_at_ms`, so every one shows the same number.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSideCountdown {
+    /// When the next side starts, as Unix epoch milliseconds.
+    pub resumes_at_ms: i64,
+    /// The `core.*` catalog key of the line counting it down, worded for a side
+    /// or a disc. Takes the whole seconds left, rounded up, as `seconds`.
+    pub message_key: String,
+}
+
+impl BridgeSideCountdown {
+    fn from_core(countdown: bae_core::playback::PlaybackSideCountdown) -> Self {
+        let bae_core::playback::PlaybackSideCountdown {
+            resumes_at,
+            message_key,
+        } = countdown;
+        Self {
+            resumes_at_ms: resumes_at.timestamp_millis(),
+            message_key: message_key.to_string(),
         }
     }
 }

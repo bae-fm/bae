@@ -48,15 +48,33 @@ impl LoadingTrack {
     }
 }
 
+/// What the side/disc pause prompt shows: which boundary playback stopped at,
+/// and whether the next side starts on its own.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaybackSidePausePrompt {
     pub id: String,
     pub title_key: &'static str,
     pub side_label: String,
+    /// The countdown to the next side starting on its own, or `None` when the
+    /// pause waits for Play.
+    pub countdown: Option<PlaybackSideCountdown>,
+}
+
+/// A running side-pause countdown. Every UI counts down from `resumes_at`, so
+/// they all show the same number; core alone decides when the next side starts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlaybackSideCountdown {
+    /// When the next side starts.
+    pub resumes_at: chrono::DateTime<chrono::Utc>,
+    /// The catalog key of the line counting it down, worded for a side or a
+    /// disc like the prompt's title. Takes the whole seconds left as `seconds`.
+    pub message_key: &'static str,
 }
 
 pub const SIDE_PAUSE_TITLE_KEY: &str = "core.playback.pause.side_ended.title";
 pub const DISC_PAUSE_TITLE_KEY: &str = "core.playback.pause.disc_ended.title";
+pub const SIDE_PAUSE_COUNTDOWN_KEY: &str = "core.playback.pause.side_ended.countdown";
+pub const DISC_PAUSE_COUNTDOWN_KEY: &str = "core.playback.pause.disc_ended.countdown";
 
 /// Why playback is paused.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,10 +83,43 @@ pub enum PlaybackPauseReason {
     SideEnded(PlaybackSidePausePrompt),
 }
 
+/// The side or disc boundary between two tracks, in the words the prompt uses
+/// for it: the side that ended, and the catalog keys worded for its medium.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct SideBoundary {
+    pub(super) id: String,
+    pub(super) title_key: &'static str,
+    pub(super) countdown_key: &'static str,
+    pub(super) side_label: String,
+}
+
+/// A pause at a side boundary: the track it resumes into, the boundary the
+/// prompt names, and — when a countdown runs — when it resumes on its own.
 #[derive(Debug, Clone)]
 pub(super) struct SidePauseDecision {
     pub(super) track_id: String,
-    pub(super) prompt: PlaybackSidePausePrompt,
+    pub(super) boundary: SideBoundary,
+    pub(super) resumes_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl SidePauseDecision {
+    pub(super) fn prompt(&self) -> PlaybackSidePausePrompt {
+        let SideBoundary {
+            id,
+            title_key,
+            countdown_key,
+            side_label,
+        } = &self.boundary;
+        PlaybackSidePausePrompt {
+            id: id.clone(),
+            title_key,
+            side_label: side_label.clone(),
+            countdown: self.resumes_at.map(|resumes_at| PlaybackSideCountdown {
+                resumes_at,
+                message_key: countdown_key,
+            }),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -89,6 +140,10 @@ pub(crate) enum PlaybackCommand {
     PlayLibraryShuffled,
     Pause,
     Resume,
+    /// Stop a running side-pause countdown and keep playback paused at the
+    /// boundary: the prompt's Close. The pause still resumes into the next side
+    /// on Play. A no-op when no countdown runs.
+    CancelSidePauseCountdown,
     Stop,
     /// Manual next track (pregap skipped).
     Next,
@@ -318,6 +373,11 @@ impl PlaybackHandle {
     }
     pub fn resume(&self) {
         self.dispatch(PlaybackCommand::Resume);
+    }
+    /// Stop a running side-pause countdown, keeping playback paused at the
+    /// boundary until Play.
+    pub fn cancel_side_pause_countdown(&self) {
+        self.dispatch(PlaybackCommand::CancelSidePauseCountdown);
     }
     pub fn stop(&self) {
         self.dispatch(PlaybackCommand::Stop);

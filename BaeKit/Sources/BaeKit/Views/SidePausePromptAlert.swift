@@ -99,6 +99,9 @@ private struct SidePausePromptCard: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if let countdown = prompt.countdown {
+                SidePauseCountdownLine(countdown: countdown)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 Toggle("Pause between sides and discs", isOn: $keepPausing)
@@ -165,6 +168,31 @@ private struct SidePausePromptCard: View {
         catch {
             showError(error)
         }
+    }
+}
+
+/// The line counting down to the next side, redrawn each second from core's
+/// deadline. The ticks are anchored to that deadline rather than to when the
+/// card appeared, so the number changes exactly as each whole second runs out.
+/// The line only shows the time; core starts the next side when it runs out.
+private struct SidePauseCountdownLine: View {
+    let countdown: BridgeSideCountdown
+
+    var body: some View {
+        TimelineView(.periodic(from: tickAnchor, by: 1)) { context in
+            Text(verbatim: countdown.line(at: context.date))
+                .font(.body.weight(.medium))
+                .monospacedDigit()
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.updatesFrequently)
+        }
+    }
+
+    /// A tick an hour before the deadline: every later tick lands a whole
+    /// number of seconds before it, and the hour keeps the anchor in the past
+    /// for any countdown the settings offer.
+    private var tickAnchor: Date {
+        countdown.resumesAt.addingTimeInterval(-3600)
     }
 }
 

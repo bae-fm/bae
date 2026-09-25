@@ -456,6 +456,8 @@ fn produced_keys() -> Vec<String> {
         [
             bae_core::playback::DISC_PAUSE_TITLE_KEY,
             bae_core::playback::SIDE_PAUSE_TITLE_KEY,
+            bae_core::playback::DISC_PAUSE_COUNTDOWN_KEY,
+            bae_core::playback::SIDE_PAUSE_COUNTDOWN_KEY,
         ]
         .into_iter()
         .map(str::to_string),

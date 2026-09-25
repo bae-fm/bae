@@ -19,6 +19,12 @@ forward! { sync this => {
         Ok(this.services.set_pause_between_sides(enabled)?)
     }
 
+    fn set_side_pause_countdown(
+        countdown: crate::types::BridgeSidePauseCountdown,
+    ) -> Result<(), BridgeError> {
+        Ok(this.services.set_side_pause_countdown(countdown.into_core())?)
+    }
+
     fn set_max_concurrent_uploads(n: u32) -> Result<(), BridgeError> {
         Ok(this.services.set_max_concurrent_uploads(n)?)
     }

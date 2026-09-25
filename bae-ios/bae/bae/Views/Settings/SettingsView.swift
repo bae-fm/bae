@@ -111,6 +111,13 @@ struct SettingsView: View {
                             configStore.showError(error)
                         }
                     )
+                    SidePauseCountdownPicker(
+                        configStore: configStore,
+                        setCountdown: playback.setSidePauseCountdown,
+                        showError: { @MainActor error in
+                            configStore.showError(error)
+                        }
+                    )
                     Toggle("Restore on launch", isOn: $persistPlayback)
                 } header: {
                     Text("Playback")

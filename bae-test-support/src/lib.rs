@@ -57,6 +57,6 @@ pub use library::{
 };
 pub use musicbrainz::{mb_medium, mb_release, mb_track, seed_mb_release};
 pub use playback::{
-    next_capture_stream, next_matching, start_capture_playback, wait_for_seek, wait_until_playing,
-    CaptureStreamRx, TestAudioDevice,
+    next_capture_stream, next_matching, start_capture_playback, start_capture_playback_with_clock,
+    wait_for_seek, wait_until_playing, CaptureStreamRx, TestAudioDevice,
 };
