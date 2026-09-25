@@ -636,7 +636,6 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
                 created_at: test_clock().0,
             },
             audio: crate::import::TrackAudio::CueBacked {
-                file_path: audio_path.clone(),
                 cue_pair: Arc::clone(&cue_pair),
                 cue_index: index,
             },

@@ -209,7 +209,6 @@ INDEX 01 01:00:00
                 Some(track.number as i32),
             ),
             audio: crate::import::TrackAudio::CueBacked {
-                file_path: audio_path.clone(),
                 cue_pair: Arc::clone(&cue_pair),
                 cue_index: index,
             },
@@ -460,7 +459,6 @@ INDEX 01 11:01:30
                 Some(track.number as i32),
             ),
             audio: crate::import::TrackAudio::CueBacked {
-                file_path: audio_path.clone(),
                 cue_pair: Arc::clone(&cue_pair),
                 cue_index: index,
             },

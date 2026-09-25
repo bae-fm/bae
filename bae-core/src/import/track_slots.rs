@@ -642,7 +642,6 @@ pub(crate) fn resolve_track_files(
                     crate::import::probe::sheet_track_duration_ms(&analysis, cue_index, sheet_id)?;
                 (
                     TrackAudio::CueBacked {
-                        file_path: file.path.clone(),
                         cue_pair: analysis,
                         cue_index,
                     },

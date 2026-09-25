@@ -642,7 +642,6 @@ pub enum TrackAudio {
         source_audio: crate::import::folder_scanner::ScannedAudio,
     },
     CueBacked {
-        file_path: PathBuf,
         cue_pair: Arc<CueFlacAnalysis>,
         cue_index: usize,
     },

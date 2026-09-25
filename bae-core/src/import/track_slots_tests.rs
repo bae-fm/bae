@@ -555,10 +555,12 @@ fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
             TrackAudio::CueBacked {
                 cue_index,
                 cue_pair,
-                file_path,
             } => {
                 assert_eq!(*cue_index, position);
-                assert_eq!(file_path.file_name().unwrap(), "CDImage.flac");
+                assert_eq!(
+                    cue_pair.audio_files[0].path.file_name().unwrap(),
+                    "CDImage.flac"
+                );
                 analyses.push(Arc::as_ptr(cue_pair));
             }
             other => panic!("expected a CueBacked track file, got {other:?}"),
