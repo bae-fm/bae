@@ -522,6 +522,7 @@ pub(super) fn categorize_files_from_tree(
     stored: &StoredCandidateEdits,
     parts: &[ReleasePart],
     cancellation: &ScanCancellation,
+    probed: &ProbedAudio,
 ) -> Result<CategorizeOutcome, FolderScanError> {
     let mut proposed: Vec<(ScannedFile, ProposedRole)> = Vec::new();
 
@@ -588,7 +589,7 @@ pub(super) fn categorize_files_from_tree(
             entry.modified_at_ns,
         );
         if role == ProposedRole::Audio {
-            let Some(source_audio) = source_audio_of(&file)? else {
+            let Some(source_audio) = source_audio_of(&file, probed)? else {
                 return invalid(InvalidReason::CorruptAudioFile {
                     path: file.relative_path,
                 });
@@ -692,7 +693,40 @@ pub(super) fn categorize_files_from_tree(
     }))
 }
 
-fn source_audio_of(file: &ScannedFile) -> Result<Option<ScannedAudio>, FolderScanError> {
+/// The audio facts a pass has read, by the file identity they were read
+/// under (path, size, modification time). A pass categorizes a file again when
+/// it regroups folders — child folders' tracks read as one release, or a
+/// wrapper collapsed onto the release below it — and the facts it read the
+/// first time still describe the same bytes.
+#[derive(Default)]
+pub(super) struct ProbedAudio {
+    facts: std::sync::Mutex<HashMap<(PathBuf, u64, i64), Option<ScannedAudio>>>,
+}
+
+impl ProbedAudio {
+    fn get(&self, file: &ScannedFile) -> Option<Option<ScannedAudio>> {
+        self.facts
+            .lock()
+            .expect("probed audio mutex poisoned")
+            .get(&(file.path.clone(), file.size, file.modified_at_ns))
+            .cloned()
+    }
+
+    fn insert(&self, file: &ScannedFile, facts: Option<ScannedAudio>) {
+        self.facts
+            .lock()
+            .expect("probed audio mutex poisoned")
+            .insert((file.path.clone(), file.size, file.modified_at_ns), facts);
+    }
+}
+
+/// `file`'s audio facts: the ones `probed` holds for its identity, or read
+/// from the file and kept there. `None` when the file is not audio bae can
+/// play.
+fn source_audio_of(
+    file: &ScannedFile,
+    probed: &ProbedAudio,
+) -> Result<Option<ScannedAudio>, FolderScanError> {
     let metadata =
         std::fs::metadata(&file.path).map_err(|source| FolderScanError::io(&file.path, source))?;
     let modified_at_ns = super::scan::file_modified_at_ns(&file.path, &metadata)?;
@@ -702,6 +736,15 @@ fn source_audio_of(file: &ScannedFile) -> Result<Option<ScannedAudio>, FolderSca
             file.path.display()
         )));
     }
+    if let Some(facts) = probed.get(file) {
+        return Ok(facts);
+    }
+    let facts = probe_source_audio(file)?;
+    probed.insert(file, facts.clone());
+    Ok(facts)
+}
+
+fn probe_source_audio(file: &ScannedFile) -> Result<Option<ScannedAudio>, FolderScanError> {
     let path = file.path.to_str().ok_or_else(|| {
         FolderScanError::Other(format!("audio path is not UTF-8: {}", file.path.display()))
     })?;

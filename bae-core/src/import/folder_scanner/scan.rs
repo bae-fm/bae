@@ -164,6 +164,9 @@ pub(super) struct ScanRoot<'a> {
     watched_folder_path: &'a str,
     stored: &'a StoredCandidateEdits,
     cancellation: &'a ScanCancellation,
+    /// Every audio file's facts this pass has read, so regrouping folders
+    /// reads none twice.
+    probed: &'a ProbedAudio,
 }
 
 /// What a pass reads a root's folders against: the file corrections the user
@@ -292,6 +295,7 @@ pub(super) fn categorize_selected_files(
         scan.stored,
         parts,
         scan.cancellation,
+        scan.probed,
     )
 }
 
@@ -637,12 +641,14 @@ where
         }
     }
     let watched_folder_path = root.to_string_lossy().into_owned();
+    let probed = ProbedAudio::default();
     let walk = Walk {
         scan: ScanRoot {
             root: &root,
             watched_folder_path: &watched_folder_path,
             stored: readings.stored,
             cancellation,
+            probed: &probed,
         },
         reader,
         decisions: readings.decisions,
@@ -740,12 +746,14 @@ where
         )));
     }
     let watched_folder_path = root.to_string_lossy().into_owned();
+    let probed = ProbedAudio::default();
     let walk = Walk {
         scan: ScanRoot {
             root,
             watched_folder_path: &watched_folder_path,
             stored: readings.stored,
             cancellation,
+            probed: &probed,
         },
         reader,
         decisions: readings.decisions,
@@ -848,6 +856,7 @@ pub fn collect_release_candidate_files_with_scope(
         stored,
         &[],
         &ScanCancellation::new(),
+        &ProbedAudio::default(),
     )? {
         CategorizeOutcome::Valid(files) => Ok(files),
         CategorizeOutcome::Invalid(reason) => Err(reason.into()),
