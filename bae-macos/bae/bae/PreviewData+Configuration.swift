@@ -245,22 +245,6 @@
             )
         }
 
-        /// What the library holds for the name-only credit `name`.
-        static func resolvedCredit(
-            _ name: String,
-            _ resolution: BridgeCreditResolution
-        ) -> BridgeResolvedCredit {
-            BridgeResolvedCredit(
-                credit: BridgeArtistCredit(
-                    name: name,
-                    sortName: nil,
-                    musicbrainzArtistId: nil,
-                    discogsArtistId: nil
-                ),
-                resolution: resolution
-            )
-        }
-
         static func artistAssignmentsLibrary() -> Library {
             Library(searchArtists: { _ in
                 [
