@@ -13,7 +13,7 @@ impl ImportService {
         clock: coven::ClockRef,
         ids: coven::IdRef,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
-        let (fs_tx, fs_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
+        let (fs_tx, fs_rx) = mpsc::unbounded_channel::<WatchReport>();
         let runtime = CandidateRuntime::default();
         let event_tx = crate::import::handle::ImportEventBus::new(1024, runtime.clone());
         let event_tx_for_worker = event_tx.clone();
@@ -26,7 +26,7 @@ impl ImportService {
         );
 
         // Constructed before the watcher task spawns; the task doesn't need the
-        // debouncer, only the `fs_rx` end of its event channel.
+        // watcher, only the `fs_rx` end of its event channel.
         let folder_watcher = Arc::new(FolderWatcher::new(fs_tx));
 
         let scan = ScanServices::new(services.clone(), folder_watcher);

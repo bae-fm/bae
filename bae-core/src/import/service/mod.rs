@@ -17,7 +17,6 @@ use {
         AudioFile, Catalog, CoverSelection, ImportPhase, PrepareStep, TrackFile,
     },
     crate::import::ParsedWorkGraph,
-    notify_debouncer_full::DebounceEventResult,
     std::collections::{HashMap, HashSet},
     std::path::{Path, PathBuf},
     std::sync::Arc,
@@ -35,12 +34,14 @@ mod importing;
 mod progress;
 mod reconcile;
 mod scanning;
+mod watch_batches;
 
 use active_roots::{
     ActiveRoots, FolderReadingRequest, RemovalOutcome, RootPass, RootRemovalBackend,
     RootScanCause, ServiceRootRemovalBackend,
 };
 use folder_watcher::FolderWatchSnapshot;
+use watch_batches::WatchReport;
 mod coordinator;
 use crate::import::volume::{changed_directories, directory_modified_at, volume_kind, VolumeKind};
 pub(crate) use folder_watcher::FolderWatcher;
@@ -210,7 +211,7 @@ fn downloaded_cover(
     })
 }
 
-/// The paths in one debounced batch that report a *change* to the watched tree.
+/// The paths in one gathered batch that report a *change* to the watched tree.
 ///
 /// Not every event a backend sends is a change. Linux's inotify backend watches
 /// `IN_OPEN`, so every `open()` under a watched root arrives here — including
@@ -219,7 +220,7 @@ fn downloaded_cover(
 /// the next one, for as long as the folder stays watched. A close that ended a
 /// write says the file is now different; an open says only that something read
 /// it.
-fn changed_paths(events: &[notify_debouncer_full::DebouncedEvent]) -> Vec<&Path> {
+fn changed_paths(events: &[notify::Event]) -> Vec<&Path> {
     events
         .iter()
         .filter(|event| reports_a_change(&event.kind))
@@ -230,9 +231,9 @@ fn changed_paths(events: &[notify_debouncer_full::DebouncedEvent]) -> Vec<&Path>
 /// How many events a batch reported that name paths a scan should be asked for,
 /// and what the first few of them were. Capped: copying an album is hundreds of
 /// events, and the first handful name the cause as well as all of them do.
-fn changed_events_summary(events: &[notify_debouncer_full::DebouncedEvent]) -> String {
+fn changed_events_summary(events: &[notify::Event]) -> String {
     const NAMED: usize = 6;
-    let changes: Vec<&notify_debouncer_full::DebouncedEvent> = events
+    let changes: Vec<&notify::Event> = events
         .iter()
         .filter(|event| reports_a_change(&event.kind))
         .collect();

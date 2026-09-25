@@ -593,9 +593,9 @@ pub(super) enum RootScanCause {
     /// The watcher itself failed, so the root is re-read to catch up on
     /// whatever it missed.
     WatchError,
-    /// The filesystem watch said it lost track of changes under the root —
-    /// FSEvents dropping events, inotify's queue overflowing — so the root is
-    /// re-read to catch up on whatever it missed.
+    /// The filesystem watch said it lost track of changes — FSEvents dropping
+    /// events, inotify's queue overflowing — so what it could have missed is
+    /// read again: the folder it named, or the root when it named none.
     EventsDropped,
     /// The periodic check of a network folder found a directory that moved.
     /// Such a folder has no watch worth the name, so this is the only thing

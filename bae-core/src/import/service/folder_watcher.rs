@@ -4,37 +4,18 @@
 //! The scan coordinator owns one `FolderWatcher` and invokes it only from
 //! blocking work. UI-facing watched-folder calls never enter notify/FSEvents.
 
-use notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, NoCache};
-use std::collections::{HashMap, HashSet};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
-use std::time::Duration;
+use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
-use tracing::{error, warn};
+use tracing::error;
 
+use super::watch_batches::WatchReport;
 use crate::import::ImportError;
 
-/// The platform's recommended watcher, with file-id tracking switched off.
-///
-/// The debouncer's file-id cache exists for exactly one thing: correlating a
-/// rename-from with its rename-to so the pair coalesces into a single `Rename`
-/// event. Building it walks the watched tree and `stat`s every file and
-/// directory in it, which on a network share is tens of seconds per folder and
-/// grows with the tree.
-///
-/// We never read an event's kind — [`ImportService::start_watcher`] takes the
-/// paths out of each batch and re-scans whichever watched roots they fall under.
-/// A rename arriving as a remove plus a create re-scans the same root as a
-/// coalesced rename would, so the cache buys nothing and costs the entire
-/// install. Linux and Android already run this way: `RecommendedCache` is
-/// `NoCache` there.
-///
-/// [`ImportService::start_watcher`]: crate::import::service::ImportService
-type FsDebouncer = Debouncer<RecommendedWatcher, NoCache>;
-
-/// A debouncer that started successfully, plus the set of paths it currently
-/// has an OS watch installed for.
+/// A watch backend that started successfully, plus the set of paths it
+/// currently has an OS watch installed for.
 struct ReadyWatcher {
     backend: Box<dyn WatchBackend>,
     installed: HashMap<PathBuf, HashSet<PathBuf>>,
@@ -50,13 +31,13 @@ trait WatchBackend: Send {
     fn unwatch(&mut self, path: &Path) -> notify::Result<()>;
 }
 
-impl WatchBackend for FsDebouncer {
+impl WatchBackend for RecommendedWatcher {
     fn watch(&mut self, path: &Path, mode: RecursiveMode) -> notify::Result<()> {
-        self.watch(path, mode)
+        Watcher::watch(self, path, mode)
     }
 
     fn unwatch(&mut self, path: &Path) -> notify::Result<()> {
-        self.unwatch(path)
+        Watcher::unwatch(self, path)
     }
 }
 
@@ -73,38 +54,47 @@ fn watch_not_found(error: &notify::Error) -> bool {
 /// backend breaks folder watching, not the library.
 pub(crate) struct FolderWatcher {
     state: Mutex<Result<ReadyWatcher, String>>,
+    /// The roots with a watch installed, which the thread gathering the
+    /// watch's events files each one under.
+    roots: Arc<Mutex<BTreeSet<PathBuf>>>,
 }
 
 impl FolderWatcher {
-    /// Start the debouncer, forwarding every debounced batch (or error) to
-    /// `fs_tx`. Never fails outwardly — see the type doc.
-    pub(crate) fn new(fs_tx: mpsc::UnboundedSender<DebounceEventResult>) -> Self {
-        let result = new_debouncer_opt::<_, RecommendedWatcher, NoCache>(
-            Duration::from_secs(1),
-            None,
-            move |result| {
-                // Runs on the debouncer's own thread. A send error means the
-                // watcher task's receiver is gone (the service is shutting
-                // down) — benign, but worth a line.
-                if fs_tx.send(result).is_err() {
-                    warn!("folder watcher event dropped: task receiver gone");
-                }
-            },
-            NoCache::new(),
-            notify::Config::default(),
-        )
-        .map(|debouncer| ReadyWatcher {
-            backend: Box::new(debouncer) as Box<dyn WatchBackend>,
-            installed: HashMap::new(),
-        })
-        .map_err(|e| e.to_string());
+    /// Start the platform's watch, gathering what it reports into one batch
+    /// per folder that went quiet (see [`super::watch_batches`]) and sending
+    /// each on `fs_tx`. Never fails outwardly — see the type doc.
+    ///
+    /// The platform watcher runs without the file-id cache a rename-pairing
+    /// debouncer builds: building it walks the watched tree and `stat`s every
+    /// file and directory in it, which on a network share is tens of seconds
+    /// per folder, and nothing here reads a rename as anything but the two
+    /// paths it touched.
+    pub(crate) fn new(fs_tx: mpsc::UnboundedSender<WatchReport>) -> Self {
+        let roots = Arc::new(Mutex::new(BTreeSet::new()));
+        let (raw_tx, raw_rx) = std::sync::mpsc::channel();
+        let result = RecommendedWatcher::new(raw_tx, notify::Config::default())
+            .map(|watcher| ReadyWatcher {
+                backend: Box::new(watcher) as Box<dyn WatchBackend>,
+                installed: HashMap::new(),
+            })
+            .map_err(|e| e.to_string());
 
-        if let Err(e) = &result {
-            error!("failed to start folder watcher: {e}");
+        match &result {
+            Ok(_) => {
+                let gathered_roots = roots.clone();
+                if let Err(error) = std::thread::Builder::new()
+                    .name("folder-watch-batches".to_string())
+                    .spawn(move || super::watch_batches::run(raw_rx, gathered_roots, fs_tx))
+                {
+                    error!("failed to start gathering folder watch events: {error}");
+                }
+            }
+            Err(e) => error!("failed to start folder watcher: {e}"),
         }
 
         Self {
             state: Mutex::new(result),
+            roots,
         }
     }
 
@@ -140,6 +130,7 @@ impl FolderWatcher {
             });
         }
         installed.insert(directory.to_path_buf());
+        self.roots.lock().unwrap().insert(root.to_path_buf());
         Ok(())
     }
 
@@ -198,7 +189,7 @@ impl FolderWatcher {
     pub(super) fn uninstall(&self, path: &Path) -> Result<FolderWatchSnapshot, ImportError> {
         let mut state = self.state.lock().unwrap();
         let Ok(ready) = state.as_mut() else {
-            // The debouncer never started; nothing was ever installed.
+            // The watch never started; nothing was ever installed.
             return Ok(FolderWatchSnapshot::default());
         };
         let Some(installed) = ready.installed.get(path) else {
@@ -227,6 +218,7 @@ impl FolderWatcher {
         }
         if failures.is_empty() {
             ready.installed.remove(path);
+            self.roots.lock().unwrap().remove(path);
             return Ok(snapshot);
         }
 
@@ -253,7 +245,9 @@ impl FolderWatcher {
         let ready = state.as_mut().map_err(|error| ImportError::Watch {
             detail: error.clone(),
         })?;
-        reinstall_locked(ready, path, snapshot)
+        reinstall_locked(ready, path, snapshot)?;
+        self.roots.lock().unwrap().insert(path.to_path_buf());
+        Ok(())
     }
 }
 
@@ -309,7 +303,6 @@ fn watch_mode(root: &Path, directory: &Path) -> Option<RecursiveMode> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     type WatchCall = (String, PathBuf, Option<RecursiveMode>);
 
@@ -358,6 +351,7 @@ mod tests {
                 backend: Box::new(backend),
                 installed: HashMap::new(),
             })),
+            roots: Arc::new(Mutex::new(BTreeSet::new())),
         }
     }
 
@@ -608,5 +602,41 @@ mod tests {
             .get(&root)
             .expect("failed uninstall retains the root");
         assert_eq!(installed, &HashSet::from([root, child]));
+    }
+
+    /// The platform's own watch reaches the batches: a file written into a
+    /// watched folder arrives once that folder has gone quiet, naming it.
+    #[tokio::test]
+    async fn a_written_file_arrives_as_its_folders_batch() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = std::fs::canonicalize(temp.path()).unwrap();
+        let album = root.join("Album");
+        std::fs::create_dir(&album).unwrap();
+        let (fs_tx, mut fs_rx) = mpsc::unbounded_channel();
+        let watcher = FolderWatcher::new(fs_tx);
+        watcher.install_directory(&root, &root).unwrap();
+        watcher.install_directory(&root, &album).unwrap();
+
+        std::fs::write(album.join("01.flac"), b"audio").unwrap();
+
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(10);
+        loop {
+            let report = tokio::time::timeout_at(deadline, fs_rx.recv())
+                .await
+                .expect("the written file was reported")
+                .expect("the watch is still sending");
+            let events = report.expect("the watch reports no error");
+            if events
+                .iter()
+                .flat_map(|event| &event.paths)
+                .any(|path| path.ends_with("01.flac"))
+            {
+                assert!(events
+                    .iter()
+                    .flat_map(|event| &event.paths)
+                    .all(|path| path.starts_with(&album)));
+                break;
+            }
+        }
     }
 }

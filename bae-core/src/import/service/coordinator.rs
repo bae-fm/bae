@@ -18,7 +18,7 @@ use super::*;
 impl ImportService {
     /// The folder-watch reconciliation task. A `Rescan` command re-scans a folder
     /// (the handle sends one right after installing the folder's OS watch, and on
-    /// every `scan_watched_folders` call), and a debounced filesystem change
+    /// every `scan_watched_folders` call), and a gathered filesystem change
     /// under a watched folder reads again the folders it reached. Every re-scan
     /// reconciles what it finds against the candidates already recorded for
     /// that folder —
@@ -33,7 +33,7 @@ impl ImportService {
     /// nothing.
     pub(super) fn start_watcher(
         cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
-        fs_rx: mpsc::UnboundedReceiver<DebounceEventResult>,
+        fs_rx: mpsc::UnboundedReceiver<WatchReport>,
         scan: ScanServices,
     ) -> std::thread::JoinHandle<()> {
         let removal_backend = Arc::new(ServiceRootRemovalBackend::new(
@@ -49,7 +49,7 @@ impl ImportService {
 
     pub(super) fn start_watcher_with_starter(
         mut cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
-        mut fs_rx: mpsc::UnboundedReceiver<DebounceEventResult>,
+        mut fs_rx: mpsc::UnboundedReceiver<WatchReport>,
         services: crate::import::ImportServices,
         starter: RootScanStarter,
         removal_backend: Arc<dyn RootRemovalBackend>,
@@ -241,34 +241,35 @@ impl ImportService {
                         };
                         // A backend that lost track of what changed — FSEvents
                         // dropping events, inotify's queue overflowing — says so
-                        // with an event of its own, and the paths it names (if
-                        // any) are only where to start: everything under them
-                        // may have changed unseen.
+                        // with an event of its own, and the path it names is
+                        // where to start: everything under it may have changed
+                        // unseen. One naming a path inside a root reads that
+                        // folder again, like any change there; one naming no
+                        // path, or a path that holds the root, reads the root.
                         let roots = watched_roots(&library_manager).await;
-                        let dropped: Vec<&Path> = events
-                            .iter()
-                            .filter(|event| event.need_rescan())
-                            .flat_map(|event| event.paths.iter().map(PathBuf::as_path))
-                            .collect();
-                        let lost_track = events.iter().any(|event| event.need_rescan());
-                        let mut reread = HashSet::new();
-                        if lost_track {
-                            let dropped: Vec<PathBuf> =
-                                dropped.iter().map(|path| path.to_path_buf()).collect();
-                            for root in roots_for_watch_error(&dropped, &roots) {
-                                reread.insert(root.clone());
-                                active_roots.request_scan(
-                                    root,
-                                    RootScanCause::EventsDropped,
-                                    None,
+                        let mut whole: HashSet<PathBuf> = HashSet::new();
+                        for event in events.iter().filter(|event| event.need_rescan()) {
+                            if event.paths.is_empty() {
+                                whole.extend(roots.iter().cloned());
+                            }
+                            for path in &event.paths {
+                                whole.extend(
+                                    roots.iter().filter(|root| root.starts_with(path)).cloned(),
                                 );
                             }
+                        }
+                        for root in &whole {
+                            active_roots.request_scan(
+                                root.clone(),
+                                RootScanCause::EventsDropped,
+                                None,
+                            );
                         }
                         let changed = changed_paths(&events);
                         let affected = affected_roots(&changed, &roots);
                         let summary = changed_events_summary(&events);
                         for root in affected {
-                            if reread.contains(&root) {
+                            if whole.contains(&root) {
                                 continue;
                             }
                             let under: Vec<&Path> = changed
@@ -276,12 +277,20 @@ impl ImportService {
                                 .copied()
                                 .filter(|path| path.starts_with(&root))
                                 .collect();
+                            let lost_track = events.iter().any(|event| {
+                                event.need_rescan()
+                                    && event.paths.iter().any(|path| path.starts_with(&root))
+                            });
                             let holds = holds_its_own_release(&library_manager, &root).await;
                             request_change(
                                 &mut active_roots,
                                 root.clone(),
                                 root_change(&root, &under, holds),
-                                RootScanCause::FsChange(summary.clone()),
+                                if lost_track {
+                                    RootScanCause::EventsDropped
+                                } else {
+                                    RootScanCause::FsChange(summary.clone())
+                                },
                             );
                         }
                     }

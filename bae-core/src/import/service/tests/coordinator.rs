@@ -325,11 +325,11 @@ async fn a_file_opened_under_a_watched_root_starts_no_scan() {
     harness
         .fs_events
         .send(Ok(vec![
-            debounced_event(
+            watch_event(
                 notify::EventKind::Access(AccessKind::Open(AccessMode::Any)),
                 root_path("/music").join("Album/01.flac"),
             ),
-            debounced_event(
+            watch_event(
                 notify::EventKind::Access(AccessKind::Close(AccessMode::Read)),
                 root_path("/music").join("Album/01.flac"),
             ),
@@ -339,7 +339,7 @@ async fn a_file_opened_under_a_watched_root_starts_no_scan() {
     // reads did not touch: when its scan starts, the read batch is answered.
     harness
         .fs_events
-        .send(Ok(vec![debounced_event(
+        .send(Ok(vec![watch_event(
             notify::EventKind::Create(notify::event::CreateKind::File),
             root_path("/downloads").join("Album/01.flac"),
         )]))
@@ -366,7 +366,7 @@ async fn a_finished_write_under_a_watched_root_reads_its_folder_again() {
     let harness = CoordinatorHarness::new().await;
     harness
         .fs_events
-        .send(Ok(vec![debounced_event(
+        .send(Ok(vec![watch_event(
             notify::EventKind::Access(AccessKind::Close(AccessMode::Write)),
             root_path("/music").join("Album/01.flac"),
         )]))
@@ -386,7 +386,7 @@ async fn a_finished_write_under_a_watched_root_reads_its_folder_again() {
 async fn changes_during_a_folder_reading_are_read_once_afterwards() {
     let harness = CoordinatorHarness::new().await;
     let change = |folder: &str, file: &str| {
-        Ok(vec![debounced_event(
+        Ok(vec![watch_event(
             notify::EventKind::Create(notify::event::CreateKind::File),
             root_path("/music").join(folder).join(file),
         )])
@@ -411,19 +411,13 @@ async fn changes_during_a_folder_reading_are_read_once_afterwards() {
     harness.shutdown().await;
 }
 
-/// A watch that says it lost track of changes — FSEvents dropping events,
-/// inotify's queue overflowing — names no folder, so every root it could
-/// have been watching is read whole.
+/// A watch that says it lost track of changes and names no path — inotify's
+/// queue overflowing — could have missed anything, so every root is read
+/// whole.
 #[tokio::test]
-async fn a_watch_that_lost_track_reads_the_root_whole() {
+async fn a_watch_that_lost_track_of_no_path_reads_the_root_whole() {
     let harness = CoordinatorHarness::new().await;
-    harness
-        .fs_events
-        .send(Ok(vec![notify_debouncer_full::DebouncedEvent::new(
-            notify::Event::new(notify::EventKind::Other).set_flag(notify::event::Flag::Rescan),
-            std::time::Instant::now(),
-        )]))
-        .unwrap();
+    harness.fs_events.send(Ok(vec![lost_track(None)])).unwrap();
 
     harness.scans.wait_for_count(1).await;
     assert_eq!(harness.scans.path(0), root_path("/music"));
@@ -434,14 +428,60 @@ async fn a_watch_that_lost_track_reads_the_root_whole() {
     harness.shutdown().await;
 }
 
-fn debounced_event(
-    kind: notify::EventKind,
-    path: PathBuf,
-) -> notify_debouncer_full::DebouncedEvent {
-    notify_debouncer_full::DebouncedEvent::new(
-        notify::Event::new(kind).add_path(path),
-        std::time::Instant::now(),
-    )
+/// A watch that lost track naming a path that holds the root — FSEvents
+/// dropping events for the whole stream — reads the root whole.
+#[tokio::test]
+async fn a_watch_that_lost_track_above_the_root_reads_it_whole() {
+    let harness = CoordinatorHarness::new().await;
+    let above = root_path("/music").parent().unwrap().to_path_buf();
+    harness
+        .fs_events
+        .send(Ok(vec![lost_track(Some(above))]))
+        .unwrap();
+
+    harness.scans.wait_for_count(1).await;
+    assert_eq!(harness.scans.folders(0), None);
+    assert!(harness.scans.reading(0).is_none(), "the root is read whole");
+
+    harness.scans.complete(0);
+    harness.shutdown().await;
+}
+
+/// A watch that lost track inside one album — FSEvents' must-scan-subdirs
+/// naming that folder — reads that album's folder again and nothing beside
+/// it.
+#[tokio::test]
+async fn a_watch_that_lost_track_inside_one_folder_reads_only_that_folder() {
+    let harness = CoordinatorHarness::new().await;
+    harness
+        .fs_events
+        .send(Ok(vec![lost_track(Some(
+            root_path("/music").join("Artist").join("Album"),
+        ))]))
+        .unwrap();
+
+    harness.scans.wait_for_count(1).await;
+    assert_eq!(harness.scans.path(0), root_path("/music"));
+    assert_eq!(harness.scans.folders(0), Some(vec!["Artist".to_string()]));
+
+    harness.scans.complete(0);
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
+    harness.shutdown().await;
+}
+
+fn watch_event(kind: notify::EventKind, path: PathBuf) -> notify::Event {
+    notify::Event::new(kind).add_path(path)
+}
+
+/// What a watch that lost track reports: a rescan-flagged event naming where
+/// to start reading again, or nothing at all.
+fn lost_track(path: Option<PathBuf>) -> notify::Event {
+    let event = notify::Event::new(notify::EventKind::Other).set_flag(notify::event::Flag::Rescan);
+    match path {
+        Some(path) => event.add_path(path),
+        None => event,
+    }
 }
 
 #[tokio::test]

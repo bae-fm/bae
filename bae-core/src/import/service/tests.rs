@@ -284,7 +284,7 @@ impl RootRemovalBackend for FakeRemovalBackend {
 
 struct CoordinatorHarness {
     commands: tokio::sync::mpsc::UnboundedSender<WatcherCommand>,
-    fs_events: tokio::sync::mpsc::UnboundedSender<DebounceEventResult>,
+    fs_events: tokio::sync::mpsc::UnboundedSender<WatchReport>,
     scans: FakeScanStarter,
     library_manager: LibraryManager,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
@@ -471,7 +471,7 @@ fn test_scan_services(
 struct TestScan {
     services: ScanServices,
     cancellation: crate::import::folder_scanner::ScanCancellation,
-    _fs_rx: tokio::sync::mpsc::UnboundedReceiver<DebounceEventResult>,
+    _fs_rx: tokio::sync::mpsc::UnboundedReceiver<WatchReport>,
 }
 
 impl TestService {
