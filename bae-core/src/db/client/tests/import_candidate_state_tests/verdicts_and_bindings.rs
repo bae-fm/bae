@@ -557,6 +557,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
             .await
             .unwrap();
     }
+    db.close().await;
     drop(db);
 
     let path = tmp.path().join("test.db");

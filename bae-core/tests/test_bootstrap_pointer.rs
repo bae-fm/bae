@@ -68,7 +68,7 @@ fn active_pointer(app_dir: &AppDir) -> Option<String> {
 struct TestApp {
     services: bae_core::library::AppServices,
     _ui_event_bus: bae_core::ui::UiEventBus,
-    _runtime: tokio::runtime::Runtime,
+    runtime: tokio::runtime::Runtime,
 }
 
 impl TestApp {
@@ -80,7 +80,7 @@ impl TestApp {
         Ok(Self {
             services,
             _ui_event_bus: ui_event_bus,
-            _runtime: runtime,
+            runtime,
         })
     }
 }
@@ -262,17 +262,14 @@ fn bootstrap_that_panics_while_composing_the_frontend_returns_an_error() {
     );
 }
 
-/// Dropping the frontend's app owner releases coven's exclusive store-open lock, so the same
-/// library can be reopened in-process — even when the caller never ran the
-/// graceful `shutdown`. The lock is held by every `LibraryManager` clone through
-/// the shared coven handle; the playback and import services each run on their
-/// own thread holding one such clone and only stop on an explicit command, so
-/// without a teardown join on drop those threads — and the lock — outlive the
-/// owner, and the reopen fails with "store is already open" (the import
-/// worker's exit raced the reopen before it was joined, so this passed only
-/// most of the time).
+/// Closing the running app and dropping its owner, the way a frontend leaves a
+/// library, releases coven's exclusive store-open lock, so the same library
+/// reopens in-process at once. The playback and import services each run on
+/// their own thread holding a `LibraryManager` clone, and closing does not wait
+/// for them: it closes the store itself, and only then frees the lock, so a
+/// clone that outlives it holds no file of the store.
 #[test]
-fn dropping_running_app_releases_the_store_lock_for_reopen() {
+fn closing_running_app_releases_the_store_lock_for_reopen() {
     let home = fake_home();
     let lib = create_library(
         &home.app_dir,
@@ -293,9 +290,9 @@ fn dropping_running_app_releases_the_store_lock_for_reopen() {
         TestApp::start,
     )
     .expect("first open succeeds");
+    app.runtime.block_on(app.services.close());
     drop(app);
 
-    // Reopen the same store immediately, with no intervening shutdown().
     bootstrap(
         home.app_dir.clone(),
         id.clone(),
@@ -306,7 +303,7 @@ fn dropping_running_app_releases_the_store_lock_for_reopen() {
         coven::OAuthClients::empty(),
         TestApp::start,
     )
-    .expect("reopening the store after dropping the app owner must succeed");
+    .expect("reopening the store after closing the app must succeed");
 }
 
 /// A returning user who launches offline must still open their library — bootstrap
