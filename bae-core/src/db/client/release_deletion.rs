@@ -9,7 +9,7 @@ use super::*;
 /// Local release's files are the user's own files in place, registered with
 /// coven as external files, and the delete drops those registrations. Both
 /// have to be known before coven opens the write, so this is read first and
-/// [`apply_on`](Self::apply_on) checks it against the rows inside the write,
+/// `apply_on` checks it against the rows inside the write,
 /// refusing a plan the library has moved past rather than deleting rows whose
 /// blobs it did not declare.
 ///

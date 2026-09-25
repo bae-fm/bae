@@ -309,7 +309,7 @@ impl Database {
 
     /// coven's durable queue as read now, the display request it needs, and
     /// the display names that request reads — the parts
-    /// [`outbox_queue_from_context`](Self::outbox_queue_from_context) joins.
+    /// `outbox_queue_from_context` joins.
     pub(crate) async fn outbox_queue_parts(
         &self,
     ) -> Result<
@@ -328,8 +328,8 @@ impl Database {
 
     /// Subscribe to coven's durable uploads and make-Remote intents as one
     /// committed stream. Each value is labelled by the display rows
-    /// [`subscribe_outbox_display`](Self::subscribe_outbox_display) follows and
-    /// joined by [`outbox_queue_from_context`](Self::outbox_queue_from_context).
+    /// `subscribe_outbox_display` follows and
+    /// joined by `outbox_queue_from_context`.
     pub fn subscribe_cloud_outbox(&self) -> coven::CloudOutboxLiveQuery {
         self.inner.handle.subscribe_cloud_outbox()
     }

@@ -73,8 +73,14 @@ async fn i32_decode_names_the_read_error_when_the_first_read_fails() {
 
     init();
 
-    // A directory opens but refuses the first read (EISDIR).
+    // A directory is a source this platform can't read: it refuses the open
+    // or the first read (EISDIR on Unix, access denied on Windows). Whatever
+    // error std reports for it is the one the decode must name.
     let dir = tempfile::tempdir().unwrap();
+    let expected = std::fs::File::open(dir.path())
+        .and_then(|mut file| std::io::Read::read(&mut file, &mut [0; 1]))
+        .expect_err("reading a directory fails")
+        .kind();
     let buffer = create_sparse_buffer(64 * 1024);
     Box::new(LocalReader::new(dir.path().to_str().expect("UTF-8 path")))
         .start_reading(buffer.clone(), Box::new(|_| {}));
@@ -85,7 +91,7 @@ async fn i32_decode_names_the_read_error_when_the_first_read_fails() {
 
     let (kind, text) = source_read_failure(result.clone())
         .unwrap_or_else(|| panic!("an unreadable source is a read failure: {result:?}"));
-    assert_eq!(kind, std::io::ErrorKind::IsADirectory, "{text}");
+    assert_eq!(kind, expected, "{text}");
     assert!(!text.contains("Invalid data found"), "{text}");
 }
 
