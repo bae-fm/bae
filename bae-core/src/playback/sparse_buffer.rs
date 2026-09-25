@@ -493,9 +493,9 @@ impl SparseStreamingBuffer {
     }
 
     /// Full cancel, for stopping playback entirely: `read()` returns
-    /// [`BufferStop::Cancelled`], `is_cancelled()` returns `true`, and an active
-    /// fill sees the stop at its next loop top and exits (a parked fill exits
-    /// when the buffer is dropped). A buffer that already failed stays failed.
+    /// [`BufferStop::Cancelled`], `is_cancelled()` returns `true`, and the fill
+    /// sees the stop at its next loop top (woken if parked) and exits, closing
+    /// its source. A buffer that already failed stays failed.
     pub fn cancel(&self) {
         self.stop_with(BufferStop::Cancelled);
     }
@@ -509,6 +509,9 @@ impl SparseStreamingBuffer {
         self.stop_with(BufferStop::Failed(error))
     }
 
+    /// Stop readers and the fill alike: readers wake to the stop, and a fill
+    /// parked with every read-ahead window full wakes to see it and exit,
+    /// closing its source, rather than holding it until the buffer is dropped.
     fn stop_with(&self, stop: BufferStop) -> bool {
         let mut inner = self.inner.lock().unwrap();
         if inner.stop.is_some() {
@@ -516,6 +519,8 @@ impl SparseStreamingBuffer {
         }
         inner.stop = Some(stop);
         self.data_available.notify_all();
+        drop(inner);
+        self.wake_fill();
         true
     }
 

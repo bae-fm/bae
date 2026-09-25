@@ -757,3 +757,38 @@ async fn a_fetch_failing_after_teardown_reports_nothing() {
     assert!(buffer.failure().is_none());
     drop(reader);
 }
+
+/// Cancelling a buffer closes its file even while the buffer itself is still
+/// held: the fill, parked with nothing demanded, wakes to the stop and exits.
+#[tokio::test]
+async fn cancelling_a_local_buffer_closes_its_file_while_the_buffer_lives() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("track.flac");
+    std::fs::write(&path, vec![7u8; 1024]).unwrap();
+    let buffer = create_sparse_buffer(1024);
+    Box::new(LocalReader::new(&path)).start_reading(buffer.clone(), Box::new(|_| {}));
+    wait_for_open_files(dir.path(), 1).await;
+
+    buffer.cancel();
+
+    wait_for_open_files(dir.path(), 0).await;
+    drop(buffer);
+}
+
+/// Wait until exactly `count` files under `dir` are open, failing after a
+/// few seconds with the files still open.
+async fn wait_for_open_files(dir: &std::path::Path, count: usize) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        let open = coven::open_files_under(dir);
+        if open.len() == count {
+            return;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "expected {count} open files under {}, found {open:?}",
+            dir.display()
+        );
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+}
