@@ -385,8 +385,7 @@ public sealed class NowPlayingBarTests
         new BridgePlaybackPauseReason.SideEnded(new BridgeSidePausePrompt(
             Id: $"side-{label}",
             TitleKey: "core.playback.pause.side_ended.title",
-            SideLabel: label,
-            MessageKey: "core.playback.pause.side_ended.message.vinyl"));
+            SideLabel: label));
 
     // The bar's two track lines, told apart by the type they are set in.
     private static string? Title(NowPlayingBar bar) => Line(bar, size: 15);

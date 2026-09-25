@@ -5,7 +5,7 @@ async fn sided_vinyl_boundary_pauses_on_auto_advance() {
         ["A1", "A2", "B1"],
         1,
         "A",
-        SIDE_PAUSE_VINYL_MESSAGE_KEY,
+        SIDE_PAUSE_TITLE_KEY,
     )
     .await;
 }
@@ -17,7 +17,7 @@ async fn sided_cassette_boundary_pauses_on_auto_advance() {
         ["A1", "B1", "B2"],
         0,
         "A",
-        SIDE_PAUSE_CASSETTE_MESSAGE_KEY,
+        SIDE_PAUSE_TITLE_KEY,
     )
     .await;
 }
@@ -27,7 +27,7 @@ async fn assert_sided_boundary_pauses(
     positions: [&str; 3],
     start_track_index: usize,
     expected_side_label: &str,
-    expected_message_key: &str,
+    expected_title_key: &str,
 ) {
     let mut fixture = SidePauseTestFixture::new(format, positions, true)
         .await
@@ -39,7 +39,7 @@ async fn assert_sided_boundary_pauses(
             start_track_index,
             &side_track_id,
             expected_side_label,
-            expected_message_key,
+            expected_title_key,
         )
         .await;
 
@@ -79,7 +79,7 @@ async fn cd_multi_disc_boundary_pauses_on_auto_advance() {
         ["1-1", "2-1", "2-2"],
         0,
         "1",
-        "core.playback.pause.disc_ended.message.cd",
+        DISC_PAUSE_TITLE_KEY,
     )
     .await;
 }
@@ -123,7 +123,7 @@ async fn enabling_setting_mid_track_pauses_at_the_imminent_boundary() {
     fixture.seek_to_auto_advance();
 
     fixture
-        .wait_for_side_pause("A", SIDE_PAUSE_VINYL_MESSAGE_KEY)
+        .wait_for_side_pause("A", SIDE_PAUSE_TITLE_KEY)
         .await;
 }
 
@@ -184,7 +184,7 @@ async fn resume_from_side_pause_starts_next_side() {
     let next_side_track_id = fixture.track_ids[2].clone();
 
     fixture
-        .play_to_side_pause(1, &side_a_track_id, "A", SIDE_PAUSE_VINYL_MESSAGE_KEY)
+        .play_to_side_pause(1, &side_a_track_id, "A", SIDE_PAUSE_TITLE_KEY)
         .await;
 
     fixture.playback_handle.resume();
@@ -211,7 +211,7 @@ async fn side_boundary_pause_prevents_gapless_stream_handoff() {
 
     fixture.seek_to_auto_advance();
     fixture
-        .wait_for_side_pause("A", SIDE_PAUSE_VINYL_MESSAGE_KEY)
+        .wait_for_side_pause("A", SIDE_PAUSE_TITLE_KEY)
         .await;
 
     fixture.playback_handle.resume();

@@ -8,8 +8,8 @@ use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{
-    PlaybackPauseReason, PlaybackProgress, PlaybackState, RepeatMode,
-    SIDE_PAUSE_CASSETTE_MESSAGE_KEY, SIDE_PAUSE_VINYL_MESSAGE_KEY,
+    PlaybackPauseReason, PlaybackProgress, PlaybackState, RepeatMode, DISC_PAUSE_TITLE_KEY,
+    SIDE_PAUSE_TITLE_KEY,
 };
 use bae_test_support as support;
 use coven::{IdProvider, SequentialIdProvider};

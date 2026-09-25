@@ -49,7 +49,6 @@ pub struct BridgeSidePausePrompt {
     pub id: String,
     pub title_key: String,
     pub side_label: String,
-    pub message_key: String,
 }
 
 impl BridgeSidePausePrompt {
@@ -58,13 +57,11 @@ impl BridgeSidePausePrompt {
             id,
             title_key,
             side_label,
-            message_key,
         } = prompt;
         Self {
             id,
             title_key: title_key.to_string(),
             side_label,
-            message_key: message_key.to_string(),
         }
     }
 }

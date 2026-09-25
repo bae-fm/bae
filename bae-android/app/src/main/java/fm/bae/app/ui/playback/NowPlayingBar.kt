@@ -1,6 +1,7 @@
 package fm.bae.app.ui.playback
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Repeat
@@ -16,6 +18,7 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,28 +33,38 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import fm.bae.app.BaeLogger
+import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.performBridgeAction
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.PrimaryButton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.bridgeNextRepeatMode
+
+private val logger = BaeLogger("bae.NowPlayingBar")
 
 /**
  * Persistent now-playing bar. Reads transport state from the session's
@@ -87,7 +100,7 @@ fun NowPlayingBar(session: OpenLibrary) {
     if (expanded) {
         ExpandedNowPlayingScreen(session = session, onDismiss = { expanded = false })
     }
-    SidePauseAlert(track = track)
+    SidePauseAlert(session = session, track = track)
 
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -154,14 +167,56 @@ private fun RowScope.NowPlayingTrackInfo(
     }
 }
 
+/** [SidePauseAlert] wired to write the setting off through [session]. */
 @Composable
-fun SidePauseAlert(track: fm.bae.app.playback.NowPlaying) {
+private fun SidePauseAlert(
+    session: OpenLibrary,
+    track: fm.bae.app.playback.NowPlaying,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    SidePauseAlert(
+        track = track,
+        onTurnOffPauseBetweenSides = {
+            scope.launch {
+                performBridgeAction(
+                    logger = logger,
+                    operation = "turn off pause-between-sides from the side-pause prompt",
+                    errors = LocaleErrorLines(context),
+                    showError = session.configStore::showError,
+                ) {
+                    withContext(Dispatchers.IO) {
+                        session.appHandle.setPauseBetweenSides(false)
+                    }
+                }
+            }
+        },
+    )
+}
+
+/**
+ * The prompt core raises when playback pauses at the end of a side or disc. Its
+ * checkbox mirrors the "Pause between sides and discs" setting and starts
+ * checked — the prompt only appears while the setting is on. Dismissing it with
+ * the box unchecked calls [onTurnOffPauseBetweenSides]; a checked box changes
+ * nothing.
+ */
+@Composable
+fun SidePauseAlert(
+    track: fm.bae.app.playback.NowPlaying,
+    onTurnOffPauseBetweenSides: () -> Unit,
+) {
     val context = LocalContext.current
     var dismissedPromptId by remember { mutableStateOf<String?>(null) }
     val prompt = track.sidePausePrompt
     if (prompt != null && dismissedPromptId != prompt.id) {
+        var keepPausing by remember(prompt.id) { mutableStateOf(true) }
+        val dismiss = {
+            dismissedPromptId = prompt.id
+            if (!keepPausing) onTurnOffPauseBetweenSides()
+        }
         AlertDialog(
-            onDismissRequest = { dismissedPromptId = prompt.id },
+            onDismissRequest = dismiss,
             title = {
                 Text(
                     context.coreString(
@@ -170,9 +225,28 @@ fun SidePauseAlert(track: fm.bae.app.playback.NowPlaying) {
                     ),
                 )
             },
-            text = { Text(context.coreString(prompt.messageKey)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(context.coreString("core.playback.pause.message"))
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .toggleable(
+                                    value = keepPausing,
+                                    role = Role.Checkbox,
+                                    onValueChange = { keepPausing = it },
+                                ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = keepPausing, onCheckedChange = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.settings_pause_between_sides))
+                    }
+                }
+            },
             confirmButton = {
-                PrimaryButton(onClick = { dismissedPromptId = prompt.id }) {
+                PrimaryButton(onClick = dismiss) {
                     Text(stringResource(R.string.close))
                 }
             },
@@ -258,6 +332,7 @@ private fun SidePauseAlertPreview() {
                     coverImage = PreviewData.imageRef("rel-1"),
                     sidePausePrompt = PreviewData.sidePausePrompt(),
                 ),
+            onTurnOffPauseBetweenSides = {},
         )
     }
 }

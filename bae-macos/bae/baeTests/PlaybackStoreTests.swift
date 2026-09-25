@@ -364,8 +364,7 @@ struct PlaybackStoreSidePausePromptTests {
     private static let prompt = BridgeSidePausePrompt(
         id: "side-pause-1",
         titleKey: "core.playback.pause.side_ended.title",
-        sideLabel: "A",
-        messageKey: "core.playback.pause.side_ended.message.vinyl"
+        sideLabel: "A"
     )
 
     @MainActor

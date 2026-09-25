@@ -53,7 +53,7 @@ struct NowPlayingBar: View {
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
-            .sidePausePromptAlert()
+            .sidePausePromptAlert(showError: { configStore.showError($0) })
         }
     }
 

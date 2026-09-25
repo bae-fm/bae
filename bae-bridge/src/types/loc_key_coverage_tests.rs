@@ -79,6 +79,9 @@ const DIRECT_KEYS: &[&str] = &[
     // catalog record. One key, no variants to enumerate, and the word itself
     // is never drawn.
     "core.identity.identified",
+    // The side/disc pause alert's body: one sentence for every medium, so the
+    // prompt carries only its title key and the UI names this one directly.
+    "core.playback.pause.message",
 ];
 
 /// A stand-in cover choice for walking the file roles that carry one. The
@@ -452,10 +455,7 @@ fn produced_keys() -> Vec<String> {
     keys.extend(
         [
             bae_core::playback::DISC_PAUSE_TITLE_KEY,
-            bae_core::playback::DISC_PAUSE_CD_MESSAGE_KEY,
             bae_core::playback::SIDE_PAUSE_TITLE_KEY,
-            bae_core::playback::SIDE_PAUSE_VINYL_MESSAGE_KEY,
-            bae_core::playback::SIDE_PAUSE_CASSETTE_MESSAGE_KEY,
         ]
         .into_iter()
         .map(str::to_string),

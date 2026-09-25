@@ -87,8 +87,7 @@ use api::SidePauseDecision;
 pub(crate) use api::{dispatch_command, PlaybackCommand};
 pub use api::{
     LoadingTrack, PlaybackHandle, PlaybackPauseReason, PlaybackSidePausePrompt, PlaybackState,
-    PlaybackTrackInfo, PlaybackTrackSide, DISC_PAUSE_CD_MESSAGE_KEY, DISC_PAUSE_TITLE_KEY,
-    SIDE_PAUSE_CASSETTE_MESSAGE_KEY, SIDE_PAUSE_TITLE_KEY, SIDE_PAUSE_VINYL_MESSAGE_KEY,
+    PlaybackTrackInfo, PlaybackTrackSide, DISC_PAUSE_TITLE_KEY, SIDE_PAUSE_TITLE_KEY,
 };
 use file_buffers::{prepare_track_for_playback, FileBuffers};
 use renderer::{RemoteConnect, Renderer};
@@ -493,22 +492,12 @@ fn side_pause_prompt_between(
     if current_side.number == next_side.number {
         return None;
     }
-    let (title_key, message_key, side_label) = match current_side.medium {
-        PhysicalMedium::Vinyl => (
+    let (title_key, side_label) = match current_side.medium {
+        PhysicalMedium::Vinyl | PhysicalMedium::Cassette => (
             SIDE_PAUSE_TITLE_KEY,
-            SIDE_PAUSE_VINYL_MESSAGE_KEY,
             crate::util::format::side_letter(current_side.number),
         ),
-        PhysicalMedium::Cassette => (
-            SIDE_PAUSE_TITLE_KEY,
-            SIDE_PAUSE_CASSETTE_MESSAGE_KEY,
-            crate::util::format::side_letter(current_side.number),
-        ),
-        PhysicalMedium::Cd => (
-            DISC_PAUSE_TITLE_KEY,
-            DISC_PAUSE_CD_MESSAGE_KEY,
-            current_side.number.to_string(),
-        ),
+        PhysicalMedium::Cd => (DISC_PAUSE_TITLE_KEY, current_side.number.to_string()),
     };
     Some(PlaybackSidePausePrompt {
         id: format!(
@@ -517,7 +506,6 @@ fn side_pause_prompt_between(
         ),
         title_key,
         side_label,
-        message_key,
     })
 }
 

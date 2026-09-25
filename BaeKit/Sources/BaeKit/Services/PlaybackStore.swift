@@ -484,10 +484,6 @@ extension BridgeSidePausePrompt {
             sideLabel
         )
     }
-
-    public func message() -> String {
-        localizedCoreString(messageKey)
-    }
 }
 
 public enum NowPlaying {

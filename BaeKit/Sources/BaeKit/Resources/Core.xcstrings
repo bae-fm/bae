@@ -23269,179 +23269,6 @@
         }
       }
     },
-    "core.playback.pause.disc_ended.message.cd": {
-      "comment": "Alert body shown when playback pauses between CDs.",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تم إيقاف التشغيل مؤقتًا بين الأقراص. بدّل القرص المضغوط ثم اضغط تشغيل."
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Възпроизвеждането е на пауза между дисковете. Сменете компактдиска и натиснете Възпроизвеждане."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Přehrávání je pozastaveno mezi disky. Vyměňte CD a stiskněte Přehrát."
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Afspilningen er sat på pause mellem diskene. Skift cd, og tryk på Afspil."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Wiedergabe pausiert zwischen den Discs. Wechsle die CD und drücke Wiedergabe."
-          }
-        },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Η αναπαραγωγή είναι σε παύση ανάμεσα στους δίσκους. Αλλάξτε το CD και πατήστε Αναπαραγωγή."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Playback paused between discs. Change the CD, then press Play."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La reproducción se pausó entre discos. Cambia el CD y pulsa Reproducir."
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Toisto on tauolla levyjen välissä. Vaihda CD ja paina Toista."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La lecture est en pause entre les disques. Changez le CD, puis appuyez sur Lecture."
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ההשמעה הושהתה בין הדיסקים. החלף את התקליטור ואז לחץ על הפעלה."
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reprodukcija je pauzirana između diskova. Promijenite CD i pritisnite Reproduciraj."
-          }
-        },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A lejátszás szünetel a lemezek között. Cseréld ki a CD-t, majd nyomd meg a Lejátszás gombot."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La riproduzione è in pausa tra i dischi. Cambia il CD, poi premi Riproduci."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ディスクの間で再生を一時停止しました。CDを交換してから再生を押してください。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "디스크 사이에서 재생이 일시 정지되었습니다. CD를 교체한 다음 재생을 누르세요."
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avspillingen er satt på pause mellom platene. Bytt CD, og trykk på Spill av."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Het afspelen is gepauzeerd tussen schijven. Verwissel de cd en druk op Afspelen."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Odtwarzanie wstrzymano między płytami. Zmień płytę CD i naciśnij Odtwórz."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A reprodução pausou entre os discos. Troque o CD e toque em Reproduzir."
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A reprodução está em pausa entre discos. Troque o CD e prima Reproduzir."
-          }
-        },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Redarea este în pauză între discuri. Schimbă CD-ul, apoi apasă Redă."
-          }
-        },
-        "sk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Prehrávanie je pozastavené medzi diskami. Vymeň CD a stlač Prehrať."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Uppspelningen pausades mellan skivorna. Byt CD och tryck på Spela."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Çalma diskler arasında duraklatıldı. CD’yi değiştirin, sonra Oynat’a basın."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Відтворення призупинено між дисками. Змініть компакт-диск і натисніть Відтворити."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "播放已在碟片之间暂停。请更换CD，然后按播放。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "播放已在碟片之間暫停。請更換CD，然後按播放。"
-          }
-        }
-      }
-    },
     "core.playback.pause.disc_ended.title": {
       "comment": "Alert title shown when playback pauses after a CD ends ({label} is the disc number).",
       "localizations": {
@@ -23615,348 +23442,175 @@
         }
       }
     },
-    "core.playback.pause.side_ended.message.cassette": {
-      "comment": "Alert body shown when playback pauses between cassette sides.",
+    "core.playback.pause.message": {
+      "comment": "Alert body shown when playback pauses at the end of a side or disc, for every medium.",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "تم إيقاف التشغيل مؤقتًا بين الجانبين. اقلب شريط الكاسيت ثم اضغط تشغيل."
+            "value": "التشغيل متوقف مؤقتًا. اضغط تشغيل للمتابعة."
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "Възпроизвеждането е на пауза между страните. Обърнете касетата и натиснете Възпроизвеждане."
+            "value": "Възпроизвеждането е на пауза. Натиснете Възпроизвеждане, за да продължите."
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Přehrávání je pozastaveno mezi stranami. Otočte kazetu a stiskněte Přehrát."
+            "value": "Přehrávání je pozastaveno. Pokračujte stisknutím Přehrát."
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Afspilningen er sat på pause mellem siderne. Vend kassettebåndet, og tryk på Afspil."
+            "value": "Afspilningen er sat på pause. Tryk på Afspil for at fortsætte."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Wiedergabe pausiert zwischen den Seiten. Drehe die Kassette um und drücke Wiedergabe."
+            "value": "Die Wiedergabe ist pausiert. Drücke Wiedergabe, um fortzufahren."
           }
         },
         "el": {
           "stringUnit": {
             "state": "translated",
-            "value": "Η αναπαραγωγή είναι σε παύση ανάμεσα στις πλευρές. Γυρίστε την κασέτα και πατήστε Αναπαραγωγή."
+            "value": "Η αναπαραγωγή είναι σε παύση. Πατήστε Αναπαραγωγή για να συνεχίσετε."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Playback paused between sides. Turn the cassette, then press Play."
+            "value": "Playback is paused. Press Play to continue."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La reproducción se pausó entre lados. Dale la vuelta al casete y pulsa Reproducir."
+            "value": "La reproducción está en pausa. Pulsa Reproducir para continuar."
           }
         },
         "fi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toisto on tauolla puolten välissä. Käännä kasetti ja paina Toista."
+            "value": "Toisto on tauolla. Jatka painamalla Toista."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La lecture est en pause entre les faces. Retournez la cassette, puis appuyez sur Lecture."
+            "value": "La lecture est en pause. Appuyez sur Lecture pour continuer."
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "ההשמעה הושהתה בין הצדדים. הפוך את הקלטת ואז לחץ על הפעלה."
+            "value": "ההשמעה מושהית. לחץ על הפעלה כדי להמשיך."
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reprodukcija je pauzirana između strana. Okrenite kasetu i pritisnite Reproduciraj."
+            "value": "Reprodukcija je pauzirana. Pritisnite Reproduciraj za nastavak."
           }
         },
         "hu": {
           "stringUnit": {
             "state": "translated",
-            "value": "A lejátszás szünetel az oldalak között. Fordítsd meg a kazettát, majd nyomd meg a Lejátszás gombot."
+            "value": "A lejátszás szünetel. A folytatáshoz nyomd meg a Lejátszás gombot."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La riproduzione è in pausa tra i lati. Gira la cassetta, poi premi Riproduci."
+            "value": "La riproduzione è in pausa. Premi Riproduci per continuare."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "面の間で再生を一時停止しました。カセットを裏返してから再生を押してください。"
+            "value": "再生を一時停止しています。続けるには再生を押してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "면 사이에서 재생이 일시 정지되었습니다. 카세트를 뒤집은 다음 재생을 누르세요."
+            "value": "재생이 일시 정지되었습니다. 계속하려면 재생을 누르세요."
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avspillingen er satt på pause mellom sidene. Snu kassetten, og trykk på Spill av."
+            "value": "Avspillingen er satt på pause. Trykk på Spill av for å fortsette."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Het afspelen is gepauzeerd tussen kanten. Draai de cassette om en druk op Afspelen."
+            "value": "Het afspelen is gepauzeerd. Druk op Afspelen om verder te gaan."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Odtwarzanie wstrzymano między stronami. Odwróć kasetę i naciśnij Odtwórz."
+            "value": "Odtwarzanie wstrzymano. Naciśnij Odtwórz, aby kontynuować."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A reprodução pausou entre os lados. Vire a fita cassete e toque em Reproduzir."
+            "value": "A reprodução está pausada. Toque em Reproduzir para continuar."
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "A reprodução está em pausa entre lados. Vire a cassete e prima Reproduzir."
+            "value": "A reprodução está em pausa. Prima Reproduzir para continuar."
           }
         },
         "ro": {
           "stringUnit": {
             "state": "translated",
-            "value": "Redarea este în pauză între fețe. Întoarce caseta, apoi apasă Redă."
+            "value": "Redarea este în pauză. Apasă Redă pentru a continua."
           }
         },
         "sk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prehrávanie je pozastavené medzi stranami. Otoč kazetu a stlač Prehrať."
+            "value": "Prehrávanie je pozastavené. Pokračuj stlačením Prehrať."
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uppspelningen pausades mellan sidorna. Vänd på kassetten och tryck på Spela."
+            "value": "Uppspelningen är pausad. Tryck på Spela för att fortsätta."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Çalma yüzler arasında duraklatıldı. Kaseti çevirin, sonra Oynat'a basın."
+            "value": "Çalma duraklatıldı. Devam etmek için Oynat'a basın."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Відтворення призупинено між сторонами. Переверніть касету і натисніть Відтворити."
+            "value": "Відтворення призупинено. Натисніть Відтворити, щоб продовжити."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "播放已在两面之间暂停。请翻转磁带，然后按播放。"
+            "value": "播放已暂停。按播放继续。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "播放已在兩面之間暫停。請翻轉卡帶，然後按播放。"
-          }
-        }
-      }
-    },
-    "core.playback.pause.side_ended.message.vinyl": {
-      "comment": "Alert body shown when playback pauses between vinyl sides.",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تم إيقاف التشغيل مؤقتًا بين الجانبين. اقلب أسطوانة الفينيل ثم اضغط تشغيل."
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Възпроизвеждането е на пауза между страните. Обърнете плочата и натиснете Възпроизвеждане."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Přehrávání je pozastaveno mezi stranami. Otočte vinyl a stiskněte Přehrát."
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Afspilningen er sat på pause mellem siderne. Vend vinylpladen, og tryk på Afspil."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Wiedergabe pausiert zwischen den Seiten. Drehe die Schallplatte um und drücke Wiedergabe."
-          }
-        },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Η αναπαραγωγή είναι σε παύση ανάμεσα στις πλευρές. Γυρίστε τον δίσκο βινυλίου και πατήστε Αναπαραγωγή."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Playback paused between sides. Turn the vinyl, then press Play."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La reproducción se pausó entre lados. Dale la vuelta al vinilo y pulsa Reproducir."
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Toisto on tauolla puolten välissä. Käännä vinyylilevy ja paina Toista."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La lecture est en pause entre les faces. Retournez le vinyle, puis appuyez sur Lecture."
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ההשמעה הושהתה בין הצדדים. הפוך את התקליט ואז לחץ על הפעלה."
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reprodukcija je pauzirana između strana. Okrenite vinil i pritisnite Reproduciraj."
-          }
-        },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A lejátszás szünetel az oldalak között. Fordítsd meg a bakelitet, majd nyomd meg a Lejátszás gombot."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La riproduzione è in pausa tra i lati. Gira il vinile, poi premi Riproduci."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "面の間で再生を一時停止しました。レコードを裏返してから再生を押してください。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "면 사이에서 재생이 일시 정지되었습니다. 레코드를 뒤집은 다음 재생을 누르세요."
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avspillingen er satt på pause mellom sidene. Snu vinylplaten, og trykk på Spill av."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Het afspelen is gepauzeerd tussen kanten. Draai de plaat om en druk op Afspelen."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Odtwarzanie wstrzymano między stronami. Odwróć winyl i naciśnij Odtwórz."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A reprodução pausou entre os lados. Vire o vinil e toque em Reproduzir."
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A reprodução está em pausa entre lados. Vire o vinil e prima Reproduzir."
-          }
-        },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Redarea este în pauză între fețe. Întoarce discul de vinil, apoi apasă Redă."
-          }
-        },
-        "sk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Prehrávanie je pozastavené medzi stranami. Otoč platňu a stlač Prehrať."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Uppspelningen pausades mellan sidorna. Vänd på vinylskivan och tryck på Spela."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Çalma yüzler arasında duraklatıldı. Plağı çevirin, sonra Oynat'a basın."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Відтворення призупинено між сторонами. Переверніть вініл і натисніть Відтворити."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "播放已在两面之间暂停。请翻转黑胶唱片，然后按播放。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "播放已在兩面之間暫停。請翻轉黑膠唱片，然後按播放。"
+            "value": "播放已暫停。按播放繼續。"
           }
         }
       }

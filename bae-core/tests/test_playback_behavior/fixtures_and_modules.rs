@@ -416,7 +416,7 @@ impl SidePauseTestFixture {
     async fn wait_for_side_pause(
         &mut self,
         expected_side_label: &str,
-        expected_message_key: &str,
+        expected_title_key: &str,
     ) -> PlaybackState {
         self.wait_for_state(
             |s| {
@@ -426,7 +426,7 @@ impl SidePauseTestFixture {
                         reason: PlaybackPauseReason::SideEnded(prompt),
                         ..
                     } if prompt.side_label == expected_side_label
-                        && prompt.message_key == expected_message_key
+                        && prompt.title_key == expected_title_key
                 )
             },
             Duration::from_secs(10),
@@ -440,11 +440,11 @@ impl SidePauseTestFixture {
         start_track_index: usize,
         track_id: &str,
         expected_side_label: &str,
-        expected_message_key: &str,
+        expected_title_key: &str,
     ) -> PlaybackState {
         self.play_track_and_wait(start_track_index, track_id).await;
         self.seek_to_auto_advance();
-        self.wait_for_side_pause(expected_side_label, expected_message_key)
+        self.wait_for_side_pause(expected_side_label, expected_title_key)
             .await
     }
 }

@@ -35,7 +35,7 @@ async fn cd_disc_pause_resumes_at_next_disc() {
             0,
             &first,
             "1",
-            bae_core::playback::DISC_PAUSE_CD_MESSAGE_KEY,
+            bae_core::playback::DISC_PAUSE_TITLE_KEY,
         )
         .await;
     match paused {
@@ -73,7 +73,7 @@ async fn cd_setting_changes_mid_track_apply_at_disc_boundary() {
         fixture.seek_to_auto_advance();
         if enabled {
             fixture
-                .wait_for_side_pause("1", bae_core::playback::DISC_PAUSE_CD_MESSAGE_KEY)
+                .wait_for_side_pause("1", bae_core::playback::DISC_PAUSE_TITLE_KEY)
                 .await;
         } else {
             fixture

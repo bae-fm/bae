@@ -75,8 +75,7 @@ public sealed class PlaybackStoreTests
             new BridgePlaybackPauseReason.SideEnded(new BridgeSidePausePrompt(
                 Id: "side-A",
                 TitleKey: "core.playback.pause.side_ended.title",
-                SideLabel: "A",
-                MessageKey: "core.playback.pause.side_ended.message.vinyl")));
+                SideLabel: "A")));
 
         Assert.Equal("A", handed?.SidePausePrompt?.SideLabel);
 

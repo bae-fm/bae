@@ -274,7 +274,6 @@ async fn playback_state_mapping() {
         id: "id".to_string(),
         title_key: SIDE_PAUSE_TITLE_KEY,
         side_label: "B".to_string(),
-        message_key: SIDE_PAUSE_VINYL_MESSAGE_KEY,
     };
     service.slot = active_slot(
         test_prepared_track("t", buffer),

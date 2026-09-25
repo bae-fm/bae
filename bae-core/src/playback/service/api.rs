@@ -53,15 +53,10 @@ pub struct PlaybackSidePausePrompt {
     pub id: String,
     pub title_key: &'static str,
     pub side_label: String,
-    pub message_key: &'static str,
 }
 
 pub const SIDE_PAUSE_TITLE_KEY: &str = "core.playback.pause.side_ended.title";
-pub const SIDE_PAUSE_VINYL_MESSAGE_KEY: &str = "core.playback.pause.side_ended.message.vinyl";
-pub const SIDE_PAUSE_CASSETTE_MESSAGE_KEY: &str = "core.playback.pause.side_ended.message.cassette";
-
 pub const DISC_PAUSE_TITLE_KEY: &str = "core.playback.pause.disc_ended.title";
-pub const DISC_PAUSE_CD_MESSAGE_KEY: &str = "core.playback.pause.disc_ended.message.cd";
 
 /// Why playback is paused.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -124,3 +124,27 @@ extension Playback {
         }
     }
 }
+
+extension Playback {
+    /// Answer the side/disc pause prompt. An unchecked pause-between-sides box
+    /// turns the setting off; a checked one leaves it as it is. Play resumes
+    /// even when that write fails — the failure is thrown after, for the
+    /// caller to show.
+    public func answerSidePausePrompt(keepPausing: Bool, play: Bool) throws {
+        var writeError: (any Error)?
+        if !keepPausing {
+            do {
+                try setPauseBetweenSides(false)
+            }
+            catch {
+                writeError = error
+            }
+        }
+        if play {
+            resume()
+        }
+        if let writeError {
+            throw writeError
+        }
+    }
+}
