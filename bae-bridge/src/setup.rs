@@ -172,9 +172,8 @@ pub fn init_test_keyring() {
 /// ~0.5 MB stack. (The AWS-SDK S3 endpoint descent runs on coven's own
 /// big-stack S3 runtime regardless of who awaits it.)
 ///
-/// That requires the futures to be `Send` + `'static`. They are: coven's pull
-/// path carries the database handle as a `Send`-able `SendDbPtr`, so no
-/// non-`Send` `*mut sqlite3` is held across the download await.
+/// That requires the futures to be `Send` + `'static`, which the bounds below
+/// enforce at compile time for every operation handed to it.
 pub(crate) fn on_worker<T, Fut>(
     runtime: &tokio::runtime::Handle,
     make_fut: impl FnOnce() -> Fut + Send + 'static,
@@ -192,10 +191,6 @@ where
 }
 
 /// Decode a restore code string and return info for UI preview.
-///
-/// coven's `RestoreCodeInfo` is not part of its curated public API, so the
-/// decoded value is consumed structurally here at its one call site rather
-/// than named in a conversion signature. Its fields stay dotted reads.
 #[uniffi::export]
 pub fn decode_restore_code(code: String) -> Result<BridgeRestoreCodeInfo, BridgeError> {
     let info = bae_core::sync::decode_restore_code_info(&code).map_err(BridgeError::config)?;

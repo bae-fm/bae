@@ -79,9 +79,11 @@ pub const CACHE_BUDGETS: [(&str, u64); 3] = [
 /// The tables coven captures into changesets for incremental sync.
 ///
 /// coven only attaches tables it is told about — a row in an unregistered table
-/// never propagates — applies changesets keyed on the column-0 PRIMARY KEY, and
-/// resolves conflicts last-writer-wins on `_updated_at`. So a table syncs only
-/// if it has both an `id TEXT PRIMARY KEY` at column 0 and an
+/// never propagates — and applies changesets keyed on the column-0 PRIMARY KEY.
+/// Concurrent edits merge column by column: an edit to a column the other
+/// device left alone survives, and only edits to the same column are ordered by
+/// the row's `_updated_at`, the later one winning. So a table syncs only if it
+/// has both an `id TEXT PRIMARY KEY` at column 0 and an
 /// `_updated_at TEXT NOT NULL`. Every table below has both (the tests here check
 /// that against the fully migrated SQLite schema).
 ///

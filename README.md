@@ -20,7 +20,7 @@ You pick releases from MusicBrainz or Discogs, point bae at your files, and it h
 - **Identity**: each device has a locally generated Ed25519/X25519 keypair. Public keys are identities. No central identity server.
 - **Encryption**: one symmetric key per library, shared across your devices. Everything in the cloud home is encrypted before it leaves the device.
 - **Storage**: pluggable via a `CloudHome` trait -- Google Drive, Dropbox, OneDrive, iCloud Drive, any S3-compatible bucket, or local-only.
-- **Sync**: SQLite session extension captures changesets automatically. Row-level last-writer-wins conflict resolution via hybrid logical clock. Deterministic merge.
+- **Sync**: SQLite session extension captures changesets automatically. Concurrent edits merge column by column; edits to the same column are ordered by a hybrid logical clock. Deterministic merge.
 - **Membership**: append-only chain of signed membership entries. Each changeset is signed by its author and verified against the membership chain on pull.
 
 ## Crates
