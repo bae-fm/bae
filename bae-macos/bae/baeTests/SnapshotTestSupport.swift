@@ -36,6 +36,12 @@ enum SnapshotTestSupport {
             backing: .buffered,
             defer: false
         )
+        // Ordering a window in plays its zoom-in on a thread of its own,
+        // paced by the display the window is on. Past every display there
+        // is none, so the animation never ends and its thread is never
+        // given back: a full run held more than a hundred of them, and a
+        // later dispatch waited for a thread that never came.
+        window.animationBehavior = .none
         window.setFrameOrigin(offscreenOrigin)
         window.contentView = host
         window.orderFront(nil)

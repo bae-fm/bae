@@ -404,6 +404,9 @@ extension ImportCandidateViewportTests {
             backing: .buffered,
             defer: false
         )
+        // Past every display the zoom-in ordering plays has no display to
+        // pace it, so it never ends and keeps its thread.
+        window.animationBehavior = .none
         window.contentView = hosting
         window.orderBack(nil)
         return window
