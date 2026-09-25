@@ -178,11 +178,14 @@ struct ImportReleaseHeader: View {
     private var actionRow: some View {
         HStack(alignment: .center, spacing: 16) {
             HStack(spacing: 8) {
-                Button("Identify automatically") {
+                Text("Identify")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Button("Automatic") {
                     sourceActions.identifyAutomatically()
                 }
                 .buttonStyle(.bordered)
-                Button("Search for release") {
+                Button("Search") {
                     sourceActions.searchForRelease()
                 }
                 .buttonStyle(.bordered)

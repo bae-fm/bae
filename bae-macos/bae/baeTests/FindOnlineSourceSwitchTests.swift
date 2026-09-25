@@ -6,76 +6,17 @@ import Testing
 
 @testable import bae
 
-/// The per-source checkboxes on the Find online header, and what the pane says
-/// when they leave nothing to ask.
+/// The per-source switches in Settings › Import, and what the Find online pane
+/// says when they leave nothing to ask.
 @MainActor
-@Suite("The Find online source switches")
+@Suite("The metadata source switches")
 struct FindOnlineSourceSwitchTests {
-    private static let headerSize = NSSize(width: 660, height: 42)
     private static let paneSize = NSSize(width: 900, height: 620)
 
-    /// One checkbox per source, named by the source. The names are brands, so
-    /// they read the same in every language and the header can be checked for
-    /// them literally — by containment, because SwiftUI's checkbox is an
-    /// AppKit button with no title and no accessibility name, so the name is
-    /// drawn beside the box and comes back glued to it ("v Discogs").
-    @Test("the header names every source core reports")
-    func theHeaderNamesEverySource() async throws {
-        let lines = try await FindOnlineRendering.text(
-            header(configStore: PreviewData.configStore()),
-            size: Self.headerSize
-        )
-
-        for source in [BridgeCatalog.musicBrainz, .discogs] {
-            let name = bridgeCatalogName(catalog: source)
-            #expect(
-                lines.contains { $0.localizedCaseInsensitiveContains(name) },
-                "the header reads: \(lines)"
-            )
-        }
-    }
-
-    /// A checked box and an unchecked one are different pixels — which is the
-    /// only thing that tells a person which sources are being asked.
-    @Test("a source switched off draws differently from one being asked")
-    func aSwitchedOffSourceDrawsDifferently() async throws {
-        let bothOn = try await pixels(of: PreviewData.configStore())
-        let oneOff = try await pixels(
-            of: PreviewData.makeConfigStore(
-                libraryFullWidth: false,
-                musicBrainz: .off
-            )
-        )
-
-        #expect(bothOn != oneOff)
-    }
-
-    /// A source with no credential and a source the person switched off are
-    /// both unchecked, and they are not the same thing: one cannot be moved.
-    @Test("an unreachable source is not drawn as a switched-off one")
-    func anUnreachableSourceIsNotASwitchedOffOne() async throws {
-        // Discogs off but reachable, against Discogs with no token: both
-        // unchecked, and only one of them can be checked again.
-        let off = try await pixels(
-            of: PreviewData.makeConfigStore(
-                libraryFullWidth: false,
-                discogs: .off
-            )
-        )
-        let unreachable = try await pixels(
-            of: PreviewData.makeConfigStore(
-                libraryFullWidth: false,
-                discogsUsable: false
-            )
-        )
-
-        #expect(off != unreachable)
-    }
-
-    /// Both surfaces that carry these checkboxes — the header and the settings
-    /// tab — write through the same Importer call, which passes the source and
-    /// the value it is being set to straight through. Absolute, not a flip, so
-    /// two windows disagreeing cannot leave the setting inverted.
+    /// The settings tab's checkboxes write through an Importer call that
+    /// passes the source and the value it is being set to straight through.
+    /// Absolute, not a flip, so two windows disagreeing cannot leave the
+    /// setting inverted.
     @Test("the write carries the source and the value it is being set to")
     func theWriteCarriesTheValueItIsSetTo() throws {
         let recorder = SourceSwitchRecorder()
@@ -123,7 +64,7 @@ struct FindOnlineSourceSwitchTests {
             return Set(localizations.keys)
         }
 
-        let reference = try locales("Find online")
+        let reference = try locales("Search")
         for key in [
             "Search %@",
             "No source to search",
@@ -197,22 +138,6 @@ struct FindOnlineSourceSwitchTests {
 
         #expect(oneSource != blank, "a one-source run still draws its band")
         #expect(oneSource != bothSources)
-    }
-
-    /// The header as the app builds it: the switches come off the config the
-    /// app observes, and the writes go through the Importer.
-    private func header(configStore: ConfigStore) -> some View {
-        FindOnlineHeader(onBack: {})
-            .environment(configStore)
-            .environment(Importer.stub())
-            .environment(UiStore())
-    }
-
-    private func pixels(of configStore: ConfigStore) async throws -> Data {
-        try await FindOnlineRendering.pixels(
-            header(configStore: configStore),
-            size: Self.headerSize
-        )
     }
 
     /// Every line of text the pane draws for a library with these sources,

@@ -49,7 +49,7 @@ struct ImportSettingsTab: View {
                 Text("Sources")
             } footer: {
                 Text(
-                    "Find online asks the sources that are checked here. The same checkboxes are on the Find online header."
+                    "Identification asks the sources that are checked here."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)

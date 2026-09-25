@@ -2939,179 +2939,6 @@
         }
       }
     },
-    "Find online" : {
-      "comment" : "Import metadata: online source label",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "البحث عبر الإنترنت"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Търсене онлайн"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Najít online"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Slå op online"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Find online"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Online suchen"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Αναζήτηση στο διαδίκτυο"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar en línea"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Etsi verkosta"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rechercher en ligne"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "חיפוש באינטרנט"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pronađi na internetu"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keresés online"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trova online"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "オンラインで検索"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "온라인에서 찾기"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Slå opp på nettet"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Online zoeken"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Znajdź online"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar online"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Procurar online"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Caută online"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nájsť online"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sök på nätet"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Çevrimiçi bul"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Знайти онлайн"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在线查找"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在線上尋找"
-          }
-        }
-      }
-    },
     "Find release…" : {
       "comment" : "Import metadata: find a catalog release for the candidate",
       "localizations" : {
@@ -3454,6 +3281,179 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "自動識別"
+          }
+        }
+      }
+    },
+    "Identify" : {
+      "comment" : "Import: the label before the Automatic and Search buttons on a candidate's card, and the title of the pane they open",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تحديد الهوية"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идентифициране"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifikovat"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificer"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifizieren"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ταυτοποίηση"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identify"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificar"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tunnista"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifier"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זיהוי"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificiraj"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Azonosítás"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifica"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "識別"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "식별"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifiser"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificeren"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identyfikuj"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificar"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificar"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifică"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifikovať"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifiera"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanımla"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ідентифікувати"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "识别"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "識別"
           }
         }
       }
@@ -73403,7 +73403,7 @@
       }
     },
     "Search" : {
-      "comment" : "Menu / import search: focus or submit search",
+      "comment" : "Menu / import search: focus or submit search; the SEARCH section's header on the Identify pane; the card's button that opens that search",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -96404,7 +96404,7 @@
       }
     },
     "Automatic" : {
-      "comment" : "Find online: the AUTOMATIC section's header label, set in caps",
+      "comment" : "Import: the AUTOMATIC section's header label on the Identify pane, set in caps, and the card's button that identifies the candidate now",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -102625,175 +102625,175 @@
         }
       }
     },
-    "Find online asks the sources that are checked here. The same checkboxes are on the Find online header." : {
+    "Identification asks the sources that are checked here." : {
       "comment" : "Settings › Import: the footer under the metadata-source checkboxes",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يسأل البحث عبر الإنترنت المصادر المحددة هنا. وتظهر خانات الاختيار نفسها في رأس البحث عبر الإنترنت."
+            "value" : "يسأل تحديد الهوية المصادر المحددة هنا."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Търсене онлайн пита източниците, отметнати тук. Същите отметки има и в заглавната лента на Търсене онлайн."
+            "value" : "Идентифицирането пита източниците, отметнати тук."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Najít online se ptá zdrojů zaškrtnutých zde. Stejná zaškrtávací pole jsou i v záhlaví Najít online."
+            "value" : "Identifikace se ptá zdrojů zaškrtnutých zde."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Slå op online spørger de kilder, der er markeret her. De samme afkrydsningsfelter findes i overskriften til Slå op online."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Find online asks the sources that are checked here. The same checkboxes are on the Find online header."
+            "value" : "Identifikationen spørger de kilder, der er markeret her."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„Online suchen“ fragt die hier angehakten Quellen ab. Dieselben Kontrollkästchen stehen in der Kopfzeile von „Online suchen“."
+            "value" : "Die Identifizierung fragt die hier angehakten Quellen ab."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Η Αναζήτηση στο διαδίκτυο ρωτά τις πηγές που είναι επιλεγμένες εδώ. Τα ίδια πλαίσια ελέγχου υπάρχουν και στην κεφαλίδα της Αναζήτησης στο διαδίκτυο."
+            "value" : "Η ταυτοποίηση ρωτά τις πηγές που είναι επιλεγμένες εδώ."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identification asks the sources that are checked here."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscar en línea consulta las fuentes marcadas aquí. Las mismas casillas están en la cabecera de Buscar en línea."
+            "value" : "La identificación consulta las fuentes marcadas aquí."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Etsi verkosta kysyy tässä valituista lähteistä. Samat valintaruudut ovat Etsi verkosta -otsikossa."
+            "value" : "Tunnistus kysyy tässä valituista lähteistä."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rechercher en ligne interroge les sources cochées ici. Les mêmes cases figurent dans l’en-tête de Rechercher en ligne."
+            "value" : "L’identification interroge les sources cochées ici."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "חיפוש באינטרנט פונה למקורות המסומנים כאן. אותן תיבות סימון נמצאות גם בכותרת של חיפוש באינטרנט."
+            "value" : "הזיהוי פונה למקורות המסומנים כאן."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pronađi na internetu pita izvore označene ovdje. Iste kućice nalaze se i u zaglavlju Pronađi na internetu."
+            "value" : "Identifikacija pita izvore označene ovdje."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A Keresés online az itt bejelölt forrásokat kérdezi le. Ugyanezek a jelölőnégyzetek a Keresés online fejlécében is megvannak."
+            "value" : "Az azonosítás az itt bejelölt forrásokat kérdezi le."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trova online interroga le fonti selezionate qui. Le stesse caselle sono nell’intestazione di Trova online."
+            "value" : "L’identificazione interroga le fonti selezionate qui."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "オンラインで検索は、ここでチェックしたソースに問い合わせます。同じチェックボックスはオンラインで検索のヘッダーにもあります。"
+            "value" : "識別では、ここでチェックしたソースに問い合わせます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "온라인에서 찾기는 여기에서 선택한 소스에 질의합니다. 같은 체크박스가 온라인에서 찾기 헤더에도 있습니다."
+            "value" : "식별은 여기에서 선택한 소스에 질의합니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Slå opp på nettet spør kildene som er avkrysset her. De samme avkrysningsboksene finnes i overskriften til Slå opp på nettet."
+            "value" : "Identifiseringen spør kildene som er avkrysset her."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Online zoeken raadpleegt de hier aangevinkte bronnen. Dezelfde vinkjes staan in de koptekst van Online zoeken."
+            "value" : "Identificatie raadpleegt de hier aangevinkte bronnen."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Znajdź online odpytuje źródła zaznaczone tutaj. Te same pola wyboru są w nagłówku Znajdź online."
+            "value" : "Identyfikacja odpytuje źródła zaznaczone tutaj."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscar online consulta as fontes marcadas aqui. As mesmas caixas estão no cabeçalho de Buscar online."
+            "value" : "A identificação consulta as fontes marcadas aqui."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Procurar online consulta as fontes assinaladas aqui. As mesmas caixas estão no cabeçalho de Procurar online."
+            "value" : "A identificação consulta as fontes assinaladas aqui."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caută online interoghează sursele bifate aici. Aceleași casete se află și în antetul Caută online."
+            "value" : "Identificarea interoghează sursele bifate aici."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nájsť online sa pýta zdrojov, ktoré sú zaškrtnuté tu. Tie isté zaškrtávacie polia sú v hlavičke Nájsť online."
+            "value" : "Identifikácia sa pýta zdrojov, ktoré sú zaškrtnuté tu."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sök på nätet frågar de källor som är ikryssade här. Samma kryssrutor finns i rubriken för Sök på nätet."
+            "value" : "Identifieringen frågar de källor som är ikryssade här."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Çevrimiçi bul burada işaretli kaynaklara sorar. Aynı kutular Çevrimiçi bul başlığında da yer alır."
+            "value" : "Tanımlama burada işaretli kaynaklara sorar."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Знайти онлайн опитує позначені тут джерела. Ті самі позначки є в заголовку Знайти онлайн."
+            "value" : "Ідентифікація опитує позначені тут джерела."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“在线查找”会询问此处勾选的来源。相同的复选框也在“在线查找”的标题栏上。"
+            "value" : "识别会询问此处勾选的来源。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「在線上尋找」會詢問此處勾選的來源。相同的核取方塊也在「在線上尋找」的標題列上。"
+            "value" : "識別會詢問此處勾選的來源。"
           }
         }
       }
@@ -103313,179 +103313,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重設為檔案中繼資料？"
-          }
-        }
-      }
-    },
-    "Search for release" : {
-      "comment" : "Import metadata: open Find online on its typed search, starting no run",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "البحث عن إصدار"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Търсене на издание"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vyhledat vydání"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Søg efter udgivelse"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nach Veröffentlichung suchen"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Αναζήτηση κυκλοφορίας"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search for release"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar la edición"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hae julkaisua"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rechercher une édition"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "חיפוש גרסה"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Traži izdanje"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kiadás keresése"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cerca l’edizione"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "リリースを検索"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "릴리스 검색"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Søk etter utgivelse"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uitgave zoeken"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Szukaj wydania"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar edição"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Procurar edição"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Caută ediția"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vyhľadať vydanie"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sök efter utgåva"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sürüm ara"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Шукати видання"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "搜索版本"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "搜尋版本"
           }
         }
       }

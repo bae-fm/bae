@@ -74,10 +74,24 @@ final class FindOnlinePaneTests: XCTestCase {
             },
             "a not-started pane reads: \(lines)"
         )
+        // "Identify" is the page's title, once; a second one, or the card's
+        // "Automatic" as a button of its own, would be a way to start a run.
+        let trimmed = lines.map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        XCTAssertEqual(
+            trimmed.filter {
+                $0.caseInsensitiveCompare(String(localized: "Identify"))
+                    == .orderedSame
+            }
+            .count,
+            1,
+            "a not-started pane reads: \(lines)"
+        )
         XCTAssertFalse(
-            lines.contains {
-                $0.trimmingCharacters(in: .whitespacesAndNewlines)
-                    .caseInsensitiveCompare("Identify") == .orderedSame
+            trimmed.contains {
+                $0.caseInsensitiveCompare(String(localized: "Automatic"))
+                    == .orderedSame
             },
             "a not-started pane reads: \(lines)"
         )
@@ -228,11 +242,6 @@ struct NarrowedOutDisclosureTests {
 ///
 /// Asserted in pixels: the bar sits above both section headers, so what it
 /// changes is the whole pane, and putting it away takes that row with it.
-///
-/// What dismissal does *not* take away is the header's own report: Discogs's
-/// checkbox stays unchecked and cannot be moved for as long as there is no
-/// token. So a dismissed pane no longer matches a configured one — the notice
-/// is dismissible, the fact it reports is not.
 @MainActor
 @Suite("The Discogs-not-configured bar")
 struct FindOnlineDiscogsBarTests {
@@ -277,38 +286,6 @@ struct FindOnlineDiscogsBarTests {
             showing != configured,
             "a library with a token never shows the bar"
         )
-        #expect(
-            dismissed != configured,
-            "the header still says Discogs is not being asked"
-        )
-    }
-
-    /// And that residual difference is the header: the same two libraries, with
-    /// no bar in either, still draw their Discogs checkbox differently.
-    @Test("the header keeps saying it after the notice is gone")
-    func theHeaderKeepsSayingIt() async throws {
-        let noToken = try await FindOnlineRendering.pixels(
-            header(discogsUsable: false),
-            size: NSSize(width: 900, height: 42)
-        )
-        let configured = try await FindOnlineRendering.pixels(
-            header(discogsUsable: true),
-            size: NSSize(width: 900, height: 42)
-        )
-
-        #expect(noToken != configured)
-    }
-
-    private func header(discogsUsable: Bool) -> some View {
-        FindOnlineHeader(onBack: {})
-            .environment(
-                PreviewData.makeConfigStore(
-                    libraryFullWidth: false,
-                    discogsUsable: discogsUsable
-                )
-            )
-            .environment(Importer.stub())
-            .environment(UiStore())
     }
 
     private func pixels(

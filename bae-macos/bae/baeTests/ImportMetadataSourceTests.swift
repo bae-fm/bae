@@ -327,8 +327,9 @@ extension ImportMetadataSourceTests {
 @MainActor
 @Suite("The draft card's release entries")
 struct ImportReleaseEntryTests {
-    /// Two entries, named for what each one does rather than where it goes:
-    /// both open the same page, and only the first asks for a run.
+    /// Two entries under one Identify label, named for what each one does
+    /// rather than where it goes: both open the same page, and only the first
+    /// asks for a run.
     @Test("the card names both ways to a release")
     func theCardNamesBothWaysToARelease() async throws {
         let lines = try await FindOnlineRendering.text(
@@ -365,8 +366,9 @@ struct ImportReleaseEntryTests {
         )
 
         for label in [
-            String(localized: "Identify automatically"),
-            String(localized: "Search for release"),
+            String(localized: "Identify"),
+            String(localized: "Automatic"),
+            String(localized: "Search"),
         ] {
             #expect(
                 lines.contains { $0.localizedCaseInsensitiveContains(label) },
