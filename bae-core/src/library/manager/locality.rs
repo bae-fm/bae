@@ -27,8 +27,10 @@ impl LibraryManager {
         self.database
             .make_remote("releases", release_id, &album_title, pin, ordered_blobs)
             .await
-            .map_err(|error| {
-                LibraryError::Storage(format!("make release {release_id} remote: {error}"))
+            .map_err(|error| LibraryError::MakeRemote {
+                operation: MakeRemoteOperation::Make,
+                release_id: release_id.to_string(),
+                error: Box::new(error),
             })?;
         // Publish the same canonical projection the durable live query emits
         // before the initiating command can clear its foreground label or emit
@@ -50,8 +52,10 @@ impl LibraryManager {
         self.database
             .cancel_make_remote("releases", release_id)
             .await
-            .map_err(|e| {
-                LibraryError::Storage(format!("cancel make release {release_id} remote: {e}"))
+            .map_err(|error| LibraryError::MakeRemote {
+                operation: MakeRemoteOperation::Cancel,
+                release_id: release_id.to_string(),
+                error: Box::new(error),
             })?;
         // Start the unwind now rather than at the loop's next idle tick.
         self.database.sync_now();
@@ -127,9 +131,10 @@ impl LibraryManager {
                 );
                 Ok(())
             }
-            Err(e) => Err(LibraryError::Storage(format!(
-                "make release {release_id} local: {e}"
-            ))),
+            Err(error) => Err(LibraryError::MakeLocal {
+                release_id: release_id.to_string(),
+                error: Box::new(error),
+            }),
         }
     }
 
@@ -338,10 +343,7 @@ impl LibraryManager {
                 ReleaseStorageAction::MakeRemote,
             );
             let admission = async {
-                let file_count = transfer
-                    .start()
-                    .await
-                    .map_err(|error| LibraryError::Storage(error.to_string()))?;
+                let file_count = transfer.start().await?;
                 let _value_guard = self.admit_transfer_values(
                     std::slice::from_ref(release_id),
                     ReleaseStorageAction::MakeRemote,
@@ -488,7 +490,7 @@ impl LibraryManager {
                     }
                 }
                 TransferProgress::Complete { .. } => break Ok(()),
-                TransferProgress::Failed { error, .. } => break Err(LibraryError::Storage(error)),
+                TransferProgress::Failed { error, .. } => break Err(error),
             }
         };
 

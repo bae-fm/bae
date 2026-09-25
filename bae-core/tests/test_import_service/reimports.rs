@@ -288,7 +288,10 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
     let error = support::try_wait_for_import_complete(&mut progress_rx)
         .await
         .expect_err("remote transition without a sync provider fails");
-    assert!(error.contains("cloud upload"), "unexpected error: {error}");
+    assert!(
+        error.contains("make release") && error.contains("sync is not running"),
+        "unexpected error: {error}"
+    );
 
     // The rollback deleted the finalized remote release, its album, and the
     // artist row that finalize inserted for it; only the prior release, album,

@@ -34,7 +34,7 @@ use crate::library::{DownloadTransferProgress, LibraryError, LibraryManager};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 
-type TransferResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
+type TransferResult = Result<(), LibraryError>;
 type ProgressTx = mpsc::UnboundedSender<TransferProgress>;
 
 /// Read one release file's whole plaintext through coven's locality-aware read:
@@ -60,13 +60,22 @@ pub async fn read_release_file_bytes(
     Ok(bytes)
 }
 
-/// Progress updates emitted during a pin, unpin, or make-Local operation.
-#[derive(Debug, Clone)]
+/// Progress updates emitted during a pin, unpin, or make-Local operation. A
+/// failure carries the typed error, so the caller reports why it failed —
+/// the cloud out of reach, its credentials, or this device's own store.
+#[derive(Debug)]
 pub enum TransferProgress {
     Started,
-    Progress { progress: DownloadTransferProgress },
-    Complete { release_id: String },
-    Failed { release_id: String, error: String },
+    Progress {
+        progress: DownloadTransferProgress,
+    },
+    Complete {
+        release_id: String,
+    },
+    Failed {
+        release_id: String,
+        error: LibraryError,
+    },
 }
 
 /// Pin, unpin, and make-Local service for releases.
@@ -210,19 +219,25 @@ impl ReleaseTransfer {
 
     /// Guard the transfer's preconditions; returns the release's file count so
     /// the completion can report it.
-    pub(crate) async fn start(&self) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
+    pub(crate) async fn start(&self) -> Result<u32, LibraryError> {
         let release = self
             .library_manager
             .get_release_by_id(&self.release_id)
             .await?
-            .ok_or("Release not found")?;
+            .ok_or_else(|| {
+                LibraryError::TrackMapping(format!("Release not found: {}", self.release_id))
+            })?;
         if release.remote != action_expects_remote(self.action) {
-            return Err(wrong_state_error(self.action).into());
+            return Err(LibraryError::Storage(
+                wrong_state_error(self.action).to_string(),
+            ));
         }
         if matches!(self.action, ReleaseStorageAction::MakeRemote)
             && !self.library_manager.has_cloud_home()
         {
-            return Err("Cannot make a release remote without a cloud home".into());
+            return Err(LibraryError::Storage(
+                "Cannot make a release remote without a cloud home".to_string(),
+            ));
         }
 
         let files = self
@@ -230,7 +245,7 @@ impl ReleaseTransfer {
             .get_files_for_release(&self.release_id)
             .await?;
         if files.is_empty() {
-            return Err("Release has no files".into());
+            return Err(LibraryError::Storage("Release has no files".to_string()));
         }
 
         Ok(files.len() as u32)
@@ -299,16 +314,16 @@ where
                     release_id: transfer.release_id.clone(),
                 },
             );
-            Ok::<_, Box<dyn std::error::Error + Send + Sync>>(())
+            Ok::<_, LibraryError>(())
         }
         .await;
-        if let Err(e) = result {
-            transfer.fail(&e);
+        if let Err(error) = result {
+            transfer.fail(&error);
             send_progress(
                 &tx,
                 TransferProgress::Failed {
                     release_id: transfer.release_id.clone(),
-                    error: e.to_string(),
+                    error,
                 },
             );
         }

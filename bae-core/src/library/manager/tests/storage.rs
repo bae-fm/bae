@@ -495,3 +495,50 @@ async fn pin_release_pins_the_cover_and_counts_its_bytes() {
     assert_eq!(last.bytes_total, expected_total);
     assert_eq!(last.fraction, 1.0, "the bar lands on its denominator");
 }
+
+/// A pin that cannot reach the cloud is a network failure the person retries
+/// once they are back online, not an internal fault: coven's typed reason
+/// reaches the category the UI renders.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let home = connect_test_cloud(&manager).await;
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("pin-offline"),
+        "Pin Offline",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.drain_uploads_expecting_work().await.unwrap();
+    let file_id = release_files(&manager, &release.id).await[0].id.clone();
+    manager
+        .evict_blob_for_test(&manager.release_file_row_blob_ref(&file_id).await.unwrap())
+        .await
+        .unwrap();
+    home.fail_next_exact_stream_reads(1);
+
+    let error = manager
+        .pin_release_blobs_with_progress(&release.id, |_| {})
+        .await
+        .expect_err("the pin cannot fetch the file");
+
+    assert_eq!(error.category(), crate::ui::UiErrorCategory::Network, "{error}");
+}
+
+/// Making a release Remote while no provider is connected is the cloud being
+/// unreachable from here, which the person retries; it is not an internal
+/// fault.
+#[tokio::test]
+async fn making_a_release_remote_with_no_provider_connected_is_a_network_failure() {
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
+
+    let error = manager
+        .coven_make_remote(&release.id, false)
+        .await
+        .expect_err("no provider is connected");
+
+    assert_eq!(error.category(), crate::ui::UiErrorCategory::Network, "{error}");
+}

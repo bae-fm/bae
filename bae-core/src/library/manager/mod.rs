@@ -67,6 +67,7 @@ mod config;
 mod coven_blobs;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod discogs;
+mod error_category;
 /// Desktop-only, under the same predicate as the rest of the export surface (the
 /// queue field below, and `library::export`). Exporting writes a directory tree
 /// next to the user's chosen folder — a hidden staging sibling, a marker file, a
@@ -94,6 +95,13 @@ mod save;
 mod storage;
 mod sync;
 mod sync_status;
+#[cfg(test)]
+use error_category::cloud_setup_failure_category;
+use error_category::{
+    blob_category, cloud_home_category, cloud_setup_category, cloud_unlock_category,
+    make_local_category, make_remote_category, sync_category,
+};
+pub(crate) use error_category::{bootstrap_category, key_category};
 mod track;
 pub(crate) use track::queue_catalog_request;
 
@@ -141,6 +149,28 @@ pub enum LibraryError {
     Encryption(#[from] coven::EncryptionError),
     #[error("Storage error: {0}")]
     Storage(String),
+    /// coven refused or failed a make-Remote of the release, or its cancel.
+    #[error("{operation} release {release_id} remote: {error}")]
+    MakeRemote {
+        operation: MakeRemoteOperation,
+        release_id: String,
+        #[source]
+        error: Box<coven::MakeRemoteError>,
+    },
+    /// coven refused or failed a make-Local of the release.
+    #[error("make release {release_id} local: {error}")]
+    MakeLocal {
+        release_id: String,
+        #[source]
+        error: Box<coven::MakeLocalError>,
+    },
+    /// Reading, pinning, or unpinning a blob's bytes through coven failed.
+    #[error("{operation}: {error}")]
+    Blob {
+        operation: String,
+        #[source]
+        error: Box<coven::BlobCacheError>,
+    },
     #[error("Playback error: {0}")]
     Playback(String),
     /// An internal invariant the caller can't act on (a missing platform driver,
@@ -189,6 +219,31 @@ pub enum LibraryError {
     /// Establishing this store's device identity failed.
     #[error("Identity error: {0}")]
     Identity(#[from] coven::IdentityError),
+}
+
+/// Which half of a make-Remote failed: starting it or cancelling it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MakeRemoteOperation {
+    Make,
+    Cancel,
+}
+
+impl std::fmt::Display for MakeRemoteOperation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Make => "make",
+            Self::Cancel => "cancel make",
+        })
+    }
+}
+
+impl LibraryError {
+    pub(crate) fn blob(operation: impl Into<String>, error: coven::BlobCacheError) -> Self {
+        Self::Blob {
+            operation: operation.into(),
+            error: Box::new(error),
+        }
+    }
 }
 
 impl From<coven::RetryBlockedOperationError> for LibraryError {
@@ -275,6 +330,9 @@ impl LibraryError {
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
             LibraryError::MasterKey(_) | LibraryError::Identity(_) => C::Keyring,
+            LibraryError::MakeRemote { error, .. } => make_remote_category(error),
+            LibraryError::MakeLocal { error, .. } => make_local_category(error),
+            LibraryError::Blob { error, .. } => blob_category(error),
             LibraryError::Io(_)
             | LibraryError::TrackMapping(_)
             | LibraryError::ReleaseEditLoad(_)
@@ -283,134 +341,6 @@ impl LibraryError {
             | LibraryError::Playback(_)
             | LibraryError::Internal(_) => C::Internal,
         }
-    }
-}
-
-/// A cloud-home failure the user must fix (bad credentials, missing bucket) vs a
-/// transient one to retry (unreachable backend, local I/O).
-pub(crate) fn cloud_home_category(error: &coven::CloudHomeError) -> crate::ui::UiErrorCategory {
-    use crate::ui::UiErrorCategory as C;
-    if error.is_retryable() {
-        C::Network
-    } else {
-        C::Credentials
-    }
-}
-
-fn cloud_setup_category(error: &coven::CloudHomeSetupError) -> crate::ui::UiErrorCategory {
-    cloud_setup_failure_category(error.failure())
-}
-
-fn cloud_setup_failure_category(
-    failure: coven::CloudHomeSetupFailure,
-) -> crate::ui::UiErrorCategory {
-    crate::ui::UiErrorCategory::CloudSetup(failure)
-}
-
-fn cloud_unlock_category(error: &coven::CloudHomeUnlockError) -> crate::ui::UiErrorCategory {
-    use coven::CloudHomeUnlockError;
-    match error {
-        CloudHomeUnlockError::Connection(error) => sync_category(error),
-        CloudHomeUnlockError::Rollback { failure, .. } => cloud_unlock_category(failure),
-        CloudHomeUnlockError::KeyNotRequired => crate::ui::UiErrorCategory::Config,
-        CloudHomeUnlockError::MasterKey(_) | CloudHomeUnlockError::Commit(_) => {
-            crate::ui::UiErrorCategory::Keyring
-        }
-    }
-}
-
-/// Classify a coven sync/membership failure into a user-facing class: keyring vs
-/// cloud credentials/network vs the membership chain itself.
-pub(crate) fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
-    use crate::ui::UiErrorCategory as C;
-    use coven::SyncError;
-    if error.is_retryable() {
-        return C::Network;
-    }
-    match error {
-        SyncError::Key(coven::KeyError::NoDeviceIdentity) => C::DeviceIdentityMissing,
-        SyncError::Key(_) => C::Keyring,
-        SyncError::CloudHome(e) => cloud_home_category(e),
-        SyncError::Setup(_) => C::Credentials,
-        SyncError::Membership(_) => C::Membership,
-        SyncError::DeviceJoin(_) => C::Membership,
-        // The handshake's storage transport failing (including the deadline
-        // that means the other device never took its step) is the membership
-        // operation failing, not the library or this device's credentials.
-        SyncError::DeviceJoinTransport(_) => C::Membership,
-        // The other membership operations that carry a pasted/scanned code —
-        // excluding a device from the store, promoting a member to owner — and a
-        // code that doesn't decode as the operation it was pasted into. Same
-        // class as an invalid membership-operation code: the membership operation failed, not
-        // the library or this device's credentials.
-        SyncError::InvalidMembershipOperationCode(_) => C::Membership,
-        SyncError::DeviceExclusion(_) => C::Membership,
-        SyncError::OwnerPromotion(_) => C::Membership,
-        SyncError::StorageSetup(_) => C::Network,
-        SyncError::NotConfigured
-        | SyncError::LoopNotRunning
-        | SyncError::NotEncryptedHome
-        | SyncError::MasterKeyNotEstablished
-        | SyncError::Init(_)
-        | SyncError::Store(_)
-        | SyncError::Circle(_)
-        | SyncError::Database(_)
-        | SyncError::RoutingEncryption(_)
-        | SyncError::BlobUpload(_)
-        | SyncError::StuckReclaim(_)
-        | SyncError::Loop(_) => C::Internal,
-    }
-}
-
-/// Classify a keyring failure: a keychain that refused this second is waited
-/// out, a missing device identity is its own state, anything else is a broken
-/// keyring.
-pub(crate) fn key_category(error: &coven::KeyError) -> crate::ui::UiErrorCategory {
-    use crate::ui::UiErrorCategory as C;
-    match error {
-        coven::KeyError::KeychainTemporarilyUnavailable => C::KeyringLocked,
-        coven::KeyError::NoDeviceIdentity => C::DeviceIdentityMissing,
-        _ => C::Keyring,
-    }
-}
-
-/// Classify why a restore or join failed to bootstrap a store from the cloud:
-/// the cloud's credentials vs an unreachable backend vs a code that does not
-/// decode vs the keyring vs the membership handshake. What is left is a fault
-/// in this device's own store work.
-pub(crate) fn bootstrap_category(error: &coven::BootstrapError) -> crate::ui::UiErrorCategory {
-    use crate::ui::UiErrorCategory as C;
-    use coven::BootstrapError as B;
-    match error {
-        B::CloudHome(error) => cloud_home_category(error),
-        B::Key(error) => key_category(error),
-        B::RestoreCode(_)
-        | B::UnsupportedDeviceInviteVersion(_)
-        | B::InvalidStoreId(_)
-        | B::Config(_) => C::Config,
-        B::MembershipMutation(_)
-        | B::DeviceJoin(_)
-        | B::DeviceJoinTransport(_)
-        | B::DeviceInvite(_)
-        | B::Pairing(_)
-        | B::PairingState(_)
-        | B::StoreRegistration(_) => C::Membership,
-        B::Provider(_) | B::ExactSlotsUnavailable { .. } => C::Credentials,
-        #[cfg(feature = "oauth-providers")]
-        B::OAuthClient(_) => C::Credentials,
-        B::Cleanup { cause, .. } => bootstrap_category(cause),
-        B::Encryption(_)
-        | B::Snapshot(_)
-        | B::Pull(_)
-        | B::StorePull(_)
-        | B::Storage(_)
-        | B::Io(_)
-        | B::StoreExists(_)
-        | B::TornBootstrapCleanup { .. }
-        | B::CancelledJoinCleanup { .. }
-        | B::DatabaseOpen(_)
-        | B::InvalidSigningKey(_)
-        | B::Cancelled => C::Internal,
     }
 }
 

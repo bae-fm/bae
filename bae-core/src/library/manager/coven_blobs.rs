@@ -25,7 +25,7 @@ impl LibraryManager {
         self.database
             .read_blob(&blob)
             .await
-            .map_err(|error| LibraryError::Storage(error.to_string()))?;
+            .map_err(|error| LibraryError::blob(format!("materialize {file_id}"), error))?;
         Ok(blob)
     }
 
@@ -34,7 +34,7 @@ impl LibraryManager {
         self.database
             .evict_blob(blob)
             .await
-            .map_err(|error| LibraryError::Storage(error.to_string()))
+            .map_err(|error| LibraryError::blob("evict", error))
     }
 
     /// Apply [`crate::sync::CACHE_BUDGETS`] to coven for this device.
@@ -85,7 +85,7 @@ impl LibraryManager {
         self.database
             .read_blob(&blob)
             .await
-            .map_err(|e| LibraryError::Storage(format!("read of {}: {e}", file.id)))
+            .map_err(|e| LibraryError::blob(format!("read of {}", file.id), e))
     }
 
     /// The cover [`ImageRef`] for one release — its image id paired with the
@@ -156,7 +156,7 @@ impl LibraryManager {
             .database
             .read_blob(&blob)
             .await
-            .map_err(|e| LibraryError::Storage(format!("read image {id}: {e}")))?;
+            .map_err(|e| LibraryError::blob(format!("read image {id}"), e))?;
         Ok(Some(bytes))
     }
 
@@ -273,7 +273,7 @@ impl LibraryManager {
             self.database
                 .pin(std::slice::from_ref(&entry.blob))
                 .await
-                .map_err(|e| LibraryError::Storage(format!("pin release {release_id}: {e}")))?;
+                .map_err(|e| LibraryError::blob(format!("pin release {release_id}"), e))?;
             // Never exceeds `bytes_total`: it is the sum of these same sizes.
             bytes_done += entry.bytes;
             emit_progress(bytes_done)?;
@@ -311,7 +311,7 @@ impl LibraryManager {
         self.database
             .unpin(&blobs)
             .await
-            .map_err(|e| LibraryError::Storage(format!("unpin release {release_id}: {e}")))
+            .map_err(|e| LibraryError::blob(format!("unpin release {release_id}"), e))
     }
 
     /// Store a bae-produced host-provided image and its row in one coven batch.

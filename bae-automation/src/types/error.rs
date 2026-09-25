@@ -76,6 +76,9 @@ impl From<LibraryError> for AutomationError {
             LibraryError::TrackMapping(e) => Self::Import(e),
             LibraryError::Encryption(e) => Self::Unavailable(e.to_string()),
             LibraryError::Storage(e) => Self::Unavailable(e),
+            error @ (LibraryError::MakeRemote { .. }
+            | LibraryError::MakeLocal { .. }
+            | LibraryError::Blob { .. }) => Self::Unavailable(error.to_string()),
             LibraryError::Playback(e) => Self::Unavailable(e),
             LibraryError::ReleaseEditLoad(e) => Self::Internal(e.to_string()),
             LibraryError::Internal(e) => Self::Internal(e),

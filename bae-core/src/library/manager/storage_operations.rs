@@ -39,7 +39,7 @@ pub(super) async fn release_file_pin_states(
     let pinned = database
         .rows_pinned(crate::sync::RELEASE_FILES_NAMESPACE, named.clone())
         .await
-        .map_err(|e| LibraryError::Storage(format!("pin-state for {named:?}: {e}")))?;
+        .map_err(|e| LibraryError::blob(format!("pin-state for {named:?}"), e))?;
     // coven answers one entry per named id, in order, so stepping those answers
     // through the named slots puts each back beside the release it came from.
     let mut answers = named.iter().zip(pinned);

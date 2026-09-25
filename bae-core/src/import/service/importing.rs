@@ -793,9 +793,8 @@ impl ImportService {
                             ),
                         });
                     }
-                    return Err(crate::import::ImportError::Db(
-                        crate::library::LibraryError::Storage(remote_error),
-                    ));
+                    tracing::warn!("{remote_error}");
+                    return Err(crate::import::ImportError::Db(e));
                 }
             }
         } else {
