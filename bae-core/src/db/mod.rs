@@ -2,10 +2,9 @@ mod client;
 pub mod identity;
 mod models;
 pub use client::{
-    AlbumBrowseProjection, AlbumDetailProjection, AlbumPageProjection, ArtistDetailProjection,
-    ArtistPageProjection, ComposerBrowseProjection, ComposerDetailProjection,
-    ComposerPageProjection, LibrarySearchProjection, ReleaseDetailProjection,
-    StoragePageProjection, WorkDetailProjection,
+    AlbumBrowseProjection, AlbumDetailProjection, ArtistBrowseProjection, ArtistDetailProjection,
+    ComposerBrowseProjection, ComposerDetailProjection, LibrarySearchProjection,
+    ReleaseDetailProjection, StoragePageProjection, WorkDetailProjection,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use client::{

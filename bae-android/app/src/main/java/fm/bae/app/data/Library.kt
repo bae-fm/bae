@@ -5,18 +5,16 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailCallback
-import uniffi.bae_bridge.AlbumPageCallback
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.ArtistBrowseSubscription
 import uniffi.bae_bridge.ArtistDetailCallback
-import uniffi.bae_bridge.ArtistPageCallback
 import uniffi.bae_bridge.BridgeAlbumBrowseSnapshot
 import uniffi.bae_bridge.BridgeAlbumDetail
-import uniffi.bae_bridge.BridgeAlbumPage
+import uniffi.bae_bridge.BridgeArtistBrowseSnapshot
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeComposerBrowseSnapshot
 import uniffi.bae_bridge.BridgeComposerDetail
-import uniffi.bae_bridge.BridgeComposerPage
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryPageWindow
@@ -26,9 +24,7 @@ import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailCallback
-import uniffi.bae_bridge.ComposerPageCallback
 import uniffi.bae_bridge.LibrarySearchCallback
-import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.ReleaseDetailCallback
 import uniffi.bae_bridge.WorkDetailCallback
 
@@ -59,37 +55,6 @@ internal sealed interface LiveQueryEvent<out Value> {
 class Library(
     private val handle: AppHandle,
 ) {
-    fun subscribeAlbumPage(
-        sortCriteria: List<BridgeSortCriterion>,
-        offset: ULong,
-        limit: ULong,
-        callback: AlbumPageCallback,
-    ): LiveSubscription = handle.subscribeAlbumPage(sortCriteria, offset, limit, callback)
-
-    internal fun albumPages(
-        sortCriteria: List<BridgeSortCriterion>,
-        offset: ULong,
-        limit: ULong,
-    ): Flow<LiveQueryEvent<BridgeAlbumPage>> =
-        callbackFlow {
-            val subscription =
-                subscribeAlbumPage(
-                    sortCriteria,
-                    offset,
-                    limit,
-                    object : AlbumPageCallback {
-                        override fun onValue(value: BridgeAlbumPage) {
-                            trySend(LiveQueryEvent.Value(value))
-                        }
-
-                        override fun onError(error: BridgeException) {
-                            trySend(LiveQueryEvent.Error(error))
-                        }
-                    },
-                )
-            awaitClose(subscription::cancel)
-        }
-
     internal fun albumBrowse(sortCriteria: List<BridgeSortCriterion>): AlbumBrowseQuery =
         BridgeAlbumBrowseQuery(handle.subscribeAlbumBrowse(sortCriteria))
 
@@ -111,39 +76,11 @@ class Library(
             awaitClose(subscription::cancel)
         }
 
-    fun subscribeComposerPage(
-        sortCriterion: BridgeComposerSortCriterion,
-        offset: ULong,
-        limit: ULong,
-        callback: ComposerPageCallback,
-    ): LiveSubscription = handle.subscribeComposerPage(listOf(sortCriterion), offset, limit, callback)
-
-    internal fun composerPages(
-        sortCriterion: BridgeComposerSortCriterion,
-        offset: ULong,
-        limit: ULong,
-    ): Flow<LiveQueryEvent<BridgeComposerPage>> =
-        callbackFlow {
-            val subscription =
-                subscribeComposerPage(
-                    sortCriterion,
-                    offset,
-                    limit,
-                    object : ComposerPageCallback {
-                        override fun onValue(value: BridgeComposerPage) {
-                            trySend(LiveQueryEvent.Value(value))
-                        }
-
-                        override fun onError(error: BridgeException) {
-                            trySend(LiveQueryEvent.Error(error))
-                        }
-                    },
-                )
-            awaitClose(subscription::cancel)
-        }
-
     internal fun composerBrowse(sortCriterion: BridgeComposerSortCriterion): ComposerBrowseQuery =
         BridgeComposerBrowseQuery(handle.subscribeComposerBrowse(listOf(sortCriterion)))
+
+    internal fun artistBrowse(sortCriterion: BridgeArtistSortCriterion): ArtistBrowseQuery =
+        BridgeArtistBrowseQuery(handle.subscribeArtistBrowse(listOf(sortCriterion)))
 
     internal fun composerDetails(artistId: String): Flow<LiveQueryEvent<BridgeComposerDetail?>> =
         callbackFlow {
@@ -162,13 +99,6 @@ class Library(
                 )
             awaitClose(subscription::cancel)
         }
-
-    fun subscribeArtistPage(
-        sortCriterion: BridgeArtistSortCriterion,
-        offset: ULong,
-        limit: ULong,
-        callback: ArtistPageCallback,
-    ): LiveSubscription = handle.subscribeArtistPage(listOf(sortCriterion), offset, limit, callback)
 
     internal fun artistDetails(artistId: String): Flow<LiveQueryEvent<BridgeArtistDetail?>> =
         callbackFlow {
@@ -259,6 +189,8 @@ internal interface AlbumBrowseQuery : CollectionBrowseQuery<BridgeAlbumBrowseSna
 
 internal interface ComposerBrowseQuery : CollectionBrowseQuery<BridgeComposerBrowseSnapshot>
 
+internal interface ArtistBrowseQuery : CollectionBrowseQuery<BridgeArtistBrowseSnapshot>
+
 private class BridgeAlbumBrowseQuery(
     private val subscription: AlbumBrowseSubscription,
 ) : AlbumBrowseQuery {
@@ -275,6 +207,16 @@ private class BridgeComposerBrowseQuery(
     override fun setWindows(windows: List<BridgeLibraryPageWindow>) = subscription.setWindows(windows)
 
     override suspend fun next(): BridgeComposerBrowseSnapshot = subscription.next()
+
+    override suspend fun cancel() = subscription.cancel()
+}
+
+private class BridgeArtistBrowseQuery(
+    private val subscription: ArtistBrowseSubscription,
+) : ArtistBrowseQuery {
+    override fun setWindows(windows: List<BridgeLibraryPageWindow>) = subscription.setWindows(windows)
+
+    override suspend fun next(): BridgeArtistBrowseSnapshot = subscription.next()
 
     override suspend fun cancel() = subscription.cancel()
 }

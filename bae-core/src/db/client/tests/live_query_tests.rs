@@ -60,14 +60,24 @@ async fn browsable_sync_db(path: &std::path::Path, device_id: &str) -> Database 
     .unwrap()
 }
 
-#[tokio::test]
-async fn album_page_subscription_delivers_rows_count_and_cover_versions() {
-    let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_album_page(&[], 0, 50);
+/// The first page of a list, as the one window a browse query reads.
+fn first_page() -> BTreeSet<LibraryPageWindow> {
+    [LibraryPageWindow {
+        offset: 0,
+        limit: 50,
+    }]
+    .into_iter()
+    .collect()
+}
 
-    let initial = live.next().await.unwrap();
+#[tokio::test]
+async fn album_browse_delivers_rows_count_and_cover_versions() {
+    let (db, _temp) = live_db().await;
+    let mut live = db.subscribe_album_browse(&[], first_page());
+
+    let initial = live.next().await.into_result().unwrap();
     assert_eq!(initial.total_count, 1);
-    assert_eq!(initial.rows[0].title, "Album Title");
+    assert_eq!(initial.windows[0].rows[0].title, "Album Title");
     assert!(initial.cover_versions.is_empty());
 
     let cover_hash = crate::util::fs::hash_bytes(b"cover fixture");
@@ -86,7 +96,8 @@ async fn album_page_subscription_delivers_rows_count_and_cover_versions() {
 
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("cover write wakes album page")
+        .expect("cover write wakes album browse")
+        .into_result()
         .unwrap();
     assert_eq!(
         updated.cover_versions.get(RELEASE_ID).map(String::as_str),
@@ -488,11 +499,54 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     assert!(deleted.windows.is_empty());
 }
 
+/// The artist grid reads the artists its windows hold, and follows the images
+/// of those artists only: an image on an artist outside every window changes
+/// nothing it delivers.
 #[tokio::test]
-async fn album_page_subscription_ignores_an_unread_table() {
+async fn artist_browse_reads_its_windows_and_their_images() {
     let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_album_page(&[], 0, 50);
-    live.next().await.unwrap();
+    let mut live = db.subscribe_artist_browse(&[], first_page());
+
+    let initial = live.next().await.into_result().unwrap();
+    assert_eq!(initial.total_count, 1);
+    assert_eq!(initial.windows[0].rows[0].artist.id, ARTIST_ID);
+    assert!(initial.image_versions.is_empty());
+
+    let image_hash = crate::util::fs::hash_bytes(b"artist image fixture");
+    exec(
+        &db,
+        "INSERT INTO artist_images
+         (id, blob_id, content_type, file_size, source, hash, _updated_at, created_at)
+         VALUES (?1, ?2, 'image/jpeg', 20, 'file_tags', ?3, 'image-v1', '2026-01-01T00:00:00Z')",
+        &[
+            ARTIST_ID,
+            "2b7d9e41-6c3a-4f58-9d12-8e4f5a6b7c8d",
+            image_hash.as_str(),
+        ],
+    )
+    .await;
+    let imaged = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("an image on a listed artist wakes artist browse")
+        .into_result()
+        .unwrap();
+    assert_eq!(
+        imaged.image_versions.get(ARTIST_ID).map(String::as_str),
+        Some("2b7d9e41-6c3a-4f58-9d12-8e4f5a6b7c8d")
+    );
+
+    live.requests().set(BTreeSet::new()).unwrap();
+    let count_only = live.next().await.into_result().unwrap();
+    assert_eq!(count_only.total_count, 1);
+    assert!(count_only.windows.is_empty());
+    assert!(count_only.image_versions.is_empty());
+}
+
+#[tokio::test]
+async fn album_browse_ignores_an_unread_table() {
+    let (db, _temp) = live_db().await;
+    let mut live = db.subscribe_album_browse(&[], first_page());
+    live.next().await.into_result().unwrap();
 
     exec(
         &db,
@@ -812,8 +866,8 @@ async fn album_page_subscription_delivers_a_write_materialized_by_sync() {
         .await
         .unwrap();
 
-    let mut live = reader.subscribe_album_page(&[], 0, 50);
-    assert_eq!(live.next().await.unwrap().total_count, 0);
+    let mut live = reader.subscribe_album_browse(&[], first_page());
+    assert_eq!(live.next().await.into_result().unwrap().total_count, 0);
 
     writer
         .call(|sql| {
@@ -835,8 +889,9 @@ async fn album_page_subscription_delivers_a_write_materialized_by_sync() {
     let updated = tokio::time::timeout(Duration::from_secs(20), async {
         loop {
             reader.sync_now();
-            if let Ok(Ok(value)) =
-                tokio::time::timeout(Duration::from_millis(250), live.next()).await
+            if let Ok(Ok(value)) = tokio::time::timeout(Duration::from_millis(250), live.next())
+                .await
+                .map(|event| event.into_result())
             {
                 if value.total_count == 1 {
                     break value;
@@ -846,5 +901,5 @@ async fn album_page_subscription_delivers_a_write_materialized_by_sync() {
     })
     .await
     .expect("reader materializes the writer's synced album");
-    assert_eq!(updated.rows[0].title, "Synced Album");
+    assert_eq!(updated.windows[0].rows[0].title, "Synced Album");
 }

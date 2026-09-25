@@ -43,15 +43,6 @@ impl LibraryManager {
         Ok(self.database.get_album_count().await?)
     }
 
-    pub(crate) fn subscribe_album_page(
-        &self,
-        sort: &[crate::db::AlbumSortCriterion],
-        offset: u64,
-        limit: u64,
-    ) -> coven::LiveQuery<crate::db::AlbumPageProjection> {
-        self.database.subscribe_album_page(sort, offset, limit)
-    }
-
     pub(crate) fn subscribe_album_browse(
         &self,
         sort: &[crate::db::AlbumSortCriterion],
@@ -61,15 +52,6 @@ impl LibraryManager {
         crate::db::AlbumBrowseProjection,
     > {
         self.database.subscribe_album_browse(sort, initial_windows)
-    }
-
-    pub(crate) fn resolve_album_page(
-        &self,
-        projection: crate::db::AlbumPageProjection,
-    ) -> (Vec<AlbumSummary>, u64) {
-        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
-        let rows = resolve_album_rows(projection.rows, &covers);
-        (rows, projection.total_count)
     }
 
     pub(crate) fn resolve_album_browse(

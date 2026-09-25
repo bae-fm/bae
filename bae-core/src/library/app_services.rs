@@ -132,15 +132,6 @@ impl AppServices {
         self.inner.manager.subscribe_config_changes()
     }
 
-    pub fn subscribe_album_page(
-        &self,
-        sort: &[crate::db::AlbumSortCriterion],
-        offset: u64,
-        limit: u64,
-    ) -> coven::LiveQuery<crate::db::AlbumPageProjection> {
-        self.inner.manager.subscribe_album_page(sort, offset, limit)
-    }
-
     pub fn subscribe_album_browse(
         &self,
         sort: &[crate::db::AlbumSortCriterion],
@@ -153,13 +144,6 @@ impl AppServices {
                 manager.resolve_album_browse(projection, request_revision, cause)
             },
         )
-    }
-
-    pub fn resolve_album_page(
-        &self,
-        projection: crate::db::AlbumPageProjection,
-    ) -> (Vec<crate::album_detail::AlbumSummary>, u64) {
-        self.inner.manager.resolve_album_page(projection)
     }
 
     pub fn subscribe_album_detail_values(
@@ -385,22 +369,18 @@ impl AppServices {
         rx
     }
 
-    pub fn subscribe_artist_page(
+    pub fn subscribe_artist_browse(
         &self,
         sort: &[crate::db::ArtistSortCriterion],
-        offset: u64,
-        limit: u64,
-    ) -> coven::LiveQuery<crate::db::ArtistPageProjection> {
-        self.inner
-            .manager
-            .subscribe_artist_page(sort, offset, limit)
-    }
-
-    pub fn resolve_artist_page(
-        &self,
-        projection: crate::db::ArtistPageProjection,
-    ) -> (Vec<crate::album_detail::ArtistSummary>, u64) {
-        self.inner.manager.resolve_artist_page(projection)
+    ) -> crate::library::ArtistBrowseSubscription {
+        let manager = self.inner.manager.clone();
+        let query = manager.subscribe_artist_browse(sort, std::collections::BTreeSet::new());
+        crate::library::LibraryBrowseSubscription::new(
+            query,
+            move |projection, request_revision, cause| {
+                manager.resolve_artist_browse(projection, request_revision, cause)
+            },
+        )
     }
 
     pub fn subscribe_artist_detail(
@@ -419,17 +399,6 @@ impl AppServices {
             .resolve_artist_detail_projection(projection)
     }
 
-    pub fn subscribe_composer_page(
-        &self,
-        sort: &[crate::db::ComposerSortCriterion],
-        offset: u64,
-        limit: u64,
-    ) -> coven::LiveQuery<crate::db::ComposerPageProjection> {
-        self.inner
-            .manager
-            .subscribe_composer_page(sort, offset, limit)
-    }
-
     pub fn subscribe_composer_browse(
         &self,
         sort: &[crate::db::ComposerSortCriterion],
@@ -442,13 +411,6 @@ impl AppServices {
                 manager.resolve_composer_browse(projection, request_revision, cause)
             },
         )
-    }
-
-    pub fn resolve_composer_page(
-        &self,
-        projection: crate::db::ComposerPageProjection,
-    ) -> (Vec<crate::album_detail::ComposerSummary>, u64) {
-        self.inner.manager.resolve_composer_page(projection)
     }
 
     pub fn subscribe_composer_detail(

@@ -30,12 +30,10 @@ use std::sync::Mutex;
 use tracing::warn;
 
 mod album;
-pub use album::{
-    AlbumBrowseProjection, AlbumDetailProjection, AlbumPageProjection, LibrarySearchProjection,
-};
+pub use album::{AlbumBrowseProjection, AlbumDetailProjection, LibrarySearchProjection};
 pub use artist::{
-    ArtistDetailProjection, ArtistPageProjection, ComposerBrowseProjection,
-    ComposerDetailProjection, ComposerPageProjection, WorkDetailProjection,
+    ArtistBrowseProjection, ArtistDetailProjection, ComposerBrowseProjection,
+    ComposerDetailProjection, WorkDetailProjection,
 };
 mod artist;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

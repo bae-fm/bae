@@ -26,6 +26,10 @@ pub struct LibraryBrowseSnapshot<Row> {
 
 pub type AlbumBrowseSubscription =
     LibraryBrowseSubscription<crate::db::AlbumBrowseProjection, crate::album_detail::AlbumSummary>;
+pub type ArtistBrowseSubscription = LibraryBrowseSubscription<
+    crate::db::ArtistBrowseProjection,
+    crate::album_detail::ArtistSummary,
+>;
 pub type ComposerBrowseSubscription = LibraryBrowseSubscription<
     crate::db::ComposerBrowseProjection,
     crate::album_detail::ComposerSummary,

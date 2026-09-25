@@ -107,19 +107,17 @@ private func libraryLiveValue<Value: Sendable, Callback: Sendable>(
 /// catalog, narrow to what view layers ask for — plus the library page's
 /// own display-preference write (`setLibraryFullWidth`).
 public final class Library: Sendable, Observable {
-    public let subscribeAlbumPage:
-        @Sendable (
-            _ sortCriteria: [BridgeSortCriterion], _ offset: UInt64,
-            _ limit: UInt64, _ callback: AlbumPageCallback
-        ) -> any LiveSubscriptionProtocol
+    /// The album list under one sort, read through the windows its visible
+    /// pages ask for.
+    public let albumBrowse:
+        @Sendable (_ sortCriteria: [BridgeSortCriterion])
+            -> LibraryBrowseQuery<BridgeAlbum>
     public let getAlbumIndex:
         @Sendable (_ sortCriteria: [BridgeSortCriterion], _ albumId: String)
             async throws -> UInt64?
-    public let subscribeComposerPage:
-        @Sendable (
-            _ sortCriteria: [BridgeComposerSortCriterion], _ offset: UInt64,
-            _ limit: UInt64, _ callback: ComposerPageCallback
-        ) -> any LiveSubscriptionProtocol
+    public let composerBrowse:
+        @Sendable (_ sortCriteria: [BridgeComposerSortCriterion])
+            -> LibraryBrowseQuery<BridgeComposerSummary>
     private let subscribeAlbumDetail:
         @Sendable (_ albumId: String, _ callback: AlbumDetailCallback)
             -> any LiveSubscriptionProtocol
@@ -129,11 +127,9 @@ public final class Library: Sendable, Observable {
     private let subscribeWorkDetail:
         @Sendable (_ workId: String, _ callback: WorkDetailCallback)
             -> any LiveSubscriptionProtocol
-    public let subscribeArtistPage:
-        @Sendable (
-            _ sortCriteria: [BridgeArtistSortCriterion], _ offset: UInt64,
-            _ limit: UInt64, _ callback: ArtistPageCallback
-        ) -> any LiveSubscriptionProtocol
+    public let artistBrowse:
+        @Sendable (_ sortCriteria: [BridgeArtistSortCriterion])
+            -> LibraryBrowseQuery<BridgeArtistSummary>
     private let subscribeArtistDetail:
         @Sendable (_ artistId: String, _ callback: ArtistDetailCallback)
             -> any LiveSubscriptionProtocol
@@ -159,23 +155,18 @@ public final class Library: Sendable, Observable {
     public let setLibraryFullWidth: @Sendable (_ enabled: Bool) throws -> Void
 
     public init(
-        subscribeAlbumPage:
-            @escaping @Sendable (
-                [BridgeSortCriterion], UInt64, UInt64, AlbumPageCallback
-            ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
-                fatalError("Library album-page subscription is not installed")
+        albumBrowse:
+            @escaping @Sendable ([BridgeSortCriterion])
+            -> LibraryBrowseQuery<BridgeAlbum> = { _ in
+                fatalError("Library album browse is not installed")
             },
         getAlbumIndex:
             @escaping @Sendable ([BridgeSortCriterion], String) async throws
             -> UInt64? = { _, _ in throw StubError.notImplemented },
-        subscribeComposerPage:
-            @escaping @Sendable (
-                [BridgeComposerSortCriterion], UInt64, UInt64,
-                ComposerPageCallback
-            ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
-                fatalError(
-                    "Library composer-page subscription is not installed"
-                )
+        composerBrowse:
+            @escaping @Sendable ([BridgeComposerSortCriterion])
+            -> LibraryBrowseQuery<BridgeComposerSummary> = { _ in
+                fatalError("Library composer browse is not installed")
             },
         subscribeAlbumDetail:
             @escaping @Sendable (String, AlbumDetailCallback)
@@ -194,12 +185,10 @@ public final class Library: Sendable, Observable {
             -> any LiveSubscriptionProtocol = { _, _ in
                 fatalError("Library work-detail subscription is not installed")
             },
-        subscribeArtistPage:
-            @escaping @Sendable (
-                [BridgeArtistSortCriterion], UInt64, UInt64,
-                ArtistPageCallback
-            ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
-                fatalError("Library artist-page subscription is not installed")
+        artistBrowse:
+            @escaping @Sendable ([BridgeArtistSortCriterion])
+            -> LibraryBrowseQuery<BridgeArtistSummary> = { _ in
+                fatalError("Library artist browse is not installed")
             },
         subscribeArtistDetail:
             @escaping @Sendable (String, ArtistDetailCallback)
@@ -238,13 +227,13 @@ public final class Library: Sendable, Observable {
             _ in throw StubError.notImplemented
         }
     ) {
-        self.subscribeAlbumPage = subscribeAlbumPage
+        self.albumBrowse = albumBrowse
         self.getAlbumIndex = getAlbumIndex
-        self.subscribeComposerPage = subscribeComposerPage
+        self.composerBrowse = composerBrowse
         self.subscribeAlbumDetail = subscribeAlbumDetail
         self.subscribeComposerDetail = subscribeComposerDetail
         self.subscribeWorkDetail = subscribeWorkDetail
-        self.subscribeArtistPage = subscribeArtistPage
+        self.artistBrowse = artistBrowse
         self.subscribeArtistDetail = subscribeArtistDetail
         self.subscribeLibrarySearch = subscribeLibrarySearch
         self.searchArtists = searchArtists
@@ -327,18 +316,11 @@ public final class Library: Sendable, Observable {
     // the desktop library page makes. The iOS `AppService` builds `Library`
     // via the designated initializer with just the iOS-available closures.
     #if !os(iOS)
-        // Flat 1:1 argument forwarding from `AppHandleProtocol` to `Library`'s
-        // closures; its length tracks the number of Library reads, not
-        // logical complexity.
-        // swiftlint:disable:next function_body_length
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
-                subscribeAlbumPage: {
-                    handle.subscribeAlbumPage(
-                        sortCriteria: $0,
-                        offset: $1,
-                        limit: $2,
-                        callback: $3
+                albumBrowse: {
+                    LibraryBrowseQuery(
+                        handle.subscribeAlbumBrowse(sortCriteria: $0)
                     )
                 },
                 getAlbumIndex: {
@@ -347,12 +329,9 @@ public final class Library: Sendable, Observable {
                         albumId: $1
                     )
                 },
-                subscribeComposerPage: {
-                    handle.subscribeComposerPage(
-                        sortCriteria: $0,
-                        offset: $1,
-                        limit: $2,
-                        callback: $3
+                composerBrowse: {
+                    LibraryBrowseQuery(
+                        handle.subscribeComposerBrowse(sortCriteria: $0)
                     )
                 },
                 subscribeAlbumDetail: {
@@ -364,12 +343,9 @@ public final class Library: Sendable, Observable {
                 subscribeWorkDetail: {
                     handle.subscribeWorkDetail(workId: $0, callback: $1)
                 },
-                subscribeArtistPage: {
-                    handle.subscribeArtistPage(
-                        sortCriteria: $0,
-                        offset: $1,
-                        limit: $2,
-                        callback: $3
+                artistBrowse: {
+                    LibraryBrowseQuery(
+                        handle.subscribeArtistBrowse(sortCriteria: $0)
                     )
                 },
                 subscribeArtistDetail: {
@@ -409,20 +385,14 @@ public final class Library: Sendable, Observable {
         // throwing stub defaults.
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
-                subscribeAlbumPage: {
-                    handle.subscribeAlbumPage(
-                        sortCriteria: $0,
-                        offset: $1,
-                        limit: $2,
-                        callback: $3
+                albumBrowse: {
+                    LibraryBrowseQuery(
+                        handle.subscribeAlbumBrowse(sortCriteria: $0)
                     )
                 },
-                subscribeComposerPage: {
-                    handle.subscribeComposerPage(
-                        sortCriteria: $0,
-                        offset: $1,
-                        limit: $2,
-                        callback: $3
+                composerBrowse: {
+                    LibraryBrowseQuery(
+                        handle.subscribeComposerBrowse(sortCriteria: $0)
                     )
                 },
                 subscribeAlbumDetail: {
@@ -434,12 +404,9 @@ public final class Library: Sendable, Observable {
                 subscribeWorkDetail: {
                     handle.subscribeWorkDetail(workId: $0, callback: $1)
                 },
-                subscribeArtistPage: {
-                    handle.subscribeArtistPage(
-                        sortCriteria: $0,
-                        offset: $1,
-                        limit: $2,
-                        callback: $3
+                artistBrowse: {
+                    LibraryBrowseQuery(
+                        handle.subscribeArtistBrowse(sortCriteria: $0)
                     )
                 },
                 subscribeArtistDetail: {
@@ -467,6 +434,60 @@ public final class Library: Sendable, Observable {
     #endif
 }
 // swiftlint:enable type_body_length
+
+extension LibraryBrowseQuery where Row == BridgeAlbum {
+    init(_ subscription: any AlbumBrowseSubscriptionProtocol) {
+        self.init(
+            setWindows: { try subscription.setWindows(windows: $0) },
+            next: {
+                let snapshot = try await subscription.next()
+                return LibraryBrowseDelivery(
+                    windows: snapshot.windows.map {
+                        .init(window: $0.window, rows: $0.rows)
+                    },
+                    totalCount: Int(snapshot.totalCount)
+                )
+            },
+            cancel: { try? await subscription.cancel() }
+        )
+    }
+}
+
+extension LibraryBrowseQuery where Row == BridgeComposerSummary {
+    init(_ subscription: any ComposerBrowseSubscriptionProtocol) {
+        self.init(
+            setWindows: { try subscription.setWindows(windows: $0) },
+            next: {
+                let snapshot = try await subscription.next()
+                return LibraryBrowseDelivery(
+                    windows: snapshot.windows.map {
+                        .init(window: $0.window, rows: $0.rows)
+                    },
+                    totalCount: Int(snapshot.totalCount)
+                )
+            },
+            cancel: { try? await subscription.cancel() }
+        )
+    }
+}
+
+extension LibraryBrowseQuery where Row == BridgeArtistSummary {
+    init(_ subscription: any ArtistBrowseSubscriptionProtocol) {
+        self.init(
+            setWindows: { try subscription.setWindows(windows: $0) },
+            next: {
+                let snapshot = try await subscription.next()
+                return LibraryBrowseDelivery(
+                    windows: snapshot.windows.map {
+                        .init(window: $0.window, rows: $0.rows)
+                    },
+                    totalCount: Int(snapshot.totalCount)
+                )
+            },
+            cancel: { try? await subscription.cancel() }
+        )
+    }
+}
 
 /// Error raised by stub closures whose return type can't be defaulted
 /// to a trivial value (e.g. compound bridge records). Previews don't

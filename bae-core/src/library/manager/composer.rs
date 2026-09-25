@@ -13,15 +13,6 @@ pub(crate) struct ResolvedImportWorks {
 }
 
 impl LibraryManager {
-    pub(crate) fn subscribe_composer_page(
-        &self,
-        sort: &[crate::db::ComposerSortCriterion],
-        offset: u64,
-        limit: u64,
-    ) -> coven::LiveQuery<crate::db::ComposerPageProjection> {
-        self.database.subscribe_composer_page(sort, offset, limit)
-    }
-
     pub(crate) fn subscribe_composer_browse(
         &self,
         sort: &[crate::db::ComposerSortCriterion],
@@ -32,15 +23,6 @@ impl LibraryManager {
     > {
         self.database
             .subscribe_composer_browse(sort, initial_windows)
-    }
-
-    pub(crate) fn resolve_composer_page(
-        &self,
-        projection: crate::db::ComposerPageProjection,
-    ) -> (Vec<ComposerSummary>, u64) {
-        let images = image_refs(projection.image_versions, LibraryImageType::Artist);
-        let rows = resolve_composer_rows(projection.rows, &images);
-        (rows, projection.total_count)
     }
 
     pub(crate) fn resolve_composer_browse(

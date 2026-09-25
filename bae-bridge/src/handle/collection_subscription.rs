@@ -1,7 +1,7 @@
 use super::*;
 use std::collections::BTreeSet;
 
-/// Album browsing and composer browsing are one subscription over a different
+/// Album, artist, and composer browsing are one subscription over a different
 /// row. A macro rather than a generic: uniffi exports concrete objects and
 /// records, so each row needs its own named type — the window and snapshot
 /// records included, which is why they are declared here beside the conversion
@@ -115,6 +115,15 @@ browse_subscription! {
     snapshot: BridgeAlbumBrowseSnapshot,
     window: BridgeAlbumBrowseWindow,
     row: bae_core::album_detail::AlbumSummary => BridgeAlbum,
+}
+
+browse_subscription! {
+    object: ArtistBrowseSubscription,
+    inner: bae_core::library::ArtistBrowseSubscription,
+    subscribe: subscribe_artist_browse(BridgeArtistSortCriterion),
+    snapshot: BridgeArtistBrowseSnapshot,
+    window: BridgeArtistBrowseWindow,
+    row: bae_core::album_detail::ArtistSummary => BridgeArtistSummary,
 }
 
 browse_subscription! {

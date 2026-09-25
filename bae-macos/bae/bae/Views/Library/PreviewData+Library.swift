@@ -236,8 +236,7 @@
         static func composerList() -> ComposerList {
             let list = ComposerList(
                 pageSource: LibraryComposerPageSource(
-                    library: .stub(),
-                    sort: []
+                    query: .fixed(composerSummaries)
                 ),
                 ingest: { _ in },
                 onError: { _ in },

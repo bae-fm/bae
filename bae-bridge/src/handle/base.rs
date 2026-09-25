@@ -6,61 +6,6 @@ impl AppHandle {
     // Library
     // =========================================================================
 
-    pub fn subscribe_album_page(
-        &self,
-        sort_criteria: Vec<BridgeSortCriterion>,
-        offset: u64,
-        limit: u64,
-        callback: Box<dyn crate::types::AlbumPageCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        let sort = sort_criteria
-            .into_iter()
-            .map(BridgeSortCriterion::into_core)
-            .collect::<Vec<_>>();
-        self.subscribe_live_query(
-            move |services| services.subscribe_album_page(&sort, offset, limit),
-            move |services, value| match value {
-                Ok(raw) => {
-                    let (rows, total_count) = services.resolve_album_page(raw);
-                    callback.on_value(crate::types::BridgeAlbumPage {
-                        rows: rows.into_iter().map(BridgeAlbum::from_core).collect(),
-                        total_count,
-                    });
-                }
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
-    }
-
-    pub fn subscribe_composer_page(
-        &self,
-        sort_criteria: Vec<BridgeComposerSortCriterion>,
-        offset: u64,
-        limit: u64,
-        callback: Box<dyn crate::types::ComposerPageCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        let sort = sort_criteria
-            .into_iter()
-            .map(BridgeComposerSortCriterion::into_core)
-            .collect::<Vec<_>>();
-        self.subscribe_live_query(
-            move |services| services.subscribe_composer_page(&sort, offset, limit),
-            move |services, value| match value {
-                Ok(raw) => {
-                    let (rows, total_count) = services.resolve_composer_page(raw);
-                    callback.on_value(crate::types::BridgeComposerPage {
-                        rows: rows
-                            .into_iter()
-                            .map(BridgeComposerSummary::from_core)
-                            .collect(),
-                        total_count,
-                    });
-                }
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
-    }
-
     pub fn subscribe_composer_detail(
         &self,
         artist_id: String,
@@ -92,35 +37,6 @@ impl AppHandle {
                         .resolve_work_detail_projection(projection)
                         .map(BridgeWorkDetail::from_core),
                 ),
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
-    }
-
-    pub fn subscribe_artist_page(
-        &self,
-        sort_criteria: Vec<BridgeArtistSortCriterion>,
-        offset: u64,
-        limit: u64,
-        callback: Box<dyn crate::types::ArtistPageCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        let sort = sort_criteria
-            .into_iter()
-            .map(BridgeArtistSortCriterion::into_core)
-            .collect::<Vec<_>>();
-        self.subscribe_live_query(
-            move |services| services.subscribe_artist_page(&sort, offset, limit),
-            move |services, value| match value {
-                Ok(raw) => {
-                    let (rows, total_count) = services.resolve_artist_page(raw);
-                    callback.on_value(crate::types::BridgeArtistPage {
-                        rows: rows
-                            .into_iter()
-                            .map(BridgeArtistSummary::from_core)
-                            .collect(),
-                        total_count,
-                    });
-                }
                 Err(error) => callback.on_error(BridgeError::database_query(error)),
             },
         )

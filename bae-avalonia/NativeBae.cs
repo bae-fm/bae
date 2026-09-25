@@ -382,15 +382,6 @@ internal static partial class NativeBae
     internal static string? ChangeCover(AppHandle handle, string releaseId, BridgeCoverSelection selection) =>
         CaptureError(() => Await(() => handle.ChangeCover(releaseId, selection)));
 
-    internal static LiveSubscription SubscribeAlbumPage(
-        AppHandle handle,
-        ulong offset,
-        ulong limit,
-        IReadOnlyList<SortCriterion<AlbumSortField>> criteria,
-        Action<IReadOnlyList<Album>, int> onValue,
-        Action<Exception> onError) =>
-        handle.SubscribeAlbumPage(ToBridge(criteria), offset, limit, new AlbumPageSink(onValue, onError));
-
     internal static LiveSubscription SubscribeAlbumDetail(
         AppHandle handle,
         string albumId,
@@ -422,33 +413,6 @@ internal static partial class NativeBae
         }
     }
 
-    internal static LiveSubscription SubscribeComposerPage(
-        AppHandle handle,
-        ulong offset,
-        ulong limit,
-        IReadOnlyList<SortCriterion<ComposerSortField>> criteria,
-        Action<IReadOnlyList<ComposerSummary>, int> onValue,
-        Action<Exception> onError) =>
-        handle.SubscribeComposerPage(ToBridge(criteria), offset, limit, new ComposerPageSink(onValue, onError));
-
-    internal static LiveSubscription SubscribeArtistPage(
-        AppHandle handle,
-        ulong offset,
-        ulong limit,
-        IReadOnlyList<SortCriterion<ArtistSortField>> criteria,
-        Action<IReadOnlyList<ArtistSummary>, int> onValue,
-        Action<Exception> onError) =>
-        handle.SubscribeArtistPage(ToBridge(criteria), offset, limit, new ArtistPageSink(onValue, onError));
-
-    private sealed class AlbumPageSink(
-        Action<IReadOnlyList<Album>, int> onValue,
-        Action<Exception> onError) : AlbumPageCallback
-    {
-        public void OnValue(BridgeAlbumPage value) =>
-            onValue(value.Rows.Select(row => new Album(row)).ToList(), checked((int)value.TotalCount));
-        public void OnError(BridgeException error) => onError(new PageLoadException(error.Message));
-    }
-
     private sealed class AlbumDetailSink(
         Action<AlbumDetail?> onValue,
         Action<Exception> onError) : AlbumDetailCallback
@@ -456,24 +420,6 @@ internal static partial class NativeBae
         public void OnValue(BridgeAlbumDetail? value) =>
             onValue(value is null ? null : new AlbumDetail(value));
         public void OnError(BridgeException error) => onError(error);
-    }
-
-    private sealed class ComposerPageSink(
-        Action<IReadOnlyList<ComposerSummary>, int> onValue,
-        Action<Exception> onError) : ComposerPageCallback
-    {
-        public void OnValue(BridgeComposerPage value) =>
-            onValue(value.Rows.Select(row => new ComposerSummary(row)).ToList(), checked((int)value.TotalCount));
-        public void OnError(BridgeException error) => onError(new PageLoadException(error.Message));
-    }
-
-    private sealed class ArtistPageSink(
-        Action<IReadOnlyList<ArtistSummary>, int> onValue,
-        Action<Exception> onError) : ArtistPageCallback
-    {
-        public void OnValue(BridgeArtistPage value) =>
-            onValue(value.Rows.Select(row => new ArtistSummary(row)).ToList(), checked((int)value.TotalCount));
-        public void OnError(BridgeException error) => onError(new PageLoadException(error.Message));
     }
 
     internal static LiveSubscription SubscribeStorage(

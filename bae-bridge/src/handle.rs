@@ -100,7 +100,8 @@ mod configuration;
 mod device_pairing;
 #[cfg(feature = "desktop")]
 pub use collection_subscription::{
-    AlbumBrowseSubscription, BridgeAlbumBrowseSnapshot, BridgeAlbumBrowseWindow,
+    AlbumBrowseSubscription, ArtistBrowseSubscription, BridgeAlbumBrowseSnapshot,
+    BridgeAlbumBrowseWindow, BridgeArtistBrowseSnapshot, BridgeArtistBrowseWindow,
     BridgeComposerBrowseSnapshot, BridgeComposerBrowseWindow, ComposerBrowseSubscription,
 };
 pub use device_pairing::BridgeDevicePairingSession;

@@ -20,24 +20,9 @@
         /// `albumContent`/`composerContent` rather than a hand-built stand-in.
         static func emptyLibrary() -> Library {
             Library(
-                subscribeAlbumPage: { _, _, _, callback in
-                    callback.onValue(
-                        value: BridgeAlbumPage(rows: [], totalCount: 0)
-                    )
-                    return PreviewLibrarySubscription()
-                },
-                subscribeComposerPage: { _, _, _, callback in
-                    callback.onValue(
-                        value: BridgeComposerPage(rows: [], totalCount: 0)
-                    )
-                    return PreviewLibrarySubscription()
-                },
-                subscribeArtistPage: { _, _, _, callback in
-                    callback.onValue(
-                        value: BridgeArtistPage(rows: [], totalCount: 0)
-                    )
-                    return PreviewLibrarySubscription()
-                }
+                albumBrowse: { _ in .fixed([]) },
+                composerBrowse: { _ in .fixed([]) },
+                artistBrowse: { _ in .fixed([]) }
             )
         }
 
@@ -83,17 +68,7 @@
                     )
                 }
             let library = Library(
-                subscribeAlbumPage: { _, offset, limit, callback in
-                    let start = min(Int(offset), albums.count)
-                    let end = min(start + Int(limit), albums.count)
-                    callback.onValue(
-                        value: BridgeAlbumPage(
-                            rows: Array(albums[start..<end]),
-                            totalCount: UInt64(albums.count)
-                        )
-                    )
-                    return PreviewLibrarySubscription()
-                },
+                albumBrowse: { _ in .fixed(albums) },
                 getAlbumIndex: { _, albumId in
                     albums.firstIndex { $0.id == albumId }.map(UInt64.init)
                 },
@@ -137,17 +112,7 @@
             )
             let workDetail = previewWorkDetail(work: works[0])
             let library = Library(
-                subscribeComposerPage: { _, offset, limit, callback in
-                    let start = min(Int(offset), composers.count)
-                    let end = min(start + Int(limit), composers.count)
-                    callback.onValue(
-                        value: BridgeComposerPage(
-                            rows: Array(composers[start..<end]),
-                            totalCount: UInt64(composers.count)
-                        )
-                    )
-                    return PreviewLibrarySubscription()
-                },
+                composerBrowse: { _ in .fixed(composers) },
                 subscribeComposerDetail: { _, callback in
                     callback.onValue(value: composerDetail)
                     return PreviewLibrarySubscription()

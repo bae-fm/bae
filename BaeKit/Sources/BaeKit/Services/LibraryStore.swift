@@ -15,116 +15,15 @@ private final class TaskPageSubscription: PageSubscription,
     }
 }
 
-private final class LivePageSubscription: PageSubscription,
-    @unchecked Sendable
-{
-    private let subscription: any LiveSubscriptionProtocol
-
-    init(_ subscription: any LiveSubscriptionProtocol) {
-        self.subscription = subscription
-    }
-
-    func cancel() {
-        subscription.cancel()
-    }
-}
-
-private final class AlbumPageSink: AlbumPageCallback, @unchecked Sendable {
-    private let value: @MainActor @Sendable ([BridgeAlbum], Int) -> Void
-    private let error: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        value: @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
-        error: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.value = value
-        self.error = error
-    }
-
-    func onValue(value page: BridgeAlbumPage) {
-        Task { @MainActor in value(page.rows, Int(page.totalCount)) }
-    }
-
-    func onError(error bridgeError: BridgeError) {
-        Task { @MainActor in error(bridgeError) }
-    }
-}
-
-private final class ComposerPageSink: ComposerPageCallback,
-    @unchecked Sendable
-{
-    private let value:
-        @MainActor @Sendable ([BridgeComposerSummary], Int) -> Void
-    private let error: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        value:
-            @escaping @MainActor @Sendable ([BridgeComposerSummary], Int)
-            -> Void,
-        error: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.value = value
-        self.error = error
-    }
-
-    func onValue(value page: BridgeComposerPage) {
-        Task { @MainActor in value(page.rows, Int(page.totalCount)) }
-    }
-
-    func onError(error bridgeError: BridgeError) {
-        Task { @MainActor in error(bridgeError) }
-    }
-}
-
-private final class ArtistPageSink: ArtistPageCallback, @unchecked Sendable {
-    private let value: @MainActor @Sendable ([BridgeArtistSummary], Int) -> Void
-    private let error: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        value:
-            @escaping @MainActor @Sendable ([BridgeArtistSummary], Int) -> Void,
-        error: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.value = value
-        self.error = error
-    }
-
-    func onValue(value page: BridgeArtistPage) {
-        Task { @MainActor in value(page.rows, Int(page.totalCount)) }
-    }
-
-    func onError(error bridgeError: BridgeError) {
-        Task { @MainActor in error(bridgeError) }
-    }
-}
-
 // MARK: - Album page sources
 
-/// Page source backed by the `Library` domain service for the full
-/// library grid.
-public struct LibraryAlbumPageSource: PageSource {
-    private let library: Library
-    public let sort: [BridgeSortCriterion]
+/// The full library grid's pages under one sort, served by one browse
+/// query over the windows the visible pages ask for.
+public typealias LibraryAlbumPageSource = LibraryBrowsePageSource<BridgeAlbum>
 
-    public init(library: Library, sort: [BridgeSortCriterion]) {
-        self.library = library
-        self.sort = sort
-    }
-
-    public func subscribe(
-        offset: Int,
-        limit: Int,
-        onValue: @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
-        onError: @escaping @MainActor @Sendable (any Error) -> Void
-    ) -> any PageSubscription {
-        LivePageSubscription(
-            library.subscribeAlbumPage(
-                sort,
-                UInt64(offset),
-                UInt64(limit),
-                AlbumPageSink(value: onValue, error: onError)
-            )
-        )
+extension LibraryBrowsePageSource where Row == BridgeAlbum {
+    public convenience init(library: Library, sort: [BridgeSortCriterion]) {
+        self.init(query: library.albumBrowse(sort))
     }
 }
 
@@ -154,31 +53,16 @@ public struct AlbumPreviewPageSource: PageSource {
     }
 }
 
-public struct LibraryComposerPageSource: PageSource {
-    private let library: Library
-    public let sort: [BridgeComposerSortCriterion]
+public typealias LibraryComposerPageSource = LibraryBrowsePageSource<
+    BridgeComposerSummary
+>
 
-    public init(library: Library, sort: [BridgeComposerSortCriterion]) {
-        self.library = library
-        self.sort = sort
-    }
-
-    public func subscribe(
-        offset: Int,
-        limit: Int,
-        onValue:
-            @escaping @MainActor @Sendable ([BridgeComposerSummary], Int)
-            -> Void,
-        onError: @escaping @MainActor @Sendable (any Error) -> Void
-    ) -> any PageSubscription {
-        LivePageSubscription(
-            library.subscribeComposerPage(
-                sort,
-                UInt64(offset),
-                UInt64(limit),
-                ComposerPageSink(value: onValue, error: onError)
-            )
-        )
+extension LibraryBrowsePageSource where Row == BridgeComposerSummary {
+    public convenience init(
+        library: Library,
+        sort: [BridgeComposerSortCriterion]
+    ) {
+        self.init(query: library.composerBrowse(sort))
     }
 }
 
@@ -186,30 +70,16 @@ extension BridgeComposerSummary: Identifiable {
     public var id: String { artistId }
 }
 
-public struct LibraryArtistPageSource: PageSource {
-    private let library: Library
-    public let sort: [BridgeArtistSortCriterion]
+public typealias LibraryArtistPageSource = LibraryBrowsePageSource<
+    BridgeArtistSummary
+>
 
-    public init(library: Library, sort: [BridgeArtistSortCriterion]) {
-        self.library = library
-        self.sort = sort
-    }
-
-    public func subscribe(
-        offset: Int,
-        limit: Int,
-        onValue:
-            @escaping @MainActor @Sendable ([BridgeArtistSummary], Int) -> Void,
-        onError: @escaping @MainActor @Sendable (any Error) -> Void
-    ) -> any PageSubscription {
-        LivePageSubscription(
-            library.subscribeArtistPage(
-                sort,
-                UInt64(offset),
-                UInt64(limit),
-                ArtistPageSink(value: onValue, error: onError)
-            )
-        )
+extension LibraryBrowsePageSource where Row == BridgeArtistSummary {
+    public convenience init(
+        library: Library,
+        sort: [BridgeArtistSortCriterion]
+    ) {
+        self.init(query: library.artistBrowse(sort))
     }
 }
 
@@ -362,7 +232,7 @@ extension BridgeAlbum: Identifiable {}
 ///
 /// ## Queries write slices
 ///
-/// Page subscriptions and detail subscriptions write one or more slices from
+/// List browse queries and detail subscriptions write one or more slices from
 /// core query results.
 @MainActor
 @Observable

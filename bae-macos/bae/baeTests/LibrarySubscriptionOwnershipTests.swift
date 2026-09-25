@@ -44,23 +44,63 @@ private final class AlbumDetailSubscriptionProbe: @unchecked Sendable {
     }
 }
 
-private final class AlbumPageSubscriptionProbe: @unchecked Sendable {
+/// Stands in for the album browse query: records the windows the list's pages
+/// ask for, and answers them with whatever rows a test emits.
+private final class AlbumBrowseProbe: @unchecked Sendable {
     private let lock = NSLock()
-    private var callback: AlbumPageCallback?
+    private var windows: [BridgeLibraryPageWindow] = []
+    private var pending: [LibraryBrowseDelivery<BridgeAlbum>] = []
+    private var waiter:
+        CheckedContinuation<LibraryBrowseDelivery<BridgeAlbum>, any Error>?
 
-    func subscribe(callback: AlbumPageCallback) -> any LiveSubscriptionProtocol
-    {
-        lock.withLock { self.callback = callback }
-        return AlbumProbeSubscription()
+    var query: LibraryBrowseQuery<BridgeAlbum> {
+        LibraryBrowseQuery(
+            setWindows: { [self] windows in
+                lock.withLock { self.windows = windows }
+            },
+            next: { [self] in try await nextDelivery() },
+            cancel: {}
+        )
     }
 
+    /// Answer every requested window with `rows`, laid out from offset zero.
     func emit(rows: [BridgeAlbum], total: UInt64) {
-        let callback = lock.withLock { self.callback }
-        callback?.onValue(value: BridgeAlbumPage(rows: rows, totalCount: total))
+        let delivery = lock.withLock {
+            LibraryBrowseDelivery(
+                windows: windows.map { window in
+                    let start = min(Int(window.offset), rows.count)
+                    let end = min(start + Int(window.limit), rows.count)
+                    return .init(window: window, rows: Array(rows[start..<end]))
+                },
+                totalCount: Int(total)
+            )
+        }
+        let waiter = lock.withLock {
+            let waiter = self.waiter
+            self.waiter = nil
+            if waiter == nil { pending.append(delivery) }
+            return waiter
+        }
+        waiter?.resume(returning: delivery)
     }
 
     var isSubscribed: Bool {
-        lock.withLock { callback != nil }
+        lock.withLock { !windows.isEmpty }
+    }
+
+    private func nextDelivery() async throws -> LibraryBrowseDelivery<
+        BridgeAlbum
+    > {
+        try await withCheckedThrowingContinuation { continuation in
+            let ready = lock.withLock {
+                if pending.isEmpty {
+                    waiter = continuation
+                    return nil as LibraryBrowseDelivery<BridgeAlbum>?
+                }
+                return pending.removeFirst()
+            }
+            if let ready { continuation.resume(returning: ready) }
+        }
     }
 }
 
@@ -174,13 +214,11 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         "the app-owned album list updates count while no library view is mounted"
     )
     func unmountedListUpdatesAlbumTotal() async {
-        let probe = AlbumPageSubscriptionProbe()
+        let probe = AlbumBrowseProbe()
         let store = LibraryStore()
         let session = LibraryBrowseSession(
             library: Library(
-                subscribeAlbumPage: { _, _, _, callback in
-                    probe.subscribe(callback: callback)
-                }
+                albumBrowse: { _ in probe.query }
             ),
             libraryStore: store,
             uiStore: UiStore()
@@ -197,13 +235,11 @@ struct LibraryBrowseSessionAlbumProjectionTests {
     @MainActor
     @Test("page eviction does not clear a selected album")
     func pageEvictionKeepsSelection() async {
-        let pageProbe = AlbumPageSubscriptionProbe()
+        let pageProbe = AlbumBrowseProbe()
         let detailProbe = AlbumDetailSubscriptionProbe()
         let session = LibraryBrowseSession(
             library: Library(
-                subscribeAlbumPage: { _, _, _, callback in
-                    pageProbe.subscribe(callback: callback)
-                },
+                albumBrowse: { _ in pageProbe.query },
                 subscribeAlbumDetail: { _, callback in
                     detailProbe.subscribe(callback: callback)
                 }
@@ -242,13 +278,11 @@ struct LibraryBrowseSessionAlbumProjectionTests {
     @MainActor
     @Test("a remote deletion clears the selected album")
     func remoteDeletionClearsSelection() async {
-        let pageProbe = AlbumPageSubscriptionProbe()
+        let pageProbe = AlbumBrowseProbe()
         let detailProbe = AlbumDetailSubscriptionProbe()
         let session = LibraryBrowseSession(
             library: Library(
-                subscribeAlbumPage: { _, _, _, callback in
-                    pageProbe.subscribe(callback: callback)
-                },
+                albumBrowse: { _ in pageProbe.query },
                 subscribeAlbumDetail: { _, callback in
                     detailProbe.subscribe(callback: callback)
                 }

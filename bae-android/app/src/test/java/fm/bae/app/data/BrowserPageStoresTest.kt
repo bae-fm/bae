@@ -4,6 +4,8 @@ import android.os.Looper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -12,129 +14,101 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeLibraryPageWindow
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class BrowserPageStoresTest {
     @Test
-    fun visibleWindowBoundsSubscriptionsAndIgnoresEvictedDelivery() {
-        val store =
-            RecordingPageStore(
-                CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-            )
+    fun oneQueryReadsAtMostThreeVisibleWindows() {
+        val store = RecordingPageStore(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
 
         store.activate("all")
-        store.reportVisibleRange(60, 119)
-        store.reportVisibleRange(120, 179)
-        store.reportVisibleRange(180, 239)
-        store.reportVisibleRange(240, 299)
+        // The visible range is clamped to the list's length, which the first
+        // value reports.
+        store.queries.single().emit(window(0), "first")
+        shadowOf(Looper.getMainLooper()).idle()
+        store.reportVisibleRange(60, 239)
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertTrue(store.maximumActive <= 3)
-        assertTrue(store.cancellations.getValue(0).cancelled)
-
-        store.emit(offset = 0, row = "evicted")
-        shadowOf(Looper.getMainLooper()).idle()
-        assertFalse(store.rows.containsKey(0))
+        assertEquals(1, store.queries.size)
+        assertEquals(
+            listOf(60uL, 120uL, 180uL),
+            store.queries
+                .single()
+                .windows
+                .map { it.offset },
+        )
     }
 
     @Test
-    fun oldSameOffsetSubscriptionCannotMutateReplacement() {
-        val store =
-            RecordingPageStore(
-                CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-            )
+    fun aValueReadForADroppedWindowWritesNothingThere() {
+        val store = RecordingPageStore(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
 
         store.activate("all")
-        for (offset in listOf(60, 120, 180, 240, 0)) {
-            store.reportVisibleRange(offset, offset + 59)
-        }
+        store.reportVisibleRange(60, 119)
+        val query = store.queries.single()
+        query.emit(window(0), "evicted")
         shadowOf(Looper.getMainLooper()).idle()
 
-        store.emit(offset = 0, subscription = 0, row = "old")
+        assertFalse(store.rows.containsKey(0))
+
+        query.emit(window(60), "kept")
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals("kept", store.rows[60])
+    }
+
+    @Test
+    fun aReplacedQueryCannotWriteIntoItsReplacement() {
+        val store = RecordingPageStore(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+
+        store.activate("first")
+        val old = store.queries.single()
+        store.activate("second")
+        val replacement = store.queries.last()
+
+        old.emit(window(0), "old")
         shadowOf(Looper.getMainLooper()).idle()
         assertFalse(store.rows[0] == "old")
+        assertTrue(old.cancelled)
 
-        store.emit(offset = 0, subscription = 1, row = "new")
+        replacement.emit(window(0), "new")
         shadowOf(Looper.getMainLooper()).idle()
-        assertTrue(store.rows[0] == "new")
-
-        store.fail(offset = 0, subscription = 0)
-        shadowOf(Looper.getMainLooper()).idle()
-        assertTrue(store.error == null)
+        assertEquals("new", store.rows[0])
     }
+
+    private fun window(offset: Int) = BridgeLibraryPageWindow(offset.toULong(), BROWSER_PAGE_SIZE.toULong())
 
     private class RecordingPageStore(
         scope: CoroutineScope,
     ) : WindowedBrowserPageStore<String, String>(RuntimeEnvironment.getApplication(), scope) {
-        val cancellations = mutableMapOf<Int, Cancellation>()
-        private val emitters = mutableMapOf<Int, MutableList<(String) -> Unit>>()
-        private val failures = mutableMapOf<Int, MutableList<() -> Unit>>()
-        var maximumActive = 0
-            private set
+        val queries = mutableListOf<RecordingQuery>()
 
-        override fun subscribe(
-            parameter: String,
-            offset: Int,
-            generation: Int,
-            identity: Long,
-        ): PageSubscription {
-            val cancellation = Cancellation(::recordActive)
-            cancellations[offset] = cancellation
-            emitters.getOrPut(offset, ::mutableListOf).add { row ->
-                deliver(offset, generation, identity, listOf(row), total = 500)
-            }
-            failures.getOrPut(offset, ::mutableListOf).add {
-                fail(
-                    offset,
-                    generation,
-                    identity,
-                    uniffi.bae_bridge.BridgeException.Diagnostic(
-                        uniffi.bae_bridge.BridgeErrorCategory.Internal,
-                        "old failure",
-                    ),
-                )
-            }
-            recordActive()
-            deliver(
-                offset,
-                generation,
-                identity,
-                listOf("row-$offset"),
-                total = 500,
-            )
-            return cancellation
-        }
-
-        fun emit(
-            offset: Int,
-            subscription: Int = 0,
-            row: String,
-        ) {
-            emitters.getValue(offset)[subscription](row)
-        }
-
-        fun fail(
-            offset: Int,
-            subscription: Int,
-        ) {
-            failures.getValue(offset)[subscription]()
-        }
-
-        private fun recordActive() {
-            maximumActive = maxOf(maximumActive, cancellations.values.count { !it.cancelled })
-        }
+        override fun open(parameter: String): BrowseRowsQuery<String> = RecordingQuery().also(queries::add)
     }
 
-    private class Cancellation(
-        private val changed: () -> Unit,
-    ) : PageSubscription {
+    private class RecordingQuery : BrowseRowsQuery<String> {
+        private val values = Channel<BrowseRows<String>>(Channel.UNLIMITED)
+        var windows = emptyList<BridgeLibraryPageWindow>()
+            private set
         var cancelled = false
             private set
 
-        override fun cancel() {
+        override fun setWindows(windows: List<BridgeLibraryPageWindow>) {
+            this.windows = windows
+        }
+
+        override suspend fun next(): BrowseRows<String> = values.receive()
+
+        override suspend fun cancel() {
             cancelled = true
-            changed()
+        }
+
+        fun emit(
+            window: BridgeLibraryPageWindow,
+            row: String,
+        ) {
+            values.trySend(BrowseRows(listOf(window to listOf(row)), totalCount = 500))
         }
     }
 }

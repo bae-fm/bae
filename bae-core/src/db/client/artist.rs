@@ -211,27 +211,6 @@ impl Database {
         .await
     }
 
-    pub(crate) fn subscribe_composer_page(
-        &self,
-        sort: &[ComposerSortCriterion],
-        offset: u64,
-        limit: u64,
-    ) -> coven::LiveQuery<ComposerPageProjection> {
-        let order_by = composer_order_by(sort);
-        let tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
-        let query = composer_summary_query(None, Some(&tail));
-        self.inner.handle.subscribe(move |sql| {
-            let (rows, image_versions) =
-                composer_rows_with_images_on(&sql, &query, params![limit as i64, offset as i64])?;
-            let total_count = composer_count_on(&sql).map_err(CovenError::from)?;
-            Ok(ComposerPageProjection {
-                rows,
-                image_versions,
-                total_count,
-            })
-        })
-    }
-
     pub(crate) fn subscribe_composer_browse(
         &self,
         sort: &[ComposerSortCriterion],
@@ -300,37 +279,50 @@ impl Database {
         .await
     }
 
-    pub(crate) fn subscribe_artist_page(
+    pub(crate) fn subscribe_artist_browse(
         &self,
         sort: &[ArtistSortCriterion],
-        offset: u64,
-        limit: u64,
-    ) -> coven::LiveQuery<ArtistPageProjection> {
+        initial_windows: crate::library::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<crate::library::LibraryPageWindows, ArtistBrowseProjection>
+    {
         let order_by = artist_order_by(sort);
-        let tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
-        let query = artist_summary_query(None, Some(&tail));
-        self.inner.handle.subscribe(move |sql| {
-            let rows = sql
-                .query(
-                    &query,
-                    params![limit as i64, offset as i64],
-                    row_to_artist_summary,
-                )
-                .map_err(CovenError::from)?;
-            let artist_ids = rows
-                .iter()
-                .map(|row| row.artist.id.clone())
-                .collect::<Vec<_>>();
-            let image_versions =
-                super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
-                    .map_err(CovenError::from)?;
-            let total_count = artist_count_on(&sql).map_err(CovenError::from)?;
-            Ok(ArtistPageProjection {
-                rows,
-                image_versions,
-                total_count,
+        let page_tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
+        let page_query = artist_summary_query(None, Some(&page_tail));
+        self.inner
+            .handle
+            .subscribe_reconfigurable(initial_windows, move |requested, sql| {
+                let total_count = artist_count_on(&sql).map_err(CovenError::from)?;
+                let windows = requested
+                    .iter()
+                    .map(|window| {
+                        let rows = sql
+                            .query(
+                                &page_query,
+                                params![window.limit as i64, window.offset as i64],
+                                row_to_artist_summary,
+                            )
+                            .map_err(CovenError::from)?;
+                        Ok(crate::library::LibraryBrowseWindow {
+                            window: window.clone(),
+                            rows,
+                        })
+                    })
+                    .collect::<Result<Vec<_>, CovenError>>()?;
+                // Only the rows the windows hold are shown, so only their
+                // images are read and followed.
+                let artist_ids = windows
+                    .iter()
+                    .flat_map(|window| window.rows.iter().map(|row| row.artist.id.clone()))
+                    .collect::<Vec<_>>();
+                let image_versions =
+                    super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
+                        .map_err(CovenError::from)?;
+                Ok(ArtistBrowseProjection {
+                    windows,
+                    image_versions,
+                    total_count,
+                })
             })
-        })
     }
 
     /// The artist's summary row plus every album it is an album artist of
@@ -812,22 +804,6 @@ fn composer_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
         .map_err(DbError::from)
 }
 
-fn composer_rows_with_images_on<P: Params>(
-    sql: &SqlReadContext<'_>,
-    query: &str,
-    params: P,
-) -> Result<(Vec<DbComposerSummary>, HashMap<String, String>), CovenError> {
-    let rows = composer_rows_on(sql, query, params)?;
-    let artist_ids = rows
-        .iter()
-        .map(|row| row.artist.id.clone())
-        .collect::<Vec<_>>();
-    let image_versions =
-        super::blobs::image_versions_on(sql, LibraryImageType::Artist, &artist_ids)
-            .map_err(CovenError::from)?;
-    Ok((rows, image_versions))
-}
-
 fn composer_rows_on<P: Params>(
     sql: &SqlReadContext<'_>,
     query: &str,
@@ -848,13 +824,6 @@ fn artist_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ComposerPageProjection {
-    pub rows: Vec<DbComposerSummary>,
-    pub image_versions: HashMap<String, String>,
-    pub total_count: u64,
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct ComposerBrowseProjection {
     pub windows: Vec<crate::library::LibraryBrowseWindow<DbComposerSummary>>,
     pub image_versions: HashMap<String, String>,
@@ -869,8 +838,8 @@ pub struct ComposerDetailProjection {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ArtistPageProjection {
-    pub rows: Vec<DbArtistSummary>,
+pub struct ArtistBrowseProjection {
+    pub windows: Vec<crate::library::LibraryBrowseWindow<DbArtistSummary>>,
     pub image_versions: HashMap<String, String>,
     pub total_count: u64,
 }

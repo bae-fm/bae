@@ -190,39 +190,6 @@ impl Database {
         .await
     }
 
-    pub(crate) fn subscribe_album_page(
-        &self,
-        sort: &[AlbumSortCriterion],
-        offset: u64,
-        limit: u64,
-    ) -> coven::LiveQuery<AlbumPageProjection> {
-        let (order_by, needs_artist_sort_join) = build_order_by(sort, "a.created_at DESC");
-        let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
-        let select = album_summary_select();
-        let query = format!(
-            "{select} FROM albums a {artist_sort_join} WHERE {ALBUM_A_IS_SHOWN} \
-             ORDER BY {order_by} LIMIT ? OFFSET ?"
-        );
-        self.inner
-            .handle
-            .subscribe(move |sql| {
-                let (rows, cover_versions) =
-                    album_rows_with_covers_on(&sql, &query, params![limit as i64, offset as i64])?;
-                let total_count = album_count_on(&sql).map_err(CovenError::from)?;
-                Ok((rows, cover_versions, total_count))
-            })
-            .process(|(rows, cover_versions, total_count)| {
-                Ok(AlbumPageProjection {
-                    rows: rows
-                        .into_iter()
-                        .map(AlbumSummaryRow::process)
-                        .collect::<Result<_, _>>()?,
-                    cover_versions,
-                    total_count,
-                })
-            })
-    }
-
     pub(crate) fn subscribe_album_browse(
         &self,
         sort: &[AlbumSortCriterion],
@@ -694,30 +661,12 @@ fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
     .map_err(DbError::from)
 }
 
-fn album_rows_with_covers_on<P: Params>(
-    sql: &SqlReadContext<'_>,
-    query: &str,
-    params: P,
-) -> Result<(Vec<AlbumSummaryRow>, HashMap<String, String>), CovenError> {
-    let rows = album_rows_on(sql, query, params)?;
-    let album_ids = rows.iter().map(|row| row.id.clone()).collect::<Vec<_>>();
-    let cover_versions = album_cover_versions_on(sql, &album_ids)?;
-    Ok((rows, cover_versions))
-}
-
 fn album_rows_on<P: Params>(
     sql: &SqlReadContext<'_>,
     query: &str,
     params: P,
 ) -> Result<Vec<AlbumSummaryRow>, CovenError> {
     Ok(sql.query(query, params, AlbumSummaryRow::read)?)
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct AlbumPageProjection {
-    pub rows: Vec<DbAlbumSummary>,
-    pub cover_versions: HashMap<String, String>,
-    pub total_count: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]

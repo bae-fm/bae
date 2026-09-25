@@ -27,12 +27,6 @@ macro_rules! callbacks {
     };
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeAlbumPage {
-    pub rows: Vec<BridgeAlbum>,
-    pub total_count: u64,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeLibraryPageWindow {
     pub offset: u64,
@@ -53,27 +47,12 @@ pub struct BridgeStorageProjection {
     pub total_size: u64,
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeArtistPage {
-    pub rows: Vec<BridgeArtistSummary>,
-    pub total_count: u64,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeComposerPage {
-    pub rows: Vec<BridgeComposerSummary>,
-    pub total_count: u64,
-}
-
 callbacks! {
-    AlbumPageCallback: on_value(value: BridgeAlbumPage) + on_error;
     AlbumDetailCallback: on_value(value: Option<BridgeAlbumDetail>) + on_error;
     ReleaseDetailCallback: on_value(value: Option<BridgeRelease>) + on_error;
     LibrarySearchCallback: on_value(value: BridgeSearchResults) + on_error;
     StorageProjectionCallback: on_value(value: BridgeStorageProjection) + on_error;
-    ArtistPageCallback: on_value(value: BridgeArtistPage) + on_error;
     ArtistDetailCallback: on_value(value: Option<BridgeArtistDetail>) + on_error;
-    ComposerPageCallback: on_value(value: BridgeComposerPage) + on_error;
     ComposerDetailCallback: on_value(value: Option<BridgeComposerDetail>) + on_error;
     WorkDetailCallback: on_value(value: Option<BridgeWorkDetail>) + on_error;
     QueueCallback: on_value(value: BridgeQueueSnapshot) + on_error;

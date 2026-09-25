@@ -95,29 +95,44 @@ impl LibraryManager {
             .collect())
     }
 
-    pub(crate) fn subscribe_artist_page(
+    pub(crate) fn subscribe_artist_browse(
         &self,
         sort: &[crate::db::ArtistSortCriterion],
-        offset: u64,
-        limit: u64,
-    ) -> coven::LiveQuery<crate::db::ArtistPageProjection> {
-        self.database.subscribe_artist_page(sort, offset, limit)
+        initial_windows: crate::library::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<
+        crate::library::LibraryPageWindows,
+        crate::db::ArtistBrowseProjection,
+    > {
+        self.database.subscribe_artist_browse(sort, initial_windows)
     }
 
-    pub(crate) fn resolve_artist_page(
+    pub(crate) fn resolve_artist_browse(
         &self,
-        projection: crate::db::ArtistPageProjection,
-    ) -> (Vec<ArtistSummary>, u64) {
+        projection: crate::db::ArtistBrowseProjection,
+        request_revision: u64,
+        cause: coven::ReconfigurableLiveQueryCause,
+    ) -> crate::library::LibraryBrowseSnapshot<ArtistSummary> {
         let images = image_refs(projection.image_versions, LibraryImageType::Artist);
-        let rows = projection
-            .rows
-            .into_iter()
-            .map(|row| {
-                let image = images.get(&row.artist.id).cloned();
-                ArtistSummary::from_raw(row, image)
-            })
-            .collect();
-        (rows, projection.total_count)
+        crate::library::LibraryBrowseSnapshot {
+            windows: projection
+                .windows
+                .into_iter()
+                .map(|window| crate::library::LibraryBrowseWindow {
+                    window: window.window,
+                    rows: window
+                        .rows
+                        .into_iter()
+                        .map(|row| {
+                            let image = images.get(&row.artist.id).cloned();
+                            ArtistSummary::from_raw(row, image)
+                        })
+                        .collect(),
+                })
+                .collect(),
+            total_count: projection.total_count,
+            request_revision,
+            cause,
+        }
     }
 
     pub async fn get_artist_detail(

@@ -30,17 +30,14 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailCallback
-import uniffi.bae_bridge.AlbumPageCallback
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumBrowseSnapshot
 import uniffi.bae_bridge.BridgeAlbumBrowseWindow
 import uniffi.bae_bridge.BridgeAlbumDetail
-import uniffi.bae_bridge.BridgeAlbumPage
 import uniffi.bae_bridge.BridgeComposerBrowseSnapshot
 import uniffi.bae_bridge.BridgeComposerBrowseWindow
 import uniffi.bae_bridge.BridgeComposerDetail
-import uniffi.bae_bridge.BridgeComposerPage
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDiagnostics
@@ -56,7 +53,6 @@ import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailCallback
-import uniffi.bae_bridge.ComposerPageCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
 import uniffi.bae_bridge.EagerCacheFillStatusCallback
@@ -201,14 +197,12 @@ internal class FakeAppHandle(
     var pauseCount = 0
     var resumeCount = 0
 
-    /** Offset/limit each `getAlbumPage` was called with — lets browse-paging
-     *  tests assert the requested window reached the bridge unaltered. */
+    /** Offset/limit of each window the album browse was asked for — lets
+     *  browse-paging tests assert the requested window reached the bridge
+     *  unaltered. */
     val albumPageWindows = mutableListOf<Pair<ULong, ULong>>()
-    val composerPageWindows = mutableListOf<Pair<ULong, ULong>>()
     val playReleaseCalls = mutableListOf<Triple<String, UInt?, Boolean>>()
     val liveSubscriptions = mutableListOf<FakeLiveSubscription>()
-    private val uiAlbumPageCallbacks = mutableListOf<AlbumPageCallback>()
-    private val uiAlbumPageSubscriptions = mutableListOf<FakeLiveSubscription>()
     val searchCallbacks = mutableListOf<LibrarySearchCallback>()
     val albumBrowseSubscriptions = mutableListOf<FakeAlbumBrowseSubscription>()
     val composerBrowseSubscriptions = mutableListOf<FakeComposerBrowseSubscription>()
@@ -249,44 +243,11 @@ internal class FakeAppHandle(
 
     override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = imageBytes[image.id]
 
-    override fun subscribeAlbumPage(
-        sortCriteria: List<BridgeSortCriterion>,
-        offset: ULong,
-        limit: ULong,
-        callback: AlbumPageCallback,
-    ): LiveSubscription {
-        albumPageWindows.add(offset to limit)
-        uiAlbumPageCallbacks += callback
-        val subscription = liveSubscription().also(uiAlbumPageSubscriptions::add)
-        if (!deliverAlbumPagesImmediately) {
-            return subscription
-        }
-        if (initialAlbumPageError == null) {
-            val rows = albumPages(offset, limit)
-            callback.onValue(BridgeAlbumPage(rows, rows.size.toULong()))
-        } else {
-            callback.onError(initialAlbumPageError)
-        }
-        return subscription
-    }
-
     fun emitSearchResults(
         subscription: Int,
         value: BridgeSearchResults,
     ) {
         searchCallbacks[subscription].onValue(value)
-    }
-
-    override fun subscribeComposerPage(
-        sortCriteria: List<BridgeComposerSortCriterion>,
-        offset: ULong,
-        limit: ULong,
-        callback: ComposerPageCallback,
-    ): LiveSubscription {
-        composerPageWindows.add(offset to limit)
-        val rows = composerPages(offset, limit)
-        callback.onValue(BridgeComposerPage(rows, rows.size.toULong()))
-        return liveSubscription()
     }
 
     override fun subscribeAlbumBrowse(sortCriteria: List<BridgeSortCriterion>): AlbumBrowseSubscription =
