@@ -32,6 +32,13 @@ impl Database {
         self.inner.handle.stop_sync();
     }
 
+    /// Close the store: disconnect sync, close its connections and release
+    /// its lock, returning once nothing of it is open in the library
+    /// directory. Every later call on any clone fails.
+    pub(crate) async fn close(&self) {
+        self.inner.handle.close().await;
+    }
+
     pub(crate) fn sync_now(&self) {
         self.inner.handle.sync_now();
     }

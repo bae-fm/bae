@@ -279,7 +279,7 @@ async fn forgetting_a_closed_library_leaves_no_keyring_entry_or_directory() {
     assert!(keys.get_host_secret(crate::keys::MCP_BEARER_TOKEN).unwrap().is_some());
 
     manager.close().await;
-    drop(manager);
+    coven::assert_no_open_files_under(&app_dir.registered_library(&library_id));
     crate::library::remove_local_library(&app_dir, &library_id).unwrap();
 
     assert_eq!(keys.get_encryption_key().unwrap(), None);

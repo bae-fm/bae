@@ -228,13 +228,15 @@ impl LibraryManager {
         );
     }
 
-    /// Close the library: stop the sync loop and end every background task
-    /// the manager runs, so none of them holds the store any longer. The
-    /// services built on the manager (playback, import) end their own work
-    /// when they are dropped.
+    /// Close the library: stop the sync loop, end every background task the
+    /// manager runs, then close the store, so when this returns nothing of
+    /// the manager holds a file in the library directory. The services built
+    /// on the manager (playback, import) end their own work when they are
+    /// dropped.
     pub async fn close(&self) {
         self.database.stop_sync();
         self.tasks.close().await;
+        self.database.close().await;
     }
 
     pub(crate) fn current_transfer_action(&self, release_id: &str) -> Option<ReleaseStorageAction> {
