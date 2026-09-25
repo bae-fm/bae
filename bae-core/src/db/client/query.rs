@@ -854,22 +854,36 @@ impl AlbumSummaryRow {
     }
 }
 
-/// Resolve cover dependencies from SQL keys without decoding display aggregates.
+/// The cover version of each album's primary release — the cover an album
+/// shows — keyed by that release's id. The primary release is resolved here
+/// the way [`crate::db::resolve_primary_release_id`] resolves it: the stored one while it
+/// is among the album's releases, else the album's first release. Only those
+/// releases' covers are read, so another release's cover changing is not a
+/// change to the albums read.
 pub(super) fn album_cover_versions_on(
     sql: &SqlReadContext<'_>,
     album_ids: &[String],
 ) -> Result<HashMap<String, String>, DbError> {
-    let mut releases = Vec::new();
+    let mut primaries = Vec::new();
     for chunk in album_ids.chunks(SQL_MAX_IN_VARS) {
         let query = format!(
-            "SELECT id FROM releases WHERE album_id IN ({})",
+            "SELECT COALESCE( \
+                 (SELECT stored.id FROM releases stored \
+                  WHERE stored.id = a.primary_release_id AND stored.album_id = a.id), \
+                 (SELECT first.id FROM releases first WHERE first.album_id = a.id \
+                  ORDER BY first.created_at, first.id LIMIT 1)) \
+             FROM albums a WHERE a.id IN ({})",
             in_clause_placeholders(chunk.len())
         );
-        releases.extend(sql.query(
-            &query,
-            coven::rusqlite::params_from_iter(chunk.iter()),
-            |row| row.get::<_, String>(0),
-        )?);
+        primaries.extend(
+            sql.query(
+                &query,
+                coven::rusqlite::params_from_iter(chunk.iter()),
+                |row| row.get::<_, Option<String>>(0),
+            )?
+            .into_iter()
+            .flatten(),
+        );
     }
-    super::blobs::image_versions_on(sql, LibraryImageType::Cover, &releases)
+    super::blobs::image_versions_on(sql, LibraryImageType::Cover, &primaries)
 }

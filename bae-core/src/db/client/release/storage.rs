@@ -188,15 +188,26 @@ impl Database {
                     storage_count_on(&sql, &where_clause, uploading).map_err(CovenError::from)?;
                 let total_size = storage_total_size_on(&sql, &where_clause, uploading)
                     .map_err(CovenError::from)?;
+                // A row shows its own release's cover and its album's; only
+                // those covers are read.
                 let album_ids = windows
                     .iter()
                     .flat_map(|(_, rows)| rows.iter().map(|(_, album)| album.id.clone()))
                     .collect::<Vec<_>>();
-                let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
+                let release_ids = windows
+                    .iter()
+                    .flat_map(|(_, rows)| rows.iter().map(|(release, _)| release.id.clone()))
+                    .collect::<Vec<_>>();
+                let mut cover_versions = album_cover_versions_on(&sql, &album_ids)?;
+                cover_versions.extend(super::blobs::image_versions_on(
+                    &sql,
+                    LibraryImageType::Cover,
+                    &release_ids,
+                )?);
                 Ok((windows, total_count, total_size, cover_versions))
             })
             .process(
-                |request, (windows, total_count, total_size, mut cover_versions)| {
+                |request, (windows, total_count, total_size, cover_versions)| {
                     let windows = windows
                         .into_iter()
                         .map(|(window, rows)| {
@@ -206,19 +217,6 @@ impl Database {
                             })
                         })
                         .collect::<Result<Vec<_>, CovenError>>()?;
-                    let cover_ids = windows
-                        .iter()
-                        .flat_map(|window| &window.rows)
-                        .flat_map(|row| {
-                            [row.release.id.clone()]
-                                .into_iter()
-                                .chain(resolve_primary_release_id(
-                                    row.album.primary_release_id.as_deref(),
-                                    row.album.release_ids.iter().map(String::as_str),
-                                ))
-                        })
-                        .collect::<HashSet<_>>();
-                    cover_versions.retain(|id, _| cover_ids.contains(id));
                     Ok(StorageBrowseProjection {
                         sort: request.sort,
                         filter: request.filter,

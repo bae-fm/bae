@@ -105,6 +105,57 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
     );
 }
 
+/// A grid card shows its album's primary release's cover, so that is the one
+/// cover the browse reads: another release of the album gaining a cover is
+/// not a change to the grid.
+#[tokio::test]
+async fn album_browse_reads_only_the_primary_releases_cover() {
+    let (db, _temp) = live_db().await;
+    exec(
+        &db,
+        "INSERT INTO releases (id, album_id, remote, _updated_at, created_at)
+         VALUES (?1, ?2, 1, 'seed', '2026-01-02T00:00:00Z')",
+        &[OTHER_RELEASE_ID, ALBUM_ID],
+    )
+    .await;
+    let mut live = db.subscribe_album_browse(&[], first_page());
+    live.next().await.into_result().unwrap();
+
+    let insert_cover = |release_id: &'static str, blob_id: &'static str| {
+        let db = db.clone();
+        async move {
+            let hash = crate::util::fs::hash_bytes(blob_id.as_bytes());
+            exec(
+                &db,
+                "INSERT INTO covers
+                 (id, blob_id, content_type, file_size, source, hash, _updated_at, created_at)
+                 VALUES (?1, ?2, 'image/jpeg', 12, 'file_tags', ?3, 'cover-v1',
+                         '2026-01-01T00:00:00Z')",
+                &[release_id, blob_id, hash.as_str()],
+            )
+            .await;
+        }
+    };
+    insert_cover(OTHER_RELEASE_ID, "2b8f0c6e-4a1d-4c3e-8f5a-6d7e8f9a0b1c").await;
+    assert!(
+        tokio::time::timeout(Duration::from_millis(500), live.next())
+            .await
+            .is_err(),
+        "a cover on a release the grid does not show wakes nothing"
+    );
+
+    insert_cover(RELEASE_ID, "9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f").await;
+    let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("the primary release's cover wakes the browse")
+        .into_result()
+        .unwrap();
+    assert_eq!(
+        updated.cover_versions.keys().collect::<Vec<_>>(),
+        vec![RELEASE_ID]
+    );
+}
+
 #[tokio::test]
 async fn album_browse_subscription_reconfigures_bounded_windows() {
     let (db, _temp) = live_db().await;

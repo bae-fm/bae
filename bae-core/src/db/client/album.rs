@@ -106,14 +106,10 @@ impl Database {
                 Ok(Some((results, cover_versions, artist_image_versions)))
             })
             .process(|_, raw| {
-                let Some((results, mut cover_versions, artist_image_versions)) = raw else {
+                let Some((results, cover_versions, artist_image_versions)) = raw else {
                     return Ok(LibrarySearchProjection::default());
                 };
                 let results = results.process()?;
-                let release_ids = search_release_ids(&results)
-                    .into_iter()
-                    .collect::<HashSet<_>>();
-                cover_versions.retain(|id, _| release_ids.contains(id));
                 Ok(LibrarySearchProjection {
                     results,
                     cover_versions,
@@ -642,27 +638,6 @@ impl LibrarySearchRows {
             works: self.works,
         })
     }
-}
-
-fn search_release_ids(results: &DbLibrarySearchResults) -> Vec<String> {
-    let mut release_ids = results
-        .albums
-        .iter()
-        .filter_map(|album| {
-            resolve_primary_release_id(
-                album.primary_release_id.as_deref(),
-                album.release_ids.iter().map(String::as_str),
-            )
-        })
-        .collect::<Vec<_>>();
-    release_ids.extend(results.tracks.iter().map(|track| track.release_id.clone()));
-    release_ids.extend(
-        results
-            .works
-            .iter()
-            .filter_map(|work| work.representative_release_id.clone()),
-    );
-    release_ids
 }
 
 fn find_album_detail_on(
