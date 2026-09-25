@@ -226,11 +226,11 @@ impl LibraryManager {
         // Stage under the target dir (not a temp dir elsewhere) so the final rename
         // stays on one filesystem and is atomic. The name is hidden and carries the
         // release id so a concurrent export of a different release can't collide.
-        let staging = StagingDir::create(
-            request
-                .target_dir
-                .join(format!(".{folder}.export-{release_id}")),
-        )?;
+        let staging_path = request
+            .target_dir
+            .join(format!(".{folder}.export-{release_id}"));
+        let staging =
+            super::export::blocking_io(move || Ok(StagingDir::create(staging_path)?)).await?;
 
         match request.kind {
             crate::library::OutputKind::Export => {
@@ -250,8 +250,13 @@ impl LibraryManager {
             }
         }
 
-        write_output_marker(staging.path(), release_id)?;
-        replace_output_dir(staging.path(), &final_dir, &folder, release_id)?;
+        let staging_path = staging.path().to_path_buf();
+        let marker_release_id = release_id.to_string();
+        super::export::blocking_io(move || {
+            write_output_marker(&staging_path, &marker_release_id)?;
+            replace_output_dir(&staging_path, &final_dir, &folder, &marker_release_id)
+        })
+        .await?;
         staging.disarm();
         Ok(())
     }
@@ -281,12 +286,8 @@ impl LibraryManager {
     }
 }
 
-fn write_output_marker(
-    staging_dir: &std::path::Path,
-    release_id: &str,
-) -> Result<(), LibraryError> {
-    std::fs::write(staging_dir.join(OUTPUT_MARKER_FILE), release_id)?;
-    Ok(())
+fn write_output_marker(staging_dir: &std::path::Path, release_id: &str) -> std::io::Result<()> {
+    std::fs::write(staging_dir.join(OUTPUT_MARKER_FILE), release_id)
 }
 
 fn replace_output_dir(
@@ -368,7 +369,7 @@ impl StagingDir {
     /// Create the staging directory fresh. A leftover directory at this path (from
     /// a prior crash that skipped the drop cleanup) is removed first so the export
     /// starts from an empty tree rather than mixing in stale files.
-    fn create(path: std::path::PathBuf) -> Result<Self, LibraryError> {
+    fn create(path: std::path::PathBuf) -> std::io::Result<Self> {
         if path.exists() {
             std::fs::remove_dir_all(&path)?;
         }

@@ -38,6 +38,11 @@ impl LibraryManager {
     /// parent is created first. No per-file temp is needed: the whole staging
     /// directory is the atomic unit, renamed into place only once every file is
     /// written.
+    ///
+    /// The bytes stream a window at a time from coven's stream over the blob
+    /// (the user's own file, the local store, the cache, or the cloud), so a
+    /// file of any size costs one window of memory; each write runs on a
+    /// blocking thread.
     async fn export_one_file(
         &self,
         file: &DbFile,
@@ -48,12 +53,50 @@ impl LibraryManager {
             &format!("original_filename for file {}", file.id),
             &file.original_filename,
         )?;
-        let bytes = self.read_release_blob(file).await?;
+        let blob = self.release_file_row_blob_ref(&file.id).await?;
+        let stream = self
+            .database
+            .open_blob_stream(&blob)
+            .await
+            .map_err(|e| LibraryError::blob(format!("read of {}", file.id), e))?;
+        let size = stream.plaintext_size();
+
         let file_path = staging_dir.join(&file.original_filename);
-        if let Some(parent) = file_path.parent() {
-            std::fs::create_dir_all(parent)?;
+        let mut output = blocking_io(move || {
+            if let Some(parent) = file_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            Ok(std::fs::File::create(&file_path)?)
+        })
+        .await?;
+        let mut offset = 0;
+        while offset < size {
+            let len = EXPORT_WINDOW.min(size - offset);
+            let window = stream
+                .read_at(offset, len)
+                .await
+                .map_err(|e| LibraryError::blob(format!("read of {}", file.id), e))?;
+            output = blocking_io(move || {
+                std::io::Write::write_all(&mut output, &window)?;
+                Ok(output)
+            })
+            .await?;
+            offset += len;
         }
-        std::fs::write(&file_path, &bytes)?;
+        blocking_io(move || Ok(output.sync_all()?)).await?;
         Ok(())
+    }
+}
+
+/// How much of a file an export holds in memory at once.
+const EXPORT_WINDOW: u64 = 4 * 1024 * 1024;
+
+/// Run filesystem work on a blocking thread.
+pub(super) async fn blocking_io<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, LibraryError> + Send + 'static,
+) -> Result<T, LibraryError> {
+    match tokio::task::spawn_blocking(work).await {
+        Ok(result) => result,
+        Err(error) => std::panic::resume_unwind(error.into_panic()),
     }
 }
