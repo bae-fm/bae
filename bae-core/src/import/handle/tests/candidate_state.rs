@@ -161,14 +161,13 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
                     file_root: folder.clone(),
                     name: "Album".to_string(),
                     files: crate::import::folder_scanner::CategorizedFiles {
-                        files: Vec::new(),
+                        files: Vec::new(), parts: Vec::new(), 
                     },
                     watched_folder_path: root.to_string_lossy().into_owned(),
                     scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
                     file_edit_revision: 0,
                     display_path: "Collection/Album".to_string(),
-                    resolved_boundaries: Vec::new(),
-                    combine_ancestor_key: None,
+                    grouping: None,
                 },
             ),
         )

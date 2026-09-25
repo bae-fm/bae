@@ -391,8 +391,8 @@ async fn a_stored_verdict_carries_its_durations_and_signals() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
     let fixture = Fixture::new("verdict-without-signals").await;
-    let candidate: crate::import::release_candidate::ReleaseCandidate =
-        synthetic_candidate("/missing-signals", 321).into();
+    let candidate: crate::import::folder_scanner::FolderCandidate =
+        synthetic_candidate("/missing-signals", 321);
 
     let finished = settle_answer(
         fixture.context(),

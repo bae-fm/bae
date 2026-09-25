@@ -44,7 +44,7 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             })?;
-        let content_hash = projection.candidate.files().content_hash();
+        let content_hash = projection.candidate.files.content_hash();
         let change = match choices.asks_the_same_as(&projection.lookup_choices) {
             true => ChoiceChange::Ranking,
             false => ChoiceChange::Lookups,

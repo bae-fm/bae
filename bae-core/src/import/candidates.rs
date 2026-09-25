@@ -150,102 +150,34 @@ pub struct ImportedRelease {
     pub album_id: String,
 }
 
-/// One stored entry under a root, as much of it as supersession needs: its
-/// key, and whether it is a boundary rather than a folder.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct StoredEntryKey {
-    pub key: String,
-    /// Whether the entry at this key is the folder itself rather than
-    /// something inside it: the candidate that reads the whole folder as one
-    /// release. A folder that holds tracks of its own has a candidate under the
-    /// same key which is *not* this — it is one of the releases inside it.
-    pub covers_whole_folder: bool,
-}
-
-/// The stored entries under `item`'s root that `item` replaces when it is
-/// written, so the write deletes them in the same transaction.
+/// Whether reading the folder at `key` as `decision` is something the stored
+/// scan offers — what a header's or a row's control points at.
 ///
-/// A valid candidate exposed by resolved boundary decisions replaces what
-/// those decisions hid: everything below a combined folder, or exactly the
-/// row at a kept-separate folder — including the boundary entry itself, whose
-/// key is that folder's path. An invalid candidate replaces only the boundary
-/// entries its decisions resolved. A boundary replaces the tentative candidates
-/// it hides. A tentative (discovered) candidate replaces nothing.
-pub(crate) fn superseded_entry_keys(existing: &[StoredEntryKey], item: &ScanItem) -> Vec<String> {
-    let own_key = item.persisted_key().unwrap_or_default();
-    let mut removed = match item {
-        ScanItem::Discovered(_) => Vec::new(),
-        ScanItem::Valid(candidate) => {
-            let decisions: Vec<(FolderReleaseDecisionKey, FolderReleaseDecision)> = candidate
-                .resolved_boundaries
-                .iter()
-                .map(|resolved| (resolved.key.clone(), resolved.decision))
-                .collect();
-            let others: Vec<StoredEntryKey> = existing
-                .iter()
-                .filter(|entry| entry.key != own_key)
-                .cloned()
-                .collect();
-            super::folder_scanner::release_decision_removed_keys(&others, &decisions)
-        }
-        // A folder that failed validation replaces nothing: what stood at its
-        // key is its own prior row, which the write deletes anyway.
-        ScanItem::Invalid(_) => Vec::new(),
-        // Not a scan entry: it stores as the folder's decision.
-        ScanItem::Decided { .. } => Vec::new(),
-    };
-    removed.retain(|key| key != &own_key);
-    removed.sort();
-    removed.dedup();
-    removed
-}
-
-/// Whether `key` names a folder the stored scan currently offers a reading
-/// for — the one a group header's control or a combined row's menu points at.
-///
-/// A key that names nothing is a stale control acting on a folder this scan no
-/// longer reads that way, and writing its decision would settle a folder that
-/// is not there. Three things make a key current: a row settled by it, a row
-/// that names it as the folder its releases could be read as one, and a first
-/// path component with rows under it, which is what a group header stands for.
-pub(crate) fn names_a_current_folder_reading(
+/// A control acting on a folder this scan no longer reads that way is stale,
+/// and writing its decision would settle a folder that is not there. A folder
+/// is offered combined when two releases or more are stored below it, and
+/// offered separate when the release stored for it is its grouping.
+pub(crate) fn offers_folder_reading(
     items: &[ScanItem],
     key: &FolderReleaseDecisionKey,
+    decision: FolderReleaseDecision,
 ) -> bool {
-    let resolved_on_row = items.iter().any(|item| match item {
+    let folder = std::path::Path::new(&key.watched_folder_path).join(&key.relative_folder_path);
+    let releases = items.iter().filter_map(|item| match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
-            candidate
-                .resolved_boundaries
-                .iter()
-                .any(|resolved| resolved.key == *key)
-                || candidate.combine_ancestor_key.as_ref() == Some(key)
+            Some((&candidate.path, candidate.grouping.is_some()))
         }
-        ScanItem::Invalid(candidate) => candidate
-            .resolved_boundaries
-            .iter()
-            .any(|resolved| resolved.key == *key),
-        ScanItem::Decided { .. } => false,
+        ScanItem::Invalid(candidate) => Some((&candidate.path, candidate.grouping.is_some())),
+        ScanItem::Decided { .. } => None,
     });
-    if resolved_on_row {
-        return true;
+    match decision {
+        FolderReleaseDecision::CombineAsOneRelease => {
+            releases.filter(|(path, _)| path.starts_with(&folder)).count() >= 2
+        }
+        FolderReleaseDecision::KeepAsSeparateReleases => {
+            releases.into_iter().any(|(path, grouped)| grouped && *path == folder)
+        }
     }
-    let first_component_matches = |watched_folder_path: &str, display_path: &str| {
-        watched_folder_path == key.watched_folder_path
-            && display_path
-                .split('/')
-                .next()
-                .is_some_and(|first| first == key.relative_folder_path)
-    };
-    !key.relative_folder_path.contains('/')
-        && items.iter().any(|item| match item {
-            ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
-                first_component_matches(&candidate.watched_folder_path, &candidate.display_path)
-            }
-            ScanItem::Invalid(candidate) => {
-                first_component_matches(&candidate.watched_folder_path, &candidate.display_path)
-            }
-            ScanItem::Decided { .. } => false,
-        })
 }
 
 /// Every stored folder candidate that shares one file-decision identity, with
@@ -262,10 +194,7 @@ pub(crate) fn files_for_identity(
                 if candidate.files.content_hash() == content_hash
                     && candidate.file_edit_revision == edit_revision =>
             {
-                Some((
-                    candidate.path.to_string_lossy().into_owned(),
-                    candidate.files.clone(),
-                ))
+                Some((candidate.key(), candidate.files.clone()))
             }
             _ => None,
         })

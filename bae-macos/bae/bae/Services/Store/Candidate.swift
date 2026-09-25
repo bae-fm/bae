@@ -400,15 +400,14 @@ struct Candidate: Equatable, Identifiable {
         key
     }
 
-    var combination: BridgeCombination? { detail?.candidate.combination }
+    /// The folders this release is read from, when it is several. Empty for
+    /// a release read from one folder.
+    var parts: [BridgeReleasePart] { detail?.candidate.parts ?? [] }
     /// Where this candidate's import stands for the pane: running now, or
     /// what the last one left.
     var importStatus: BridgeCandidateImportStatus? { detail?.importStatus }
-    var sourceFileEditsAllowed: Bool {
-        detail?.candidate.sourceFileEditsAllowed ?? false
-    }
     var sourceFolderPaths: [String] {
-        if let combination { return combination.parts.map(\.candidateKey) }
+        if !parts.isEmpty { return parts.map(\.folderPath) }
         return [key]
     }
 

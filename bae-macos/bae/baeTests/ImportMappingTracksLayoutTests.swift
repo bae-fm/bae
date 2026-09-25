@@ -278,9 +278,9 @@ extension ImportMappingTracksLayoutTests {
     @MainActor
     @Test(
         "unused file and CUE sources can be auditioned and added without metadata edits",
-        arguments: [(false, true), (true, true), (false, false), (true, false)]
+        arguments: [false, true]
     )
-    func unusedSourceCanBeAdded(sheet: Bool, editable: Bool) async throws {
+    func unusedSourceCanBeAdded(sheet: Bool) async throws {
         let original =
             sheet
             ? sheetEntryMapping(number: 3, title: "Source Title")
@@ -304,7 +304,6 @@ extension ImportMappingTracksLayoutTests {
         let (window, host) = hostUnusedSource(
             mapping,
             recorder: recorder,
-            editable: editable,
             size: size
         )
         await SnapshotTestSupport.settle(host)
@@ -323,8 +322,8 @@ extension ImportMappingTracksLayoutTests {
             in: window
         )
         await Task.yield()
-        #expect(recorder.addedAudio == (editable ? [audio] : []))
-        #expect(recorder.addedCandidates == (editable ? [candidate] : []))
+        #expect(recorder.addedAudio == [audio])
+        #expect(recorder.addedCandidates == [candidate])
         #expect(recorder.edits == 0)
         #expect(recorder.drops == 0)
         try click(
@@ -344,7 +343,6 @@ extension ImportMappingTracksLayoutTests {
     private func hostUnusedSource(
         _ mapping: BridgeTrackMapping,
         recorder: MappingTrackActionRecorder,
-        editable: Bool,
         size: NSSize
     ) -> (NSWindow, NSView) {
         SnapshotTestSupport.hostInWindow(
@@ -359,7 +357,6 @@ extension ImportMappingTracksLayoutTests {
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: size.width, height: size.height, alignment: .leading)
-            .environment(\.sourceFileEditsAllowed, editable)
             .environment(Library.stub())
             .environment(UiStore()),
             size: size

@@ -177,7 +177,7 @@ fn content_hash_is_location_independent_and_size_sensitive() {
         files: vec![
             audio_entry(&format!("{root}/01.flac"), "01.flac", 1000),
             audio_entry(&format!("{root}/02.flac"), "02.flac", second_size),
-        ],
+        ], parts: Vec::new(), 
     };
 
     // The same relative structure under two different parent folders hashes
@@ -205,10 +205,10 @@ fn content_hash_changes_with_file_modification_time() {
         role: FileRole::Audio,
     };
     let before = CategorizedFiles {
-        files: vec![entry(1)],
+        files: vec![entry(1)], parts: Vec::new(), 
     };
     let after = CategorizedFiles {
-        files: vec![entry(2)],
+        files: vec![entry(2)], parts: Vec::new(), 
     };
 
     assert_ne!(before.content_hash(), after.content_hash());
@@ -227,7 +227,7 @@ fn content_hash_is_independent_of_discovery_order() {
             entry("02.flac", 2, FileRole::Audio),
             entry("cover.jpg", 3, FileRole::Artwork),
             entry("notes.txt", 4, FileRole::Document),
-        ],
+        ], parts: Vec::new(), 
     };
     let shuffled = CategorizedFiles {
         files: vec![
@@ -235,7 +235,7 @@ fn content_hash_is_independent_of_discovery_order() {
             entry("02.flac", 2, FileRole::Audio),
             entry("cover.jpg", 3, FileRole::Artwork),
             entry("01.flac", 1, FileRole::Audio),
-        ],
+        ], parts: Vec::new(), 
     };
     assert_eq!(forward.content_hash(), shuffled.content_hash());
 }

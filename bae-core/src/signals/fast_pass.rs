@@ -340,7 +340,7 @@ mod tests {
                     file: cover.clone(),
                     role: FileRole::Artwork,
                 },
-            ],
+            ], parts: Vec::new(), 
         };
 
         let inputs: Vec<PathBuf> = enumerate_filename_inputs(&categorized)

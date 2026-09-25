@@ -69,9 +69,8 @@ private func bridgeFolder(
     isAdded: Bool = false
 ) -> BridgeFolderCandidate {
     BridgeFolderCandidate(
-        compositionAction: .combine,
-        combination: nil,
-        sourceFileEditsAllowed: true,
+        groupingAction: .combine,
+        parts: [],
         folderPath: folderPath,
         sourceFolderName: name,
         watchedFolderPath: watchedFolderPath,
@@ -108,11 +107,12 @@ private func bridgeInvalid(
     name: String
 ) -> BridgeInvalidCandidate {
     BridgeInvalidCandidate(
+        candidateKey: folderPath,
         folderPath: folderPath,
         sourceFolderName: name,
         watchedFolderPath: watchedFolderPath,
         displayPath: name,
-        resolvedBoundaries: [],
+        separable: false,
         reason: .noValidAudio
     )
 }
@@ -150,8 +150,7 @@ private func readyRow(
         folderName: title,
         watchedFolderPath: "/w",
         displayPath: title,
-        resolvedBoundaries: [],
-        combineAncestorKey: nil,
+        separable: false,
         actionable: true,
         placement: .ready,
         readyCheck: nil,
@@ -190,8 +189,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         folderName: title,
         watchedFolderPath: "/w",
         displayPath: title,
-        resolvedBoundaries: [],
-        combineAncestorKey: nil,
+        separable: false,
         actionable: true,
         placement: .skipped,
         readyCheck: nil,

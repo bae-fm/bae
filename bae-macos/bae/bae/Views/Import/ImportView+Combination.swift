@@ -32,14 +32,40 @@ extension ImportView {
         }
     }
 
-    func separateCombination(_ key: String) {
+    /// Read the release at `key` as the folders it is made of: a row's or the
+    /// pane's "Keep as Separate Releases".
+    func separateCandidate(_ key: String) {
         candidateMutationTasks[key]?.cancel()
         candidateMutationTasks[key] = Task {
             defer { candidateMutationTasks[key] = nil }
             await commitAndEndEditing()
             do {
-                try await importer.separateCombination(key)
+                try await importer.separateCandidate(key)
                 uiStore.removeFolderCandidateSelection([key])
+            }
+            catch is CancellationError {}
+            catch {
+                uiStore.showError(error)
+            }
+        }
+    }
+
+    /// Read every release below the folder `key` names as one: a group
+    /// header's "Combine as One Release". The release it makes is selected and
+    /// revealed, as a combined selection's is.
+    func combineFolder(_ key: BridgeFolderReleaseDecisionKey) {
+        let taskKey =
+            "combine-folder:\(key.watchedFolderPath)/\(key.relativeFolderPath)"
+        candidateMutationTasks[taskKey]?.cancel()
+        candidateMutationTasks[taskKey] = Task {
+            defer { candidateMutationTasks[taskKey] = nil }
+            await commitAndEndEditing()
+            uiStore.setFolderCandidateSelection([])
+            do {
+                let release = try await importer.combineFolder(key)
+                try Task.checkCancellation()
+                uiStore.setFolderCandidateSelection([release])
+                listSlot.requestCandidateReveal(release)
             }
             catch is CancellationError {}
             catch {

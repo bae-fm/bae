@@ -59,16 +59,18 @@ mod records;
 // playback clients with no import pipeline.
 desktop_only! {
     mod folder_scans;
-    pub use folder_scans::ScanItemWrite;
+    pub use folder_scans::{FinishedScan, ScanItemWrite};
     pub(crate) use folder_scans::{
         FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, ScanItemToWrite,
     };
-    mod import_combinations;
+    mod release_groupings;
+    pub use release_groupings::GroupingChanges;
+    pub(crate) use release_groupings::GroupingFacts;
     mod import_content_hash;
     mod import_list;
     mod import_state;
     pub use import_list::{
-        CandidateListSource, CandidateStateListRow, ImportQueueRows, ScanCandidateKind,
+        CandidateListGrouping, CandidateStateListRow, ImportQueueRows, ScanCandidateKind,
         ScanCandidateListRow,
     };
     pub(crate) use import_state::{

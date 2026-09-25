@@ -186,14 +186,6 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
         if entry.tab != TriageTab::Pending {
             continue;
         }
-        if let ItemRef::Candidate { index, .. } = entry.item {
-            if !matches!(
-                rows.candidates[placed[index].index].source,
-                crate::db::CandidateListSource::Folder
-            ) {
-                continue;
-            }
-        }
         entry.group = group_for(
             &entry.watched_folder_path,
             &entry.display_path,
@@ -321,11 +313,7 @@ pub(crate) fn locate_candidate(
         return Ok(None);
     };
     let tab = placed.row.placement.tab();
-    let group = if tab == TriageTab::Pending
-        && matches!(
-            rows.candidates[placed.index].source,
-            crate::db::CandidateListSource::Folder
-        ) {
+    let group = if tab == TriageTab::Pending {
         let source = &rows.candidates[placed.index];
         group_for(
             &source.watched_folder_path,
@@ -361,9 +349,8 @@ fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
     request
 }
 
-/// One settled candidate's row, as the tables place it. `resolved_boundaries`
-/// is left empty and `matched` is the verdict's lead — the window fills both in
-/// for the items it materialises.
+/// One settled candidate's row, as the tables place it. `matched` is the
+/// verdict's lead — the window fills it in for the items it materialises.
 fn place_row(
     rows: &ImportQueueRows,
     row: &ScanCandidateListRow,
@@ -382,16 +369,15 @@ fn place_row(
     let imported = rows.imported.get(content_hash);
     let import_status = import_status_of(
         imported,
-        row.source
-            .error()
+        row.error()
             .or_else(|| rows.failures.get(content_hash).map(String::as_str)),
     );
     let answer = verdict.map(classify_summary);
-    let skipped = match &row.source {
-        crate::db::CandidateListSource::Combination { skipped, .. } => *skipped,
-        crate::db::CandidateListSource::Folder => rows.skipped.contains(&(
+    let skipped = match &row.grouping {
+        Some(grouping) => grouping.skipped,
+        None => rows.skipped.contains(&(
             row.watched_folder_path.clone(),
-            candidate_relative_path(&row.watched_folder_path, Path::new(&row.path))
+            candidate_relative_path(&row.watched_folder_path, Path::new(&row.folder))
                 .map_err(|error| LibraryError::Internal(error.to_string()))?,
         )),
     };
@@ -408,20 +394,14 @@ fn place_row(
     );
     // Every row the list holds is a settled release: a tentative candidate
     // never becomes one.
-    let actionable = row.source.error().is_none();
+    let actionable = row.error().is_none();
     let action_basis = CandidateActionBasis::of(actionable, &placement, answer.as_ref());
     Ok(TriageRow {
         candidate_key: row.path.clone(),
         folder_name: row.name.clone(),
         watched_folder_path: row.watched_folder_path.clone(),
         display_path: row.display_path.clone(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: row.combine_ancestor_relative_path.clone().map(|relative| {
-            FolderReleaseDecisionKey {
-                watched_folder_path: row.watched_folder_path.clone(),
-                relative_folder_path: relative,
-            }
-        }),
+        separable: row.grouping.is_some(),
         actionable,
         selectable: action_basis.importable_at_rest(),
         action_basis,
@@ -493,9 +473,7 @@ fn grouped_roots(rows: &ImportQueueRows) -> HashSet<(String, String)> {
         }
     };
     for row in &rows.candidates {
-        if matches!(row.kind, ScanCandidateKind::Tentative)
-            || !matches!(row.source, crate::db::CandidateListSource::Folder)
-        {
+        if matches!(row.kind, ScanCandidateKind::Tentative) {
             continue;
         }
         note(&row.watched_folder_path, &row.display_path, false);
@@ -503,18 +481,58 @@ fn grouped_roots(rows: &ImportQueueRows) -> HashSet<(String, String)> {
     grouped
 }
 
-/// The folders the list can offer to read as one release: those settled as
-/// several, and those holding several rows that nothing has settled either way.
-/// Both are folders whose rows below could be one release; the header for such
-/// a folder is where that is asked.
+/// The folders the list can offer to read as one release, counted over the
+/// releases as the groupings read them — a folder holding one album read from
+/// two disc folders holds one release, and offers nothing.
+///
+/// Two kinds of folder offer it: one whose releases are kept apart by a
+/// stored reading, and one nothing is stored for that is the nearest such
+/// folder above some release to hold two releases or more. A folder between
+/// that one and the release, holding only the one reading's worth, is where
+/// the choice already belongs, so nothing above it is asked.
 fn combinable_roots(rows: &ImportQueueRows) -> HashSet<(String, String)> {
-    let mut combinable = rows.separated_folders.clone();
-    for row in &rows.candidates {
-        if let Some(relative) = &row.combine_ancestor_relative_path {
-            combinable.insert((row.watched_folder_path.clone(), relative.clone()));
+    let releases: Vec<&ScanCandidateListRow> = rows
+        .candidates
+        .iter()
+        .filter(|row| !matches!(row.kind, ScanCandidateKind::Tentative))
+        .collect();
+    let mut held: HashMap<(String, String), usize> = HashMap::new();
+    for row in &releases {
+        for ancestor in ancestors(&row.display_path) {
+            *held
+                .entry((row.watched_folder_path.clone(), ancestor))
+                .or_default() += 1;
+        }
+    }
+    let mut combinable: HashSet<(String, String)> = rows
+        .folder_readings
+        .iter()
+        .filter(|(_, combined)| !**combined)
+        .map(|(folder, _)| folder.clone())
+        .collect();
+    for row in &releases {
+        let nearest = ancestors(&row.display_path).into_iter().rev().find(|ancestor| {
+            let folder = (row.watched_folder_path.clone(), ancestor.clone());
+            !rows.folder_readings.contains_key(&folder)
+                && held.get(&folder).copied().unwrap_or(0) >= 2
+        });
+        if let Some(nearest) = nearest {
+            combinable.insert((row.watched_folder_path.clone(), nearest));
         }
     }
     combinable
+}
+
+/// Every folder above the release at `display_path`, shallowest first, as
+/// root-relative paths — the release's own folder left out.
+fn ancestors(display_path: &str) -> Vec<String> {
+    let components: Vec<&str> = display_path
+        .split('/')
+        .filter(|component| !component.is_empty())
+        .collect();
+    (1..components.len())
+        .map(|depth| components[..depth].join("/"))
+        .collect()
 }
 
 fn group_for(

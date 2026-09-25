@@ -266,14 +266,14 @@ pub(crate) fn source_discogs_artist_ids(
 
 /// The pane for a folder committed as its stored file-tag snapshot describes it.
 pub(crate) fn file_metadata_pane(
-    candidate: &super::release_candidate::ReleaseCandidate,
+    candidate: &super::folder_scanner::FolderCandidate,
     snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
     durations: &SourceDurations,
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
 ) -> Result<PanePick, ImportError> {
     let seed = candidate.file_tag_edit(snapshot, clock, ids)?;
-    let files = candidate.files();
+    let files = &candidate.files;
     // The folder's own tracklist states no length: a length here would be
     // the folder's own audio compared against itself.
     let source_tracks: Vec<SourceTrack> = seed

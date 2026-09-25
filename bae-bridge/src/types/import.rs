@@ -1,12 +1,12 @@
 mod candidate;
-mod combination;
+mod grouping;
 mod identify;
 mod list;
 mod search;
 mod triage;
 
 pub use candidate::*;
-pub use combination::*;
+pub use grouping::*;
 pub use identify::*;
 pub use list::*;
 pub use search::*;

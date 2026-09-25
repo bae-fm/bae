@@ -1,4 +1,3 @@
-use super::boundary::apply_resolved_boundary;
 use super::*;
 
 // ── Progressive directory walker ───────────────────────────────────────────
@@ -148,6 +147,10 @@ pub(super) enum ProjectedScanNode {
 pub(super) struct ScannedDirectory {
     all_files: Vec<FileEntry>,
     contains_audio: bool,
+    /// Every folder in this subtree with audio of its own, root-relative, in
+    /// the order the walk reached them: the parts a reading of the subtree as
+    /// one release is made of.
+    audio_folders: Vec<PathBuf>,
     nodes: Vec<ProjectedScanNode>,
     nodes_emitted: bool,
 }
@@ -163,12 +166,29 @@ pub(super) struct ScanRoot<'a> {
     cancellation: &'a ScanCancellation,
 }
 
-/// One walk over a [`ScanRoot`]: how directories are read, and the release
-/// decisions each folder under it is read under.
+/// What a pass reads a root's folders against: the file corrections the user
+/// has stored, how each folder reads, and where the key of a grouping the
+/// pass proposes itself comes from.
+pub(crate) struct ScanReadings<'a> {
+    pub(crate) stored: &'a StoredCandidateEdits,
+    pub(crate) decisions: &'a FolderReleaseDecisions,
+    pub(crate) new_grouping_key: &'a dyn Fn() -> String,
+}
+
+/// A key for a grouping nobody has stored yet, for a pass with no store to
+/// give it one.
+pub fn fresh_grouping_key() -> String {
+    format!("grouping:{}", uuid::Uuid::new_v4())
+}
+
+/// One walk over a [`ScanRoot`]: how directories are read, the readings each
+/// folder under it is read under, and where the key of a grouping the walk
+/// proposes itself comes from.
 pub(super) struct Walk<'a, R: ?Sized> {
     scan: ScanRoot<'a>,
     reader: &'a R,
     decisions: &'a FolderReleaseDecisions,
+    new_grouping_key: &'a dyn Fn() -> String,
 }
 
 /// The child folders that are this folder's parts, in listing order — what the
@@ -239,7 +259,7 @@ where
     Ok(false)
 }
 
-pub(super) fn relative_path_string(path: &Path) -> String {
+pub(crate) fn relative_path_string(path: &Path) -> String {
     path.components()
         .map(|component| component.as_os_str().to_string_lossy())
         .collect::<Vec<_>>()
@@ -262,18 +282,55 @@ pub(super) fn categorize_selected_files(
     scan: &ScanRoot<'_>,
     files: Vec<FileEntry>,
     relative: &Path,
+    parts: &[ReleasePart],
 ) -> Result<CategorizeOutcome, FolderScanError> {
     let tree = CandidateFileIndex::new(files);
-    categorize_files_from_tree(&tree, relative, scan.root, scan.stored, scan.cancellation)
+    categorize_files_from_tree(
+        &tree,
+        relative,
+        scan.root,
+        scan.stored,
+        parts,
+        scan.cancellation,
+    )
 }
 
+/// The parts a grouping rooted at `relative` reads: each folder with audio of
+/// its own below it, with the prefix its files take in the release.
+fn parts_under(root: &Path, relative: &Path, part_folders: &[PathBuf]) -> Vec<ReleasePart> {
+    part_folders
+        .iter()
+        .map(|folder| {
+            let within = folder.strip_prefix(relative).unwrap_or(folder);
+            let prefix = relative_path_string(within);
+            ReleasePart {
+                folder: if folder.as_os_str().is_empty() {
+                    root.to_path_buf()
+                } else {
+                    root.join(folder)
+                },
+                prefix: if prefix.is_empty() {
+                    prefix
+                } else {
+                    format!("{prefix}/")
+                },
+            }
+        })
+        .collect()
+}
+
+/// One release read from `files`: rooted at `relative`, shown as the folder
+/// at `candidate_relative`, and — when `grouping` names one — read as the
+/// folders `part_folders` together.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn candidate_from_files(
     scan: &ScanRoot<'_>,
     files: Vec<FileEntry>,
     relative: &Path,
     candidate_relative: &Path,
     scope: ReleaseFileScope,
-    resolved_boundaries: Vec<ResolvedFolderReleaseBoundary>,
+    grouping: Option<String>,
+    part_folders: &[PathBuf],
 ) -> Result<Option<ProjectedScanNode>, FolderScanError> {
     if files.iter().any(|file| is_partial_marker_file(&file.path)) {
         info!(
@@ -295,7 +352,11 @@ pub(super) fn candidate_from_files(
     };
     let name = directory_name(root, candidate_relative);
     let display_path = relative_path_string(candidate_relative);
-    match categorize_selected_files(scan, files, relative)? {
+    let parts = match grouping {
+        Some(_) => parts_under(root, relative, part_folders),
+        None => Vec::new(),
+    };
+    match categorize_selected_files(scan, files, relative, &parts)? {
         CategorizeOutcome::Valid(files) => {
             let file_edit_revision = scan.stored.revision_for_hash(&files.content_hash());
             Ok(Some(ProjectedScanNode::Candidate(FolderCandidate {
@@ -307,8 +368,7 @@ pub(super) fn candidate_from_files(
                 scope,
                 file_edit_revision,
                 display_path,
-                resolved_boundaries,
-                combine_ancestor_key: None,
+                grouping,
             })))
         }
         CategorizeOutcome::Invalid(reason) => {
@@ -317,7 +377,7 @@ pub(super) fn candidate_from_files(
                 name,
                 watched_folder_path: scan.watched_folder_path.to_string(),
                 display_path,
-                resolved_boundaries,
+                grouping,
                 reason,
             })))
         }
@@ -340,6 +400,7 @@ where
         scan,
         reader,
         decisions,
+        new_grouping_key,
     } = walk;
     let root = scan.root;
     let watched_folder_path = scan.watched_folder_path;
@@ -359,62 +420,57 @@ where
     let mut child_nodes = Vec::new();
     let mut child_nodes_emitted = false;
     let mut contains_audio = direct_audio;
+    let mut audio_folders = Vec::new();
+    if direct_audio {
+        audio_folders.push(relative.to_path_buf());
+    }
     let relative_string = relative_path_string(relative);
-    // How this folder is read. A stored decision — the user's, or the one an
+    // How this folder is read. A stored reading — the user's, or the one an
     // earlier scan settled on — stands. With nothing stored, the scan decides
     // for itself from the parts' names and says so, so the queue gets
     // candidates to work on rather than a card to answer.
     //
-    // A decision exists only where it changes something: this folder has to
+    // A reading exists only where it changes something: this folder has to
     // yield two releases or more for combining them to mean anything. Its own
     // tracks are one, and each of its parts is another — which is why the
-    // parts are read ahead of the decision and the sidecar folders that yield
+    // parts are read ahead of the reading and the sidecar folders that yield
     // nothing are left out of both counts. The watched root is never a release
     // itself, so it never decides.
-    let (decision, decided_here) = match decisions.get(&relative_string) {
-        Some((decision, _)) => (Some(decision), false),
+    let reading = match decisions.get(&relative_string) {
+        Some(stored) => Some((stored.decision, stored.grouping.clone())),
         None if !listing_dirs.is_empty() => {
             let parts = part_folder_names(*reader, root, &listing_dirs, cancellation)?;
             let yields_several = parts.len() > 1 || (direct_audio && !parts.is_empty());
             if yields_several {
-                (
-                    Some(heuristic_folder_release_decision(direct_audio, &parts)),
-                    true,
-                )
+                let decision = heuristic_folder_release_decision(direct_audio, &parts);
+                let grouping = new_grouping_key();
+                on_item(ScanItem::Decided {
+                    key: FolderReleaseDecisionKey {
+                        watched_folder_path: watched_folder_path.to_string(),
+                        relative_folder_path: relative_string.clone(),
+                    },
+                    decision,
+                    grouping: grouping.clone(),
+                });
+                Some((decision, grouping))
             } else {
-                (None, false)
+                None
             }
         }
-        None => (None, false),
+        None => None,
     };
-    if decided_here {
-        if let Some(decision) = decision {
-            on_item(ScanItem::Decided {
-                key: FolderReleaseDecisionKey {
-                    watched_folder_path: watched_folder_path.to_string(),
-                    relative_folder_path: relative_string.clone(),
-                },
-                decision,
-            });
-        }
-    }
-    let combine = matches!(decision, Some(FolderReleaseDecision::CombineAsOneRelease));
+    let combined_as = match &reading {
+        Some((FolderReleaseDecision::CombineAsOneRelease, grouping)) => Some(grouping.clone()),
+        _ => None,
+    };
     let keep_separate = matches!(
-        decision,
-        Some(FolderReleaseDecision::KeepAsSeparateReleases)
+        reading,
+        Some((FolderReleaseDecision::KeepAsSeparateReleases, _))
     );
-    let can_stream_collection =
-        ancestors_allow_actionable && !combine && (!has_direct_files || keep_separate);
+    let can_stream_collection = ancestors_allow_actionable
+        && combined_as.is_none()
+        && (!has_direct_files || keep_separate);
     let mut collection_proven = !wrapper_has_files;
-    let resolved_separate = keep_separate.then(|| ResolvedFolderReleaseBoundary {
-        key: FolderReleaseDecisionKey {
-            watched_folder_path: watched_folder_path.to_string(),
-            relative_folder_path: relative_string.clone(),
-        },
-        decision: FolderReleaseDecision::KeepAsSeparateReleases,
-        name: directory_name(root, relative),
-        display_path: relative_string.clone(),
-    });
 
     for child in listing_dirs.clone() {
         let child_can_be_actionable = can_stream_collection && collection_proven;
@@ -425,11 +481,9 @@ where
             direct_scope_files.extend(child_scan.all_files.iter().cloned());
         }
         all_files.extend(child_scan.all_files);
+        audio_folders.extend(child_scan.audio_folders);
         if !wrapper_has_files && can_stream_collection {
-            let mut nodes = child_scan.nodes;
-            if let Some(resolved) = &resolved_separate {
-                apply_resolved_boundary(&mut nodes, resolved);
-            }
+            let nodes = child_scan.nodes;
             if !child_scan.nodes_emitted {
                 emit_projected_nodes(nodes.clone(), on_item);
             }
@@ -442,20 +496,12 @@ where
             if wrapper_has_files && !collection_proven && child_nodes.len() > 1 {
                 collection_proven = true;
                 if can_stream_collection {
-                    let mut discovered_collection = child_nodes.clone();
-                    if let Some(resolved) = &resolved_separate {
-                        apply_resolved_boundary(&mut discovered_collection, resolved);
-                    }
-                    emit_projected_nodes(discovered_collection, on_item);
+                    emit_projected_nodes(child_nodes.clone(), on_item);
                     child_nodes_emitted = true;
                 }
             } else if wrapper_has_files && collection_proven && can_stream_collection {
                 if !child_was_emitted {
-                    let mut discovered_child = child_nodes[child_start..].to_vec();
-                    if let Some(resolved) = &resolved_separate {
-                        apply_resolved_boundary(&mut discovered_child, resolved);
-                    }
-                    emit_projected_nodes(discovered_child, on_item);
+                    emit_projected_nodes(child_nodes[child_start..].to_vec(), on_item);
                 }
                 child_nodes_emitted = true;
             }
@@ -463,28 +509,21 @@ where
     }
     let owns_wrapper_files = !direct_audio && !direct_scope_files.is_empty();
 
-    if combine && contains_audio {
-        let resolved = ResolvedFolderReleaseBoundary {
-            key: FolderReleaseDecisionKey {
-                watched_folder_path: watched_folder_path.to_string(),
-                relative_folder_path: relative_string.clone(),
-            },
-            decision: FolderReleaseDecision::CombineAsOneRelease,
-            name: directory_name(root, relative),
-            display_path: relative_string.clone(),
-        };
+    if let Some(grouping) = combined_as.filter(|_| contains_audio) {
         let node = candidate_from_files(
             scan,
             all_files.clone(),
             relative,
             relative,
             ReleaseFileScope::Recursive,
-            vec![resolved],
+            Some(grouping),
+            &audio_folders,
         )?;
         let nodes = node.into_iter().collect();
         return Ok(ScannedDirectory {
             all_files,
             contains_audio,
+            audio_folders,
             nodes,
             nodes_emitted: false,
         });
@@ -501,7 +540,8 @@ where
             relative,
             relative,
             ReleaseFileScope::Direct,
-            Vec::new(),
+            None,
+            &[],
         )? {
             if let ProjectedScanNode::Candidate(candidate) = &node {
                 on_item(ScanItem::Discovered(candidate.clone()));
@@ -513,9 +553,9 @@ where
     nodes.extend(child_nodes);
 
     // A collapsed wrapper's files still have one owner when there is exactly
-    // one release below it. Keep the leaf as the candidate key/display row,
-    // but root its reproducible file scope at the wrapper so sidecars and
-    // audio-free siblings survive scan, import, and re-scan.
+    // one release below it. Keep the release's key and display row, but root
+    // its reproducible file scope at the wrapper so sidecars and audio-free
+    // siblings survive scan, import, and re-scan.
     if owns_wrapper_files && nodes.len() == 1 {
         if let ProjectedScanNode::Candidate(existing) = &nodes[0] {
             let candidate_relative = existing
@@ -523,57 +563,42 @@ where
                 .strip_prefix(root)
                 .map_err(|error| FolderScanError::Other(error.to_string()))?
                 .to_path_buf();
-            let resolved_boundaries = existing.resolved_boundaries.clone();
+            let part_folders: Vec<PathBuf> = existing
+                .files
+                .parts
+                .iter()
+                .map(|part| {
+                    part.folder
+                        .strip_prefix(root)
+                        .map(Path::to_path_buf)
+                        .map_err(|error| FolderScanError::Other(error.to_string()))
+                })
+                .collect::<Result<_, _>>()?;
             if let Some(candidate) = candidate_from_files(
                 scan,
                 all_files.clone(),
                 relative,
                 &candidate_relative,
                 ReleaseFileScope::Recursive,
-                resolved_boundaries,
+                existing.grouping.clone(),
+                &part_folders,
             )? {
                 nodes = vec![candidate];
             }
         }
     }
 
-    if keep_separate {
-        apply_resolved_boundary(
-            &mut nodes,
-            resolved_separate
-                .as_ref()
-                .expect("keep-separate decision constructs its boundary"),
-        );
-        // Children below this folder have already gone out, so the parent will
-        // not emit its nodes for it — and one of them is the folder's own
-        // tracks, which nothing else has announced.
-        if child_nodes_emitted && holds_its_own_node {
-            emit_projected_nodes(nodes[..1].to_vec(), on_item);
-        }
-    } else if nodes.len() > 1 {
-        // Several releases below and nothing settled about this folder: it is
-        // a wrapper the releases happen to sit under — one child folder holding
-        // them all, loose files beside it, or both. There is nothing to ask.
-        // The folder that yields the several releases has already decided how
-        // it reads, and this one is where reading them as one is offered, so
-        // every candidate names it and the header above them carries the flip.
-        let key = FolderReleaseDecisionKey {
-            watched_folder_path: watched_folder_path.to_string(),
-            relative_folder_path: relative_string,
-        };
-        for node in &mut nodes {
-            if let ProjectedScanNode::Candidate(candidate) = node {
-                candidate.combine_ancestor_key.get_or_insert(key.clone());
-            }
-        }
-        if child_nodes_emitted {
-            emit_projected_nodes(nodes.clone(), on_item);
-        }
+    // Children below this folder have already gone out, so the parent will
+    // not emit its nodes for it — and one of them is the folder's own tracks,
+    // which nothing else has announced.
+    if keep_separate && child_nodes_emitted && holds_its_own_node {
+        emit_projected_nodes(nodes[..1].to_vec(), on_item);
     }
 
     Ok(ScannedDirectory {
         all_files,
         contains_audio,
+        audio_folders,
         nodes,
         nodes_emitted: child_nodes_emitted,
     })
@@ -594,8 +619,7 @@ where
 pub(crate) fn scan_for_candidates_with_reader_cancellable_and_directories<R, F, D>(
     reader: &R,
     root: PathBuf,
-    stored: &StoredCandidateEdits,
-    decisions: &FolderReleaseDecisions,
+    readings: &ScanReadings<'_>,
     cancellation: &ScanCancellation,
     mut on_directory: D,
     mut on_item: F,
@@ -617,11 +641,12 @@ where
         scan: ScanRoot {
             root: &root,
             watched_folder_path: &watched_folder_path,
-            stored,
+            stored: readings.stored,
             cancellation,
         },
         reader,
-        decisions,
+        decisions: readings.decisions,
+        new_grouping_key: readings.new_grouping_key,
     };
     on_directory(root.clone());
     let root_listing = reader.read(&root, Path::new(""), cancellation)?;
@@ -645,7 +670,8 @@ where
             Path::new(""),
             Path::new(""),
             ReleaseFileScope::Direct,
-            Vec::new(),
+            None,
+            &[],
         )? {
             emit_projected_nodes(vec![node], &mut on_item);
         }
@@ -688,13 +714,11 @@ where
 /// here and by nothing beside this one (see [`scan_top_level_folder`]), so this
 /// is the least that must be read again once any folder in it reads another
 /// way.
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn scan_top_level_folder_with_reader<R, F, D>(
     reader: &R,
     root: &Path,
     folder: &Path,
-    stored: &StoredCandidateEdits,
-    decisions: &FolderReleaseDecisions,
+    readings: &ScanReadings<'_>,
     cancellation: &ScanCancellation,
     mut on_directory: D,
     mut on_item: F,
@@ -720,11 +744,12 @@ where
         scan: ScanRoot {
             root,
             watched_folder_path: &watched_folder_path,
-            stored,
+            stored: readings.stored,
             cancellation,
         },
         reader,
-        decisions,
+        decisions: readings.decisions,
+        new_grouping_key: readings.new_grouping_key,
     };
     scan_top_level_folder(&walk, folder, &mut on_directory, &mut on_item)?;
     Ok(())
@@ -745,8 +770,11 @@ where
     scan_for_candidates_with_reader_cancellable_and_directories(
         &OsDirectoryReader,
         root,
-        stored,
-        decisions,
+        &ScanReadings {
+            stored,
+            decisions,
+            new_grouping_key: &fresh_grouping_key,
+        },
         &ScanCancellation::new(),
         |_| {},
         on_item,
@@ -818,6 +846,7 @@ pub fn collect_release_candidate_files_with_scope(
         &PathBuf::new(),
         release_root,
         stored,
+        &[],
         &ScanCancellation::new(),
     )? {
         CategorizeOutcome::Valid(files) => Ok(files),

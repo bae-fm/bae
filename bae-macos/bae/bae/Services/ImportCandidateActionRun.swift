@@ -112,7 +112,7 @@ struct ImportCandidateSelection {
         return keys.count >= 2
             && keys.allSatisfy {
                 importStore.selectedCandidates[$0]?.detail?.candidate
-                    .compositionAction == .combine
+                    .groupingAction == .combine
             }
     }
 

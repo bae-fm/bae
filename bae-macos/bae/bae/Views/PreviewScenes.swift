@@ -132,7 +132,8 @@
                 onAddFolder: {},
                 onRemoveFolder: { _ in },
                 onRefreshFolder: { _ in },
-                onReleaseDecision: { _, _ in },
+                onCombineFolder: { _ in },
+                onSeparate: { _ in },
                 onSkip: { _, _ in },
                 onReveal: { _ in }
             )

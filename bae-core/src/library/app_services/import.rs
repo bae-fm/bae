@@ -11,7 +11,8 @@ use crate::import::{
 impl AppServices {
     delegate_async!(import, import_candidate_source_folders => candidate_source_folders(key: &str) -> Result<Vec<String>, crate::import::ImportError>);
     delegate_async!(import, import_combine_candidates => combine_candidates(keys: Vec<String>) -> Result<String, crate::import::ImportError>);
-    delegate_async!(import, import_separate_combined_candidate => separate_combined_candidate(key: &str) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_combine_folder => combine_folder(folder: crate::import::FolderReleaseDecisionKey) -> Result<String, crate::import::ImportError>);
+    delegate_async!(import, import_separate_candidate => separate_candidate(key: &str) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_add_watched_folder => add_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_remove_watched_folder => remove_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     delegate_sync!(import, import_scan_watched_folders => scan_watched_folders() -> Result<(), crate::import::ImportError>);
@@ -35,7 +36,6 @@ impl AppServices {
     delegate_async!(import, import_reset_candidate_setup => reset_candidate_setup(candidate_key: &str) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_clear_candidate_metadata => clear_candidate_metadata(candidate_key: String) -> Result<u64, crate::import::ImportError>);
     delegate_async!(import, import_refresh_watched_folder => refresh_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
-    delegate_async!(import, import_set_folder_release_decision => set_folder_release_decision(key: crate::import::FolderReleaseDecisionKey, decision: crate::import::FolderReleaseDecision) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_sheet_binding_options => sheet_binding_options(candidate_key: String, sheet_file_id: String) -> Result<Vec<crate::import::folder_scanner::SheetReferenceOptions>, crate::import::ImportError>);
     delegate_async!(import, import_set_sheet_binding => set_sheet_binding(candidate_key: String, sheet_file_id: String, file_reference: String, audio_file_id: Option<String>) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_sheet_disc => set_sheet_disc(candidate_key: String, sheet_file_id: String, disc: crate::import::folder_scanner::SheetDisc) -> Result<(), crate::import::ImportError>);

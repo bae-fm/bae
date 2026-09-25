@@ -58,14 +58,14 @@ enum SettledLead {
 pub(super) async fn settle_answer(
     context: Context,
     identity: CandidateIdentity,
-    candidate: ReleaseCandidate,
+    candidate: FolderCandidate,
     run: IdentifyRunId,
     expected_metadata_revision: u64,
     state: IdentifyState,
     priority: CallPriority,
     token: CancellationToken,
 ) -> Finished {
-    let representative_key = candidate.key().into_owned();
+    let representative_key = candidate.key();
     let settled = settle_verdict(
         &context,
         &candidate,
@@ -101,7 +101,7 @@ pub(super) async fn settle_answer(
 #[allow(clippy::too_many_arguments)]
 async fn settle_verdict(
     context: &Context,
-    candidate: &ReleaseCandidate,
+    candidate: &FolderCandidate,
     run: IdentifyRunId,
     expected_metadata_revision: u64,
     state: IdentifyState,
@@ -156,8 +156,8 @@ async fn settle_verdict(
         &candidate.key(),
         run,
         crate::import::CandidateAsRead {
-            content_hash: candidate.files().content_hash(),
-            file_edit_revision: candidate.file_edit_revision(),
+            content_hash: candidate.files.content_hash(),
+            file_edit_revision: candidate.file_edit_revision,
             metadata_revision: expected_metadata_revision,
         },
         &candidate.key(),
@@ -170,7 +170,7 @@ async fn settle_verdict(
 
 async fn metadata_for_settled_lead(
     context: &Context,
-    candidate: &ReleaseCandidate,
+    candidate: &FolderCandidate,
     durations: &crate::import::probe::SourceDurations,
     settled_lead: SettledLead,
 ) -> Result<Option<crate::import::CandidateMetadataDraft>, crate::import::ImportError> {
@@ -183,7 +183,7 @@ async fn metadata_for_settled_lead(
         } => {
             let current = context
                 .library_manager
-                .load_import_candidate_preparation(&candidate.files().content_hash())
+                .load_import_candidate_preparation(&candidate.files.content_hash())
                 .await?
                 .ok_or_else(|| crate::import::ImportError::Internal {
                     detail: format!("{} has no stored draft", candidate.key()),
@@ -200,7 +200,7 @@ async fn metadata_for_settled_lead(
 
 async fn metadata_or_failed_verdict(
     context: &Context,
-    candidate: &ReleaseCandidate,
+    candidate: &FolderCandidate,
     durations: &crate::import::probe::SourceDurations,
     settled_lead: SettledLead,
     verdict: &mut TerminalVerdict,
@@ -352,7 +352,7 @@ async fn settle_lead(
     context: &Context,
     verdict: &mut TerminalVerdict,
     text: &crate::identify::CandidateText,
-    candidate: &ReleaseCandidate,
+    candidate: &FolderCandidate,
     durations: &crate::import::probe::SourceDurations,
     priority: CallPriority,
     token: &CancellationToken,
@@ -410,7 +410,7 @@ async fn settle_lead(
         }
     };
     let audio_durations =
-        match crate::import::track_slots::audio_durations(candidate.files(), durations) {
+        match crate::import::track_slots::audio_durations(&candidate.files, durations) {
             Ok(durations) => durations,
             Err(error) => {
                 return Err(FinalizationError::Failed(error.to_string()));

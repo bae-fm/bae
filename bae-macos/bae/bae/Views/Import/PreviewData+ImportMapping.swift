@@ -379,9 +379,8 @@
             files: BridgeCandidateFiles
         ) -> BridgeFolderCandidate {
             BridgeFolderCandidate(
-                compositionAction: .combine,
-                combination: nil,
-                sourceFileEditsAllowed: true,
+                groupingAction: .combine,
+                parts: [],
                 folderPath: "/Music/Downloads/\(name)",
                 sourceFolderName: name,
                 watchedFolderPath: importWatchedFolder.path,
@@ -611,9 +610,8 @@
         @MainActor
         static let moreTracksMappingCandidate: Candidate = paneCandidate(
             folder: BridgeFolderCandidate(
-                compositionAction: .combine,
-                combination: nil,
-                sourceFileEditsAllowed: true,
+                groupingAction: .combine,
+                parts: [],
                 folderPath: "/Music/Downloads/Partial Album",
                 sourceFolderName: "Partial Album",
                 watchedFolderPath: importWatchedFolder.path,

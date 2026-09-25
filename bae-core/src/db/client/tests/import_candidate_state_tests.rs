@@ -41,12 +41,17 @@ async fn store_user_folder_decision(
     decision: crate::import::folder_scanner::FolderReleaseDecision,
 ) -> Result<(), coven::DbError> {
     let key = key.clone();
+    let grouping = format!(
+        "grouping:{}/{}",
+        key.watched_folder_path, key.relative_folder_path
+    );
     db.call(move |sql| {
-        crate::db::client::folder_scans::store_folder_release_decision(
+        crate::db::client::folder_scans::store_folder_reading(
             sql,
             &key,
             decision,
             crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
+            &grouping,
         )
     })
     .await

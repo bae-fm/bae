@@ -19,7 +19,6 @@ use std::sync::{
 };
 use tracing::{debug, info};
 
-mod boundary;
 mod candidates;
 mod categorize;
 mod files;
@@ -27,6 +26,7 @@ mod folder_date;
 mod scan;
 pub use candidates::*;
 pub use categorize::is_audio_file;
+pub(crate) use categorize::DiscLayout;
 use categorize::*;
 pub use files::*;
 pub use folder_date::FolderDate;

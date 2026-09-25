@@ -6,25 +6,6 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    crate::types::BridgeFolderReleaseDecision = bae_core::import::FolderReleaseDecision,
-    from_core: pub(super) fn,
-    into_core: pub(super) fn,
-    variants: { CombineAsOneRelease, KeepAsSeparateReleases },
-}
-
-mirror_struct! {
-    crate::types::BridgeResolvedFolderReleaseBoundary
-        = bae_core::import::ResolvedFolderReleaseBoundary,
-    from_core: pub(super) fn,
-    fields: {
-        key: (crate::types::BridgeFolderReleaseDecisionKey),
-        decision: (crate::types::BridgeFolderReleaseDecision),
-        name,
-        display_path,
-    },
-}
-
-mirror_enum! {
     crate::types::BridgeFolderScanStatus = bae_core::import::FolderScanStatus,
     from_core: fn,
     variants: { Scanning { found_count }, Complete, Failed { error } },
@@ -43,27 +24,24 @@ mirror_struct! {
 
 impl crate::types::BridgeFolderCandidate {
     pub(super) fn from_core(
-        candidate: impl Into<bae_core::import::release_candidate::ReleaseCandidate>,
+        candidate: bae_core::import::FolderCandidate,
         skipped: bool,
         is_added: bool,
-        composition_action: Option<bae_core::import::combination::CombinationAction>,
+        grouping_action: Option<bae_core::import::grouping::GroupingAction>,
     ) -> Self {
-        let candidate = candidate.into();
-        let track_count = candidate.files().track_count();
+        let track_count = candidate.files.track_count();
         crate::types::BridgeFolderCandidate {
-            composition_action: composition_action
-                .map(crate::types::BridgeCombinationAction::from_core),
-            source_file_edits_allowed: candidate.source_file_edits_allowed(),
-            combination: match &candidate {
-                bae_core::import::release_candidate::ReleaseCandidate::Folder(_) => None,
-                bae_core::import::release_candidate::ReleaseCandidate::Combined(candidate) => Some(
-                    crate::types::BridgeCombination::from_core(candidate.combination.clone()),
-                ),
-            },
-            folder_path: candidate.key().into_owned(),
-            source_folder_name: candidate.name().to_string(),
-            watched_folder_path: candidate.watched_folder_path().to_string(),
-            files: crate::types::BridgeCandidateFiles::from_core(candidate.into_files()),
+            grouping_action: grouping_action.map(crate::types::BridgeGroupingAction::from_core),
+            parts: candidate
+                .files
+                .parts
+                .iter()
+                .map(crate::types::BridgeReleasePart::from_core)
+                .collect(),
+            folder_path: candidate.key(),
+            source_folder_name: candidate.name.clone(),
+            watched_folder_path: candidate.watched_folder_path.clone(),
+            files: crate::types::BridgeCandidateFiles::from_core(candidate.files),
             track_count,
             skipped,
             is_added,
@@ -73,23 +51,22 @@ impl crate::types::BridgeFolderCandidate {
 
 impl crate::types::BridgeInvalidCandidate {
     pub(super) fn from_core(candidate: bae_core::import::InvalidCandidate) -> Self {
+        let candidate_key = candidate.key();
         let bae_core::import::InvalidCandidate {
             path,
             name,
             watched_folder_path,
             display_path,
-            resolved_boundaries,
+            grouping,
             reason,
         } = candidate;
         crate::types::BridgeInvalidCandidate {
+            candidate_key,
             folder_path: path.to_string_lossy().to_string(),
             source_folder_name: name,
             watched_folder_path,
             display_path,
-            resolved_boundaries: resolved_boundaries
-                .into_iter()
-                .map(crate::types::BridgeResolvedFolderReleaseBoundary::from_core)
-                .collect(),
+            separable: grouping.is_some(),
             reason: crate::types::BridgeInvalidReason::from_core(reason),
         }
     }
@@ -204,8 +181,7 @@ impl crate::types::BridgeTriageRow {
             folder_name,
             watched_folder_path,
             display_path,
-            resolved_boundaries,
-            combine_ancestor_key,
+            separable,
             actionable,
             placement,
             ready_check,
@@ -223,12 +199,7 @@ impl crate::types::BridgeTriageRow {
             folder_name,
             watched_folder_path,
             display_path,
-            resolved_boundaries: resolved_boundaries
-                .into_iter()
-                .map(crate::types::BridgeResolvedFolderReleaseBoundary::from_core)
-                .collect(),
-            combine_ancestor_key: combine_ancestor_key
-                .map(crate::types::BridgeFolderReleaseDecisionKey::from_core),
+            separable,
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
             ready_check: ready_check.map(crate::types::BridgeNeedsYou::from_core),
@@ -593,7 +564,7 @@ mirror_enum! {
 impl crate::types::BridgeImportCandidateDetail {
     pub(super) fn from_core(detail: bae_core::import::ImportCandidateDetail) -> Self {
         let bae_core::import::ImportCandidateDetail {
-            composition_action,
+            grouping_action,
             candidate,
             actionable,
             skipped,
@@ -626,7 +597,7 @@ impl crate::types::BridgeImportCandidateDetail {
                 candidate,
                 skipped,
                 is_added,
-                composition_action,
+                grouping_action,
             ),
             actionable,
             resumed_identify_state: crate::types::BridgeIdentifyState::from_core(

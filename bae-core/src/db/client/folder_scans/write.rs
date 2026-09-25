@@ -7,35 +7,26 @@ use super::columns::*;
 use super::*;
 use crate::cue_flac::{CuePregap, CueSheet};
 use crate::import::folder_scanner::{
-    CandidateFile, FileRole, FolderCandidate, InvalidCandidate, ResolvedFolderReleaseBoundary,
-    ScanItem,
+    CandidateFile, Coverage, FileRole, FolderCandidate, InvalidCandidate, ScanItem,
 };
 
-/// Where one stored entry lives, so the writer that supersedes it can name
-/// the row exactly rather than reconstructing a key.
+/// One stored entry, as much of it as a write that may supersede it needs: its
+/// key, and the part of the root it reads its files from.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum StoredEntry {
-    Candidate {
-        path: String,
-        /// Whether this candidate's files are the whole folder at `path` —
-        /// the shape a combined folder stores as.
-        whole_folder: bool,
-    },
+pub(crate) struct StoredEntry {
+    pub(crate) key: String,
+    pub(crate) coverage: Coverage,
 }
 
 pub(crate) fn delete_entry(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
-    entry: &StoredEntry,
+    key: &str,
 ) -> Result<(), DbError> {
-    match entry {
-        StoredEntry::Candidate { path, .. } => {
-            sql.execute(
-                "DELETE FROM scan_candidate WHERE watched_folder_path = ? AND path = ?",
-                params![watched_folder_path, path],
-            )?;
-        }
-    }
+    sql.execute(
+        "DELETE FROM scan_candidate WHERE watched_folder_path = ? AND path = ?",
+        params![watched_folder_path, key],
+    )?;
     Ok(())
 }
 
@@ -159,13 +150,19 @@ pub(super) fn insert_item(
     generation: i64,
     item: &ScanItem,
     file_metadata: Option<&crate::import::file_metadata_seed::FileMetadataSeed>,
+    source: super::EntrySource,
 ) -> Result<(), DbError> {
+    let source_kind = match source {
+        super::EntrySource::Scanned => "folder",
+        super::EntrySource::Grouping => "grouping",
+    };
     match item {
         ScanItem::Discovered(candidate) => insert_candidate(
             sql,
             watched_folder_path,
             generation,
             "tentative",
+            source_kind,
             candidate,
             file_metadata,
         ),
@@ -174,11 +171,12 @@ pub(super) fn insert_item(
             watched_folder_path,
             generation,
             "valid",
+            source_kind,
             candidate,
             file_metadata,
         ),
         ScanItem::Invalid(candidate) => {
-            insert_invalid(sql, watched_folder_path, generation, candidate)
+            insert_invalid(sql, watched_folder_path, generation, source_kind, candidate)
         }
         ScanItem::Decided { .. } => Err(DbError::Message(
             "a folder reading is stored as a decision, not as a scan entry".to_string(),
@@ -191,41 +189,24 @@ fn insert_candidate(
     watched_folder_path: &str,
     generation: i64,
     kind: &str,
+    source_kind: &str,
     candidate: &FolderCandidate,
     file_metadata: Option<&crate::import::file_metadata_seed::FileMetadataSeed>,
 ) -> Result<(), DbError> {
-    let path = candidate.path.to_string_lossy().into_owned();
-    sql.execute(
-        "INSERT INTO scan_candidate \
-             (watched_folder_path, path, generation, kind, name, display_path, file_root, \
-              scope, content_hash, file_edit_revision, \
-              combine_ancestor_relative_path, invalid_reason, invalid_reason_path) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)",
-        params![
-            watched_folder_path,
-            path,
-            generation,
-            kind,
-            candidate.name,
-            candidate.display_path,
-            candidate.file_root.to_string_lossy(),
-            scope_text(candidate.scope),
-            candidate.files.content_hash(),
-            to_i64(
-                candidate.file_edit_revision,
-                "a candidate's file edit revision"
-            )?,
-            candidate
-                .combine_ancestor_key
-                .as_ref()
-                .map(|key| key.relative_folder_path.as_str()),
-        ],
+    insert_candidate_row(
+        sql,
+        watched_folder_path,
+        generation,
+        kind,
+        source_kind,
+        candidate,
     )?;
+    let path = candidate.key();
     let blank;
     let seed = match file_metadata {
         Some(seed) => CandidateStateSeed::FileMetadata(seed),
         None => {
-            blank = crate::import::pane::blank_candidate_source(&candidate.files);
+            blank = candidate.blank_source();
             CandidateStateSeed::Blank(&blank)
         }
     };
@@ -240,12 +221,61 @@ fn insert_candidate(
     if let Some(seed) = file_metadata {
         replace_candidate_file_tag_snapshot(sql, watched_folder_path, &path, &seed.snapshot)?;
     }
-    insert_resolved_boundaries(
-        sql,
-        watched_folder_path,
-        &path,
-        &candidate.resolved_boundaries,
-    )
+    Ok(())
+}
+
+/// Lay down one candidate's own row and the parts it is read from — every row
+/// its files hang off. `source_kind` says who writes it: `folder` for what a
+/// scan read, `grouping` for what a grouping built.
+pub(crate) fn insert_candidate_row(
+    sql: &SqlContext<'_, '_>,
+    watched_folder_path: &str,
+    generation: i64,
+    kind: &str,
+    source_kind: &str,
+    candidate: &FolderCandidate,
+) -> Result<(), DbError> {
+    let path = candidate.key();
+    sql.execute(
+        "INSERT INTO scan_candidate \
+             (watched_folder_path, path, generation, kind, name, display_path, folder, \
+              file_root, scope, content_hash, file_edit_revision, grouping_key, source_kind, \
+              invalid_reason, invalid_reason_path) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)",
+        params![
+            watched_folder_path,
+            path,
+            generation,
+            kind,
+            candidate.name,
+            candidate.display_path,
+            candidate.path.to_string_lossy(),
+            candidate.file_root.to_string_lossy(),
+            scope_text(candidate.scope),
+            candidate.files.content_hash(),
+            to_i64(
+                candidate.file_edit_revision,
+                "a candidate's file edit revision"
+            )?,
+            candidate.grouping,
+            source_kind,
+        ],
+    )?;
+    for (position, part) in candidate.files.parts.iter().enumerate() {
+        sql.execute(
+            "INSERT INTO scan_candidate_part \
+                 (watched_folder_path, candidate_path, position, folder, prefix) \
+             VALUES (?, ?, ?, ?, ?)",
+            params![
+                watched_folder_path,
+                path,
+                to_i64(position as u64, "a release part's position")?,
+                part.folder.to_string_lossy(),
+                part.prefix,
+            ],
+        )?;
+    }
+    Ok(())
 }
 
 /// What a candidate's draft is created from the first time its state row is
@@ -344,32 +374,37 @@ fn insert_invalid(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
     generation: i64,
+    source_kind: &str,
     candidate: &InvalidCandidate,
 ) -> Result<(), DbError> {
-    let path = candidate.path.to_string_lossy().into_owned();
     let (reason, reason_path) = invalid_reason_columns(&candidate.reason);
+    let folder = candidate.path.to_string_lossy();
     sql.execute(
         "INSERT INTO scan_candidate \
-             (watched_folder_path, path, generation, kind, name, display_path, file_root, \
-              scope, content_hash, file_edit_revision, \
-              combine_ancestor_relative_path, invalid_reason, invalid_reason_path) \
-         VALUES (?, ?, ?, 'invalid', ?, ?, NULL, NULL, NULL, 0, NULL, ?, ?)",
+             (watched_folder_path, path, generation, kind, name, display_path, folder, \
+              file_root, scope, content_hash, file_edit_revision, grouping_key, \
+              source_kind, invalid_reason, invalid_reason_path) \
+         VALUES (?, ?, ?, 'invalid', ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?, ?)",
         params![
             watched_folder_path,
-            path,
+            candidate.key(),
             generation,
             candidate.name,
             candidate.display_path,
+            folder,
+            folder,
+            scope_text(if candidate.grouping.is_some() {
+                crate::import::folder_scanner::ReleaseFileScope::Recursive
+            } else {
+                crate::import::folder_scanner::ReleaseFileScope::Direct
+            }),
+            candidate.grouping,
+            source_kind,
             reason,
             reason_path,
         ],
     )?;
-    insert_resolved_boundaries(
-        sql,
-        watched_folder_path,
-        &path,
-        &candidate.resolved_boundaries,
-    )
+    Ok(())
 }
 
 /// Lay down one candidate's files, their parsed track sheets and all. Also
@@ -573,32 +608,6 @@ fn insert_cue_sheet(
                 ],
             )?;
         }
-    }
-    Ok(())
-}
-
-fn insert_resolved_boundaries(
-    sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    candidate_path: &str,
-    resolved: &[ResolvedFolderReleaseBoundary],
-) -> Result<(), DbError> {
-    for (position, boundary) in resolved.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO scan_candidate_resolved_boundary \
-                 (watched_folder_path, candidate_path, position, relative_folder_path, \
-                  decision, name, display_path) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
-            params![
-                watched_folder_path,
-                candidate_path,
-                to_i64(position as u64, "a resolved boundary's position")?,
-                boundary.key.relative_folder_path,
-                decision_text(boundary.decision),
-                boundary.name,
-                boundary.display_path,
-            ],
-        )?;
     }
     Ok(())
 }

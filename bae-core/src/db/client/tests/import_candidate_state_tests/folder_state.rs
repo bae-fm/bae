@@ -138,7 +138,11 @@ async fn commit_reading_under(
                 watched_folder_path: root.to_string(),
                 relative_folder_path: folder.to_string(),
             },
-            decision,
+            crate::import::folder_scanner::FolderReading {
+                decision,
+                author: crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
+                grouping: format!("grouping:{folder}"),
+            },
         )),
         scanned_decisions: Vec::new(),
         items: items
@@ -200,6 +204,20 @@ async fn row_generation(db: &Database, root: &str, name: &str) -> i64 {
     .unwrap()
 }
 
+/// Every entry a folder reading took out: the ones its entries replaced, and
+/// the ones it no longer yields.
+fn removed_by(write: &crate::db::FolderReadingWrite) -> Vec<String> {
+    let mut removed: Vec<String> = write
+        .writes
+        .iter()
+        .flat_map(|(_, write)| write.superseded_keys().to_vec())
+        .chain(write.pruned.iter().cloned())
+        .collect();
+    removed.sort();
+    removed.dedup();
+    removed
+}
+
 fn key_of(root: &str, name: &str) -> String {
     std::path::Path::new(root)
         .join(name)
@@ -229,7 +247,7 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
     .await
     .unwrap();
     assert_eq!(
-        combined.pruned,
+        removed_by(&combined),
         vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2")]
     );
     assert_eq!(
@@ -237,11 +255,9 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
         vec![key_of(root, "Box"), key_of(root, "Other")]
     );
     assert_eq!(
-        db.load_folder_release_decisions(root).await.unwrap().get("Box"),
-        Some((
-            FolderReleaseDecision::CombineAsOneRelease,
-            FolderReleaseDecisionAuthor::User
-        ))
+        db.load_folder_release_decisions(root).await.unwrap().get("Box")
+            .map(|reading| (reading.decision, reading.author)),
+        Some((FolderReleaseDecision::CombineAsOneRelease, FolderReleaseDecisionAuthor::User))
     );
     assert_eq!(row_generation(&db, root, "Other").await, sibling_generation);
     let snapshot = &db.load_folder_scan_snapshots().await.unwrap()[0];
@@ -260,7 +276,7 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
     )
     .await
     .unwrap();
-    assert_eq!(separated.pruned, vec![key_of(root, "Box")]);
+    assert_eq!(removed_by(&separated), vec![key_of(root, "Box")]);
     assert_eq!(
         stored_keys(&db, root).await,
         vec![
@@ -270,11 +286,9 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
         ]
     );
     assert_eq!(
-        db.load_folder_release_decisions(root).await.unwrap().get("Box"),
-        Some((
-            FolderReleaseDecision::KeepAsSeparateReleases,
-            FolderReleaseDecisionAuthor::User
-        ))
+        db.load_folder_release_decisions(root).await.unwrap().get("Box")
+            .map(|reading| (reading.decision, reading.author)),
+        Some((FolderReleaseDecision::KeepAsSeparateReleases, FolderReleaseDecisionAuthor::User))
     );
     assert_eq!(row_generation(&db, root, "Other").await, sibling_generation);
 }
@@ -640,8 +654,9 @@ async fn corrupt_relative_folder_keys_fail_when_loaded() {
             params![stored_root],
         )?;
         conn.execute(
-            "INSERT INTO folder_release_decisions \
-                 VALUES (?, 'a/./b', 'combine_as_one_release', 'user')",
+            "INSERT INTO release_grouping \
+                 (key, watched_folder_path, anchor_relative_path, combined, author) \
+                 VALUES ('grouping:corrupt', ?, 'a/./b', 1, 'user')",
             params![stored_root],
         )?;
         Ok(())
@@ -733,8 +748,7 @@ async fn a_disc_assignment_survives_a_relaunch() {
         scope: crate::import::ReleaseFileScope::Recursive,
         file_edit_revision: 0,
         display_path: String::new(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
+        grouping: None,
     };
     db.save_folder_scan_item(
         &root,

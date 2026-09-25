@@ -109,9 +109,8 @@
 
         static let folderCandidates: [Candidate] = [
             BridgeFolderCandidate(
-                compositionAction: .combine,
-                combination: nil,
-                sourceFileEditsAllowed: true,
+                groupingAction: .combine,
+                parts: [],
                 folderPath: "/Music/Downloads/Album Title One",
                 sourceFolderName: "Album Title One",
                 watchedFolderPath: "/Music/Downloads",
@@ -121,9 +120,8 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
-                compositionAction: .combine,
-                combination: nil,
-                sourceFileEditsAllowed: true,
+                groupingAction: .combine,
+                parts: [],
                 folderPath: "/Music/Downloads/Album Title Two [Label CAT-002]",
                 sourceFolderName: "Album Title Two",
                 watchedFolderPath: "/Music/Downloads",
@@ -134,9 +132,8 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
-                compositionAction: .combine,
-                combination: nil,
-                sourceFileEditsAllowed: true,
+                groupingAction: .combine,
+                parts: [],
                 folderPath: "/Music/Downloads/Compilation Vol. 3",
                 sourceFolderName: "Compilation Vol. 3",
                 watchedFolderPath: "/Music/Downloads",
@@ -146,9 +143,8 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
-                compositionAction: .combine,
-                combination: nil,
-                sourceFileEditsAllowed: true,
+                groupingAction: .combine,
+                parts: [],
                 folderPath: "/Music/Downloads/EP Release",
                 sourceFolderName: "EP Release",
                 watchedFolderPath: "/Music/Downloads",
@@ -158,9 +154,8 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
-                compositionAction: nil,
-                combination: nil,
-                sourceFileEditsAllowed: true,
+                groupingAction: nil,
+                parts: [],
                 folderPath: "/Music/Downloads/Live Recording 2023",
                 sourceFolderName: "Live Recording 2023",
                 watchedFolderPath: "/Music/Downloads",
@@ -173,9 +168,8 @@
             // Two more importable folders, so Pending shows a folder group with
             // rows in it beside a row that belongs to no group.
             BridgeFolderCandidate(
-                compositionAction: .combine,
-                combination: nil,
-                sourceFileEditsAllowed: true,
+                groupingAction: .combine,
+                parts: [],
                 folderPath: "/Music/Downloads/Album Title Three",
                 sourceFolderName: "Album Title Three",
                 watchedFolderPath: "/Music/Downloads",
@@ -185,9 +179,8 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
-                compositionAction: .combine,
-                combination: nil,
-                sourceFileEditsAllowed: true,
+                groupingAction: .combine,
+                parts: [],
                 folderPath: "/Music/Downloads/Single Release",
                 sourceFolderName: "Single Release",
                 watchedFolderPath: "/Music/Downloads",
@@ -203,27 +196,30 @@
         /// the Skipped tab with a warning and reason.
         static let invalidCandidates: [BridgeInvalidCandidate] = [
             BridgeInvalidCandidate(
+                candidateKey: "/Music/Downloads/Broken Rip",
                 folderPath: "/Music/Downloads/Broken Rip",
                 sourceFolderName: "Broken Rip",
                 watchedFolderPath: "/Music/Downloads",
                 displayPath: "Broken Rip",
-                resolvedBoundaries: [],
+                separable: false,
                 reason: .corruptAudioFile(path: "03.flac")
             ),
             BridgeInvalidCandidate(
+                candidateKey: "/Music/Downloads/Damaged Artwork",
                 folderPath: "/Music/Downloads/Damaged Artwork",
                 sourceFolderName: "Damaged Artwork",
                 watchedFolderPath: "/Music/Downloads",
                 displayPath: "Damaged Artwork",
-                resolvedBoundaries: [],
+                separable: false,
                 reason: .corruptImage(path: "Back.png")
             ),
             BridgeInvalidCandidate(
+                candidateKey: "/Music/Downloads/Documents Only",
                 folderPath: "/Music/Downloads/Documents Only",
                 sourceFolderName: "Documents Only",
                 watchedFolderPath: "/Music/Downloads",
                 displayPath: "Documents Only",
-                resolvedBoundaries: [],
+                separable: false,
                 reason: .noValidAudio
             ),
         ]
@@ -243,15 +239,14 @@
         private static func releaseQueueRow(
             name: String,
             displayPath: String,
-            resolvedBoundaries: [BridgeResolvedFolderReleaseBoundary]
+            separable: Bool
         ) -> BridgeTriageRow {
             BridgeTriageRow(
                 candidateKey: "\(releaseQueueRoot)/\(displayPath)",
                 folderName: name,
                 watchedFolderPath: releaseQueueRoot,
                 displayPath: displayPath,
-                resolvedBoundaries: resolvedBoundaries,
-                combineAncestorKey: nil,
+                separable: separable,
                 actionable: true,
                 placement: .ready,
                 readyCheck: nil,
@@ -274,17 +269,17 @@
             releaseQueueRow(
                 name: "Release 01",
                 displayPath: "Collection/Release 01",
-                resolvedBoundaries: []
+                separable: false
             ),
             releaseQueueRow(
                 name: "Release 02",
                 displayPath: "Collection/Release 02",
-                resolvedBoundaries: []
+                separable: false
             ),
             releaseQueueRow(
                 name: "Release 03",
                 displayPath: "Release 03",
-                resolvedBoundaries: []
+                separable: false
             ),
         ]
 
@@ -292,9 +287,8 @@
             row -> Candidate in
             var candidate = Candidate(
                 bridge: BridgeFolderCandidate(
-                    compositionAction: .combine,
-                    combination: nil,
-                    sourceFileEditsAllowed: true,
+                    groupingAction: .combine,
+                    parts: [],
                     folderPath: row.candidateKey,
                     sourceFolderName: row.folderName,
                     watchedFolderPath: releaseQueueRoot,
@@ -330,14 +324,7 @@
         private static let releaseQueueResolvedRow = releaseQueueRow(
             name: "Release 01",
             displayPath: "Collection/Release 01",
-            resolvedBoundaries: [
-                BridgeResolvedFolderReleaseBoundary(
-                    key: releaseQueueGroupKey,
-                    decision: .keepAsSeparateReleases,
-                    name: "Collection",
-                    displayPath: "Collection"
-                )
-            ]
+            separable: true
         )
 
         @MainActor

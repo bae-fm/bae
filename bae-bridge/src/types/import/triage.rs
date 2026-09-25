@@ -2,9 +2,10 @@ use super::super::*;
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderCandidate {
-    pub composition_action: Option<BridgeCombinationAction>,
-    pub combination: Option<BridgeCombination>,
-    pub source_file_edits_allowed: bool,
+    pub grouping_action: Option<BridgeGroupingAction>,
+    /// The folders this release is read from, in play order, when it is
+    /// several. Empty for a release read from one folder.
+    pub parts: Vec<BridgeReleasePart>,
     pub folder_path: String,
     pub source_folder_name: String,
     /// Absolute path of the watched folder this candidate was scanned from —
@@ -29,20 +30,6 @@ pub struct BridgeFolderCandidate {
 pub struct BridgeFolderReleaseDecisionKey {
     pub watched_folder_path: String,
     pub relative_folder_path: String,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeFolderReleaseDecision {
-    CombineAsOneRelease,
-    KeepAsSeparateReleases,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeResolvedFolderReleaseBoundary {
-    pub key: BridgeFolderReleaseDecisionKey,
-    pub decision: BridgeFolderReleaseDecision,
-    pub name: String,
-    pub display_path: String,
 }
 
 /// Mirror of bae-core's `InvalidReason`. The UI localizes each variant via its
@@ -88,6 +75,8 @@ pub fn bridge_invalid_reason_key(reason: BridgeInvalidReason) -> String {
 /// because an invalid folder can't be imported.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeInvalidCandidate {
+    /// The key the row is addressed by: its folder's path, or its grouping's.
+    pub candidate_key: String,
     pub folder_path: String,
     pub source_folder_name: String,
     /// Absolute path of the watched folder this was scanned from — the grouping
@@ -95,7 +84,9 @@ pub struct BridgeInvalidCandidate {
     /// `BridgeWatchedFolder.path` for the section's display name.
     pub watched_folder_path: String,
     pub display_path: String,
-    pub resolved_boundaries: Vec<BridgeResolvedFolderReleaseBoundary>,
+    /// Whether this row is folders a grouping reads as one, which it offers
+    /// to read as releases of their own.
+    pub separable: bool,
     /// Why the folder failed validation — the UI localizes this typed reason.
     pub reason: BridgeInvalidReason,
 }
@@ -475,8 +466,9 @@ pub struct BridgeTriageRow {
     /// Match against `BridgeWatchedFolder.path` for the section header.
     pub watched_folder_path: String,
     pub display_path: String,
-    pub resolved_boundaries: Vec<BridgeResolvedFolderReleaseBoundary>,
-    pub combine_ancestor_key: Option<BridgeFolderReleaseDecisionKey>,
+    /// Whether this release is folders a grouping reads as one, which the
+    /// row offers to read as releases of their own.
+    pub separable: bool,
     pub actionable: bool,
     pub placement: BridgeTriagePlacement,
     /// The Ready check this row did not pass — its release's tracklist

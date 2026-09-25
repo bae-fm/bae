@@ -12,7 +12,7 @@ use tokio::task::JoinSet;
 /// One candidate on the queue: the folder it names, and which admission put it
 /// there.
 struct Entry {
-    candidate: ReleaseCandidate,
+    candidate: FolderCandidate,
     admission: Admission,
 }
 
@@ -74,7 +74,7 @@ impl Job {
     fn keys(&self) -> Vec<String> {
         self.members
             .iter()
-            .map(|member| member.candidate.key().into_owned())
+            .map(|member| member.candidate.key())
             .collect()
     }
 
@@ -188,13 +188,13 @@ impl Queue {
     fn place(
         &mut self,
         context: &Context,
-        candidates: Vec<ReleaseCandidate>,
+        candidates: Vec<FolderCandidate>,
         admission: Admission,
     ) -> Vec<String> {
         let mut marked = Vec::new();
         let mut content_hashes = Vec::new();
         for candidate in candidates {
-            let key = candidate.key().into_owned();
+            let key = candidate.key();
             let identity = candidate_identity(&candidate);
             if let Some(index) = self.index_of_key(&key) {
                 if admission == Admission::Automatic && self.jobs[index].identity == identity {
@@ -486,7 +486,7 @@ fn automatic_is_on(config: &watch::Receiver<crate::config::Config>) -> bool {
 pub(super) async fn admit(
     context: &Context,
     queue: &mut Queue,
-    candidates: Vec<ReleaseCandidate>,
+    candidates: Vec<FolderCandidate>,
     admission: Admission,
 ) -> usize {
     let content_hashes = queue.place(context, candidates, admission);
@@ -521,7 +521,7 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
         let identity = job.identity.clone();
         let candidate = job.members[0].candidate.clone();
         let priority = job.priority();
-        let key = candidate.key().into_owned();
+        let key = candidate.key();
         let queued = queue.jobs.len();
         let start = match candidate_run_start(context, &candidate).await {
             Ok(start) => start,
@@ -874,7 +874,7 @@ async fn admit_as_it_stands(
     context: &Context,
     queue: &mut Queue,
     config: &watch::Receiver<crate::config::Config>,
-    candidate: ReleaseCandidate,
+    candidate: FolderCandidate,
 ) {
     if !automatic_is_on(config) {
         return;

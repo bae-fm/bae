@@ -44,7 +44,7 @@ struct ImportCandidateCombineActionTests {
         await ImportCandidateCombineAction(
             importer: Importer(combineCandidates: { keys in
                 requested.record(keys)
-                return "combination:new"
+                return "grouping-new"
             }),
             uiStore: uiStore,
             listSlot: listSlot
@@ -54,8 +54,8 @@ struct ImportCandidateCombineActionTests {
         // Core orders the folders and names the release, so the only thing that
         // crosses is the selection.
         #expect(requested.all == [["/music/Volume A", "/music/Volume B"]])
-        #expect(uiStore.selectedFolderCandidates == ["combination:new"])
-        #expect(revealed.all == ["combination:new"])
+        #expect(uiStore.selectedFolderCandidates == ["grouping-new"])
+        #expect(revealed.all == ["grouping-new"])
         #expect(uiStore.lastError == nil)
     }
 

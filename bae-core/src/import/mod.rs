@@ -8,7 +8,7 @@ desktop_only! {
     pub(crate) mod candidate_runtime;
     pub mod candidate_search;
     pub(crate) mod candidates;
-    pub mod combination;
+    pub mod grouping;
 }
 pub mod cover_art;
 desktop_only! {
@@ -176,7 +176,7 @@ desktop_only! {
     pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
     pub use folder_scanner::{
         FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
-        InvalidReason, ReleaseFileScope, ResolvedFolderReleaseBoundary,
+        InvalidReason, ReleaseFileScope, ReleasePart,
     };
     pub use handle::{
         parsed_album_to_user_edit, DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,

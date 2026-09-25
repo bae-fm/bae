@@ -110,8 +110,6 @@ pub use collection_subscription::{
 };
 pub use device_pairing::BridgeDevicePairingSession;
 pub use library_search::{BridgeLibrarySearchSnapshot, LibrarySearchSubscription};
-#[cfg(feature = "desktop")]
-mod candidate_combination;
 #[cfg(any(feature = "cast", not(any(target_os = "ios", target_os = "android"))))]
 mod desktop;
 #[cfg(feature = "desktop")]
@@ -120,6 +118,8 @@ mod desktop_services;
 mod editing_projection;
 #[cfg(feature = "desktop")]
 mod import_list;
+#[cfg(feature = "desktop")]
+mod release_grouping;
 #[cfg(feature = "desktop")]
 pub use import_list::ImportListSubscription;
 #[cfg(feature = "desktop")]

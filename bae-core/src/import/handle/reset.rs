@@ -2,7 +2,7 @@ use super::*;
 use crate::import::file_metadata_seed::FileMetadataSeed;
 use crate::import::file_tag_snapshot::extract_file_tag_snapshot;
 use crate::import::folder_scanner::CandidateFileEdits;
-use crate::import::release_candidate::ReleaseCandidate;
+use crate::import::folder_scanner::FolderCandidate;
 use crate::import::{
     CandidateAsRead, CandidateMetadataDraft, CandidatePreparedAssets, ImportError,
 };
@@ -22,7 +22,7 @@ impl ImportServiceHandle {
         let (candidate, read, generation, lookup_choices, matching_folders, prefill) = {
             let _commit = self.folder_state_commit.lock().await;
             let candidate = self.editable_candidate_for_commit(candidate_key).await?;
-            let content_hash = candidate.files().content_hash();
+            let content_hash = candidate.files.content_hash();
             let state = self
                 .library_manager
                 .load_import_candidate_state(&content_hash)
@@ -30,14 +30,14 @@ impl ImportServiceHandle {
                 .ok_or_else(|| ImportError::Internal {
                     detail: format!("{candidate_key} has no stored import preparation"),
                 })?;
-            if state.file_edits.revision != candidate.file_edit_revision() {
+            if state.file_edits.revision != candidate.file_edit_revision {
                 return Err(ImportError::Internal {
                     detail: format!("{candidate_key} preparation does not match its scanned files"),
                 });
             }
             let stored = self
                 .library_manager
-                .load_candidate_file_tag_snapshot(candidate.watched_folder_path(), candidate_key)
+                .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, candidate_key)
                 .await?
                 .ok_or_else(|| ImportError::Internal {
                     detail: format!("{candidate_key} has no scanned source identity"),
@@ -45,7 +45,7 @@ impl ImportServiceHandle {
             let matching_folders = crate::import::candidates::files_for_identity(
                 &self.library_manager.load_all_folder_scan_items().await?,
                 &content_hash,
-                candidate.file_edit_revision(),
+                candidate.file_edit_revision,
             );
             let read = CandidateAsRead {
                 content_hash,
@@ -84,35 +84,26 @@ impl ImportServiceHandle {
                 files.apply_candidate_file_edits(&decisions)?;
                 settled_folders.push((key, files));
             }
-            match &mut initialized_candidate {
-                ReleaseCandidate::Folder(folder) => {
-                    folder.files = settled_folders
-                        .iter()
-                        .find(|(key, _)| key == &folder.path.to_string_lossy())
-                        .map(|(_, files)| files.clone())
-                        .ok_or_else(|| ImportError::Internal {
-                            detail: "reset did not settle the requested folder".into(),
-                        })?;
-                    folder.file_edit_revision = next_revision;
-                }
-                ReleaseCandidate::Combined(combined) => combined.file_edit_revision = next_revision,
-            }
+            initialized_candidate
+                .files
+                .apply_candidate_file_edits(&decisions)?;
+            initialized_candidate.file_edit_revision = next_revision;
             let identity_files = initialized_candidate
-                .files()
+                .files
                 .release_files()
                 .cloned()
                 .collect::<Vec<_>>();
             crate::import::file_identity::validate_scanned_file_identities(&identity_files)?;
             let (draft, provenance, cover, snapshot) = if prefill {
                 let audio = initialized_candidate
-                    .files()
+                    .files
                     .audio()
                     .cloned()
                     .collect::<Vec<_>>();
                 let snapshot =
                     extract_file_tag_snapshot(&audio, generation, next_revision, reader.as_ref())?;
                 let durations =
-                    crate::import::probe::source_durations(initialized_candidate.files())?;
+                    crate::import::probe::source_durations(&initialized_candidate.files)?;
                 let seed = FileMetadataSeed::project(
                     &initialized_candidate,
                     snapshot,
@@ -128,18 +119,14 @@ impl ImportServiceHandle {
                     Some(seed.snapshot),
                 )
             } else {
-                let mut draft = initialized_candidate.blank_source().draft;
-                if let ReleaseCandidate::Combined(combined) = &initialized_candidate {
-                    draft.album_title.clone_from(&combined.name);
-                }
-                (draft, None, None, None)
+                (initialized_candidate.blank_source().draft, None, None, None)
             };
             // A reset unmakes the whole setup, so the candidate starts again
             // with the cover its folder gives it — the same one a scan of a
             // new candidate stores.
             let cover = crate::import::local_artwork::folder_cover(
                 cover,
-                initialized_candidate.files().artwork(),
+                initialized_candidate.files.artwork(),
             );
             // A CUE or artwork file can change while its audio's tags are read.
             // Check the whole scanned source again before committing its seed.
@@ -182,13 +169,9 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    pub(super) fn announce_source_candidate(&self, candidate: ReleaseCandidate) {
-        let event = match candidate {
-            ReleaseCandidate::Folder(candidate) => ScanEvent::CandidateBindingChanged { candidate },
-            ReleaseCandidate::Combined(candidate) => ScanEvent::CandidateMetadataChanged {
-                candidate_key: candidate.key,
-            },
-        };
-        self.event_tx.send(ImportEvent::Scan(event));
+    pub(super) fn announce_source_candidate(&self, candidate: FolderCandidate) {
+        self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateBindingChanged {
+            candidate,
+        }));
     }
 }

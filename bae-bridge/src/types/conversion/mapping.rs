@@ -128,7 +128,7 @@ impl BridgeCandidateFiles {
                 )
             })
             .collect();
-        let bae_core::import::folder_scanner::CategorizedFiles { files } = files;
+        let bae_core::import::folder_scanner::CategorizedFiles { files, .. } = files;
         BridgeCandidateFiles {
             file_metadata_identity,
             cover_files,
@@ -533,6 +533,7 @@ mod cover_projection_tests {
                     proposed_audio: false,
                 })
                 .collect(),
+            parts: Vec::new(),
         };
         let projected = BridgeCandidateFiles::from_core(files);
         assert_eq!(projected.files.len(), names.len());

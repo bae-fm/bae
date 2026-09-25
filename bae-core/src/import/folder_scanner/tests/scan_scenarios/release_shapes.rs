@@ -76,6 +76,7 @@ fn io_error_validating_audio_surfaces_not_swallowed() {
         &PathBuf::from("Album"),
         temp.path(),
         &StoredCandidateEdits::none(),
+        &[],
         &ScanCancellation::new(),
     );
     assert!(

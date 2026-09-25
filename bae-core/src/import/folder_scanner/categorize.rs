@@ -351,7 +351,11 @@ pub(super) fn settle_sheet_bindings(
 /// same audio the first in the folder's file order carves it and the rest are
 /// ignored — a sheet the user assigned a disc to claims its audio ahead of
 /// any the scan proposed, and one the user ignored claims none.
-pub(super) fn settle_sheet_discs(files: &mut [CandidateFile], edits: &SheetDiscEdits) {
+pub(super) fn settle_sheet_discs(
+    files: &mut [CandidateFile],
+    parts: &[ReleasePart],
+    edits: &SheetDiscEdits,
+) {
     let mut claimed: std::collections::HashSet<&str> = std::collections::HashSet::new();
     for entry in files.iter() {
         if let FileRole::TrackSheet {
@@ -393,7 +397,13 @@ pub(super) fn settle_sheet_discs(files: &mut [CandidateFile], edits: &SheetDiscE
             claimed.extend(audio.iter().map(|file| file.file_id.as_str()));
         }
     }
-    let mut bound_so_far = 0u32;
+    let carving = |entry: &CandidateFile| match &entry.role {
+        FileRole::TrackSheet { binding, .. } => {
+            binding.is_resolved() && !ignored.contains(&entry.file.relative_path)
+        }
+        _ => false,
+    };
+    let layout = DiscLayout::of(files, parts, carving);
     for entry in files.iter_mut() {
         let FileRole::TrackSheet { binding, disc, .. } = &mut entry.role else {
             continue;
@@ -402,13 +412,96 @@ pub(super) fn settle_sheet_discs(files: &mut [CandidateFile], edits: &SheetDiscE
             *disc = SheetDisc::Ignored;
             continue;
         }
-        bound_so_far += 1;
         *disc = edits
             .get(&entry.file.relative_path)
             .copied()
             .unwrap_or(SheetDisc::Disc {
-                number: bound_so_far,
+                number: layout.sheet_disc(&entry.file.relative_path),
             });
+    }
+}
+
+/// Where each disc of a release falls: the disc each carving sheet takes when
+/// nobody assigned it one, and the disc each part's loose audio takes.
+///
+/// A release read from one folder numbers its carving sheets in file order
+/// and gives its loose audio no disc. One read from several gives each part a
+/// run of discs of its own, in part order: its loose audio first, if it has
+/// any, then each of its carving sheets. A sheet in no part — one beside the
+/// parts rather than in one — follows them all.
+pub(crate) struct DiscLayout {
+    sheets: HashMap<String, u32>,
+    loose: Vec<Option<u32>>,
+}
+
+impl DiscLayout {
+    pub(crate) fn of(
+        files: &[CandidateFile],
+        parts: &[ReleasePart],
+        carving: impl Fn(&CandidateFile) -> bool,
+    ) -> Self {
+        let carving = &carving;
+        let carved: std::collections::HashSet<&str> = files
+            .iter()
+            .filter(|entry| carving(entry))
+            .flat_map(|entry| match &entry.role {
+                FileRole::TrackSheet {
+                    binding: SheetBinding::Resolved { files },
+                    ..
+                } => files.iter().map(|audio| audio.file_id.as_str()).collect(),
+                _ => Vec::new(),
+            })
+            .collect();
+        let sheets_in = |part: Option<usize>| {
+            files
+                .iter()
+                .filter(move |entry| {
+                    carving(entry) && part_of(parts, &entry.file.relative_path) == part
+                })
+                .map(|entry| entry.file.relative_path.clone())
+                .collect::<Vec<_>>()
+        };
+        let mut sheets = HashMap::new();
+        let mut loose = Vec::with_capacity(parts.len());
+        let mut next = 0u32;
+        if parts.is_empty() {
+            for sheet in sheets_in(None) {
+                next += 1;
+                sheets.insert(sheet, next);
+            }
+            return Self { sheets, loose };
+        }
+        for index in 0..parts.len() {
+            let has_loose = files.iter().any(|entry| {
+                matches!(entry.role, FileRole::Audio)
+                    && !carved.contains(entry.file.relative_path.as_str())
+                    && part_of(parts, &entry.file.relative_path) == Some(index)
+            });
+            loose.push(has_loose.then(|| {
+                next += 1;
+                next
+            }));
+            for sheet in sheets_in(Some(index)) {
+                next += 1;
+                sheets.insert(sheet, next);
+            }
+        }
+        for sheet in sheets_in(None) {
+            next += 1;
+            sheets.insert(sheet, next);
+        }
+        Self { sheets, loose }
+    }
+
+    /// The disc the carving sheet at `relative_path` takes by default.
+    pub(crate) fn sheet_disc(&self, relative_path: &str) -> u32 {
+        self.sheets.get(relative_path).copied().unwrap_or(1)
+    }
+
+    /// The disc the loose audio of the part at `index` is, if the release
+    /// numbers parts.
+    pub(crate) fn loose_disc(&self, index: usize) -> Option<u32> {
+        self.loose.get(index).copied().flatten()
     }
 }
 
@@ -429,6 +522,7 @@ pub(super) fn categorize_files_from_tree(
     release_root: &Path,
     fs_root: &Path,
     stored: &StoredCandidateEdits,
+    parts: &[ReleasePart],
     cancellation: &ScanCancellation,
 ) -> Result<CategorizeOutcome, FolderScanError> {
     let mut proposed: Vec<(ScannedFile, ProposedRole)> = Vec::new();
@@ -584,7 +678,7 @@ pub(super) fn categorize_files_from_tree(
             return invalid(InvalidReason::CorruptAudioFile { path })
         }
     }
-    settle_sheet_discs(&mut files, &stored.sheet_discs);
+    settle_sheet_discs(&mut files, parts, &stored.sheet_discs);
 
     if !files
         .iter()
@@ -594,7 +688,10 @@ pub(super) fn categorize_files_from_tree(
         return invalid(InvalidReason::NoValidAudio);
     };
 
-    Ok(CategorizeOutcome::Valid(CategorizedFiles { files }))
+    Ok(CategorizeOutcome::Valid(CategorizedFiles {
+        files,
+        parts: parts.to_vec(),
+    }))
 }
 
 fn source_audio_of(file: &ScannedFile) -> Result<Option<ScannedAudio>, FolderScanError> {

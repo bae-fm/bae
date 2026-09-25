@@ -8,9 +8,7 @@
 //! whole or not at all.
 
 use super::*;
-use crate::import::folder_scanner::{
-    FolderReleaseDecision, FolderReleaseDecisionAuthor, FolderReleaseDecisionKey,
-};
+use crate::import::folder_scanner::{FolderReading, FolderReleaseDecisionKey};
 
 /// Where the root stood when one folder's reading was taken, and the
 /// generation that reading is stored under.
@@ -34,10 +32,10 @@ pub(crate) struct FolderReadingCommit {
     pub(crate) stamp: FolderReadingStamp,
     /// The person's answer for the folder whose reading changed, when that is
     /// why the folder was read again.
-    pub(crate) decision: Option<(FolderReleaseDecisionKey, FolderReleaseDecision)>,
+    pub(crate) decision: Option<(FolderReleaseDecisionKey, FolderReading)>,
     /// How the walk read folders nothing was stored for. Never replaces an
     /// answer the person gave.
-    pub(crate) scanned_decisions: Vec<(FolderReleaseDecisionKey, FolderReleaseDecision)>,
+    pub(crate) scanned_decisions: Vec<(FolderReleaseDecisionKey, FolderReading)>,
     /// Every entry the folder yields, in the order the walk yielded them.
     pub(crate) items: Vec<ScanItemToWrite>,
     /// Every directory in the folder with the mtime it had, replacing what
@@ -52,6 +50,8 @@ pub(crate) struct FolderReadingWrite {
     pub(crate) writes: Vec<(ScanItem, ScanItemWrite)>,
     /// Entries under the folder the new reading no longer yields.
     pub(crate) pruned: Vec<String>,
+    /// Releases groupings rebuilt without the pruned entries.
+    pub(crate) regrouped: super::super::release_groupings::GroupingChanges,
 }
 
 impl Database {
@@ -127,14 +127,15 @@ impl Database {
             }
         }
         for item in &items {
-            let key = item.item.persisted_key().ok_or_else(|| {
+            let coverage = item.item.coverage().ok_or_else(|| {
                 DbError::Message(
                     "a folder reading is stored as a decision, not as a scan entry".to_string(),
                 )
             })?;
-            if !Path::new(&key).starts_with(&folder_path) {
+            if !coverage.folder.starts_with(&folder_path) {
                 return Err(DbError::Message(format!(
-                    "folder scan entry {key} is outside {folder}"
+                    "folder scan entry at {} is outside {folder}",
+                    coverage.folder.display()
                 )));
             }
         }
@@ -156,20 +157,13 @@ impl Database {
                     folder_path.display()
                 )));
             }
-            if let Some((key, decision)) = &decision {
-                store_folder_release_decision(
+            for (key, reading) in decision.iter().chain(scanned_decisions.iter()) {
+                store_folder_reading(
                     sql,
                     key,
-                    *decision,
-                    FolderReleaseDecisionAuthor::User,
-                )?;
-            }
-            for (key, decision) in &scanned_decisions {
-                store_folder_release_decision(
-                    sql,
-                    key,
-                    *decision,
-                    FolderReleaseDecisionAuthor::Heuristic,
+                    reading.decision,
+                    reading.author,
+                    &reading.grouping,
                 )?;
             }
             sql.execute(
@@ -184,25 +178,19 @@ impl Database {
             }
             let mut pruned: Vec<String> = sql
                 .query(
-                    "SELECT path FROM scan_candidate \
+                    "SELECT path, folder FROM scan_candidate \
                      WHERE watched_folder_path = ? AND generation != ? \
                        AND source_kind = 'folder'",
                     params![watched_folder_path, generation],
-                    |row| row.get::<_, String>(0),
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
                 )?
                 .into_iter()
-                .filter(|path| Path::new(path).starts_with(&folder_path))
+                .filter(|(_, folder)| Path::new(folder).starts_with(&folder_path))
+                .map(|(key, _)| key)
                 .collect();
             pruned.sort();
-            for path in &pruned {
-                delete_entry(
-                    sql,
-                    &watched_folder_path,
-                    &StoredEntry::Candidate {
-                        path: path.clone(),
-                        whole_folder: false,
-                    },
-                )?;
+            for key in &pruned {
+                delete_entry(sql, &watched_folder_path, key)?;
             }
             let recorded: Vec<String> = sql.query(
                 "SELECT path FROM folder_scan_directory WHERE watched_folder_path = ?",
@@ -242,7 +230,13 @@ impl Database {
                     )?;
                 }
             }
-            Ok(FolderReadingWrite { writes, pruned })
+            let regrouped =
+                super::super::release_groupings::rebuild_groupings(sql, &pruned, observed_at)?;
+            Ok(FolderReadingWrite {
+                writes,
+                pruned,
+                regrouped,
+            })
         })
         .await
     }

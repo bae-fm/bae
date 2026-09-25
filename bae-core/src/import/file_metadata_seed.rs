@@ -9,7 +9,7 @@
 use crate::import::file_tag_snapshot::FileTagSnapshot;
 use crate::import::pane::file_metadata_pane;
 use crate::import::probe::SourceDurations;
-use crate::import::release_candidate::ReleaseCandidate;
+use crate::import::folder_scanner::FolderCandidate;
 use crate::import::{CandidateDraft, CandidateTrack, CoverSelection, ImportError};
 
 /// A folder read as its own files describe it.
@@ -42,7 +42,7 @@ impl FileMetadataSeed {
             reader,
         )?;
         Self::project(
-            &candidate.clone().into(),
+            candidate,
             snapshot,
             &durations,
             None,
@@ -59,7 +59,7 @@ impl FileMetadataSeed {
     ///
     /// Applying tags replaces previously entered metadata values.
     pub(crate) fn project(
-        candidate: &ReleaseCandidate,
+        candidate: &FolderCandidate,
         snapshot: FileTagSnapshot,
         durations: &SourceDurations,
         keeping: Option<&[CandidateTrack]>,
@@ -73,7 +73,7 @@ impl FileMetadataSeed {
         }
         let cover = crate::import::local_artwork::file_tags_cover(
             crate::import::file_tag_snapshot::embedded_cover_selection(&snapshot),
-            candidate.files().artwork(),
+            candidate.files.artwork(),
         );
         Ok(Self {
             snapshot,

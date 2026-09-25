@@ -15,7 +15,7 @@ fn draft(sides: &[Option<i32>]) -> CandidateDraft {
                     proposed_audio: true,
                 }
             })
-            .collect(),
+            .collect(), parts: Vec::new(), 
     };
     let mut draft = blank_candidate_draft(&files);
     for (track, side) in draft.tracks.iter_mut().zip(sides) {

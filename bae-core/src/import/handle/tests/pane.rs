@@ -80,13 +80,12 @@ async fn picked_candidate(
         path: folder.clone(),
         file_root: folder.clone(),
         name: folder_name.to_string(),
-        files: CategorizedFiles { files },
+        files: CategorizedFiles { files, parts: Vec::new(),  },
         watched_folder_path: root.to_string_lossy().into_owned(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
         display_path: folder_name.to_string(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
+        grouping: None,
     };
 
     manager

@@ -200,21 +200,6 @@ struct ImportView: View {
             }
         }
     }
-
-    func setFolderReleaseDecision(
-        _ key: BridgeFolderReleaseDecisionKey,
-        _ decision: BridgeFolderReleaseDecision
-    ) {
-        uiStore.setFolderCandidateSelection([])
-        Task {
-            do {
-                try await importer.setFolderReleaseDecision(key, decision)
-            }
-            catch {
-                uiStore.showError(error)
-            }
-        }
-    }
 }
 
 #if DEBUG

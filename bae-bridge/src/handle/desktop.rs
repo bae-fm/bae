@@ -281,16 +281,6 @@ forward! {
                 .map_err(BridgeError::import)
         }
 
-        fn set_folder_release_decision(
-            key: crate::types::BridgeFolderReleaseDecisionKey,
-            decision: crate::types::BridgeFolderReleaseDecision,
-        ) -> () {
-            this.services
-                .import_set_folder_release_decision(key.into_core(), decision.into_core())
-                .await
-                .map_err(BridgeError::import)
-        }
-
         /// Mark the candidate at `path` skipped or unskipped. Persists the change;
         /// the candidate subscription carries the new row to the import view.
         fn set_candidate_skipped(path: String, skipped: bool) -> () {

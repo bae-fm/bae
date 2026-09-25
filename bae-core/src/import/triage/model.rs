@@ -352,8 +352,9 @@ pub struct TriageRow {
     /// existing section key. Match it against `WatchedFolder::path`.
     pub watched_folder_path: String,
     pub display_path: String,
-    pub resolved_boundaries: Vec<ResolvedFolderReleaseBoundary>,
-    pub combine_ancestor_key: Option<FolderReleaseDecisionKey>,
+    /// Whether this release is folders a grouping reads as one, which the row
+    /// offers to read as releases of their own.
+    pub separable: bool,
     pub actionable: bool,
     pub placement: TriagePlacement,
     /// The Ready check this row did not pass, stated beside its Import:

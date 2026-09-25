@@ -206,7 +206,7 @@ async fn a_cleared_sheet_can_be_bound_again() {
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");
     let bound = pane
         .candidate
-        .files()
+        .files
         .track_sheets()
         .find(|sheet| sheet.file.relative_path == "Test Album.cue")
         .expect("the sheet is still a sheet")

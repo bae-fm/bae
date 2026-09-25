@@ -47,7 +47,7 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
                 },
                 proposed_audio: false,
             },
-        ],
+        ], parts: Vec::new(), 
     };
     let snapshot = FileTagSnapshot {
         scan_generation: 1,
@@ -130,7 +130,7 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
             file: ScannedFile::new(path, "01.flac".to_string(), 123, 1).with_test_flac_audio(),
             role: FileRole::Audio,
             proposed_audio: true,
-        }],
+        }], parts: Vec::new(), 
     };
     let snapshot = crate::import::file_tag_snapshot::FileTagSnapshot {
         scan_generation: 7,

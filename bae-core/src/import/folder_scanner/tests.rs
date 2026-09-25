@@ -46,7 +46,7 @@ fn source_audio_keeps_every_physical_file_in_release_order() {
         files: vec![
             audio_entry("/music/02.flac", "02.flac", 20),
             audio_entry("/music/03.flac", "03.flac", 30),
-        ],
+        ], parts: Vec::new(), 
     };
 
     let source_audio = files.source_audio().expect("candidate has source audio");
@@ -85,21 +85,14 @@ fn scan_projected_items_with_decisions(
         if matches!(item, ScanItem::Discovered(_) | ScanItem::Decided { .. }) {
             return;
         }
-        let existing: Vec<_> = stored
-            .iter()
-            .map(|(key, item)| crate::import::candidates::StoredEntryKey {
-                key: key.clone(),
-                covers_whole_folder: match item {
-                    ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
-                        candidate.scope == ReleaseFileScope::Recursive
-                    }
-                    ScanItem::Invalid(_) | ScanItem::Decided { .. } => false,
-                },
-            })
-            .collect();
-        for key in crate::import::candidates::superseded_entry_keys(&existing, &item) {
-            stored.remove(&key);
-        }
+        let coverage = item.coverage().expect("a scan entry reads files");
+        let own_key = item.persisted_key().expect("a scan entry has a key");
+        stored.retain(|key, stored| {
+            key == &own_key
+                || !stored
+                    .coverage()
+                    .is_some_and(|stored| stored.overlaps(&coverage))
+        });
         stored.insert(item.persisted_key().expect("a scan entry has a key"), item);
     })
     .unwrap();
@@ -126,6 +119,27 @@ fn scan_projected_items_with_decisions(
         .map(ScanItem::Valid)
         .chain(invalid.into_iter().map(ScanItem::Invalid))
         .collect()
+}
+
+/// How each folder named reads, under a grouping key of its own.
+fn readings(
+    readings: &[(&str, FolderReleaseDecision, FolderReleaseDecisionAuthor)],
+) -> FolderReleaseDecisions {
+    FolderReleaseDecisions::new(
+        readings
+            .iter()
+            .map(|(folder, decision, author)| {
+                (
+                    folder.to_string(),
+                    FolderReading {
+                        decision: *decision,
+                        author: *author,
+                        grouping: format!("grouping:{folder}"),
+                    },
+                )
+            })
+            .collect(),
+    )
 }
 
 /// Everything `root` holds, read as one release, with nothing stored about it.

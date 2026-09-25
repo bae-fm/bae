@@ -147,7 +147,7 @@ folder_scan_roots
     └─ scan_candidate
          ├─ scan_candidate_file
          ├─ scan_cue_sheet / scan_cue_track / scan_cue_index
-         └─ scan_candidate_resolved_boundary
+         └─ scan_candidate_part
                     │
                     ▼
               SELECT CANDIDATE

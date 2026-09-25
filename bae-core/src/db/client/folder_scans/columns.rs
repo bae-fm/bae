@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::import::folder_scanner::{
-    FileRole, FolderReleaseDecision, InvalidReason, ReleaseFileScope, SheetAudioFile, SheetBinding,
+    FileRole, InvalidReason, ReleaseFileScope, SheetAudioFile, SheetBinding,
     SheetDisc,
 };
 
@@ -39,21 +39,6 @@ pub(super) fn scope_of(stored: &str) -> Result<ReleaseFileScope, DbError> {
         "direct" => Ok(ReleaseFileScope::Direct),
         "recursive" => Ok(ReleaseFileScope::Recursive),
         other => Err(unreadable("scope", other)),
-    }
-}
-
-pub(super) fn decision_text(decision: FolderReleaseDecision) -> &'static str {
-    match decision {
-        FolderReleaseDecision::CombineAsOneRelease => "combine_as_one_release",
-        FolderReleaseDecision::KeepAsSeparateReleases => "keep_as_separate_releases",
-    }
-}
-
-pub(super) fn decision_of(stored: &str) -> Result<FolderReleaseDecision, DbError> {
-    match stored {
-        "combine_as_one_release" => Ok(FolderReleaseDecision::CombineAsOneRelease),
-        "keep_as_separate_releases" => Ok(FolderReleaseDecision::KeepAsSeparateReleases),
-        other => Err(unreadable("decision", other)),
     }
 }
 

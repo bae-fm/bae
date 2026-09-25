@@ -36,7 +36,7 @@ fn load_committing_candidate(
     candidate_key: &str,
     expectation: &crate::import::service::ImportExpectation,
 ) -> Result<Option<CommittingCandidate>, DbError> {
-    let Some(stored) = super::import_combinations::load_candidate_on(sql, candidate_key)? else {
+    let Some(stored) = super::release_groupings::load_candidate_on(sql, candidate_key)? else {
         return Ok(None);
     };
     let candidate = stored.candidate;
@@ -61,15 +61,15 @@ fn load_committing_candidate(
         .transpose()?;
     let file_tag_snapshot = super::folder_scans::load_candidate_file_tag_snapshot(
         sql,
-        candidate.watched_folder_path(),
+        &candidate.watched_folder_path,
         candidate_key,
     )?
     .and_then(|stored| stored.snapshot);
     Ok(Some(CommittingCandidate {
         actionable: stored.actionable,
         source: candidate.source(),
-        content_hash: candidate.files().content_hash(),
-        file_edit_revision: candidate.file_edit_revision(),
+        content_hash: candidate.files.content_hash(),
+        file_edit_revision: candidate.file_edit_revision,
         prepared_revisions,
         file_tag_snapshot,
     }))

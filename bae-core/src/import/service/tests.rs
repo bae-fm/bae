@@ -333,7 +333,7 @@ impl CoordinatorHarness {
                         name: "Release".to_string(),
                         watched_folder_path: root.clone(),
                         display_path: "Group/Release".to_string(),
-                        resolved_boundaries: Vec::new(),
+                        grouping: None,
                         reason: crate::import::InvalidReason::NoValidAudio,
                     }),
                 )
@@ -529,5 +529,6 @@ include!("tests/coordinator.rs");
 include!("tests/cover_and_rescan.rs");
 include!("tests/edits_and_formats.rs");
 include!("tests/folder_reading.rs");
+include!("tests/groupings.rs");
 include!("tests/progressive_scan.rs");
 include!("tests/reading_progress.rs");

@@ -191,7 +191,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
             .with_test_flac_audio(),
             role: crate::import::folder_scanner::FileRole::Audio,
             proposed_audio: true,
-        }],
+        }], parts: Vec::new(), 
     };
     let candidate = super::candidate_with(
         &root,
@@ -224,9 +224,9 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
         .finalize_import_atomic(
             crate::db::ImportCommitGuard::Candidate {
                 candidate_key: candidate_path.to_string_lossy().into_owned(),
-                source: crate::import::release_candidate::CandidateSource::Folder {
+                source: crate::import::release_candidate::CandidateSource {
                     path: candidate_path,
-                    scope: crate::import::folder_scanner::ReleaseFileScope::Direct,
+                    scope: crate::import::folder_scanner::ReleaseFileScope::Direct, parts: Vec::new(), 
                 },
                 expectation: crate::import::service::ImportExpectation {
                     candidate: crate::import::CandidateAsRead {

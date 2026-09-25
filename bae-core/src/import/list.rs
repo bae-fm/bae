@@ -24,7 +24,7 @@
 use super::cover_art::{CoverChoice, RemoteCover};
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::mapping::MappingTable;
-use super::release_candidate::ReleaseCandidate;
+use super::folder_scanner::FolderCandidate;
 use super::search::ImportSearchReleaseDetail;
 use super::triage::{
     import_status_of, place, CandidateActionBasis, CandidateLiveState, ImportedRow,
@@ -231,9 +231,8 @@ pub(crate) struct GroupHeaderRow {
 
 /// One placed candidate row, and which scanned row it came from.
 pub(crate) struct PlacedRow {
-    /// The row with `resolved_boundaries` empty, `matched` read off the
-    /// verdict's lead, and a reading naming no records. The window fills all
-    /// three in from what it reads for the rows it materialises — or, for a
+    /// The row with `matched` read off the verdict's lead and a reading
+    /// naming no records. The window fills both in from what it reads for the rows it materialises — or, for a
     /// row placed Done, reads the library release it became and presents
     /// that instead.
     pub(crate) row: TriageRow,
@@ -354,7 +353,7 @@ pub struct ImportListSnapshot {
 /// the row rather than inside it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateDetailProjection {
-    pub candidate: ReleaseCandidate,
+    pub candidate: FolderCandidate,
     pub source_error: Option<String>,
     pub actionable: bool,
     pub skipped: bool,
@@ -497,18 +496,14 @@ impl ImportCandidateDetailProjection {
             TriageTab::Done => CandidatePanePlacement::Done,
         };
         let metadata_draft_is_blank = metadata_draft.is_blank();
-        let composition_action = if is_added || facts.importing || facts.identifying() {
+        let grouping_action = if is_added || facts.importing || facts.identifying() {
             None
+        } else if candidate.grouping.is_some() {
+            Some(super::grouping::GroupingAction::Separate)
+        } else if actionable {
+            Some(super::grouping::GroupingAction::Combine)
         } else {
-            match &candidate {
-                ReleaseCandidate::Folder(_) if actionable => {
-                    Some(super::combination::CombinationAction::Combine)
-                }
-                ReleaseCandidate::Folder(_) => None,
-                ReleaseCandidate::Combined(_) => {
-                    Some(super::combination::CombinationAction::Separate)
-                }
-            }
+            None
         };
         let import_status = if facts.importing {
             Some(CandidateImportStatus::Importing)
@@ -516,7 +511,7 @@ impl ImportCandidateDetailProjection {
             import_status.map(CandidateImportStatus::of)
         };
         ImportCandidateDetail {
-            composition_action,
+            grouping_action,
             candidate,
             actionable,
             skipped,
@@ -593,8 +588,10 @@ impl CandidateImportStatus {
 /// it, and the identify state it resumes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateDetail {
-    pub composition_action: Option<super::combination::CombinationAction>,
-    pub candidate: ReleaseCandidate,
+    /// Whether this release can be read together with others as one, or
+    /// read as the folders it is made of.
+    pub grouping_action: Option<super::grouping::GroupingAction>,
+    pub candidate: FolderCandidate,
     pub actionable: bool,
     pub skipped: bool,
     pub is_added: bool,

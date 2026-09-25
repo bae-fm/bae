@@ -47,14 +47,12 @@ private final class CandidateLiveStateSink: CandidateLiveStateCallback,
 private struct ImportOperations: Sendable {
     let candidateSourceFolders: @Sendable (String) async throws -> [String]
     let combineCandidates: @Sendable ([String]) async throws -> String
-    let separateCombination: @Sendable (String) async throws -> Void
+    let combineFolder:
+        @Sendable (BridgeFolderReleaseDecisionKey) async throws -> String
+    let separateCandidate: @Sendable (String) async throws -> Void
     let addWatchedFolder: @Sendable (String) async throws -> Void
     let removeWatchedFolder: @Sendable (String) async throws -> Void
     let refreshWatchedFolder: @Sendable (String) async throws -> Void
-    let setFolderReleaseDecision:
-        @Sendable (
-            BridgeFolderReleaseDecisionKey, BridgeFolderReleaseDecision
-        ) async throws -> Void
     let setCandidateSkipped: @Sendable (String, Bool) async throws -> Void
     let setSheetBinding:
         @Sendable (String, String, String, String?) async throws -> Void
@@ -121,8 +119,11 @@ extension ImportOperations {
             combineCandidates: {
                 try await handle.combineCandidates(keys: $0)
             },
-            separateCombination: {
-                try await handle.separateCombinedCandidate(key: $0)
+            combineFolder: {
+                try await handle.combineFolder(key: $0)
+            },
+            separateCandidate: {
+                try await handle.separateCandidate(key: $0)
             },
             addWatchedFolder: {
                 try await handle.addWatchedFolder(path: $0)
@@ -132,12 +133,6 @@ extension ImportOperations {
             },
             refreshWatchedFolder: {
                 try await handle.refreshWatchedFolder(path: $0)
-            },
-            setFolderReleaseDecision: {
-                try await handle.setFolderReleaseDecision(
-                    key: $0,
-                    decision: $1
-                )
             },
             setCandidateSkipped: {
                 try await handle.setCandidateSkipped(path: $0, skipped: $1)
@@ -339,7 +334,10 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable ([String]) async throws -> String = { _ in
                 throw StubError.notImplemented
             },
-        separateCombination: @escaping @Sendable (String) async throws -> Void =
+        combineFolder:
+            @escaping @Sendable (BridgeFolderReleaseDecisionKey) async throws
+            -> String = { _ in throw StubError.notImplemented },
+        separateCandidate: @escaping @Sendable (String) async throws -> Void =
             { _ in throw StubError.notImplemented },
         addWatchedFolder: @escaping @Sendable (String) async throws -> Void = {
             _ in
@@ -350,10 +348,6 @@ final class Importer: Sendable, Observable {
             },
         refreshWatchedFolder:
             @escaping @Sendable (String) async throws -> Void = { _ in },
-        setFolderReleaseDecision:
-            @escaping @Sendable (
-                BridgeFolderReleaseDecisionKey, BridgeFolderReleaseDecision
-            ) async throws -> Void = { _, _ in },
         setCandidateSkipped:
             @escaping @Sendable (String, Bool) async throws -> Void = { _, _ in
             },
@@ -471,11 +465,11 @@ final class Importer: Sendable, Observable {
         operations = ImportOperations(
             candidateSourceFolders: candidateSourceFolders,
             combineCandidates: combineCandidates,
-            separateCombination: separateCombination,
+            combineFolder: combineFolder,
+            separateCandidate: separateCandidate,
             addWatchedFolder: addWatchedFolder,
             removeWatchedFolder: removeWatchedFolder,
             refreshWatchedFolder: refreshWatchedFolder,
-            setFolderReleaseDecision: setFolderReleaseDecision,
             setCandidateSkipped: setCandidateSkipped,
             setSheetBinding: setSheetBinding,
             applyCandidateExternalMetadata: applyCandidateExternalMetadata,
@@ -528,8 +522,14 @@ extension Importer {
         try await operations.candidateSourceFolders(key)
     }
 
-    func separateCombination(_ key: String) async throws {
-        try await operations.separateCombination(key)
+    func combineFolder(
+        _ key: BridgeFolderReleaseDecisionKey
+    ) async throws -> String {
+        try await operations.combineFolder(key)
+    }
+
+    func separateCandidate(_ key: String) async throws {
+        try await operations.separateCandidate(key)
     }
 
     func addWatchedFolder(_ path: String) async throws {
@@ -542,13 +542,6 @@ extension Importer {
 
     func refreshWatchedFolder(_ path: String) async throws {
         try await operations.refreshWatchedFolder(path)
-    }
-
-    func setFolderReleaseDecision(
-        _ key: BridgeFolderReleaseDecisionKey,
-        _ decision: BridgeFolderReleaseDecision
-    ) async throws {
-        try await operations.setFolderReleaseDecision(key, decision)
     }
 
     func setCandidateSkipped(_ path: String, _ skipped: Bool) async throws {

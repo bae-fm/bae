@@ -31,11 +31,10 @@ impl ImportServiceHandle {
                 detail: format!("{path} is not an actionable folder candidate"),
             });
         };
-        let crate::import::release_candidate::ReleaseCandidate::Folder(candidate) = candidate
-        else {
+        if candidate.grouping.is_some() {
             if self
                 .library_manager
-                .set_combined_candidate_skipped(&path, skipped)
+                .set_grouping_skipped(&path, skipped)
                 .await?
             {
                 if skipped {
@@ -48,7 +47,7 @@ impl ImportServiceHandle {
                     }));
             }
             return Ok(());
-        };
+        }
         let watched_folder_path = candidate.watched_folder_path;
         let relative_candidate_path = crate::import::watched_folder::candidate_relative_path(
             &watched_folder_path,
@@ -394,7 +393,7 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
-        let content_hash = candidate.files().content_hash();
+        let content_hash = candidate.files.content_hash();
         let current = self
             .library_manager
             .load_import_candidate_preparation(&content_hash)
@@ -403,7 +402,7 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} has no stored import preparation"),
             })?;
         let expected_metadata_revision = current.metadata_revision;
-        let durations = crate::import::probe::source_durations(candidate.files())?;
+        let durations = crate::import::probe::source_durations(&candidate.files)?;
         match &provenance {
             crate::import::MetadataProvenance::FileMetadata => {
                 // The snapshot is read under the lock the write holds: a scan
@@ -430,7 +429,7 @@ impl ImportServiceHandle {
                 return Ok(self
                     .preparations
                     .apply_file_metadata(
-                        snapshot_candidate.watched_folder_path(),
+                        &snapshot_candidate.watched_folder_path,
                         &candidate_key,
                         &crate::import::CandidateAsRead {
                             content_hash: content_hash.clone(),
@@ -463,7 +462,7 @@ impl ImportServiceHandle {
                 // the result, and it is stored as one so the automatic admission stops
                 // asking.
                 let audio_durations =
-                    crate::import::track_slots::audio_durations(candidate.files(), &durations)?;
+                    crate::import::track_slots::audio_durations(&candidate.files, &durations)?;
                 let detail = release.detail_for_audio(&audio_durations, &prepared_partners)?;
                 let metadata = self
                     .external_candidate_metadata(
@@ -488,10 +487,10 @@ impl ImportServiceHandle {
                 return Ok(self
                     .preparations
                     .apply_source_as_result(
-                        candidate.watched_folder_path(),
+                        &candidate.watched_folder_path,
                         &crate::import::CandidateAsRead {
                             content_hash: content_hash.clone(),
-                            file_edit_revision: candidate.file_edit_revision(),
+                            file_edit_revision: candidate.file_edit_revision,
                             metadata_revision: expected_metadata_revision,
                         },
                         &candidate_key,
@@ -534,7 +533,7 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
-        let content_hash = candidate.files().content_hash();
+        let content_hash = candidate.files.content_hash();
         let current = self
             .library_manager
             .load_import_candidate_preparation(&content_hash)
@@ -551,10 +550,10 @@ impl ImportServiceHandle {
         Ok(self
             .preparations
             .apply_source(
-                candidate.watched_folder_path(),
+                &candidate.watched_folder_path,
                 &crate::import::CandidateAsRead {
                     content_hash: content_hash.clone(),
-                    file_edit_revision: candidate.file_edit_revision(),
+                    file_edit_revision: candidate.file_edit_revision,
                     metadata_revision: current.metadata_revision,
                 },
                 &candidate_key,
@@ -666,14 +665,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock().await;
         let content_hash = files.content_hash();
-        let crate::import::release_candidate::ReleaseCandidate::Folder(current_candidate) =
-            self.editable_candidate_for_commit(candidate_key).await?
-        else {
-            return Err(crate::import::ImportError::FileRole {
-                detail: "separate the folders before changing their file roles or CUE bindings"
-                    .into(),
-            });
-        };
+        let current_candidate = self.editable_candidate_for_commit(candidate_key).await?;
         let current_files = &current_candidate.files;
         let expected_revision = current_candidate.file_edit_revision;
         if current_files.content_hash() != content_hash {
@@ -827,12 +819,10 @@ impl ImportServiceHandle {
         Option<(crate::import::folder_scanner::CategorizedFiles, u64)>,
         crate::import::ImportError,
     > {
-        Ok(match self.get_release_candidate(candidate_key).await? {
-            Some(crate::import::release_candidate::ReleaseCandidate::Folder(candidate)) => {
-                Some((candidate.files, candidate.file_edit_revision))
-            }
-            _ => None,
-        })
+        Ok(self
+            .get_release_candidate(candidate_key)
+            .await?
+            .map(|candidate| (candidate.files, candidate.file_edit_revision)))
     }
 
     /// A folder candidate's files for a binding operation, or the refusal that

@@ -156,13 +156,13 @@ fn candidate(root: &str, name: &str) -> FolderCandidate {
                 },
                 role: FileRole::Audio,
             }],
+            parts: Vec::new(),
         },
         watched_folder_path: root.to_string(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
         display_path: name.to_string(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
+        grouping: None,
     }
 }
 

@@ -541,65 +541,34 @@ fn a_non_database_coven_error_keeps_its_own_text() {
     );
 }
 
-/// A combined candidate crosses as the source folders it is made of. Its files
-/// and track rows reach the receiver as the candidate's own, so the combination
-/// itself carries neither.
+/// A release read from several folders crosses as the folders it is made of,
+/// in play order, each with the name the source list shows. Its files and
+/// track rows reach the receiver as the release's own.
 #[cfg(all(test, feature = "desktop"))]
 #[test]
-fn a_combination_crosses_as_its_source_folders() {
-    use bae_core::import::combination::{CandidateCombination, CombinationPart};
-
-    let core = CandidateCombination {
-        parts: vec![
-            CombinationPart {
-                candidate_key: "/music/Volume A".into(),
-                folder_name: "Volume A".into(),
-                file_prefix: "01 - Volume A/".into(),
-                first_disc: 1,
-                disc_count: 1,
-                track_count: 2,
-            },
-            CombinationPart {
-                candidate_key: "/music/Volume B".into(),
-                folder_name: "Volume B".into(),
-                file_prefix: "02 - Volume B/".into(),
-                first_disc: 2,
-                disc_count: 2,
-                track_count: 5,
-            },
-        ],
-        files: bae_core::import::folder_scanner::CategorizedFiles { files: Vec::new() },
-        tracks: Vec::new(),
-    };
-
-    let crossed = BridgeCombination::from_core(core.clone());
+fn a_release_read_from_several_folders_crosses_as_its_folders() {
+    let parts = [
+        bae_core::import::ReleasePart {
+            folder: std::path::PathBuf::from("/music/Album/Disc 1"),
+            prefix: "Disc 1/".into(),
+        },
+        bae_core::import::ReleasePart {
+            folder: std::path::PathBuf::from("/music/Album/Disc 2"),
+            prefix: "Disc 2/".into(),
+        },
+    ];
+    let crossed: Vec<BridgeReleasePart> = parts.iter().map(BridgeReleasePart::from_core).collect();
     assert_eq!(
-        crossed
-            .parts
-            .iter()
-            .map(|part| {
-                (
-                    part.candidate_key.as_str(),
-                    part.folder_name.as_str(),
-                    part.file_prefix.as_str(),
-                    part.first_disc,
-                    part.disc_count,
-                    part.track_count,
-                )
-            })
-            .collect::<Vec<_>>(),
-        core.parts
-            .iter()
-            .map(|part| {
-                (
-                    part.candidate_key.as_str(),
-                    part.folder_name.as_str(),
-                    part.file_prefix.as_str(),
-                    part.first_disc,
-                    part.disc_count,
-                    part.track_count,
-                )
-            })
-            .collect::<Vec<_>>()
+        crossed,
+        vec![
+            BridgeReleasePart {
+                folder_path: "/music/Album/Disc 1".into(),
+                name: "Disc 1".into(),
+            },
+            BridgeReleasePart {
+                folder_path: "/music/Album/Disc 2".into(),
+                name: "Disc 2".into(),
+            },
+        ]
     );
 }

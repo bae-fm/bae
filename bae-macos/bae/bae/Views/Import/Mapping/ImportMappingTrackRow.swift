@@ -5,8 +5,6 @@ import SwiftUI
 /// it. Included tracks edit their title and artist in place; unused sources
 /// retain their audition target without carrying editable metadata.
 struct ImportMappingTrackRow: View {
-    @Environment(\.sourceFileEditsAllowed)
-    private var sourceFileEditsAllowed
     let mapping: BridgeTrackMapping
     /// The widths the table resolved for this pane, so the row's cells land
     /// under the header's.
@@ -67,7 +65,7 @@ struct ImportMappingTrackRow: View {
             hovering = $0
         }
         .contextMenu {
-            if sourceFileEditsAllowed, let track, !audioChoices.isEmpty {
+            if let track, !audioChoices.isEmpty {
                 chooseFileButtons(track)
             }
         }
@@ -144,10 +142,6 @@ struct ImportMappingTrackRow: View {
                 .buttonStyle(PressableIconButtonStyle())
                 .help("Add track")
                 .accessibilityLabel("Add track")
-                .disabled(!sourceFileEditsAllowed)
-                .opacity(sourceFileEditsAllowed ? 1 : 0)
-                .allowsHitTesting(sourceFileEditsAllowed)
-                .accessibilityHidden(!sourceFileEditsAllowed)
             case .awaitingPick:
                 EmptyView()
             }
@@ -161,8 +155,7 @@ struct ImportMappingTrackRow: View {
     private func removal(
         _ track: BridgeRawTrackEdit
     ) -> ImportMappingRowRemoval? {
-        guard sourceFileEditsAllowed else { return nil }
-        return ImportMappingRowRemoval(
+        ImportMappingRowRemoval(
             label: coreString("ui.import.slots.drop"),
             help: coreString("ui.import.slots.remove_help")
         ) {

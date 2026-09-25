@@ -56,7 +56,7 @@ impl ImportService {
             .library_manager
             .load_folder_scan_items(&root_key)
             .await?;
-        if !crate::import::candidates::names_a_current_folder_reading(&stored_items, key) {
+        if !crate::import::candidates::offers_folder_reading(&stored_items, key, target.1) {
             return Err(crate::import::ImportError::Watch {
                 detail: format!(
                     "{} is not a current release boundary",
@@ -145,13 +145,21 @@ impl ImportService {
         let mut decisions = library_manager
             .load_folder_release_decisions(&root_key)
             .await?;
-        if let Some((key, decision)) = decision {
-            decisions.insert(
-                key.relative_folder_path.clone(),
-                *decision,
-                FolderReleaseDecisionAuthor::User,
-            );
-        }
+        // The person's answer reads the folder under the grouping it already
+        // has, when it has one: the release it reads as keeps its key.
+        let decision = decision.map(|(key, decision)| {
+            let grouping = decisions
+                .get(&key.relative_folder_path)
+                .map(|stored| stored.grouping.clone())
+                .unwrap_or_else(|| new_grouping_key(services.ids.as_ref()));
+            let reading = crate::import::folder_scanner::FolderReading {
+                decision: *decision,
+                author: FolderReleaseDecisionAuthor::User,
+                grouping,
+            };
+            decisions.insert(key.relative_folder_path.clone(), reading.clone());
+            (key.clone(), reading)
+        });
         let skipped = library_manager
             .load_skipped_import_candidates(&root_key)
             .await?;
@@ -162,14 +170,19 @@ impl ImportService {
         let walk_folder = PathBuf::from(folder);
         let walk_cancellation = cancellation.clone();
         let wants_folder = decision.is_some();
+        let ids = services.ids.clone();
         let walked = tokio::task::spawn_blocking(move || {
+            let new_key = || new_grouping_key(ids.as_ref());
             read_top_level_folder(
                 directories.as_ref(),
                 &watcher,
                 &walk_root,
                 &walk_folder,
-                &stored_edits,
-                &decisions,
+                &crate::import::folder_scanner::ScanReadings {
+                    stored: &stored_edits,
+                    decisions: &decisions,
+                    new_grouping_key: &new_key,
+                },
                 &walk_cancellation,
                 wants_folder,
             )
@@ -184,8 +197,19 @@ impl ImportService {
         let mut items = Vec::with_capacity(walked.items.len());
         for item in walked.items {
             let path = match &item {
-                ScanItem::Decided { key, decision } => {
-                    scanned_decisions.push((key.clone(), *decision));
+                ScanItem::Decided {
+                    key,
+                    decision,
+                    grouping,
+                } => {
+                    scanned_decisions.push((
+                        key.clone(),
+                        crate::import::folder_scanner::FolderReading {
+                            decision: *decision,
+                            author: FolderReleaseDecisionAuthor::Heuristic,
+                            grouping: grouping.clone(),
+                        },
+                    ));
                     continue;
                 }
                 ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
@@ -238,12 +262,16 @@ impl ImportService {
                 });
             }
         }
-        let crate::db::FolderReadingWrite { writes, pruned } = library_manager
+        let crate::db::FolderReadingWrite {
+            writes,
+            pruned,
+            regrouped,
+        } = library_manager
             .commit_folder_reading(crate::db::FolderReadingCommit {
                 watched_folder_path: root_key,
                 folder: folder.to_string(),
                 stamp,
-                decision: decision.cloned(),
+                decision: decision.clone(),
                 scanned_decisions,
                 items,
                 directories: walked.directory_mtimes,
@@ -264,15 +292,17 @@ impl ImportService {
                     },
                 ));
         }
+        Self::announce_regrouped(&regrouped, services).await?;
         debug!(
             "{folder} under {} read again{} in {:?}: read in {read_at:?}, dates and tags by \
              {prepared_at:?}, commit lock by {locked_at:?}, stored by {committed_at:?}; \
              {changed} entries written, {unchanged} unchanged, pruned {pruned:?}",
             root.display(),
             decision
-                .map(|(key, decision)| format!(
-                    " as {decision:?} for {}",
-                    key.relative_folder_path
+                .as_ref()
+                .map(|(key, reading)| format!(
+                    " as {:?} for {}",
+                    reading.decision, key.relative_folder_path
                 ))
                 .unwrap_or_default(),
             started.elapsed(),
@@ -296,14 +326,12 @@ struct TopLevelReading {
 /// A folder that is not there yields nothing, unless the reading was asked
 /// for by name — a decision about a folder that went away is refused, not
 /// stored as an empty reading.
-#[allow(clippy::too_many_arguments)]
 fn read_top_level_folder(
     reader: &dyn crate::import::folder_scanner::DirectoryReader,
     watcher: &FolderWatcher,
     root: &Path,
     folder: &Path,
-    stored_edits: &crate::import::folder_scanner::StoredCandidateEdits,
-    decisions: &crate::import::folder_scanner::FolderReleaseDecisions,
+    readings: &crate::import::folder_scanner::ScanReadings<'_>,
     cancellation: &crate::import::folder_scanner::ScanCancellation,
     wants_folder: bool,
 ) -> Result<TopLevelReading, crate::import::ImportError> {
@@ -333,8 +361,7 @@ fn read_top_level_folder(
             reader,
             root,
             folder,
-            stored_edits,
-            decisions,
+            readings,
             cancellation,
             |directory| {
                 match (directory_mtimes.as_mut(), directory_modified_at(&directory)) {
@@ -373,4 +400,10 @@ fn read_top_level_folder(
         items,
         directory_mtimes,
     })
+}
+
+/// A key for a grouping the store has not seen: the key the release it reads
+/// as is addressed by from here on.
+pub(super) fn new_grouping_key(ids: &dyn coven::IdProvider) -> String {
+    format!("grouping:{}", ids.new_id())
 }

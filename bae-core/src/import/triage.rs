@@ -19,7 +19,7 @@
 //! answer puts the row and what the row shows. Which rows exist and in what
 //! order is [`crate::import::list`]'s.
 
-use super::folder_scanner::{FolderReleaseDecisionKey, ResolvedFolderReleaseBoundary};
+use super::folder_scanner::FolderReleaseDecisionKey;
 use super::search::{ImportSearchReleaseDetail, SourceTracks};
 use super::types::{Catalog, MetadataProvenance};
 use super::MetadataAuthor;

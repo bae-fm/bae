@@ -3,8 +3,8 @@ use crate::import::{AudioFile, CandidateAsRead, TrackArtistAssignments};
 
 fn as_read(detail: &crate::import::ImportCandidateDetail) -> CandidateAsRead {
     CandidateAsRead {
-        content_hash: detail.candidate.files().content_hash(),
-        file_edit_revision: detail.candidate.file_edit_revision(),
+        content_hash: detail.candidate.files.content_hash(),
+        file_edit_revision: detail.candidate.file_edit_revision,
         metadata_revision: detail.metadata_revision,
     }
 }
@@ -697,7 +697,7 @@ async fn prepared_track_insertion_and_artist_answers_roll_back_together() {
     let error = handle
         .preparations
         .add_track_prepared(
-            detail.candidate.watched_folder_path(),
+            &detail.candidate.watched_folder_path,
             &key,
             &as_read(&detail),
             &removed,

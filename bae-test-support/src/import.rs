@@ -113,9 +113,10 @@ pub fn folder_import(
     bae_core::import::ImportCommand {
         import_id: import_id.to_string(),
         candidate_key: "test".to_string(),
-        source: bae_core::import::release_candidate::CandidateSource::Folder {
+        source: bae_core::import::release_candidate::CandidateSource {
             path: folder.into(),
             scope: bae_core::import::ReleaseFileScope::Recursive,
+            parts: Vec::new(),
         },
         selected_cover: None,
         storage_mode: bae_core::import::StorageMode::Local,

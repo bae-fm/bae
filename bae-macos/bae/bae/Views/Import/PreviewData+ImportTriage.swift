@@ -55,8 +55,7 @@
                 folderName: candidate.displayName,
                 watchedFolderPath: importWatchedFolder.path,
                 displayPath: candidate.displayName,
-                resolvedBoundaries: [],
-                combineAncestorKey: nil,
+                separable: false,
                 actionable: true,
                 placement: placement,
                 readyCheck: readyCheck,
@@ -86,9 +85,8 @@
         ) -> Candidate {
             var candidate = Candidate(
                 bridge: BridgeFolderCandidate(
-                    compositionAction: .combine,
-                    combination: nil,
-                    sourceFileEditsAllowed: true,
+                    groupingAction: .combine,
+                    parts: [],
                     folderPath: "\(importWatchedFolder.path)/\(path)",
                     sourceFolderName: name,
                     watchedFolderPath: importWatchedFolder.path,
@@ -208,9 +206,8 @@
         @MainActor
         private static let importTabGroupedReadyCandidate = paneCandidate(
             folder: BridgeFolderCandidate(
-                compositionAction: .combine,
-                combination: nil,
-                sourceFileEditsAllowed: true,
+                groupingAction: .combine,
+                parts: [],
                 folderPath:
                     "\(importWatchedFolder.path)/Artist Collection/Album Title Nine",
                 sourceFolderName: "Album Title Nine",

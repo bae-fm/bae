@@ -136,7 +136,7 @@ impl CandidatePreparations {
         edits: &CandidateFileEdits,
         settled_candidates: &[(String, crate::import::folder_scanner::CategorizedFiles)],
         mapping_preparation: &crate::import::CandidateMappingPreparation,
-    ) -> Result<(u64, Vec<crate::import::release_candidate::ReleaseCandidate>), LibraryError> {
+    ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), LibraryError> {
         let next_revision = read.file_edit_revision.checked_add(1).ok_or_else(|| {
             crate::library::LibraryError::Import(
                 "candidate edit revision exhausted the u64 range".to_string(),

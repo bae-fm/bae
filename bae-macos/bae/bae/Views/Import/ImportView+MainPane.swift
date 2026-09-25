@@ -14,9 +14,8 @@ extension ImportView {
             },
             onRemoveFolder: { path in removeWatchedFolder(path) },
             onRefreshFolder: { folder in refreshWatchedFolder(folder) },
-            onReleaseDecision: { key, decision in
-                setFolderReleaseDecision(key, decision)
-            },
+            onCombineFolder: { key in combineFolder(key) },
+            onSeparate: { key in separateCandidate(key) },
             onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
             onReveal: revealCandidateSources
         )
@@ -29,20 +28,16 @@ extension ImportView {
     func mainPane(for candidate: Candidate) -> some View {
         CandidateRuntimeReader(key: candidate.key) { runtime in
             VStack(spacing: 0) {
-                if let combination = candidate.combination {
+                if !candidate.parts.isEmpty {
                     ImportCombinedSourceView(
-                        combination: combination,
+                        parts: candidate.parts,
                         canSeparate: candidate.detail?.candidate
-                            .compositionAction == .separate,
-                        onSeparate: { separateCombination(candidate.key) }
+                            .groupingAction == .separate,
+                        onSeparate: { separateCandidate(candidate.key) }
                     )
                 }
                 mappingPane(for: candidate, runtime: runtime)
             }
-            .environment(
-                \.sourceFileEditsAllowed,
-                candidate.sourceFileEditsAllowed
-            )
         }
         .id(candidate.key)
     }

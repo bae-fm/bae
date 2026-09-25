@@ -434,13 +434,14 @@ pub(crate) fn load_states_rows_on(
 /// The per-file decisions of every candidate, or of the one `only` names.
 /// `CandidateFileEdits::revision` is left at zero — it lives on the state row,
 /// which is what fills it in.
+/// The file decisions a read fetched, still to be assembled — boxed so a read
+/// on either connection hands back one type.
+type FinishEdits<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
+
 fn load_edits_on(
-    sql: &SqlReadContext<'_>,
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     only: Option<&str>,
-) -> Result<
-    impl FnOnce() -> Result<HashMap<String, CandidateFileEdits>, DbError> + Send + 'static,
-    DbError,
-> {
+) -> Result<FinishEdits<HashMap<String, CandidateFileEdits>>, DbError> {
     let rows = sql.query(
         &format!(
             "SELECT {FILE_EDIT_COLUMNS} FROM import_candidate_file_edit \
@@ -455,7 +456,7 @@ fn load_edits_on(
         named_params! { ":only": only },
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?, row.get::<_, Option<String>>(3)?)),
     )?;
-    Ok(move || {
+    Ok(Box::new(move || {
         let mut edits: HashMap<String, CandidateFileEdits> = HashMap::new();
         for row in rows {
             let row = row?;
@@ -475,16 +476,16 @@ fn load_edits_on(
                 .set_reference(sheet, reference, decision);
         }
         Ok(edits)
-    })
+    }))
 }
 
 /// One candidate's file decisions, revision included. Progressive scans call
 /// this after they compute a content hash, so each emitted row performs one
 /// indexed lookup instead of rereading the whole table.
-pub(super) fn load_candidate_file_edits_on(
-    sql: &SqlReadContext<'_>,
+pub(crate) fn load_candidate_file_edits_on(
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     content_hash: &str,
-) -> Result<impl FnOnce() -> Result<CandidateFileEdits, DbError> + Send + 'static, DbError> {
+) -> Result<FinishEdits<CandidateFileEdits>, DbError> {
     let revision: Option<i64> = sql
         .query_row(
             "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
@@ -498,7 +499,7 @@ pub(super) fn load_candidate_file_edits_on(
         None
     };
     let content_hash = content_hash.to_string();
-    Ok(move || {
+    Ok(Box::new(move || {
         let Some(revision) = revision else {
             return Ok(CandidateFileEdits::default());
         };
@@ -511,5 +512,5 @@ pub(super) fn load_candidate_file_edits_on(
             ))
         })?;
         Ok(edits)
-    })
+    }))
 }

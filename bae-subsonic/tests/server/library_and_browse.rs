@@ -198,9 +198,10 @@ async fn seed_library() -> Library {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "pt".to_string(),
-            source: CandidateSource::Folder {
+            source: CandidateSource {
                 path: pt_dir,
                 scope: ReleaseFileScope::Recursive,
+                parts: Vec::new(),
             },
             selected_cover: None,
             storage_mode: StorageMode::Local,
@@ -236,9 +237,10 @@ async fn seed_library() -> Library {
         .send_command(ImportCommand {
             import_id: cue_id.clone(),
             candidate_key: "cue".to_string(),
-            source: CandidateSource::Folder {
+            source: CandidateSource {
                 path: cue_dir,
                 scope: ReleaseFileScope::Recursive,
+                parts: Vec::new(),
             },
             selected_cover: None,
             storage_mode: StorageMode::Local,

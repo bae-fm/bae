@@ -1,7 +1,7 @@
 use super::*;
 use crate::import::file_tag_snapshot::FileTagSnapshot;
 use crate::import::folder_scanner::CategorizedFiles;
-use crate::import::release_candidate::ReleaseCandidate;
+use crate::import::folder_scanner::FolderCandidate;
 use crate::import::CandidateMetadataDraft;
 
 impl CandidatePreparations {
@@ -9,27 +9,27 @@ impl CandidatePreparations {
     /// that described its previous audio, under the caller's source revisions.
     pub(crate) async fn reset_setup(
         &self,
-        candidate: &ReleaseCandidate,
+        candidate: &FolderCandidate,
         read: &CandidateAsRead,
         scan_generation: u64,
         lookup_choices: crate::import::LookupChoices,
         metadata: CandidateMetadataDraft,
         snapshot: Option<FileTagSnapshot>,
         settled_folders: Vec<(String, CategorizedFiles)>,
-    ) -> Result<Vec<ReleaseCandidate>, LibraryError> {
+    ) -> Result<Vec<FolderCandidate>, LibraryError> {
         let mut prep = self.loaded_at(read).await?;
         let expected = CandidateSaveExpectation {
             edit_revision: read.file_edit_revision,
             metadata_revision: read.metadata_revision,
             scanned: Some(crate::db::CandidateScanExpectation::AtGeneration {
                 key: ScannedCandidateKey {
-                    watched_folder_path: candidate.watched_folder_path().into(),
-                    candidate_path: candidate.key().into_owned(),
+                    watched_folder_path: candidate.watched_folder_path.clone(),
+                    candidate_path: candidate.key(),
                 },
                 generation: scan_generation,
             }),
         };
-        prep.folder_path = candidate.key().into_owned();
+        prep.folder_path = candidate.key();
         prep.file_edits = CandidateFileEdits {
             revision: read.file_edit_revision.checked_add(1).ok_or_else(|| {
                 LibraryError::Import("candidate file revision exhausted the u64 range".into())

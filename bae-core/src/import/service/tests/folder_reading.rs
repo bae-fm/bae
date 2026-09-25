@@ -228,7 +228,8 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
             .load_folder_release_decisions(&fixture.root.to_string_lossy())
             .await
             .unwrap()
-            .get("Artist/Album"),
+            .get("Artist/Album")
+            .map(|reading| (reading.decision, reading.author)),
         Some((
             crate::import::FolderReleaseDecision::KeepAsSeparateReleases,
             crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
@@ -296,7 +297,8 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
         .load_folder_release_decisions(&fixture.root.to_string_lossy())
         .await
         .unwrap()
-        .get("Artist/Album");
+        .get("Artist/Album")
+        .cloned();
 
     // Hold the commit lock, so the reading waits at it with its walk done,
     // and move the root's generation under it the way a pass over the root
@@ -344,7 +346,8 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
             .load_folder_release_decisions(&fixture.root.to_string_lossy())
             .await
             .unwrap()
-            .get("Artist/Album"),
+            .get("Artist/Album")
+            .cloned(),
         decisions_before
     );
 }

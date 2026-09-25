@@ -34,7 +34,7 @@ impl ImportServiceHandle {
         cover: crate::import::CoverSelection,
     ) -> Result<(), crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
-        let hash = candidate.files().content_hash();
+        let hash = candidate.files.content_hash();
         let revision = self
             .library_manager
             .load_import_candidate_state(&hash)
@@ -53,15 +53,15 @@ impl ImportServiceHandle {
             | crate::import::CoverSelection::Embedded(_) => None,
         };
         let _commit = self
-            .commit_lock_for_revision(candidate_key, &hash, candidate.file_edit_revision())
+            .commit_lock_for_revision(candidate_key, &hash, candidate.file_edit_revision)
             .await?;
         self.preparations
             .set_prepared_cover(
-                candidate.watched_folder_path(),
+                &candidate.watched_folder_path,
                 &candidate.key(),
                 &crate::import::CandidateAsRead {
                     content_hash: hash,
-                    file_edit_revision: candidate.file_edit_revision(),
+                    file_edit_revision: candidate.file_edit_revision,
                     metadata_revision: revision,
                 },
                 &cover,
@@ -94,16 +94,16 @@ impl ImportServiceHandle {
         value: String,
     ) -> Result<(), crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
-        let hash = candidate.files().content_hash();
+        let hash = candidate.files.content_hash();
         let _commit = self
-            .commit_lock_for_revision(candidate_key, &hash, candidate.file_edit_revision())
+            .commit_lock_for_revision(candidate_key, &hash, candidate.file_edit_revision)
             .await?;
         self.preparations
             .set_field_prepared(
-                candidate.watched_folder_path(),
+                &candidate.watched_folder_path,
                 &candidate.key(),
                 &hash,
-                candidate.file_edit_revision(),
+                candidate.file_edit_revision,
                 field,
                 &value,
             )
@@ -386,7 +386,7 @@ impl ImportServiceHandle {
                 )
                 .into());
             }
-            let available = crate::import::track_slots::audio_units(candidate.files());
+            let available = crate::import::track_slots::audio_units(&candidate.files);
             let source_position = available
                 .iter()
                 .position(|unit| unit == &audio)
@@ -422,14 +422,14 @@ impl ImportServiceHandle {
             .prefill_with_file_metadata
         {
             let (snapshot_candidate, snapshot) = self.file_tag_snapshot(candidate_key).await?;
-            if snapshot_candidate.files().content_hash() != read.content_hash
-                || snapshot_candidate.file_edit_revision() != read.file_edit_revision
+            if snapshot_candidate.files.content_hash() != read.content_hash
+                || snapshot_candidate.file_edit_revision != read.file_edit_revision
             {
                 return Err(crate::import::ImportError::Internal {
                     detail: format!("{candidate_key} changed before its audio could be added"),
                 });
             }
-            let durations = crate::import::probe::source_durations(snapshot_candidate.files())?;
+            let durations = crate::import::probe::source_durations(&snapshot_candidate.files)?;
             crate::import::file_metadata_seed::FileMetadataSeed::project(
                 &snapshot_candidate,
                 snapshot,
@@ -481,7 +481,7 @@ impl ImportServiceHandle {
             .await?;
         self.preparations
             .add_track_prepared(
-                candidate.watched_folder_path(),
+                &candidate.watched_folder_path,
                 candidate_key,
                 &read,
                 &track,
@@ -498,7 +498,7 @@ impl ImportServiceHandle {
     async fn editable_candidate(
         &self,
         candidate_key: &str,
-    ) -> Result<crate::import::release_candidate::ReleaseCandidate, crate::import::ImportError>
+    ) -> Result<crate::import::folder_scanner::FolderCandidate, crate::import::ImportError>
     {
         self.get_release_candidate(candidate_key)
             .await?
@@ -513,8 +513,7 @@ impl ImportServiceHandle {
         decide: impl FnOnce(&mut crate::import::RawReleaseEdit),
     ) -> Result<PreparedArtistEdit, crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
-        let files = candidate.files();
-        let hash = files.content_hash();
+        let hash = candidate.files.content_hash();
         let preparation = self
             .library_manager
             .load_import_candidate_preparation(&hash)
@@ -522,7 +521,7 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} has no stored import preparation"),
             })?;
-        if preparation.file_edit_revision != candidate.file_edit_revision() {
+        if preparation.file_edit_revision != candidate.file_edit_revision {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} changed before its edit was prepared"),
             });
@@ -538,8 +537,8 @@ impl ImportServiceHandle {
             )
             .await?;
         Ok(PreparedArtistEdit {
-            watched_folder_path: candidate.watched_folder_path().to_string(),
-            candidate_path: candidate.key().into_owned(),
+            candidate_path: candidate.key(),
+            watched_folder_path: candidate.watched_folder_path,
             candidate: crate::import::CandidateAsRead {
                 content_hash: hash,
                 file_edit_revision: preparation.file_edit_revision,

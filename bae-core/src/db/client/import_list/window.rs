@@ -5,19 +5,16 @@
 //! pick. All three are read for the entries inside a requested window and for
 //! the one key a selection names — never for the queue.
 
-use super::super::folder_scans::load_resolved_boundaries;
-use super::super::import_combinations::{load_candidate_on, skipped_on};
+use super::super::release_groupings::{load_candidate_on, skipped_on};
 use super::super::import_state::{load_pane_rows_on, load_states_on};
 use super::super::source_releases::load_source_release_on;
 use super::super::records::check_releases_in_library_on;
 use super::*;
 use crate::identify::{classify, TerminalVerdict};
 use crate::import::cover_art::{CoverChoice, RemoteCover};
-use crate::import::folder_scanner::{
-    CategorizedFiles, InvalidCandidate, ResolvedFolderReleaseBoundary,
-};
+use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate};
 use crate::import::list::{window_refs, Flattened, ImportListItem, ItemRef};
-use crate::import::release_candidate::ReleaseCandidate;
+use crate::import::folder_scanner::FolderCandidate;
 use crate::import::search::{ImportSearchReleaseDetail, MetadataResult};
 use crate::import::triage::MatchedRelease;
 use crate::import::CoverSelection;
@@ -49,15 +46,7 @@ pub(super) fn materialise(
                         row: imported_row(sql, &placed.row)?,
                     }));
                 }
-                let mut row = placed.row.clone();
-                // A resolved boundary is the row's offer to read its folder
-                // the other way, which is a question about a folder nobody has
-                // imported yet. Past that point the reading is settled and the
-                // row is flat, so the read is not made at all.
-                if row.placement.tab() == crate::import::TriageTab::Pending {
-                    row.resolved_boundaries =
-                        resolved_boundaries(sql, &scanned.watched_folder_path, &scanned.path)?;
-                }
+                let row = placed.row.clone();
                 let content_hash = scanned.content_hash.as_deref().ok_or_else(|| {
                     DbError::Message(format!("candidate {} has no content hash", scanned.path))
                 })?;
@@ -82,7 +71,7 @@ pub(super) fn materialise(
                                 ))
                             })?
                             .candidate
-                            .files()
+                            .files
                             .clone(),
                     )
                 } else {
@@ -118,15 +107,14 @@ pub(super) fn materialise(
                 let scanned = &rows.candidates[*index];
                 Ok(WindowItemRows::Ready(ImportListItem::Invalid {
                     candidate: InvalidCandidate {
-                        path: PathBuf::from(&scanned.path),
+                        path: PathBuf::from(&scanned.folder),
                         name: scanned.name.clone(),
                         watched_folder_path: scanned.watched_folder_path.clone(),
                         display_path: scanned.display_path.clone(),
-                        resolved_boundaries: resolved_boundaries(
-                            sql,
-                            &scanned.watched_folder_path,
-                            &scanned.path,
-                        )?,
+                        grouping: scanned
+                            .grouping
+                            .as_ref()
+                            .map(|_| scanned.path.clone()),
                         reason: scanned.invalid_reason.clone().ok_or_else(|| {
                             DbError::Message(format!(
                                 "scan candidate {} has no reason",
@@ -349,18 +337,6 @@ fn row_cover_source(
     }
 }
 
-fn resolved_boundaries(
-    sql: &SqlReadContext<'_>,
-    watched_folder_path: &str,
-    candidate_path: &str,
-) -> Result<Vec<ResolvedFolderReleaseBoundary>, DbError> {
-    Ok(
-        load_resolved_boundaries(sql, watched_folder_path, Some(candidate_path))?
-            .remove(candidate_path)
-            .unwrap_or_default(),
-    )
-}
-
 /// Every release a pick claims, with the stored release for each. `None` when
 /// the folder is read as its own tags, which claims no release at all.
 fn picked_release(
@@ -404,7 +380,7 @@ pub(super) fn load_candidate_detail_on(
     let actionable = stored.actionable;
     let source_error = stored.error;
     let candidate = stored.candidate;
-    let content_hash = candidate.files().content_hash();
+    let content_hash = candidate.files.content_hash();
 
     let skipped = skipped_on(sql, &candidate)?;
 
@@ -422,7 +398,7 @@ pub(super) fn load_candidate_detail_on(
         .optional()?;
 
     let state = load_states_on(sql, Some(&content_hash))?.remove(&content_hash);
-    let current = state.filter(|state| state.file_edits.revision == candidate.file_edit_revision());
+    let current = state.filter(|state| state.file_edits.revision == candidate.file_edit_revision);
     let identify = current.as_ref().and_then(|state| state.identify.as_ref());
     let picked = current
         .as_ref()
@@ -449,7 +425,7 @@ pub(super) fn load_candidate_detail_on(
              FROM scan_candidate c JOIN import_candidate_state s \
                ON s.content_hash = c.content_hash \
              WHERE c.watched_folder_path = ? AND c.path = ?",
-        params![candidate.watched_folder_path(), candidate.key()],
+        params![candidate.watched_folder_path, candidate.key()],
         |row| row.get::<_, i64>(0),
     )?;
     let metadata_revision = u64::try_from(metadata_revision)
@@ -474,7 +450,7 @@ pub(super) fn load_candidate_detail_on(
         Some(CoverSelection::Embedded(source_file_id)) => {
             let snapshot = super::super::folder_scans::load_candidate_file_tag_snapshot(
                 sql,
-                candidate.watched_folder_path(),
+                &candidate.watched_folder_path,
                 &candidate.key(),
             )?
             .and_then(|stored| stored.snapshot)
@@ -501,10 +477,10 @@ pub(super) fn load_candidate_detail_on(
         _ => None,
     };
     Ok(Some(move || {
-        let durations = crate::import::probe::source_durations(candidate.files())
+        let durations = crate::import::probe::source_durations(&candidate.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let audio_durations =
-            crate::import::track_slots::audio_durations(candidate.files(), &durations)
+            crate::import::track_slots::audio_durations(&candidate.files, &durations)
                 .map_err(|error| DbError::Message(error.to_string()))?;
         let release = claimed
             .split_first()
@@ -552,12 +528,12 @@ pub(super) fn load_candidate_detail_on(
         }
         let pane = crate::import::pane::draft_pane(
             release,
-            candidate.files(),
+            &candidate.files,
             &durations,
             &pane_rows.draft,
             &crate::import::CandidateAsRead {
                 content_hash,
-                file_edit_revision: candidate.file_edit_revision(),
+                file_edit_revision: candidate.file_edit_revision,
                 metadata_revision,
             },
         );
@@ -567,7 +543,7 @@ pub(super) fn load_candidate_detail_on(
             .map(|release| release.cover_art.clone())
             .unwrap_or_default();
         let cover = chosen_cover(
-            candidate.files(),
+            &candidate.files,
             pane_rows.cover.as_ref(),
             pane.release.as_ref(),
             embedded_cover.as_ref(),
@@ -610,7 +586,7 @@ pub(super) fn load_candidate_detail_on(
 /// rather than served as half a pane.
 fn claimed_releases_on(
     sql: &SqlReadContext<'_>,
-    candidate: &ReleaseCandidate,
+    candidate: &FolderCandidate,
     picked: Option<&MetadataProvenance>,
 ) -> Result<Vec<crate::import::source_release::SourceRelease>, DbError> {
     let Some(MetadataProvenance::ExternalRelease { record, partners }) = picked else {

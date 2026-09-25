@@ -200,7 +200,7 @@ impl ImportServiceHandle {
         };
         let state = self
             .library_manager
-            .load_import_candidate_state(&candidate.files().content_hash())
+            .load_import_candidate_state(&candidate.files.content_hash())
             .await?;
         let Some(crate::import::MetadataProvenance::ExternalRelease { record, partners }) =
             state.and_then(|state| state.metadata_provenance)
@@ -333,7 +333,7 @@ impl ImportServiceHandle {
         };
         let Some(row) = self
             .library_manager
-            .load_import_candidate_state(&candidate.files().content_hash())
+            .load_import_candidate_state(&candidate.files.content_hash())
             .await?
         else {
             return Ok(false);

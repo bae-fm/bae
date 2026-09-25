@@ -15,6 +15,7 @@ fn rows_order_by_watched_root_then_natural_path() {
         ScanCandidateListRow {
             watched_folder_path: host_root("/second"),
             path: format!("{}/Release 1", host_root("/second")),
+            folder: format!("{}/Release 1", host_root("/second")),
             ..candidate("Release 1")
         },
     ];
@@ -533,18 +534,21 @@ fn the_summary_carries_the_watched_folders() {
 
 /// A group header is where a folder read as several releases offers to be read
 /// as one. A header that is only a path component the rows share offers
-/// nothing — there is no such folder to combine, and asking would be a
-/// question with no answer behind it.
+/// nothing: the folder that holds them — `Singles/Label`, the nearest one
+/// nothing is stored for — is where that choice belongs, not every folder
+/// above it.
 #[test]
 fn only_a_group_over_a_folder_read_as_several_offers_to_combine() {
     let mut rows = queue();
     rows.candidates = vec![
         candidate("Box/Disc 1"),
         candidate("Box/Disc 2"),
-        candidate("Singles/One"),
-        candidate("Singles/Two"),
+        candidate("Singles/Label/Series/One"),
+        candidate("Singles/Label/Series/Two"),
     ];
-    rows.separated_folders.insert((root(), "Box".to_string()));
+    rows.folder_readings.insert((root(), "Box".to_string()), false);
+    rows.folder_readings
+        .insert((root(), "Singles/Label/Series".to_string()), false);
 
     let flat = flattened(&rows, &view(TriageTab::Pending));
     let group_of = |name: &str| {

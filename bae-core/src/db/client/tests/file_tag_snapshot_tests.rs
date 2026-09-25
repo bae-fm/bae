@@ -30,13 +30,15 @@ fn candidate(root: &str) -> FolderCandidate {
         path: PathBuf::from(&candidate_path),
         file_root: PathBuf::from(&candidate_path),
         name: "Candidate A".to_string(),
-        files: CategorizedFiles { files },
+        files: CategorizedFiles {
+            files,
+            parts: Vec::new(),
+        },
         watched_folder_path: root.to_string(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
         display_path: "candidate-a".to_string(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
+        grouping: None,
     }
 }
 
@@ -105,7 +107,7 @@ async fn file_tag_snapshot_round_trips_with_current_candidate_stamp() {
         .unwrap()
         .unwrap();
     assert_eq!(empty.scan_generation, generation);
-    assert_eq!(empty.candidate.file_edit_revision(), 0);
+    assert_eq!(empty.candidate.file_edit_revision, 0);
     assert_eq!(empty.snapshot, None);
 
     let expected = snapshot(generation, 0);
@@ -120,7 +122,7 @@ async fn file_tag_snapshot_round_trips_with_current_candidate_stamp() {
         .unwrap()
         .unwrap();
     assert_eq!(loaded.scan_generation, generation);
-    assert_eq!(loaded.candidate, candidate.into());
+    assert_eq!(loaded.candidate, candidate);
     assert_eq!(loaded.snapshot, Some(expected));
 }
 
@@ -208,7 +210,7 @@ async fn a_rescan_carries_the_reading_forward_and_refuses_an_older_stamp() {
         .unwrap()
         .unwrap();
     assert_eq!(loaded.scan_generation, current_generation);
-    assert_eq!(loaded.candidate.file_edit_revision(), 0);
+    assert_eq!(loaded.candidate.file_edit_revision, 0);
     let carried = loaded
         .snapshot
         .clone()
@@ -258,7 +260,7 @@ async fn stale_file_edit_revision_cannot_replace_snapshot() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(loaded.candidate.file_edit_revision(), 1);
+    assert_eq!(loaded.candidate.file_edit_revision, 1);
     assert_eq!(loaded.snapshot, Some(stored.clone()));
     assert!(!db
         .replace_candidate_file_tag_snapshot(&root, &key, &stored)
@@ -340,7 +342,7 @@ async fn a_candidate_that_turns_invalid_drops_the_reading_it_carried() {
             name: candidate.name.clone(),
             watched_folder_path: root.clone(),
             display_path: candidate.display_path.clone(),
-            resolved_boundaries: Vec::new(),
+            grouping: None,
             reason: InvalidReason::CorruptImage {
                 path: "front.jpg".to_string(),
             },
@@ -478,7 +480,7 @@ async fn preparation_reshape_stores_complete_tags_after_their_file_rows() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(stored.candidate.file_edit_revision(), 1);
+    assert_eq!(stored.candidate.file_edit_revision, 1);
     assert_eq!(stored.snapshot, Some(reading));
     assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
 }

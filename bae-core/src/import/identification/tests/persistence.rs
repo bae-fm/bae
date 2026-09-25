@@ -63,14 +63,13 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
                 )
                 .with_test_flac_audio(),
                 role: FileRole::Audio,
-            }],
+            }], parts: Vec::new(), 
         },
         watched_folder_path: "/".to_string(),
         scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
         file_edit_revision: 0,
         display_path: path.trim_start_matches('/').to_string(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
+        grouping: None,
     }
 }
 

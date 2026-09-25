@@ -30,7 +30,7 @@ impl Database {
                 .collect();
             let entry_keys = stored_entries(sql, &path)?
                 .into_iter()
-                .map(|(key, _)| key)
+                .map(|entry| entry.key)
                 .collect();
             let removed =
                 sql.execute("DELETE FROM watched_import_folders WHERE path = ?", [&path])?;

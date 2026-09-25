@@ -1,8 +1,10 @@
 import BaeKit
 import SwiftUI
 
+/// Above the pane of a release read from several folders: the folders it is
+/// made of, and the action that reads them as releases of their own.
 struct ImportCombinedSourceView: View {
-    let combination: BridgeCombination
+    let parts: [BridgeReleasePart]
     let canSeparate: Bool
     let onSeparate: () -> Void
     @State
@@ -10,30 +12,28 @@ struct ImportCombinedSourceView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Label("Combined folders", systemImage: "square.stack.3d.up")
-                    .font(.headline)
-                Text(
-                    "Separate the folders to change file roles or CUE bindings."
-                )
-                .font(.caption).foregroundStyle(.secondary)
-            }
+            Label("Combined folders", systemImage: "square.stack.3d.up")
+                .font(.headline)
             Spacer()
             Menu("Source folders") {
-                ForEach(combination.parts, id: \.candidateKey) { part in
-                    Button(part.folderName) {
-                        SystemActions.revealInFinder(path: part.candidateKey)
+                ForEach(parts, id: \.folderPath) { part in
+                    Button(part.name) {
+                        SystemActions.revealInFinder(path: part.folderPath)
                     }
                 }
             }
             .fixedSize()
-            Button("Separate Folders") { confirming = true }
+            Button("Keep as Separate Releases") { confirming = true }
                 .disabled(!canSeparate)
         }
         .padding(16)
         .background(Theme.surfaceElevated)
-        .alert("Separate Folders?", isPresented: $confirming) {
-            Button("Separate Folders", role: .destructive, action: onSeparate)
+        .alert("Keep as Separate Releases", isPresented: $confirming) {
+            Button(
+                "Keep as Separate Releases",
+                role: .destructive,
+                action: onSeparate
+            )
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(

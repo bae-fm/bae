@@ -280,7 +280,7 @@ impl ImportServiceHandle {
         &self,
         key: &str,
     ) -> Result<
-        Option<crate::import::release_candidate::ReleaseCandidate>,
+        Option<crate::import::folder_scanner::FolderCandidate>,
         crate::library::LibraryError,
     > {
         self.library_manager.load_release_candidate(key).await
@@ -656,10 +656,7 @@ impl ImportServiceHandle {
         };
         if let Some((candidate, actionable)) = candidate {
             let standing = self
-                .candidate_standing(
-                    key,
-                    &crate::import::release_candidate::ReleaseCandidate::Folder(candidate.clone()),
-                )
+                .candidate_standing(key, &candidate)
                 .await?;
             return Ok(Some(ImportCandidateSnapshot::Folder {
                 candidate,
@@ -684,7 +681,7 @@ impl ImportServiceHandle {
     pub(super) async fn editable_candidate_for_commit(
         &self,
         key: &str,
-    ) -> Result<crate::import::release_candidate::ReleaseCandidate, crate::import::ImportError>
+    ) -> Result<crate::import::folder_scanner::FolderCandidate, crate::import::ImportError>
     {
         let candidate = self.get_release_candidate(key).await?.ok_or_else(|| {
             crate::import::ImportError::Internal {
@@ -703,7 +700,7 @@ impl ImportServiceHandle {
     pub(crate) async fn candidate_standing(
         &self,
         key: &str,
-        candidate: &crate::import::release_candidate::ReleaseCandidate,
+        candidate: &crate::import::folder_scanner::FolderCandidate,
     ) -> Result<crate::import::CandidateStanding, crate::library::LibraryError> {
         Ok(crate::import::CandidateStanding {
             skipped: self
@@ -712,7 +709,7 @@ impl ImportServiceHandle {
                 .await?,
             imported: self
                 .library_manager
-                .is_content_hash_imported(&candidate.files().content_hash())
+                .is_content_hash_imported(&candidate.files.content_hash())
                 .await?,
             claimed: self
                 .runtime
@@ -732,8 +729,8 @@ impl ImportServiceHandle {
     ) -> Result<tokio::sync::MutexGuard<'_, ()>, crate::import::ImportError> {
         let commit = self.folder_state_commit.lock().await;
         let candidate = self.editable_candidate_for_commit(key).await?;
-        if candidate.files().content_hash() != expected_content_hash
-            || candidate.file_edit_revision() != expected_file_edit_revision
+        if candidate.files.content_hash() != expected_content_hash
+            || candidate.file_edit_revision != expected_file_edit_revision
         {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{key} changed before its edit could be stored"),
@@ -843,8 +840,8 @@ impl ImportServiceHandle {
         let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
             return Ok(false);
         };
-        if candidate.files().content_hash() != row.candidate.content_hash
-            || candidate.file_edit_revision() != row.candidate.file_edit_revision
+        if candidate.files.content_hash() != row.candidate.content_hash
+            || candidate.file_edit_revision != row.candidate.file_edit_revision
         {
             return Ok(false);
         }
@@ -857,7 +854,7 @@ impl ImportServiceHandle {
         &self,
         key: &str,
     ) -> Result<
-        Option<crate::import::release_candidate::ReleaseCandidate>,
+        Option<crate::import::folder_scanner::FolderCandidate>,
         crate::library::LibraryError,
     > {
         let Some(candidate) = self.get_release_candidate(key).await? else {

@@ -4,10 +4,10 @@ use super::*;
 
 /// What one candidate's identification is judged by: the bytes it holds and
 /// the revision of the file decisions taken over them.
-pub(super) fn candidate_identity(candidate: &ReleaseCandidate) -> CandidateIdentity {
+pub(super) fn candidate_identity(candidate: &FolderCandidate) -> CandidateIdentity {
     (
-        candidate.files().content_hash(),
-        candidate.file_edit_revision(),
+        candidate.files.content_hash(),
+        candidate.file_edit_revision,
     )
 }
 
@@ -19,10 +19,10 @@ pub(super) fn candidate_identity(candidate: &ReleaseCandidate) -> CandidateIdent
 /// its own.
 pub(super) fn usable_stored_answer(
     row: Option<&DbImportCandidateState>,
-    candidate: &ReleaseCandidate,
+    candidate: &FolderCandidate,
 ) -> bool {
     row.is_some_and(|row| {
-        row.file_edits.revision == candidate.file_edit_revision() && row.identify.is_some()
+        row.file_edits.revision == candidate.file_edit_revision && row.identify.is_some()
     })
 }
 
@@ -33,7 +33,7 @@ pub(super) fn usable_stored_answer(
 /// A read that fails answers no candidate, and says so. This is the same read
 /// the verdict write makes, so what the queue admits and what the write accepts
 /// cannot disagree.
-pub(super) async fn answerable_candidate(context: &Context, key: &str) -> Option<ReleaseCandidate> {
+pub(super) async fn answerable_candidate(context: &Context, key: &str) -> Option<FolderCandidate> {
     match context.import.answerable_candidate(key).await {
         Ok(candidate) => candidate,
         Err(error) => {
@@ -67,9 +67,9 @@ pub(super) struct CandidateRunStart {
 /// identifiers to ask about regardless.
 pub(super) async fn candidate_run_start(
     context: &Context,
-    candidate: &ReleaseCandidate,
+    candidate: &FolderCandidate,
 ) -> Result<CandidateRunStart, crate::library::LibraryError> {
-    let content_hash = candidate.files().content_hash();
+    let content_hash = candidate.files.content_hash();
     let Some(state) = context
         .library_manager
         .load_import_candidate_state(&content_hash)
@@ -108,10 +108,10 @@ pub(super) async fn candidate_run_start(
 /// there is no telling an answered candidate from an unanswered one, and
 /// identifying it again would spend the rate limit re-learning what it may
 /// already know.
-pub(super) async fn wants_an_answer(context: &Context, candidate: &ReleaseCandidate) -> bool {
+pub(super) async fn wants_an_answer(context: &Context, candidate: &FolderCandidate) -> bool {
     match context
         .library_manager
-        .load_import_candidate_state(&candidate.files().content_hash())
+        .load_import_candidate_state(&candidate.files.content_hash())
         .await
     {
         Ok(row) => !usable_stored_answer(row.as_ref(), candidate),
@@ -161,18 +161,17 @@ pub(super) async fn admit_automatically(context: &Context, queue: &mut Queue) {
         }
     };
     let runtime = context.import.candidate_runtimes();
-    let admitted: Vec<ReleaseCandidate> = candidates
+    let admitted: Vec<FolderCandidate> = candidates
         .into_iter()
-        .map(ReleaseCandidate::from)
         .filter(|candidate| {
             // An import owns the candidate, or the last write of its answer
             // failed: neither is the automatic admission's to take back.
             runtime
-                .get(candidate.key().as_ref())
+                .get(&candidate.key())
                 .is_none_or(|runtime| runtime.import.is_none() && runtime.save_failed.is_none())
         })
         .filter(|candidate| {
-            !usable_stored_answer(stored.get(&candidate.files().content_hash()), candidate)
+            !usable_stored_answer(stored.get(&candidate.files.content_hash()), candidate)
         })
         .collect();
     let planned = admitted.len();

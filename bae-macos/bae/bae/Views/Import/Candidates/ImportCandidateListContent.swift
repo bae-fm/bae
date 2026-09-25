@@ -188,11 +188,10 @@ struct ImportCandidateListContent: View {
     /// groups inside each root are rendered by the list below.
     let onRemoveFolder: (_ path: String) -> Void
     let onRefreshFolder: (_ folder: BridgeWatchedFolder) -> Void
-    let onReleaseDecision:
-        (
-            _ key: BridgeFolderReleaseDecisionKey,
-            _ decision: BridgeFolderReleaseDecision
-        ) -> Void
+    /// Read every release below the header's folder as one.
+    let onCombineFolder: (_ key: BridgeFolderReleaseDecisionKey) -> Void
+    /// Read the release at `key` as the folders it is made of.
+    let onSeparate: (_ key: String) -> Void
     /// Skip (or unskip) the candidate at `key`. Wired to the row context menu.
     let onSkip: (_ key: String, _ skipped: Bool) -> Void
     let onReveal: (_ key: String) -> Void
@@ -629,7 +628,7 @@ extension ImportCandidateListContent {
             // offers nothing.
             if group.combinable {
                 Button("Combine as One Release") {
-                    onReleaseDecision(group.key, .combineAsOneRelease)
+                    onCombineFolder(group.key)
                 }
             }
         }
@@ -650,7 +649,7 @@ extension ImportCandidateListContent {
             isGroupMember: isGroupMember,
             onReveal: { onReveal(row.candidateKey) },
             onSkip: { onSkip(row.candidateKey, $0) },
-            onReleaseDecision: onReleaseDecision
+            onSeparate: { onSeparate(row.candidateKey) }
         )
         .tag(row.candidateKey)
     }
@@ -681,15 +680,9 @@ extension ImportCandidateListContent {
         // still that folder, and its row is the only place left to say it
         // should be read as several.
         .contextMenu {
-            ForEach(
-                invalid.resolvedBoundaries.filter(isCombined),
-                id: \.key
-            ) { boundary in
+            if invalid.separable {
                 Button("Keep as Separate Releases") {
-                    onReleaseDecision(
-                        boundary.key,
-                        .keepAsSeparateReleases
-                    )
+                    onSeparate(invalid.candidateKey)
                 }
             }
         }
@@ -756,7 +749,8 @@ extension ImportCandidateListContent {
             onAddFolder: {},
             onRemoveFolder: { _ in },
             onRefreshFolder: { _ in },
-            onReleaseDecision: { _, _ in },
+            onCombineFolder: { _ in },
+            onSeparate: { _ in },
             onSkip: { _, _ in },
             onReveal: { _ in }
         )
@@ -781,7 +775,8 @@ extension ImportCandidateListContent {
             onAddFolder: {},
             onRemoveFolder: { _ in },
             onRefreshFolder: { _ in },
-            onReleaseDecision: { _, _ in },
+            onCombineFolder: { _ in },
+            onSeparate: { _ in },
             onSkip: { _, _ in },
             onReveal: { _ in }
         )

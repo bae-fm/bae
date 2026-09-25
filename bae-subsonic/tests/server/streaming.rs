@@ -337,9 +337,10 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "lossy".to_string(),
-            source: CandidateSource::Folder {
+            source: CandidateSource {
                 path: dir,
                 scope: ReleaseFileScope::Recursive,
+                parts: Vec::new(),
             },
             selected_cover: None,
             storage_mode: StorageMode::Local,

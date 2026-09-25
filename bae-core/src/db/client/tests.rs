@@ -95,8 +95,7 @@ fn candidate_with(
         scope,
         file_edit_revision: 0,
         display_path: name.to_string(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
+        grouping: None,
     }
 }
 
@@ -118,6 +117,7 @@ fn candidate(root: &str, name: &str) -> FolderCandidate {
                 .with_test_flac_audio(),
                 role: FileRole::Audio,
             }],
+            parts: Vec::new(),
         },
         ReleaseFileScope::Recursive,
     )
@@ -244,6 +244,9 @@ mod import_candidate_state_tests;
 
 #[cfg(test)]
 mod import_list_tests;
+
+#[cfg(test)]
+mod release_grouping_tests;
 
 #[cfg(test)]
 mod fact_ids_tests;

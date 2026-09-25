@@ -25,7 +25,7 @@ fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
                 role: FileRole::Audio,
                 proposed_audio: true,
             })
-            .collect(),
+            .collect(), parts: Vec::new(), 
     }
 }
 

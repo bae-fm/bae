@@ -265,10 +265,8 @@ async fn drive_fixture(
                 files,
                 scope: bae_core::import::ReleaseFileScope::Recursive,
                 file_edit_revision: 0,
-                resolved_boundaries: Vec::new(),
-                combine_ancestor_key: None,
-            }
-            .into(),
+                grouping: None,
+            },
         },
         bae_core::util::rate_limiter::CallPriority::Interactive,
     );

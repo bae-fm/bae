@@ -177,8 +177,8 @@ impl ImportService {
             }
         };
         if stored_candidate.source() != source
-            || stored_candidate.files().content_hash() != expected_content_hash
-            || stored_candidate.file_edit_revision() != expected_edit_revision
+            || stored_candidate.files.content_hash() != expected_content_hash
+            || stored_candidate.file_edit_revision != expected_edit_revision
         {
             return Err(crate::import::ImportError::Internal {
                 detail: format!(
@@ -187,7 +187,7 @@ impl ImportService {
             });
         }
         let identity_files = stored_candidate
-            .files()
+            .files
             .release_files()
             .cloned()
             .collect::<Vec<_>>();
@@ -198,8 +198,8 @@ impl ImportService {
         .map_err(|error| crate::import::ImportError::Internal {
             detail: format!("file identity validation task failed: {error}"),
         })??;
-        let source_name = stored_candidate.name().to_string();
-        let categorized = stored_candidate.into_files();
+        let source_name = stored_candidate.name.to_string();
+        let categorized = stored_candidate.files;
 
         let preparation = library_manager
             .load_import_candidate_preparation(&expected_content_hash)
@@ -333,10 +333,7 @@ impl ImportService {
             )
             .await?;
 
-        prepared.db_release.source_folder_name = match &source {
-            crate::import::release_candidate::CandidateSource::Folder { .. } => Some(source_name),
-            crate::import::release_candidate::CandidateSource::Combination => None,
-        };
+        prepared.db_release.source_folder_name = Some(source_name);
         prepared.db_release.content_hash = Some(content_hash);
 
         prepared.selected_cover = selected_cover.clone();

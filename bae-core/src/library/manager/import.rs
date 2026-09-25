@@ -3,38 +3,46 @@
 use super::*;
 
 impl LibraryManager {
-    pub(crate) async fn set_combined_candidate_skipped(
+    pub(crate) async fn set_grouping_skipped(
         &self,
         key: &str,
         skipped: bool,
     ) -> Result<bool, LibraryError> {
-        Ok(self
-            .database
-            .set_combined_candidate_skipped(key, skipped)
-            .await?)
+        Ok(self.database.set_grouping_skipped(key, skipped).await?)
     }
 
     pub(crate) async fn load_release_candidate(
         &self,
         key: &str,
-    ) -> Result<Option<crate::import::release_candidate::ReleaseCandidate>, LibraryError> {
+    ) -> Result<Option<crate::import::folder_scanner::FolderCandidate>, LibraryError> {
         Ok(self.database.load_release_candidate(key).await?)
     }
 
-    pub(crate) async fn combine_candidates(
+    /// Read `members`, each as the caller read it, as one release under the
+    /// new grouping `key`.
+    pub(crate) async fn combine_releases(
         &self,
         key: String,
-        name: String,
-        candidates: Vec<crate::import::FolderCandidate>,
-    ) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .combine_candidates(key, name, candidates)
-            .await?)
+        members: Vec<crate::import::FolderCandidate>,
+    ) -> Result<crate::db::GroupingChanges, LibraryError> {
+        Ok(self.database.combine_releases(key, members).await?)
     }
 
-    pub(crate) async fn separate_combined_candidate(&self, key: &str) -> Result<(), LibraryError> {
-        Ok(self.database.separate_combined_candidate(key).await?)
+    /// Undo the grouping of releases picked together at `key`, returning
+    /// them as they are stored.
+    pub(crate) async fn separate_picked_grouping(
+        &self,
+        key: &str,
+    ) -> Result<Vec<crate::import::folder_scanner::ScanItem>, LibraryError> {
+        Ok(self.database.separate_picked_grouping(key).await?)
+    }
+
+    /// How the grouping `key` reads, or `None` when no grouping has it.
+    pub(crate) async fn load_grouping(
+        &self,
+        key: &str,
+    ) -> Result<Option<crate::db::GroupingFacts>, LibraryError> {
+        Ok(self.database.load_grouping(key).await?)
     }
 
     pub(crate) fn subscribe_import_list(
@@ -179,7 +187,7 @@ impl LibraryManager {
 
     pub(crate) async fn is_release_candidate_skipped(
         &self,
-        candidate: &crate::import::release_candidate::ReleaseCandidate,
+        candidate: &crate::import::folder_scanner::FolderCandidate,
     ) -> Result<bool, LibraryError> {
         Ok(self
             .database
@@ -347,7 +355,7 @@ impl LibraryManager {
         watched_folder_path: &str,
         generation: u64,
         error: Option<&str>,
-    ) -> Result<Option<Vec<String>>, LibraryError> {
+    ) -> Result<Option<crate::db::FinishedScan>, LibraryError> {
         Ok(self
             .database
             .finish_folder_scan(watched_folder_path, generation, error)
@@ -596,10 +604,11 @@ impl LibraryManager {
         &self,
         key: &crate::import::folder_scanner::FolderReleaseDecisionKey,
         decision: crate::import::folder_scanner::FolderReleaseDecision,
+        grouping: &str,
     ) -> Result<(), LibraryError> {
         Ok(self
             .database
-            .record_scanned_folder_release_decision(key, decision)
+            .record_scanned_folder_release_decision(key, decision, grouping)
             .await?)
     }
 

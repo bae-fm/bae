@@ -9,7 +9,7 @@ use crate::util::rate_limiter::CallPriority;
 use std::path::PathBuf;
 
 fn empty_categorized() -> CategorizedFiles {
-    CategorizedFiles { files: Vec::new() }
+    CategorizedFiles { files: Vec::new(), parts: Vec::new(),  }
 }
 
 fn folder_candidate(path: &str, watched: &str) -> FolderCandidate {
@@ -22,8 +22,7 @@ fn folder_candidate(path: &str, watched: &str) -> FolderCandidate {
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
         display_path: path.trim_start_matches('/').to_string(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
+        grouping: None,
     }
 }
 
@@ -421,7 +420,7 @@ fn removal_and_invalidation_drop_the_runtime() {
             name: "rel2".to_string(),
             watched_folder_path: "/watch/a".to_string(),
             display_path: "rel2".to_string(),
-            resolved_boundaries: Vec::new(),
+            grouping: None,
             reason: InvalidReason::NoValidAudio,
         },
     )));

@@ -48,7 +48,7 @@
 //! because neither is an outcome of the candidate's lookup.
 
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
-use super::release_candidate::ReleaseCandidate;
+use super::folder_scanner::FolderCandidate;
 use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::{IdentifyRunId, IdentifyState, TerminalVerdict, TitleSearch};
 use crate::import::candidates::Admission;

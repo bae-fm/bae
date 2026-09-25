@@ -11,7 +11,7 @@ fn candidate() -> CategorizedFiles {
                 role: FileRole::Audio,
                 proposed_audio: true,
             })
-            .collect(),
+            .collect(), parts: Vec::new(), 
     }
 }
 

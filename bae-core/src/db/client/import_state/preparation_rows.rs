@@ -10,7 +10,7 @@
 use super::*;
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::preparation::CandidatePreparation;
-use crate::import::release_candidate::ReleaseCandidate;
+use crate::import::folder_scanner::FolderCandidate;
 
 /// The revisions a save was prepared against, and — for a write that must
 /// not land on a folder the scan has since re-read — where the scan lists it.
@@ -125,7 +125,7 @@ impl Default for CandidateSaveExtras {
 #[derive(Debug)]
 pub(crate) enum CandidateSaved {
     /// Every row landed. Carries the scanned candidates a reshape rewrote.
-    Landed(Vec<ReleaseCandidate>),
+    Landed(Vec<FolderCandidate>),
     /// The stored revisions had moved past the expectation between the load
     /// and this write; nothing was written.
     Superseded,
@@ -167,6 +167,7 @@ pub(super) fn save_preparation_on(
     prep: &CandidatePreparation,
     expected: &CandidateSaveExpectation,
     extras: &CandidateSaveExtras,
+    observed_at: i64,
 ) -> Result<CandidateSaved, DbError> {
     prep.validate().map_err(DbError::Message)?;
     let content_hash = prep.content_hash.as_str();
@@ -299,11 +300,18 @@ pub(super) fn save_preparation_on(
                     "candidate file decision received duplicate scan entry keys".to_string(),
                 ));
             }
-            settle_scanned_candidates(sql, content_hash, expected_edit, next_edit, &settled_by_key)?
+            settle_scanned_candidates(
+                sql,
+                content_hash,
+                expected_edit,
+                next_edit,
+                &settled_by_key,
+                observed_at,
+            )?
         }
     };
     for candidate in &reshaped {
-        let available = crate::import::track_slots::audio_units(candidate.files());
+        let available = crate::import::track_slots::audio_units(&candidate.files);
         if let Some(track) = prep
             .metadata
             .draft
@@ -371,7 +379,8 @@ impl Database {
         expected: CandidateSaveExpectation,
         extras: CandidateSaveExtras,
     ) -> Result<CandidateSaved, DbError> {
-        self.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras))
+        let observed_at = self.inner.clock.now().timestamp_millis();
+        self.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras, observed_at))
             .await
     }
 

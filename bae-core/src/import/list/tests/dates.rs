@@ -65,6 +65,7 @@ fn dates_cross_watched_roots_and_ties_have_a_stable_natural_path_order() {
         ScanCandidateListRow {
             watched_folder_path: second.clone(),
             path: format!("{second}/Newest"),
+            folder: format!("{second}/Newest"),
             ..dated("Newest", 20)
         },
     ];

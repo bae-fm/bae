@@ -497,9 +497,8 @@ extension MappingFixtures {
         audioIdentity: String
     ) -> BridgeFolderCandidate {
         BridgeFolderCandidate(
-            compositionAction: .combine,
-            combination: nil,
-            sourceFileEditsAllowed: true,
+            groupingAction: .combine,
+            parts: [],
             folderPath: key,
             sourceFolderName: name,
             watchedFolderPath: "/Music/Downloads",

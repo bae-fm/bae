@@ -65,7 +65,7 @@ use tracing::{debug, error, warn};
 #[derive(Debug, Clone)]
 pub enum ExtractionSource {
     Candidate {
-        candidate: crate::import::release_candidate::ReleaseCandidate,
+        candidate: crate::import::folder_scanner::FolderCandidate,
     },
     Release {
         release_id: String,
@@ -292,7 +292,7 @@ async fn run_extraction(
         // One scan derives every non-OCR signal in a single blocking hop, then
         // the artwork OCR streams.
         ExtractionSource::Candidate { candidate } => {
-            let content_hash = candidate.files().content_hash();
+            let content_hash = candidate.files.content_hash();
             if let Some(settled) = inner.settled.get_cloned(&content_hash) {
                 debug!(
                     "signals: {} was read before with these files; reusing that reading",
@@ -302,7 +302,7 @@ async fn run_extraction(
                 return;
             }
             let fast = match run_fast_pass_blocking(&inner.runtime_handle, move || {
-                gather_non_ocr_sources(&candidate.source_folders(), candidate.files())
+                gather_non_ocr_sources(&candidate.source_folders(), &candidate.files)
             })
             .await
             {

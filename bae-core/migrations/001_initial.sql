@@ -525,23 +525,61 @@ CREATE TABLE IF NOT EXISTS watched_import_folders (
     position  INTEGER NOT NULL UNIQUE CHECK (position >= 0)
 ) STRICT;
 
--- Whether a folder that holds several release-looking subfolders is one
--- release or several.
-CREATE TABLE IF NOT EXISTS folder_release_decisions (
+-- Folders read as one release, or a folder whose releases are kept apart.
+--
+-- A grouping anchored at a folder reads every release below that folder as
+-- one (`combined = 1`) or keeps them apart (`combined = 0`); the scan proposes
+-- one wherever a folder yields several releases and nothing is stored, and the
+-- person's answer replaces it. A grouping with no anchor takes in the
+-- releases its members name, from anywhere; it is always combined, and it
+-- takes those releases out of the queue for as long as it stands.
+CREATE TABLE IF NOT EXISTS release_grouping (
+    -- The candidate key of the release the grouping reads as one.
+    key                  TEXT PRIMARY KEY,
+    -- The watched folder its release is listed under.
     watched_folder_path  TEXT NOT NULL,
-    relative_folder_path TEXT NOT NULL,
-    decision             TEXT NOT NULL CHECK (
-        decision IN ('combine_as_one_release', 'keep_as_separate_releases')
-    ),
+    anchor_relative_path TEXT,
+    combined             INTEGER NOT NULL CHECK (combined IN (0, 1)),
     -- Who decided. The scan reads a folder its own way when nothing is stored
     -- and records that as 'heuristic'; the user's own answer replaces it as
     -- 'user' and is never read over again.
     author               TEXT NOT NULL CHECK (author IN ('user', 'heuristic')),
-    PRIMARY KEY (watched_folder_path, relative_folder_path),
+    skipped              INTEGER NOT NULL DEFAULT 0 CHECK (skipped IN (0, 1)),
+    -- Why the release a grouping with no anchor reads cannot be built as it
+    -- stands: a release it takes in is gone or no longer valid. The release
+    -- keeps what it was last built from until that is fixed or the grouping
+    -- is undone.
+    error                TEXT,
+    UNIQUE (watched_folder_path, anchor_relative_path),
+    CHECK (anchor_relative_path IS NOT NULL OR (combined = 1 AND author = 'user')),
+    CHECK (anchor_relative_path IS NULL OR error IS NULL),
     FOREIGN KEY (watched_folder_path)
         REFERENCES watched_import_folders (path)
         ON DELETE CASCADE
 ) STRICT;
+
+-- The releases a grouping with no anchor takes in, in play order.
+CREATE TABLE IF NOT EXISTS release_grouping_member (
+    grouping_key        TEXT NOT NULL
+        REFERENCES release_grouping (key) ON DELETE CASCADE,
+    position            INTEGER NOT NULL CHECK (position >= 0),
+    member_key          TEXT NOT NULL UNIQUE,
+    watched_folder_path TEXT NOT NULL,
+    PRIMARY KEY (grouping_key, position)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS release_grouping_member_by_root
+    ON release_grouping_member (watched_folder_path);
+
+-- A grouping outlives no watched folder it takes a release from.
+CREATE TRIGGER IF NOT EXISTS remove_root_groupings BEFORE DELETE ON watched_import_folders
+BEGIN
+    DELETE FROM release_grouping
+    WHERE key IN (
+        SELECT grouping_key FROM release_grouping_member
+        WHERE watched_folder_path = OLD.path
+    );
+END;
 
 -- The candidates the user dismissed, so a later scan does not offer them again.
 CREATE TABLE IF NOT EXISTS skipped_import_candidates (
@@ -593,7 +631,8 @@ CREATE TABLE IF NOT EXISTS folder_scan_directory (
     FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE
 ) STRICT;
 
--- One release-looking folder the scan found, or one combination of them.
+-- One release the scan found: a folder, or folders a grouping reads as one.
+-- `path` is the release's key — its folder's path, or its grouping's key.
 CREATE TABLE IF NOT EXISTS scan_candidate (
     watched_folder_path            TEXT NOT NULL,
     path                           TEXT NOT NULL,
@@ -601,11 +640,14 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     kind                           TEXT NOT NULL CHECK (kind IN ('tentative', 'valid', 'invalid')),
     name                           TEXT NOT NULL,
     display_path                   TEXT NOT NULL,
-    file_root                      TEXT,
-    scope                          TEXT CHECK (scope IS NULL OR scope IN ('direct', 'recursive')),
+    -- The folder the release is shown as.
+    folder                         TEXT NOT NULL,
+    -- The folder its files are read from, and whether all of them below it.
+    file_root                      TEXT NOT NULL,
+    scope                          TEXT NOT NULL CHECK (scope IN ('direct', 'recursive')),
     content_hash                   TEXT,
     file_edit_revision             INTEGER NOT NULL DEFAULT 0 CHECK (file_edit_revision >= 0),
-    combine_ancestor_relative_path TEXT,
+    grouping_key                   TEXT CHECK (grouping_key IS NULL OR grouping_key = path),
     invalid_reason                 TEXT CHECK (invalid_reason IS NULL OR invalid_reason IN ('corrupt_audio', 'corrupt_image', 'no_valid_audio')),
     invalid_reason_path            TEXT,
     first_seen_at                  INTEGER,
@@ -613,11 +655,14 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     source_date_kind               TEXT CHECK ((source_date IS NULL AND source_date_kind IS NULL)
         OR (source_date IS NOT NULL AND source_date_kind IS NOT NULL
             AND source_date_kind IN ('added_to_directory', 'created'))),
-    source_kind                    TEXT NOT NULL DEFAULT 'folder' CHECK (source_kind IN ('folder', 'combination')),
+    -- 'folder' for what a scan read; 'grouping' for a release a grouping with
+    -- no anchor builds from the releases it takes in.
+    source_kind                    TEXT NOT NULL DEFAULT 'folder' CHECK (source_kind IN ('folder', 'grouping')),
     PRIMARY KEY (watched_folder_path, path),
     FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE,
     CHECK ((kind = 'invalid') = (invalid_reason IS NOT NULL)),
-    CHECK ((kind = 'invalid') = (file_root IS NULL AND scope IS NULL AND content_hash IS NULL)),
+    CHECK ((kind = 'invalid') = (content_hash IS NULL)),
+    CHECK ((source_kind = 'grouping') <= (grouping_key IS NOT NULL)),
     CHECK ((invalid_reason IN ('corrupt_audio', 'corrupt_image')) = (invalid_reason_path IS NOT NULL))
 ) STRICT;
 
@@ -717,16 +762,14 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file_tag (
         REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE
 ) STRICT;
 
--- The subfolder boundaries a candidate was resolved across, and how each was
--- decided.
-CREATE TABLE IF NOT EXISTS scan_candidate_resolved_boundary (
-    watched_folder_path  TEXT NOT NULL,
-    candidate_path       TEXT NOT NULL,
-    position             INTEGER NOT NULL CHECK (position >= 0),
-    relative_folder_path TEXT NOT NULL,
-    decision             TEXT NOT NULL CHECK (decision IN ('combine_as_one_release', 'keep_as_separate_releases')),
-    name                 TEXT NOT NULL,
-    display_path         TEXT NOT NULL,
+-- The folders a release read from several is made of, in play order, and the
+-- prefix each one's files take in the release.
+CREATE TABLE IF NOT EXISTS scan_candidate_part (
+    watched_folder_path TEXT NOT NULL,
+    candidate_path      TEXT NOT NULL,
+    position            INTEGER NOT NULL CHECK (position >= 0),
+    folder              TEXT NOT NULL,
+    prefix              TEXT NOT NULL,
     PRIMARY KEY (watched_folder_path, candidate_path, position),
     FOREIGN KEY (watched_folder_path, candidate_path)
         REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE
@@ -804,72 +847,10 @@ CREATE TABLE IF NOT EXISTS scan_sheet_audio_file (
         REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE
 ) STRICT;
 
--- Several scanned folders the user joined into one candidate.
-CREATE TABLE IF NOT EXISTS candidate_combination (
-    candidate_key TEXT PRIMARY KEY,
-    watched_folder_path TEXT NOT NULL
-        REFERENCES watched_import_folders (path) ON DELETE CASCADE,
-    name TEXT NOT NULL CHECK (length(trim(name)) > 0),
-    skipped INTEGER NOT NULL DEFAULT 0 CHECK (skipped IN (0, 1)),
-    created_at INTEGER NOT NULL,
-    error TEXT
-) STRICT;
-
--- One member folder of a combination, with the discs and tracks it contributes.
-CREATE TABLE IF NOT EXISTS candidate_combination_member (
-    combination_key TEXT NOT NULL
-        REFERENCES candidate_combination (candidate_key) ON DELETE CASCADE,
-    position INTEGER NOT NULL CHECK (position >= 0),
-    candidate_key TEXT NOT NULL UNIQUE,
-    watched_folder_path TEXT NOT NULL,
-    folder_name TEXT NOT NULL,
-    file_prefix TEXT NOT NULL,
-    first_disc INTEGER NOT NULL CHECK (first_disc >= 1),
-    disc_count INTEGER NOT NULL CHECK (disc_count >= 1),
-    track_count INTEGER NOT NULL CHECK (track_count >= 1),
-    PRIMARY KEY (combination_key, position)
-) STRICT;
-
-CREATE INDEX IF NOT EXISTS candidate_combination_member_by_root
-    ON candidate_combination_member (watched_folder_path);
-
--- A combination outlives neither its watched folder nor its member folders: it
--- is dropped when the root goes, and marked unusable when a member changes.
-
-CREATE TRIGGER IF NOT EXISTS remove_root_combinations BEFORE DELETE ON watched_import_folders
+-- A release a grouping reads as one leaves the queue with its grouping.
+CREATE TRIGGER IF NOT EXISTS remove_grouping_candidate AFTER DELETE ON release_grouping
 BEGIN
-    DELETE FROM candidate_combination
-    WHERE candidate_key IN (
-        SELECT combination_key FROM candidate_combination_member
-        WHERE watched_folder_path = OLD.path
-    );
-END;
-
-CREATE TRIGGER IF NOT EXISTS invalidate_combination_source_delete BEFORE DELETE ON scan_candidate
-WHEN OLD.source_kind = 'folder'
-BEGIN
-    UPDATE candidate_combination
-    SET error = 'Source folder changed or disappeared: ' || OLD.name
-    WHERE candidate_key IN (
-        SELECT combination_key FROM candidate_combination_member WHERE candidate_key = OLD.path
-    );
-END;
-
-CREATE TRIGGER IF NOT EXISTS invalidate_combination_source_edit AFTER UPDATE OF content_hash, file_edit_revision ON scan_candidate
-WHEN OLD.source_kind = 'folder'
-    AND (NEW.content_hash IS NOT OLD.content_hash OR NEW.file_edit_revision != OLD.file_edit_revision)
-BEGIN
-    UPDATE candidate_combination
-    SET error = 'Source folder changed: ' || OLD.name
-    WHERE candidate_key IN (
-        SELECT combination_key FROM candidate_combination_member WHERE candidate_key = OLD.path
-    );
-END;
-
-CREATE TRIGGER IF NOT EXISTS remove_combination_candidate AFTER DELETE ON candidate_combination
-BEGIN
-    DELETE FROM scan_candidate
-    WHERE source_kind = 'combination' AND path = OLD.candidate_key;
+    DELETE FROM scan_candidate WHERE path = OLD.key;
 END;
 
 -- ── Import candidates ─────────────────────────────────────────────────────────

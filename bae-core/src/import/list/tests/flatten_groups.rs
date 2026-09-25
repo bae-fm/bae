@@ -2,22 +2,19 @@
 
 use super::*;
 
-/// A folder nothing has settled either way, holding several releases, is
-/// combinable too — the scan names it on every row below it, and the header
-/// for it is where the choice belongs.
+/// A folder nothing has settled either way, holding several releases below a
+/// folder that keeps them apart, is combinable too — it is the nearest folder
+/// above them to hold them all, and the header for it is where the choice
+/// belongs.
 #[test]
-fn a_folder_the_scan_named_as_an_ancestor_offers_to_combine() {
+fn a_folder_nothing_settled_over_several_releases_offers_to_combine() {
     let mut rows = queue();
     rows.candidates = vec![
-        ScanCandidateListRow {
-            combine_ancestor_relative_path: Some("Wrapper".to_string()),
-            ..candidate("Wrapper/Box/Disc 1")
-        },
-        ScanCandidateListRow {
-            combine_ancestor_relative_path: Some("Wrapper".to_string()),
-            ..candidate("Wrapper/Box/Disc 2")
-        },
+        candidate("Wrapper/Box/Disc 1"),
+        candidate("Wrapper/Box/Disc 2"),
     ];
+    rows.folder_readings
+        .insert((root(), "Wrapper/Box".to_string()), false);
 
     let flat = flattened(&rows, &view(TriageTab::Pending));
     let header = flat.headers.first().expect("a header for Wrapper");

@@ -12,9 +12,9 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "direct-entry-candidate".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder {
+            source: bae_core::import::release_candidate::CandidateSource {
                 path: album_dir,
-                scope: bae_core::import::ReleaseFileScope::Recursive,
+                scope: bae_core::import::ReleaseFileScope::Recursive, parts: Vec::new(), 
             },
             selected_cover: None,
             storage_mode: StorageMode::Local,

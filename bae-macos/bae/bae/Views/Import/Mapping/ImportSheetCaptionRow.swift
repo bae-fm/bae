@@ -11,8 +11,6 @@ import SwiftUI
 /// that name, or one core refused — is the one thing left to do, so it gets
 /// its own row with its choices, and the row goes away once it is bound.
 struct ImportSheetCaptionRow: View {
-    @Environment(\.sourceFileEditsAllowed)
-    private var sourceFileEditsAllowed
     let sheet: BridgeSheetGroup
     /// Identifying signals extracted from this sheet — a cue the disc ID was
     /// computed from. Empty otherwise.
@@ -42,7 +40,6 @@ struct ImportSheetCaptionRow: View {
                         reference: reference,
                         onBind: { bind(reference, to: $0) }
                     )
-                    .disabled(!sourceFileEditsAllowed)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -73,7 +70,6 @@ struct ImportSheetCaptionRow: View {
                     sheet: sheet,
                     onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
                 )
-                .disabled(!sourceFileEditsAllowed)
             }
             formatTag
             nameButton
@@ -140,7 +136,6 @@ struct ImportSheetCaptionRow: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .frame(minWidth: 24)
-        .disabled(!sourceFileEditsAllowed)
         .onHover { hoveringBound = $0 }
     }
 

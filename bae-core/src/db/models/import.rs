@@ -11,7 +11,7 @@ use super::*;
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct DbCandidateFileTagSnapshot {
     pub scan_generation: u64,
-    pub candidate: crate::import::release_candidate::ReleaseCandidate,
+    pub candidate: crate::import::folder_scanner::FolderCandidate,
     pub snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
 }
 

@@ -23,11 +23,8 @@ struct TriageRowView: View {
     let isGroupMember: Bool
     let onReveal: () -> Void
     let onSkip: (_ skipped: Bool) -> Void
-    let onReleaseDecision:
-        (
-            _ key: BridgeFolderReleaseDecisionKey,
-            _ decision: BridgeFolderReleaseDecision
-        ) -> Void
+    /// Read this release as the folders it is made of.
+    let onSeparate: () -> Void
 
     init(
         row: BridgeTriageRow,
@@ -35,18 +32,14 @@ struct TriageRowView: View {
         isGroupMember: Bool,
         onReveal: @escaping () -> Void,
         onSkip: @escaping (_ skipped: Bool) -> Void,
-        onReleaseDecision:
-            @escaping (
-                _ key: BridgeFolderReleaseDecisionKey,
-                _ decision: BridgeFolderReleaseDecision
-            ) -> Void = { _, _ in }
+        onSeparate: @escaping () -> Void = {}
     ) {
         self.row = row
         self.coverContent = coverContent
         self.isGroupMember = isGroupMember
         self.onReveal = onReveal
         self.onSkip = onSkip
-        self.onReleaseDecision = onReleaseDecision
+        self.onSeparate = onSeparate
     }
 
     var body: some View {
@@ -61,7 +54,7 @@ struct TriageRowView: View {
                 isGroupMember: isGroupMember,
                 onReveal: onReveal,
                 onSkip: onSkip,
-                onReleaseDecision: onReleaseDecision
+                onSeparate: onSeparate
             )
         }
     }
@@ -76,11 +69,8 @@ struct TriageRowContent: View {
     let isGroupMember: Bool
     let onReveal: () -> Void
     let onSkip: (_ skipped: Bool) -> Void
-    let onReleaseDecision:
-        (
-            _ key: BridgeFolderReleaseDecisionKey,
-            _ decision: BridgeFolderReleaseDecision
-        ) -> Void
+    /// Read this release as the folders it is made of.
+    let onSeparate: () -> Void
 
     var body: some View {
         rowContent
@@ -99,19 +89,13 @@ struct TriageRowContent: View {
                     Divider()
                 }
                 Button("Reveal in Finder", action: onReveal)
-                // A folder read as one release is this row and nothing else, so
-                // its row is the only place left to say otherwise. A folder read
-                // as several is a group of rows, and its header carries that
-                // choice — a row is a release, not a place to answer a question
-                // about the folder holding it.
-                ForEach(combinedBoundaries, id: \.key) { boundary in
+                // A release read from several folders is this row and nothing
+                // else, so its row is the only place left to say otherwise. A
+                // folder read as several releases is a group of rows, and its
+                // header carries that choice.
+                if row.separable {
                     Divider()
-                    Button("Keep as Separate Releases") {
-                        onReleaseDecision(
-                            boundary.key,
-                            .keepAsSeparateReleases
-                        )
-                    }
+                    Button("Keep as Separate Releases", action: onSeparate)
                 }
             }
     }
@@ -125,12 +109,6 @@ struct TriageRowContent: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
-    }
-
-    /// The folders this row is the whole of, read as one release. Each offers
-    /// to be read as several again.
-    private var combinedBoundaries: [BridgeResolvedFolderReleaseBoundary] {
-        row.resolvedBoundaries.filter(isCombined)
     }
 
     // MARK: - Leading
@@ -494,13 +472,3 @@ extension TriageRowContent {
         .windowBackground()
     }
 #endif
-
-/// Whether a settled reading is "this folder is one release" — the only one a
-/// row can offer to reverse, because a folder read as several releases is a
-/// group of rows and its header carries that choice.
-func isCombined(_ boundary: BridgeResolvedFolderReleaseBoundary) -> Bool {
-    if case .combineAsOneRelease = boundary.decision {
-        return true
-    }
-    return false
-}

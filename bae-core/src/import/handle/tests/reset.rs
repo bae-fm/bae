@@ -97,8 +97,8 @@ async fn reset_setup_restores_cue_choices_and_saves_complete_tags() {
             let after = preparation(&handle, &candidate.files.content_hash()).await;
             let reset = handle.get_release_candidate(&key).await.unwrap().unwrap();
             assert_eq!(
-                reset.files(),
-                &original_files,
+                reset.files,
+                original_files,
                 "{choice}, prefill={prefill}"
             );
             assert_eq!(after.file_edit_revision, before.file_edit_revision + 1);
@@ -134,7 +134,7 @@ async fn reset_setup_restores_cue_choices_and_saves_complete_tags() {
                     .unwrap();
                 let snapshot = stored.snapshot.unwrap();
                 assert_eq!(snapshot.files.len(), 2);
-                assert_eq!(snapshot.file_edit_revision, reset.file_edit_revision());
+                assert_eq!(snapshot.file_edit_revision, reset.file_edit_revision);
                 assert_eq!(snapshot.scan_generation, stored.scan_generation);
                 handle.file_tags = Arc::new(CountingFileTagReader::failing(0));
                 handle
@@ -207,15 +207,9 @@ async fn reset_setup_preserves_combination_members_and_disc_layout() {
         manager.set_prefill_with_file_metadata(prefill).unwrap();
         handle.reset_candidate_setup(&key).await.unwrap();
         let reset = pane(&handle, &key).await;
-        assert_eq!(reset.candidate.files(), source.files());
-        let crate::import::release_candidate::ReleaseCandidate::Combined(before) = &source else {
-            panic!("combined source")
-        };
-        let crate::import::release_candidate::ReleaseCandidate::Combined(after) = &reset.candidate
-        else {
-            panic!("combined source")
-        };
-        assert_eq!(before.combination, after.combination);
+        assert_eq!(reset.candidate.files, source.files);
+        assert!(source.grouping.is_some());
+        assert_eq!(reset.candidate.files.parts, source.files.parts);
         assert_eq!(
             reset
                 .metadata_draft
@@ -231,7 +225,7 @@ async fn reset_setup_preserves_combination_members_and_disc_layout() {
             ]
         );
         if !prefill {
-            assert_eq!(reset.metadata_draft.album_title, source.name());
+            assert_eq!(reset.metadata_draft.album_title, source.name);
         }
         assert_eq!(
             preparation(&handle, &first.files.content_hash()).await,
@@ -241,9 +235,9 @@ async fn reset_setup_preserves_combination_members_and_disc_layout() {
             preparation(&handle, &second.files.content_hash()).await,
             member_before[1]
         );
-        let once = preparation(&handle, &source.files().content_hash()).await;
+        let once = preparation(&handle, &source.files.content_hash()).await;
         handle.reset_candidate_setup(&key).await.unwrap();
-        let twice = preparation(&handle, &source.files().content_hash()).await;
+        let twice = preparation(&handle, &source.files.content_hash()).await;
         assert_eq!(once.draft, twice.draft);
         assert_eq!(once.cover, twice.cover);
         assert_eq!(once.metadata_provenance, twice.metadata_provenance);
@@ -601,10 +595,13 @@ async fn reset_setup_without_tags_rejects_an_unchanged_source_rescanned_after_pr
 
 async fn mirrored_combination_folder(
     manager: &LibraryManager,
-    source: &crate::import::release_candidate::ReleaseCandidate,
+    source: &crate::import::folder_scanner::FolderCandidate,
     root: &Path,
 ) -> FolderCandidate {
-    let mut files = source.files().clone();
+    // The same files, read as one folder of their own: the parts they were
+    // read from belong to the release they are mirrored from, not to this one.
+    let mut files = source.files.clone();
+    files.parts.clear();
     for entry in &mut files.files {
         let target = root.join(&entry.file.relative_path);
         std::fs::create_dir_all(target.parent().unwrap()).unwrap();
@@ -625,12 +622,11 @@ async fn mirrored_combination_folder(
         files,
         watched_folder_path: root.to_string_lossy().into_owned(),
         scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
-        file_edit_revision: source.file_edit_revision(),
+        file_edit_revision: source.file_edit_revision,
         display_path: "Mirrored collection".into(),
-        resolved_boundaries: vec![],
-        combine_ancestor_key: None,
+        grouping: None,
     };
-    assert_eq!(folder.files.content_hash(), source.files().content_hash());
+    assert_eq!(folder.files.content_hash(), source.files.content_hash());
     manager
         .add_watched_import_folder(&folder.watched_folder_path)
         .await
@@ -679,23 +675,16 @@ async fn reset_setup_updates_compatible_folder_and_combination_identities_togeth
         assert_eq!(after.draft.tracks.len(), 4);
         for key in [&folder_key, &combined_key] {
             let candidate = handle.get_release_candidate(key).await.unwrap().unwrap();
-            assert_eq!(candidate.file_edit_revision(), after.file_edit_revision);
-            let available = crate::import::track_slots::audio_units(candidate.files());
+            assert_eq!(candidate.file_edit_revision, after.file_edit_revision);
+            let available = crate::import::track_slots::audio_units(&candidate.files);
             assert!(after
                 .draft
                 .tracks
                 .iter()
                 .all(|track| available.contains(&track.edit.file)));
             assert_eq!(pane(&handle, key).await.metadata_draft.tracks.len(), 4);
-            if let crate::import::release_candidate::ReleaseCandidate::Combined(combined) =
-                candidate
-            {
-                let crate::import::release_candidate::ReleaseCandidate::Combined(original) =
-                    &original
-                else {
-                    unreachable!()
-                };
-                assert_eq!(combined.combination, original.combination);
+            if candidate.grouping.is_some() {
+                assert_eq!(candidate.files.parts, original.files.parts);
             }
         }
         let mut folder_event = false;
@@ -707,8 +696,8 @@ async fn reset_setup_updates_compatible_folder_and_combination_identities_togeth
                 {
                     folder_event = true
                 }
-                ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key })
-                    if candidate_key == combined_key =>
+                ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate })
+                    if candidate.key() == combined_key =>
                 {
                     combined_event = true
                 }
@@ -720,8 +709,12 @@ async fn reset_setup_updates_compatible_folder_and_combination_identities_togeth
     }
 }
 
+/// A release read from folders picked together takes each folder's file
+/// decisions as its own, and they are its own from then on: a reset of any
+/// candidate holding the same files resets the release's too, so the files
+/// and the draft they share never disagree.
 #[tokio::test(flavor = "multi_thread")]
-async fn reset_setup_refuses_audio_incompatible_with_a_frozen_combination() {
+async fn reset_setup_resets_a_combination_sharing_the_same_files() {
     let (manager, _library) = setup_test_manager().await;
     let first_root = TempDir::new().unwrap();
     let second_root = TempDir::new().unwrap();
@@ -761,30 +754,17 @@ async fn reset_setup_refuses_audio_incompatible_with_a_frozen_combination() {
         .await
         .unwrap();
     let before = preparation(&handle, &folder.files.content_hash()).await;
-    assert_eq!(before.draft.tracks.len(), 3);
-    assert!(handle.reset_candidate_setup(&folder_key).await.is_err());
-    assert_eq!(
-        preparation(&handle, &folder.files.content_hash()).await,
-        before
-    );
-    assert_eq!(
-        handle
-            .get_release_candidate(&combined_key)
-            .await
-            .unwrap()
-            .unwrap(),
-        combined
-    );
-    assert_eq!(
-        handle
-            .get_release_candidate(&folder_key)
-            .await
-            .unwrap()
-            .unwrap()
-            .files(),
-        &folder.files
-    );
-    assert_eq!(pane(&handle, &folder_key).await.lookup_choices, choices);
+    assert_eq!(before.draft.tracks.len(), 3, "the folder's decision carried over");
+    handle.reset_candidate_setup(&folder_key).await.unwrap();
+    let after = preparation(&handle, &folder.files.content_hash()).await;
+    assert_eq!(after.draft.tracks.len(), 4);
+    for key in [&folder_key, &combined_key] {
+        let candidate = handle.get_release_candidate(key).await.unwrap().unwrap();
+        assert_eq!(candidate.files.audio().count(), 4, "{key}");
+        assert_eq!(candidate.file_edit_revision, after.file_edit_revision);
+    }
+    assert!(combined.grouping.is_some());
+    assert_eq!(pane(&handle, &folder_key).await.lookup_choices, Default::default());
     shut_down(handle).await;
 }
 
@@ -897,7 +877,7 @@ async fn reset_setup_without_tags_keeps_a_combination_snapshot_ineligible_until_
     handle.reset_candidate_setup(&key).await.unwrap();
     let source = handle.get_release_candidate(&key).await.unwrap().unwrap();
     let with_tags = manager
-        .load_candidate_file_tag_snapshot(source.watched_folder_path(), &key)
+        .load_candidate_file_tag_snapshot(&source.watched_folder_path, &key)
         .await
         .unwrap()
         .unwrap();
@@ -910,7 +890,7 @@ async fn reset_setup_without_tags_keeps_a_combination_snapshot_ineligible_until_
     // Each combined folder's cover.jpg is named as the front cover, so one
     // ranks ahead of the tags' embedded artwork.
     assert!(matches!(
-        preparation(&handle, &source.files().content_hash())
+        preparation(&handle, &source.files.content_hash())
             .await
             .cover,
         Some(crate::import::CoverSelection::Local(file_id)) if file_id.ends_with("/cover.jpg")
@@ -918,9 +898,9 @@ async fn reset_setup_without_tags_keeps_a_combination_snapshot_ineligible_until_
     manager.set_prefill_with_file_metadata(false).unwrap();
     handle.reset_candidate_setup(&key).await.unwrap();
     let reset = pane(&handle, &key).await;
-    assert_eq!(reset.candidate.files(), source.files());
+    assert_eq!(reset.candidate.files, source.files);
     assert_eq!(reset.metadata_provenance, None);
-    let saved = preparation(&handle, &source.files().content_hash()).await;
+    let saved = preparation(&handle, &source.files.content_hash()).await;
     // Which of the combined folders leads the file list is the combination's
     // own order, so the image is named by whichever it is.
     let Some(crate::import::CoverSelection::Local(file_id)) = saved.cover.clone() else {
@@ -936,14 +916,14 @@ async fn reset_setup_without_tags_keeps_a_combination_snapshot_ineligible_until_
         "the pane shows the stored selection"
     );
     let stale = manager
-        .load_candidate_file_tag_snapshot(source.watched_folder_path(), &key)
+        .load_candidate_file_tag_snapshot(&source.watched_folder_path, &key)
         .await
         .unwrap()
         .unwrap();
     assert_eq!(stale.snapshot, with_tags.snapshot);
     assert_ne!(
         stale.snapshot.as_ref().unwrap().file_edit_revision,
-        stale.candidate.file_edit_revision()
+        stale.candidate.file_edit_revision
     );
     let reader = Arc::new(CountingFileTagReader::immediate());
     let (_, reread) = handle
@@ -953,11 +933,11 @@ async fn reset_setup_without_tags_keeps_a_combination_snapshot_ineligible_until_
     assert_eq!(reader.read_count(), 4);
     assert_eq!(
         reread.file_edit_revision,
-        reset.candidate.file_edit_revision()
+        reset.candidate.file_edit_revision
     );
     assert_eq!(reread.embedded_cover, None);
     assert_eq!(
-        preparation(&handle, &source.files().content_hash()).await,
+        preparation(&handle, &source.files.content_hash()).await,
         saved
     );
     shut_down(handle).await;

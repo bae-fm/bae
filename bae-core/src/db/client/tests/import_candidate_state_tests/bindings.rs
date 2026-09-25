@@ -37,8 +37,7 @@ async fn a_cleared_binding_survives_a_relaunch() {
         scope: crate::import::ReleaseFileScope::Recursive,
         file_edit_revision: 0,
         display_path: String::new(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
+        grouping: None,
     };
     db.save_folder_scan_item(
         &root,
@@ -288,10 +287,8 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
         .await
         .unwrap();
     assert_eq!(
-        decisions.get(&key.relative_folder_path),
-        Some((
-            FolderReleaseDecision::CombineAsOneRelease,
-            crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
-        ))
+        decisions.get(&key.relative_folder_path)
+            .map(|reading| (reading.decision, reading.author)),
+        Some((FolderReleaseDecision::CombineAsOneRelease, crate::import::folder_scanner::FolderReleaseDecisionAuthor::User))
     );
 }

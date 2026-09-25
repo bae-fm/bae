@@ -13,15 +13,13 @@ extension ImportMappingTracksLayoutTests {
     @MainActor
     @Test(
         "the summary menu assigns and clears only the chosen reference",
-        arguments: [(true, 0), (true, 1), (false, 0)]
+        arguments: [0, 1]
     )
-    func cueReferenceCommands(editable: Bool, referenceIndex: Int) async throws
-    {
+    func cueReferenceCommands(referenceIndex: Int) async throws {
         let recorder = MappingTrackActionRecorder()
         let size = NSSize(width: 900, height: 180)
         let (window, host) = hostSheet(
             assignmentSheet(secondAssigned: true),
-            editable: editable,
             recorder: recorder,
             size: size
         )
@@ -31,11 +29,7 @@ extension ImportMappingTracksLayoutTests {
             .compactMap { $0 as? NSPopUpButton }
         try #require(buttons.count == 1, "the summary is the one menu")
         let button = buttons[0]
-        #expect(button.isEnabled == editable)
-        guard editable else {
-            #expect(recorder.sheetBindings.isEmpty)
-            return
-        }
+        #expect(button.isEnabled)
         let reference = referenceIndex == 0 ? "First.wav" : "Second.wav"
         let audio = referenceIndex == 0 ? "Replacement.flac" : "Second.flac"
         SnapshotTestSupport.populateMenu(button)
@@ -98,7 +92,6 @@ extension ImportMappingTracksLayoutTests {
         let size = NSSize(width: 900, height: 180)
         let (window, host) = hostSheet(
             assignmentSheet(secondAssigned: false),
-            editable: true,
             recorder: MappingTrackActionRecorder(),
             size: size
         )
@@ -183,15 +176,13 @@ extension ImportMappingTracksLayoutTests {
     /// A sheet whose every reference is bound has nothing left to do, so no
     /// reference is listed: the summary states the count, and its menu is
     /// where a binding is changed — whether or not the picker's choices
-    /// have loaded, and whether or not editing is allowed.
+    /// have loaded.
     @MainActor
     @Test(
         "a fully bound multi-file CUE lists no reference",
-        arguments: [(true, true), (true, false), (false, false)]
+        arguments: [true, false]
     )
-    func boundCueReferencesAreNotListed(editable: Bool, hasOffers: Bool)
-        async throws
-    {
+    func boundCueReferencesAreNotListed(hasOffers: Bool) async throws {
         let references = ["First", "Second"]
             .map { name in
                 BridgeSheetReferenceOptions(
@@ -219,7 +210,6 @@ extension ImportMappingTracksLayoutTests {
         let size = NSSize(width: 900, height: 180)
         let (window, host) = hostSheet(
             group,
-            editable: editable,
             recorder: MappingTrackActionRecorder(),
             size: size
         )
@@ -235,7 +225,7 @@ extension ImportMappingTracksLayoutTests {
         let menus = SnapshotTestSupport.descendants(of: host)
             .compactMap { $0 as? NSPopUpButton }
         try #require(menus.count == 1, "the summary is the one menu")
-        #expect(menus[0].isEnabled == editable)
+        #expect(menus[0].isEnabled)
         withExtendedLifetime(window) {}
     }
 }
@@ -244,7 +234,6 @@ extension ImportMappingTracksLayoutTests {
     @MainActor
     private func hostSheet(
         _ sheet: BridgeSheetGroup,
-        editable: Bool,
         recorder: MappingTrackActionRecorder,
         size: NSSize
     ) -> (NSWindow, NSView) {
@@ -260,8 +249,7 @@ extension ImportMappingTracksLayoutTests {
                 width: size.width,
                 height: size.height,
                 alignment: .topLeading
-            )
-            .environment(\.sourceFileEditsAllowed, editable),
+            ),
             size: size
         )
     }

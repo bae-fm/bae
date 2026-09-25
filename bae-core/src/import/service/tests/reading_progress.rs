@@ -56,8 +56,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
                 scope: crate::import::ReleaseFileScope::Recursive,
                 file_edit_revision: 0,
                 display_path: "Reading Progress Candidate".to_string(),
-                resolved_boundaries: Vec::new(),
-                combine_ancestor_key: None,
+                grouping: None,
             }),
         )
         .await
@@ -83,9 +82,9 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
         .prepare_and_run_folder_import(
             "import-reading-progress".to_string(),
             candidate_key.clone(),
-            crate::import::release_candidate::CandidateSource::Folder {
+            crate::import::release_candidate::CandidateSource {
                 path: folder,
-                scope: crate::import::ReleaseFileScope::Recursive,
+                scope: crate::import::ReleaseFileScope::Recursive, parts: Vec::new(), 
             },
             super::ImportExpectation {
                 candidate: crate::import::CandidateAsRead {

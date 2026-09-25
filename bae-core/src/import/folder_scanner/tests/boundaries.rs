@@ -8,8 +8,11 @@ fn scan_with_reader<R: DirectoryReader, F: FnMut(ScanItem)>(
     scan_for_candidates_with_reader_cancellable_and_directories(
         reader,
         root,
-        &StoredCandidateEdits::none(),
-        &FolderReleaseDecisions::default(),
+        &ScanReadings {
+            stored: &StoredCandidateEdits::none(),
+            decisions: &FolderReleaseDecisions::default(),
+            new_grouping_key: &fresh_grouping_key,
+        },
         &ScanCancellation::new(),
         |_| {},
         on_item,
@@ -209,6 +212,7 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
         ScanItem::Decided {
             key,
             decision: FolderReleaseDecision::KeepAsSeparateReleases,
+            ..
         } if key.relative_folder_path == "Group"
     )));
     assert!(
@@ -246,6 +250,7 @@ fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
         ScanItem::Decided {
             key,
             decision: FolderReleaseDecision::KeepAsSeparateReleases,
+            ..
         } if key.relative_folder_path == "Group"
     )));
 
@@ -296,13 +301,11 @@ fn discography_and_multidisc_shapes_follow_folder_structure_only() {
     // The user's own answer replaces the scan's.
     let separate = scan_for_candidates_with_decisions_collect(
         root,
-        FolderReleaseDecisions::new(HashMap::from([(
-            "Solo Artist/1973 - Box".to_string(),
-            (
-                FolderReleaseDecision::KeepAsSeparateReleases,
-                FolderReleaseDecisionAuthor::User,
-            ),
-        )])),
+        readings(&[(
+            "Solo Artist/1973 - Box",
+            FolderReleaseDecision::KeepAsSeparateReleases,
+            FolderReleaseDecisionAuthor::User,
+        )]),
     );
     assert!(separate.iter().any(
         |item| matches!(item, ScanItem::Valid(candidate) if candidate.display_path == "Solo Artist/1973 - Box/CD1")
@@ -341,8 +344,11 @@ fn cancelled_scan_stops_before_the_next_directory_read() {
     let result = scan_for_candidates_with_reader_cancellable_and_directories(
         &reader,
         root,
-        &StoredCandidateEdits::none(),
-        &FolderReleaseDecisions::default(),
+        &ScanReadings {
+            stored: &StoredCandidateEdits::none(),
+            decisions: &FolderReleaseDecisions::default(),
+            new_grouping_key: &fresh_grouping_key,
+        },
         &cancellation,
         |_| {},
         |item| {
@@ -389,8 +395,11 @@ fn cancellation_reaches_an_in_progress_directory_read() {
                 entered: entered_tx,
             },
             PathBuf::from("/network"),
-            &StoredCandidateEdits::none(),
-            &FolderReleaseDecisions::default(),
+            &ScanReadings {
+                stored: &StoredCandidateEdits::none(),
+                decisions: &FolderReleaseDecisions::default(),
+                new_grouping_key: &fresh_grouping_key,
+            },
             &thread_cancellation,
             |_| {},
             |_| {},
@@ -431,6 +440,7 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
         ScanItem::Decided {
             key,
             decision: FolderReleaseDecision::CombineAsOneRelease,
+            ..
         } if key.relative_folder_path == "Collection/Release Wrapper"
     )));
 
@@ -444,14 +454,23 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
     assert_eq!(combined.path, wrapper);
     assert_eq!(combined.scope, ReleaseFileScope::Recursive);
     assert_eq!(combined.files.release_files().count(), 3);
+    // The release is its grouping, made of the two parts, each a disc run.
+    assert!(combined.grouping.is_some());
+    assert_eq!(
+        combined
+            .files
+            .parts
+            .iter()
+            .map(|part| part.prefix.as_str())
+            .collect::<Vec<_>>(),
+        ["Part 01/", "Part 02/"]
+    );
 
-    let separate = scan(FolderReleaseDecisions::new(HashMap::from([(
-        "Collection/Release Wrapper".to_string(),
-        (
+    let separate = scan(readings(&[(
+            "Collection/Release Wrapper",
             FolderReleaseDecision::KeepAsSeparateReleases,
             FolderReleaseDecisionAuthor::User,
-        ),
-    )])));
+        )]));
     let separate: Vec<_> = separate
         .iter()
         .filter_map(|item| match item {
@@ -461,14 +480,7 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
         .collect();
     assert_eq!(separate.len(), 2);
     assert!(separate.iter().all(|candidate| {
-        candidate.scope == ReleaseFileScope::Direct
-            && matches!(
-                candidate.resolved_boundaries.as_slice(),
-                [ResolvedFolderReleaseBoundary {
-                    decision: FolderReleaseDecision::KeepAsSeparateReleases,
-                    ..
-                }]
-            )
+        candidate.scope == ReleaseFileScope::Direct && candidate.grouping.is_none()
     }));
 }
 
@@ -499,6 +511,7 @@ fn labeled_disc_numbers_win_over_other_numbers_in_part_names() {
         ScanItem::Decided {
             key,
             decision: FolderReleaseDecision::CombineAsOneRelease,
+            ..
         } if key.relative_folder_path == "Collection/Release Wrapper"
     )));
     let releases: Vec<_> = items
@@ -514,8 +527,7 @@ fn labeled_disc_numbers_win_over_other_numbers_in_part_names() {
 }
 
 /// A folder with tracks of its own and an album folder beside them is two
-/// releases, and each one is a candidate carrying the reading that made it
-/// one — which is what the flip control on the row rewrites.
+/// releases, and the scan says it read the folder that way.
 #[test]
 fn tracks_beside_an_album_folder_are_two_releases_that_say_so() {
     let temp_dir = tempfile::tempdir().unwrap();
@@ -535,17 +547,21 @@ fn tracks_beside_an_album_folder_are_two_releases_that_say_so() {
         })
         .collect();
     assert_eq!(candidates.len(), 2);
-    assert!(candidates.iter().all(|candidate| {
-        candidate.resolved_boundaries.iter().any(|resolved| {
-            resolved.key.relative_folder_path == "Group/Artist"
-                && resolved.decision == FolderReleaseDecision::KeepAsSeparateReleases
-        })
-    }));
+    assert!(candidates.iter().all(|candidate| candidate.grouping.is_none()));
+    assert!(scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default())
+        .iter()
+        .any(|item| matches!(
+            item,
+            ScanItem::Decided {
+                key,
+                decision: FolderReleaseDecision::KeepAsSeparateReleases,
+                ..
+            } if key.relative_folder_path == "Group/Artist"
+        )));
 }
 
 /// The same when the folder's own tracks do not make a valid release: the
-/// invalid folder still carries the reading, so the row it draws offers the
-/// same flip.
+/// invalid folder is one of the releases the folder was read as.
 #[test]
 fn an_invalid_folder_beside_an_album_folder_still_carries_the_reading() {
     let temp_dir = tempfile::tempdir().unwrap();
@@ -565,10 +581,8 @@ fn an_invalid_folder_beside_an_album_folder_still_carries_the_reading() {
             _ => None,
         })
         .expect("the folder's own files do not make a release");
-    assert!(invalid.resolved_boundaries.iter().any(|resolved| {
-        resolved.key.relative_folder_path == "Group/Artist"
-            && resolved.decision == FolderReleaseDecision::KeepAsSeparateReleases
-    }));
+    assert!(invalid.grouping.is_none());
+    assert_eq!(invalid.path, parent);
 }
 
 #[test]
@@ -584,13 +598,11 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
     scan_for_candidates_with_decisions(
         root,
         &StoredCandidateEdits::none(),
-        &FolderReleaseDecisions::new(HashMap::from([(
-            "Group".to_string(),
-            (
-                FolderReleaseDecision::KeepAsSeparateReleases,
-                FolderReleaseDecisionAuthor::User,
-            ),
-        )])),
+        &readings(&[(
+            "Group",
+            FolderReleaseDecision::KeepAsSeparateReleases,
+            FolderReleaseDecisionAuthor::User,
+        )]),
         |item| {
             if !matches!(item, ScanItem::Discovered(_) | ScanItem::Decided { .. }) {
                 items.push(item);
@@ -607,15 +619,7 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
         })
         .collect();
     assert_eq!(invalid.len(), 2);
-    assert!(invalid.iter().all(|candidate| {
-        matches!(
-            candidate.resolved_boundaries.as_slice(),
-            [ResolvedFolderReleaseBoundary {
-                decision: FolderReleaseDecision::KeepAsSeparateReleases,
-                ..
-            }]
-        )
-    }));
+    assert!(invalid.iter().all(|candidate| candidate.grouping.is_none()));
 }
 
 /// A folder of scans beside the numbered parts is a sidecar the release
@@ -643,6 +647,7 @@ fn a_folder_that_yields_nothing_is_not_one_of_the_parts() {
         ScanItem::Decided {
             key,
             decision: FolderReleaseDecision::CombineAsOneRelease,
+            ..
         } if key.relative_folder_path == "Collection/Release Wrapper"
     )));
     let releases: Vec<_> = items
@@ -674,6 +679,7 @@ fn a_part_with_no_number_makes_it_several_releases() {
         ScanItem::Decided {
             key,
             decision: FolderReleaseDecision::KeepAsSeparateReleases,
+            ..
         } if key.relative_folder_path == "Collection/Release Wrapper"
     )));
     let releases: Vec<_> = items
@@ -717,7 +723,7 @@ fn a_folder_that_yields_one_release_decides_nothing() {
     assert!(items.iter().any(|item| matches!(
         item,
         ScanItem::Valid(candidate)
-            if candidate.resolved_boundaries.is_empty()
+            if candidate.grouping.is_none()
     )));
 }
 
@@ -779,8 +785,30 @@ fn two_walks_of_one_tree_produce_the_same_items() {
     std::fs::create_dir_all(root.join("Box/Scans")).unwrap();
     std::fs::write(root.join("Box/Scans/front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-    let first = scan_items(&root);
-    let second = scan_items(&root);
+    // The first walk decides how each folder reads, and stores it; every walk
+    // after reads under what was stored, which is what a pass compares with.
+    let stored = FolderReleaseDecisions::new(
+        scan_for_candidates_with_decisions_collect(root.clone(), FolderReleaseDecisions::default())
+            .into_iter()
+            .filter_map(|item| match item {
+                ScanItem::Decided {
+                    key,
+                    decision,
+                    grouping,
+                } => Some((
+                    key.relative_folder_path,
+                    FolderReading {
+                        decision,
+                        author: FolderReleaseDecisionAuthor::Heuristic,
+                        grouping,
+                    },
+                )),
+                _ => None,
+            })
+            .collect(),
+    );
+    let first = scan_projected_items_with_decisions(root.clone(), stored.clone());
+    let second = scan_projected_items_with_decisions(root.clone(), stored);
 
     assert_eq!(first.len(), second.len(), "{first:?} vs {second:?}");
     for (left, right) in first.iter().zip(second.iter()) {
@@ -827,13 +855,10 @@ fn a_wrapper_over_one_folder_of_releases_asks_nothing() {
             "Freddie Roach/Sound/Mocha Motion",
         ]
     );
-    // Every one of them names the wrapper, so the header over them offers to
-    // read the three as one release.
+    // None of them is grouped: the wrapper decided nothing, and the list's
+    // header over them is where reading the three as one is offered.
     assert!(items.iter().all(|item| match item {
-        ScanItem::Valid(candidate) => candidate
-            .combine_ancestor_key
-            .as_ref()
-            .is_some_and(|key| key.relative_folder_path == "Freddie Roach"),
+        ScanItem::Valid(candidate) => candidate.grouping.is_none(),
         _ => true,
     }));
 }

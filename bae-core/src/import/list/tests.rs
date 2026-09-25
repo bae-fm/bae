@@ -40,9 +40,10 @@ fn queue() -> ImportQueueRows {
 /// stored rows below can be keyed per candidate.
 fn candidate(display_path: &str) -> ScanCandidateListRow {
     ScanCandidateListRow {
-        source: crate::db::CandidateListSource::Folder,
+        grouping: None,
         watched_folder_path: root(),
         path: format!("{}/{display_path}", root()),
+        folder: format!("{}/{display_path}", root()),
         kind: ScanCandidateKind::Valid,
         name: display_path
             .rsplit('/')
@@ -53,7 +54,6 @@ fn candidate(display_path: &str) -> ScanCandidateListRow {
         discovered_at: None,
         content_hash: Some(format!("hash-{display_path}")),
         file_edit_revision: 0,
-        combine_ancestor_relative_path: None,
         invalid_reason: None,
     }
 }

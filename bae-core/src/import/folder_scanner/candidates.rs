@@ -22,7 +22,8 @@ pub enum InvalidReason {
 /// enough to surface it under the Skipped tab with its reason.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct InvalidCandidate {
-    /// Root path of the folder that failed validation.
+    /// Root path of the folder that failed validation — for a grouping, the
+    /// folder the grouping reads as one release.
     pub path: PathBuf,
     /// Display name (derived from folder name).
     pub name: String,
@@ -30,10 +31,21 @@ pub struct InvalidCandidate {
     /// candidate-list group it belongs to. Equal to the scan root.
     pub watched_folder_path: String,
     pub display_path: String,
-    /// Explicit release-structure decisions that exposed this invalid row.
-    pub resolved_boundaries: Vec<ResolvedFolderReleaseBoundary>,
+    /// The grouping this row reads several folders as, when it is one. The
+    /// row's key is then the grouping's, not the folder's.
+    pub grouping: Option<String>,
     /// Why the folder failed validation — the UI localizes this typed reason.
     pub reason: InvalidReason,
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl InvalidCandidate {
+    /// The key this row is stored and addressed under.
+    pub fn key(&self) -> String {
+        self.grouping
+            .clone()
+            .unwrap_or_else(|| self.path.to_string_lossy().into_owned())
+    }
 }
 
 /// One item the scan callback yields per leaf folder: a valid release
@@ -51,12 +63,14 @@ pub enum ScanItem {
     Discovered(FolderCandidate),
     Valid(FolderCandidate),
     Invalid(InvalidCandidate),
-    /// The scan read a folder its own way, because nothing was stored for it.
-    /// The caller stores it, so the flip control on each resulting candidate
-    /// has a decision to rewrite.
+    /// The scan read a folder its own way, because nothing was stored for it:
+    /// the grouping it proposes at that folder, under the key the scan gave
+    /// it. The caller stores it before any candidate it produced, so the
+    /// candidates that name it name a stored grouping.
     Decided {
         key: FolderReleaseDecisionKey,
         decision: FolderReleaseDecision,
+        grouping: String,
     },
 }
 
@@ -69,10 +83,26 @@ impl ScanItem {
     /// rather than as a scan entry.
     pub(crate) fn persisted_key(&self) -> Option<String> {
         match self {
-            Self::Discovered(candidate) | Self::Valid(candidate) => {
-                Some(candidate.path.to_string_lossy().into_owned())
-            }
-            Self::Invalid(candidate) => Some(candidate.path.to_string_lossy().into_owned()),
+            Self::Discovered(candidate) | Self::Valid(candidate) => Some(candidate.key()),
+            Self::Invalid(candidate) => Some(candidate.key()),
+            Self::Decided { .. } => None,
+        }
+    }
+
+    /// The folders this entry's files are read from, and whether it reads
+    /// everything below its folder: a grouping, or a release lent the files
+    /// of a wrapper folder around it. A release that reads only its own
+    /// folder covers that folder and nothing below it that holds audio.
+    pub(crate) fn coverage(&self) -> Option<Coverage> {
+        match self {
+            Self::Discovered(candidate) | Self::Valid(candidate) => Some(Coverage {
+                folder: candidate.file_root.clone(),
+                whole_subtree: candidate.scope == ReleaseFileScope::Recursive,
+            }),
+            Self::Invalid(candidate) => Some(Coverage {
+                folder: candidate.path.clone(),
+                whole_subtree: candidate.grouping.is_some(),
+            }),
             Self::Decided { .. } => None,
         }
     }
@@ -239,82 +269,55 @@ fn labeled_part_numbers(name: &str) -> Option<Vec<u32>> {
     Some(numbers)
 }
 
-/// Which persisted scan entries a set of folder readings supersedes. Reads the
-/// durable scan entries, so it exists only where scans persist — desktop.
-///
-/// Combining replaces everything below the folder. Keeping separate replaces
-/// whatever stood for the whole folder at its own key — the card asking how to
-/// read it, or the candidate that read it as one release. A folder that holds
-/// tracks of its own also has a candidate under that key, and that one stays:
-/// it is one of the separate releases, not something the reading removes.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn release_decision_removed_keys(
-    persisted: &[crate::import::candidates::StoredEntryKey],
-    decisions: &[(FolderReleaseDecisionKey, FolderReleaseDecision)],
-) -> Vec<String> {
-    let mut removed = Vec::new();
-    for (key, decision) in decisions {
-        let boundary_path = Path::new(&key.watched_folder_path).join(&key.relative_folder_path);
-        let boundary_key = boundary_path.to_string_lossy();
-        removed.extend(persisted.iter().filter_map(|entry| {
-            let path = Path::new(&entry.key);
-            let superseded = match decision {
-                FolderReleaseDecision::CombineAsOneRelease => path.starts_with(&boundary_path),
-                FolderReleaseDecision::KeepAsSeparateReleases => {
-                    entry.covers_whole_folder && entry.key == boundary_key.as_ref()
-                }
-            };
-            superseded.then(|| entry.key.clone())
-        }));
-    }
-    removed.sort();
-    removed.dedup();
-    removed
+/// The part of a watched root one stored entry reads its files from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Coverage {
+    pub folder: PathBuf,
+    /// Every file below `folder`, rather than `folder`'s own.
+    pub whole_subtree: bool,
 }
 
-/// Decisions loaded for one watched root before its scan begins.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl Coverage {
+    /// Whether two entries read any of the same files, and so cannot both
+    /// stand: one reading of a folder replaces the other.
+    pub(crate) fn overlaps(&self, other: &Coverage) -> bool {
+        (self.whole_subtree && other.folder.starts_with(&self.folder))
+            || (other.whole_subtree && self.folder.starts_with(&other.folder))
+            || self.folder == other.folder
+    }
+}
+
+/// How one folder reads, as stored: whether its releases are one, who said
+/// so, and the key of the grouping that says it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FolderReading {
+    pub decision: FolderReleaseDecision,
+    pub author: FolderReleaseDecisionAuthor,
+    pub grouping: String,
+}
+
+/// How each folder under one watched root reads, loaded before its scan
+/// begins, by the folder's root-relative path.
 #[derive(Debug, Clone, Default)]
-pub struct FolderReleaseDecisions(
-    HashMap<String, (FolderReleaseDecision, FolderReleaseDecisionAuthor)>,
-);
+pub struct FolderReleaseDecisions(HashMap<String, FolderReading>);
 
 impl FolderReleaseDecisions {
-    pub fn new(
-        decisions: HashMap<String, (FolderReleaseDecision, FolderReleaseDecisionAuthor)>,
-    ) -> Self {
-        Self(decisions)
+    pub fn new(readings: HashMap<String, FolderReading>) -> Self {
+        Self(readings)
     }
 
-    /// The stored decision for a folder, and who made it.
-    pub(crate) fn get(
-        &self,
-        relative_folder_path: &str,
-    ) -> Option<(FolderReleaseDecision, FolderReleaseDecisionAuthor)> {
-        self.0.get(relative_folder_path).copied()
+    /// How the folder at `relative_folder_path` reads, if anything is stored.
+    pub(crate) fn get(&self, relative_folder_path: &str) -> Option<&FolderReading> {
+        self.0.get(relative_folder_path)
     }
 
-    /// Read `relative_folder_path` as `decision`, whatever was stored for it —
+    /// Read `relative_folder_path` as `reading`, whatever was stored for it —
     /// the reading a decision about to be stored gives.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn insert(
-        &mut self,
-        relative_folder_path: String,
-        decision: FolderReleaseDecision,
-        author: FolderReleaseDecisionAuthor,
-    ) {
-        self.0.insert(relative_folder_path, (decision, author));
+    pub(crate) fn insert(&mut self, relative_folder_path: String, reading: FolderReading) {
+        self.0.insert(relative_folder_path, reading);
     }
-}
-
-/// How a folder was settled, retained on every row below it so the control
-/// that reads it the other way has the key to rewrite without rebuilding a
-/// path.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct ResolvedFolderReleaseBoundary {
-    pub key: FolderReleaseDecisionKey,
-    pub decision: FolderReleaseDecision,
-    pub name: String,
-    pub display_path: String,
 }
 
 /// A folder candidate detected during filesystem scanning.
@@ -339,16 +342,36 @@ pub struct FolderCandidate {
     pub file_edit_revision: u64,
     /// Root-relative path for the queue subtitle, with `/` separators.
     pub display_path: String,
-    /// Present when an explicit decision exposed this candidate.
-    pub resolved_boundaries: Vec<ResolvedFolderReleaseBoundary>,
-    /// Nearest default-separate ancestor that contains multiple release rows.
-    /// The UI uses this core-issued key for "Combine as One Release".
-    pub combine_ancestor_key: Option<FolderReleaseDecisionKey>,
+    /// The grouping this release reads several folders as, when it is one —
+    /// the folders themselves are [`CategorizedFiles::parts`]. The release's
+    /// key is then the grouping's, not the folder's.
+    pub grouping: Option<String>,
 }
 
 impl FolderCandidate {
     pub fn track_count(&self) -> u32 {
         self.files.track_count()
+    }
+
+    /// The key this release is stored and addressed under: its grouping's, or
+    /// its folder's.
+    pub fn key(&self) -> String {
+        self.grouping
+            .clone()
+            .unwrap_or_else(|| self.path.to_string_lossy().into_owned())
+    }
+
+    /// The folders on disk this release is read from.
+    pub fn source_folders(&self) -> Vec<PathBuf> {
+        if self.files.parts.is_empty() {
+            vec![self.path.clone()]
+        } else {
+            self.files
+                .parts
+                .iter()
+                .map(|part| part.folder.clone())
+                .collect()
+        }
     }
 }
 

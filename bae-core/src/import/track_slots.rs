@@ -336,22 +336,53 @@ pub(crate) fn direct_entry_track_rows(files: &CategorizedFiles) -> Vec<TrackUser
         })
         .collect();
 
+    // A release read from several folders gives each its own run of discs,
+    // its loose audio first; one read from one folder gives loose audio no
+    // disc at all.
+    let layout = crate::import::folder_scanner::DiscLayout::of(
+        &files.files,
+        &files.parts,
+        |entry| {
+            matches!(
+                &entry.role,
+                crate::import::folder_scanner::FileRole::TrackSheet {
+                    binding,
+                    disc: crate::import::folder_scanner::SheetDisc::Disc { .. },
+                    ..
+                } if binding.is_resolved()
+            )
+        },
+    );
+    let mut numbers = std::collections::HashMap::<Option<i32>, i32>::new();
     audio_units(files)
         .into_iter()
         .enumerate()
         .map(|(index, audio)| {
             let side = match &audio {
-                AudioFile::Standalone { .. } => None,
+                AudioFile::Standalone { file_id } => {
+                    crate::import::folder_scanner::part_of(&files.parts, file_id)
+                        .and_then(|part| layout.loose_disc(part))
+                        .map(|disc| i32::try_from(disc).expect("disc number fits i32"))
+                }
                 AudioFile::SheetSlice { sheet_id, .. } => Some(
                     *sheet_discs
                         .get(sheet_id.as_str())
                         .expect("a sheet slice belongs to a carving sheet"),
                 ),
             };
+            // Tracks number from one on each disc of a release read from
+            // several folders, and straight through one read from one.
+            let track_number = if files.parts.is_empty() {
+                i32::try_from(index + 1).expect("track position fits i32")
+            } else {
+                let number = numbers.entry(side).or_default();
+                *number += 1;
+                *number
+            };
             TrackUserEdit {
                 title: String::new(),
                 side,
-                track_number: Some(i32::try_from(index + 1).expect("track position fits i32")),
+                track_number: Some(track_number),
                 artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: Some(audio),
             }

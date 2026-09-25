@@ -46,7 +46,7 @@ impl ImportServiceHandle {
         candidate_key: &str,
     ) -> Result<
         (
-            crate::import::release_candidate::ReleaseCandidate,
+            crate::import::folder_scanner::FolderCandidate,
             crate::import::file_tag_snapshot::FileTagSnapshot,
         ),
         crate::import::ImportError,
@@ -61,7 +61,7 @@ impl ImportServiceHandle {
         reader: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> Result<
         (
-            crate::import::release_candidate::ReleaseCandidate,
+            crate::import::folder_scanner::FolderCandidate,
             crate::import::file_tag_snapshot::FileTagSnapshot,
         ),
         crate::import::ImportError,
@@ -71,7 +71,7 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
-        let watched_folder_path = candidate.watched_folder_path().to_string();
+        let watched_folder_path = candidate.watched_folder_path.to_string();
         let Some(stored) = self
             .library_manager
             .load_candidate_file_tag_snapshot(&watched_folder_path, candidate_key)
@@ -86,8 +86,8 @@ impl ImportServiceHandle {
             candidate,
             snapshot: stored_snapshot,
         } = stored;
-        let audio_files = candidate.files().audio().cloned().collect::<Vec<_>>();
-        let file_edit_revision = candidate.file_edit_revision();
+        let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
+        let file_edit_revision = candidate.file_edit_revision;
         let (snapshot, extracted) = tokio::task::spawn_blocking(move || {
             let observations = crate::import::file_tag_snapshot::observe_audio_files(&audio_files)?;
             if let Some(snapshot) = stored_snapshot.filter(|snapshot| {
@@ -209,12 +209,12 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             });
         };
-        let content_hash = candidate.files().content_hash();
+        let content_hash = candidate.files.content_hash();
         let preparation = self
             .library_manager
             .load_import_candidate_preparation(&content_hash)
             .await?
-            .filter(|preparation| preparation.file_edit_revision == candidate.file_edit_revision())
+            .filter(|preparation| preparation.file_edit_revision == candidate.file_edit_revision)
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!(
                     "{candidate_key} has no complete preparation for its current files"
@@ -231,7 +231,7 @@ impl ImportServiceHandle {
         let file_tag_snapshot = if needs_file_tag_snapshot {
             let Some(stored) = self
                 .library_manager
-                .load_candidate_file_tag_snapshot(candidate.watched_folder_path(), candidate_key)
+                .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, candidate_key)
                 .await?
             else {
                 return Err(crate::import::ImportError::Internal {
@@ -243,8 +243,8 @@ impl ImportServiceHandle {
                 candidate: snapshot_candidate,
                 snapshot,
             } = stored;
-            if snapshot_candidate.files().content_hash() != content_hash
-                || snapshot_candidate.file_edit_revision() != candidate.file_edit_revision()
+            if snapshot_candidate.files.content_hash() != content_hash
+                || snapshot_candidate.file_edit_revision != candidate.file_edit_revision
             {
                 return Err(crate::import::ImportError::FileTags {
                     detail: format!(
@@ -260,7 +260,7 @@ impl ImportServiceHandle {
                 });
             };
             if snapshot.scan_generation != scan_generation
-                || snapshot.file_edit_revision != snapshot_candidate.file_edit_revision()
+                || snapshot.file_edit_revision != snapshot_candidate.file_edit_revision
             {
                 return Err(crate::import::ImportError::FileTags {
                     detail: format!(
@@ -276,7 +276,7 @@ impl ImportServiceHandle {
         let expectation = crate::import::service::ImportExpectation {
             candidate: crate::import::CandidateAsRead {
                 content_hash: content_hash.clone(),
-                file_edit_revision: candidate.file_edit_revision(),
+                file_edit_revision: candidate.file_edit_revision,
                 metadata_revision: preparation.metadata_revision,
             },
             file_tag_snapshot,
@@ -321,7 +321,7 @@ impl ImportServiceHandle {
         };
         self.library_manager
             .merge_import_artist_identity_conflict(
-                &candidate.files().content_hash(),
+                &candidate.files.content_hash(),
                 surviving_artist_id,
             )
             .await?;
@@ -406,15 +406,11 @@ impl ImportServiceHandle {
         &self,
         mut command: ImportCommand,
     ) -> Result<String, crate::import::ImportError> {
-        let crate::import::release_candidate::CandidateSource::Folder {
+        let crate::import::release_candidate::CandidateSource {
             path: folder,
             scope,
-        } = command.source.clone()
-        else {
-            return Err(crate::import::ImportError::Internal {
-                detail: "the folder fixture helper requires a folder source".into(),
-            });
-        };
+            ..
+        } = command.source.clone();
         let categorized =
             crate::import::folder_scanner::collect_release_candidate_files_with_scope(
                 &folder,
@@ -449,8 +445,7 @@ impl ImportServiceHandle {
             scope,
             file_edit_revision: 0,
             display_path: String::new(),
-            resolved_boundaries: Vec::new(),
-            combine_ancestor_key: None,
+            grouping: None,
         };
         if self
             .library_manager

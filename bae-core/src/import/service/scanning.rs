@@ -120,6 +120,41 @@ impl ImportService {
                 },
             ));
         }
+        Self::announce_item(item, skipped, services).await?;
+        if let Some(regrouped) = write.regrouped() {
+            Self::announce_regrouped(regrouped, services).await?;
+        }
+        Ok(())
+    }
+
+    /// Tell the runtime and the list about the releases groupings rebuilt.
+    pub(super) async fn announce_regrouped(
+        regrouped: &crate::db::GroupingChanges,
+        services: &crate::import::ImportServices,
+    ) -> Result<(), crate::import::ImportError> {
+        for candidate_key in &regrouped.removed {
+            services
+                .event_tx
+                .send(crate::import::handle::ImportEvent::Scan(
+                    ScanEvent::CandidateRemoved {
+                        candidate_key: candidate_key.clone(),
+                    },
+                ));
+        }
+        for item in &regrouped.written {
+            Self::announce_item(item.clone(), &HashSet::new(), services).await?;
+        }
+        Ok(())
+    }
+
+    /// Announce one stored entry as what it now is. A release's skip stamp is
+    /// its grouping's own, or its folder's in `skipped`.
+    async fn announce_item(
+        item: ScanItem,
+        skipped: &HashSet<String>,
+        services: &crate::import::ImportServices,
+    ) -> Result<(), crate::import::ImportError> {
+        let event_tx = &services.event_tx;
         // The write stores the item as it stands and never changes its
         // variant, so the variant still says which announcement it earns.
         let actionable = matches!(item, ScanItem::Valid(_));
@@ -127,11 +162,20 @@ impl ImportService {
             // Registry skip state and imported content hashes are joined onto
             // the walk's folder facts here, on the way out.
             ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
-                let skipped =
-                    skipped.contains(&crate::import::watched_folder::candidate_relative_path(
-                        &candidate.watched_folder_path,
-                        &candidate.path,
-                    )?);
+                let skipped = match candidate.grouping {
+                    Some(_) => {
+                        services
+                            .library_manager
+                            .is_release_candidate_skipped(&candidate)
+                            .await?
+                    }
+                    None => {
+                        skipped.contains(&crate::import::watched_folder::candidate_relative_path(
+                            &candidate.watched_folder_path,
+                            &candidate.path,
+                        )?)
+                    }
+                };
                 let is_added = services
                     .library_manager
                     .is_content_hash_imported(&candidate.files.content_hash())
@@ -306,6 +350,7 @@ impl ImportService {
         let walk_watcher = scan.folder_watcher.clone();
         let walk_root = root.to_path_buf();
         let directories = services.directories.clone();
+        let ids = services.ids.clone();
         // What this pass wrote and what it displaced, for the log line at the
         // end. Two passes over an unchanged folder should displace nothing;
         // one that keeps rewriting the same entry names it here.
@@ -325,11 +370,15 @@ impl ImportService {
             let mut directory_mtimes: Option<Vec<(String, i64)>> = Some(Vec::new());
             let mut watch_available = true;
             let mut watch_failures = Vec::new();
+            let new_key = || super::folder_reading::new_grouping_key(ids.as_ref());
             let result = crate::import::folder_scanner::scan_for_candidates_with_reader_cancellable_and_directories(
                 directories.as_ref(),
                 root_buf,
-                &stored_edits,
-                &decisions,
+                &crate::import::folder_scanner::ScanReadings {
+                    stored: &stored_edits,
+                    decisions: &decisions,
+                    new_grouping_key: &new_key,
+                },
                 &walk_cancellation,
                 |directory| {
                     match (directory_mtimes.as_mut(), directory_modified_at(&directory)) {
@@ -394,9 +443,13 @@ impl ImportService {
             // changes under it. A reading is stored as a decision, not as a
             // scan entry, so it never reaches the write below.
             let item = match item {
-                ScanItem::Decided { key, decision } => {
+                ScanItem::Decided {
+                    key,
+                    decision,
+                    grouping,
+                } => {
                     library_manager
-                        .record_scanned_folder_release_decision(&key, decision)
+                        .record_scanned_folder_release_decision(&key, decision, &grouping)
                         .await?;
                     continue;
                 }
@@ -452,12 +505,13 @@ impl ImportService {
         // transaction: a newer decision or scan cannot be pruned by this
         // completed write, and `None` says one took the root first.
         let commit = services.folder_state_commit.clone().lock_owned().await;
-        let Some(pruned) = library_manager
+        let Some(crate::db::FinishedScan { pruned, regrouped }) = library_manager
             .finish_folder_scan(root_key, generation, None)
             .await?
         else {
             return Ok(());
         };
+        Self::announce_regrouped(&regrouped, services).await?;
         info!(
             "folder scan of {} wrote {} entries; displaced {:?}; pruned {:?}",
             root.display(),

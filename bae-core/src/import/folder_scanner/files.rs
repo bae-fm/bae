@@ -290,6 +290,62 @@ impl CandidateFileEdits {
     pub fn is_empty(&self) -> bool {
         self.sheet_bindings.is_empty() && self.file_roles.is_empty() && self.sheet_discs.is_empty()
     }
+
+    /// These decisions as a release holding the files under `prefix` reads
+    /// them: every file named by its path under the prefix, and every disc a
+    /// sheet was assigned renumbered by `disc` into the run the release gives
+    /// this folder. The revision is not carried: it is the release's own.
+    pub(crate) fn under_prefix(&self, prefix: &str, disc: impl Fn(u32) -> u32) -> Self {
+        let named = |file_id: &str| format!("{prefix}{file_id}");
+        let mut edits = Self::default();
+        for (file_id, choice) in self.file_roles.iter() {
+            edits.file_roles.set(named(file_id), *choice);
+        }
+        for (sheet_id, references) in self.sheet_bindings.iter() {
+            for (reference, decision) in references.iter() {
+                let decision = match decision {
+                    UserSheetBinding::Describes { file_id } => UserSheetBinding::Describes {
+                        file_id: named(file_id),
+                    },
+                    UserSheetBinding::Cleared => UserSheetBinding::Cleared,
+                };
+                edits
+                    .sheet_bindings
+                    .set_reference(named(sheet_id), reference.to_string(), decision);
+            }
+        }
+        for (sheet_id, assigned) in self.sheet_discs.iter() {
+            let assigned = match assigned {
+                SheetDisc::Disc { number } => SheetDisc::Disc {
+                    number: disc(*number),
+                },
+                SheetDisc::Ignored => SheetDisc::Ignored,
+            };
+            edits.sheet_discs.set(named(sheet_id), assigned);
+        }
+        edits
+    }
+
+    /// Every decision in `over` in place of whatever these say about the
+    /// same file, taking `over`'s revision.
+    pub(crate) fn overlay(&mut self, over: &Self) {
+        for (file_id, choice) in over.file_roles.iter() {
+            self.file_roles.set(file_id.to_string(), *choice);
+        }
+        for (sheet_id, references) in over.sheet_bindings.iter() {
+            for (reference, decision) in references.iter() {
+                self.sheet_bindings.set_reference(
+                    sheet_id.to_string(),
+                    reference.to_string(),
+                    decision.clone(),
+                );
+            }
+        }
+        for (sheet_id, assigned) in over.sheet_discs.iter() {
+            self.sheet_discs.set(sheet_id.to_string(), *assigned);
+        }
+        self.revision = over.revision;
+    }
 }
 
 /// The file decisions every candidate has stored, keyed by content hash.
@@ -496,6 +552,40 @@ pub struct CategorizedFiles {
     /// the role the scan proposed. All of them are the release's — see
     /// [`Self::release_files`].
     pub files: Vec<CandidateFile>,
+    /// The folders a release read from several is made of, in play order,
+    /// each a run of discs of its own. Empty for a release read from one
+    /// folder, which numbers no discs of its own.
+    pub parts: Vec<ReleasePart>,
+}
+
+/// One folder of a release read from several: where it is, and the prefix
+/// every one of its files' release paths starts with.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct ReleasePart {
+    pub folder: PathBuf,
+    /// `/`-terminated, or empty for the folder the release is rooted at.
+    pub prefix: String,
+}
+
+impl ReleasePart {
+    /// The folder's own name, as the release's source list shows it.
+    pub fn name(&self) -> String {
+        self.folder.file_name().map_or_else(
+            || self.folder.to_string_lossy().into_owned(),
+            |name| name.to_string_lossy().into_owned(),
+        )
+    }
+}
+
+/// Which part of `parts` the file at `relative_path` belongs to: the one with
+/// the longest prefix it starts with.
+pub(crate) fn part_of(parts: &[ReleasePart], relative_path: &str) -> Option<usize> {
+    parts
+        .iter()
+        .enumerate()
+        .filter(|(_, part)| relative_path.starts_with(&part.prefix))
+        .max_by_key(|(_, part)| part.prefix.len())
+        .map(|(index, _)| index)
 }
 
 /// The effective source audio of one candidate: its aggregate descriptor and
@@ -796,7 +886,7 @@ impl CategorizedFiles {
         .expect("a fresh cancellation token cannot be cancelled")
         {
             SettledBindings::Settled => {
-                settle_sheet_discs(&mut self.files, &edits.sheet_discs);
+                settle_sheet_discs(&mut self.files, &self.parts, &edits.sheet_discs);
                 if self.audio().next().is_none() {
                     return Err(InvalidReason::NoValidAudio);
                 }

@@ -414,7 +414,7 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
         let read = live.next().await;
         assert_eq!(read.request().as_deref(), Some(key.as_str()));
         let detail = read.into_result().unwrap().expect("the candidate reads");
-        assert_eq!(detail.candidate.name(), name);
+        assert_eq!(detail.candidate.name, name);
     }
 
     requests.set(None).unwrap();

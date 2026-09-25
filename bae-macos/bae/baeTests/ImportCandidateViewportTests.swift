@@ -379,7 +379,8 @@ extension ImportCandidateViewportTests {
             onAddFolder: {},
             onRemoveFolder: { _ in },
             onRefreshFolder: { _ in },
-            onReleaseDecision: { _, _ in },
+            onCombineFolder: { _ in },
+            onSeparate: { _ in },
             onSkip: { _, _ in },
             onReveal: { _ in }
         )
@@ -415,8 +416,7 @@ extension ImportCandidateViewportTests {
                 folderName: "Release \(index)",
                 watchedFolderPath: "/library",
                 displayPath: "Release \(index)",
-                resolvedBoundaries: [],
-                combineAncestorKey: nil,
+                separable: false,
                 actionable: true,
                 placement: .skipped,
                 readyCheck: nil,

@@ -104,7 +104,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             .await
             .unwrap()
             .unwrap();
-        let hash = candidate.files().content_hash();
+        let hash = candidate.files.content_hash();
         let revision = prepare_named_candidate(
             &test.service,
             &test.preparations,
@@ -127,7 +127,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
                 &root_text,
                 &crate::import::CandidateAsRead {
                     content_hash: hash.clone(),
-                    file_edit_revision: candidate.file_edit_revision(),
+                    file_edit_revision: candidate.file_edit_revision,
                     metadata_revision: revision,
                 },
                 &key,
@@ -164,7 +164,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
                 super::ImportExpectation {
                     candidate: crate::import::CandidateAsRead {
                         content_hash: hash,
-                        file_edit_revision: candidate.file_edit_revision(),
+                        file_edit_revision: candidate.file_edit_revision,
                         metadata_revision: revision,
                     },
                     file_tag_snapshot: Some(snapshot),
@@ -296,8 +296,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
                 scope: crate::import::ReleaseFileScope::Recursive,
                 file_edit_revision: 0,
                 display_path: "Candidate".to_string(),
-                resolved_boundaries: Vec::new(),
-                combine_ancestor_key: None,
+                grouping: None,
             }),
         )
         .await
@@ -338,9 +337,9 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         .prepare_and_run_folder_import(
             "import-1".to_string(),
             folder.to_string_lossy().into_owned(),
-            crate::import::release_candidate::CandidateSource::Folder {
+            crate::import::release_candidate::CandidateSource {
                 path: folder,
-                scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
+                scope: crate::import::folder_scanner::ReleaseFileScope::Recursive, parts: Vec::new(), 
             },
             super::ImportExpectation {
                 candidate: crate::import::CandidateAsRead {
@@ -421,7 +420,7 @@ async fn rescan_seeded_root(
                 name: "Old Candidate".to_string(),
                 watched_folder_path: root.to_string_lossy().into_owned(),
                 display_path: "old-key".to_string(),
-                resolved_boundaries: Vec::new(),
+                grouping: None,
                 reason: crate::import::InvalidReason::NoValidAudio,
             }),
         )

@@ -260,10 +260,8 @@ fn folder_source(folder: PathBuf) -> ExtractionSource {
             files,
             scope: crate::import::ReleaseFileScope::Recursive,
             file_edit_revision: 0,
-            resolved_boundaries: Vec::new(),
-            combine_ancestor_key: None,
-        }
-        .into(),
+            grouping: None,
+        },
     }
 }
 

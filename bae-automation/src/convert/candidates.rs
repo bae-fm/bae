@@ -17,29 +17,29 @@ pub(crate) fn automation_candidate_from_folder(
     runtime: &HashMap<String, CandidateRuntimeSnapshot>,
 ) -> AutomationCandidate {
     let candidate = &folder.candidate;
-    let live = runtime.get(candidate.key().as_ref());
+    let live = runtime.get(&candidate.key());
     let identify = live
         .and_then(|live| live.running.clone().or_else(|| live.saving.clone()))
         .unwrap_or_else(|| folder.resumed_identify_state.clone());
     AutomationCandidate::Valid {
         common: automation_candidate_common(
-            candidate.key().into_owned(),
+            candidate.key(),
             candidate
                 .source_folders()
                 .iter()
                 .map(|path| path.to_string_lossy().into_owned())
                 .collect(),
-            candidate.name().to_string(),
-            candidate.watched_folder_path().to_string(),
+            candidate.name.clone(),
+            candidate.watched_folder_path.clone(),
             folder.skipped,
             folder.is_added,
         ),
-        track_count: candidate.files().track_count(),
+        track_count: candidate.files.track_count(),
         source_audio: candidate
-            .files()
+            .files
             .source_audio_summary()
             .map(AutomationSourceAudioSummary::from_core),
-        content_hash: candidate.files().content_hash(),
+        content_hash: candidate.files.content_hash(),
         runtime: AutomationCandidateRuntime {
             toolbar: identify
                 .toolbar()

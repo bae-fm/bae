@@ -1,45 +1,21 @@
-//! A release may come from one scanned folder or an explicit folder selection.
+//! A release candidate: one folder, or several a grouping reads as one.
 
-use super::combination::CandidateCombination;
-use super::folder_scanner::{
-    CategorizedFiles, FolderCandidate, FolderReleaseDecisionKey, ResolvedFolderReleaseBoundary,
-};
-use std::borrow::Cow;
+use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 
-/// The source shape an admitted import must still have when it commits.
+/// The source shape an admitted import must still have when it commits: the
+/// folder its files are read from, how much of it, and the folders it is made
+/// of when it is several.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CandidateSource {
-    Folder {
-        path: std::path::PathBuf,
-        scope: super::folder_scanner::ReleaseFileScope,
-    },
-    Combination,
+pub struct CandidateSource {
+    pub path: std::path::PathBuf,
+    pub scope: ReleaseFileScope,
+    pub parts: Vec<std::path::PathBuf>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct CombinedCandidate {
-    pub key: String,
-    pub name: String,
-    /// The watched-root section containing the combined row. Each part retains
-    /// its own source key; this does not claim that its files share one root.
-    pub watched_folder_path: String,
-    pub combination: CandidateCombination,
-    pub file_edit_revision: u64,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ReleaseCandidate {
-    Folder(FolderCandidate),
-    Combined(CombinedCandidate),
-}
-
-impl From<FolderCandidate> for ReleaseCandidate {
-    fn from(candidate: FolderCandidate) -> Self {
-        Self::Folder(candidate)
-    }
-}
-
-impl ReleaseCandidate {
+impl FolderCandidate {
+    /// The draft the release's own files describe, with the track layout
+    /// every draft of it keeps: a release read from several folders numbers
+    /// its discs folder by folder, whatever the files' own tags say.
     pub(crate) fn file_tag_edit(
         &self,
         snapshot: &super::file_tag_snapshot::FileTagSnapshot,
@@ -47,122 +23,50 @@ impl ReleaseCandidate {
         ids: &dyn coven::IdProvider,
     ) -> Result<super::ReleaseUserEdit, super::ImportError> {
         let parsed = super::file_tag_mapper::map_file_metadata_to_db(
-            self.files(),
+            &self.files,
             snapshot,
-            Some(self.name()),
+            Some(&self.name),
             clock,
             ids,
         )?;
         let mut edit = super::parsed_album_to_user_edit(&parsed);
-        if let Self::Combined(candidate) = self {
-            if edit.tracks.len() != candidate.combination.tracks.len() {
+        if !self.files.parts.is_empty() {
+            let layout = super::track_slots::direct_entry_track_rows(&self.files);
+            if edit.tracks.len() != layout.len() {
                 return Err(super::ImportError::Internal {
-                    detail: "file metadata does not match the combination's track count".into(),
+                    detail: "file metadata does not match the release's track count".into(),
                 });
             }
-            for (track, combined) in edit.tracks.iter_mut().zip(&candidate.combination.tracks) {
-                track.side = combined.side;
-                track.track_number = combined.track_number;
+            for (track, laid_out) in edit.tracks.iter_mut().zip(&layout) {
+                track.side = laid_out.side;
+                track.track_number = laid_out.track_number;
             }
         }
         Ok(edit)
     }
 
-    pub fn source_file_edits_allowed(&self) -> bool {
-        matches!(self, Self::Folder(_))
-    }
-
-    pub fn source_folders(&self) -> Vec<std::path::PathBuf> {
-        match self {
-            Self::Folder(candidate) => vec![candidate.path.clone()],
-            Self::Combined(candidate) => candidate
-                .combination
-                .parts
-                .iter()
-                .map(|part| std::path::PathBuf::from(&part.candidate_key))
-                .collect(),
-        }
-    }
-
+    /// The draft a release starts from before anyone describes it: one blank
+    /// track per audio unit, in the release's own track layout. A release
+    /// read from several folders starts titled by the name it is listed as —
+    /// no one folder's name speaks for it on its own.
     pub(crate) fn blank_source(&self) -> super::pane::CandidateSourceDraft {
-        match self {
-            Self::Folder(candidate) => super::pane::blank_candidate_source(&candidate.files),
-            Self::Combined(candidate) => {
-                super::pane::blank_source_for_tracks(candidate.combination.tracks.clone())
-            }
+        let mut source = super::pane::blank_candidate_source(&self.files);
+        if self.grouping.is_some() {
+            source.draft.album_title.clone_from(&self.name);
         }
+        source
     }
 
     pub fn source(&self) -> CandidateSource {
-        match self {
-            Self::Folder(candidate) => CandidateSource::Folder {
-                path: candidate.file_root.clone(),
-                scope: candidate.scope,
-            },
-            Self::Combined(_) => CandidateSource::Combination,
-        }
-    }
-
-    pub fn key(&self) -> Cow<'_, str> {
-        match self {
-            Self::Folder(candidate) => candidate.path.to_string_lossy(),
-            Self::Combined(candidate) => Cow::Borrowed(&candidate.key),
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        match self {
-            Self::Folder(candidate) => &candidate.name,
-            Self::Combined(candidate) => &candidate.name,
-        }
-    }
-
-    pub fn files(&self) -> &CategorizedFiles {
-        match self {
-            Self::Folder(candidate) => &candidate.files,
-            Self::Combined(candidate) => &candidate.combination.files,
-        }
-    }
-
-    pub fn into_files(self) -> CategorizedFiles {
-        match self {
-            Self::Folder(candidate) => candidate.files,
-            Self::Combined(candidate) => candidate.combination.files,
-        }
-    }
-
-    pub fn file_edit_revision(&self) -> u64 {
-        match self {
-            Self::Folder(candidate) => candidate.file_edit_revision,
-            Self::Combined(candidate) => candidate.file_edit_revision,
-        }
-    }
-
-    pub fn watched_folder_path(&self) -> &str {
-        match self {
-            Self::Folder(candidate) => &candidate.watched_folder_path,
-            Self::Combined(candidate) => &candidate.watched_folder_path,
-        }
-    }
-
-    pub fn display_path(&self) -> &str {
-        match self {
-            Self::Folder(candidate) => &candidate.display_path,
-            Self::Combined(candidate) => &candidate.name,
-        }
-    }
-
-    pub fn resolved_boundaries(&self) -> &[ResolvedFolderReleaseBoundary] {
-        match self {
-            Self::Folder(candidate) => &candidate.resolved_boundaries,
-            Self::Combined(_) => &[],
-        }
-    }
-
-    pub fn combine_ancestor_key(&self) -> Option<&FolderReleaseDecisionKey> {
-        match self {
-            Self::Folder(candidate) => candidate.combine_ancestor_key.as_ref(),
-            Self::Combined(_) => None,
+        CandidateSource {
+            path: self.file_root.clone(),
+            scope: self.scope,
+            parts: self
+                .files
+                .parts
+                .iter()
+                .map(|part| part.folder.clone())
+                .collect(),
         }
     }
 }

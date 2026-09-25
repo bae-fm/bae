@@ -37,12 +37,16 @@ pub enum ScanCandidateKind {
     Invalid,
 }
 
-/// One scanned folder, as the list places it.
+/// One stored release, as the list places it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ScanCandidateListRow {
-    pub source: CandidateListSource,
+    /// The grouping this release reads several folders as, when it is one.
+    pub grouping: Option<CandidateListGrouping>,
     pub watched_folder_path: String,
+    /// The release's key: its folder's path, or its grouping's key.
     pub path: String,
+    /// The folder the release is shown as.
+    pub folder: String,
     pub kind: ScanCandidateKind,
     pub name: String,
     pub display_path: String,
@@ -52,26 +56,25 @@ pub struct ScanCandidateListRow {
     /// `None` only for an invalid folder, which carries no files.
     pub content_hash: Option<String>,
     pub file_edit_revision: u64,
-    pub combine_ancestor_relative_path: Option<String>,
     /// Set exactly when `kind` is [`ScanCandidateKind::Invalid`].
     pub invalid_reason: Option<InvalidReason>,
 }
 
+/// What a release read from several folders carries on its grouping.
 #[derive(Debug, Clone, PartialEq)]
-pub enum CandidateListSource {
-    Folder,
-    Combination {
-        skipped: bool,
-        error: Option<String>,
-    },
+pub struct CandidateListGrouping {
+    pub skipped: bool,
+    /// Why the release cannot be built as it stands, for a grouping of
+    /// releases picked together one of which is gone or changed.
+    pub error: Option<String>,
 }
 
-impl CandidateListSource {
+impl ScanCandidateListRow {
+    /// Why this release cannot be worked on as it stands, if anything says so.
     pub(crate) fn error(&self) -> Option<&str> {
-        match self {
-            Self::Folder => None,
-            Self::Combination { error, .. } => error.as_deref(),
-        }
+        self.grouping
+            .as_ref()
+            .and_then(|grouping| grouping.error.as_deref())
     }
 }
 
@@ -110,11 +113,12 @@ pub struct ImportQueueRows {
     /// before the app quit comes back looking untouched.
     pub failures: HashMap<String, String>,
     pub states: HashMap<String, CandidateStateListRow>,
-    /// Every folder whose reading is settled as several releases, keyed by
-    /// `(watched_folder_path, relative_folder_path)`. The rows below such a
-    /// folder are its releases; the folder is where the choice to read them as
-    /// one is offered, so the list has to know which folders those are.
-    pub separated_folders: HashSet<(String, String)>,
+    /// How each folder with a stored reading reads, keyed by
+    /// `(watched_folder_path, relative_folder_path)`: `true` for a folder read
+    /// as one release, `false` for one whose releases are kept apart. The
+    /// list offers to read a folder's releases as one from what is stored
+    /// here and the releases below it.
+    pub folder_readings: HashMap<(String, String), bool>,
     /// What each Done row shows of its library release in words, by release
     /// id — what the filter tests a Done row against. Read only when the view
     /// filters: `None` when the read left it out, so an unfiltered list does
@@ -222,12 +226,17 @@ pub(super) fn load_import_queue_on(
         imported_at.insert(content_hash, created_at.timestamp_millis());
     }
 
-    let separated_folders: HashSet<(String, String)> = sql
+    let folder_readings: HashMap<(String, String), bool> = sql
         .query(
-            "SELECT watched_folder_path, relative_folder_path \
-             FROM folder_release_decisions WHERE decision = 'keep_as_separate_releases'",
+            "SELECT watched_folder_path, anchor_relative_path, combined \
+             FROM release_grouping WHERE anchor_relative_path IS NOT NULL",
             [],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            |row| {
+                Ok((
+                    (row.get::<_, String>(0)?, row.get::<_, String>(1)?),
+                    row.get::<_, bool>(2)?,
+                ))
+            },
         )?
         .into_iter()
         .collect();
@@ -254,57 +263,60 @@ pub(super) fn load_import_queue_on(
         imported_at,
         failures,
         states,
-        separated_folders,
+        folder_readings,
         imported_text,
     })
 }
 
 fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>, DbError> {
+    // A release a grouping takes in stays stored for as long as the grouping
+    // stands, and leaves the queue for that long.
     sql.query(
-        "SELECT watched_folder_path, path, kind, name, display_path, content_hash, \
-                file_edit_revision, combine_ancestor_relative_path, invalid_reason, \
-                invalid_reason_path, COALESCE(source_date, first_seen_at), source_kind, \
-                (SELECT skipped FROM candidate_combination WHERE candidate_key = path), \
-                (SELECT error FROM candidate_combination WHERE candidate_key = path) \
-         FROM scan_candidate WHERE NOT EXISTS \
-             (SELECT 1 FROM candidate_combination_member WHERE candidate_key = path)",
+        "SELECT c.watched_folder_path, c.path, c.folder, c.kind, c.name, c.display_path, \
+                c.content_hash, c.file_edit_revision, c.invalid_reason, c.invalid_reason_path, \
+                COALESCE(c.source_date, c.first_seen_at), c.grouping_key, g.skipped, g.error \
+         FROM scan_candidate AS c \
+         LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
+         WHERE NOT EXISTS \
+             (SELECT 1 FROM release_grouping_member WHERE member_key = c.path)",
         [],
         |row| {
             Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, String>(4)?,
-                row.get::<_, Option<String>>(5)?,
-                row.get::<_, i64>(6)?,
-                row.get::<_, Option<String>>(7)?,
-                row.get::<_, Option<String>>(8)?,
-                row.get::<_, Option<String>>(9)?,
-                row.get::<_, Option<i64>>(10)?,
-                row.get::<_, String>(11)?,
-                row.get::<_, Option<bool>>(12)?,
-                row.get::<_, Option<String>>(13)?,
+                (
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, String>(5)?,
+                ),
+                (
+                    row.get::<_, Option<String>>(6)?,
+                    row.get::<_, i64>(7)?,
+                    row.get::<_, Option<String>>(8)?,
+                    row.get::<_, Option<String>>(9)?,
+                    row.get::<_, Option<i64>>(10)?,
+                    row.get::<_, Option<String>>(11)?,
+                    row.get::<_, Option<bool>>(12)?,
+                    row.get::<_, Option<String>>(13)?,
+                ),
             ))
         },
     )?
     .into_iter()
     .map(
         |(
-            watched_folder_path,
-            path,
-            kind,
-            name,
-            display_path,
-            content_hash,
-            file_edit_revision,
-            combine_ancestor_relative_path,
-            invalid_reason,
-            invalid_reason_path,
-            discovered_at,
-            source_kind,
-            combined_skipped,
-            combined_error,
+            (watched_folder_path, path, folder, kind, name, display_path),
+            (
+                content_hash,
+                file_edit_revision,
+                invalid_reason,
+                invalid_reason_path,
+                discovered_at,
+                grouping_key,
+                grouping_skipped,
+                grouping_error,
+            ),
         )| {
             let kind = match kind.as_str() {
                 "tentative" => ScanCandidateKind::Tentative,
@@ -312,19 +324,20 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
                 "invalid" => ScanCandidateKind::Invalid,
                 other => return Err(unreadable("kind", other)),
             };
+            let grouping = match grouping_key {
+                Some(grouping_key) => Some(CandidateListGrouping {
+                    skipped: grouping_skipped.ok_or_else(|| {
+                        DbError::Message(format!("release {path} names no stored grouping {grouping_key}"))
+                    })?,
+                    error: grouping_error,
+                }),
+                None => None,
+            };
             Ok(ScanCandidateListRow {
-                source: match source_kind.as_str() {
-                    "folder" => CandidateListSource::Folder,
-                    "combination" => CandidateListSource::Combination {
-                        skipped: combined_skipped.ok_or_else(|| {
-                            DbError::Message(format!("combination {path} has no membership record"))
-                        })?,
-                        error: combined_error,
-                    },
-                    other => return Err(unreadable("source_kind", other)),
-                },
+                grouping,
                 watched_folder_path,
                 path,
+                folder,
                 kind,
                 name,
                 display_path,
@@ -334,7 +347,6 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
                     file_edit_revision,
                     "a scan candidate's file edit revision",
                 )?,
-                combine_ancestor_relative_path,
                 invalid_reason: invalid_reason
                     .map(|reason| invalid_reason_of(&reason, invalid_reason_path))
                     .transpose()?,
@@ -618,11 +630,15 @@ fn load_sweepable_candidates_on(
     impl FnOnce() -> Result<Vec<crate::import::FolderCandidate>, DbError> + Send + 'static,
     DbError,
 > {
+    // Every settled release the queue lists: not taken into a grouping, and —
+    // for a grouping — built from every release it takes in and not set aside.
     let sweepable: HashSet<(String, String)> = sql
         .query(
-            "SELECT watched_folder_path, path FROM scan_candidate \
-             WHERE kind = 'valid' \
-               AND NOT EXISTS (SELECT 1 FROM candidate_combination_member WHERE candidate_key = path)",
+            "SELECT c.watched_folder_path, c.path FROM scan_candidate AS c \
+             LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
+             WHERE c.kind = 'valid' \
+               AND NOT EXISTS (SELECT 1 FROM release_grouping_member WHERE member_key = c.path) \
+               AND (c.grouping_key IS NULL OR (g.skipped = 0 AND g.error IS NULL))",
             [],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )?
@@ -651,7 +667,14 @@ fn load_sweepable_candidates_on(
     )?;
     let roots = roots
         .into_iter()
-        .map(|root| folder_scans::read::load_candidate_items_rows(sql, &root, None))
+        .map(|root| {
+            folder_scans::read::load_candidate_items_rows(
+                sql,
+                &root,
+                None,
+                folder_scans::RowSources::Any,
+            )
+        })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(move || {
         let mut candidates = Vec::new();
@@ -660,18 +683,20 @@ fn load_sweepable_candidates_on(
                 let ScanItem::Valid(candidate) = stored.item else {
                     continue;
                 };
-                let candidate_key = candidate.path.to_string_lossy().into_owned();
-                if !sweepable.contains(&(candidate.watched_folder_path.clone(), candidate_key)) {
+                if !sweepable.contains(&(candidate.watched_folder_path.clone(), candidate.key())) {
                     continue;
                 }
-                let relative = crate::import::watched_folder::candidate_relative_path(
-                    &candidate.watched_folder_path,
-                    &candidate.path,
-                )
-                .map_err(|error| DbError::Message(error.to_string()))?;
-                if skipped.contains(&(candidate.watched_folder_path.clone(), relative))
-                    || imported.contains(&candidate.files.content_hash())
-                {
+                if candidate.grouping.is_none() {
+                    let relative = crate::import::watched_folder::candidate_relative_path(
+                        &candidate.watched_folder_path,
+                        &candidate.path,
+                    )
+                    .map_err(|error| DbError::Message(error.to_string()))?;
+                    if skipped.contains(&(candidate.watched_folder_path.clone(), relative)) {
+                        continue;
+                    }
+                }
+                if imported.contains(&candidate.files.content_hash()) {
                     continue;
                 }
                 candidates.push(candidate);

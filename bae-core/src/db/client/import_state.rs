@@ -23,7 +23,9 @@ pub(crate) use preparation_rows::{
     CandidateLookupUpdate, CandidatePaneWrite, CandidateSaveExpectation,
     CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
 };
-pub(super) use rows::{load_matches_on, load_provenance_on, load_states_on};
+pub(super) use rows::{
+    load_candidate_file_edits_on, load_matches_on, load_provenance_on, load_states_on,
+};
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, insert_signals};
 
@@ -31,7 +33,7 @@ use crate::import::folder_scanner::{
     CandidateFileEdits, FolderReleaseDecision, FolderReleaseDecisionAuthor,
     FolderReleaseDecisionKey, FolderReleaseDecisions, StoredCandidateEdits,
 };
-use rows::{insert_provenance, load_candidate_file_edits_on, load_states_rows_on};
+use rows::{insert_provenance, load_states_rows_on};
 use std::collections::HashSet;
 use verdict_rows::{delete_verdict, insert_verdict};
 
@@ -59,6 +61,17 @@ impl Database {
 /// they project and the provenance naming them as its source, written by
 /// discovery rather than by anyone who looked at it. The cover the tags embed
 /// is stored with the folder's own cover, beside this.
+/// Store `edits` as every file decision held for `content_hash`, in place of
+/// whatever was held.
+pub(super) fn store_file_edits(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    edits: &CandidateFileEdits,
+) -> Result<(), DbError> {
+    delete_file_edits(sql, content_hash)?;
+    insert_file_edits(sql, content_hash, edits)
+}
+
 pub(crate) fn insert_file_tags_draft(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -294,78 +307,78 @@ impl Database {
 }
 
 impl Database {
-    /// Store the reading a scan settled on for one folder, without disturbing
-    /// the scan that produced it: no generation bump, no re-scan. A folder the
-    /// user has already answered for keeps their answer.
+    /// Store the reading a scan settled on for one folder, under the grouping
+    /// key the scan gave it, without disturbing the scan that produced it: no
+    /// generation bump, no re-scan. Refused when the folder already reads
+    /// some stored way — the scan proposes only where nothing is stored.
     pub async fn record_scanned_folder_release_decision(
         &self,
         key: &FolderReleaseDecisionKey,
         decision: FolderReleaseDecision,
+        grouping: &str,
     ) -> Result<(), DbError> {
         let key = key.clone();
+        let grouping = grouping.to_string();
         self.call(move |sql| {
-            super::folder_scans::store_folder_release_decision(
+            super::folder_scans::store_folder_reading(
                 sql,
                 &key,
                 decision,
                 FolderReleaseDecisionAuthor::Heuristic,
+                &grouping,
             )
         })
         .await
     }
 
-    /// Every explicit interpretation below one watched root.
+    /// How every folder below one watched root reads, where a reading is
+    /// stored.
     pub async fn load_folder_release_decisions(
         &self,
         watched_folder_path: &str,
     ) -> Result<FolderReleaseDecisions, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         self.read(move |sql| {
-            let decisions = sql.query(
-                "SELECT relative_folder_path, decision, author \
-                 FROM folder_release_decisions WHERE watched_folder_path = ?",
+            let rows = sql.query(
+                "SELECT anchor_relative_path, combined, author, key \
+                 FROM release_grouping \
+                 WHERE watched_folder_path = ? AND anchor_relative_path IS NOT NULL",
                 [watched_folder_path],
                 |row| {
-                    let path: String = row.get(0)?;
-                    crate::import::watched_folder::validate_relative_path(&path).map_err(
-                        |error| {
-                            coven::rusqlite::Error::FromSqlConversionFailure(
-                                0,
-                                coven::rusqlite::types::Type::Text,
-                                Box::new(error),
-                            )
-                        },
-                    )?;
-                    let stored: String = row.get(1)?;
-                    let decision = match stored.as_str() {
-                        "combine_as_one_release" => FolderReleaseDecision::CombineAsOneRelease,
-                        "keep_as_separate_releases" => {
-                            FolderReleaseDecision::KeepAsSeparateReleases
-                        }
-                        other => {
-                            return Err(coven::rusqlite::Error::FromSqlConversionFailure(
-                                1,
-                                coven::rusqlite::types::Type::Text,
-                                format!("unknown folder release decision {other:?}").into(),
-                            ))
-                        }
-                    };
-                    let stored: String = row.get(2)?;
-                    let author = match stored.as_str() {
-                        "user" => FolderReleaseDecisionAuthor::User,
-                        "heuristic" => FolderReleaseDecisionAuthor::Heuristic,
-                        other => {
-                            return Err(coven::rusqlite::Error::FromSqlConversionFailure(
-                                2,
-                                coven::rusqlite::types::Type::Text,
-                                format!("unknown folder release decision author {other:?}").into(),
-                            ))
-                        }
-                    };
-                    Ok((path, (decision, author)))
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, bool>(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, String>(3)?,
+                    ))
                 },
             )?;
-            Ok(FolderReleaseDecisions::new(decisions.into_iter().collect()))
+            let mut readings = HashMap::with_capacity(rows.len());
+            for (path, combined, author, grouping) in rows {
+                crate::import::watched_folder::validate_relative_path(&path)?;
+                let author = match author.as_str() {
+                    "user" => FolderReleaseDecisionAuthor::User,
+                    "heuristic" => FolderReleaseDecisionAuthor::Heuristic,
+                    other => {
+                        return Err(DbError::Message(format!(
+                            "unknown folder release decision author {other:?}"
+                        )))
+                    }
+                };
+                readings.insert(
+                    path,
+                    crate::import::folder_scanner::FolderReading {
+                        decision: if combined {
+                            FolderReleaseDecision::CombineAsOneRelease
+                        } else {
+                            FolderReleaseDecision::KeepAsSeparateReleases
+                        },
+                        author,
+                        grouping,
+                    },
+                );
+            }
+            Ok(FolderReleaseDecisions::new(readings))
         })
         .await
     }
@@ -438,16 +451,18 @@ impl Database {
     }
 }
 
-/// Apply source decisions to every candidate sharing the preparation. Folder
-/// rows take settled files; combinations keep their immutable source snapshots.
-/// Every row must still have the revision the caller prepared against.
+/// Apply source decisions to every candidate sharing the preparation: each
+/// takes its settled files, and every grouping built from one of them is
+/// rebuilt. Every row must still have the revision the caller prepared
+/// against.
 pub(super) fn settle_scanned_candidates(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     expected_revision: i64,
     next_revision: i64,
     settled_by_key: &HashMap<String, crate::import::folder_scanner::CategorizedFiles>,
-) -> Result<Vec<crate::import::release_candidate::ReleaseCandidate>, DbError> {
+    observed_at: i64,
+) -> Result<Vec<crate::import::folder_scanner::FolderCandidate>, DbError> {
     let scanned = sql.query(
         "SELECT watched_folder_path, path, source_kind, file_edit_revision FROM scan_candidate \
          WHERE content_hash = ? ORDER BY watched_folder_path, path",
@@ -470,20 +485,35 @@ pub(super) fn settle_scanned_candidates(
             )));
         }
         match source_kind.as_str() {
-            "folder" => {
+            "folder" | "grouping" => {
                 let settled = settled_by_key.get(&path).ok_or_else(|| {
                     DbError::Message(format!(
                         "persisted candidate {path} was missing from the settled file edit"
                     ))
                 })?;
+                // The file-tag reading names the files it was read from, so
+                // taking the file rows away takes it too. The decision
+                // changed which files are tracks, not the files, so the
+                // reading is laid back down over the settled rows as it was —
+                // with the revision it was taken at, which is no longer the
+                // candidate's.
+                let reading =
+                    folder_scans::read::load_file_tag_snapshot(sql, &watched_folder_path, &path)?;
                 sql.execute(
                     "DELETE FROM scan_candidate_file WHERE watched_folder_path = ? AND candidate_path = ?",
                     params![watched_folder_path, path],
                 )?;
                 folder_scans::insert_candidate_files(sql, &watched_folder_path, &path, settled)?;
+                if let Some(reading) = reading {
+                    folder_scans::write::replace_candidate_file_tag_snapshot(
+                        sql,
+                        &watched_folder_path,
+                        &path,
+                        &reading,
+                    )?;
+                }
                 updated_folders.insert(path.clone());
             }
-            "combination" => {}
             other => {
                 return Err(DbError::Message(format!(
                     "unknown candidate source {other}"
@@ -502,7 +532,7 @@ pub(super) fn settle_scanned_candidates(
             )));
         }
         let stored =
-            super::import_combinations::load_candidate_on(sql, &path)?.ok_or_else(|| {
+            super::release_groupings::load_candidate_on(sql, &path)?.ok_or_else(|| {
                 DbError::Message(format!(
                     "candidate {path} disappeared while its source decisions were stored"
                 ))
@@ -520,5 +550,13 @@ pub(super) fn settle_scanned_candidates(
             missing.join(", ")
         )));
     }
+    // A release a grouping built from one of these is built again, with the
+    // files it now holds.
+    let settled: Vec<String> = updated_folders.into_iter().collect();
+    let regrouped = super::release_groupings::rebuild_groupings(sql, &settled, observed_at)?;
+    updated_candidates.extend(regrouped.written.into_iter().filter_map(|item| match item {
+        crate::import::folder_scanner::ScanItem::Valid(candidate) => Some(candidate),
+        _ => None,
+    }));
     Ok(updated_candidates)
 }

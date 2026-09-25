@@ -16,15 +16,31 @@ use crate::import::file_tag_snapshot::{
     EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot,
 };
 use crate::import::folder_scanner::{
-    CandidateFile, CategorizedFiles, FileRole, FolderCandidate, FolderReleaseDecisionKey,
-    InvalidCandidate, ResolvedFolderReleaseBoundary, ScanItem, ScannedAudio, ScannedFile,
-    SheetAudioFile,
+    CandidateFile, CategorizedFiles, Coverage, FileRole, FolderCandidate, InvalidCandidate,
+    ReleasePart, ReleaseFileScope, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile,
 };
 use crate::util::content_type::ContentType;
 
 type FinishRead<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
 type FilesByCandidate = HashMap<String, Vec<CandidateFile>>;
-type BoundariesByCandidate = HashMap<String, Vec<ResolvedFolderReleaseBoundary>>;
+type PartsByCandidate = HashMap<String, Vec<ReleasePart>>;
+
+/// Which rows a read takes in: what the scans wrote, or those and the
+/// releases groupings built from them too.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RowSources {
+    Scanned,
+    Any,
+}
+
+impl RowSources {
+    fn clause(self) -> &'static str {
+        match self {
+            Self::Scanned => "source_kind = 'folder'",
+            Self::Any => "1",
+        }
+    }
+}
 type AudioFilesBySheet = HashMap<SheetKey, Vec<SheetAudioFile>>;
 type TracksBySheet = HashMap<SheetKey, Vec<CueTrack>>;
 type IndexesByTrack = HashMap<TrackKey, Vec<CueIndex>>;
@@ -56,8 +72,9 @@ struct StoredEmbeddedCoverColumns {
 pub(super) fn load_items(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,
+    sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
-    let items = load_candidate_items_rows(sql, watched_folder_path, None)?;
+    let items = load_candidate_items_rows(sql, watched_folder_path, None, sources)?;
     let root_generation = sql
         .query(
             "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
@@ -89,8 +106,9 @@ pub(super) fn load_items(
 pub(crate) fn load_item_by_key(
     sql: &(impl QueryOne + QueryRows),
     entry_key: &str,
+    sources: RowSources,
 ) -> Result<Option<(String, StoredScanItem)>, DbError> {
-    load_item_by_key_rows(sql, entry_key)?
+    load_item_by_key_rows(sql, entry_key, sources)?
         .map(|process| process())
         .transpose()
 }
@@ -98,9 +116,13 @@ pub(crate) fn load_item_by_key(
 pub(crate) fn load_item_by_key_rows(
     sql: &(impl QueryOne + QueryRows),
     entry_key: &str,
+    sources: RowSources,
 ) -> Result<Option<FinishRead<(String, StoredScanItem)>>, DbError> {
     let roots = sql.query(
-        "SELECT watched_folder_path FROM scan_candidate WHERE path = ? AND source_kind = 'folder'",
+        &format!(
+            "SELECT watched_folder_path FROM scan_candidate WHERE path = ? AND {}",
+            sources.clause()
+        ),
         [entry_key],
         |row| row.get::<_, String>(0),
     )?;
@@ -111,7 +133,7 @@ pub(crate) fn load_item_by_key_rows(
         )));
     }
     if let Some(root) = roots.into_iter().next() {
-        let items = load_candidate_items_rows(sql, &root, Some(entry_key))?;
+        let items = load_candidate_items_rows(sql, &root, Some(entry_key), sources)?;
         let entry_key = entry_key.to_string();
         return Ok(Some(Box::new(move || {
             let mut items = items()?;
@@ -136,14 +158,14 @@ pub(crate) fn load_candidate_file_tag_snapshot(
     candidate_path: &str,
 ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
     let Some(stored_candidate) =
-        super::super::import_combinations::load_candidate_on(sql, candidate_path)?
+        super::super::release_groupings::load_candidate_on(sql, candidate_path)?
     else {
         return Ok(None);
     };
     // A blocked candidate still displays its stored artwork and metadata.
     // Operations enforce actionability before reading or changing source files.
     let candidate = stored_candidate.candidate;
-    if candidate.watched_folder_path() != watched_folder_path {
+    if candidate.watched_folder_path != watched_folder_path {
         return Err(DbError::Message(format!(
             "candidate {candidate_path} does not belong to {watched_folder_path}"
         )));
@@ -301,8 +323,6 @@ fn load_file_tag_facts(
         .collect()
 }
 
-/// Every stored entry under one root, as the key it is addressed by and the
-/// row that holds it — what a superseding write deletes by.
 /// Whether the stored candidate at `path` is a settled release row — the kind
 /// the list draws and counts. `false` covers a tentative or invalid row and a
 /// path nothing is stored for.
@@ -321,25 +341,37 @@ pub(crate) fn candidate_is_valid(
     Ok(kind.as_deref() == Some("valid"))
 }
 
+/// Every entry the scans stored under one root, as the key it is addressed
+/// by and the part of the root it reads — what a superseding write deletes by.
 pub(crate) fn stored_entries(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,
-) -> Result<Vec<(String, StoredEntry)>, DbError> {
-    let mut entries: Vec<(String, StoredEntry)> = sql
+) -> Result<Vec<StoredEntry>, DbError> {
+    let mut entries = sql
         .query(
-            "SELECT path, scope FROM scan_candidate WHERE watched_folder_path = ? AND source_kind = 'folder'",
+            "SELECT path, file_root, scope FROM scan_candidate \
+             WHERE watched_folder_path = ? AND source_kind = 'folder'",
             [watched_folder_path],
             |row| {
                 Ok((
                     row.get::<_, String>(0)?,
-                    row.get::<_, Option<String>>(1)?.as_deref() == Some("recursive"),
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
                 ))
             },
         )?
         .into_iter()
-        .map(|(path, whole_folder)| (path.clone(), StoredEntry::Candidate { path, whole_folder }))
-        .collect();
-    entries.sort_by(|left, right| left.0.cmp(&right.0));
+        .map(|(key, file_root, scope)| {
+            Ok(StoredEntry {
+                key,
+                coverage: Coverage {
+                    folder: PathBuf::from(file_root),
+                    whole_subtree: scope_of(&scope)? == ReleaseFileScope::Recursive,
+                },
+            })
+        })
+        .collect::<Result<Vec<_>, DbError>>()?;
+    entries.sort_by(|left, right| left.key.cmp(&right.key));
     Ok(entries)
 }
 
@@ -351,10 +383,11 @@ struct CandidateRow {
     kind: String,
     name: String,
     display_path: String,
-    file_root: Option<String>,
-    scope: Option<String>,
+    folder: String,
+    file_root: String,
+    scope: String,
     file_edit_revision: i64,
-    combine_ancestor_relative_path: Option<String>,
+    grouping_key: Option<String>,
     invalid_reason: Option<String>,
     invalid_reason_path: Option<String>,
 }
@@ -363,14 +396,17 @@ pub(crate) fn load_candidate_items_rows(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,
     only: Option<&str>,
+    sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
     let rows = sql.query(
-        "SELECT path, generation, kind, name, display_path, file_root, scope, \
-                file_edit_revision, combine_ancestor_relative_path, \
-                invalid_reason, invalid_reason_path \
-         FROM scan_candidate \
-         WHERE watched_folder_path = :root AND source_kind = 'folder' AND (:only IS NULL OR path = :only) \
-         ORDER BY path",
+        &format!(
+            "SELECT path, generation, kind, name, display_path, folder, file_root, scope, \
+                    file_edit_revision, grouping_key, invalid_reason, invalid_reason_path \
+             FROM scan_candidate \
+             WHERE watched_folder_path = :root AND {} AND (:only IS NULL OR path = :only) \
+             ORDER BY path",
+            sources.clause()
+        ),
         named_params! { ":root": watched_folder_path, ":only": only },
         |row| {
             Ok(CandidateRow {
@@ -379,25 +415,25 @@ pub(crate) fn load_candidate_items_rows(
                 kind: row.get(2)?,
                 name: row.get(3)?,
                 display_path: row.get(4)?,
-                file_root: row.get(5)?,
-                scope: row.get(6)?,
-                file_edit_revision: row.get(7)?,
-                combine_ancestor_relative_path: row.get(8)?,
-                invalid_reason: row.get(9)?,
-                invalid_reason_path: row.get(10)?,
+                folder: row.get(5)?,
+                file_root: row.get(6)?,
+                scope: row.get(7)?,
+                file_edit_revision: row.get(8)?,
+                grouping_key: row.get(9)?,
+                invalid_reason: row.get(10)?,
+                invalid_reason_path: row.get(11)?,
             })
         },
     )?;
     let files = load_files_rows(sql, watched_folder_path, only)?;
-    let resolved = load_resolved_boundaries_rows(sql, watched_folder_path, only)?;
+    let parts = load_parts_rows(sql, watched_folder_path, only)?;
     let watched_folder_path = watched_folder_path.to_string();
     Ok(Box::new(move || {
         let mut files = files()?;
-        let mut resolved = resolved()?;
+        let mut parts = parts;
 
         let mut items = Vec::with_capacity(rows.len());
         for row in rows {
-            let resolved_boundaries = resolved.remove(&row.path).unwrap_or_default();
             let generation = to_u64(row.generation, "a scan candidate's generation")?;
             let item = match row.kind.as_str() {
                 "invalid" => {
@@ -405,41 +441,31 @@ pub(crate) fn load_candidate_items_rows(
                         DbError::Message(format!("scan candidate {} has no reason", row.path))
                     })?;
                     ScanItem::Invalid(InvalidCandidate {
-                        path: PathBuf::from(&row.path),
+                        path: PathBuf::from(&row.folder),
                         name: row.name,
                         watched_folder_path: watched_folder_path.to_string(),
                         display_path: row.display_path,
-                        resolved_boundaries,
+                        grouping: row.grouping_key,
                         reason: invalid_reason_of(reason, row.invalid_reason_path)?,
                     })
                 }
                 kind @ ("tentative" | "valid") => {
-                    let missing = |column: &str| {
-                        DbError::Message(format!("scan candidate {} has no {column}", row.path))
-                    };
                     let candidate = FolderCandidate {
-                        path: PathBuf::from(&row.path),
-                        file_root: PathBuf::from(
-                            row.file_root.ok_or_else(|| missing("file root"))?,
-                        ),
+                        path: PathBuf::from(&row.folder),
+                        file_root: PathBuf::from(&row.file_root),
                         name: row.name,
                         files: CategorizedFiles {
                             files: files.remove(&row.path).unwrap_or_default(),
+                            parts: parts.remove(&row.path).unwrap_or_default(),
                         },
                         watched_folder_path: watched_folder_path.to_string(),
-                        scope: scope_of(&row.scope.ok_or_else(|| missing("scope"))?)?,
+                        scope: scope_of(&row.scope)?,
                         file_edit_revision: to_u64(
                             row.file_edit_revision,
                             "a scan candidate's file edit revision",
                         )?,
                         display_path: row.display_path,
-                        resolved_boundaries,
-                        combine_ancestor_key: row.combine_ancestor_relative_path.map(|relative| {
-                            FolderReleaseDecisionKey {
-                                watched_folder_path: watched_folder_path.to_string(),
-                                relative_folder_path: relative,
-                            }
-                        }),
+                        grouping: row.grouping_key,
                     };
                     match kind {
                         "tentative" => ScanItem::Discovered(candidate),
@@ -478,14 +504,6 @@ struct FileRow {
     sheet_binding_codec: Option<String>,
     sheet_disc: Option<String>,
     sheet_disc_number: Option<i64>,
-}
-
-pub(crate) fn load_files(
-    sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
-) -> Result<FilesByCandidate, DbError> {
-    load_files_rows(sql, watched_folder_path, only)?()
 }
 
 pub(crate) fn load_files_rows(
@@ -679,22 +697,14 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
     }
 }
 
-pub(crate) fn load_resolved_boundaries(
+/// The parts each release read from several is made of, in play order.
+fn load_parts_rows(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,
     only: Option<&str>,
-) -> Result<BoundariesByCandidate, DbError> {
-    load_resolved_boundaries_rows(sql, watched_folder_path, only)?()
-}
-
-pub(crate) fn load_resolved_boundaries_rows(
-    sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
-) -> Result<impl FnOnce() -> Result<BoundariesByCandidate, DbError> + Send + 'static, DbError> {
+) -> Result<PartsByCandidate, DbError> {
     let rows = sql.query(
-        "SELECT candidate_path, relative_folder_path, decision, name, display_path \
-         FROM scan_candidate_resolved_boundary \
+        "SELECT candidate_path, folder, prefix FROM scan_candidate_part \
          WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only) \
          ORDER BY candidate_path, position",
         named_params! { ":root": watched_folder_path, ":only": only },
@@ -703,30 +713,17 @@ pub(crate) fn load_resolved_boundaries_rows(
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, String>(4)?,
             ))
         },
     )?;
-    let watched_folder_path = watched_folder_path.to_string();
-    Ok(move || {
-        let mut resolved: BoundariesByCandidate = HashMap::new();
-        for (candidate_path, relative_folder_path, decision, name, display_path) in rows {
-            resolved
-                .entry(candidate_path)
-                .or_default()
-                .push(ResolvedFolderReleaseBoundary {
-                    key: FolderReleaseDecisionKey {
-                        watched_folder_path: watched_folder_path.to_string(),
-                        relative_folder_path,
-                    },
-                    decision: decision_of(&decision)?,
-                    name,
-                    display_path,
-                });
-        }
-        Ok(resolved)
-    })
+    let mut parts: PartsByCandidate = HashMap::new();
+    for (candidate_path, folder, prefix) in rows {
+        parts.entry(candidate_path).or_default().push(ReleasePart {
+            folder: PathBuf::from(folder),
+            prefix,
+        });
+    }
+    Ok(parts)
 }
 
 // ── Track sheets ────────────────────────────────────────────────────────────
