@@ -27,6 +27,11 @@ mod catalog;
 pub use catalog::{parse_catalog_url, Catalog, CatalogPage};
 mod candidate_edit_field;
 pub use candidate_edit_field::CandidateEditField;
+mod artist_assignment;
+pub use artist_assignment::{
+    artists_standing, ArtistAssignment, ArtistCredit, ArtistStanding, ArtistsStanding,
+    CreditResolution, ExistingArtist, ResolvedCredit,
+};
 mod raw_release_edit;
 pub use raw_release_edit::{
     CandidateDraft, CandidateTrack, EditValidationError, RawPressingEdit, RawReleaseEdit,
@@ -411,49 +416,6 @@ impl ReleaseReseed {
     }
 }
 
-/// One artist selected for album or track credit.
-///
-/// Existing artists stay linked by their library ID. New artists carry the
-/// metadata needed to create them; source IDs are retained so commit can join
-/// an external credit to an existing library artist by an exact ID match.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ArtistAssignment {
-    Existing { artist: ExistingArtist },
-    New { seed: NewArtistSeed },
-}
-
-/// One artist already in the library, with the fields an editor needs to show
-/// and distinguish the selection. Candidate storage persists only `artist_id`;
-/// loading the candidate resolves the rest from the canonical artist row.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ExistingArtist {
-    pub artist_id: String,
-    pub name: String,
-    pub sort_name: Option<String>,
-    pub musicbrainz_artist_id: Option<String>,
-    pub discogs_artist_id: Option<String>,
-}
-
-impl From<crate::db::DbArtist> for ExistingArtist {
-    fn from(artist: crate::db::DbArtist) -> Self {
-        Self {
-            artist_id: artist.id,
-            name: artist.name,
-            sort_name: artist.sort_name,
-            musicbrainz_artist_id: artist.musicbrainz_artist_id,
-            discogs_artist_id: artist.discogs_artist_id,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NewArtistSeed {
-    pub name: String,
-    pub sort_name: Option<String>,
-    pub musicbrainz_artist_id: Option<String>,
-    pub discogs_artist_id: Option<String>,
-}
-
 /// Whether a track inherits its album artists or has its own ordered credits.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrackArtistAssignments {
@@ -462,8 +424,8 @@ pub enum TrackArtistAssignments {
 }
 
 /// Every field the edit-metadata sheet may change. Artist choices preserve
-/// whether the person selected a library artist or entered a new one; commit
-/// never guesses that relationship from a name.
+/// whether the person picked a library artist or left a credit; a credit is
+/// resolved against the library when the edit commits.
 ///
 /// Records and provenance are out of scope: the release's records and the
 /// release's metadata provenance are untouched. So is the stored catalog
@@ -641,89 +603,15 @@ impl ReleaseUserEdit {
     }
 }
 
-impl ArtistAssignment {
-    pub fn new(name: impl Into<String>) -> Self {
-        Self::New {
-            seed: NewArtistSeed {
-                name: name.into(),
-                sort_name: None,
-                musicbrainz_artist_id: None,
-                discogs_artist_id: None,
-            },
-        }
-    }
-
-    pub fn existing(artist: ExistingArtist) -> Self {
-        Self::Existing { artist }
-    }
-
-    /// The artist row this assignment stands for in a write: a picked library
-    /// artist as itself, by its own id; a credit as a fresh row carrying what
-    /// it says, which the write resolves to a library artist when it commits.
-    pub(crate) fn credit(
-        &self,
-        ids: &dyn coven::IdProvider,
-        now: chrono::DateTime<chrono::Utc>,
-    ) -> crate::db::DbArtist {
-        match self {
-            Self::Existing { artist } => crate::db::DbArtist {
-                id: artist.artist_id.clone(),
-                name: artist.name.clone(),
-                sort_name: artist.sort_name.clone(),
-                discogs_artist_id: artist.discogs_artist_id.clone(),
-                musicbrainz_artist_id: artist.musicbrainz_artist_id.clone(),
-                created_at: now,
-            },
-            Self::New { seed } => crate::db::DbArtist {
-                id: ids.new_id(),
-                name: seed.name.clone(),
-                sort_name: seed.sort_name.clone(),
-                discogs_artist_id: seed.discogs_artist_id.clone(),
-                musicbrainz_artist_id: seed.musicbrainz_artist_id.clone(),
-                created_at: now,
-            },
-        }
-    }
-
-    fn normalized(self) -> Self {
-        match self {
-            Self::Existing { artist } => Self::Existing { artist },
-            Self::New { seed } => Self::New {
-                seed: NewArtistSeed {
-                    name: seed.name.trim().to_string(),
-                    sort_name: seed.sort_name.and_then(|value| trim_to_option(&value)),
-                    musicbrainz_artist_id: seed
-                        .musicbrainz_artist_id
-                        .and_then(|value| trim_to_option(&value)),
-                    discogs_artist_id: seed
-                        .discogs_artist_id
-                        .and_then(|value| trim_to_option(&value)),
-                },
-            },
-        }
-    }
-
-    /// The name the artist is shown by — what the desktop import list's
-    /// filter tests a row's credits against.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn name(&self) -> &str {
-        match self {
-            Self::Existing { artist } => &artist.name,
-            Self::New { seed } => &seed.name,
-        }
-    }
-
-    pub(crate) fn is_blank(&self) -> bool {
-        match self {
-            Self::Existing { artist } => {
-                artist.artist_id.trim().is_empty() || artist.name.trim().is_empty()
-            }
-            Self::New { seed } => seed.name.trim().is_empty(),
-        }
-    }
-}
-
 impl TrackArtistAssignments {
+    /// The track's own artists; none when it takes the album's.
+    pub fn explicit(&self) -> &[ArtistAssignment] {
+        match self {
+            Self::AlbumArtists => &[],
+            Self::Explicit(assignments) => assignments,
+        }
+    }
+
     fn normalize(&mut self) {
         if let Self::Explicit(assignments) = self {
             *assignments = std::mem::take(assignments)

@@ -60,7 +60,7 @@ pub struct PanePick {
 pub(crate) struct CandidateSourceDraft {
     pub draft: CandidateDraft,
     pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
-    pub mapped_new_discogs_artist_ids: std::collections::BTreeSet<String>,
+    pub mapped_credit_discogs_artist_ids: std::collections::BTreeSet<String>,
 }
 
 /// Normalize a source projection into the one candidate draft: the table's
@@ -150,7 +150,7 @@ fn detach_candidate_mappings(
     draft: RawReleaseEdit,
     source_discogs_artist_ids: std::collections::BTreeSet<String>,
 ) -> Result<CandidateSourceDraft, ImportError> {
-    let mapped_new_discogs_artist_ids = draft.new_discogs_artist_ids_for_bound_tracks();
+    let mapped_credit_discogs_artist_ids = draft.credit_discogs_artist_ids_for_bound_tracks();
     let tracks = draft
         .tracks
         .into_iter()
@@ -169,7 +169,7 @@ fn detach_candidate_mappings(
             tracks,
         },
         source_discogs_artist_ids,
-        mapped_new_discogs_artist_ids,
+        mapped_credit_discogs_artist_ids,
     })
 }
 

@@ -217,3 +217,132 @@ async fn a_credit_meets_its_artist_however_the_name_is_cased_or_accented() {
     assert_eq!(album_artist_id(&f, &cased).await, existing.id);
     assert_eq!(artists_named(&f, "Artist Name").await.len(), 1);
 }
+
+// ── The pane reads each credit against the library live ─────────────────────
+
+/// The one live query an open import pane reads its candidate through.
+type PaneQuery = coven::ReconfigurableLiveQuery<
+    Option<String>,
+    Option<bae_core::import::ImportCandidateDetailProjection>,
+>;
+
+/// A watched folder of tagged files, scanned and read as its own tags, whose
+/// pane is open on its one live subscription.
+async fn open_tagged_pane(
+    f: &ImportFixture,
+    dir: &std::path::Path,
+) -> (
+    String,
+    PaneQuery,
+) {
+    let key = dir.to_string_lossy().into_owned();
+    f.handle.add_watched_folder(key.clone()).await.unwrap();
+    f.handle.refresh_watched_folder(key.clone()).await.unwrap();
+    f.handle
+        .select_candidate_metadata_provenance(key.clone(), MetadataProvenance::FileMetadata)
+        .await
+        .unwrap();
+    let pane = f.handle.subscribe_candidate_pane(&key);
+    (key, pane)
+}
+
+/// What the pane's read says about the credit named `name`, waiting through
+/// its values until `accept` admits one.
+async fn next_resolution(
+    pane: &mut PaneQuery,
+    name: &str,
+    mut accept: impl FnMut(&bae_core::import::CreditResolution) -> bool,
+) -> bae_core::import::CreditResolution {
+    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        loop {
+            let projection = pane
+                .next()
+                .await
+                .into_result()
+                .expect("the pane reads")
+                .expect("the candidate stays in the queue");
+            let Some(resolved) = projection
+                .artist_resolutions
+                .iter()
+                .find(|resolved| resolved.credit.name == name)
+            else {
+                continue;
+            };
+            if accept(&resolved.resolution) {
+                return resolved.resolution.clone();
+            }
+        }
+    })
+    .await
+    .expect("the pane reads the credit as expected")
+}
+
+/// The pane of a tagged album shows its artist as new; the moment a catalog
+/// album by the same artist commits, the same open subscription reads the
+/// credit as that library artist, and importing the tagged album joins it.
+#[tokio::test]
+async fn an_open_pane_reads_its_credit_into_the_library_when_another_import_commits() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let (catalog_dir, catalog) = discogs_album_folder(&f, "album-one", "Album One");
+    let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
+    let (tagged_key, mut pane) = open_tagged_pane(&f, &tagged_dir).await;
+
+    next_resolution(&mut pane, "Artist Name", |resolution| {
+        *resolution == bae_core::import::CreditResolution::New
+    })
+    .await;
+
+    let (_, catalog_album) = import_and_wait(&f, catalog_dir, catalog).await;
+    let catalog_artist = album_artist_id(&f, &catalog_album).await;
+
+    let resolution = next_resolution(&mut pane, "Artist Name", |resolution| {
+        matches!(resolution, bae_core::import::CreditResolution::Library { .. })
+    })
+    .await;
+    let bae_core::import::CreditResolution::Library { artist } = resolution else {
+        unreachable!("accepted only a library artist")
+    };
+    assert_eq!(artist.artist_id, catalog_artist);
+
+    let import_id = f
+        .handle
+        .start_import(&tagged_key, StorageMode::Local, false)
+        .await
+        .unwrap();
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (_, tagged_album) = support::wait_for_import_complete(&mut progress_rx).await;
+
+    let artists = artists_named(&f, "Artist Name").await;
+    assert_eq!(artists.len(), 1, "one artist, got {artists:?}");
+    assert_eq!(album_artist_id(&f, &tagged_album).await, catalog_artist);
+    assert_eq!(
+        artists[0].discogs_artist_id,
+        Some(support::discogs_fixture_id(DISCOGS_ARTIST_FIXTURE))
+    );
+}
+
+/// Two library artists share the credit's name: the pane offers both to pick
+/// from, and leaves the credit to import as a new artist if nobody picks.
+#[tokio::test]
+async fn a_pane_offers_the_library_artists_a_shared_name_could_be() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let first = library_artist("Artist Name", None);
+    let second = library_artist("Artist Name", Some("discogs-other"));
+    f.library_manager.insert_artist(&first).await.unwrap();
+    f.library_manager.insert_artist(&second).await.unwrap();
+    let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
+    let (_, mut pane) = open_tagged_pane(&f, &tagged_dir).await;
+
+    let resolution = next_resolution(&mut pane, "Artist Name", |_| true).await;
+
+    let bae_core::import::CreditResolution::Ambiguous { artists } = resolution else {
+        panic!("expected the credit to be ambiguous, got {resolution:?}");
+    };
+    let mut offered: Vec<_> = artists.into_iter().map(|artist| artist.artist_id).collect();
+    offered.sort();
+    let mut expected = vec![first.id, second.id];
+    expected.sort();
+    assert_eq!(offered, expected);
+}

@@ -243,6 +243,7 @@ private func detail(
         pickedLibraryStatus: nil,
         fileEvidence: [],
         metadataDraft: MappingFixtures.albumEdit,
+        artistResolutions: [],
         metadataDraftIsBlank: false,
         metadataProvenance: MappingFixtures.provenance,
         metadataAuthor: .person,

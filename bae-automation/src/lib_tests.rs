@@ -81,13 +81,13 @@ mod candidate_lookup {
 mod release_metadata_update_input {
     use super::*;
 
-    fn edit(album_title: &str, album_artist_seed_names: &[&str]) -> AutomationReleaseUserEdit {
+    fn edit(album_title: &str, album_artist_credit_names: &[&str]) -> AutomationReleaseUserEdit {
         AutomationReleaseUserEdit {
             album_title: album_title.to_string(),
-            album_artist_assignments: album_artist_seed_names
+            album_artist_assignments: album_artist_credit_names
                 .iter()
-                .map(|name| AutomationArtistAssignment::New {
-                    seed: AutomationNewArtistSeed {
+                .map(|name| AutomationArtistAssignment::Credit {
+                    credit: AutomationArtistCredit {
                         name: (*name).to_string(),
                         sort_name: None,
                         musicbrainz_artist_id: None,
@@ -137,7 +137,7 @@ mod release_metadata_update_input {
         assert_eq!(wire.album_title, "Album Alpha");
         assert_eq!(
             wire.album_artist_assignments,
-            vec![bae_core::import::ArtistAssignment::new("Artist Alpha")]
+            vec![bae_core::import::ArtistAssignment::named("Artist Alpha")]
         );
     }
 
@@ -151,12 +151,12 @@ mod release_metadata_update_input {
             discogs_artist_id: Some("discogs-artist".to_string()),
         };
         let mut edit = edit("Album Alpha", &[]);
-        edit.album_artist_assignments = vec![AutomationArtistAssignment::Existing {
+        edit.album_artist_assignments = vec![AutomationArtistAssignment::Picked {
             artist: artist.clone(),
         }];
 
         let round_trip = AutomationReleaseUserEdit::from_core(edit.into_core());
-        let AutomationArtistAssignment::Existing {
+        let AutomationArtistAssignment::Picked {
             artist: round_trip_artist,
         } = &round_trip.album_artist_assignments[0]
         else {

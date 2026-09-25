@@ -528,7 +528,9 @@ extension ImportMappingTracksLayoutTests {
                     id: "track-1",
                     title: "Track Title",
                     artistAssignments: .explicit(
-                        assignments: [MappingFixtures.newArtist("Artist Name")]
+                        assignments: [
+                            MappingFixtures.artistCredit("Artist Name")
+                        ]
                     ),
                     side: 1,
                     trackNumber: 1,
@@ -602,7 +604,9 @@ extension ImportMappingTracksLayoutTests {
                     id: "sheet-track-\(number)",
                     title: "Track Title",
                     artistAssignments: .explicit(
-                        assignments: [MappingFixtures.newArtist("Artist Name")]
+                        assignments: [
+                            MappingFixtures.artistCredit("Artist Name")
+                        ]
                     ),
                     side: 1,
                     trackNumber: Int32(number),

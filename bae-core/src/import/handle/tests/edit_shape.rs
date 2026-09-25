@@ -192,8 +192,8 @@ fn seed_carries_every_album_artist() {
         .album_artist_assignments
         .iter()
         .map(|assignment| match assignment {
-            crate::import::ArtistAssignment::New { seed } => seed.name.as_str(),
-            crate::import::ArtistAssignment::Existing { .. } => {
+            crate::import::ArtistAssignment::Credit { credit } => credit.name.as_str(),
+            crate::import::ArtistAssignment::Picked { .. } => {
                 panic!("a parsed source artist is not a library selection")
             }
         })
@@ -225,8 +225,8 @@ fn seed_per_track_artist_override() {
     };
     assert!(matches!(
         assignments.as_slice(),
-        [crate::import::ArtistAssignment::New { seed }]
-            if seed.name == "Guest Artist"
-                && seed.musicbrainz_artist_id.as_deref() == Some("mb-guest")
+        [crate::import::ArtistAssignment::Credit { credit }]
+            if credit.name == "Guest Artist"
+                && credit.musicbrainz_artist_id.as_deref() == Some("mb-guest")
     ));
 }

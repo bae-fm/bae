@@ -219,11 +219,13 @@ desktop_only! {
     pub use types::ImportCommand;
 }
 pub use types::{
-    asked_sources, is_the_only_asked_source, parse_catalog_url, ArtistAssignment, AudioFile,
-    CandidateDraft, CandidateEditField, CandidateTrack, Catalog, CatalogAvailability, CatalogPage,
-    EditValidationError, ExistingArtist, MetadataProvenance, MetadataRef, NewArtistSeed,
-    PressingEdit, RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
-    ReleaseRecord, ReleaseUserEdit, SourceAvailability, TrackArtistAssignments, TrackUserEdit,
+    artists_standing, asked_sources, is_the_only_asked_source, parse_catalog_url, ArtistAssignment,
+    ArtistCredit, ArtistStanding, ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField,
+    CandidateTrack, Catalog, CatalogAvailability, CatalogPage, CreditResolution,
+    EditValidationError, ExistingArtist, MetadataProvenance, MetadataRef, PressingEdit,
+    RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
+    ReleaseRecord, ReleaseUserEdit, ResolvedCredit, SourceAvailability, TrackArtistAssignments,
+    TrackUserEdit,
 };
 desktop_only! {
     pub use types::{

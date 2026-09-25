@@ -188,7 +188,7 @@ fn the_filter_finds_a_drafted_row_by_the_draft_it_shows() {
         CandidateStateListRow {
             metadata_summary: Some(crate::import::TriageMetadataSummary {
                 album_title: "Album".to_string(),
-                album_artist_assignments: vec![crate::import::ArtistAssignment::new("Artist")],
+                album_artist_assignments: vec![crate::import::ArtistAssignment::named("Artist")],
             }),
             ..several_matches_state()
         },

@@ -87,7 +87,7 @@ async fn prepare_named_candidate(
         .expect("the scanned candidate has its initial preparation");
     let mut draft = preparation.draft;
     draft.album_title = album_title.to_string();
-    draft.album_artist_assignments = vec![crate::import::ArtistAssignment::new("Artist Name")];
+    draft.album_artist_assignments = vec![crate::import::ArtistAssignment::named("Artist Name")];
     preparations
         .apply_source(
             watched_folder_path,

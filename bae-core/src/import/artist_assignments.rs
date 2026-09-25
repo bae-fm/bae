@@ -1,19 +1,21 @@
-//! Project parsed source artists into editor assignments without losing their
-//! provider IDs or pretending their temporary parser IDs are library IDs.
+//! Project parsed source artists into editor assignments: each is a credit
+//! carrying what the source said, its provider IDs included. A parser's
+//! temporary artist ID is never taken for a library ID, and no credit claims
+//! a library artist — that is read against the library when the draft is.
 
 use crate::db::{DbAlbumArtist, DbArtist, DbTrackArtist};
-use crate::import::{ArtistAssignment, NewArtistSeed, TrackArtistAssignments};
+use crate::import::{ArtistAssignment, ArtistCredit, TrackArtistAssignments};
 
 pub(crate) fn album_artist_assignments(
     artists: &[DbArtist],
     album_artists: &[DbAlbumArtist],
     primary_artist_id: &str,
 ) -> Result<Vec<ArtistAssignment>, String> {
-    let mut assignments = vec![new_assignment(artist_of(artists, primary_artist_id)?)];
+    let mut assignments = vec![source_credit(artist_of(artists, primary_artist_id)?)];
     let mut junction: Vec<&DbAlbumArtist> = album_artists.iter().collect();
     junction.sort_by_key(|assignment| assignment.position);
     for assignment in junction {
-        assignments.push(new_assignment(artist_of(artists, &assignment.artist_id)?));
+        assignments.push(source_credit(artist_of(artists, &assignment.artist_id)?));
     }
     Ok(assignments)
 }
@@ -33,7 +35,7 @@ pub(crate) fn track_artist_assignments(
     }
     credits
         .into_iter()
-        .map(|credit| artist_of(artists, &credit.artist_id).map(new_assignment))
+        .map(|credit| artist_of(artists, &credit.artist_id).map(source_credit))
         .collect::<Result<Vec<_>, _>>()
         .map(TrackArtistAssignments::Explicit)
 }
@@ -45,9 +47,8 @@ fn artist_of<'a>(artists: &'a [DbArtist], id: &str) -> Result<&'a DbArtist, Stri
         .ok_or_else(|| id.to_string())
 }
 
-fn new_assignment(artist: &DbArtist) -> ArtistAssignment {
-    ArtistAssignment::New {
-        seed: NewArtistSeed {
+fn source_credit(artist: &DbArtist) -> ArtistAssignment {
+    ArtistAssignment::Credit { credit: ArtistCredit {
             name: artist.name.clone(),
             sort_name: artist.sort_name.clone(),
             musicbrainz_artist_id: artist.musicbrainz_artist_id.clone(),

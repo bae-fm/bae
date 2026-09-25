@@ -85,11 +85,10 @@ pub(super) async fn candidate_run_start(
         .load_import_candidate_pane_rows(&content_hash)
         .await?
         .draft;
-    let artist = match draft.album_artist_assignments.first() {
-        Some(crate::import::ArtistAssignment::Existing { artist }) => artist.name.as_str(),
-        Some(crate::import::ArtistAssignment::New { seed }) => seed.name.as_str(),
-        None => "",
-    };
+    let artist = draft
+        .album_artist_assignments
+        .first()
+        .map_or("", crate::import::ArtistAssignment::name);
     // Words the person typed stand in for the draft's own.
     let title_search = match &state.lookup_choices.search_words {
         Some(words) => TitleSearch::of(&words.album, &words.artist),

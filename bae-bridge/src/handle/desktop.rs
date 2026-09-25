@@ -570,6 +570,22 @@ forward! {
             Ok(crate::types::BridgeReleaseEditSeed::from_core(seed))
         }
 
+        /// What the library holds, as it stands now, for every artist credit
+        /// the release editor's form carries.
+        fn resolve_release_edit_credits(
+            edit: crate::types::BridgeRawReleaseEdit,
+        ) -> Vec<crate::types::BridgeResolvedCredit> {
+            let resolved = this
+                .services
+                .resolve_release_edit_credits(&edit.into_core())
+                .await
+                .map_err(BridgeError::import)?;
+            Ok(resolved
+                .into_iter()
+                .map(crate::types::BridgeResolvedCredit::from_core)
+                .collect())
+        }
+
         /// Re-project a release's metadata from its stored provenance. Returns the
         /// projected raw edit without writing — the editor populates its
         /// form with the result; the user re-edits or saves via

@@ -14,8 +14,8 @@ use super::verdict_rows::unreadable;
 use super::*;
 use crate::db::client::candidate_state_rows::COVER_COLUMNS;
 use crate::import::{
-    ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, ExistingArtist,
-    MetadataAuthor, NewArtistSeed, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
+    ArtistAssignment, ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, CoverSelection,
+    ExistingArtist, MetadataAuthor, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
 };
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, format, \
@@ -391,21 +391,21 @@ struct AssignmentColumns<'a> {
 
 fn assignment_columns(assignment: &ArtistAssignment) -> AssignmentColumns<'_> {
     match assignment {
-        ArtistAssignment::Existing { artist } => AssignmentColumns {
-            kind: "existing",
+        ArtistAssignment::Picked { artist } => AssignmentColumns {
+            kind: "picked",
             artist_id: Some(&artist.artist_id),
             name: None,
             sort_name: None,
             musicbrainz_id: None,
             discogs_id: None,
         },
-        ArtistAssignment::New { seed } => AssignmentColumns {
-            kind: "new",
+        ArtistAssignment::Credit { credit } => AssignmentColumns {
+            kind: "credit",
             artist_id: None,
-            name: Some(seed.name.as_str()),
-            sort_name: seed.sort_name.as_deref(),
-            musicbrainz_id: seed.musicbrainz_artist_id.as_deref(),
-            discogs_id: seed.discogs_artist_id.as_deref(),
+            name: Some(credit.name.as_str()),
+            sort_name: credit.sort_name.as_deref(),
+            musicbrainz_id: credit.musicbrainz_artist_id.as_deref(),
+            discogs_id: credit.discogs_artist_id.as_deref(),
         },
     }
 }
@@ -419,23 +419,23 @@ fn assignment_from_columns(
     discogs_artist_id: Option<String>,
 ) -> Result<ArtistAssignment, DbError> {
     match kind.as_str() {
-        "existing" => Ok(ArtistAssignment::Existing {
+        "picked" => Ok(ArtistAssignment::Picked {
             artist: ExistingArtist {
                 artist_id: artist_id.ok_or_else(|| {
-                    DbError::Message("an existing artist assignment names no artist".into())
+                    DbError::Message("a picked artist assignment names no artist".into())
                 })?,
                 name: name.ok_or_else(|| {
-                    DbError::Message("an existing artist assignment names a missing artist".into())
+                    DbError::Message("a picked artist assignment names a missing artist".into())
                 })?,
                 sort_name,
                 musicbrainz_artist_id,
                 discogs_artist_id,
             },
         }),
-        "new" => Ok(ArtistAssignment::New {
-            seed: NewArtistSeed {
+        "credit" => Ok(ArtistAssignment::Credit {
+            credit: ArtistCredit {
                 name: name.ok_or_else(|| {
-                    DbError::Message("a new artist assignment has no name".into())
+                    DbError::Message("an artist credit has no name".into())
                 })?,
                 sort_name,
                 musicbrainz_artist_id,
@@ -506,17 +506,17 @@ pub(crate) fn load_album_artist_assignments_on(
 ) -> Result<HashMap<String, Vec<ArtistAssignment>>, DbError> {
     let rows = sql.query(
         "SELECT assignment.content_hash, assignment.assignment_kind, assignment.artist_id, \
-                CASE assignment.assignment_kind WHEN 'existing' THEN existing.name \
-                    WHEN 'new' THEN assignment.name END, \
-                CASE assignment.assignment_kind WHEN 'existing' THEN existing.sort_name \
-                    WHEN 'new' THEN assignment.sort_name END, \
-                CASE assignment.assignment_kind WHEN 'existing' \
-                    THEN existing.musicbrainz_artist_id \
-                    WHEN 'new' THEN assignment.musicbrainz_artist_id END, \
-                CASE assignment.assignment_kind WHEN 'existing' THEN existing.discogs_artist_id \
-                    WHEN 'new' THEN assignment.discogs_artist_id END \
+                CASE assignment.assignment_kind WHEN 'picked' THEN picked.name \
+                    WHEN 'credit' THEN assignment.name END, \
+                CASE assignment.assignment_kind WHEN 'picked' THEN picked.sort_name \
+                    WHEN 'credit' THEN assignment.sort_name END, \
+                CASE assignment.assignment_kind WHEN 'picked' \
+                    THEN picked.musicbrainz_artist_id \
+                    WHEN 'credit' THEN assignment.musicbrainz_artist_id END, \
+                CASE assignment.assignment_kind WHEN 'picked' THEN picked.discogs_artist_id \
+                    WHEN 'credit' THEN assignment.discogs_artist_id END \
          FROM import_candidate_album_artist_assignment assignment \
-         LEFT JOIN artists existing ON existing.id = assignment.artist_id \
+         LEFT JOIN artists picked ON picked.id = assignment.artist_id \
          WHERE :only IS NULL OR assignment.content_hash = :only \
          ORDER BY assignment.content_hash, assignment.position",
         named_params! { ":only": only },
@@ -555,17 +555,17 @@ fn load_track_artist_assignments_on(
     let rows = sql.query(
         "SELECT assignment.content_hash, assignment.track_id, assignment.assignment_kind, \
                 assignment.artist_id, \
-                CASE assignment.assignment_kind WHEN 'existing' THEN existing.name \
-                    WHEN 'new' THEN assignment.name END, \
-                CASE assignment.assignment_kind WHEN 'existing' THEN existing.sort_name \
-                    WHEN 'new' THEN assignment.sort_name END, \
-                CASE assignment.assignment_kind WHEN 'existing' \
-                    THEN existing.musicbrainz_artist_id \
-                    WHEN 'new' THEN assignment.musicbrainz_artist_id END, \
-                CASE assignment.assignment_kind WHEN 'existing' THEN existing.discogs_artist_id \
-                    WHEN 'new' THEN assignment.discogs_artist_id END \
+                CASE assignment.assignment_kind WHEN 'picked' THEN picked.name \
+                    WHEN 'credit' THEN assignment.name END, \
+                CASE assignment.assignment_kind WHEN 'picked' THEN picked.sort_name \
+                    WHEN 'credit' THEN assignment.sort_name END, \
+                CASE assignment.assignment_kind WHEN 'picked' \
+                    THEN picked.musicbrainz_artist_id \
+                    WHEN 'credit' THEN assignment.musicbrainz_artist_id END, \
+                CASE assignment.assignment_kind WHEN 'picked' THEN picked.discogs_artist_id \
+                    WHEN 'credit' THEN assignment.discogs_artist_id END \
          FROM import_candidate_track_artist_assignment assignment \
-         LEFT JOIN artists existing ON existing.id = assignment.artist_id \
+         LEFT JOIN artists picked ON picked.id = assignment.artist_id \
          WHERE :only IS NULL OR assignment.content_hash = :only \
          ORDER BY assignment.content_hash, assignment.track_id, assignment.position",
         named_params! { ":only": only },

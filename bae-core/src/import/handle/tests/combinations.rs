@@ -82,7 +82,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     handle
         .set_candidate_album_artists(
             &key,
-            vec![crate::import::ArtistAssignment::new("Combined Artist")],
+            vec![crate::import::ArtistAssignment::named("Combined Artist")],
         )
         .await
         .unwrap();

@@ -425,9 +425,9 @@ impl LibraryManager {
         let mut credits: Vec<DbArtist> = Vec::new();
         let mut picked: Vec<String> = Vec::new();
         let mut credit_of = |assignment: &crate::import::ArtistAssignment| {
-            let credit = assignment.credit(self.ids.as_ref(), now);
+            let credit = assignment.write_row(self.ids.as_ref(), now);
             let id = credit.id.clone();
-            if matches!(assignment, crate::import::ArtistAssignment::Existing { .. }) {
+            if matches!(assignment, crate::import::ArtistAssignment::Picked { .. }) {
                 picked.push(id.clone());
             }
             credits.push(credit);

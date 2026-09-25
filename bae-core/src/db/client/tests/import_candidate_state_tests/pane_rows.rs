@@ -7,7 +7,7 @@ use crate::import::folder_scanner::{CandidateFileEdits, FileRoleChoice};
 use crate::import::probe::{SourceDuration, SourceDurations};
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateEditField, CandidateTrackEdit, CoverSelection,
-    ExistingArtist, ImportFailure, NewArtistSeed, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
+    ExistingArtist, ImportFailure, ArtistCredit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
     TrackArtistAssignments,
 };
 use crate::signals::{
@@ -78,16 +78,15 @@ fn edited_row(id: &str, title: &str, file: Option<AudioFile>) -> CandidateTrackE
     CandidateTrackEdit::edited(RawTrackEdit {
         id: id.to_string(),
         title: title.to_string(),
-        artist_assignments: TrackArtistAssignments::Explicit(vec![new_artist("Artist Name")]),
+        artist_assignments: TrackArtistAssignments::Explicit(vec![credit_named("Artist Name")]),
         side: Some(1),
         track_number: Some(1),
         file,
     })
 }
 
-fn new_artist(name: &str) -> ArtistAssignment {
-    ArtistAssignment::New {
-        seed: NewArtistSeed {
+fn credit_named(name: &str) -> ArtistAssignment {
+    ArtistAssignment::Credit { credit: ArtistCredit {
             name: name.to_string(),
             sort_name: None,
             musicbrainz_artist_id: None,
@@ -170,7 +169,7 @@ fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
         album_artist_assignments: if artist.is_empty() {
             Vec::new()
         } else {
-            vec![new_artist(artist)]
+            vec![credit_named(artist)]
         },
         album_year: String::new(),
         pressing: RawPressingEdit {
@@ -645,8 +644,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     let first = crate::import::PreparedArtistImage::Nothing {
         discogs_artist_id: "101".to_string(),
     };
-    draft.album_artist_assignments[0] = crate::import::ArtistAssignment::New {
-        seed: crate::import::NewArtistSeed {
+    draft.album_artist_assignments[0] = crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
             name: "Artist Name".to_string(),
             sort_name: None,
             musicbrainz_artist_id: None,
@@ -673,8 +671,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
         .await
         .unwrap();
 
-    draft.album_artist_assignments[0] = crate::import::ArtistAssignment::New {
-        seed: crate::import::NewArtistSeed {
+    draft.album_artist_assignments[0] = crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
             name: "Replacement Artist".to_string(),
             sort_name: None,
             musicbrainz_artist_id: None,
@@ -712,8 +709,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
         vec![second]
     );
 
-    let third_assignment = crate::import::ArtistAssignment::New {
-        seed: crate::import::NewArtistSeed {
+    let third_assignment = crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
             name: "Edited Artist".to_string(),
             sort_name: None,
             musicbrainz_artist_id: None,

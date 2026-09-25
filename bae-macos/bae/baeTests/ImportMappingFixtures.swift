@@ -27,9 +27,9 @@ enum MappingFixtures {
         channels: 2
     )
 
-    static func newArtist(_ name: String) -> BridgeArtistAssignment {
-        .new(
-            seed: BridgeNewArtistSeed(
+    static func artistCredit(_ name: String) -> BridgeArtistAssignment {
+        .credit(
+            credit: BridgeArtistCredit(
                 name: name,
                 sortName: nil,
                 musicbrainzArtistId: nil,
@@ -346,7 +346,7 @@ extension MappingFixtures {
 
     static let albumSeed = BridgeReleaseUserEdit(
         albumTitle: "Album Title",
-        albumArtistAssignments: [newArtist("Artist Name")],
+        albumArtistAssignments: [artistCredit("Artist Name")],
         albumYear: 1987,
         pressing: BridgePressingEdit(
             year: 1996,
@@ -361,7 +361,7 @@ extension MappingFixtures {
 
     static let albumEdit = BridgeRawReleaseEdit(
         albumTitle: "Album Title",
-        albumArtistAssignments: [newArtist("Artist Name")],
+        albumArtistAssignments: [artistCredit("Artist Name")],
         albumYear: "1987",
         pressing: BridgeRawPressingEdit(
             year: "1996",
@@ -470,6 +470,7 @@ extension MappingFixtures {
             pickedLibraryStatus: nil,
             fileEvidence: [],
             metadataDraft: edit,
+            artistResolutions: [],
             metadataDraftIsBlank: edit.albumTitle.isEmpty,
             metadataProvenance: metadataProvenance,
             metadataAuthor: metadataAuthor

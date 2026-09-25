@@ -122,10 +122,16 @@ pub struct BridgeTrackUserEdit {
     pub file: Option<BridgeAudioFile>,
 }
 
+/// One artist credited on an album or track. Mirror of
+/// `bae_core::import::ArtistAssignment`: a library artist the person picked,
+/// or a credit — what a source or the person's typing said, which claims
+/// nothing about the library. How a credit stands to the library is read
+/// beside the draft ([`BridgeResolvedCredit`]) and asked of core with
+/// `bridge_artist_standing` / `bridge_artists_standing`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeArtistAssignment {
-    Existing { artist: BridgeExistingArtist },
-    New { seed: BridgeNewArtistSeed },
+    Picked { artist: BridgeExistingArtist },
+    Credit { credit: BridgeArtistCredit },
 }
 
 /// One selected artist already in the library. The assignment carries the
@@ -154,12 +160,104 @@ mirror_struct! {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeNewArtistSeed {
+/// What a source or a person said about an artist. Mirror of
+/// `bae_core::import::ArtistCredit`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
+pub struct BridgeArtistCredit {
     pub name: String,
     pub sort_name: Option<String>,
     pub musicbrainz_artist_id: Option<String>,
     pub discogs_artist_id: Option<String>,
+}
+
+/// What the library holds for one credit, as it stood when read. Mirror of
+/// `bae_core::import::CreditResolution`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeCreditResolution {
+    /// The credit names this library artist.
+    Library { artist: BridgeExistingArtist },
+    /// No library artist is this one: committing creates it.
+    New,
+    /// Several library artists carry the name and no catalog id tells them
+    /// apart. Committing creates a new artist unless the person picks one.
+    Ambiguous { artists: Vec<BridgeExistingArtist> },
+    /// The credit's catalog ids point at library artists that disagree with
+    /// it. Committing fails until the person picks one, or merges them.
+    Conflicting { artists: Vec<BridgeExistingArtist> },
+}
+
+/// One credit and what it resolves to. Mirror of
+/// `bae_core::import::ResolvedCredit`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeResolvedCredit {
+    pub credit: BridgeArtistCredit,
+    pub resolution: BridgeCreditResolution,
+}
+
+/// How one assigned artist stands to the library — what its badge says.
+/// Mirror of `bae_core::import::ArtistStanding`.
+#[cfg(feature = "desktop")]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeArtistStanding {
+    Library,
+    New,
+    /// Several library artists could be this one; `choices` are the ones the
+    /// person may pick.
+    Choose {
+        choices: Vec<BridgeExistingArtist>,
+    },
+}
+
+/// How a whole artist field stands to the library. Mirror of
+/// `bae_core::import::ArtistsStanding`.
+#[cfg(feature = "desktop")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeArtistsStanding {
+    Library,
+    New,
+    SomeNew { count: u32 },
+    Choose { choices: u32 },
+    SomeToChoose { count: u32 },
+}
+
+/// How `assignment` stands to the library, read from `resolutions` — the
+/// credits' answers the draft's read, or `resolve_artist_credits`, returned.
+/// `None` for a credit `resolutions` has no answer for yet.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_artist_standing(
+    assignment: BridgeArtistAssignment,
+    resolutions: Vec<BridgeResolvedCredit>,
+) -> Option<BridgeArtistStanding> {
+    let resolutions: Vec<_> = resolutions
+        .into_iter()
+        .map(BridgeResolvedCredit::into_core)
+        .collect();
+    assignment
+        .into_core()
+        .standing(&resolutions)
+        .map(BridgeArtistStanding::from_core)
+}
+
+/// How the artist field holding `assignments` stands to the library, read
+/// from `resolutions`. `None` for an empty field, or one with a credit
+/// `resolutions` has no answer for yet.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_artists_standing(
+    assignments: Vec<BridgeArtistAssignment>,
+    resolutions: Vec<BridgeResolvedCredit>,
+) -> Option<BridgeArtistsStanding> {
+    let assignments: Vec<_> = assignments
+        .into_iter()
+        .map(BridgeArtistAssignment::into_core)
+        .collect();
+    let resolutions: Vec<_> = resolutions
+        .into_iter()
+        .map(BridgeResolvedCredit::into_core)
+        .collect();
+    bae_core::import::artists_standing(&assignments, &resolutions)
+        .map(BridgeArtistsStanding::from_core)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

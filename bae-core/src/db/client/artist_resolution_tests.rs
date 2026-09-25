@@ -242,3 +242,99 @@ fn two_artists_holding_the_credits_two_ids_are_the_identity_conflict() {
     assert_eq!(conflict.discogs_artist.artist_id, "by-discogs");
     assert_eq!(conflict.musicbrainz_artist.artist_id, "by-musicbrainz");
 }
+
+fn read_credit(
+    conn: &Connection,
+    name: &str,
+    discogs_artist_id: Option<&str>,
+) -> crate::import::CreditResolution {
+    resolve_credit_on(
+        conn,
+        &crate::import::ArtistCredit {
+            name: name.to_string(),
+            sort_name: None,
+            musicbrainz_artist_id: None,
+            discogs_artist_id: discogs_artist_id.map(str::to_string),
+        },
+    )
+    .unwrap()
+}
+
+fn artist_ids(artists: &[crate::import::ExistingArtist]) -> Vec<&str> {
+    artists
+        .iter()
+        .map(|artist| artist.artist_id.as_str())
+        .collect()
+}
+
+#[test]
+fn a_read_credit_is_new_until_the_library_holds_its_artist() {
+    let conn = library();
+    assert_eq!(
+        read_credit(&conn, "Artist Name", None),
+        crate::import::CreditResolution::New
+    );
+
+    add_artist(&conn, "library-artist", "Ärtist Name", None, None);
+
+    let crate::import::CreditResolution::Library { artist } =
+        read_credit(&conn, "artist name", None)
+    else {
+        panic!("the folded name names the library artist");
+    };
+    assert_eq!(artist.artist_id, "library-artist");
+}
+
+#[test]
+fn a_read_credit_shared_by_two_library_artists_is_ambiguous() {
+    let conn = library();
+    add_artist(&conn, "first", "Artist Name", None, None);
+    add_artist(&conn, "second", "Artist Name", None, Some("mb-2"));
+
+    let crate::import::CreditResolution::Ambiguous { artists } =
+        read_credit(&conn, "Artist Name", None)
+    else {
+        panic!("two artists share the name");
+    };
+    assert_eq!(artist_ids(&artists), ["first", "second"]);
+}
+
+#[test]
+fn a_read_credit_with_another_catalog_id_than_the_named_artist_is_new() {
+    let conn = library();
+    add_artist(
+        &conn,
+        "library-artist",
+        "Artist Name",
+        Some("discogs-x"),
+        None,
+    );
+
+    assert_eq!(
+        read_credit(&conn, "Artist Name", Some("discogs-y")),
+        crate::import::CreditResolution::New
+    );
+}
+
+#[test]
+fn a_read_credit_whose_ids_name_two_artists_is_conflicting() {
+    let conn = library();
+    add_artist(&conn, "by-discogs", "Artist One", Some("discogs-1"), None);
+    add_artist(&conn, "by-musicbrainz", "Artist Two", None, Some("mb-1"));
+
+    let resolution = resolve_credit_on(
+        &conn,
+        &crate::import::ArtistCredit {
+            name: "Artist Name".to_string(),
+            sort_name: None,
+            musicbrainz_artist_id: Some("mb-1".to_string()),
+            discogs_artist_id: Some("discogs-1".to_string()),
+        },
+    )
+    .unwrap();
+
+    let crate::import::CreditResolution::Conflicting { artists } = resolution else {
+        panic!("the credit's two ids name two artists");
+    };
+    assert_eq!(artist_ids(&artists), ["by-discogs", "by-musicbrainz"]);
+}

@@ -1,9 +1,9 @@
 use super::super::*;
 
 mirror_struct! {
-    BridgeNewArtistSeed = bae_core::import::NewArtistSeed,
-    from_core: fn,
-    into_core: fn,
+    BridgeArtistCredit = bae_core::import::ArtistCredit,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
     fields: { name, sort_name, musicbrainz_artist_id, discogs_artist_id },
 }
 
@@ -12,8 +12,49 @@ mirror_enum! {
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
-        Existing { artist: (BridgeExistingArtist) },
-        New { seed: (BridgeNewArtistSeed) },
+        Picked { artist: (BridgeExistingArtist) },
+        Credit { credit: (BridgeArtistCredit) },
+    },
+}
+
+mirror_enum! {
+    BridgeCreditResolution = bae_core::import::CreditResolution,
+    from_core: fn,
+    into_core: fn,
+    variants: {
+        Library { artist: (BridgeExistingArtist) },
+        New,
+        Ambiguous { artists: (each BridgeExistingArtist) },
+        Conflicting { artists: (each BridgeExistingArtist) },
+    },
+}
+
+mirror_struct! {
+    BridgeResolvedCredit = bae_core::import::ResolvedCredit,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { credit: (BridgeArtistCredit), resolution: (BridgeCreditResolution) },
+}
+
+mirror_enum! {
+    BridgeArtistStanding = bae_core::import::ArtistStanding,
+    from_core: pub(crate) fn,
+    variants: {
+        Library,
+        New,
+        Choose { choices: (each BridgeExistingArtist) },
+    },
+}
+
+mirror_enum! {
+    BridgeArtistsStanding = bae_core::import::ArtistsStanding,
+    from_core: pub(crate) fn,
+    variants: {
+        Library,
+        New,
+        SomeNew { count },
+        Choose { choices },
+        SomeToChoose { count },
     },
 }
 

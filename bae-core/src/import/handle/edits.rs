@@ -567,7 +567,7 @@ impl ImportServiceHandle {
             .source_discogs_artist_ids_for_active_tracks(source, active, tracks)
             .await?;
         let required_discogs_artist_ids = source_discogs_artist_ids
-            .union(&active.new_discogs_artist_ids_for_bound_tracks())
+            .union(&active.credit_discogs_artist_ids_for_bound_tracks())
             .cloned()
             .collect::<std::collections::BTreeSet<_>>();
         let prepared_discogs_artist_ids = current

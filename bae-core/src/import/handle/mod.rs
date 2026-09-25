@@ -571,6 +571,21 @@ impl ImportServiceHandle {
             .map(|projection| projection.resolve(&facts)))
     }
 
+    /// One candidate's pane as the tables hold it, kept open for a test that
+    /// watches one subscription deliver change after change — the query the
+    /// pane itself subscribes to, before this process's runtime is folded in.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn subscribe_candidate_pane(
+        &self,
+        key: &str,
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<String>,
+        Option<crate::import::ImportCandidateDetailProjection>,
+    > {
+        self.library_manager
+            .subscribe_import_candidate(Some(key.to_string()))
+    }
+
     /// The import list for `view` as one window over every item, kept open
     /// for a test that watches one subscription deliver change after change.
     #[cfg(any(test, feature = "test-utils"))]

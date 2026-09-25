@@ -315,8 +315,8 @@ mod conversion_roundtrip {
         let core = bae_core::import::ReleaseUserEdit {
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![
-                bae_core::import::ArtistAssignment::existing(existing_artist()),
-                bae_core::import::ArtistAssignment::new("Artist Beta"),
+                bae_core::import::ArtistAssignment::picked(existing_artist()),
+                bae_core::import::ArtistAssignment::named("Artist Beta"),
             ],
             album_year: Some(1987),
             pressing: bae_core::import::PressingEdit {
@@ -332,7 +332,7 @@ mod conversion_roundtrip {
                 side: Some(1),
                 track_number: Some(1),
                 artist_assignments: bae_core::import::TrackArtistAssignments::Explicit(vec![
-                    bae_core::import::ArtistAssignment::new("Track Artist"),
+                    bae_core::import::ArtistAssignment::named("Track Artist"),
                 ]),
                 file: Some(bae_core::import::AudioFile::SheetSlice {
                     file_id: "CDImage.flac".to_string(),
@@ -353,8 +353,8 @@ mod conversion_roundtrip {
         let core = bae_core::import::RawReleaseEdit {
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![
-                bae_core::import::ArtistAssignment::new("Artist Name"),
-                bae_core::import::ArtistAssignment::new("Artist Beta"),
+                bae_core::import::ArtistAssignment::named("Artist Name"),
+                bae_core::import::ArtistAssignment::named("Artist Beta"),
             ],
             album_year: "1987".to_string(),
             pressing: bae_core::import::RawPressingEdit {
@@ -369,7 +369,7 @@ mod conversion_roundtrip {
                 id: "row-1".to_string(),
                 title: "Track Title".to_string(),
                 artist_assignments: bae_core::import::TrackArtistAssignments::Explicit(vec![
-                    bae_core::import::ArtistAssignment::new("Track Artist"),
+                    bae_core::import::ArtistAssignment::named("Track Artist"),
                 ]),
                 side: Some(1),
                 track_number: Some(1),
@@ -392,7 +392,9 @@ mod conversion_roundtrip {
     fn release_edit_seed_carries_the_persisted_editor_projection() {
         let edit = bae_core::import::RawReleaseEdit {
             album_title: "Album Title".to_string(),
-            album_artist_assignments: vec![bae_core::import::ArtistAssignment::new("Artist Name")],
+            album_artist_assignments: vec![bae_core::import::ArtistAssignment::named(
+                "Artist Name",
+            )],
             album_year: String::new(),
             pressing: bae_core::import::RawPressingEdit {
                 year: String::new(),

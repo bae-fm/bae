@@ -86,7 +86,7 @@ const REQUIRED_DISCOGS_ARTIST_IDS_SQL: &str =
      SELECT assignment.discogs_artist_id \
      FROM import_candidate_album_artist_assignment assignment \
      WHERE assignment.content_hash = ? \
-       AND assignment.assignment_kind = 'new' \
+       AND assignment.assignment_kind = 'credit' \
        AND assignment.discogs_artist_id IS NOT NULL \
      UNION \
      SELECT assignment.discogs_artist_id \
@@ -95,7 +95,7 @@ const REQUIRED_DISCOGS_ARTIST_IDS_SQL: &str =
        ON track.content_hash = assignment.content_hash \
       AND track.track_id = assignment.track_id \
      WHERE assignment.content_hash = ? \
-       AND assignment.assignment_kind = 'new' \
+       AND assignment.assignment_kind = 'credit' \
        AND assignment.discogs_artist_id IS NOT NULL";
 
 fn required_discogs_artist_ids_for_read(

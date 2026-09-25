@@ -438,6 +438,12 @@ pub(super) fn load_candidate_detail_on(
         .map(|state| state.lookup_choices.clone())
         .unwrap_or_default();
     let pane_rows = load_pane_rows_on(sql, &content_hash)?;
+    // Read here, inside the pane's live query, so an artist another import
+    // commits — or any artist row that changes — reads the credits again.
+    let artist_resolutions = super::super::artist_resolution::resolve_credits_on(
+        sql,
+        pane_rows.draft.credits(),
+    )?;
     let metadata_revision = sql.query_row(
         "SELECT s.metadata_revision \
              FROM scan_candidate c JOIN import_candidate_state s \
@@ -582,6 +588,7 @@ pub(super) fn load_candidate_detail_on(
             records,
             picked_library_status,
             metadata_draft: pane.edit,
+            artist_resolutions,
             mapping: pane.mapping,
             cover,
             remote_covers,

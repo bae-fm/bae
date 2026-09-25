@@ -202,7 +202,7 @@ async fn an_existing_library_artist_needs_no_candidate_image_answer() {
     let artist = existing_artist();
     db.insert_artist(&artist).await.unwrap();
     let mut draft = candidate_draft("Release Title", "Artist Name");
-    draft.album_artist_assignments = vec![ArtistAssignment::Existing {
+    draft.album_artist_assignments = vec![ArtistAssignment::Picked {
         artist: ExistingArtist {
             artist_id: artist.id,
             name: artist.name,
@@ -381,16 +381,15 @@ async fn every_draft_write_keeps_the_lists_draft_columns_current() {
 }
 
 #[tokio::test]
-async fn existing_artist_assignments_resolve_the_canonical_artist_row() {
+async fn picked_artist_assignments_resolve_the_canonical_artist_row() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let existing = existing_artist();
     db.insert_artist(&existing).await.unwrap();
 
     let assignments = vec![
-        ArtistAssignment::existing(existing.into()),
-        ArtistAssignment::New {
-            seed: NewArtistSeed {
+        ArtistAssignment::picked(existing.into()),
+        ArtistAssignment::Credit { credit: ArtistCredit {
                 name: "New Artist".to_string(),
                 sort_name: Some("Artist, New".to_string()),
                 musicbrainz_artist_id: Some("mb-new".to_string()),
@@ -431,14 +430,14 @@ async fn existing_artist_assignments_resolve_the_canonical_artist_row() {
 }
 
 #[tokio::test]
-async fn an_existing_artist_assignment_to_a_missing_row_is_rejected() {
+async fn a_picked_artist_assignment_to_a_missing_row_is_rejected() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
 
     let error = crate::import::CandidatePreparations::new(db.clone())
         .set_album_artists(
             &hash,
-            &[ArtistAssignment::existing(ExistingArtist {
+            &[ArtistAssignment::picked(ExistingArtist {
                 artist_id: bae_test_support::test_uuid("missing-artist"),
                 name: "Missing Artist".to_string(),
                 sort_name: None,
@@ -739,7 +738,7 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
     );
     assert_eq!(
         crate::import::CandidatePreparations::new(db.clone())
-            .set_album_artists(&hash, &[new_artist("Different Artist")],)
+            .set_album_artists(&hash, &[credit_named("Different Artist")],)
             .await
             .unwrap(),
         4

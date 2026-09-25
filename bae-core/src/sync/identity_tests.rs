@@ -301,7 +301,7 @@ async fn album_artist_edit(device: &TestDevice, artist_ids: &[&str]) -> ReleaseU
             .await
             .unwrap()
             .expect("the credited artist is in the library");
-        assignments.push(ArtistAssignment::Existing {
+        assignments.push(ArtistAssignment::Picked {
             artist: ExistingArtist::from(artist),
         });
     }
@@ -444,7 +444,7 @@ async fn draft_crediting(device: &TestDevice, artist_id: &str) {
                  VALUES ('draft', 'Album', '', '', '', '', '', '', '', 'person', 0, 1);
              INSERT INTO import_candidate_album_artist_assignment \
                  (content_hash, position, assignment_kind, artist_id) \
-                 VALUES ('draft', 0, 'existing', '{artist_id}');"
+                 VALUES ('draft', 0, 'picked', '{artist_id}');"
         ))
         .await
         .unwrap();

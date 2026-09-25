@@ -496,7 +496,7 @@ impl ImportServiceHandle {
             )?;
             assets.artist_images = self
                 .library_manager
-                .prepare_discogs_artist_images(source_draft.mapped_new_discogs_artist_ids.clone())
+                .prepare_discogs_artist_images(source_draft.mapped_credit_discogs_artist_ids.clone())
                 .await?;
             self.preparations
                 .apply_source(

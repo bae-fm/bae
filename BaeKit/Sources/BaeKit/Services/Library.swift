@@ -33,6 +33,11 @@ public final class Library: Sendable, Observable {
     public let albumSelection: @Sendable () -> AlbumSelectionQuery
     public let searchArtists:
         @Sendable (_ query: String) async throws -> [BridgeArtistSearchResult]
+    /// What the library holds, as it stands now, for every artist credit in a
+    /// release editor's form — what the editor badges each credit with.
+    public let resolveReleaseEditCredits:
+        @Sendable (_ edit: BridgeRawReleaseEdit) async throws
+            -> [BridgeResolvedCredit]
     /// The Storage Manager list under a first sort and filter, read through
     /// one query whose view moves in place.
     public let storageBrowse:
@@ -91,6 +96,9 @@ public final class Library: Sendable, Observable {
         searchArtists:
             @escaping @Sendable (String) async throws
             -> [BridgeArtistSearchResult] = { _ in [] },
+        resolveReleaseEditCredits:
+            @escaping @Sendable (BridgeRawReleaseEdit) async throws
+            -> [BridgeResolvedCredit] = { _ in [] },
         storageBrowse:
             @escaping @Sendable (BridgeStorageSort, BridgeStorageFilter)
             -> StorageBrowseQuery = { _, _ in
@@ -116,6 +124,7 @@ public final class Library: Sendable, Observable {
         self.workDetail = workDetail
         self.albumSelection = albumSelection
         self.searchArtists = searchArtists
+        self.resolveReleaseEditCredits = resolveReleaseEditCredits
         self.storageBrowse = storageBrowse
         self.resolveToTrackIds = resolveToTrackIds
         self.setLibraryFullWidth = setLibraryFullWidth
@@ -152,26 +161,21 @@ public final class Library: Sendable, Observable {
                 librarySearch: {
                     LibrarySearch(handle.subscribeLibrarySearch())
                 },
-                albumDetail: {
-                    DetailQuery(handle.subscribeAlbumDetail())
-                },
-                releaseDetail: {
-                    DetailQuery(handle.subscribeReleaseDetail())
-                },
-                artistDetail: {
-                    DetailQuery(handle.subscribeArtistDetail())
-                },
+                albumDetail: { DetailQuery(handle.subscribeAlbumDetail()) },
+                releaseDetail: { DetailQuery(handle.subscribeReleaseDetail()) },
+                artistDetail: { DetailQuery(handle.subscribeArtistDetail()) },
                 composerDetail: {
                     DetailQuery(handle.subscribeComposerDetail())
                 },
-                workDetail: {
-                    DetailQuery(handle.subscribeWorkDetail())
-                },
+                workDetail: { DetailQuery(handle.subscribeWorkDetail()) },
                 albumSelection: {
                     AlbumSelectionQuery(handle.subscribeAlbumSelection())
                 },
                 searchArtists: {
                     try await handle.searchArtists(query: $0)
+                },
+                resolveReleaseEditCredits: {
+                    try await handle.resolveReleaseEditCredits(edit: $0)
                 },
                 storageBrowse: {
                     StorageBrowseQuery(

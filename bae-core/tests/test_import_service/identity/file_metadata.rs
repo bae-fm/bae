@@ -1,8 +1,7 @@
 // ── File metadata as a metadata source ──────────────────────────────────────
 
 fn file_tag_artist_assignment(name: &str) -> ArtistAssignment {
-    ArtistAssignment::New {
-        seed: bae_core::import::NewArtistSeed {
+    ArtistAssignment::Credit { credit: bae_core::import::ArtistCredit {
             name: name.to_string(),
             sort_name: None,
             musicbrainz_artist_id: None,
@@ -396,7 +395,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
 
     let edit = ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
-        album_artist_assignments: vec![ArtistAssignment::new("Artist Edited")],
+        album_artist_assignments: vec![ArtistAssignment::named("Artist Edited")],
         album_year: Some(1998),
         pressing: PressingEdit {
             year: Some(2010),

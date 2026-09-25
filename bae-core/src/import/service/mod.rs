@@ -791,9 +791,9 @@ fn materialize_artist_assignment(
     ids: &dyn coven::IdProvider,
     now: chrono::DateTime<chrono::Utc>,
 ) -> String {
-    let artist = assignment.credit(ids, now);
+    let artist = assignment.write_row(ids, now);
     let id = artist.id.clone();
-    if matches!(assignment, crate::import::ArtistAssignment::Existing { .. }) {
+    if matches!(assignment, crate::import::ArtistAssignment::Picked { .. }) {
         picked.insert(id.clone());
         if artists.iter().any(|candidate| candidate.id == id) {
             return id;

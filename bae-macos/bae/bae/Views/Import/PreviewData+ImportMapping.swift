@@ -444,6 +444,7 @@
                     pickedLibraryStatus: nil,
                     fileEvidence: [],
                     metadataDraft: edit,
+                    artistResolutions: [],
                     metadataDraftIsBlank: edit.albumTitle.isEmpty,
                     metadataProvenance: metadataProvenance,
                     metadataAuthor: metadataProvenance == nil

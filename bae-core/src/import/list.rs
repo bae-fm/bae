@@ -381,6 +381,9 @@ pub struct ImportCandidateDetailProjection {
     pub picked_library_status: Option<LibraryStatus>,
     /// The candidate's one editable metadata draft.
     pub metadata_draft: RawReleaseEdit,
+    /// What the library holds, as this read found it, for every artist credit
+    /// the draft carries.
+    pub artist_resolutions: Vec<crate::import::ResolvedCredit>,
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: MappingTable,
@@ -428,6 +431,7 @@ impl ImportCandidateDetailProjection {
             records,
             picked_library_status,
             metadata_draft,
+            artist_resolutions,
             mapping,
             cover,
             remote_covers,
@@ -525,6 +529,7 @@ impl ImportCandidateDetailProjection {
             picked_library_status,
             file_evidence,
             metadata_draft,
+            artist_resolutions,
             metadata_draft_is_blank,
             metadata_provenance,
             metadata_author,
@@ -609,6 +614,9 @@ pub struct ImportCandidateDetail {
     /// of the selected pressing; result support lives in result provenance.
     pub file_evidence: Vec<FileEvidence>,
     pub metadata_draft: RawReleaseEdit,
+    /// What the library holds for every artist credit of the draft and the
+    /// mapping rows, as the pane's live read found it.
+    pub artist_resolutions: Vec<crate::import::ResolvedCredit>,
     pub metadata_draft_is_blank: bool,
     pub metadata_provenance: Option<MetadataProvenance>,
     /// Who wrote the draft: nobody, the tag prefill, identification's own

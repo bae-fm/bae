@@ -239,7 +239,7 @@ impl CandidatePreparation {
                     .metadata
                     .draft
                     .release_edit()
-                    .new_discogs_artist_ids_for_bound_tracks(),
+                    .credit_discogs_artist_ids_for_bound_tracks(),
             )
             .cloned()
             .collect()

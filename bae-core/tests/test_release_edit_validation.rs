@@ -72,7 +72,7 @@ fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUser
         album_title: album_title.to_string(),
         album_artist_assignments: album_artist_seed_names
             .iter()
-            .map(|name| ArtistAssignment::new(*name))
+            .map(|name| ArtistAssignment::named(*name))
             .collect(),
         album_year: None,
         pressing: PressingEdit::blank(),

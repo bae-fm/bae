@@ -83,6 +83,10 @@ struct ImportMappingPane: View {
             .padding(.top, 20)
             .padding(.bottom, 32)
         }
+        .environment(
+            \.artistResolutions,
+            candidate.detail?.artistResolutions ?? []
+        )
     }
 
     /// The folder's images under their own ruled heading, level with the

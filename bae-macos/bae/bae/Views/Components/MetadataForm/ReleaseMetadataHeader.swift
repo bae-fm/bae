@@ -270,50 +270,71 @@ struct ReleasePressingFieldsGrid: View {
 extension BridgeArtistAssignment {
     var displayName: String {
         switch self {
-        case .existing(let artist): artist.name
-        case .new(let seed): seed.name
+        case .picked(let artist): artist.name
+        case .credit(let credit): credit.name
         }
     }
+}
 
-    var identityLabel: String {
+extension EnvironmentValues {
+    /// What the library holds for the artist credits on screen, as core last
+    /// read them: the import pane's live read, or the release editor's own.
+    /// Rendered through `bridgeArtistStanding` / `bridgeArtistsStanding`.
+    @Entry
+    var artistResolutions: [BridgeResolvedCredit] = []
+}
+
+extension BridgeArtistStanding {
+    /// The badge naming how one artist stands to the library.
+    var label: String {
         switch self {
-        case .existing: String(localized: "Library")
+        case .library: String(localized: "Library")
         case .new: String(localized: "New")
+        case .choose(let choices):
+            String(localized: "\(choices.count) in library")
         }
     }
+}
 
-    var isNew: Bool {
-        if case .new = self { return true }
-        return false
+extension BridgeArtistsStanding {
+    /// The badge naming how a whole field's artists stand to the library.
+    var label: String {
+        switch self {
+        case .library: String(localized: "Library")
+        case .new: String(localized: "New")
+        case .someNew(let count): String(localized: "\(Int(count)) new")
+        case .choose(let choices):
+            String(localized: "\(Int(choices)) in library")
+        case .someToChoose(let count):
+            String(localized: "\(Int(count)) to choose")
+        }
     }
 }
 
 /// What a closed artist field says about a whole set of assignments: the names
-/// as one localized list, and one badge for how the set stands to the library
-/// — every name already in it, every name new to it, or how many of them are
-/// new. One assignment summarizes to that assignment's own name and badge.
+/// as one localized list, and — once core has read how the set stands to the
+/// library — one badge for it. One assignment summarizes to that assignment's
+/// own name and badge.
 struct ArtistAssignmentsSummary: Equatable {
     let names: String
-    let identityLabel: String
+    let identityLabel: String?
 
     /// `nil` when nothing is assigned: the field shows its placeholder, which
     /// is not a summary of anything.
-    init?(assignments: [BridgeArtistAssignment]) {
+    init?(
+        assignments: [BridgeArtistAssignment],
+        resolutions: [BridgeResolvedCredit]
+    ) {
         guard !assignments.isEmpty else { return nil }
         names = ListFormatter.localizedString(
             byJoining: assignments.map(\.displayName)
         )
-        let newCount = assignments.filter(\.isNew).count
         identityLabel =
-            if newCount == 0 {
-                String(localized: "Library")
-            }
-            else if newCount == assignments.count {
-                String(localized: "New")
-            }
-            else {
-                String(localized: "\(newCount) new")
-            }
+            bridgeArtistsStanding(
+                assignments: assignments,
+                resolutions: resolutions
+            )?
+            .label
     }
 }
 
@@ -335,13 +356,16 @@ struct ArtistIdentityBadge: View {
 
 struct ArtistAssignmentLabel: View {
     let assignment: BridgeArtistAssignment
+    let standing: BridgeArtistStanding?
 
     var body: some View {
         HStack(spacing: 5) {
             Text(assignment.displayName)
                 .lineLimit(1)
                 .truncationMode(.middle)
-            ArtistIdentityBadge(label: assignment.identityLabel)
+            if let standing {
+                ArtistIdentityBadge(label: standing.label)
+            }
         }
     }
 }
@@ -375,6 +399,8 @@ struct ArtistAssignmentsField: View {
     private var library
     @Environment(UiStore.self)
     private var uiStore
+    @Environment(\.artistResolutions)
+    private var resolutions
     @State
     private var isPresented = false
     @State
@@ -416,13 +442,17 @@ struct ArtistAssignmentsField: View {
         if inheritsAlbumArtists {
             Text("Album artist").foregroundStyle(.tertiary)
         }
-        else if let summary = ArtistAssignmentsSummary(assignments: assignments)
-        {
+        else if let summary = ArtistAssignmentsSummary(
+            assignments: assignments,
+            resolutions: resolutions
+        ) {
             HStack(spacing: 5) {
                 Text(summary.names)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                ArtistIdentityBadge(label: summary.identityLabel)
+                if let label = summary.identityLabel {
+                    ArtistIdentityBadge(label: label)
+                }
             }
         }
         else {
@@ -439,18 +469,30 @@ struct ArtistAssignmentsField: View {
             ForEach(Array(assignments.enumerated()), id: \.offset) {
                 index,
                 assignment in
-                HStack(spacing: 8) {
-                    ArtistAssignmentLabel(assignment: assignment)
-                    Spacer(minLength: 0)
-                    Button {
-                        var next = assignments
-                        next.remove(at: index)
-                        onChange(next)
-                    } label: {
-                        Image(systemName: "xmark")
+                let standing = bridgeArtistStanding(
+                    assignment: assignment,
+                    resolutions: resolutions
+                )
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        ArtistAssignmentLabel(
+                            assignment: assignment,
+                            standing: standing
+                        )
+                        Spacer(minLength: 0)
+                        Button {
+                            var next = assignments
+                            next.remove(at: index)
+                            onChange(next)
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel(Text("Remove"))
                     }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel(Text("Remove"))
+                    if case .choose(let choices) = standing {
+                        choicesList(choices, replacing: index)
+                    }
                 }
             }
             HStack(spacing: 8) {
@@ -470,7 +512,7 @@ struct ArtistAssignmentsField: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Button {
                         onChange(
-                            assignments + [.existing(artist: result.artist)]
+                            assignments + [.picked(artist: result.artist)]
                         )
                         query = ""
                     } label: {
@@ -490,6 +532,30 @@ struct ArtistAssignmentsField: View {
         .task(id: query) { await search() }
     }
 
+    /// The library artists one credit could be, offered to pick from: picking
+    /// one puts that library artist in the credit's place.
+    private func choicesList(
+        _ choices: [BridgeExistingArtist],
+        replacing index: Int
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Which one?")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ForEach(choices, id: \.artistId) { choice in
+                Button {
+                    var next = assignments
+                    next[index] = .picked(artist: choice)
+                    onChange(next)
+                } label: {
+                    ArtistSearchResultLabel(artist: choice)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.leading, 12)
+    }
+
     private var trimmedQuery: String {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -498,8 +564,8 @@ struct ArtistAssignmentsField: View {
         guard !trimmedQuery.isEmpty else { return }
         onChange(
             assignments + [
-                .new(
-                    seed: BridgeNewArtistSeed(
+                .credit(
+                    credit: BridgeArtistCredit(
                         name: query,
                         sortName: nil,
                         musicbrainzArtistId: nil,

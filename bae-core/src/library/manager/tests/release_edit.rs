@@ -259,7 +259,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
             &release.id,
             &crate::import::ReleaseUserEdit {
                 album_title: "Edited Album".to_string(),
-                album_artist_assignments: vec![crate::import::ArtistAssignment::new(
+                album_artist_assignments: vec![crate::import::ArtistAssignment::named(
                     "Edited Album Artist",
                 )],
                 album_year: Some(1984),
@@ -276,7 +276,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
                     side: Some(2),
                     track_number: Some(3),
                     artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
-                        crate::import::ArtistAssignment::new("Edited Track Artist"),
+                        crate::import::ArtistAssignment::named("Edited Track Artist"),
                     ]),
                     file: None,
                 }],

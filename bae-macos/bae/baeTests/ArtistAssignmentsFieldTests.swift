@@ -8,28 +8,17 @@ import Testing
 @Suite("Artist assignments field")
 struct ArtistAssignmentsFieldTests {
     @MainActor
-    @Test("linked and new assignments remain visibly distinct")
+    @Test("library and new artists remain visibly distinct")
     func assignmentIdentityIsVisible() async throws {
-        let existing = BridgeArtistAssignment.existing(
-            artist: BridgeExistingArtist(
-                artistId: "artist-1",
-                name: "Artist Name",
-                sortName: nil,
-                musicbrainzArtistId: nil,
-                discogsArtistId: nil
-            )
+        let picked = PreviewData.pickedArtist(
+            "Artist Name",
+            artistId: "artist-1"
         )
-        let created = BridgeArtistAssignment.new(
-            seed: BridgeNewArtistSeed(
-                name: "Artist Name",
-                sortName: nil,
-                musicbrainzArtistId: nil,
-                discogsArtistId: nil
-            )
-        )
+        let credited = PreviewData.artistCredit("Artist Name")
+        let resolutions = [PreviewData.resolvedCredit("Artist Name", .new)]
 
-        let linkedImage = try await render([existing])
-        let newImage = try await render([created])
+        let linkedImage = try await render([picked], resolutions: resolutions)
+        let newImage = try await render([credited], resolutions: resolutions)
 
         #expect(linkedImage != newImage)
     }
@@ -56,89 +45,6 @@ struct ArtistAssignmentsFieldTests {
         let secondImage = try await renderChoice(second)
 
         #expect(firstImage == secondImage)
-    }
-
-    @Test("one library artist reads as its own name and badge")
-    func oneLibraryArtistSummary() throws {
-        let summary = try #require(
-            ArtistAssignmentsSummary(assignments: [
-                PreviewData.existingArtist("Artist Name", artistId: "artist-1")
-            ])
-        )
-
-        #expect(summary.names == "Artist Name")
-        #expect(summary.identityLabel == "Library")
-    }
-
-    @Test("one new artist reads as its own name and badge")
-    func oneNewArtistSummary() throws {
-        let summary = try #require(
-            ArtistAssignmentsSummary(assignments: [
-                PreviewData.newArtist("New Artist Name")
-            ])
-        )
-
-        #expect(summary.names == "New Artist Name")
-        #expect(summary.identityLabel == "New")
-    }
-
-    @Test("artists all already in the library carry one Library badge")
-    func allLibraryArtistsSummary() throws {
-        let names = ["First Artist", "Second Artist", "Third Artist"]
-        let summary = try #require(
-            ArtistAssignmentsSummary(
-                assignments: names.enumerated()
-                    .map { index, name in
-                        PreviewData.existingArtist(
-                            name,
-                            artistId: "artist-\(index)"
-                        )
-                    }
-            )
-        )
-
-        #expect(
-            summary.names == ListFormatter.localizedString(byJoining: names)
-        )
-        #expect(summary.identityLabel == "Library")
-    }
-
-    @Test("artists all new to the library carry one New badge")
-    func allNewArtistsSummary() throws {
-        let names = ["First Artist", "Second Artist"]
-        let summary = try #require(
-            ArtistAssignmentsSummary(
-                assignments: names.map(PreviewData.newArtist)
-            )
-        )
-
-        #expect(
-            summary.names == ListFormatter.localizedString(byJoining: names)
-        )
-        #expect(summary.identityLabel == "New")
-    }
-
-    @Test("a mixed set counts the artists new to the library")
-    func mixedArtistsSummaryCountsTheNewOnes() throws {
-        let summary = try #require(
-            ArtistAssignmentsSummary(assignments: [
-                PreviewData.existingArtist("First Artist", artistId: "a-1"),
-                PreviewData.newArtist("Second Artist"),
-                PreviewData.existingArtist("Third Artist", artistId: "a-3"),
-                PreviewData.newArtist("Fourth Artist"),
-            ])
-        )
-
-        #expect(
-            summary.names
-                == ListFormatter.localizedString(
-                    byJoining: [
-                        "First Artist", "Second Artist", "Third Artist",
-                        "Fourth Artist",
-                    ]
-                )
-        )
-        #expect(summary.identityLabel == "2 new")
     }
 
     /// A compilation credits more artists than the line can hold. The header
@@ -211,7 +117,8 @@ struct ArtistAssignmentsFieldTests {
 
     @MainActor
     private func render(
-        _ assignments: [BridgeArtistAssignment]
+        _ assignments: [BridgeArtistAssignment],
+        resolutions: [BridgeResolvedCredit]
     ) async throws -> Data {
         let size = NSSize(width: 280, height: 40)
         let (window, host) = SnapshotTestSupport.hostInWindow(
@@ -221,6 +128,7 @@ struct ArtistAssignmentsFieldTests {
                 onChange: { _ in }
             )
             .frame(width: size.width, height: size.height)
+            .environment(\.artistResolutions, resolutions)
             .environment(Library.stub())
             .environment(UiStore()),
             size: size

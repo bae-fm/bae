@@ -606,6 +606,7 @@ impl crate::types::BridgeImportCandidateDetail {
             picked_library_status,
             file_evidence,
             metadata_draft,
+            artist_resolutions,
             metadata_draft_is_blank,
             metadata_provenance,
             metadata_author,
@@ -642,6 +643,10 @@ impl crate::types::BridgeImportCandidateDetail {
                 .map(crate::types::BridgeFileEvidence::from_core)
                 .collect(),
             metadata_draft: crate::types::BridgeRawReleaseEdit::from_core(metadata_draft),
+            artist_resolutions: artist_resolutions
+                .into_iter()
+                .map(crate::types::BridgeResolvedCredit::from_core)
+                .collect(),
             metadata_draft_is_blank,
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),

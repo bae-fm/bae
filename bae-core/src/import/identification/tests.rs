@@ -776,8 +776,7 @@ impl Fixture {
             .expect("the scanned candidate is sweepable");
         let mut draft = candidate.blank_source().draft;
         draft.album_title = "Album".to_string();
-        draft.album_artist_assignments = vec![crate::import::ArtistAssignment::New {
-            seed: crate::import::NewArtistSeed {
+        draft.album_artist_assignments = vec![crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
                 name: "Artist".to_string(),
                 sort_name: None,
                 musicbrainz_artist_id: None,

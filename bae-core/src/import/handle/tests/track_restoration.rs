@@ -113,7 +113,7 @@ async fn restoring_middle_audio_initializes_only_that_row_from_current_preferenc
         handle
             .set_candidate_album_artists(
                 &key,
-                vec![crate::import::ArtistAssignment::new("Typed Artist")],
+                vec![crate::import::ArtistAssignment::named("Typed Artist")],
             )
             .await
             .unwrap();
@@ -146,7 +146,7 @@ async fn restoring_middle_audio_initializes_only_that_row_from_current_preferenc
         assert_eq!(
             restored.edit.artist_assignments,
             if prefill {
-                TrackArtistAssignments::Explicit(vec![crate::import::ArtistAssignment::new(
+                TrackArtistAssignments::Explicit(vec![crate::import::ArtistAssignment::named(
                     "Source Artist",
                 )])
             } else {
@@ -473,7 +473,7 @@ async fn restoring_cue_slices_preserves_their_exact_file_index_and_initial_metad
             if prefill && index == 1 {
                 assert_eq!(
                     restored.edit.artist_assignments,
-                    TrackArtistAssignments::Explicit(vec![crate::import::ArtistAssignment::new(
+                    TrackArtistAssignments::Explicit(vec![crate::import::ArtistAssignment::named(
                         "Slice Artist"
                     )])
                 );

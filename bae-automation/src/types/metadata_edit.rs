@@ -30,8 +30,8 @@ pub struct AutomationTrackUserEdit {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationArtistAssignment {
-    Existing { artist: AutomationExistingArtist },
-    New { seed: AutomationNewArtistSeed },
+    Picked { artist: AutomationExistingArtist },
+    Credit { credit: AutomationArtistCredit },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -44,7 +44,7 @@ pub struct AutomationExistingArtist {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct AutomationNewArtistSeed {
+pub struct AutomationArtistCredit {
     pub name: String,
     pub sort_name: Option<String>,
     pub musicbrainz_artist_id: Option<String>,

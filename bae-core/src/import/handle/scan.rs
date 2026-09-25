@@ -344,7 +344,7 @@ impl ImportServiceHandle {
         let draft = source_draft.draft;
         let source_discogs_artist_ids = source_draft.source_discogs_artist_ids;
         let required_artist_ids = source_discogs_artist_ids
-            .union(&source_draft.mapped_new_discogs_artist_ids)
+            .union(&source_draft.mapped_credit_discogs_artist_ids)
             .cloned()
             .collect();
         let artist_images = self

@@ -22,7 +22,7 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
             metadata_provenance: None,
             user_edit: Some(ReleaseUserEdit {
                 album_title: "Album Title".to_string(),
-                album_artist_assignments: vec![ArtistAssignment::new("Artist Name")],
+                album_artist_assignments: vec![ArtistAssignment::named("Artist Name")],
                 album_year: None,
                 pressing: PressingEdit::blank(),
                 tracks: vec![TrackUserEdit {

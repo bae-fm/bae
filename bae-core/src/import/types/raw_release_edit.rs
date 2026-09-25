@@ -137,12 +137,12 @@ impl RawReleaseEdit {
             })
     }
 
-    /// Discogs identities on new album artists and on track artists whose rows
-    /// have audio bound. Existing-library assignments need no prepared image
-    /// because import does not insert those artists; fileless rows do not
-    /// become tracks.
+    /// Discogs identities on album artist credits and on the credits of track
+    /// rows that have audio bound — every artist the import may create, and so
+    /// may need a prepared picture for. A picked library artist is never
+    /// created; fileless rows do not become tracks.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn new_discogs_artist_ids_for_bound_tracks(
+    pub(crate) fn credit_discogs_artist_ids_for_bound_tracks(
         &self,
     ) -> std::collections::BTreeSet<String> {
         self.album_artist_assignments
@@ -154,10 +154,37 @@ impl RawReleaseEdit {
                 }
             }))
             .filter_map(|assignment| match assignment {
-                ArtistAssignment::Existing { .. } => None,
-                ArtistAssignment::New { seed } => seed.discogs_artist_id.clone(),
+                ArtistAssignment::Picked { .. } => None,
+                ArtistAssignment::Credit { credit } => credit.discogs_artist_id.clone(),
             })
             .collect()
+    }
+}
+
+impl<Track: AsRef<TrackArtistAssignments>> RawReleaseEditOf<Track> {
+    /// Every artist credit the form carries, the album's first, then each
+    /// track's own; picked library artists are not credits.
+    pub(crate) fn credits(&self) -> impl Iterator<Item = &ArtistCredit> {
+        self.album_artist_assignments
+            .iter()
+            .chain(
+                self.tracks
+                    .iter()
+                    .flat_map(|track| track.as_ref().explicit()),
+            )
+            .filter_map(ArtistAssignment::credit)
+    }
+}
+
+impl<File, Number> AsRef<TrackArtistAssignments> for RawTrackEdit<File, Number> {
+    fn as_ref(&self) -> &TrackArtistAssignments {
+        &self.artist_assignments
+    }
+}
+
+impl AsRef<TrackArtistAssignments> for CandidateTrack {
+    fn as_ref(&self) -> &TrackArtistAssignments {
+        &self.edit.artist_assignments
     }
 }
 

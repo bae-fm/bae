@@ -115,8 +115,8 @@
             BridgeRawReleaseEdit(
                 albumTitle: "Album Title",
                 albumArtistAssignments: [
-                    existingArtist("Artist Name", artistId: "artist-1"),
-                    newArtist("New Artist Name"),
+                    pickedArtist("Artist Name", artistId: "artist-1"),
+                    artistCredit("New Artist Name"),
                 ],
                 albumYear: "1983",
                 pressing: BridgeRawPressingEdit(
@@ -136,7 +136,7 @@
                                 ? .albumArtists
                                 : .explicit(
                                     assignments: [
-                                        newArtist("Track Artist \(n)")
+                                        artistCredit("Track Artist \(n)")
                                     ]
                                 ),
                             side: 1,
@@ -155,8 +155,11 @@
             draft.albumArtistAssignments =
                 (1...10)
                 .map { n in
-                    existingArtist("Artist Name \(n)", artistId: "artist-\(n)")
-                } + [newArtist("New Artist One"), newArtist("New Artist Two")]
+                    pickedArtist("Artist Name \(n)", artistId: "artist-\(n)")
+                } + [
+                    artistCredit("New Artist One"),
+                    artistCredit("New Artist Two"),
+                ]
             return draft
         }
 
@@ -216,9 +219,9 @@
             )
         }
 
-        static func newArtist(_ name: String) -> BridgeArtistAssignment {
-            .new(
-                seed: BridgeNewArtistSeed(
+        static func artistCredit(_ name: String) -> BridgeArtistAssignment {
+            .credit(
+                credit: BridgeArtistCredit(
                     name: name,
                     sortName: nil,
                     musicbrainzArtistId: nil,
@@ -227,11 +230,11 @@
             )
         }
 
-        static func existingArtist(
+        static func pickedArtist(
             _ name: String,
             artistId: String
         ) -> BridgeArtistAssignment {
-            .existing(
+            .picked(
                 artist: BridgeExistingArtist(
                     artistId: artistId,
                     name: name,
@@ -239,6 +242,22 @@
                     musicbrainzArtistId: nil,
                     discogsArtistId: nil
                 )
+            )
+        }
+
+        /// What the library holds for the name-only credit `name`.
+        static func resolvedCredit(
+            _ name: String,
+            _ resolution: BridgeCreditResolution
+        ) -> BridgeResolvedCredit {
+            BridgeResolvedCredit(
+                credit: BridgeArtistCredit(
+                    name: name,
+                    sortName: nil,
+                    musicbrainzArtistId: nil,
+                    discogsArtistId: nil
+                ),
+                resolution: resolution
             )
         }
 

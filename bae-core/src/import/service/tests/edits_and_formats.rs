@@ -102,7 +102,7 @@ fn user_edit_overrides_album_year_and_pressing_fields() {
 
     let edit = crate::import::ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
-        album_artist_assignments: vec![crate::import::ArtistAssignment::new("Edited Artist")],
+        album_artist_assignments: vec![crate::import::ArtistAssignment::named("Edited Artist")],
         album_year: Some(1981),
         pressing: crate::import::PressingEdit {
             year: Some(1995),
@@ -169,7 +169,7 @@ fn user_edit_can_fill_country_for_approximate_seed() {
 
     let edit = crate::import::ReleaseUserEdit {
         album_title: seed.album.title.clone(),
-        album_artist_assignments: vec![crate::import::ArtistAssignment::new(
+        album_artist_assignments: vec![crate::import::ArtistAssignment::named(
             seed.artists[0].name.clone(),
         )],
         album_year: seed.album.year,
@@ -206,7 +206,7 @@ fn user_edit_track_count_mismatch_is_an_error() {
 
     let edit = crate::import::ReleaseUserEdit {
         album_title: "T".to_string(),
-        album_artist_assignments: vec![crate::import::ArtistAssignment::new("A")],
+        album_artist_assignments: vec![crate::import::ArtistAssignment::named("A")],
         album_year: None,
         pressing: crate::import::PressingEdit::blank(),
         // Two edits but seed has one track.
@@ -315,7 +315,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
     // track's credit equals the album's.
     let edit = crate::import::ReleaseUserEdit {
         album_title: seed.album.title.clone(),
-        album_artist_assignments: vec![crate::import::ArtistAssignment::existing(
+        album_artist_assignments: vec![crate::import::ArtistAssignment::picked(
             seed_artist.clone().into(),
         )],
         album_year: seed.album.year,
@@ -328,7 +328,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
             side: seed.tracks[0].side,
             track_number: seed.tracks[0].track_number,
             artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
-                crate::import::ArtistAssignment::existing(seed_artist.clone().into()),
+                crate::import::ArtistAssignment::picked(seed_artist.clone().into()),
             ]),
             file: None,
         }],
@@ -371,7 +371,7 @@ fn user_edit_renaming_album_artist_rebuilds_credits() {
 
     let edit = crate::import::ReleaseUserEdit {
         album_title: seed.album.title.clone(),
-        album_artist_assignments: vec![crate::import::ArtistAssignment::new("Different Artist")],
+        album_artist_assignments: vec![crate::import::ArtistAssignment::named("Different Artist")],
         album_year: seed.album.year,
         pressing: crate::import::PressingEdit::blank(),
         tracks: vec![crate::import::TrackUserEdit {
@@ -511,7 +511,7 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
     };
     let edit = Some(crate::import::ReleaseUserEdit {
         album_title: "Album Title".into(),
-        album_artist_assignments: vec![crate::import::ArtistAssignment::new("Artist Name")],
+        album_artist_assignments: vec![crate::import::ArtistAssignment::named("Artist Name")],
         album_year: None,
         pressing: crate::import::PressingEdit::blank(),
         tracks: vec![

@@ -122,6 +122,16 @@ impl Database {
         .await
     }
 
+    /// What the library holds for each of `credits` as it stands now.
+    pub async fn resolve_artist_credits(
+        &self,
+        credits: &[crate::import::ArtistCredit],
+    ) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
+        let credits = credits.to_vec();
+        self.read(move |sql| resolve_credits_on(&sql, &credits))
+            .await
+    }
+
     /// The [`ArtistWriteError`] a coven write closure failed with, or the
     /// database error it failed with otherwise.
     pub(super) fn artist_write_error(error: CovenError) -> ArtistWriteError {
@@ -301,6 +311,64 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
     })
 }
 
+/// What the library holds for one credit as it stands now: the rule every
+/// write commits by, applied to the credit alone. What the import pane shows
+/// beside a credit, read inside its live query so an artist another import
+/// commits reads it again.
+pub(crate) fn resolve_credit_on<Q: QueryOne + QueryRows>(
+    sql: &Q,
+    credit: &crate::import::ArtistCredit,
+) -> Result<crate::import::CreditResolution, DbError> {
+    use crate::import::CreditResolution;
+    let row = DbArtist {
+        id: String::new(),
+        name: credit.name.clone(),
+        sort_name: credit.sort_name.clone(),
+        discogs_artist_id: credit.discogs_artist_id.clone(),
+        musicbrainz_artist_id: credit.musicbrainz_artist_id.clone(),
+        created_at: chrono::DateTime::<Utc>::MIN_UTC,
+    };
+    Ok(match catalog_match_on(sql, &row, &[])? {
+        CatalogMatch::Artist(artist) => CreditResolution::Library {
+            artist: artist.into(),
+        },
+        CatalogMatch::Conflict(conflict) => CreditResolution::Conflicting {
+            artists: conflict.artists(),
+        },
+        CatalogMatch::Unmatched => {
+            let mut named = name_matches_on(sql, &row, &[])?;
+            match named.len() {
+                0 => CreditResolution::New,
+                1 => CreditResolution::Library {
+                    artist: named.remove(0).into(),
+                },
+                _ => CreditResolution::Ambiguous {
+                    artists: named.into_iter().map(Into::into).collect(),
+                },
+            }
+        }
+    })
+}
+
+/// Every distinct credit of `assignments`, resolved as [`resolve_credit_on`]
+/// resolves it, in the order the credits first appear.
+pub(crate) fn resolve_credits_on<'a, Q: QueryOne + QueryRows>(
+    sql: &Q,
+    credits: impl IntoIterator<Item = &'a crate::import::ArtistCredit>,
+) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
+    let mut resolved: Vec<crate::import::ResolvedCredit> = Vec::new();
+    for credit in credits {
+        if resolved.iter().any(|known| known.credit == *credit) {
+            continue;
+        }
+        resolved.push(crate::import::ResolvedCredit {
+            credit: credit.clone(),
+            resolution: resolve_credit_on(sql, credit)?,
+        });
+    }
+    Ok(resolved)
+}
+
 /// The name step for a credit no catalog id placed: the one new artist of
 /// this write it names, else the one library artist, else a new artist.
 fn resolve_by_name_on<Q: QueryOne + QueryRows>(
@@ -424,14 +492,32 @@ pub(super) enum CatalogConflict {
     Identity(Box<crate::import::ArtistIdentityConflict>),
     /// A matched artist holds a different id of the same catalog, or the
     /// library holds one id on several artists.
-    Contradicted { detail: String },
+    Contradicted {
+        artists: Vec<DbArtist>,
+        detail: String,
+    },
 }
 
 impl CatalogConflict {
     fn into_error(self) -> ArtistWriteError {
         match self {
             Self::Identity(conflict) => ArtistWriteError::IdentityConflict(conflict),
-            Self::Contradicted { detail } => ArtistWriteError::Unresolvable(detail),
+            Self::Contradicted { detail, .. } => ArtistWriteError::Unresolvable(detail),
+        }
+    }
+
+    /// The library artists the credit's ids point at.
+    fn artists(self) -> Vec<crate::import::ExistingArtist> {
+        match self {
+            Self::Identity(conflict) => {
+                let crate::import::ArtistIdentityConflict {
+                    discogs_artist,
+                    musicbrainz_artist,
+                    ..
+                } = *conflict;
+                vec![discogs_artist, musicbrainz_artist]
+            }
+            Self::Contradicted { artists, .. } => artists.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -613,6 +699,7 @@ fn exact_artist(
         .collect();
     if staged_matches.len() > 1 {
         return Err(CatalogConflict::Contradicted {
+            artists: staged_matches.into_iter().cloned().collect(),
             detail: format!(
                 "artist '{incoming_name}' has a {source} source ID staged for multiple library artists"
             ),
@@ -622,6 +709,7 @@ fn exact_artist(
     match (stored, staged) {
         (Some(stored), Some(staged)) if stored.id != staged.id => {
             Err(CatalogConflict::Contradicted {
+                artists: vec![stored, staged],
                 detail: format!(
                     "artist '{incoming_name}' has a {source} source ID belonging to multiple library artists"
                 ),
@@ -638,13 +726,14 @@ fn matching_artist(
     by_discogs: Option<DbArtist>,
     by_musicbrainz: Option<DbArtist>,
 ) -> Result<Option<DbArtist>, CatalogConflict> {
-    let contradicted = || CatalogConflict::Contradicted {
+    let contradicted = |artists: Vec<DbArtist>| CatalogConflict::Contradicted {
+        artists,
         detail: format!("artist '{}' has conflicting source IDs", incoming.name),
     };
     let matched = match (by_discogs, by_musicbrainz) {
         (Some(discogs), Some(musicbrainz)) if discogs.id != musicbrainz.id => {
             if !ids_agree(&discogs, incoming) || !ids_agree(&musicbrainz, incoming) {
-                return Err(contradicted());
+                return Err(contradicted(vec![discogs, musicbrainz]));
             }
             let (Some(discogs_artist_id), Some(musicbrainz_artist_id)) = (
                 incoming.discogs_artist_id.clone(),
@@ -666,7 +755,7 @@ fn matching_artist(
         (None, None) => None,
     };
     match matched {
-        Some(existing) if !ids_agree(&existing, incoming) => Err(contradicted()),
+        Some(existing) if !ids_agree(&existing, incoming) => Err(contradicted(vec![existing])),
         matched => Ok(matched),
     }
 }

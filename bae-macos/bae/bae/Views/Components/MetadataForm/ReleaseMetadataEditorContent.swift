@@ -1,15 +1,24 @@
 import BaeKit
+import OSLog
 import SwiftUI
 
 /// Shared persisted-release editor body. Import Done and the Library modal
 /// provide their shell and actions; this renders one header and track table.
 struct ReleaseMetadataEditorContent: View {
+    private static let logger = Logger.bae("ReleaseMetadataEditor")
+
     let session: ReleaseMetadataEditSession
     var onEditCover: (() -> Void)?
     var onPlayTrack: ((Int) -> Void)?
 
     @State
     private var availableWidth = ReleaseMetadataTrackColumns.minimumTableWidth
+    /// What the library holds for the credits in the form, as core last read
+    /// them. Read again whenever the form changes.
+    @State
+    private var artistResolutions: [BridgeResolvedCredit] = []
+    @Environment(Library.self)
+    private var library
 
     private var tableWidth: CGFloat {
         max(availableWidth, ReleaseMetadataTrackColumns.minimumTableWidth)
@@ -31,6 +40,23 @@ struct ReleaseMetadataEditorContent: View {
             trackTable
         }
         .disabled(session.isBusy)
+        .environment(\.artistResolutions, artistResolutions)
+        .task(id: session.form) {
+            do {
+                artistResolutions = try await library.resolveReleaseEditCredits(
+                    session.form
+                )
+            }
+            catch is CancellationError {}
+            catch {
+                // No badge is better than a stale one. The form still saves,
+                // and the save resolves every credit for itself.
+                artistResolutions = []
+                Self.logger.error(
+                    "Could not read the form's artist credits: \(error)"
+                )
+            }
+        }
     }
 
     private var cover: some View {

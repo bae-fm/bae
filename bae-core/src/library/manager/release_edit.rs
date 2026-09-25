@@ -41,7 +41,7 @@ impl LibraryManager {
         let album_artist_assignments: Vec<crate::import::ArtistAssignment> = context
             .album_artists
             .into_iter()
-            .map(|artist| crate::import::ArtistAssignment::Existing {
+            .map(|artist| crate::import::ArtistAssignment::Picked {
                 artist: artist.into(),
             })
             .collect();
@@ -55,7 +55,7 @@ impl LibraryManager {
                 .artists
                 .clone()
                 .into_iter()
-                .map(|artist| crate::import::ArtistAssignment::Existing {
+                .map(|artist| crate::import::ArtistAssignment::Picked {
                     artist: artist.into(),
                 })
                 .collect();

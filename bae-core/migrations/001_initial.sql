@@ -928,12 +928,14 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
 ) STRICT;
 
--- The album artists of the draft: either an artist the library already holds
--- or a new one to create.
+-- The album artists of the draft: either a library artist the person picked
+-- ('picked', by id), or a credit ('credit') — what a source or the person
+-- said, with no claim about the library. Which library artist a credit is, if
+-- any, is decided each time the draft is read and inside the import's write.
 CREATE TABLE IF NOT EXISTS import_candidate_album_artist_assignment (
     content_hash          TEXT NOT NULL,
     position              INTEGER NOT NULL CHECK (position >= 0),
-    assignment_kind       TEXT NOT NULL CHECK (assignment_kind IN ('existing', 'new')),
+    assignment_kind       TEXT NOT NULL CHECK (assignment_kind IN ('picked', 'credit')),
     artist_id             TEXT,
     name                  TEXT,
     sort_name             TEXT,
@@ -943,10 +945,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_album_artist_assignment (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE RESTRICT,
     CHECK (
-        (assignment_kind = 'existing' AND artist_id IS NOT NULL AND name IS NULL
+        (assignment_kind = 'picked' AND artist_id IS NOT NULL AND name IS NULL
             AND sort_name IS NULL AND musicbrainz_artist_id IS NULL AND discogs_artist_id IS NULL)
         OR
-        (assignment_kind = 'new' AND artist_id IS NULL AND name IS NOT NULL AND name <> '')
+        (assignment_kind = 'credit' AND artist_id IS NULL AND name IS NOT NULL AND name <> '')
     )
 ) STRICT;
 
@@ -973,12 +975,13 @@ CREATE TABLE IF NOT EXISTS import_candidate_track (
     )
 ) STRICT;
 
--- The per-track artists of the draft, where a track does not take the album's.
+-- The per-track artists of the draft, where a track does not take the album's;
+-- 'picked' and 'credit' as for the album's.
 CREATE TABLE IF NOT EXISTS import_candidate_track_artist_assignment (
     content_hash          TEXT NOT NULL,
     track_id              TEXT NOT NULL,
     position              INTEGER NOT NULL CHECK (position >= 0),
-    assignment_kind       TEXT NOT NULL CHECK (assignment_kind IN ('existing', 'new')),
+    assignment_kind       TEXT NOT NULL CHECK (assignment_kind IN ('picked', 'credit')),
     artist_id             TEXT,
     name                  TEXT,
     sort_name             TEXT,
@@ -989,10 +992,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_track_artist_assignment (
         REFERENCES import_candidate_track (content_hash, track_id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE RESTRICT,
     CHECK (
-        (assignment_kind = 'existing' AND artist_id IS NOT NULL AND name IS NULL
+        (assignment_kind = 'picked' AND artist_id IS NOT NULL AND name IS NULL
             AND sort_name IS NULL AND musicbrainz_artist_id IS NULL AND discogs_artist_id IS NULL)
         OR
-        (assignment_kind = 'new' AND artist_id IS NULL AND name IS NOT NULL AND name <> '')
+        (assignment_kind = 'credit' AND artist_id IS NULL AND name IS NOT NULL AND name <> '')
     )
 ) STRICT;
 

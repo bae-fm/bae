@@ -177,13 +177,13 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
             sql.execute(
                 "INSERT INTO import_candidate_album_artist_assignment \
                      (content_hash, position, assignment_kind, artist_id) \
-                 VALUES (?, ?, 'existing', ?)",
+                 VALUES (?, ?, 'picked', ?)",
                 params![seed_pending_hash, position as i64, artist_id],
             )?;
             sql.execute(
                 "INSERT INTO import_candidate_track_artist_assignment \
                      (content_hash, track_id, position, assignment_kind, artist_id) \
-                 VALUES (?, 'draft-track', ?, 'existing', ?)",
+                 VALUES (?, 'draft-track', ?, 'picked', ?)",
                 params![seed_pending_hash, position as i64, artist_id],
             )?;
         }

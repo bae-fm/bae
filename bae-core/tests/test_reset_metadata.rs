@@ -7,7 +7,7 @@ use bae_test_support as support;
 
 use bae_core::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease, DbTrack, Pressing};
 use bae_core::import::payloads::ReleasePayloads;
-use bae_core::import::{ArtistAssignment, Catalog, MetadataRef, NewArtistSeed, ReleaseRecord};
+use bae_core::import::{ArtistAssignment, ArtistCredit, Catalog, MetadataRef, ReleaseRecord};
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
 use std::path::PathBuf;
@@ -299,8 +299,8 @@ async fn reset_mb_returns_full_pressing_data_from_the_stored_release() {
     assert_eq!(edit.album_title, "Cached Album");
     assert_eq!(
         edit.album_artist_assignments,
-        vec![ArtistAssignment::New {
-            seed: NewArtistSeed {
+        vec![ArtistAssignment::Credit {
+            credit: ArtistCredit {
                 name: "Cached Artist".to_string(),
                 sort_name: Some("Cached Artist".to_string()),
                 musicbrainz_artist_id: Some("mb-art-Cached Artist".to_string()),
@@ -432,8 +432,8 @@ async fn reset_discogs_returns_full_pressing_data_from_the_stored_release() {
     assert_eq!(edit.album_title, "Cached Discogs Album");
     assert_eq!(
         edit.album_artist_assignments,
-        vec![ArtistAssignment::New {
-            seed: NewArtistSeed {
+        vec![ArtistAssignment::Credit {
+            credit: ArtistCredit {
                 name: "Cached Discogs Artist".to_string(),
                 sort_name: Some("Cached Discogs Artist".to_string()),
                 musicbrainz_artist_id: None,
@@ -532,7 +532,7 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
     assert_eq!(edit.album_title, "Tag Album");
     assert_eq!(
         edit.album_artist_assignments,
-        vec![ArtistAssignment::new("Tag Artist")]
+        vec![ArtistAssignment::named("Tag Artist")]
     );
     assert_eq!(edit.pressing.year, Some(2010));
     assert_eq!(edit.pressing.format, None);

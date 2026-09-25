@@ -484,7 +484,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    AutomationNewArtistSeed = bae_core::import::NewArtistSeed,
+    AutomationArtistCredit = bae_core::import::ArtistCredit,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { name, sort_name, musicbrainz_artist_id, discogs_artist_id },
@@ -495,8 +495,8 @@ mirror_enum! {
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
-        Existing { artist: (AutomationExistingArtist) },
-        New { seed: (AutomationNewArtistSeed) },
+        Picked { artist: (AutomationExistingArtist) },
+        Credit { credit: (AutomationArtistCredit) },
     },
 }
 
