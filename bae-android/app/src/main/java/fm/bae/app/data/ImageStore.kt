@@ -125,9 +125,9 @@ data class ImageByteBudgets(
  *
  * What a cached decode is pinned to — its token — is the content's identity, so
  * no entry can outlive the bytes it came from: a curated image keys on its
- * `_updated_at` version, and a release file on its file id (immutable — an import
- * mints a fresh id per file, and a re-import mints new ones rather than
- * repointing an existing row).
+ * version (its blob id, which names one immutable byte string), and a release
+ * file on its file id (immutable — an import mints a fresh id per file, and a
+ * re-import mints new ones rather than repointing an existing row).
  */
 class ImageStore(
     /** Bytes of a curated library image, or null when no such image exists. */

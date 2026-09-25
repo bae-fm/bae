@@ -185,7 +185,7 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
         ],
     )
     .await;
-    add_cover_row(&manager, &release.id).await;
+    add_cover_row(&manager, &release.id, "cover-blob").await;
 
     let seed = manager.release_edit_seed(&release.id).await.unwrap();
 

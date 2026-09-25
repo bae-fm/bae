@@ -188,7 +188,7 @@ fn queue_metadata_on(
         let query = format!(
             "SELECT \
                 t.id AS track_id, t.title, t.duration_ms, a.title AS album_title, \
-                r.id AS cover_image_id, c._updated_at AS cover_version, \
+                r.id AS cover_image_id, c.blob_id AS cover_version, \
                 COALESCE( \
                     NULLIF(( \
                         SELECT GROUP_CONCAT(art.name, ', ' ORDER BY credit.position) \

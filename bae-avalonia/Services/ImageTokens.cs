@@ -6,8 +6,8 @@ namespace Bae.Desktop;
 /// What pins a cached decode to the exact bytes it came from, so no entry can
 /// outlive the content behind it.
 ///
-/// A curated library image keys on its content version (the image row's
-/// <c>_updated_at</c>, which moves when the bytes change). One of a release's own
+/// A curated library image keys on its content version (the image row's blob
+/// id, which names one immutable byte string). One of a release's own
 /// image files keys on its file id, which is immutable: an import mints a fresh
 /// id per file and a re-import mints new ones rather than repointing an existing
 /// row, so an id never comes to name different bytes. Provider art keys on its

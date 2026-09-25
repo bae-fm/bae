@@ -75,7 +75,7 @@ async fn queue_row_covers_a_track_whose_album_has_no_primary_release() {
     let (db, _tmp) = cover_db().await;
     assert_eq!(
         cover_of(&db, TRACK_LONELY).await,
-        cover_ref(RELEASE_LONELY, "cover-stamp-lonely"),
+        cover_ref(RELEASE_LONELY, "bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa"),
     );
 }
 
@@ -86,6 +86,40 @@ async fn queue_row_covers_the_track_s_own_release_not_the_album_s_primary() {
     let (db, _tmp) = cover_db().await;
     assert_eq!(
         cover_of(&db, TRACK_OTHER).await,
-        cover_ref(RELEASE_OTHER, "cover-stamp-other"),
+        cover_ref(RELEASE_OTHER, "0f2b9a51-7d2c-4a2f-8f16-9c0a3f1b2d44"),
+    );
+}
+
+/// coven merges a pulled edit column by column, so a cover whose blob another
+/// device replaced can land here with its new `blob_id` while the row keeps
+/// its local `_updated_at` — the local stamp won arbitration, the incoming
+/// column was folded in. The image version follows the bytes, so it moves
+/// all the same, on the queue's read and on every list's.
+#[tokio::test]
+async fn a_cover_repointed_without_a_new_stamp_takes_a_new_version() {
+    let (db, _tmp) = cover_db().await;
+    let before = cover_of(&db, TRACK_LONELY)
+        .await
+        .expect("the release has a cover");
+    let listed_before = db.cover_version(RELEASE_LONELY).await.unwrap();
+
+    super::exec(
+        &db,
+        "UPDATE covers SET blob_id = ?1 WHERE id = ?2",
+        &["6a1e4c2b-9d3f-4b57-8e21-3c4d5e6f7a8b", RELEASE_LONELY],
+    )
+    .await;
+
+    let after = cover_of(&db, TRACK_LONELY)
+        .await
+        .expect("the release has a cover");
+    assert_ne!(
+        after.version, before.version,
+        "the queue's cover version moves"
+    );
+    assert_ne!(
+        db.cover_version(RELEASE_LONELY).await.unwrap(),
+        listed_before,
+        "the listed cover version moves"
     );
 }

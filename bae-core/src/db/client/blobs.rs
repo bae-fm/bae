@@ -174,7 +174,8 @@ impl Database {
         .await
     }
 
-    /// The `_updated_at` version of each given release's `covers` row; ids with no
+    /// The version of each given release's cover — its `covers` row's `blob_id`,
+    /// which names one immutable byte string; ids with no
     /// cover row are absent from the map. This is the version a cover
     /// [`ImageRef`](crate::album_detail::ImageRef) carries — it moves whenever the
     /// cover bytes change, which moves the UI's `(id, version)` cache key and makes
@@ -187,7 +188,7 @@ impl Database {
             .await
     }
 
-    /// The `_updated_at` version of each given artist's `artist_images` row, for
+    /// The version (`blob_id`) of each given artist's `artist_images` row, for
     /// the ids that have one. Ids with no artist image row are absent from the
     /// map.
     pub async fn artist_image_versions(
@@ -211,7 +212,7 @@ impl Database {
             .await
     }
 
-    /// The `_updated_at` version of one release's `covers` row, or `None` when it
+    /// The version (`blob_id`) of one release's `covers` row, or `None` when it
     /// has no cover. The single-id form of [`cover_versions`](Self::cover_versions).
     pub async fn cover_version(&self, release_id: &str) -> Result<Option<String>, DbError> {
         let ids = [release_id.to_string()];
@@ -595,7 +596,7 @@ pub(super) fn image_versions_on(
     let mut map = HashMap::new();
     for chunk in ids.chunks(SQL_MAX_IN_VARS) {
         let placeholders = in_clause_placeholders(chunk.len());
-        let query = format!("SELECT id, _updated_at FROM {table} WHERE id IN ({placeholders})");
+        let query = format!("SELECT id, blob_id FROM {table} WHERE id IN ({placeholders})");
         map.extend(sql.query(
             &query,
             coven::rusqlite::params_from_iter(chunk.iter()),

@@ -81,13 +81,13 @@ async fn cover_versions_merges_chunks() {
     // Spans three chunks; every row from every chunk must survive the merge.
     assert_eq!(versions.len(), cover_count);
     assert_eq!(
-        versions.get(&release_ids[0]).map(String::as_str),
-        Some("stamp-0")
+        versions.get(&release_ids[0]),
+        Some(&bae_test_support::test_uuid("cover-blob-0"))
     );
     let last = cover_count - 1;
     assert_eq!(
-        versions.get(&release_ids[last]).map(String::as_str),
-        Some(format!("stamp-{last}").as_str())
+        versions.get(&release_ids[last]),
+        Some(&bae_test_support::test_uuid(&format!("cover-blob-{last}")))
     );
 }
 

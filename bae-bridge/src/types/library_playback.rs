@@ -174,8 +174,8 @@ mirror_enum! {
 /// portrait): the image kind, subject id, and content version. The UI passes the
 /// whole ref to `fetch_library_image_bytes`, so core dispatches to the known
 /// image namespace.
-/// `version` is the image row's `_updated_at`, which moves when the bytes
-/// change. Mirrors `bae_core::album_detail::ImageRef`.
+/// `version` is the image row's `blob_id`, which names one immutable byte
+/// string, so it moves exactly when the bytes change. Mirrors `bae_core::album_detail::ImageRef`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImageRef {
     pub id: String,

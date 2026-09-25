@@ -90,7 +90,7 @@ async fn album_page_subscription_delivers_rows_count_and_cover_versions() {
         .unwrap();
     assert_eq!(
         updated.cover_versions.get(RELEASE_ID).map(String::as_str),
-        Some("cover-v1")
+        Some("bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa")
     );
 }
 
@@ -259,12 +259,12 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
             .cover_versions
             .get(OTHER_RELEASE_ID)
             .map(String::as_str),
-        Some("cover-v1")
+        Some("96f3c15a-b99d-4395-81e5-2c32bb7a9c75")
     );
 
     exec(
         &db,
-        "UPDATE covers SET _updated_at = 'cover-v2' WHERE id = ?1",
+        "UPDATE covers SET blob_id = '5d0e7a43-2f18-4c6b-9a3e-7b1c2d3e4f50' WHERE id = ?1",
         &[OTHER_RELEASE_ID],
     )
     .await;
@@ -278,7 +278,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
             .cover_versions
             .get(OTHER_RELEASE_ID)
             .map(String::as_str),
-        Some("cover-v2")
+        Some("5d0e7a43-2f18-4c6b-9a3e-7b1c2d3e4f50")
     );
 
     requests
@@ -434,12 +434,12 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
             .image_versions
             .get(OTHER_COMPOSER_ID)
             .map(String::as_str),
-        Some("image-v1")
+        Some("19af4b72-9f57-4110-bc92-b72735b7b4ad")
     );
 
     exec(
         &db,
-        "UPDATE artist_images SET _updated_at = 'image-v2' WHERE id = ?1",
+        "UPDATE artist_images SET blob_id = '8c2f4e61-7a3b-4d95-b0e8-1f2a3b4c5d6e' WHERE id = ?1",
         &[OTHER_COMPOSER_ID],
     )
     .await;
@@ -453,7 +453,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
             .image_versions
             .get(OTHER_COMPOSER_ID)
             .map(String::as_str),
-        Some("image-v2")
+        Some("8c2f4e61-7a3b-4d95-b0e8-1f2a3b4c5d6e")
     );
 
     requests.set(BTreeSet::new()).unwrap();

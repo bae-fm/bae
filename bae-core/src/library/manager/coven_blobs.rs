@@ -89,7 +89,7 @@ impl LibraryManager {
     }
 
     /// The cover [`ImageRef`] for one release — its image id paired with the
-    /// `covers` row's `_updated_at` — or `None` when the release has no cover row.
+    /// `covers` row's `blob_id` — or `None` when the release has no cover row.
     pub(crate) async fn cover_ref(
         &self,
         release_id: &str,
