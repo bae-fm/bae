@@ -189,8 +189,9 @@ impl Database {
     pub(crate) async fn pin(
         &self,
         blobs: &[coven::RowBlobRef],
+        on_progress: &(dyn Fn(coven::PinProgress) + Send + Sync),
     ) -> Result<(), coven::BlobCacheError> {
-        self.inner.handle.pin(blobs).await
+        self.inner.handle.pin(blobs, on_progress).await
     }
 
     pub(crate) async fn unpin(

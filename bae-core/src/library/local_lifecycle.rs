@@ -17,11 +17,36 @@ pub(crate) struct PreparedLocalLibraryRemoval {
 
 /// Remove a registered library without opening its database first. This is the
 /// welcome screen's path for a library whose database cannot be opened.
+///
+/// Coven deletes the store — every keyring entry it holds for it, bae's host
+/// secrets named in [`crate::keys::HOST_SECRET_NAMES`], then its directory —
+/// and refuses while the store is open anywhere. The active-library pointer is
+/// cleared only after that succeeds, and only when it names this library.
 pub fn remove_local_library(app_dir: &AppDir, library_id: &str) -> Result<(), LibraryError> {
-    prepare_local_library_removal(app_dir, library_id, ActiveLibraryExpectation::MayBeInactive)?
-        .remove()?;
-    coven::Coven::forget_keyring_master_key(library_id)?;
-    Ok(())
+    let removal = prepare_local_library_removal(
+        app_dir,
+        library_id,
+        ActiveLibraryExpectation::MayBeInactive,
+    )?;
+    coven::Coven::delete_store(
+        &coven::StoreDir::new(removal.library_dir.clone()),
+        library_id,
+        crate::keys::HOST_SECRET_NAMES,
+    )
+    .map_err(store_deletion_error)?;
+    removal.clear_active_pointer()
+}
+
+fn store_deletion_error(error: coven::StoreDeletionError) -> LibraryError {
+    match error {
+        coven::StoreDeletionError::Keyring(error) => LibraryError::Keyring(error),
+        coven::StoreDeletionError::Open(error) => {
+            LibraryError::Internal(format!("Failed to remove library data: {error}"))
+        }
+        coven::StoreDeletionError::Directory(error) => {
+            LibraryError::Internal(format!("Failed to remove library data: {error}"))
+        }
+    }
 }
 
 pub(crate) fn prepare_local_library_removal(
@@ -72,7 +97,10 @@ impl PreparedLocalLibraryRemoval {
                 )));
             }
         }
+        self.clear_active_pointer()
+    }
 
+    fn clear_active_pointer(self) -> Result<(), LibraryError> {
         if self.clears_active_pointer {
             match std::fs::remove_file(&self.active_pointer) {
                 Ok(()) => {}

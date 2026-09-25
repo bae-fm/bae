@@ -501,7 +501,6 @@ pub async fn join_prepared_device_pairing_cancellable(
         oauth_tokens,
         cloudkit_ops,
     } = prepared;
-    let local_cancel = cancel.clone();
     let (rx, bridge) = cancel_receiver(Some(cancel));
     let result = coven::join_with_device_pairing(
         &pairing,
@@ -538,11 +537,7 @@ pub async fn join_prepared_device_pairing_cancellable(
             Err(JoinDevicePairingError::Abandoned)
         }
         Err(error) => {
-            let error = if local_cancel.is_cancelled() {
-                JoinDevicePairingError::Cancelled
-            } else {
-                classify_join_error(error)
-            };
+            let error = classify_join_error(error);
             // Every end that will not be resumed drops the durable pairing
             // journal. An expired session especially: leaving it on disk makes
             // `pending_device_pairing_join` offer to resume a code that can
@@ -570,17 +565,18 @@ fn classify_join_error(error: coven::BootstrapError) -> JoinDevicePairingError {
         coven::BootstrapError::Pairing(coven::DevicePairingTransportError::Unavailable(_)) => {
             JoinDevicePairingError::OwnerOffline
         }
-        coven::BootstrapError::Pairing(coven::DevicePairingTransportError::Cancelled) => {
+        // The owner cancelled the session: an abandonment the user is owed a
+        // reason for.
+        coven::BootstrapError::Pairing(coven::DevicePairingTransportError::SessionCancelled) => {
             JoinDevicePairingError::Abandoned
         }
         coven::BootstrapError::Pairing(coven::DevicePairingTransportError::Expired) => {
             JoinDevicePairingError::Expired
         }
-        // Only reached when this device's own cancel token was NOT tripped —
-        // the caller checks that first. So a cancellation arriving here came
-        // from the other end, which is an abandonment the user is owed a reason
-        // for, not the silent "you pressed cancel" case.
-        coven::BootstrapError::Cancelled => JoinDevicePairingError::Abandoned,
+        // This device's own cancel: while waiting for the invitation, or at a
+        // bootstrap phase boundary. The silent "you pressed cancel" end.
+        coven::BootstrapError::Pairing(coven::DevicePairingTransportError::WaitCancelled)
+        | coven::BootstrapError::Cancelled => JoinDevicePairingError::Cancelled,
         _ => JoinDevicePairingError::Bootstrap(Box::new(error)),
     }
 }

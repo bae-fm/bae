@@ -38,7 +38,8 @@ fn pairing_offer_preview_comes_from_the_scanned_offer() {
 
 #[test]
 fn owner_cancellation_is_not_reported_as_an_internal_join_failure() {
-    let error = coven::BootstrapError::Pairing(coven::DevicePairingTransportError::Cancelled);
+    let error =
+        coven::BootstrapError::Pairing(coven::DevicePairingTransportError::SessionCancelled);
 
     assert!(matches!(
         classify_join_error(error),
@@ -57,16 +58,16 @@ fn an_expired_pairing_code_is_not_reported_as_an_internal_join_failure() {
 }
 
 #[test]
-fn a_cancellation_this_device_did_not_ask_for_is_an_abandonment() {
-    // The caller checks its own cancel token before consulting this, so a
-    // cancellation arriving here came from the other end — the user is owed a
-    // reason for it rather than the silence their own cancel earns.
-    let error = coven::BootstrapError::Cancelled;
-
-    assert!(matches!(
-        classify_join_error(error),
-        JoinDevicePairingError::Abandoned
-    ));
+fn this_devices_own_cancel_is_a_cancellation_whichever_phase_it_stopped() {
+    for error in [
+        coven::BootstrapError::Pairing(coven::DevicePairingTransportError::WaitCancelled),
+        coven::BootstrapError::Cancelled,
+    ] {
+        assert!(matches!(
+            classify_join_error(error),
+            JoinDevicePairingError::Cancelled
+        ));
+    }
 }
 
 #[tokio::test]

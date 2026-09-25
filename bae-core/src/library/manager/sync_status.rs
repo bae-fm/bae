@@ -124,6 +124,13 @@ pub(super) struct SyncStatusUpdate {
 impl SyncStatusUpdate {
     pub(super) fn from_loop_status(status: &SyncLoopStatus) -> Self {
         match status {
+            // Sync is not running: no cycle speaks for or against the library,
+            // so an earlier cycle's fault no longer stands.
+            SyncLoopStatus::Disconnected | SyncLoopStatus::Stopped => Self {
+                error: Some(None),
+                last_sync_time: None,
+                blocked: None,
+            },
             SyncLoopStatus::CheckingStorage
             | SyncLoopStatus::Publishing
             | SyncLoopStatus::Offline => Self {

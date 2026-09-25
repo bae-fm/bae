@@ -241,45 +241,49 @@ impl LibraryManager {
     /// cloud). Idempotent. Pinned-ness is coven cache state — there is no bae flag.
     /// The low-level cache op behind the "Pin" transition.
     ///
-    /// Pinned one blob at a time so the Downloads pane advances as each blob lands:
-    /// coven's `pin` is a per-blob loop with no cross-blob state, so one at a
-    /// time is the same work in the same order as handing it the whole set — and it
-    /// is the only granularity coven reports at, since a single `pin` call over the
-    /// set returns nothing until every blob is in.
-    ///
-    /// The cover's bytes count toward the pane's total like any other blob: the
-    /// pin fetches them, its size is on the `covers` row, and both ends of the
-    /// fraction come from [`Self::release_pinnable_blobs`], so the bar cannot
-    /// outrun its denominator.
+    /// One pin over the whole set, reporting as bytes arrive. Coven counts in
+    /// the blobs' stored (encrypted) sizes; the Downloads pane counts in the
+    /// release's own file sizes, the same total
+    /// [`Self::initial_download_progress`] opens with, so coven's fraction is
+    /// carried over onto that total and the bar never changes denominator.
     pub(crate) async fn pin_release_blobs_with_progress(
         &self,
         release_id: &str,
-        mut on_progress: impl FnMut(crate::library::DownloadTransferProgress),
+        on_progress: impl FnMut(crate::library::DownloadTransferProgress) + Send,
     ) -> Result<(), LibraryError> {
         let pinnable = self.release_pinnable_blobs(release_id).await?;
         let bytes_total = total_bytes(release_id, &pinnable)?;
-        let mut emit_progress = |bytes_done| {
-            on_progress(crate::library::DownloadTransferProgress::new(
-                release_id,
-                bytes_done,
-                bytes_total,
-            )?);
-            Ok::<(), LibraryError>(())
+        let blobs = pinnable
+            .into_iter()
+            .map(|entry| entry.blob)
+            .collect::<Vec<_>>();
+        let reporter = std::sync::Mutex::new((on_progress, None::<LibraryError>));
+        let report = |progress: coven::PinProgress| {
+            let mut reporter = reporter.lock().expect("pin progress reporter");
+            if reporter.1.is_some() {
+                return;
+            }
+            let bytes_done = if progress.bytes_total == 0 {
+                bytes_total
+            } else {
+                // `bytes_pinned <= bytes_total`, so this never exceeds the total.
+                (u128::from(bytes_total) * u128::from(progress.bytes_pinned)
+                    / u128::from(progress.bytes_total)) as u64
+            };
+            match crate::library::DownloadTransferProgress::new(release_id, bytes_done, bytes_total)
+            {
+                Ok(progress) => (reporter.0)(progress),
+                Err(error) => reporter.1 = Some(error),
+            }
         };
-        emit_progress(0)?;
-
-        let mut bytes_done = 0u64;
-        for entry in &pinnable {
-            self.database
-                .pin(std::slice::from_ref(&entry.blob))
-                .await
-                .map_err(|e| LibraryError::blob(format!("pin release {release_id}"), e))?;
-            // Never exceeds `bytes_total`: it is the sum of these same sizes.
-            bytes_done += entry.bytes;
-            emit_progress(bytes_done)?;
+        self.database
+            .pin(&blobs, &report)
+            .await
+            .map_err(|e| LibraryError::blob(format!("pin release {release_id}"), e))?;
+        match reporter.into_inner().expect("pin progress reporter").1 {
+            Some(error) => Err(error),
+            None => Ok(()),
         }
-
-        Ok(())
     }
 
     /// The Downloads pane's opening progress for a queued pin: zero of the same
