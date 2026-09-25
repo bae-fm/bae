@@ -4,9 +4,9 @@ use std::ffi::OsStr;
 use std::path::{Component, Path};
 
 /// Remove a closed library from this device: every keyring entry coven holds
-/// for it (its device identity, master key, and cloud credentials), bae's host
-/// secrets named in [`crate::keys::HOST_SECRET_NAMES`], and its directory. Its
-/// cloud copy and restore code, if any, are untouched.
+/// for it (its device identity, master key, and cloud credentials), every host
+/// secret bae stores for it, and its directory. Its cloud copy and restore
+/// code, if any, are untouched.
 ///
 /// The library must be closed: coven refuses while the store is open
 /// anywhere, and nothing is removed. The active-library pointer is cleared only

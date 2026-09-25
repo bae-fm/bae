@@ -23,6 +23,6 @@ pub struct QueueUpcomingSnapshot {
 }
 
 /// A live read of the upcoming tail's requested windows. The windows change
-/// in place through [`LiveRead::set`] and the queue's own revisions move the
+/// in place through [`super::LiveRead::set`] and the queue's own revisions move the
 /// same read: neither opens another query.
 pub type QueueUpcomingSubscription = super::LiveRead<LibraryPageWindows, QueueUpcomingSnapshot>;
