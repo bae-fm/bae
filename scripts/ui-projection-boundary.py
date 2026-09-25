@@ -155,12 +155,6 @@ RENDER_LEAVES = (
         "kotlin",
         r"\bfun\s+WorkResultRow\s*\(",
     ),
-    RenderLeaf(
-        "bae-avalonia/Views/Library/AlbumExpansionRows.cs",
-        "AlbumExpansionRows.BuildTrackRow",
-        "csharp",
-        r"\bBuildTrackRow\s*\(",
-    ),
 )
 
 
@@ -202,18 +196,6 @@ ENTITY_DATA_OWNERS = {
         "OutboxStore",
         "PlaybackStore",
     ),
-    "csharp": (
-        "AppService",
-        "AlbumDetailStore",
-        "Database",
-        "ImportService",
-        "ImportStore",
-        "LibraryBrowserStore",
-        "LibraryService",
-        "PlaybackStore",
-        "ReleaseEditorService",
-        "StorageStore",
-    ),
 }
 
 OWNER_TYPE = re.compile(r"\b[A-Z][A-Za-z0-9_]*(?:Store|Service|Session)\b")
@@ -240,7 +222,6 @@ SWIFT_SOURCE_ROOTS = (
     "bae-ios/bae/bae",
 )
 KOTLIN_SOURCE_ROOT = "bae-android/app/src/main/java"
-AVALONIA_SOURCE_ROOT = "bae-avalonia/Views"
 
 # These direct repeated children own paging or playback state rather than
 # rendering one complete database projection. Keeping the exceptions named
@@ -266,14 +247,6 @@ DISCOVERED_OWNER_EXEMPTIONS = {
         "bae-ios/bae/bae/Views/AlbumDetail/TrackList.swift",
         "TrackRow",
     ): ({"Playback", "PlaybackStore"}, "playback-connected control"),
-}
-
-AVALONIA_ITEM_TEMPLATES = {
-    ("bae-avalonia/Views/Playback/QueuePane.cs", "BuildRowVisual"): "state-connected control",
-    ("bae-avalonia/Views/Storage/StorageTableView.cs", "StorageRowControl"): "paging slot",
-    ("bae-avalonia/Views/Library/IncrementalListView.cs", "IncrementalRow"): "paging slot",
-    ("bae-avalonia/Views/Library/AlbumExpansionView.cs", "TextBlock"): "projection renderer",
-    ("bae-avalonia/Views/Library/AlbumGridView.cs", "AlbumRowControl"): "paging slot",
 }
 
 FORBIDDEN_SECONDARY_PROJECTIONS = (
@@ -397,7 +370,7 @@ def declaration_source(source: str, leaf: RenderLeaf) -> tuple[str, int]:
             f"expected one declaration for {leaf.symbol}, found {len(matches)}"
         )
     match = matches[0]
-    if leaf.callable_declaration or leaf.language in {"kotlin", "csharp"}:
+    if leaf.callable_declaration or leaf.language == "kotlin":
         parameters = masked.find("(", match.start(), match.end() + 1)
         if parameters == -1:
             raise ValueError(f"missing parameter list for {leaf.symbol}")
@@ -535,7 +508,6 @@ def declaration_indexes(root: Path) -> dict[str, dict[str, list[RenderLeaf]]]:
     indexes: dict[str, dict[str, list[RenderLeaf]]] = {
         "swift": {},
         "kotlin": {},
-        "csharp": {},
     }
     swift_pattern = re.compile(
         r"\b(?:private\s+)?struct\s+([A-Z][A-Za-z0-9_]*)"
@@ -721,92 +693,6 @@ def all_render_leaves(root: Path) -> tuple[RenderLeaf, ...]:
     )
 
 
-def avalonia_template_target(source: str) -> str:
-    for target in (
-        "BuildRowVisual",
-        "StorageRowControl",
-        "IncrementalRow",
-        "TextBlock",
-        "AlbumRowControl",
-    ):
-        if re.search(rf"\b{target}(?:\s*<[^>]+>)?\s*(?:\(|{{)", source):
-            return target
-    return "unclassified"
-
-
-def avalonia_assignment_end(masked: str, start: int) -> int:
-    parentheses = 0
-    braces = 0
-    brackets = 0
-    for index in range(start, len(masked)):
-        character = masked[index]
-        if character == "(":
-            parentheses += 1
-        elif character == ")":
-            parentheses -= 1
-        elif character == "{":
-            braces += 1
-        elif character == "}":
-            if braces == 0 and parentheses == 0 and brackets == 0:
-                return index
-            braces -= 1
-        elif character == "[":
-            brackets += 1
-        elif character == "]":
-            brackets -= 1
-        elif character in {",", ";"} and not (parentheses or braces or brackets):
-            return index
-    raise ValueError(f"unclosed Avalonia ItemTemplate assignment at offset {start}")
-
-
-def avalonia_template_assignments(
-    root: Path,
-) -> list[tuple[str, str, int, str]]:
-    source_root = root / AVALONIA_SOURCE_ROOT
-    if not source_root.is_dir():
-        return []
-    assignments: list[tuple[str, str, int, str]] = []
-    for path in sorted(source_root.rglob("*.cs")):
-        source = path.read_text()
-        masked = mask_comments_and_literals(source)
-        relative = str(path.relative_to(root))
-        for match in re.finditer(r"\bItemTemplate\s*=", masked):
-            end = avalonia_assignment_end(masked, match.end())
-            assignment = source[match.start() : end]
-            target = avalonia_template_target(masked[match.start() : end])
-            line = source.count("\n", 0, match.start()) + 1
-            assignments.append((relative, target, line, assignment))
-    return assignments
-
-
-def avalonia_template_violations(root: Path) -> list[str]:
-    seen: set[tuple[str, str]] = set()
-    violations: list[str] = []
-    for path, target, line, assignment in avalonia_template_assignments(root):
-        key = (path, target)
-        masked = mask_comments_and_literals(assignment)
-        owner = next(
-            (
-                candidate
-                for candidate in ENTITY_DATA_OWNERS["csharp"]
-                if re.search(rf"\b{re.escape(candidate)}\b", masked)
-            ),
-            None,
-        )
-        if key in seen or key not in AVALONIA_ITEM_TEMPLATES:
-            violations.append(
-                f"{path}:{line}: repeated Avalonia child {target} has no "
-                "projection-boundary classification"
-            )
-        elif owner is not None:
-            violations.append(
-                f"{path}:{line}: repeated Avalonia child {target} reaches "
-                f"entity-data owner {owner}"
-            )
-        seen.add(key)
-    return violations
-
-
 def check(root: Path) -> list[str]:
     violations: list[str] = []
     try:
@@ -833,7 +719,6 @@ def check(root: Path) -> list[str]:
                 fragment_environment_violations(fragment, leaf, allowed_owners)
             )
             violations.extend(fragment_projection_violations(fragment, leaf))
-    violations.extend(avalonia_template_violations(root))
     return violations
 
 
@@ -866,15 +751,6 @@ fun Leaf(data: RowData, session: OpenLibrary, onClick: () -> Unit) {
     if leaf_violations(forbidden_kotlin, kotlin) != [(2, "OpenLibrary")]:
         raise RuntimeError("forbidden Kotlin projection leaf escaped parser self-test")
 
-    csharp = RenderLeaf("fixture.cs", "Rows.Build", "csharp", r"\bBuild\s*\(")
-    forbidden_csharp = """
-static Control Build(RowData row, AppService app, Action onClick)
-{
-    return new Control();
-}
-"""
-    if leaf_violations(forbidden_csharp, csharp) != [(2, "AppService")]:
-        raise RuntimeError("forbidden C# projection leaf escaped parser self-test")
 
 
 def main() -> int:

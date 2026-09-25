@@ -3,7 +3,8 @@ name: Windows build
 # Builds the native Windows stack for both architectures — x86_64-pc-windows-msvc
 # on the x64 runner and aarch64-pc-windows-msvc on the native ARM64 runner:
 # bae-core → bae-bridge (uniffi metadata + bae_bridge.dll/uniffi_bae_bridge.dll) →
-# generated C# bindings, plus the Avalonia app compile check. The macOS host can't
+# generated C# bindings, plus the Avalonia skeleton build and its smoke test,
+# which loads the bridge DLL through those bindings. The macOS host can't
 # cross-compile the native deps, so this is the verification loop. Each arch builds
 # natively on its own runner (the ARM64 runner is arm64, so aarch64 is its host
 # target — no cross-compile).
@@ -82,14 +83,6 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Test bae-avalonia model logic
-        # Unit tests for the app's pure logic (locale formatters, store models,
-        # update flow). They compile against plain BCL types — no Avalonia and no
-        # bridge bindings — and so run before the native stack is built. These
-        # also run on the macOS dev host; this repeats them on the real net8.0
-        # runtime.
-        run: dotnet test bae-avalonia\bae-avalonia.Tests -c Debug
-
       - name: Install uniffi-bindgen-cs
         run: cargo install --git https://github.com/bae-fm/uniffi-bindgen-cs --branch uniffi-0.32-bae uniffi-bindgen-cs --locked
 
@@ -109,38 +102,31 @@ jobs:
           }
           # Put the bridge on PATH for every later step, the same way the FFmpeg
           # DLLs above are. `dotnet test` probes the test binary's own directory
-          # and PATH; nothing copies the bridge into the former, so the handful
-          # of view tests that construct a bridge type — and so run its P/Invoke
-          # static initializer — died with DllNotFoundException 'bae_bridge'
-          # while the tests that never touch it passed. The FFmpeg DLLs the
-          # bridge itself links are already resolved this way.
+          # and PATH, and nothing copies the bridge into the former, so the smoke
+          # test finds uniffi_bae_bridge.dll here. The FFmpeg DLLs the bridge
+          # itself links are resolved the same way.
           echo "$PWD\$dir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       - name: Check C# formatting
         # dotnet format uses .editorconfig rules. --verify-no-changes exits non-zero
         # if any file would be reformatted, failing the build.
         #
-        # Run whitespace only — style and analyzer formatters trigger IDE0051 false
-        # positives for markup-bound event handlers (dotnet format analyzes C# in
-        # isolation, without the XAML compiler's generated partial classes that
-        # reference those methods). The build with EnforceCodeStyleInBuild=true
-        # (below) enforces all style and dead-code rules after markup compilation,
-        # where those references are visible.
+        # Run whitespace only — style and analyzer formatters analyze C# in
+        # isolation, without the XAML compiler's generated partial classes. The
+        # build with EnforceCodeStyleInBuild=true (below) enforces all style and
+        # dead-code rules after markup compilation.
         run: dotnet format whitespace bae-avalonia\bae-avalonia.csproj --verify-no-changes
 
-      - name: Build the Avalonia app
-        # Both target frameworks: plain net8.0 (what ships on Linux) and the
-        # Windows target framework whose WinRT projection the SMTC now-playing
-        # backend binds. EnforceCodeStyleInBuild=true makes IDE-level dead-code
-        # diagnostics (IDE0051 unused private members, IDE0052 unread private
-        # members) fire as build errors via .editorconfig severity settings.
+      - name: Build the Avalonia skeleton
+        # EnforceCodeStyleInBuild=true makes IDE-level dead-code diagnostics
+        # (IDE0051 unused private members, IDE0052 unread private members) fire
+        # as build errors via .editorconfig severity settings.
         run: dotnet build bae-avalonia\bae-avalonia.csproj -c Debug -p:EnforceCodeStyleInBuild=true
 
-      - name: Test bae-avalonia views
-        # The view tests drive real controls through Avalonia's headless
-        # platform, so they need the app and its C# bindings — hence here rather
-        # than beside the model tests above.
-        run: dotnet test bae-avalonia\bae-avalonia.ViewTests -c Debug
+      - name: Smoke-test the Avalonia skeleton
+        # Loads uniffi_bae_bridge.dll (on PATH, above) through the generated
+        # bindings and calls the bridge the way the skeleton window does.
+        run: dotnet test bae-avalonia\bae-avalonia.Tests -c Debug
 
       - name: Run bae-core unit tests (Windows)
         # The only place bae's Rust actually EXECUTES on Windows. Windows-only

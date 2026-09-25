@@ -28,7 +28,7 @@ for /f %%c in ('"%ProgramFiles%\Git\cmd\git.exe" rev-list --count HEAD') do set 
 
 rem AssemblyName=bae names the exe the way the public lane does, so the packed
 rem mainExe and the installed identity match what release-windows.yml ships.
-dotnet publish bae-avalonia\bae-avalonia.csproj -c Release -f net8.0-windows10.0.19041.0 -r win-arm64 --self-contained true -o bae-avalonia\publish -p:AssemblyName=bae -p:Version=0.0.%BUILD_NUM% -p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-full || exit /b 1
+dotnet publish bae-avalonia\bae-avalonia.csproj -c Release -r win-arm64 --self-contained true -o bae-avalonia\publish -p:AssemblyName=bae -p:Version=0.0.%BUILD_NUM% -p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-full || exit /b 1
 
 set STAGE=C:\bae\stage-local
 if exist %STAGE% rmdir /s /q %STAGE%

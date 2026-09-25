@@ -8,11 +8,9 @@
 # explicit full-system validation. Missing platform toolchains or lint tools are
 # failures.
 #
-# Only the Windows bridge is excluded: the C# uniffi bindings need the Windows
-# toolchain and are validated in CI, and so is the Avalonia app that compiles
-# against them. bae-avalonia's pure C# model tests (net8.0, no Avalonia, no
-# bindings) DO run here — the same suite CI's windows.yml notes "also run on the
-# macOS dev host".
+# Only the Windows bridge is excluded: it needs the Windows toolchain and is
+# validated in CI. The Avalonia skeleton's build and smoke test run here over a
+# macOS build of the bridge, standing in for the Linux CI job's.
 
 set -uo pipefail
 
@@ -248,16 +246,12 @@ check "cargo test (bae-desktop)"       cargo test -p bae-desktop
 check "loc chrome orphans"             python3 scripts/loc-chrome-orphans.py
 check "loc english skeleton"           python3 scripts/loc-english-skeleton.py
 
-# ── Avalonia (host-runnable) ──────────────────────────────────────────────────
-section "Avalonia (host-runnable)"
+# ── Avalonia skeleton ─────────────────────────────────────────────────────────
+section "Avalonia skeleton"
 
-# bae-avalonia's pure C# model tests: locale formatters, album-grid selection,
-# activation-intent grammar, export-queue gating, the update flow. net8.0, no
-# Avalonia, no uniffi bindings, so they run on this host — windows.yml notes they
-# "also run on the macOS dev host". The app itself and the C# bindings stay
-# CI-only.
-check "dotnet test (bae-avalonia models)" \
-  dotnet test bae-avalonia/bae-avalonia.Tests -c Debug
+# The bridge built as a macOS dylib, the C# bindings generated from it, the app
+# build, and the smoke test that loads the bridge through those bindings.
+check "Avalonia skeleton build + smoke test" bae-avalonia/smoke-test.sh
 
 # ── macOS ──────────────────────────────────────────────────────────────────────
 section "macOS"

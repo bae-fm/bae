@@ -3,7 +3,8 @@ name: Linux
 # Cross-platform Rust lint + test suite on a Linux runner. The Rust core is
 # portable; running it here (instead of on a scarce macOS runner) is cheaper and
 # faster, and leaves the macOS runners for the Xcode-only work. macOS still
-# builds the macOS app; this job owns the Rust gates and tests.
+# builds the macOS app; the test job owns the Rust gates and tests, and the
+# avalonia job builds and smoke-tests the Avalonia skeleton on Linux.
 
 on:
   workflow_call:
@@ -126,8 +127,8 @@ jobs:
         python3 scripts/loc-chrome-orphans.py
         # English-skeleton gate: an it/tr/vi/nl value still carrying the English
         # sentence, glued morphology ("Sincronizzazioneing"), or a placeholder
-        # multiset that doesn't match its source. Covers all four catalogs
-        # (macOS/iOS xcstrings, Android strings.xml, bae-avalonia resx).
+        # multiset that doesn't match its source. Covers all three catalogs
+        # (macOS/iOS xcstrings, Android strings.xml).
         python3 scripts/loc-english-skeleton.py
 
     - name: Check Rust documentation
@@ -156,3 +157,45 @@ jobs:
         # after this point reads the debug artifacts, so drop them first.
         rm -rf target/debug
         cargo nextest run -p bae-core --release --features bae-core/test-utils --test test_playback_cpu -j 1
+
+  avalonia:
+    # The Avalonia skeleton on Linux, the platform its net8.0 build ships on:
+    # the Linux bridge, the C# bindings generated from it, the app build, and
+    # the smoke test that loads libuniffi_bae_bridge.so through those bindings.
+    # Its own job, so the bridge's cdylib build does not share the Rust suite's
+    # disk.
+    name: Avalonia skeleton
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ inputs.ref || github.sha }}
+
+    - name: Setup Linux environment
+      uses: ./.github/actions/setup-linux
+
+    - name: Setup Rust environment
+      uses: ./.github/actions/setup-rust
+
+    - name: Install uniffi-bindgen-cs
+      run: cargo install --git https://github.com/bae-fm/uniffi-bindgen-cs --branch uniffi-0.32-bae uniffi-bindgen-cs --locked
+
+    - name: Build the Linux bridge (full edition, OAuth + desktop)
+      run: BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-linux.sh
+
+    - name: Install .NET 8 SDK
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: "8.0.x"
+
+    - name: Build the Avalonia skeleton
+      run: dotnet build bae-avalonia/bae-avalonia.csproj -c Debug -p:EnforceCodeStyleInBuild=true
+
+    - name: Smoke-test the Avalonia skeleton
+      # The bridge .so sits in build-linux.sh's own target dir; the FFmpeg libs
+      # it links are already on LD_LIBRARY_PATH from the Linux setup.
+      run: |
+        export LD_LIBRARY_PATH="$PWD/target-linux/x86_64-unknown-linux-gnu/debug:$LD_LIBRARY_PATH"
+        dotnet test bae-avalonia/bae-avalonia.Tests -c Debug

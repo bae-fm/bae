@@ -154,107 +154,25 @@ nl	download_remove
 nl	downloads_empty
 nl	details
 
-# ResX chrome (bae-avalonia) — keyed by the ResX data name (matching the
-# Android section above; ResX keys aren't the English source text either).
-# Established loanwords/technical terms, matching the locale's other good
-# entries and the same terms already allowlisted for the xcstrings/Android
-# catalogs above.
-it	action.ok
-it	cloud.provider.s3
-it	members.role.follower
-it	s3.field.bucket
-it	search.field.album
-it	settings.discogs.label
-it	settings.discogs.token_placeholder
-it	signal.kind.disc_id
-it	settings.automation.status.running
-it	settings.formats.preset_pregap
-it	settings.formats.bit_depth.bits16
-it	settings.formats.bit_depth.bits24
-it	settings.formats.bit_depth.bits32
-it	settings.formats.bitrate
-it	storage.column.album
-it	import.storage.cloud
-it	storage.state.cloud
-it	storage.tab.cloud
-tr	action.ok
-tr	cloud.provider.s3
-tr	s3.field.bucket
-tr	signal.kind.disc_id
-tr	settings.formats.preset_pregap
-tr	settings.formats.bit_depth.bits16
-tr	settings.formats.bit_depth.bits24
-tr	settings.formats.bit_depth.bits32
-tr	edit.tracks.col_number
-nl	action.ok
-nl	album.release_picker
-nl	album.shuffle
-nl	cloud.provider.s3
-nl	identify.conflict
-nl	import.pane.details
-nl	queue.shuffle.on
-nl	s3.field.bucket
-nl	search.field.album
-nl	settings.discogs.label
-nl	settings.discogs.token_placeholder
-nl	settings.updates.title
-nl	settings.updates.up_to_date
-nl	signal.kind.barcode
-nl	signal.kind.disc_id
-nl	download.title
-nl	settings.automation.status.running
-nl	library.mode.albums
-nl	album.count
-nl	search.section.albums
-nl	search.section.releases
-nl	search.section.credits
-nl	settings.formats.default_release_format
-nl	settings.formats.preset_release
-nl	settings.formats.preset_pregap
-nl	settings.formats.bit_depth.bits16
-nl	settings.formats.bit_depth.bits24
-nl	settings.formats.bit_depth.bits32
-nl	edit.field.label
-nl	edit.field.barcode
-nl	storage.column.album
-nl	import.storage.cloud
-nl	storage.state.cloud
-nl	storage.tab.cloud
-
 # Export settings redesign: codec labels are proper nouns plus the universal
-# kbps unit; "Pregap" is the established technical loanword in these locales
-# (their C# preset rows already used it); "Album" matches the loanword
-# entries above; nl "Release-exports" is the catalog's established compound.
+# kbps unit; "Pregap" is the established technical loanword in these locales.
 it	AAC %lld kbps
 it	MP3 %lld kbps
 it	Opus %lld kbps
 it	Pregap
-it	settings.formats.codec_aac
-it	settings.formats.codec_mp3
-it	settings.formats.codec_opus
-it	settings.formats.token.album
 nl	AAC %lld kbps
 nl	Conflict
 nl	MP3 %lld kbps
 nl	Opus %lld kbps
 nl	Pregap
-nl	settings.formats.codec_aac
-nl	settings.formats.codec_mp3
-nl	settings.formats.codec_opus
-nl	settings.formats.token.album
 tr	AAC %lld kbps
 tr	MP3 %lld kbps
 tr	Opus %lld kbps
 tr	Pregap
-tr	settings.formats.codec_aac
-tr	settings.formats.codec_mp3
-tr	settings.formats.codec_opus
 
 # Dutch color names retain the same spelling as English.
 nl	appearance_indigo
 nl	appearance_amber
-nl	appearance.indigo
-nl	appearance.amber
 
 # Technical labels and example values that every locale keeps verbatim: AWS
 # field names (Access Key, Secret Key, S3 bucket), the S3-compatible provider
@@ -268,7 +186,6 @@ cs	S3-compatible
 cs	cloud_provider_s3
 cs	e.g. 4943674251780
 cs	e.g. WPCR-80001
-cs	s3.field.bucket
 de	Access Key
 de	Cloud sync
 de	S3-compatible
@@ -277,21 +194,16 @@ de	Separate discs
 de	cloud_provider_s3
 de	e.g. 4943674251780
 de	e.g. WPCR-80001
-de	s3.field.access_key
-de	s3.field.bucket
-de	s3.field.secret_key
 es	Any S3-compatible storage (AWS, Backblaze, Minio, ...)
 es	S3-compatible
 es	cloud_provider_s3
 es	e.g. 4943674251780
 es	e.g. WPCR-80001
-es	s3.field.bucket
 fr	Any S3-compatible storage (AWS, Backblaze, Minio, ...)
 fr	S3-compatible
 fr	cloud_provider_s3
 fr	e.g. 4943674251780
 fr	e.g. WPCR-80001
-fr	s3.field.bucket
 he	S3-compatible
 he	cloud_provider_s3
 hr	S3-compatible
@@ -310,14 +222,11 @@ pt-BR	S3-compatible
 pt-BR	cloud_provider_s3
 pt-BR	e.g. 4943674251780
 pt-BR	e.g. WPCR-80001
-pt-BR	s3.field.bucket
 uk	S3-compatible
 uk	cloud_provider_s3
 zh-Hans	S3-compatible
 zh-Hans	cloud_provider_s3
 zh-Hant	S3-compatible
 zh-Hant	cloud_provider_s3
-sv	s3.field.bucket
 da	Pause uploads
 da	settings_pause_uploads
-da	s3.field.bucket

@@ -2,10 +2,9 @@
 //!
 //! Apple is the only target that needs structural conversion: ICU MessageFormat
 //! named args become positional `%lld`/`%@`, and a whole-message `plural`
-//! becomes a String Catalog `variations.plural`. Android and Windows store the
-//! MF1 string **verbatim** (their runtimes parse it) — the only work there is
-//! resource-file escaping and, for Android, sanitizing the dotted id into a
-//! legal resource name.
+//! becomes a String Catalog `variations.plural`. Android stores the MF1 string
+//! **verbatim** (its runtime parses it) — the only work there is resource-file
+//! escaping and sanitizing the dotted id into a legal resource name.
 //!
 //! Every target emits `TARGET_LOCALES` — the declared shipping set, not
 //! whatever the catalog happens to carry — so a locale the app claims to support
@@ -268,48 +267,6 @@ fn xml_escape(s: &str) -> String {
     out
 }
 
-/// Emit one ResX table for `locale`. The dotted id is the resource name; the
-/// MF1 value for that locale — its translation, or the English source where
-/// untranslated — is stored verbatim (XML-escaped) for the `MessageFormat` NuGet
-/// at runtime.
-fn resx_table(cat: &Catalog, locale: &str) -> String {
-    let mut out = String::from(
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<root>\n  \
-         <resheader name=\"resmimetype\"><value>text/microsoft-resx</value></resheader>\n  \
-         <resheader name=\"version\"><value>2.0</value></resheader>\n",
-    );
-    for (id, msg) in &cat.messages {
-        let (value, _state) = localized(msg, locale);
-        out.push_str(&format!(
-            "  <data name=\"{}\" xml:space=\"preserve\"><value>{}</value></data>\n",
-            xml_escape(id),
-            xml_escape(value),
-        ));
-    }
-    out.push_str("</root>\n");
-    out
-}
-
-/// Emit the .NET satellite-assembly ResX set: `Core.resx` (the source language,
-/// the invariant fallback the main assembly embeds) plus one `Core.<culture>.resx`
-/// per shipping target locale (each a satellite assembly). .NET keys the fallback
-/// chain off the culture in the filename, so one flat directory carries every
-/// language. Mirrors the Apple emitter, which carries the same per-locale values
-/// inside one file.
-pub fn resx_all(cat: &Catalog) -> Vec<(std::path::PathBuf, String)> {
-    let mut files = vec![(
-        std::path::PathBuf::from("Core.resx"),
-        resx_table(cat, SOURCE_LOCALE),
-    )];
-    for loc in TARGET_LOCALES {
-        files.push((
-            std::path::PathBuf::from(format!("Core.{loc}.resx")),
-            resx_table(cat, loc),
-        ));
-    }
-    files
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -407,68 +364,6 @@ value = " · "
     }
 
     #[test]
-    fn resx_keeps_dotted_id_and_mf_verbatim() {
-        let c = cat(r#"
-[messages."core.identify.barcode.looking_up"]
-args = { position = "Int", total = "Int" }
-value = "Looking up barcode {position} of {total}"
-"#);
-        let resx = resx_table(&c, "en");
-        assert!(
-            resx.contains("name=\"core.identify.barcode.looking_up\""),
-            "{resx}"
-        );
-        assert!(
-            resx.contains("Looking up barcode {position} of {total}"),
-            "{resx}"
-        );
-    }
-
-    #[test]
-    fn resx_names_source_flat_and_fans_out_per_culture() {
-        let c = cat(r#"
-[messages."core.error.not_found.release"]
-value = "that release couldn't be found"
-translations = { ar = "تعذر العثور على ذلك الإصدار", "zh-Hans" = "找不到该发行版" }
-"#);
-        let files = resx_all(&c);
-        // Core.resx (invariant source) + one Core.<culture>.resx per shipping
-        // locale, translated or not.
-        assert_eq!(files.len(), 1 + TARGET_LOCALES.len());
-        let paths: Vec<String> = files
-            .iter()
-            .map(|(p, _)| p.to_string_lossy().replace('\\', "/"))
-            .collect();
-        assert!(paths.contains(&"Core.resx".to_string()), "{paths:?}");
-        assert!(paths.contains(&"Core.ar.resx".to_string()), "{paths:?}");
-        assert!(
-            paths.contains(&"Core.zh-Hans.resx".to_string()),
-            "{paths:?}"
-        );
-        // The source file carries the English value; the culture file the
-        // translation, both under the dotted id kept verbatim.
-        let source = files
-            .iter()
-            .find(|(p, _)| p.to_string_lossy() == "Core.resx")
-            .unwrap();
-        assert!(
-            source.1.contains("that release couldn't be found"),
-            "{}",
-            source.1
-        );
-        assert!(
-            source.1.contains("name=\"core.error.not_found.release\""),
-            "{}",
-            source.1
-        );
-        let ar = files
-            .iter()
-            .find(|(p, _)| p.to_string_lossy() == "Core.ar.resx")
-            .unwrap();
-        assert!(ar.1.contains("تعذر العثور على ذلك الإصدار"), "{}", ar.1);
-    }
-
-    #[test]
     fn android_id_sanitization() {
         assert_eq!(sanitize_android_id("core.a.b-c"), "core_a_b_c");
     }
@@ -538,13 +433,5 @@ translations = { pl = "{count, plural, one {# usunięcie oczekuje} few {# usuni�
             .find(|(p, _)| p == "values-pl/core_strings.xml")
             .unwrap();
         assert!(pl.1.contains("that release couldn"), "{}", pl.1);
-
-        // ResX: the Polish Core.pl.resx carries the four-category MF1 verbatim.
-        let files = resx_all(&c);
-        let pl = files
-            .iter()
-            .find(|(p, _)| p.to_string_lossy() == "Core.pl.resx")
-            .unwrap();
-        assert!(pl.1.contains("many {# usunięć oczekuje}"), "{}", pl.1);
     }
 }

@@ -6,9 +6,9 @@ e.g. "Sincronizzazioneing", "Eşzamanlamaed", "Importerened").
 
 Covers every locale bae ships — the set comes from `loc-gen locales`, i.e.
 bae-loc's TARGET_LOCALES, so this script keeps no list of its own. Reads both
-xcstrings catalogs, the Android values-<locale>/strings.xml catalogs, and the
-Avalonia app's Strings/Resources.<locale>.resx catalogs; all four gate CI. A
-locale with no chrome file of a given kind simply has nothing to scan there.
+xcstrings catalogs and the Android values-<locale>/strings.xml catalogs; all
+three gate CI. A locale with no chrome file of a given kind simply has nothing
+to scan there.
 
 Detectors:
   - glued morphology: an English suffix (ing/ed/s) welded onto a target-
@@ -39,8 +39,8 @@ translation defect regardless of what the other detectors say, so it is not
 allowlist-suppressible.
 
 Gates CI: exits non-zero if any strict-detector or placeholder-multiset hit in
-the two xcstrings catalogs, the Android catalogs, or the ResX catalogs is not
-allowlisted (placeholder mismatches are never allowlist-suppressible).
+the two xcstrings catalogs or the Android catalogs is not allowlisted
+(placeholder mismatches are never allowlist-suppressible).
 """
 import json
 import pathlib
@@ -87,10 +87,6 @@ ANDROID_STRINGS = {
     loc: f"bae-android/app/src/main/res/{android_values_dir(loc)}/strings.xml"
     for loc in TARGET_LOCALES
 }
-RESX_CHROME = {
-    loc: f"bae-avalonia/Strings/Resources.{loc}.resx" for loc in TARGET_LOCALES
-}
-RESX_CHROME_EN = "bae-avalonia/Strings/Resources.resx"
 
 # ── Placeholder / token stripping ───────────────────────────────────────────
 
@@ -102,7 +98,6 @@ PLACEHOLDER_RE = re.compile(r"%\d+\$(?:lld|[a-zA-Z@])|%lld|%@|%[sd]|\{[^}]+\}")
 # nobody translated ("…/settings/developers"). Strip it before tokenizing, or a
 # correct translation that keeps the link reads as English skeleton.
 URL_RE = re.compile(r"\bhttps?://\S+", re.IGNORECASE)
-ICU_PLURAL_WORDS = {"plural", "one", "other", "few", "many", "zero", "#"}
 
 TECHNICAL_PROPER_NOUNS = {
     "bae", "discogs", "musicbrainz", "oauth", "icloud", "itunes", "dropbox",
@@ -180,154 +175,6 @@ def placeholders_match(en_value, target_value, plural_leaf):
         and next(iter(dropped.values())) in _INT_SPECIFIERS
         and all(target_signature[k] == en_signature[k] for k in target_signature)
     )
-
-
-# The ResX catalogs embed an entire ICU plural expression as one string value
-# (`{count, plural, one {# item} other {# items}}`); xcstrings and Android
-# instead split each plural form into its own leaf before it ever reaches
-# placeholder_multiset, so their values never contain a nested `{...}`. The
-# flat PLACEHOLDER_RE above can't parse that nesting — it matches from the
-# outer `{` to the first `}` it finds, which lands inside the first branch
-# and turns that branch's translated words into a bogus "placeholder" token,
-# so two branches with different words (e.g. "trovato" vs "trovati") read as
-# a placeholder mismatch even though every real placeholder matches. The
-# extractor below walks the string with balanced-brace matching, descends
-# into a `{ARG, plural, ...}` construct's branches, and collects the actual
-# placeholder tokens (`%...`, `{name}`, `#`) wherever they occur, including
-# nested inside a branch; the plural argument name and branch keywords
-# (one/other/...) are ICU control syntax, not placeholders.
-_RESW_SIMPLE_FMT_RE = re.compile(r"%\d+\$(?:lld|[a-zA-Z@])|%lld|%@|%[sd]")
-_RESW_PLURAL_HEADER_RE = re.compile(r"\s*\w+\s*,\s*plural\s*,\s*")
-
-
-def _find_balanced_close(s, open_idx):
-    depth = 0
-    for i in range(open_idx, len(s)):
-        if s[i] == "{":
-            depth += 1
-        elif s[i] == "}":
-            depth -= 1
-            if depth == 0:
-                return i
-    raise ValueError(f"unbalanced braces in {s!r}")
-
-
-def _extract_mf1_placeholders(s):
-    tokens = []
-    i, n = 0, len(s)
-    while i < n:
-        c = s[i]
-        if c == "#":
-            tokens.append("#")
-            i += 1
-            continue
-        m = _RESW_SIMPLE_FMT_RE.match(s, i)
-        if m:
-            tokens.append(m.group(0))
-            i = m.end()
-            continue
-        if c == "{":
-            close = _find_balanced_close(s, i)
-            inner = s[i + 1:close]
-            pm = _RESW_PLURAL_HEADER_RE.match(inner)
-            if pm:
-                tokens.extend(_extract_mf1_plural_branches(inner[pm.end():]))
-            else:
-                tokens.append("{" + inner + "}")
-            i = close + 1
-            continue
-        i += 1
-    return tokens
-
-
-def _parse_mf1_plural_branches(s):
-    """s is the branch-list portion of a plural construct, after the
-    argument name and "plural," keyword: a sequence of `label {branch}`
-    pairs (one/other/few/many/zero/=N). Returns {label: sorted placeholder
-    tokens found in that branch's own text}."""
-    branches = {}
-    i, n = 0, len(s)
-    while i < n:
-        while i < n and s[i].isspace():
-            i += 1
-        if i >= n:
-            break
-        j = i
-        while j < n and s[j] not in "{ \t\n":
-            j += 1
-        label = s[i:j]
-        k = j
-        while k < n and s[k].isspace():
-            k += 1
-        if k < n and s[k] == "{":
-            close = _find_balanced_close(s, k)
-            branches[label] = sorted(_extract_mf1_placeholders(s[k + 1:close]))
-            i = close + 1
-        else:
-            i = j + 1 if j > i else i + 1
-    return branches
-
-
-def _extract_mf1_plural_branches(s):
-    tokens = []
-    for branch_tokens in _parse_mf1_plural_branches(s).values():
-        tokens.extend(branch_tokens)
-    return tokens
-
-
-def _parse_top_level_plural(value):
-    """If value is, in its entirety, a single `{ARG, plural, label {branch}
-    ...}` construct (every plural value in this catalog is — the whole
-    resource value, no surrounding text), return {label: sorted placeholder
-    tokens in that branch}. Otherwise return None so the caller falls back
-    to flat placeholder-multiset comparison."""
-    s = value.strip()
-    if not s.startswith("{"):
-        return None
-    close = _find_balanced_close(s, 0)
-    if close != len(s) - 1:
-        return None
-    inner = s[1:close]
-    pm = _RESW_PLURAL_HEADER_RE.match(inner)
-    if not pm:
-        return None
-    return _parse_mf1_plural_branches(inner[pm.end():])
-
-
-def mf1_placeholder_multiset(s):
-    return sorted(_extract_mf1_placeholders(s))
-
-
-def mf1_placeholders_match(en_value, target_value, plural_leaf=False):
-    """Placeholder equality for an MF1 value, aware of two ways a correct
-    translation legitimately differs from its English source inside a plural.
-
-    A locale's CLDR categories are its own: Arabic writes zero/two/few/many
-    where English has only one/other, and Japanese has only other. So a target
-    branch is held against the English branch of the same label, or against
-    English's `other` for a category English doesn't have.
-
-    Within a branch, `#` — the count itself — may be spelled out ("ملف واحد",
-    "un fichier"), so a branch may carry fewer `#` than its English
-    counterpart. Every other placeholder is an argument the message promises
-    to substitute, and must match exactly.
-
-    A value that isn't a single top-level plural construct in both languages
-    falls back to flat placeholder-multiset equality, same as the other
-    catalogs."""
-    en_branches = _parse_top_level_plural(en_value)
-    target_branches = _parse_top_level_plural(target_value)
-    if en_branches is None or target_branches is None:
-        return placeholders_match(en_value, target_value, plural_leaf)
-    if "other" not in en_branches:
-        return False
-    for label, tokens in target_branches.items():
-        en_tokens = en_branches.get(label, en_branches["other"])
-        if [t for t in tokens if t != "#"] != [t for t in en_tokens if t != "#"]:
-            return False
-        if tokens.count("#") > en_tokens.count("#"):
-            return False
-    return True
 
 
 def tokenize(s):
@@ -520,42 +367,6 @@ def android_leaves(en_path, target_path, locale):
                 yield name, quantity, en_value, {locale: target_items[quantity]}
 
 
-# ── .NET ResX ────────────────────────────────────────────────────────────────
-
-
-def resx_leaves(en_path, target_path, locale):
-    if not (ROOT / en_path).exists() or not (ROOT / target_path).exists():
-        return
-    ns = {}
-    en_tree = ET.parse(ROOT / en_path)
-    target_tree = ET.parse(ROOT / target_path)
-    en_values = {}
-    for data_el in en_tree.getroot().findall("data"):
-        value_el = data_el.find("value")
-        if value_el is not None and value_el.text is not None:
-            en_values[data_el.get("name")] = value_el.text
-    target_values = {}
-    for data_el in target_tree.getroot().findall("data"):
-        value_el = data_el.find("value")
-        if value_el is not None and value_el.text is not None:
-            target_values[data_el.get("name")] = value_el.text
-    for name, en_value in en_values.items():
-        if name in target_values:
-            yield name, None, en_value, {locale: target_values[name]}
-
-
-def strip_icu(s):
-    # ICU plural syntax ("{count, plural, one {# item} other {# items}}") and
-    # the `#` runtime substitution read as English-skeleton/overlap noise;
-    # strip the keywords before scanning ResX values (a measured
-    # false-positive source in the C# catalogs).
-    words = WORD_RE.findall(s)
-    for w in words:
-        if w.lower() in ICU_PLURAL_WORDS:
-            s = re.sub(rf"\b{re.escape(w)}\b", " ", s)
-    return s.replace("#", " ")
-
-
 # ── Scan orchestration ──────────────────────────────────────────────────────
 
 
@@ -568,22 +379,21 @@ def scan_leaves(leaves):
     everywhere — real breakage lives there too, but so do enough legitimate
     loanword-heavy translations that it can't gate CI). Each is a list of
     dicts. Callers decide whether detector_hits gates (xcstrings) or only
-    reports (Android/ResX), and whether to print band_hits at all (only
+    reports (Android), and whether to print band_hits at all (only
     under --verbose).
     """
     detector_hits = []
     band_hits = []
     for key, form, en_value, values in leaves:
         for locale, target_value in values.items():
-            scan_value = strip_icu(target_value)
             reasons = []
-            glued = glued_morphology_hits(scan_value, locale)
+            glued = glued_morphology_hits(target_value, locale)
             if glued:
                 reasons.append(f"glued morphology: {sorted(glued)}")
-            skeleton = english_skeleton_hits(scan_value, locale)
+            skeleton = english_skeleton_hits(target_value, locale)
             if len(skeleton) >= 2:
                 reasons.append(f"english skeleton words: {sorted(set(skeleton))}")
-            overlap = token_overlap(en_value, scan_value)
+            overlap = token_overlap(en_value, target_value)
             if overlap is not None and overlap >= 0.7:
                 reasons.append(f"token overlap: {overlap:.2f}")
 
@@ -602,15 +412,13 @@ def scan_leaves(leaves):
     return detector_hits, band_hits
 
 
-def placeholder_mismatches(leaves, multiset_fn=placeholder_multiset, equal_fn=None):
-    if equal_fn is None:
-        equal_fn = placeholders_match
+def placeholder_mismatches(leaves):
     mismatches = []
     for key, form, en_value, values in leaves:
-        en_multiset = multiset_fn(en_value)
+        en_multiset = placeholder_multiset(en_value)
         for locale, target_value in values.items():
-            target_multiset = multiset_fn(target_value)
-            if not equal_fn(en_value, target_value, form is not None):
+            target_multiset = placeholder_multiset(target_value)
+            if not placeholders_match(en_value, target_value, form is not None):
                 mismatches.append({
                     "key": key, "form": form, "locale": locale,
                     "en": en_value, "value": target_value,
@@ -678,27 +486,6 @@ def main():
 
         if verbose:
             print_hits("Android strings.xml (report-only band)", band_hits, allowed)
-
-    resx_leaves_all = []
-    for loc, target_path in RESX_CHROME.items():
-        resx_leaves_all.extend(resx_leaves(RESX_CHROME_EN, target_path, loc))
-    if resx_leaves_all:
-        detector_hits, band_hits = scan_leaves(resx_leaves_all)
-        unallowed = print_hits("ResX chrome (strict)", detector_hits, allowed)
-        total_gating_failures += len(unallowed)
-
-        mismatches = placeholder_mismatches(resx_leaves_all, mf1_placeholder_multiset, mf1_placeholders_match)
-        if mismatches:
-            print(f"=== ResX chrome: {len(mismatches)} placeholder-multiset mismatch(es) ===")
-            for m in mismatches:
-                loc_label = m["key"] if not m["form"] else f"{m['key']} [{m['form']}]"
-                print(f"  [{m['locale']}] {loc_label!r}")
-                print(f"      en:  {m['en']!r} -> {m['en_placeholders']}")
-                print(f"      val: {m['value']!r} -> {m['value_placeholders']}")
-            total_gating_failures += len(mismatches)
-
-        if verbose:
-            print_hits("ResX chrome (report-only band)", band_hits, allowed)
 
     print(f"\nTOTAL gating failures: {total_gating_failures} (allowlist: {len(allowed)})")
     if total_gating_failures:

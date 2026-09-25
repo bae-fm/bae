@@ -8,7 +8,7 @@ import org.json.JSONObject
 import java.io.InputStream
 import java.util.Locale
 
-/** Reads the same palette resource bundled by BaeKit and Avalonia. */
+/** Reads the same palette resource bundled by BaeKit. */
 class AppearancePalette(
     stream: InputStream,
 ) {

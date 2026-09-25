@@ -9,11 +9,6 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def require_text(path: str, needle: str, violations: list[str], message: str) -> None:
-    if needle not in (ROOT / path).read_text():
-        violations.append(message)
-
-
 def reject_text(path: str, needle: str, violations: list[str], message: str) -> None:
     if needle in (ROOT / path).read_text():
         violations.append(message)
@@ -209,41 +204,10 @@ def main() -> int:
                     violations.append(f"{path.relative_to(ROOT)}::{name} constructs a task before scheduling")
 
     reject_text(
-        "bae-avalonia/NativeBae.Mapping.cs",
-        "Task.Run(call)",
-        violations,
-        "Avalonia NativeBae.Await duplicates the session worker dispatch",
-    )
-    for adapter in ("ResolveToTrackIds", "ReleaseEditSeed", "ApplyReleaseEdit"):
-        for path in (ROOT / "bae-avalonia").rglob("*.cs"):
-            if "csharp-bindings" in path.parts:
-                continue
-            source = path.read_text()
-            pattern = re.compile(
-                rf"WithCurrentHandle\s*\([^;]*?NativeBae\.{adapter}\b",
-                re.DOTALL,
-            )
-            if pattern.search(source):
-                violations.append(
-                    f"{path.relative_to(ROOT)} calls async {adapter} without the session worker"
-                )
-    reject_text(
         "bae-avalonia/BaeLogger.cs",
         "Task.Run(() => NativeBae.FlushDiagnostics(Handle))",
         violations,
         "Avalonia diagnostics flush duplicates the bridge runtime dispatch",
-    )
-    require_text(
-        "bae-avalonia/Stores/SessionStore.cs",
-        "Task.Run(() =>",
-        violations,
-        "Avalonia session operations have no worker owner",
-    )
-    require_text(
-        "bae-avalonia/Services/ImageStore.cs",
-        "Task.Run(() =>",
-        violations,
-        "Avalonia image reads have no worker owner",
     )
     reject_detached_async_bridge_calls(violations)
     reject_android_async_worker_wrappers(async_exports, violations)

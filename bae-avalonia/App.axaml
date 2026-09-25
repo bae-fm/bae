@@ -1,80 +1,8 @@
-<Application xmlns="https://github.com/avaloniaui"
+﻿<Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Bae.Desktop.App"
              RequestedThemeVariant="Default">
-  <Application.Resources>
-    <ResourceDictionary>
-      <!-- Semantic brushes over the shared appearance palette. Views bind these, so
-           the same markup renders correct in either variant. -->
-      <SolidColorBrush x:Key="BaeBackgroundBrush" Color="{DynamicResource BaeBackgroundColor}" />
-      <SolidColorBrush x:Key="BaeSurfaceBrush" Color="{DynamicResource BaeSurfaceColor}" />
-      <SolidColorBrush x:Key="BaeElevatedBrush" Color="{DynamicResource BaeElevatedColor}" />
-      <SolidColorBrush x:Key="BaeFieldBrush" Color="{DynamicResource BaeFieldColor}" />
-      <SolidColorBrush x:Key="BaeAccentBrush" Color="{DynamicResource BaeAccentColor}" />
-      <SolidColorBrush x:Key="BaePrimaryHoverBrush" Color="{DynamicResource BaePrimaryHoverColor}" />
-      <SolidColorBrush x:Key="BaePrimaryPressedBrush" Color="{DynamicResource BaePrimaryPressedColor}" />
-      <SolidColorBrush x:Key="BaeOnAccentBrush" Color="{DynamicResource BaeOnAccentColor}" />
-      <SolidColorBrush x:Key="BaeTextPrimaryBrush" Color="{DynamicResource BaeTextPrimaryColor}" />
-      <SolidColorBrush x:Key="BaeTextSecondaryBrush" Color="{DynamicResource BaeTextSecondaryColor}" />
-      <SolidColorBrush x:Key="BaeDangerBrush" Color="{DynamicResource BaeDangerColor}" />
-      <SolidColorBrush x:Key="BaeHairlineBrush" Color="{DynamicResource BaeHairlineColor}" />
-      <SolidColorBrush x:Key="BaeScrimBrush" Color="{DynamicResource BaeScrimColor}" />
-      <SolidColorBrush x:Key="BaeSelectionTintBrush" Color="{DynamicResource BaeSelectionTintColor}" />
-      <SolidColorBrush x:Key="BaeSuccessBrush" Color="{DynamicResource BaeSuccessColor}" />
-      <SolidColorBrush x:Key="BaeWarningBrush" Color="{DynamicResource BaeWarningColor}" />
-      <SolidColorBrush x:Key="BaeInfoBrush" Color="{DynamicResource BaeInfoColor}" />
-
-      <!-- Progress uses the selected accent, with a flat fill in every state. -->
-      <SolidColorBrush x:Key="SliderTrackValueFill" Color="{DynamicResource BaeAccentColor}" />
-      <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="{DynamicResource BaeAccentColor}" />
-      <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="{DynamicResource BaeAccentColor}" />
-      <SolidColorBrush x:Key="SliderThumbBackground" Color="{DynamicResource BaeAccentColor}" />
-      <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="{DynamicResource BaeAccentColor}" />
-      <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="{DynamicResource BaeAccentColor}" />
-      <SolidColorBrush x:Key="BaePrimaryBrush" Color="{DynamicResource BaePrimaryColor}" />
-      <SolidColorBrush x:Key="BaeHoverBrush" Color="{DynamicResource BaeHoverColor}" />
-      <SolidColorBrush x:Key="BaeWellBrush" Color="{DynamicResource BaeWellColor}" />
-      <SolidColorBrush x:Key="BaeTileBrush" Color="{DynamicResource BaeTileColor}" />
-      <SolidColorBrush x:Key="BaePlaceholderBrush" Color="{DynamicResource BaePlaceholderColor}" />
-    </ResourceDictionary>
-  </Application.Resources>
-
   <Application.Styles>
     <FluentTheme />
-
-    <!-- Primary actions use one flat fill. Navigation and icon controls stay
-         neutral; Fluent retains its focus and keyboard behavior. -->
-    <Style Selector="Button">
-      <Setter Property="CornerRadius" Value="6" />
-    </Style>
-    <Style Selector="Button.navigation:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource BaeHoverBrush}" />
-    </Style>
-    <Style Selector="Button.navigation:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource BaeTileBrush}" />
-    </Style>
-    <Style Selector="Window">
-      <Setter Property="Background" Value="{DynamicResource BaeBackgroundBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource BaeTextPrimaryBrush}" />
-    </Style>
-    <Style Selector="Button.accent">
-      <Setter Property="Foreground" Value="{DynamicResource BaeOnAccentBrush}" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-    </Style>
-    <Style Selector="Button.accent /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource BaePrimaryBrush}" />
-      <Setter Property="BorderBrush" Value="Transparent" />
-    </Style>
-    <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource BaePrimaryHoverBrush}" />
-    </Style>
-    <Style Selector="Button.accent:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource BaePrimaryPressedBrush}" />
-    </Style>
-    <Style Selector="Button.accent:disabled /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource BaeElevatedBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource BaeTextSecondaryBrush}" />
-      <Setter Property="Opacity" Value="0.6" />
-    </Style>
   </Application.Styles>
 </Application>

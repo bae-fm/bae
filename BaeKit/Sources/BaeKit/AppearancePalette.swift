@@ -28,7 +28,7 @@ public enum AccentChoice: String, CaseIterable, Sendable {
     }
 }
 
-/// The same resource is embedded by Avalonia and Android. Each tone has
+/// The same resource is bundled by Android. Each tone has
 /// a complete light and dark surface palette; accent fills are chosen for
 /// white button labels independently of the accent used for text and glyphs.
 struct AppearancePalette: Decodable, Sendable {

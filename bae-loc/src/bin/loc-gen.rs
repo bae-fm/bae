@@ -2,7 +2,7 @@
 //! print the shipping locale set.
 //!
 //!   loc-gen check   [--catalog &lt;path&gt;]
-//!   loc-gen emit    --target {apple|android|resx} --out-dir &lt;dir&gt; [--catalog &lt;path&gt;]
+//!   loc-gen emit    --target {apple|android} --out-dir &lt;dir&gt; [--catalog &lt;path&gt;]
 //!   loc-gen locales
 //!
 //! `locales` writes `bae_loc::TARGET_LOCALES`, one per line, so the Python
@@ -139,8 +139,7 @@ fn emit_target(args: &Args, catalog: &Catalog) -> Result<(), String> {
             .into_iter()
             .map(|(rel, contents)| (PathBuf::from(rel), contents))
             .collect(),
-        "resx" => emit::resx_all(catalog),
-        other => return Err(format!("unknown --target `{other}` (apple|android|resx)")),
+        other => return Err(format!("unknown --target `{other}` (apple|android)")),
     };
 
     for (relative, contents) in &files {

@@ -257,7 +257,7 @@ Completed in `d367990e3`.
   authoritative import-list row.
 - Keep the applied title, artist, and cover visible after the detail pane is
   closed or another candidate is selected.
-- Render the same persisted row projection on macOS and Avalonia.
+- Render the persisted row projection on macOS.
 
 ### Visible metadata-source actions
 
@@ -296,7 +296,7 @@ Completed in `d367990e3`.
 - Exclude retained older-generation rows during a rescan.
 - Open the per-root counts from the indicator and remove it as soon as no scan
   is active.
-- Keep macOS and Avalonia renderers projection-only.
+- Keep the macOS renderer projection-only.
 
 ### Blank metadata draft editor
 

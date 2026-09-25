@@ -1,5 +1,5 @@
 rem Build the Rust bridge and generate the full-edition C# bindings
-rem (features "oauth-providers,desktop") the Avalonia app compiles against.
+rem (features "oauth-providers,desktop") the Avalonia skeleton compiles against.
 rem Leaves the MSVC/vcvars environment set in the calling cmd process, so a
 rem wrapper that `call`s this can run further cargo/dotnet steps in it.
 set FFMPEG_DIR=C:\bae\bae-ffmpeg\dist

@@ -8,16 +8,14 @@ using System.Threading.Tasks;
 
 namespace Bae.Desktop;
 
-// One running instance per edition, with the second launch forwarding its
-// activation (a bae:// URL or file/folder args) to the first instead of opening a
-// second window.
+// One running instance per edition, with the second launch forwarding its argv
+// to the first instead of opening a second window.
 //
 // Primary election is a named mutex (Win32 named mutex on Windows, a
 // /tmp-backed named mutex on Unix). Forwarding is a named pipe — a true named
 // pipe on Windows, a Unix-domain-socket-backed pipe under the temp dir on Linux
 // (.NET's System.IO.Pipes). The second instance connects, writes its argv, and
-// exits; the primary's listener parses the argv into an ActivationIntent and
-// hands it to the coordinator. Both names carry an edition key (bae / baeium) so
+// exits; the primary's listener hands the argv to the app. Both names carry an edition key (bae / baeium) so
 // the two never redirect into each other, and a per-user token (see UserScope)
 // so a shared multi-user host can't let one user squat or intercept another's
 // channel through the world-writable temp dir.
@@ -37,7 +35,7 @@ internal sealed class SingleInstance : IDisposable
     // primary and return null (the caller then exits). The primary starts a
     // listener that invokes onActivation for each forwarded launch.
     public static SingleInstance? Acquire(
-        string edition, IReadOnlyList<string> args, Action<ActivationIntent?> onActivation)
+        string edition, IReadOnlyList<string> args, Action<IReadOnlyList<string>> onActivation)
     {
         var name = $"bae-single-instance-{edition}-{UserScope()}";
         var mutex = new Mutex(initiallyOwned: true, name, out var isPrimary);
@@ -53,12 +51,12 @@ internal sealed class SingleInstance : IDisposable
         return instance;
     }
 
-    // Accept forwarded launches one at a time, parsing each into an intent. A
+    // Accept forwarded launches one at a time, handing each one's argv on. A
     // single-instance server accepts one connection, so the loop recreates the
     // server after each; the mutex (not the pipe) is what elects the primary, so
     // the gap between accepting and recreating can't hand primacy to a third
     // launch.
-    private void Listen(Action<ActivationIntent?> onActivation) =>
+    private void Listen(Action<IReadOnlyList<string>> onActivation) =>
         _ = Task.Run(async () =>
         {
             while (!_cts.IsCancellationRequested)
@@ -70,9 +68,7 @@ internal sealed class SingleInstance : IDisposable
                     await server.WaitForConnectionAsync(_cts.Token);
                     using var reader = new StreamReader(server, Encoding.UTF8);
                     var payload = await reader.ReadToEndAsync(_cts.Token);
-                    var args = payload.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                    var intent = ActivationIntentModel.Parse(args, Directory.Exists);
-                    onActivation(intent);
+                    onActivation(payload.Split('\n', StringSplitOptions.RemoveEmptyEntries));
                 }
                 catch (OperationCanceledException)
                 {
@@ -89,8 +85,8 @@ internal sealed class SingleInstance : IDisposable
     // backs onto a socket in the world-writable temp dir on Unix
     // (/tmp/CoreFxPipe_<name>) under a predictable name; without a per-user
     // component another local user could pre-create that name to block this
-    // user's primary election, or stand up a listener to receive a forwarded
-    // bae:// URL. Derived from the user's home directory — stable across launches
+    // user's primary election, or stand up a listener to receive another
+    // user's forwarded argv. Derived from the user's home directory — stable across launches
     // and not spoofable through the USERNAME env var the way Environment.UserName
     // is. (On Windows the mutex already lives in the per-session namespace; the
     // scope is belt-and-suspenders there.)

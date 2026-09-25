@@ -22,8 +22,9 @@ jobs:
     name: CI
     uses: ./.github/workflows/ci.yml
 
-  # Rust lint + test suite on Linux. Runs alongside CI during validation; once
-  # proven green it takes over the Rust gates and CI keeps only the macOS build.
+  # Rust lint + test suite on Linux, and the Avalonia skeleton's Linux build.
+  # Runs alongside CI during validation; once proven green it takes over the
+  # Rust gates and CI keeps only the macOS build.
   linux:
     name: Linux
     uses: ./.github/workflows/linux.yml

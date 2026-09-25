@@ -3,10 +3,10 @@
 //! The master catalog (`bae-bridge/loc/catalog.toml`) is the single source of
 //! truth for strings that originate in shared Rust logic (`core.*`) plus shared
 //! chrome opted in by the UI (`ui.*`). Each message `value` is an ICU
-//! MessageFormat 1 string — the cross-platform standard. Android and Windows
-//! consume that string verbatim at runtime (`android.icu.text.MessageFormat` /
-//! the `MessageFormat` NuGet); only Apple needs a conversion to its String
-//! Catalog (`.xcstrings`) shape, which this crate performs.
+//! MessageFormat 1 string — the cross-platform standard. Android consumes that
+//! string verbatim at runtime (`android.icu.text.MessageFormat`); only Apple
+//! needs a conversion to its String Catalog (`.xcstrings`) shape, which this
+//! crate performs.
 //!
 //! `TARGET_LOCALES` is the locale set bae ships. Everything downstream reads it
 //! from here: `emit` fans out one resource set per entry, `check` holds the

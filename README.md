@@ -28,7 +28,7 @@ You pick releases from MusicBrainz or Discogs, point bae at your files, and it h
 | Crate | Description |
 |-------|-------------|
 | `bae-core` | Library, database, sync engine, encryption, cloud backends, import pipeline |
-| `bae-bridge` | UniFFI bridge for the macOS/iOS/Android/Windows native apps |
+| `bae-bridge` | UniFFI bridge for the macOS/iOS/Android native apps and the Windows/Linux Avalonia skeleton |
 
 ## Roadmap
 

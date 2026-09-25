@@ -377,54 +377,6 @@ struct FixtureDuplicateList: View {
                 ],
             )
 
-    def test_classified_avalonia_template_is_owner_checked(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            self.copied_inventory(root)
-            relative = Path("bae-avalonia/Views/Library/AlbumExpansionView.cs")
-            path = root / relative
-            path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / relative, path)
-            source = path.read_text().replace(
-                "release?.DisplayName ?? string.Empty",
-                "AppService.Current.SelectedRelease.Title",
-                1,
-            )
-            path.write_text(source)
-            template_line = source.count(
-                "\n", 0, source.index("ItemTemplate = new FuncDataTemplate<Release>")
-            ) + 1
-            self.assertEqual(
-                BOUNDARY.check(root),
-                [
-                    f"{relative}:{template_line}: repeated Avalonia child TextBlock reaches "
-                    "entity-data owner AppService"
-                ],
-            )
-
-    def test_new_avalonia_item_template_requires_classification(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            self.copied_inventory(root)
-            relative = Path("bae-avalonia/Views/FixtureList.cs")
-            path = root / relative
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(
-                """
-var list = new ItemsControl
-{
-    ItemTemplate = new FuncDataTemplate<Row>((row, _) => new FixtureRow(row)),
-};
-"""
-            )
-            self.assertEqual(
-                BOUNDARY.check(root),
-                [
-                    f"{relative}:4: repeated Avalonia child unclassified has no "
-                    "projection-boundary classification"
-                ],
-            )
-
 
 if __name__ == "__main__":
     unittest.main()

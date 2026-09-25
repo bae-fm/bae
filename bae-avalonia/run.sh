@@ -9,7 +9,7 @@ EDITION=bae
 usage() {
     cat <<'EOF'
 Usage: bae-avalonia/run.sh [--skip-rust] [--release] [--no-open] [--edition bae|baeium]
-Builds and launches the Avalonia app on macOS, including .NET and FFmpeg.
+Builds and launches the Avalonia skeleton on macOS, including .NET and FFmpeg.
   --skip-rust  Reuse this runner's last Rust build for this edition/configuration
   --release    Build Rust and .NET in release mode
   --no-open    Build and sign without launching
@@ -50,7 +50,7 @@ case "$EDITION" in
     *) echo "Unknown edition: $EDITION" >&2; exit 1 ;;
 esac
 if [[ "$(uname -s)" != Darwin ]]; then
-    echo 'This runner builds the Avalonia app for macOS.' >&2
+    echo 'This runner builds the Avalonia skeleton for macOS.' >&2
     exit 1
 fi
 
@@ -124,7 +124,7 @@ uniffi-bindgen-cs --library "$BRIDGE" --crate bae_bridge --out-dir "$BINDINGS" -
 rm -rf "$RUN_DIR/publish"
 dotnet publish bae-avalonia/bae-avalonia.csproj \
     --framework net8.0 --configuration "$CONFIG" --runtime "$RID" --self-contained true \
-    -p:TargetFrameworks=net8.0 -p:BridgeBindingsDir="../$BINDINGS" \
+    -p:BridgeBindingsDir="../$BINDINGS" \
     --output "$RUN_DIR/publish"
 python3 bae-avalonia/macos_bundle.py "${BUNDLE_ARGS[@]}" \
     --publish "$RUN_DIR/publish" --bridge "$BRIDGE" --ffmpeg "$FFMPEG_DIR"

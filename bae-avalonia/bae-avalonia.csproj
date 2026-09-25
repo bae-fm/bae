@@ -1,22 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Avalonia desktop app for Windows and Linux (x64/arm64), both editions. Binds
-    bae-core through the generated uniffi C# bindings. This project is C#, not a
-    cargo crate, so it is deliberately outside the Rust workspace.
-
-    Two targets: plain net8.0 is what ships on Linux, and the Windows target
-    framework adds the WinRT projection the Windows-only backend files (SMTC)
-    bind. EnableWindowsTargeting lets that second target compile on the macOS and
-    Linux dev hosts, which have no Windows SDK.
+    Avalonia desktop app skeleton for Windows and Linux (x64/arm64), both
+    editions: startup, single-instancing, crash capture, telemetry, the Velopack
+    updater, and one window over the generated uniffi C# bindings. The desktop
+    UI is not built here. This project is C#, not a cargo crate, so it is
+    deliberately outside the Rust workspace.
   -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFrameworks>net8.0;net8.0-windows10.0.19041.0</TargetFrameworks>
-    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>Bae.Desktop</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The generated uniffi bindings use pointers. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -26,13 +23,9 @@
          IDE0051/IDE0052 (unused private members) are enforced via
          .editorconfig when EnforceCodeStyleInBuild=true is passed at build. -->
     <WarningsAsErrors>CS0168;CS0219</WarningsAsErrors>
-    <!-- The tests live in a sibling SDK project; keep its sources out of the app
-         build. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);bae-avalonia.Tests/**;bae-avalonia.ViewTests/**</DefaultItemExcludes>
-    <!-- Localization resx are included explicitly below (the generated Core*
-         from the master catalog, the committed Resources* chrome), so turn off
-         the SDK's default resx auto-include to avoid double-adding them. -->
-    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <!-- The smoke test lives in a sibling SDK project; keep its sources out of
+         the app build. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);bae-avalonia.Tests/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -40,33 +33,6 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.3.18" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.18" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.18" />
-    <!-- Avalonia's XAML diagnostics attach only in DEBUG. -->
-    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.18" Condition="'$(Configuration)' == 'Debug'" />
-    <!-- Headless Skia rendering for DEBUG-only shot capture (RenderTargetBitmap
-         off-screen). Referenced everywhere the DEBUG capture path compiles. -->
-    <PackageReference Include="Avalonia.Headless" Version="11.3.18" Condition="'$(Configuration)' == 'Debug'" />
-    <!--
-      ICU MessageFormat 1 runtime. The localization catalog stores each message
-      as a verbatim MF1 string (plural / select / named args); this parses it at
-      runtime for the current locale — the analog of macOS's String Catalog
-      variations. Loc.cs wraps it.
-    -->
-    <PackageReference Include="MessageFormat" Version="7.0.0" />
-    <!--
-      QR generation for the join / restore / recovery codes (managed, no
-      System.Drawing): QRCoder's PngByteQRCode emits a PNG byte array decoded into
-      an Avalonia Bitmap, the same path ImageStore decodes an image stream.
-    -->
-    <PackageReference Include="QRCoder" Version="1.6.0" />
-    <!--
-      QR scanning from a picked image (screenshot/photo of the other device's
-      code). ZXing.Net decodes the QR; SkiaSharp (the same build Avalonia.Skia
-      renders through, pinned so there is one copy) reads the image into BGRA
-      pixels that feed ZXing's luminance source. The paste field is the
-      always-available fallback beside every scan entry point.
-    -->
-    <PackageReference Include="ZXing.Net" Version="0.16.9" />
-    <PackageReference Include="SkiaSharp" Version="2.88.9" />
     <!--
       Installer + auto-update (cross-platform). Drives the in-app
       check/download/apply from the GitHub release assets; the vpk CLI that packs
@@ -80,32 +46,14 @@
       lane) is what survives a crash the runtime never gets to report.
     -->
     <PackageReference Include="Sentry" Version="6.6.0" />
-    <!--
-      D-Bus for the Linux MPRIS now-playing surface (bus name, exported object,
-      property signals). Pinned to the version Avalonia.FreeDesktop resolves so
-      one copy loads: releases after this one rename the connection type and drop
-      the writer types Avalonia's own D-Bus integration is compiled against.
-    -->
-    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
-  </ItemGroup>
-
-  <!--
-    The SMTC now-playing surface binds WinRT types that exist only under the
-    Windows target framework. Everything else in the app compiles for both.
-  -->
-  <ItemGroup>
-    <Compile Remove="MediaControl\SmtcMediaSession.cs" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows10.0.19041.0'">
-    <Compile Include="MediaControl\SmtcMediaSession.cs" />
   </ItemGroup>
 
   <!--
     The generated uniffi C# bindings (per edition, gitignored). Built by
     bae-bridge/build-linux.sh / build-windows.sh into csharp-bindings-<edition>;
-    BridgeBindingsDir selects which edition compiles in. Included only when the
-    directory exists so the scaffold builds before a bridge build.
+    BridgeBindingsDir selects which edition compiles in. The app compiles only
+    against generated bindings, so a build without them fails on the missing
+    types rather than producing an app with no bridge.
   -->
   <PropertyGroup>
     <BridgeBindingsDir Condition="'$(BridgeBindingsDir)' == ''">..\bae-bridge\csharp-bindings-full</BridgeBindingsDir>
@@ -115,50 +63,9 @@
     <DefineConstants>$(DefineConstants);BAE_FULL_BRIDGE</DefineConstants>
   </PropertyGroup>
 
-  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)\$(BridgeBindingsDir)')">
+  <ItemGroup>
     <Compile Include="$(MSBuildProjectDirectory)\$(BridgeBindingsDir)\**\*.cs" Link="GeneratedBridge\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
-
-  <!--
-    Localization. The committed chrome tables (Strings/Resources.resx +
-    Resources.<culture>.resx) are the bare app chrome, hand-maintained. The
-    Core tables (Strings/Core.resx + Core.<culture>.resx) are generated from the
-    master catalog (bae-bridge/loc/catalog.toml) before the build, the way the
-    macOS build regenerates Core.xcstrings — added to EmbeddedResource inside
-    the generating target so a clean build embeds them.
-  -->
-  <ItemGroup>
-    <EmbeddedResource Include="Strings\Resources*.resx" />
-    <EmbeddedResource Include="..\BaeKit\Sources\BaeKit\Resources\AppearancePalette.json" LogicalName="Bae.AppearancePalette.json" />
-  </ItemGroup>
-
-  <!--
-    Generated once per build. The two target frameworks build in parallel, and
-    each writing the same tables at the same time is a lock on Core.<culture>.resx
-    (os error 32). So the outer, cross-targeting build writes them before it
-    dispatches the inner builds and tells each one so; a single-framework build
-    (dotnet build -f …) has no outer build and generates for itself.
-  -->
-  <PropertyGroup>
-    <GenerateCoreResxCommand>cargo run -q -p bae-loc --bin loc-gen -- emit --target resx --out-dir &quot;$(MSBuildProjectDirectory)/Strings&quot;</GenerateCoreResxCommand>
-  </PropertyGroup>
-
-  <Target Name="GenerateCoreResxForInnerBuilds" BeforeTargets="DispatchToInnerBuilds" Condition="'$(IsCrossTargetingBuild)' == 'true'">
-    <Exec Command="$(GenerateCoreResxCommand)" WorkingDirectory="$(MSBuildProjectDirectory)/.." />
-    <ItemGroup>
-      <_InnerBuildProjects AdditionalProperties="%(_InnerBuildProjects.AdditionalProperties);CoreResxGenerated=true" />
-    </ItemGroup>
-  </Target>
-
-  <Target Name="GenerateCoreResx" BeforeTargets="AssignTargetPaths;PrepareResourceNames">
-    <Exec
-      Condition="'$(CoreResxGenerated)' != 'true'"
-      Command="$(GenerateCoreResxCommand)"
-      WorkingDirectory="$(MSBuildProjectDirectory)/.." />
-    <ItemGroup>
-      <EmbeddedResource Include="Strings/Core*.resx" />
-    </ItemGroup>
-  </Target>
 
   <!--
     The diagnostics credentials, baked into the assembly at build from the
@@ -168,7 +75,7 @@
   -->
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-      <_Parameter1>bae-avalonia.ViewTests</_Parameter1>
+      <_Parameter1>bae-avalonia.Tests</_Parameter1>
     </AssemblyAttribute>
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>BaeDatadogSite</_Parameter1>

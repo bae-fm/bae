@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the static screenshot gallery for GitHub Pages.
 
-Input: a directory of <scene>@<platform>.png files (flattened from the four
+Input: a directory of <scene>@<platform>.png files (flattened from the three
 platform capture artifacts). Output: a site directory with the images and an
 index.html grouping them scene row x platform column.
 
@@ -15,12 +15,11 @@ import re
 import shutil
 import sys
 
-PLATFORM_ORDER = ["macos", "ios", "android", "windows"]
+PLATFORM_ORDER = ["macos", "ios", "android"]
 PLATFORM_LABELS = {
     "macos": "macOS",
     "ios": "iOS",
     "android": "Android",
-    "windows": "Windows",
 }
 # The gallery is the stories' per-platform verification sheet: one row per
 # story scene (notes/desktop-stories.md), a column per platform. Scene ids are

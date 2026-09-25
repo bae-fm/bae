@@ -39,7 +39,7 @@ Build + run after provisioning:
 
 ```sh
 ssh tom@<ip> 'C:\Users\tom\bridge-build.cmd'    # bridge + C# bindings
-ssh tom@<ip> 'C:\Users\tom\avalonia-build.cmd'  # bindings + the Avalonia app
+ssh tom@<ip> 'C:\Users\tom\avalonia-build.cmd'  # bindings + the Avalonia skeleton
 ssh tom@<ip> 'schtasks /run /tn baeRun'         # launch on the VM desktop
 ssh tom@<ip> 'schtasks /run /tn vmShot'         # screenshot → C:\Users\tom\vmshot.png
 ```

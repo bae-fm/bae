@@ -44,9 +44,9 @@ if [ "$swift_files" != $'bae-ios/bae/bae/AppService.swift\nBaeKit/Package.swift'
     exit 1
 fi
 
-CHANGED_FILES=$'bae-avalonia/Views/ImportPane.cs\nbae-avalonia/Views/ImportPane.axaml\nnotes/example.cs'
+CHANGED_FILES=$'bae-avalonia/App.axaml.cs\nbae-avalonia/App.axaml\nnotes/example.cs'
 csharp_files=$(staged_files_with_extension cs)
-if [ "$csharp_files" != $'bae-avalonia/Views/ImportPane.cs\nnotes/example.cs' ]; then
+if [ "$csharp_files" != $'bae-avalonia/App.axaml.cs\nnotes/example.cs' ]; then
     echo "staged C# files were routed incorrectly:"
     echo "$csharp_files"
     exit 1
@@ -95,9 +95,9 @@ chmod +x "$repo/bin/dotnet"
 export DOTNET_ARGS="$dotnet_args"
 PATH="$repo/bin:$PATH" format_dotnet_whitespace \
     bae-avalonia/bae-avalonia.csproj \
-    bae-avalonia/Views/First.cs \
-    bae-avalonia/Views/Second.cs
-expected_dotnet_args=$'format\nwhitespace\nbae-avalonia/bae-avalonia.csproj\n--include\nbae-avalonia/Views/First.cs\nbae-avalonia/Views/Second.cs'
+    bae-avalonia/Program.cs \
+    bae-avalonia/MainWindow.cs
+expected_dotnet_args=$'format\nwhitespace\nbae-avalonia/bae-avalonia.csproj\n--include\nbae-avalonia/Program.cs\nbae-avalonia/MainWindow.cs'
 if [ "$(cat "$dotnet_args")" != "$expected_dotnet_args" ]; then
     echo "dotnet whitespace formatter received the wrong arguments:"
     cat "$dotnet_args"

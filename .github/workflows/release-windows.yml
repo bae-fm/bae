@@ -126,9 +126,7 @@ jobs:
         # Self-contained: the installed app bundles the .NET runtime rather than
         # depending on a machine-wide one. AssemblyName names every artifact
         # (exe, deps.json) `bae` at build time, which is both the mainExe vpk
-        # packs and the name existing installs already run. The app multi-targets;
-        # the Windows target framework is the one that carries the WinRT
-        # projection the SMTC now-playing backend binds, so it is what ships.
+        # packs and the name existing installs already run.
         # BridgeBindingsDir is the full edition: the csproj keys BAE_FULL_BRIDGE —
         # and with it the app's `bae` edition identity — off that path.
         shell: pwsh
@@ -136,7 +134,6 @@ jobs:
           $gitCommit = (git rev-parse --short HEAD).Trim()
           dotnet publish bae-avalonia\bae-avalonia.csproj `
             -c Release `
-            -f net8.0-windows10.0.19041.0 `
             -r ${{ matrix.arch.rid }} `
             --self-contained true `
             -o bae-avalonia\publish `
