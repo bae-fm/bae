@@ -109,6 +109,77 @@ async fn prepare_named_candidate(
         .unwrap()
 }
 
+/// Store `folder` as a scanned candidate of its own watched root and settle its
+/// draft, as a scan and a person's pane would, returning its candidate key and
+/// the revision an import of it is queued against.
+async fn store_scanned_candidate(
+    test: &TestService,
+    folder: &Path,
+    name: &str,
+) -> (String, crate::import::CandidateAsRead) {
+    let service = &test.service;
+    let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+        folder,
+        crate::import::ReleaseFileScope::Recursive,
+        &crate::import::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    let content_hash = files.content_hash();
+    let candidate_key = folder.to_string_lossy().into_owned();
+    service
+        .library_manager
+        .add_watched_import_folder(&candidate_key)
+        .await
+        .unwrap();
+    let generation = service
+        .library_manager
+        .begin_folder_scan(&candidate_key)
+        .await
+        .unwrap();
+    service
+        .library_manager
+        .save_folder_scan_item(
+            &candidate_key,
+            generation,
+            &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {
+                path: folder.to_path_buf(),
+                file_root: folder.to_path_buf(),
+                name: name.to_string(),
+                files,
+                watched_folder_path: candidate_key.clone(),
+                scope: crate::import::ReleaseFileScope::Recursive,
+                file_edit_revision: 0,
+                display_path: name.to_string(),
+                grouping: None,
+            }),
+        )
+        .await
+        .unwrap()
+        .expect("the stored scan generation is current");
+    service
+        .library_manager
+        .finish_folder_scan(&candidate_key, generation, None)
+        .await
+        .unwrap();
+    let metadata_revision = prepare_named_candidate(
+        service,
+        &test.preparations,
+        &content_hash,
+        &candidate_key,
+        &folder.to_string_lossy(),
+        name,
+    )
+    .await;
+    (
+        candidate_key,
+        crate::import::CandidateAsRead {
+            content_hash,
+            file_edit_revision: 0,
+            metadata_revision,
+        },
+    )
+}
+
 #[derive(Clone)]
 struct FakeScanStarter {
     scans: Arc<Mutex<Vec<FakeStartedScan>>>,
@@ -532,3 +603,4 @@ include!("tests/folder_reading.rs");
 include!("tests/groupings.rs");
 include!("tests/progressive_scan.rs");
 include!("tests/reading_progress.rs");
+include!("tests/failed_import_retry.rs");

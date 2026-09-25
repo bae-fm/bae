@@ -1,21 +1,16 @@
 #[tokio::test]
 async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
-    let TestService {
-        mut service,
-        preparations,
-        temp: tmp,
-    } = setup_import_service().await;
-    let event_tx =
+    let mut test = setup_import_service().await;
+    test.service.event_tx =
         crate::import::ImportEventBus::new(1024, crate::import::CandidateRuntime::default());
-    service.event_tx = event_tx;
     // The import under test commits a draft it was handed, not one the folder's
     // tags wrote: the pre-fill would give the candidate a file-metadata draft whose
     // stored reading this import is not carrying.
-    service
+    test.service
         .library_manager
         .set_prefill_with_file_metadata(false)
         .unwrap();
-    let folder = tmp.path().join("reading-progress-candidate");
+    let folder = test.temp.path().join("reading-progress-candidate");
     std::fs::create_dir(&folder).unwrap();
     std::fs::write(folder.join("01-payload.bin"), vec![0x5a; 1024 * 1024]).unwrap();
     std::fs::copy(
@@ -23,59 +18,9 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
         folder.join("00-track.flac"),
     )
     .unwrap();
-
-    let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
-        &folder,
-        crate::import::ReleaseFileScope::Recursive,
-        &crate::import::folder_scanner::StoredCandidateEdits::none(),
-    )
-    .unwrap();
-    let expected_content_hash = files.content_hash();
-    let candidate_key = folder.to_string_lossy().into_owned();
-    service
-        .library_manager
-        .add_watched_import_folder(&candidate_key)
-        .await
-        .unwrap();
-    let generation = service
-        .library_manager
-        .begin_folder_scan(&candidate_key)
-        .await
-        .unwrap();
-    service
-        .library_manager
-        .save_folder_scan_item(
-            &candidate_key,
-            generation,
-            &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {
-                path: folder.clone(),
-                file_root: folder.clone(),
-                name: "Reading Progress Candidate".to_string(),
-                files,
-                watched_folder_path: candidate_key.clone(),
-                scope: crate::import::ReleaseFileScope::Recursive,
-                file_edit_revision: 0,
-                display_path: "Reading Progress Candidate".to_string(),
-                grouping: None,
-            }),
-        )
-        .await
-        .unwrap()
-        .expect("the stored scan generation is current");
-    service
-        .library_manager
-        .finish_folder_scan(&candidate_key, generation, None)
-        .await
-        .unwrap();
-    let metadata_revision = prepare_named_candidate(
-        &service,
-        &preparations,
-        &expected_content_hash,
-        &candidate_key,
-        &folder.to_string_lossy(),
-        "Reading Progress Candidate",
-    )
-    .await;
+    let (candidate_key, candidate) =
+        store_scanned_candidate(&test, &folder, "Reading Progress Candidate").await;
+    let service = &test.service;
 
     let mut events = service.event_tx.subscribe();
     service
@@ -87,11 +32,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
                 scope: crate::import::ReleaseFileScope::Recursive, parts: Vec::new(), 
             },
             super::ImportExpectation {
-                candidate: crate::import::CandidateAsRead {
-                    content_hash: expected_content_hash,
-                    file_edit_revision: 0,
-                    metadata_revision,
-                },
+                candidate,
                 file_tag_snapshot: None,
             },
             StorageMode::Local,
