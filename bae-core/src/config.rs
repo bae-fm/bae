@@ -510,7 +510,7 @@ impl Config {
         self.inner
             .save_to_config_yaml(&StoreDir::new(&self.library_path))
             .map_err(|error| {
-                if store_config_write_committed(&error) {
+                if error.installed_new_file() {
                     WriteError::AfterCommit(error.into())
                 } else {
                     WriteError::BeforeCommit(error.into())
@@ -629,21 +629,6 @@ pub fn rename_inactive_library(
     store.store_name = new_name.as_str().to_string();
     store.save_to_config_yaml(&store_dir)?;
     Ok(())
-}
-
-/// Whether a failed [`coven::Config::save_to_config_yaml`] had already
-/// installed the new file. coven's atomic write reports its commit phase as a
-/// [`WriteError`] in the error's source chain; a failure with none there
-/// (creating the directory, serializing) happened before anything was written.
-fn store_config_write_committed(error: &coven::ConfigError) -> bool {
-    let mut source: Option<&(dyn std::error::Error + 'static)> = Some(error);
-    while let Some(error) = source {
-        if let Some(write) = error.downcast_ref::<WriteError<std::io::Error>>() {
-            return write.committed();
-        }
-        source = error.source();
-    }
-    false
 }
 
 /// Read bae's preferences from a library directory. A directory with no
