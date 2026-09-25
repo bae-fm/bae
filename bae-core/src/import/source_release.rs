@@ -471,6 +471,32 @@ impl SourceRelease {
     }
 }
 
+/// The releases a candidate's draft was read from — the pick's primary and
+/// its partners, as their stored rows say — and the lengths the draft's
+/// tracks measured when it was. Reading the primary against those lengths
+/// again lays its tracklist out as the draft's source tracks index it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AppliedSource {
+    pub primary: SourceRelease,
+    pub partners: Vec<SourceRelease>,
+    pub audio_durations_ms: Vec<u64>,
+}
+
+impl AppliedSource {
+    pub fn parsed(
+        &self,
+        clock: &dyn coven::Clock,
+        ids: &dyn coven::IdProvider,
+    ) -> Result<ParsedAlbum, ImportError> {
+        self.primary.parsed(&self.audio_durations_ms, clock, ids)
+    }
+
+    /// The records the applied pick claims.
+    pub fn records(&self) -> Vec<ReleaseRecord> {
+        crate::import::service::records_for_commit(&self.primary, &self.partners)
+    }
+}
+
 fn catalog_rank(catalog: Catalog) -> usize {
     Catalog::ALL
         .iter()
@@ -525,24 +551,18 @@ pub(crate) async fn pick_gallery_covers(
 /// The records the releases one pick claims describe together.
 ///
 /// `claimed` is the primary first — the release the draft is read from — then
-/// each partner, paired with its fetched release where there is one. A
-/// claimed release nothing fetched still contributes its own record: the pick
-/// claims it either way.
+/// each partner.
 ///
 /// The primary's facts are read first, so what they say about another catalog
 /// stands unless that catalog is one the person themselves claimed — a
 /// claimed release's own record outranks what an editor cross-linked to it.
 /// Only the primary's own record reads the draft.
-pub fn claimed_records(claimed: &[(MetadataRef, Option<&SourceRelease>)]) -> Vec<ReleaseRecord> {
+pub fn claimed_records(claimed: &[&SourceRelease]) -> Vec<ReleaseRecord> {
     let mut records: Vec<ReleaseRecord> = Vec::new();
-    for (index, (release, fetched)) in claimed.iter().enumerate() {
+    for (index, release) in claimed.iter().enumerate() {
         let reads_draft = index == 0;
-        let described = match fetched {
-            Some(fetched) => fetched.records(),
-            None => vec![ReleaseRecord::new(release, None, reads_draft)],
-        };
-        for mut record in described {
-            let claimed_by_the_person = record.catalog() == release.catalog;
+        for mut record in release.records() {
+            let claimed_by_the_person = record.catalog() == release.release.catalog;
             if let ReleaseRecord::Pressing {
                 reads_draft: record_reads,
                 ..

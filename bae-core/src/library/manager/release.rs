@@ -174,7 +174,8 @@ impl LibraryManager {
                             record.catalog().as_str(),
                             record.key()
                         ))
-                    })?;
+                    })?
+                    .extract()?;
                 let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
                 parsed_for_existing_release(
                     &payloads,
@@ -240,7 +241,7 @@ impl LibraryManager {
                 release_ref,
                 partners,
             } => {
-                let payloads = crate::import::service::prepare_release(
+                let release = crate::import::service::prepare_release(
                     self,
                     release_ref,
                     crate::util::rate_limiter::CallPriority::Interactive,
@@ -257,7 +258,7 @@ impl LibraryManager {
                 .await?;
                 let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
                 let parsed = parsed_for_existing_release(
-                    &payloads,
+                    &release,
                     release_ref.catalog,
                     &existing_tracks,
                     self.clock.as_ref(),
@@ -275,11 +276,7 @@ impl LibraryManager {
                     )));
                 }
 
-                let prepared_partners = prepared_partners
-                    .iter()
-                    .map(crate::import::payloads::ReleasePayloads::extract)
-                    .collect::<Result<Vec<_>, _>>()?;
-                crate::import::service::records_for_commit(&payloads.extract()?, &prepared_partners)
+                crate::import::service::records_for_commit(&release, &prepared_partners)
             }
             ReleaseReseed::FileMetadata => Vec::new(),
         };
@@ -800,7 +797,7 @@ impl LibraryManager {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn parsed_for_existing_release(
-    payloads: &crate::import::payloads::ReleasePayloads,
+    release: &crate::import::source_release::SourceRelease,
     source: crate::import::Catalog,
     tracks: &[DbTrack],
     clock: &dyn coven::Clock,
@@ -818,8 +815,7 @@ fn parsed_for_existing_release(
         crate::import::Catalog::Discogs => stored_track_durations(tracks)?,
         other => unreachable!("nothing fetches documents from {}", other.as_str()),
     };
-    payloads
-        .extract()?
+    release
         .parsed(&audio_durations, clock, ids)
         .map_err(LibraryError::from)
 }

@@ -286,22 +286,23 @@ impl ImportServiceHandle {
         Ok(RemoteCoverGallery::Linked(covers))
     }
 
-    /// Prepare documents for an explicit metadata application. A settled lead
-    /// must already have its anchor archived; missing it is a broken invariant.
-    /// Preparation follows any related documents the archive does not yet hold.
-    /// Ordinary pane reads and applied snapshots never call this path.
-    pub(super) async fn payloads_for_provenance(
+    /// Prepare the release an explicit metadata application reads. A settled
+    /// lead must already have its release stored; missing it is a broken
+    /// invariant. Preparation follows any related documents the release was
+    /// fetched without. Ordinary pane reads and applied drafts never call this
+    /// path.
+    pub(super) async fn release_for_provenance(
         &self,
         candidate_key: &str,
         release: &crate::import::MetadataRef,
-    ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
+    ) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
         if self.is_settled_lead(candidate_key, release).await? {
             self.library_manager
-                .load_release_payloads(release)
+                .load_source_release(release)
                 .await?
                 .ok_or_else(|| crate::import::ImportError::Internal {
                     detail: format!(
-                        "{candidate_key} settled on {} release {} but nothing stored its lookups",
+                        "{candidate_key} settled on {} release {} but nothing stored it",
                         release.catalog.as_str(),
                         release.key
                     ),
@@ -318,9 +319,10 @@ impl ImportServiceHandle {
     /// Whether `release` is the one this candidate's stored verdict settled on:
     /// its single match, with the source's tracklist already read.
     ///
-    /// That pairing is what the writers commit together — the tracklist and the
-    /// documents land in the same step, before the verdict — so it is also the
-    /// exact condition under which the documents are guaranteed to be readable.
+    /// That pairing is what the writers commit together — the tracklist is read
+    /// from the release stored in the same step, before the verdict — so it is
+    /// also the exact condition under which the release is guaranteed to be
+    /// stored.
     async fn is_settled_lead(
         &self,
         candidate_key: &str,
@@ -352,7 +354,7 @@ impl ImportServiceHandle {
     /// Replace this candidate's metadata from an external release or its file
     /// tags.
     ///
-    /// **The documents land before provenance does.** Stored external provenance is the
+    /// **The release lands before provenance does.** Stored external provenance is the
     /// promise that opening that candidate needs no network, so the fetch goes
     /// first and a failure stores nothing: the pane keeps whatever it had and
     /// says the source failed. Identification writes the same record itself when

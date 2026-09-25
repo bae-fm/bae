@@ -585,10 +585,7 @@ fn a_partner_outranks_what_the_primary_says_about_its_catalog() {
 
     let primary = primary.extract().expect("the primary extracts");
     let partner = partner.extract().expect("the partner extracts");
-    let records = crate::import::source_release::claimed_records(&[
-        (primary.release().clone(), Some(&primary)),
-        (partner.release().clone(), Some(&partner)),
-    ]);
+    let records = crate::import::source_release::claimed_records(&[&primary, &partner]);
 
     assert_eq!(records.len(), 2);
     assert_eq!(records[0].catalog(), Catalog::MusicBrainz);
@@ -604,25 +601,6 @@ fn a_partner_outranks_what_the_primary_says_about_its_catalog() {
         Some("909090".to_owned())
     );
     assert!(!records[1].reads_draft());
-}
-
-/// A claimed release nothing archived documents for still contributes its
-/// own record: the pick claims it either way.
-#[test]
-fn a_claimed_release_with_no_documents_still_has_a_record() {
-    let records = crate::import::source_release::claimed_records(&[(
-        MetadataRef::new(Catalog::Discogs, "4242"),
-        None,
-    )]);
-    assert_eq!(records.len(), 1);
-    assert_eq!(records[0].catalog(), Catalog::Discogs);
-    assert_eq!(records[0].url(), "https://www.discogs.com/release/4242");
-    assert!(records[0].reads_draft());
-    assert_eq!(
-        records[0].album_ref(),
-        None,
-        "a release without a known parent makes no album claim"
-    );
 }
 
 async fn test_database() -> (Database, tempfile::TempDir) {

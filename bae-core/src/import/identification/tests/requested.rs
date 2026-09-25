@@ -476,6 +476,7 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
+    fixture.archive("mb-rerun-1", "rg-rerun-1", &[probed, 0]).await;
     fixture
         .store_settled_verdict(&dir, "mb-rerun-1", "rg-rerun-1", probed)
         .await;

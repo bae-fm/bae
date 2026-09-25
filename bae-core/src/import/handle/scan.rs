@@ -296,15 +296,12 @@ impl ImportServiceHandle {
     /// file and track decisions untouched.
     pub(crate) fn external_candidate_draft(
         &self,
-        payloads: &crate::import::payloads::ReleasePayloads,
+        release: &crate::import::source_release::SourceRelease,
         durations: &crate::import::probe::SourceDurations,
         current: &crate::import::CandidateDraft,
     ) -> Result<crate::import::pane::CandidateSourceDraft, crate::import::ImportError> {
         let audio_durations = current.audio_durations(durations)?;
-        let parsed =
-            payloads
-                .extract()?
-                .parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
+        let parsed = release.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
         let mut edit = crate::import::RawReleaseEdit::from_user_edit(
             crate::import::parsed_album_to_user_edit(&parsed),
             crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
@@ -337,13 +334,13 @@ impl ImportServiceHandle {
     /// the cover.
     pub(crate) async fn external_candidate_metadata(
         &self,
-        payloads: &crate::import::payloads::ReleasePayloads,
-        partners: Vec<crate::import::payloads::ReleasePayloads>,
+        release: &crate::import::source_release::SourceRelease,
+        partners: Vec<crate::import::source_release::SourceRelease>,
         durations: &crate::import::probe::SourceDurations,
         provenance: crate::import::MetadataProvenance,
         current: &crate::import::CandidateDraft,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
-        let source_draft = self.external_candidate_draft(payloads, durations, current)?;
+        let source_draft = self.external_candidate_draft(release, durations, current)?;
         let draft = source_draft.draft;
         let source_discogs_artist_ids = source_draft.source_discogs_artist_ids;
         let required_artist_ids = source_discogs_artist_ids
@@ -354,14 +351,9 @@ impl ImportServiceHandle {
             .library_manager
             .prepare_discogs_artist_images(required_artist_ids)
             .await?;
-        let extracted_partners = partners
-            .iter()
-            .map(crate::import::payloads::ReleasePayloads::extract)
-            .collect::<Result<Vec<_>, _>>()?;
-        let default_cover =
-            crate::import::source_release::pick_covers(&payloads.extract()?, &extracted_partners)
-                .into_iter()
-                .next();
+        let default_cover = crate::import::source_release::pick_covers(release, &partners)
+            .into_iter()
+            .next();
         let (cover, remote_cover) = match default_cover {
             Some(remote) => match self.library_manager.fetch_remote_image(&remote.url).await? {
                 Some(image) => (
@@ -381,8 +373,8 @@ impl ImportServiceHandle {
             provenance: Some(provenance),
             cover,
             assets: crate::import::CandidatePreparedAssets {
-                applied_source: Some(crate::import::payloads::AppliedSource {
-                    payloads: payloads.clone(),
+                applied_source: Some(crate::import::source_release::AppliedSource {
+                    primary: release.clone(),
                     partners,
                     audio_durations_ms: current.audio_durations(durations)?,
                 }),
@@ -453,8 +445,8 @@ impl ImportServiceHandle {
             }
             crate::import::MetadataProvenance::ExternalRelease { record, partners } => {
                 let primary = record.clone();
-                let payloads = self
-                    .payloads_for_provenance(&candidate_key, &primary)
+                let release = self
+                    .release_for_provenance(&candidate_key, &primary)
                     .await?;
                 // Retain every claimed source's exact answer in this metadata
                 // revision. A failed partner leaves the previous pick unchanged.
@@ -472,16 +464,10 @@ impl ImportServiceHandle {
                 // asking.
                 let audio_durations =
                     crate::import::track_slots::audio_durations(candidate.files(), &durations)?;
-                let extracted_partners = prepared_partners
-                    .iter()
-                    .map(crate::import::payloads::ReleasePayloads::extract)
-                    .collect::<Result<Vec<_>, _>>()?;
-                let detail = payloads
-                    .extract()?
-                    .detail_for_audio(&audio_durations, &extracted_partners)?;
+                let detail = release.detail_for_audio(&audio_durations, &prepared_partners)?;
                 let metadata = self
                     .external_candidate_metadata(
-                        &payloads,
+                        &release,
                         prepared_partners,
                         &durations,
                         provenance.clone(),

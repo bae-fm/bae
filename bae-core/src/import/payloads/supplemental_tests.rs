@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::ParsedAlbum;
 use coven::{FixedClock, SequentialIdProvider};
 use serde_json::json;
 
@@ -121,7 +122,7 @@ fn malformed_selected_release_credit_is_still_rejected() {
 }
 
 #[test]
-fn malformed_optional_documents_do_not_block_snapshot_projections() {
+fn malformed_optional_documents_do_not_block_extraction() {
     for (source, malformed) in [
         (PayloadSource::MusicBrainzDiscogsXref, "{}"),
         (PayloadSource::MusicBrainzReleaseGroup, "{}"),
@@ -141,24 +142,10 @@ fn malformed_optional_documents_do_not_block_snapshot_projections() {
             "7822",
             json!({"id":7822,"title":"Parent Album","year":1979}).to_string(),
         ));
-        let applied: AppliedSource = serde_json::from_value(json!({
-            "payloads":payloads, "audio_durations_ms":[], "partners":[]
-        }))
-        .unwrap();
-        let round_trip: AppliedSource =
-            serde_json::from_str(&serde_json::to_string(&applied).unwrap()).unwrap();
-        assert_eq!(round_trip, applied);
-        let parsed = applied
-            .parsed(
-                &FixedClock(
-                    DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-                        .unwrap()
-                        .with_timezone(&Utc),
-                ),
-                &SequentialIdProvider::new("snapshot"),
-            )
-            .unwrap_or_else(|error| panic!("{source:?}: {error}"));
-        let payloads = applied.payloads;
+        // Reading a set admits its supporting documents the way a fetch does.
+        let payloads: ReleasePayloads =
+            serde_json::from_str(&serde_json::to_string(&payloads).unwrap()).unwrap();
+        let parsed = parse(&payloads).unwrap_or_else(|error| panic!("{source:?}: {error}"));
         assert_eq!(parsed.album.title, "Selected Album");
         assert_eq!(parsed.album.year, Some(1979));
         assert_eq!(parsed.tracks.len(), 2);

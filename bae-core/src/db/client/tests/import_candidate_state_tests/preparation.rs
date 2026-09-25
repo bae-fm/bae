@@ -283,6 +283,7 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
 #[tokio::test]
 async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let seed = metadata_draft("Seeded Title", "Artist Name");
     crate::import::CandidatePreparations::new(db.clone())
@@ -406,6 +407,7 @@ async fn an_existing_artist_assignment_to_a_missing_row_is_rejected() {
 #[tokio::test]
 async fn a_track_row_round_trips_metadata_and_mapping() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
@@ -445,6 +447,7 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
 #[tokio::test]
 async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-1").await;
     let (files, hash) = stored_pane_candidate(&db).await;
     let durations = SourceDurations::new(vec![
         file_unit("01 Track.flac", 180_000),
@@ -536,6 +539,8 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
 #[tokio::test]
 async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-1").await;
+    fetched(&db, "rel-2").await;
     let (files, hash) = stored_pane_candidate(&db).await;
     let old_draft = metadata_draft("Old album", "Replacement Artist");
     crate::import::CandidatePreparations::new(db.clone())
@@ -651,6 +656,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
 #[tokio::test]
 async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
 
     assert_eq!(
@@ -710,6 +716,8 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
 #[tokio::test]
 async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-chosen").await;
+    fetched(&db, "rel-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
@@ -764,6 +772,8 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
 #[tokio::test]
 async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-first").await;
+    fetched(&db, "rel-second").await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let first_pick = release_pick("rel-first");
     assert!(crate::import::CandidatePreparations::new(db.clone())

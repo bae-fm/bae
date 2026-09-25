@@ -240,10 +240,11 @@ async fn a_picked_row_leads_with_the_stored_release() {
     assert_eq!(matched.title, "Picked Album");
 }
 
-/// With nothing archived behind the pick, the row leads with its folder name
-/// rather than the release the verdict happened to name.
+/// A pick names only a release bae fetched and stored: writing one for a
+/// release nothing stored is refused, so no row can lead with a pick it cannot
+/// draw.
 #[tokio::test]
-async fn a_pick_with_no_documents_leads_with_nothing() {
+async fn a_pick_of_a_release_nothing_stored_is_refused() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
@@ -267,17 +268,16 @@ async fn a_pick_with_no_documents_leads_with_nothing() {
             }),
         )
         .await
-        .unwrap();
+        .expect_err("a pick of a release nothing stored is refused");
 
     let projection = db
         .load_import_list(request(TriageTab::Pending).await)
         .await
         .unwrap();
-    let row = rows(&projection).remove(0);
-    assert!(row.matched.is_none());
-    assert!(
-        row.metadata_provenance.is_some(),
-        "the decision itself is still on the row"
+    assert_eq!(
+        rows(&projection)[0].metadata_provenance,
+        None,
+        "the refused pick left nothing behind"
     );
 }
 

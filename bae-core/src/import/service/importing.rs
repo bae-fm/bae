@@ -266,27 +266,14 @@ impl ImportService {
 
         let mut records = Vec::new();
         let parsed = match &metadata_provenance {
-            Some(crate::import::MetadataProvenance::ExternalRelease { record, partners }) => {
+            Some(crate::import::MetadataProvenance::ExternalRelease { .. }) => {
                 let applied = prepared_assets.applied_source.as_ref().ok_or_else(|| {
                     crate::import::ImportError::Internal {
-                        detail: format!("{candidate_key} has no applied source documents"),
+                        detail: format!("{candidate_key} has no applied source"),
                     }
                 })?;
-                if applied.payloads.release() != record
-                    || applied.partners.len() != partners.len()
-                    || partners.iter().any(|partner| {
-                        !applied
-                            .partners
-                            .iter()
-                            .any(|payloads| payloads.release() == partner)
-                    })
-                {
-                    return Err(crate::import::ImportError::Internal {
-                        detail: "applied source and draft provenance disagree".into(),
-                    });
-                }
                 let parsed = applied.parsed(self.clock.as_ref(), self.ids.as_ref())?;
-                records = applied.records()?;
+                records = applied.records();
                 parsed
             }
             Some(crate::import::MetadataProvenance::FileMetadata) => {

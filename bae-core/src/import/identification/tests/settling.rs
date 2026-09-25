@@ -214,17 +214,17 @@ async fn applying_a_settled_candidate_fetches_missing_parent_then_reads_offline(
     );
 }
 
-/// A settled lead whose documents are missing is a broken invariant, not a cold
-/// cache. Picking it fails loudly, and stores no pick — so nothing is left
-/// naming a release the pane could not draw.
+/// A settled lead whose release is not stored is a broken invariant, not a
+/// cold cache. Picking it fails loudly, and stores no pick — so nothing is
+/// left naming a release the pane could not draw.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_settled_lead_with_no_documents_fails_loud() {
+async fn a_settled_lead_with_no_stored_release_fails_loud() {
     let fixture = Fixture::new("offline-miss").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
     fixture
-        .store_settled_verdict(&dir, "mb-missing-1", "rg-missing-1", probed)
+        .store_settled_lead_without_its_pick(&dir, "mb-missing-1", "rg-missing-1", probed)
         .await;
 
     let error = fixture

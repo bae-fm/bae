@@ -181,12 +181,25 @@ pub(super) fn replace_asset_rows(
         [content_hash],
     )?;
     if let Some(source) = &assets.applied_source {
-        let json =
-            serde_json::to_string(source).map_err(|error| DbError::Message(error.to_string()))?;
+        // The releases themselves are the provenance's to name, and its rows
+        // reference them; what the application adds is the lengths the draft
+        // was laid out against.
         sql.execute(
-            "INSERT INTO import_candidate_applied_source (content_hash, snapshot) VALUES (?, ?)",
-            params![content_hash, json],
+            "INSERT INTO import_candidate_applied_source (content_hash) VALUES (?)",
+            [content_hash],
         )?;
+        for (position, duration) in source.audio_durations_ms.iter().enumerate() {
+            let duration = i64::try_from(*duration).map_err(|_| {
+                DbError::Message(format!(
+                    "applied length {duration} exceeds SQLite's integer range"
+                ))
+            })?;
+            sql.execute(
+                "INSERT INTO import_candidate_applied_length (content_hash, position, duration_ms) \
+                 VALUES (?, ?, ?)",
+                params![content_hash, position as i64, duration],
+            )?;
+        }
     }
     replace_source_artist_rows(sql, content_hash, source_discogs_artist_ids)?;
     sql.execute(
@@ -296,22 +309,65 @@ fn load_asset_rows_unmarked(
         };
         artist_images.push(asset);
     }
-    let snapshot: Option<String> = sql
-        .query_row(
-            "SELECT snapshot FROM import_candidate_applied_source WHERE content_hash = ?",
-            [content_hash],
-            |row| row.get(0),
-        )
-        .optional()?;
-    let applied_source = snapshot
-        .map(|json| {
-            serde_json::from_str(&json)
-                .map_err(|error| DbError::Message(format!("invalid applied source: {error}")))
-        })
-        .transpose()?;
+    let applied_source = load_applied_source_on(sql, content_hash)?;
     Ok(CandidatePreparedAssets {
         applied_source,
         remote_cover,
         artist_images,
     })
+}
+
+/// The releases the candidate's draft was applied from — the ones its
+/// provenance names, read from their stored rows — with the lengths it was
+/// laid out against. `None` when the draft was not applied from releases.
+fn load_applied_source_on(
+    sql: &SqlReadContext<'_>,
+    content_hash: &str,
+) -> Result<Option<crate::import::source_release::AppliedSource>, DbError> {
+    let applied = sql
+        .query_row(
+            "SELECT 1 FROM import_candidate_applied_source WHERE content_hash = ?",
+            [content_hash],
+            |_| Ok(()),
+        )
+        .optional()?
+        .is_some();
+    if !applied {
+        return Ok(None);
+    }
+    let provenance = super::load_provenance_on(sql, Some(content_hash))?.remove(content_hash);
+    let Some(crate::import::MetadataProvenance::ExternalRelease { record, partners }) = provenance
+    else {
+        return Err(DbError::Message(format!(
+            "candidate {content_hash} applies releases its provenance does not name"
+        )));
+    };
+    let stored = |release: &crate::import::MetadataRef| {
+        super::super::source_releases::load_source_release_on(sql, release)?.ok_or_else(|| {
+            DbError::Message(format!(
+                "candidate {content_hash} applies {} release {} that nothing stored",
+                release.catalog.as_str(),
+                release.key
+            ))
+        })
+    };
+    let audio_durations_ms = sql
+        .query(
+            "SELECT duration_ms FROM import_candidate_applied_length \
+             WHERE content_hash = ? ORDER BY position",
+            [content_hash],
+            |row| row.get::<_, i64>(0),
+        )?
+        .into_iter()
+        .map(|duration| {
+            u64::try_from(duration).map_err(|_| {
+                DbError::Message(format!("candidate {content_hash} has a negative applied length"))
+            })
+        })
+        .collect::<Result<_, _>>()?;
+    Ok(Some(crate::import::source_release::AppliedSource {
+        primary: stored(&record)?,
+        partners: partners.iter().map(stored).collect::<Result<_, _>>()?,
+        audio_durations_ms,
+    }))
 }

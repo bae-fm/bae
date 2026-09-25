@@ -262,7 +262,7 @@ pub(crate) struct CandidateMappingPreparation {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CandidatePreparedAssets {
-    pub applied_source: Option<crate::import::payloads::AppliedSource>,
+    pub applied_source: Option<crate::import::source_release::AppliedSource>,
     pub remote_cover: Option<crate::import::cover_art::RemoteImage>,
     pub artist_images: Vec<PreparedArtistImage>,
 }

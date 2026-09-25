@@ -552,7 +552,7 @@ impl ImportServiceHandle {
 
     pub(super) async fn prepared_artist_images_for_active(
         &self,
-        source: Option<&crate::import::payloads::AppliedSource>,
+        source: Option<&crate::import::source_release::AppliedSource>,
         active: &crate::import::RawReleaseEdit,
         tracks: &[crate::import::CandidateTrack],
         current: Vec<crate::import::PreparedArtistImage>,
@@ -586,7 +586,7 @@ impl ImportServiceHandle {
 
     async fn source_discogs_artist_ids_for_active_tracks(
         &self,
-        source: Option<&crate::import::payloads::AppliedSource>,
+        source: Option<&crate::import::source_release::AppliedSource>,
         active: &crate::import::RawReleaseEdit,
         tracks: &[crate::import::CandidateTrack],
     ) -> Result<std::collections::BTreeSet<String>, crate::import::ImportError> {

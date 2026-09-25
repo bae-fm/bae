@@ -486,6 +486,29 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
     );
 }
 
+/// Store the MusicBrainz release `release_id` as a fetch would: a pick names
+/// only a release bae fetched and stored.
+async fn fetched(db: &Database, release_id: &str) {
+    db.save_source_release(
+        &crate::import::payloads::ReleasePayloads::for_test(
+            crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, release_id),
+            serde_json::json!({
+                "id": release_id,
+                "title": "Album",
+                "artist-credit": [{ "name": "Artist" }],
+                "media": [],
+                "cover-art-archive": { "front": false, "darkened": false }
+            })
+            .to_string(),
+            Vec::new(),
+        )
+        .extract()
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+}
+
 fn release_pick(release_id: &str) -> crate::import::MetadataProvenance {
     crate::import::MetadataProvenance::ExternalRelease {
         record: crate::import::MetadataRef::new(
@@ -499,6 +522,7 @@ fn release_pick(release_id: &str) -> crate::import::MetadataProvenance {
 #[tokio::test]
 async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let (db, tmp) = empty_db().await;
+    fetched(&db, "release-a").await;
     let cases = [
         (
             track_files_candidate(&[("01 Track.flac", 100_001)]).content_hash(),
@@ -568,6 +592,7 @@ fn found_nothing() -> TerminalVerdict {
 #[tokio::test]
 async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "mb-rel-1").await;
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
@@ -613,6 +638,7 @@ async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
 #[tokio::test]
 async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "mb-rel-chosen").await;
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
@@ -662,6 +688,8 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
 #[tokio::test]
 async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "mb-rel-first").await;
+    fetched(&db, "mb-rel-second").await;
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
@@ -708,6 +736,8 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
 #[tokio::test]
 async fn a_file_decision_preserves_applied_metadata_from_either_author() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "mb-rel-derived").await;
+    fetched(&db, "mb-rel-chosen").await;
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
     let hash = candidate.content_hash();
     let edits = crate::import::folder_scanner::CandidateFileEdits::default();

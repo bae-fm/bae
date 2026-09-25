@@ -6,6 +6,7 @@
 #[tokio::test]
 async fn a_verdict_that_picks_names_identification_as_the_author() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-1").await;
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
@@ -87,6 +88,7 @@ async fn a_candidate_with_no_pick_has_no_author() {
 #[tokio::test]
 async fn an_edit_to_identification_s_draft_makes_the_person_its_author() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-1").await;
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
@@ -120,5 +122,95 @@ async fn an_edit_to_identification_s_draft_makes_the_person_its_author() {
             Some(crate::import::MetadataProvenance::ExternalRelease { .. })
         ),
         "the edit leaves where the draft was read from"
+    );
+}
+
+/// A draft applied from releases keeps which releases and which lengths it
+/// was read against: the releases are the ones its provenance names, read
+/// back from their stored rows, and the lengths are the ones it was laid out
+/// against.
+#[tokio::test]
+async fn an_applied_draft_reads_back_its_releases_and_lengths() {
+    let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-applied").await;
+    let primary = db
+        .load_source_release(&crate::import::MetadataRef::new(
+            crate::import::Catalog::MusicBrainz,
+            "rel-applied",
+        ))
+        .await
+        .unwrap()
+        .expect("the fetched release is stored");
+    let candidate =
+        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+    let hash = candidate.content_hash();
+    let mut row = concluding(
+        new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict()),
+        "rel-applied",
+    );
+    let applied = crate::import::source_release::AppliedSource {
+        primary,
+        partners: Vec::new(),
+        audio_durations_ms: vec![180_000, 240_000],
+    };
+    row.metadata
+        .as_mut()
+        .expect("the concluding verdict carries a draft")
+        .assets
+        .applied_source = Some(applied.clone());
+    store_candidate_state(&db, &candidate, &row.folder_path).await;
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&row)
+        .await
+        .unwrap();
+
+    let preparation = db
+        .load_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .expect("the candidate reads back");
+    assert_eq!(preparation.metadata.assets.applied_source, Some(applied));
+}
+
+/// An application whose releases are not the ones the provenance names is a
+/// draft the rows could not describe, and is refused whole.
+#[tokio::test]
+async fn an_application_the_provenance_does_not_name_is_refused() {
+    let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-named").await;
+    fetched(&db, "rel-other").await;
+    let other = db
+        .load_source_release(&crate::import::MetadataRef::new(
+            crate::import::Catalog::MusicBrainz,
+            "rel-other",
+        ))
+        .await
+        .unwrap()
+        .expect("the fetched release is stored");
+    let candidate =
+        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+    let hash = candidate.content_hash();
+    let mut row = concluding(
+        new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict()),
+        "rel-named",
+    );
+    row.metadata
+        .as_mut()
+        .expect("the concluding verdict carries a draft")
+        .assets
+        .applied_source = Some(crate::import::source_release::AppliedSource {
+        primary: other,
+        partners: Vec::new(),
+        audio_durations_ms: vec![180_000, 240_000],
+    });
+    store_candidate_state(&db, &candidate, &row.folder_path).await;
+
+    let error = crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&row)
+        .await
+        .expect_err("the provenance names another release");
+    assert!(
+        error.to_string().contains("disagree"),
+        "unexpected error: {error}"
     );
 }

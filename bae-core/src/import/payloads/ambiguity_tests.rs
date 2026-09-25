@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::ParsedAlbum;
 use coven::{FixedClock, SequentialIdProvider};
 use serde_json::json;
 

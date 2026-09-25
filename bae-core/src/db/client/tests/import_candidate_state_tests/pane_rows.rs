@@ -638,6 +638,8 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
 #[tokio::test]
 async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "release-1").await;
+    fetched(&db, "release-2").await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let mut draft = candidate_draft("Release Title", "Artist Name");
     let first = crate::import::PreparedArtistImage::Nothing {
@@ -745,6 +747,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
 #[tokio::test]
 async fn preparation_round_trips_source_only_artist_answers() {
     let (db, _tmp) = empty_db().await;
+    fetched(&db, "release-with-role").await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let source_ids = std::collections::BTreeSet::from(["role-artist".to_string()]);
     let answer = crate::import::PreparedArtistImage::Nothing {

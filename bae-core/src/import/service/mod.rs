@@ -675,9 +675,10 @@ async fn load_existing_artist_assignments(
     Ok(out)
 }
 
-/// Prepare a release by expanding its archived document set through known
-/// relationships. Takes the bare `LibraryManager` because the sweep and library
-/// re-identification do not hold an `ImportServiceHandle`.
+/// Prepare a release: fetch its documents, expanding its archived set through
+/// known relationships, and store what they extract to. Takes the bare
+/// `LibraryManager` because the sweep and library re-identification do not
+/// hold an `ImportServiceHandle`.
 ///
 /// Every path that needs a release it may not have archived comes here: the
 /// sweep settling a lead in the background, selection preparing the candidate,
@@ -687,19 +688,18 @@ pub(crate) async fn prepare_release(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,
     priority: CallPriority,
-) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
+) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
     let stored = library_manager.load_release_payloads(release_ref).await?;
     let payloads = library_manager
         .fetch_release_payloads(release_ref, stored.as_ref(), priority)
         .await?;
     library_manager.store_release_payloads(&payloads).await?;
-    library_manager
-        .save_source_release(&payloads.extract()?)
-        .await?;
-    Ok(payloads)
+    let release = payloads.extract()?;
+    library_manager.save_source_release(&release).await?;
+    Ok(release)
 }
 
-/// Prepare and retain every partner's exact documents for this selection.
+/// Prepare every partner release of this selection.
 ///
 /// A pick names one release per catalog: the primary is the document the draft
 /// is read from, and every partner is a different catalog's release of the same
@@ -711,7 +711,7 @@ pub(crate) async fn prepare_partners(
     primary: &MetadataRef,
     partners: &[MetadataRef],
     priority: CallPriority,
-) -> Result<Vec<crate::import::payloads::ReleasePayloads>, crate::import::ImportError> {
+) -> Result<Vec<crate::import::source_release::SourceRelease>, crate::import::ImportError> {
     let mut claimed = vec![primary.catalog];
     let mut prepared = Vec::with_capacity(partners.len());
     for partner in partners {
@@ -736,10 +736,7 @@ pub(crate) fn records_for_commit(
     primary: &crate::import::source_release::SourceRelease,
     partners: &[crate::import::source_release::SourceRelease],
 ) -> Vec<crate::import::ReleaseRecord> {
-    let claimed: Vec<_> = std::iter::once(primary)
-        .chain(partners)
-        .map(|release| (release.release().clone(), Some(release)))
-        .collect();
+    let claimed: Vec<_> = std::iter::once(primary).chain(partners).collect();
     crate::import::source_release::claimed_records(&claimed)
 }
 

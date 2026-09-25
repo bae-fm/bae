@@ -715,6 +715,46 @@ impl Fixture {
         probed_total_ms: u64,
         source_tracks: SourceTracks,
     ) {
+        self.store_verdict_settled_on(
+            dir,
+            release_id,
+            group_id,
+            probed_total_ms,
+            source_tracks,
+            SettledDraft::Picked,
+        )
+        .await;
+    }
+
+    /// The verdict a settled lead produces with no pick behind it: the lead
+    /// names `release_id`, and the draft is left as it is.
+    async fn store_settled_lead_without_its_pick(
+        &self,
+        dir: &Path,
+        release_id: &str,
+        group_id: &str,
+        probed_total_ms: u64,
+    ) {
+        self.store_verdict_settled_on(
+            dir,
+            release_id,
+            group_id,
+            probed_total_ms,
+            SourceTracks::Listed { count: 2 },
+            SettledDraft::Untouched,
+        )
+        .await;
+    }
+
+    async fn store_verdict_settled_on(
+        &self,
+        dir: &Path,
+        release_id: &str,
+        group_id: &str,
+        probed_total_ms: u64,
+        source_tracks: SourceTracks,
+        settled_draft: SettledDraft,
+    ) {
         let candidate = self
             .import
             .answerable_candidate(&dir.to_string_lossy())
@@ -792,7 +832,7 @@ impl Fixture {
                             probed_total_ms,
                         ))
                     },
-                    metadata: Some(crate::import::CandidateMetadataDraft {
+                    metadata: matches!(settled_draft, SettledDraft::Picked).then(|| crate::import::CandidateMetadataDraft {
                         draft,
                         source_discogs_artist_ids: Default::default(),
                         provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
@@ -818,6 +858,12 @@ impl Fixture {
         let row = self.stored_for(dir).await.expect("a row was stored");
         classify(&identify_result(&row).verdict)
     }
+}
+
+/// Whether a seeded settled verdict carries the pick a settle writes with it.
+enum SettledDraft {
+    Picked,
+    Untouched,
 }
 
 /// The identify half of a stored row, which every assertion here is about. A

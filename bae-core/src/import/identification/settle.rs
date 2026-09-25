@@ -44,8 +44,8 @@ enum SettledLead {
     NoExternalRelease,
     ExternalRelease {
         provenance: crate::import::MetadataProvenance,
-        payloads: crate::import::payloads::ReleasePayloads,
-        partners: Vec<crate::import::payloads::ReleasePayloads>,
+        release: crate::import::source_release::SourceRelease,
+        partners: Vec<crate::import::source_release::SourceRelease>,
     },
 }
 
@@ -178,7 +178,7 @@ async fn metadata_for_settled_lead(
         SettledLead::NoExternalRelease => Ok(None),
         SettledLead::ExternalRelease {
             provenance,
-            payloads,
+            release,
             partners,
         } => {
             let current = context
@@ -191,7 +191,7 @@ async fn metadata_for_settled_lead(
             Ok(Some(
                 context
                     .import
-                    .external_candidate_metadata(&payloads, partners, durations, provenance, &current.draft)
+                    .external_candidate_metadata(&release, partners, durations, provenance, &current.draft)
                     .await?,
             ))
         }
@@ -324,12 +324,12 @@ fn sole_pressing(
     rows.next().is_none().then_some(only)
 }
 
-/// Settle a candidate's lead: buy the documents that describe the pressing it
-/// matched — the primary's and every partner's — store them, and read the
+/// Settle a candidate's lead: fetch the releases that describe the pressing it
+/// matched — the primary and every partner — store them, and read the
 /// primary's own tracklist out of what came back. Returns whether the verdict
 /// may now be stored.
 ///
-/// **The documents land before the verdict does.** A stored verdict whose lead
+/// **The releases land before the verdict does.** A stored verdict whose lead
 /// carries a tracklist is the queue's promise that opening that candidate needs
 /// no network, and that promise covers every source the pick claims, so a
 /// partner that will not prepare fails the lead exactly as the primary does:
@@ -374,7 +374,7 @@ async fn settle_lead(
     let (primary, partners) = pressing.claims();
 
     let settle = async {
-        let payloads =
+        let release =
             crate::import::service::prepare_release(&context.library_manager, &primary, priority)
                 .await?;
         let prepared_partners = crate::import::service::prepare_partners(
@@ -384,16 +384,16 @@ async fn settle_lead(
             priority,
         )
         .await?;
-        Ok::<_, crate::import::ImportError>((payloads, prepared_partners))
+        Ok::<_, crate::import::ImportError>((release, prepared_partners))
     };
-    let payloads = tokio::select! {
+    let prepared = tokio::select! {
         biased;
         // Shutdown is not a provider answer and writes nothing.
         _ = token.cancelled() => return Err(FinalizationError::Superseded),
-        payloads = settle => payloads,
+        prepared = settle => prepared,
     };
-    let (payloads, prepared_partners) = match payloads {
-        Ok(payloads) => payloads,
+    let (release, prepared_partners) = match prepared {
+        Ok(prepared) => prepared,
         Err(error) => {
             debug!(
                 "identification: could not settle {} ({error}); storing the failure",
@@ -416,43 +416,20 @@ async fn settle_lead(
                 return Err(FinalizationError::Failed(error.to_string()));
             }
         };
-    match payloads
-        .extract()
-        .map(|release| release.source_tracks_for_audio(&audio_durations))
-    {
-        Ok(source_tracks) => {
-            // `SourceTracks::Nothing` is an answer — this release states no
-            // tracklist — so the verdict stores with the match unverifiable, and
-            // the Ready rule lands it in Needs you rather than admitting it.
-            //
-            // The tracklist belongs to the primary's own match row: it is read
-            // from the primary's document, and a partner states its own.
-            matches
-                .iter_mut()
-                .find(|result| result.source == primary.catalog && result.release_id == primary.key)
-                .expect("the pressing's primary is one of the verdict's matches")
-                .source_tracks = Some(source_tracks);
-            Ok(SettledLead::ExternalRelease {
-                provenance: pressing.pick(),
-                payloads,
-                partners: prepared_partners,
-            })
-        }
-        Err(error) => {
-            debug!(
-                "identification: {} states no readable tracklist ({error}); storing the failure",
-                primary.key
-            );
-            *verdict = TerminalVerdict::Failed {
-                failures: vec![crate::identify::IdentifyFailure::ReleaseDetails(
-                    crate::signals::LookupFailure::Diagnostic {
-                        detail: error.to_string(),
-                    },
-                )],
-                track_count: *track_count,
-                ledger: ledger.take(),
-            };
-            Ok(SettledLead::NoExternalRelease)
-        }
-    }
+    // `SourceTracks::Nothing` is an answer — this release states no
+    // tracklist — so the verdict stores with the match unverifiable, and the
+    // Ready rule lands it in Needs you rather than admitting it.
+    //
+    // The tracklist belongs to the primary's own match row: it is read from
+    // the primary's release, and a partner states its own.
+    matches
+        .iter_mut()
+        .find(|result| result.source == primary.catalog && result.release_id == primary.key)
+        .expect("the pressing's primary is one of the verdict's matches")
+        .source_tracks = Some(release.source_tracks_for_audio(&audio_durations));
+    Ok(SettledLead::ExternalRelease {
+        provenance: pressing.pick(),
+        release,
+        partners: prepared_partners,
+    })
 }

@@ -22,7 +22,7 @@ use crate::import::source_release::{
     not_fetched, ArchiveRelease, CatalogFacts, ReleaseCovers, SourceRelease,
 };
 use crate::import::{
-    parse_catalog_url, Catalog, CatalogPage, ImportError, MetadataRef, ParsedAlbum, PayloadSource,
+    parse_catalog_url, Catalog, CatalogPage, ImportError, MetadataRef, PayloadSource,
     ReleaseRecord, SourcePayload,
 };
 use crate::musicbrainz::MbReleaseResponse;
@@ -70,41 +70,6 @@ where
             .is_some()
         })
         .collect())
-}
-
-/// The documents and measured track lengths used by one metadata application.
-/// Re-reading this value preserves Discogs' selected index/sub-track layout.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct AppliedSource {
-    pub payloads: ReleasePayloads,
-    pub audio_durations_ms: Vec<u64>,
-    /// Exact documents for the other releases explicitly claimed by this pick.
-    pub partners: Vec<ReleasePayloads>,
-}
-
-impl AppliedSource {
-    pub fn parsed(
-        &self,
-        clock: &dyn coven::Clock,
-        ids: &dyn coven::IdProvider,
-    ) -> Result<ParsedAlbum, ImportError> {
-        self.payloads
-            .extract()?
-            .parsed(&self.audio_durations_ms, clock, ids)
-    }
-
-    /// The records the applied pick claims.
-    pub fn records(&self) -> Result<Vec<ReleaseRecord>, ImportError> {
-        let primary = self.payloads.extract()?;
-        let partners = self
-            .partners
-            .iter()
-            .map(ReleasePayloads::extract)
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(crate::import::service::records_for_commit(
-            &primary, &partners,
-        ))
-    }
 }
 
 impl ReleasePayloads {

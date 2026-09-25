@@ -251,6 +251,30 @@ impl CandidatePreparation {
         self.author
             .check_provenance(self.metadata.provenance.as_ref())
             .map_err(|error| format!("candidate {}: {error}", self.content_hash))?;
+        if let Some(applied) = &self.metadata.assets.applied_source {
+            let Some(crate::import::MetadataProvenance::ExternalRelease { record, partners }) =
+                &self.metadata.provenance
+            else {
+                return Err(format!(
+                    "candidate {} applies releases its provenance does not name",
+                    self.content_hash
+                ));
+            };
+            let applied_partners: std::collections::HashSet<_> = applied
+                .partners
+                .iter()
+                .map(|partner| partner.release())
+                .collect();
+            if applied.primary.release() != record
+                || applied_partners != partners.iter().collect::<std::collections::HashSet<_>>()
+                || applied_partners.len() != applied.partners.len()
+            {
+                return Err(format!(
+                    "candidate {}: the applied releases and the draft provenance disagree",
+                    self.content_hash
+                ));
+            }
+        }
         if let (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) =
             (&self.metadata.cover, &self.metadata.assets.remote_cover)
         {

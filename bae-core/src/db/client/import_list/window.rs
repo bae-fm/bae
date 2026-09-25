@@ -21,7 +21,6 @@ use crate::import::release_candidate::ReleaseCandidate;
 use crate::import::search::{ImportSearchReleaseDetail, MetadataResult};
 use crate::import::triage::MatchedRelease;
 use crate::import::CoverSelection;
-use crate::import::MetadataRef;
 use crate::library::LibraryPageWindow;
 use std::path::PathBuf;
 
@@ -153,7 +152,7 @@ impl WindowItemRows {
                 match picked {
                     Some(picked) => {
                         let PickedRelease { matched, records } = picked.process()?;
-                        row.matched = matched;
+                        row.matched = Some(matched);
                         // The reading the queue placed the row with named no
                         // records; this is where the documents are read.
                         row.reading = crate::import::triage::TriageReading::of(
@@ -178,20 +177,16 @@ impl WindowItemRows {
 }
 
 pub(super) struct PickedReleaseRows {
-    /// Every release the pick claims, the primary first and then its partners,
-    /// each with its stored release. A release nothing fetched is still
-    /// listed: the pick claims it either way, and the row says so.
-    claimed: Vec<(
-        MetadataRef,
-        Option<crate::import::source_release::SourceRelease>,
-    )>,
+    /// Every release the pick claims, the primary first and then its
+    /// partners.
+    claimed: Vec<crate::import::source_release::SourceRelease>,
     files: CategorizedFiles,
 }
 
 /// What the picked releases say: the release the row leads with, and every
 /// catalog that describes it.
 pub(super) struct PickedRelease {
-    matched: Option<MatchedRelease>,
+    matched: MatchedRelease,
     records: Vec<crate::import::ReleaseRecord>,
 }
 
@@ -202,25 +197,23 @@ impl PickedReleaseRows {
         let audio_durations = crate::import::track_slots::audio_durations(&self.files, &durations)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let records = crate::import::source_release::claimed_records(
-            &self
-                .claimed
-                .iter()
-                .map(|(release, fetched)| (release.clone(), fetched.as_ref()))
-                .collect::<Vec<_>>(),
+            &self.claimed.iter().collect::<Vec<_>>(),
         );
         // Only the release the draft was read from states the row's facts; a
         // partner's own release is not a second set of them. Its artwork is
         // another matter: a row's cover is the pick's, so the partners go to
         // the detail that carries the cover options.
-        let mut claimed = self.claimed.into_iter();
-        let (primary, fetched) = claimed.next().expect("a pick claims at least its primary");
-        let partners: Vec<_> = claimed.filter_map(|(_, fetched)| fetched).collect();
-        let matched = fetched
-            .map(|fetched| fetched.detail_for_audio(&audio_durations, &partners))
-            .transpose()
-            .map_err(|error| DbError::Message(error.to_string()))?
-            .map(|detail| MatchedRelease::of_pick(primary.catalog, &detail));
-        Ok(PickedRelease { matched, records })
+        let (primary, partners) = self
+            .claimed
+            .split_first()
+            .expect("a pick claims at least its primary");
+        let detail = primary
+            .detail_for_audio(&audio_durations, partners)
+            .map_err(|error| DbError::Message(error.to_string()))?;
+        Ok(PickedRelease {
+            matched: MatchedRelease::of_pick(primary.release().catalog, &detail),
+            records,
+        })
     }
 }
 
@@ -305,11 +298,16 @@ fn picked_release(
     let MetadataProvenance::ExternalRelease { record, partners } = pick else {
         return Ok(None);
     };
-    let claimed = std::iter::once(record.clone())
-        .chain(partners.iter().cloned())
+    let claimed = std::iter::once(record)
+        .chain(partners)
         .map(|release| {
-            let fetched = load_source_release_on(sql, &release)?;
-            Ok((release, fetched))
+            load_source_release_on(sql, release)?.ok_or_else(|| {
+                DbError::Message(format!(
+                    "{} release {} is picked but nothing stored it",
+                    release.catalog.as_str(),
+                    release.key
+                ))
+            })
         })
         .collect::<Result<Vec<_>, DbError>>()?;
     Ok(Some(PickedReleaseRows {
@@ -385,12 +383,8 @@ pub(super) fn load_candidate_detail_on(
     // processing runs after the snapshot ends.
     let claimed = claimed_releases_on(sql, &candidate, picked.as_ref())?;
     // Every catalog record named by the picked releases.
-    let records = crate::import::source_release::claimed_records(
-        &claimed
-            .iter()
-            .map(|release| (release.release().clone(), Some(release)))
-            .collect::<Vec<_>>(),
-    );
+    let records =
+        crate::import::source_release::claimed_records(&claimed.iter().collect::<Vec<_>>());
     let picked_library_status = match claimed.first() {
         Some(release) => check_releases_in_library_on(sql, &[release.library_check()])?
             .into_iter()

@@ -1024,13 +1024,15 @@ CREATE TABLE IF NOT EXISTS import_candidate_asset_preparation (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
 ) STRICT;
 
--- Where the draft was read from. Who wrote it is the draft row's `author`.
+-- Where the draft was read from. Who wrote it is the draft row's `author`. A
+-- release it names is one bae fetched and stored.
 CREATE TABLE IF NOT EXISTS import_candidate_draft_provenance (
     content_hash TEXT PRIMARY KEY,
     kind         TEXT NOT NULL CHECK (kind IN ('external_release', 'file_tags')),
     source       TEXT CHECK (source IS NULL OR source IN ('musicbrainz', 'discogs')),
     release_id   TEXT,
     FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (source, release_id) REFERENCES source_release (catalog, release_id),
     -- Only a release names a release; File Tags names the candidate's own files.
     CHECK ((kind = 'external_release') = (source IS NOT NULL)),
     CHECK ((kind = 'external_release') = (release_id IS NOT NULL))
@@ -1043,15 +1045,27 @@ CREATE TABLE IF NOT EXISTS import_candidate_provenance_partner (
     release_id   TEXT NOT NULL,
     PRIMARY KEY (content_hash, source),
     FOREIGN KEY (content_hash)
+        REFERENCES import_candidate_draft_provenance (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (source, release_id) REFERENCES source_release (catalog, release_id)
+) STRICT;
+
+-- The draft was read from the releases its provenance names: a row here says
+-- the draft's source tracks index those releases' tracklists as laid out
+-- against the lengths below.
+CREATE TABLE IF NOT EXISTS import_candidate_applied_source (
+    content_hash TEXT PRIMARY KEY,
+    FOREIGN KEY (content_hash)
         REFERENCES import_candidate_draft_provenance (content_hash) ON DELETE CASCADE
 ) STRICT;
 
--- The catalog documents the draft was built from, stored whole so the draft
--- can be re-read without asking the provider again.
-CREATE TABLE IF NOT EXISTS import_candidate_applied_source (
-    content_hash TEXT PRIMARY KEY,
-    snapshot TEXT NOT NULL CHECK (json_valid(snapshot)),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+-- The measured lengths of the draft's tracks, in order, when it was read.
+CREATE TABLE IF NOT EXISTS import_candidate_applied_length (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    duration_ms  INTEGER NOT NULL CHECK (duration_ms >= 0),
+    PRIMARY KEY (content_hash, position),
+    FOREIGN KEY (content_hash)
+        REFERENCES import_candidate_applied_source (content_hash) ON DELETE CASCADE
 ) STRICT;
 
 -- What the import pane is showing for this candidate and what is typed in its
