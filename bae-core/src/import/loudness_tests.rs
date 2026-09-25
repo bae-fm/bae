@@ -123,6 +123,8 @@ fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
     let mut sink = sink_with(Some(total), 0, 0);
     let ok = crate::audio_codec::decode_audio_to_verifying_sink(
         buffer_of(&clean),
+        None,
+        Some(start),
         Some(start),
         Some(end),
         &mut sink,
@@ -141,6 +143,8 @@ fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
     let mut sink = sink_with(Some(total), 0, 0);
     let res = crate::audio_codec::decode_audio_to_verifying_sink(
         buffer_of(truncated),
+        None,
+        Some(start),
         Some(start),
         Some(end),
         &mut sink,

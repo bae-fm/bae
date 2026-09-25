@@ -144,6 +144,8 @@ async fn verifying_decode_reports_a_first_read_failure_as_a_read_failure() {
     let result = tokio::task::spawn_blocking(move || {
         decode_audio_to_verifying_sink(
             buffer,
+            None,
+            Some(0),
             Some(0),
             None,
             &mut NullSink,

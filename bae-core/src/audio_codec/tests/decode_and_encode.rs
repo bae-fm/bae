@@ -599,6 +599,8 @@ fn sink_decode_discards_an_invalid_terminal_mp3_packet_after_complete_audio() {
         buffer_from(&damaged),
         None,
         None,
+        None,
+        None,
         &mut sink,
         Arc::new(std::sync::atomic::AtomicBool::new(false)),
     );

@@ -15,6 +15,7 @@ use tracing::{debug, warn};
 
 use crate::import::types::TrackFile;
 use crate::playback::data_source::LocalReader;
+use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
 use crate::playback::track_sources::{run_tracks_over_sources, SourceStream};
 use crate::playback::SharedSparseBuffer;
 
@@ -305,8 +306,11 @@ struct MeasuredTrack {
     /// sample rate. With neither, the whole bar is indeterminate.
     total_frames: Option<u64>,
     /// Its segments in play order: the file each reads, by file id, and its
-    /// sample window there.
-    segments: Vec<(String, u64, Option<u64>)>,
+    /// window there.
+    segments: Vec<(String, crate::db::SegmentSpan)>,
+    /// Whether the demuxer may jump to a segment's recorded start byte (not
+    /// APE, which sample-seeks its index).
+    byte_seekable: bool,
 }
 
 /// Decode and meter one track's segments from their open streams, counting
@@ -360,39 +364,39 @@ enum DecodeStop {
     Failed(String),
 }
 
-/// Stream every segment of `track` through `sink`.
+/// Stream every segment of `track` through `sink`, seeking each the way
+/// playback does.
 fn decode_track(
     track: &MeasuredTrack,
     streams: &HashMap<String, SharedSparseBuffer>,
     sink: &mut LoudnessProgressSink,
 ) -> Result<(), DecodeStop> {
+    let segments = track
+        .segments
+        .iter()
+        .map(|(file_id, span)| {
+            let buffer = streams
+                .get(file_id)
+                .expect("every segment's file is open for its track")
+                .clone();
+            SegmentDecodeParams::new(buffer, *span, 0)
+        })
+        .collect();
+    let decode = StreamDecodeParams::new(segments, track.byte_seekable, 0, 0);
     let never_cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    for (file_id, start_sample, end_sample) in &track.segments {
-        let buffer = streams
-            .get(file_id)
-            .expect("every segment's file is open for its track")
-            .clone();
-        match crate::audio_codec::decode_audio_to_verifying_sink(
-            buffer,
-            Some(*start_sample),
-            *end_sample,
-            sink,
-            never_cancelled.clone(),
-        ) {
-            Ok(()) => {}
-            Err(crate::audio_codec::DecodeError::SourceRead(error)) => {
-                return Err(DecodeStop::Unreadable(error));
-            }
-            Err(e) => {
-                warn!(
-                    "loudness: decode failed for track {}: {e}; track stays unmeasured",
-                    track.index + 1
-                );
-                return Err(DecodeStop::Failed(format!("decode failed: {e}")));
-            }
+    match decode.verify_to_sink(sink, never_cancelled) {
+        Ok(()) => Ok(()),
+        Err(crate::audio_codec::DecodeError::SourceRead(error)) => {
+            Err(DecodeStop::Unreadable(error))
+        }
+        Err(e) => {
+            warn!(
+                "loudness: decode failed for track {}: {e}; track stays unmeasured",
+                track.index + 1
+            );
+            Err(DecodeStop::Failed(format!("decode failed: {e}")))
         }
     }
-    Ok(())
 }
 
 /// Measure each track's loudness + true peak and the album's combined loudness,
@@ -534,14 +538,10 @@ pub(super) async fn measure_loudness(
             total_frames: track_total_frames[index],
             segments: segments
                 .iter()
-                .map(|segment| {
-                    (
-                        segment.file_id.clone(),
-                        segment.start_sample as u64,
-                        segment.end_sample.map(|sample| sample as u64),
-                    )
-                })
+                .map(|segment| (segment.file_id.clone(), segment.span()))
                 .collect(),
+            byte_seekable: audio_formats[index].content_type
+                != crate::util::content_type::ContentType::Ape,
         });
     }
 
@@ -552,7 +552,7 @@ pub(super) async fn measure_loudness(
             track
                 .segments
                 .iter()
-                .map(|(file_id, _, _)| file_id.clone())
+                .map(|(file_id, _)| file_id.clone())
                 .collect()
         },
         |file_id: &String| {

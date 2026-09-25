@@ -272,6 +272,39 @@ impl StreamDecodeParams {
         push_silence_to_sink(sink, self.trailing_silence_frames, channels, &cancel)?;
         Ok(())
     }
+
+    /// Decode this window into a verifying [`DecodedSink`] — import's loudness
+    /// pass, which meters the stored audio and checks it decodes whole. Seeks
+    /// each segment as [`Self::run_to_sink`] does; invalid packets are
+    /// discarded and counted rather than failing the decode, so the sink can
+    /// judge from frame coverage whether the track is usable. A failed read of
+    /// the source is returned as that read's error. Carries no silence: the
+    /// pass measures only stored audio. Blocking; run it off the async runtime.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn verify_to_sink(
+        &self,
+        sink: &mut dyn crate::audio_codec::DecodedSink,
+        cancel: Arc<AtomicBool>,
+    ) -> Result<(), DecodeError> {
+        for segment in &self.segments {
+            let seek_to_byte = segment.seek_to_byte(self.byte_seekable);
+            let seek_to_sample = if seek_to_byte.is_some() {
+                None
+            } else {
+                Some(segment.target_sample())
+            };
+            crate::audio_codec::decode_audio_to_verifying_sink(
+                segment.buffer.clone(),
+                seek_to_byte,
+                seek_to_sample,
+                Some(segment.target_sample()),
+                segment.span.end_sample,
+                sink,
+                cancel.clone(),
+            )?;
+        }
+        Ok(())
+    }
 }
 
 /// Push `frames` frames of silence into the sink in chunks, checking `cancel`
@@ -646,6 +679,81 @@ mod tests {
             0,
             0,
         )
+    }
+
+    /// Counts the frames a decode hands it.
+    #[derive(Default)]
+    struct FrameCount {
+        channels: u32,
+        frames: u64,
+    }
+
+    impl crate::audio_codec::DecodedSink for FrameCount {
+        fn on_format(&mut self, _sample_rate: u32, channels: u32) {
+            self.channels = channels;
+        }
+
+        fn on_samples(&mut self, samples: &[i32]) {
+            self.frames += (samples.len() / self.channels.max(1) as usize) as u64;
+        }
+    }
+
+    /// The byte offsets a verifying decode of one second from 20s into the
+    /// CUE fixture image read, with the window's recorded landing byte, and
+    /// the frames it decoded.
+    fn verified_window_reads() -> (Vec<u64>, u64, u64) {
+        crate::audio_codec::init();
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/cue_flac/Test Album.flac"
+        );
+        let bytes = std::fs::read(path).unwrap();
+        let start_sample = 20 * 44_100;
+        let landing =
+            crate::audio_codec::seek_landing_bytes(path, &[start_sample]).expect("landing byte")[0];
+        let buffer = create_sparse_buffer(bytes.len() as u64);
+        buffer.append_at(0, &bytes);
+        let decode = StreamDecodeParams::new(
+            vec![SegmentDecodeParams::new(
+                buffer.clone(),
+                crate::db::SegmentSpan {
+                    start_sample,
+                    end_sample: Some(start_sample + 44_100),
+                    start_byte: Some(landing),
+                    end_byte: None,
+                },
+                0,
+            )],
+            true,
+            0,
+            0,
+        );
+        let mut sink = FrameCount::default();
+        decode
+            .verify_to_sink(&mut sink, Arc::new(AtomicBool::new(false)))
+            .expect("the window decodes");
+        (buffer.read_log(), landing, sink.frames)
+    }
+
+    /// A verifying decode jumps straight to a segment's recorded landing byte
+    /// rather than searching the file for its start sample: past the header,
+    /// it reads nothing before the landing.
+    #[test]
+    fn verifying_decode_jumps_to_the_recorded_landing_byte() {
+        let (reads, landing, frames) = verified_window_reads();
+        assert_eq!(frames, 44_100);
+        let header_end = reads[0] + 8 * 1024;
+        assert!(
+            reads
+                .iter()
+                .all(|&offset| offset < header_end || offset >= landing),
+            "reads {reads:?} around landing {landing}"
+        );
+
+        assert!(
+            reads.contains(&landing),
+            "the decode reads from the landing: {reads:?} vs {landing}"
+        );
     }
 
     fn test_fmt() -> TrackFmt {
