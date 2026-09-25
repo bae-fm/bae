@@ -110,7 +110,21 @@ pub(crate) async fn resolve_release_artwork_paths(
     let cover_staging = match library_manager.cover_ref(release_id).await {
         Ok(Some(image)) => {
             match library_manager.read_image_blob(&image).await {
-                Ok(Some(bytes)) => stage_cover_for_ocr(release_id, &bytes, &mut paths),
+                Ok(Some(bytes)) => {
+                    let staging_release = release_id.to_string();
+                    match tokio::task::spawn_blocking(move || {
+                        stage_cover_for_ocr(&staging_release, &bytes)
+                    })
+                    .await
+                    {
+                        Ok(Some((dir, cover_path))) => {
+                            paths.push(cover_path);
+                            Some(dir)
+                        }
+                        Ok(None) => None,
+                        Err(error) => std::panic::resume_unwind(error.into_panic()),
+                    }
+                }
                 Ok(None) => {
                     debug!("artwork OCR: release {release_id} has no cover blob; skipping cover staging");
                     None
@@ -146,14 +160,19 @@ pub(crate) async fn resolve_release_artwork_paths(
             .await
             .map_err(|e| format!("Failed to resolve image path: {e}"))?
         {
-            if p.exists() {
-                paths.push(p);
-            } else {
-                warn!(
+            match tokio::fs::try_exists(&p).await {
+                Ok(true) => paths.push(p),
+                Ok(false) => warn!(
                     "artwork OCR: registered image file {} resolved to missing path {}; skipping image",
                     file.id,
                     p.display()
-                );
+                ),
+                Err(error) => warn!(
+                    "artwork OCR: registered image file {} at {} could not be checked: {error}; \
+                     skipping image",
+                    file.id,
+                    p.display()
+                ),
             }
         }
     }
@@ -161,14 +180,10 @@ pub(crate) async fn resolve_release_artwork_paths(
     Ok((paths, cover_staging))
 }
 
-/// Write cover bytes to a temp file the OCR reader can open, pushing its path
-/// onto `paths` and returning the temp-dir guard. An IO failure skips the cover,
-/// logged, rather than failing the whole resolve.
-fn stage_cover_for_ocr(
-    release_id: &str,
-    bytes: &[u8],
-    paths: &mut Vec<PathBuf>,
-) -> Option<tempfile::TempDir> {
+/// Write cover bytes to a temp file the OCR reader can open, returning the
+/// temp-dir guard and the file's path. An IO failure skips the cover, logged,
+/// rather than failing the whole resolve. Blocking; run it off the runtime.
+fn stage_cover_for_ocr(release_id: &str, bytes: &[u8]) -> Option<(tempfile::TempDir, PathBuf)> {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(e) => {
@@ -181,8 +196,7 @@ fn stage_cover_for_ocr(
         warn!("artwork OCR: staging cover for release {release_id} failed: {e}; skipping cover");
         return None;
     }
-    paths.push(cover_path);
-    Some(dir)
+    Some((dir, cover_path))
 }
 
 #[cfg(test)]
