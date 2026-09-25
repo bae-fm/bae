@@ -4,7 +4,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::db::{DbOutboxQueue, DbOutboxUpload};
+use crate::db::DbOutboxQueue;
 use crate::library::outbox_snapshot::{build_outbox_snapshot, TransientUploadState, UploadBlobKey};
 use crate::library::{OutboxSnapshot, UploadThroughput};
 
@@ -251,10 +251,12 @@ impl LiveUploads {
         self.mark_changed();
     }
 
-    /// The attempt failed. coven's drain records the attempt count and the error
-    /// on its own queue entry, so nothing about the failure is kept here — only
-    /// this attempt's live bytes and rate are dropped.
-    pub(crate) fn upload_failed(&self, upload: &coven::RowBlobRef) {
+    /// The attempt ended without finishing: it failed (coven's drain records
+    /// the attempt count and the error on its own queue entry, so nothing about
+    /// the failure is kept here), or the drain running it was dropped and a
+    /// later drain resumes it. Either way only this attempt's live bytes and
+    /// rate are dropped.
+    pub(crate) fn upload_ended(&self, upload: &coven::RowBlobRef) {
         let blob_key = UploadBlobKey::from_row(upload);
         let removed = self.transient.lock().unwrap().remove(&blob_key);
         if removed.is_some() {
@@ -296,36 +298,13 @@ impl LiveUploads {
     }
 
     /// Derive the outbox snapshot from coven's durable queue and this live
-    /// state, after dropping the callback facts that queue proves superseded.
-    /// Both steps read the same queue, so the snapshot can never report a
-    /// transient state the durable rows have already moved past.
+    /// state. Every attempt coven starts reports how it ends — finished,
+    /// failed, or abandoned with its drain — so the live state holds exactly
+    /// the attempts in flight.
     pub(crate) fn outbox_snapshot(&self, queue: DbOutboxQueue) -> OutboxSnapshot {
-        self.retain_current(&queue.uploads);
         let transient = { self.transient.lock().unwrap().clone() };
         let paused = self.is_paused();
         build_outbox_snapshot(queue, &transient, &self.throughput, paused)
-    }
-
-    /// Drop callback facts when the durable outbox proves their phase has been
-    /// superseded. `Created` deliberately retains provider progress: coven
-    /// commits that handoff before calling `on_blob_uploaded`, and that callback
-    /// owns validation and removal of the exact final byte report.
-    fn retain_current(&self, uploads: &[DbOutboxUpload]) {
-        let durable: HashMap<_, _> = uploads
-            .iter()
-            .map(|upload| (UploadBlobKey::from_row(&upload.blob), upload.phase))
-            .collect();
-        self.transient
-            .lock()
-            .unwrap()
-            .retain(|key, transient| match durable.get(key) {
-                None => false,
-                Some(coven::QueuedUploadPhase::Created) => true,
-                Some(coven::QueuedUploadPhase::Prepared) => {
-                    !matches!(transient, TransientUploadState::Preparing { .. })
-                }
-                Some(coven::QueuedUploadPhase::Pending) => true,
-            });
     }
 
     #[cfg(test)]

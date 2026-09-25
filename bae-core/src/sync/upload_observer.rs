@@ -69,7 +69,11 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
     async fn on_blob_upload_failed(&self, upload: &coven::RowBlobRef, _error: &str) {
         // coven's drain records the attempt count and the error on its own
         // queue entry; the durable outbox reports them.
-        self.uploads.upload_failed(upload);
+        self.uploads.upload_ended(upload);
+    }
+
+    fn on_blob_upload_abandoned(&self, upload: &coven::RowBlobRef) {
+        self.uploads.upload_ended(upload);
     }
 
     fn should_skip_uploads(&self) -> bool {
@@ -180,6 +184,22 @@ mod tests {
         observer.on_blob_uploaded(&blob).await;
         assert_eq!(uploads.transient_state_for_test(&blob), None);
         assert_eq!(uploads.rates_for_test().aggregate_bps, 0);
+    }
+
+    /// An attempt whose drain was dropped mid-transfer reports its end, and
+    /// the outbox stops showing it in flight; a later drain starts it afresh.
+    #[tokio::test]
+    async fn an_abandoned_attempt_leaves_nothing_in_flight() {
+        let (observer, uploads) = observer();
+        let blob = test_blob();
+
+        observer.on_blob_upload_started(&blob).await;
+        observer.on_blob_upload_progress(&blob, 600, 1016).await;
+        observer.on_blob_upload_abandoned(&blob);
+
+        assert_eq!(uploads.transient_state_for_test(&blob), None);
+        assert_eq!(uploads.rates_for_test().aggregate_bps, 0);
+        observer.on_blob_upload_started(&blob).await;
     }
 
     #[tokio::test]
