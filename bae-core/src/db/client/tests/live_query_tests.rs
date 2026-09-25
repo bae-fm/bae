@@ -681,19 +681,35 @@ async fn album_detail_subscription_delivers_absence_after_deletion() {
     assert!(deleted.detail.is_none());
 }
 
+/// The statuses of every offered release come from one subscription: its
+/// checks move in place as the offers change, and a record write wakes the
+/// one read that answers them all.
 #[tokio::test]
-async fn release_library_status_subscription_delivers_identity_changes() {
+async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     let (db, _temp) = live_db().await;
-    let check = LibraryCheck {
+    let offered = LibraryCheck {
         release_id: "source-release-1".to_string(),
         source: Catalog::MusicBrainz,
         source_group_id: Some("source-group-1".to_string()),
     };
-    let mut live = db.subscribe_release_library_status(check);
+    let other = LibraryCheck {
+        release_id: "source-release-2".to_string(),
+        source: Catalog::MusicBrainz,
+        source_group_id: None,
+    };
+    let mut live = db.subscribe_library_statuses(BTreeSet::new());
+    let requests = live.requests();
+    assert!(
+        live.next().await.into_result().unwrap().is_empty(),
+        "no offers check nothing"
+    );
 
-    let initial = live.next().await.unwrap();
-    assert!(!initial.release_in_library);
-    assert!(!initial.album_in_library);
+    requests
+        .set([offered.clone(), other.clone()].into_iter().collect())
+        .unwrap();
+    let initial = live.next().await.into_result().unwrap();
+    assert_eq!(initial.len(), 2);
+    assert!(initial.iter().all(|status| !status.album_in_library));
 
     exec(
         &db,
@@ -706,14 +722,23 @@ async fn release_library_status_subscription_delivers_identity_changes() {
         &[IDENTITY_ID, RELEASE_ID],
     )
     .await;
-
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("identity write wakes release library status")
+        .expect("identity write wakes the library statuses")
+        .into_result()
         .unwrap();
-    assert!(updated.release_in_library);
-    assert!(updated.album_in_library);
-    assert_eq!(updated.album_id.as_deref(), Some(ALBUM_ID));
+    let status = |statuses: &[LibraryStatus], release_id: &str| {
+        statuses
+            .iter()
+            .find(|status| status.release_id == release_id)
+            .cloned()
+            .expect("a status per check")
+    };
+    let held = status(&updated, "source-release-1");
+    assert!(held.release_in_library);
+    assert!(held.album_in_library);
+    assert_eq!(held.album_id.as_deref(), Some(ALBUM_ID));
+    assert!(!status(&updated, "source-release-2").album_in_library);
 
     exec(&db,
         "UPDATE release_records SET kind = 'album', key = 'source-group-1', album_key = NULL, url = 'https://musicbrainz.org/release-group/source-group-1' WHERE id = ?1",
@@ -721,11 +746,23 @@ async fn release_library_status_subscription_delivers_identity_changes() {
     ).await;
     let album_only = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("identity kind change wakes library status")
+        .expect("identity kind change wakes the library statuses")
+        .into_result()
         .unwrap();
-    assert!(!album_only.release_in_library);
-    assert!(album_only.album_in_library);
-    assert_eq!(album_only.album_id.as_deref(), Some(ALBUM_ID));
+    let held = status(&album_only, "source-release-1");
+    assert!(!held.release_in_library);
+    assert!(held.album_in_library);
+
+    requests.set([other].into_iter().collect()).unwrap();
+    let narrowed = live.next().await.into_result().unwrap();
+    assert_eq!(
+        narrowed
+            .iter()
+            .map(|status| status.release_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["source-release-2"],
+        "a release no longer offered is no longer checked"
+    );
 }
 
 /// The import list's request carries the view and the windows, so every test

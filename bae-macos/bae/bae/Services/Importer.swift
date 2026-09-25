@@ -11,27 +11,23 @@ struct ImportCommitRequest: Sendable {
     let pin: Bool
 }
 
-private final class ReleaseLibraryStatusSink: ReleaseLibraryStatusCallback,
-    @unchecked Sendable
-{
-    private let apply: @MainActor @Sendable (BridgeLibraryStatus) -> Void
-    private let fail: @MainActor @Sendable (BridgeError) -> Void
+/// Whether the releases an import pane offers are already in the library,
+/// read through one live query: which releases it checks is changed in place,
+/// and each value answers every check at once.
+struct LibraryStatusQuery: Sendable {
+    /// Check these releases from now on; returns the revision the answer
+    /// will carry.
+    let setChecks: @Sendable ([BridgeLibraryCheck]) throws -> UInt64
+    let next: @Sendable () async throws -> BridgeLibraryStatusSnapshot
+    let cancel: @Sendable () async -> Void
 
-    init(
-        apply: @escaping @MainActor @Sendable (BridgeLibraryStatus) -> Void,
-        fail: @escaping @MainActor @Sendable (BridgeError) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(value: BridgeLibraryStatus) {
-        Task { @MainActor in apply(value) }
-    }
-
-    func onError(error: BridgeError) {
-        Task { @MainActor in fail(error) }
-    }
+    /// A query that checks nothing, for previews and tests that never read
+    /// library membership.
+    static let inert = LibraryStatusQuery(
+        setChecks: { _ in 0 },
+        next: { throw CancellationError() },
+        cancel: {}
+    )
 }
 
 private final class CandidateLiveStateSink: CandidateLiveStateCallback,
@@ -76,10 +72,7 @@ private struct ImportOperations: Sendable {
     let cancelAutoIdentify: @Sendable (String) -> Void
     let startCandidateSearch: @Sendable (String, BridgeSearchQuery) -> Void
     let retryCandidateSearch: @Sendable (String) -> Void
-    let subscribeReleaseLibraryStatus:
-        @Sendable (
-            BridgeCatalog, String, String?, ReleaseLibraryStatusCallback
-        ) -> any LiveSubscriptionProtocol
+    let subscribeLibraryStatuses: @Sendable () -> LibraryStatusQuery
     let setCandidateLookupChoices:
         @Sendable (String, BridgeLookupChoices) async throws -> Void
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
@@ -205,12 +198,12 @@ extension ImportOperations {
             retryCandidateSearch: {
                 handle.retryCandidateSearch(candidateKey: $0)
             },
-            subscribeReleaseLibraryStatus: {
-                handle.subscribeReleaseLibraryStatus(
-                    source: $0,
-                    releaseId: $1,
-                    sourceGroupId: $2,
-                    callback: $3
+            subscribeLibraryStatuses: {
+                let subscription = handle.subscribeLibraryStatuses()
+                return LibraryStatusQuery(
+                    setChecks: { try subscription.setChecks(checks: $0) },
+                    next: { try await subscription.next() },
+                    cancel: { try? await subscription.cancel() }
                 )
             },
             setCandidateLookupChoices: {
@@ -403,13 +396,8 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String, BridgeSearchQuery) -> Void = { _, _ in
             },
         retryCandidateSearch: @escaping @Sendable (String) -> Void = { _ in },
-        subscribeReleaseLibraryStatus:
-            @escaping @Sendable (
-                BridgeCatalog, String, String?,
-                ReleaseLibraryStatusCallback
-            ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
-                InertSubscription()
-            },
+        subscribeLibraryStatuses:
+            @escaping @Sendable () -> LibraryStatusQuery = { .inert },
         setCandidateLookupChoices:
             @escaping @Sendable (String, BridgeLookupChoices) async throws ->
             Void = { _, _ in },
@@ -500,7 +488,7 @@ final class Importer: Sendable, Observable {
             cancelAutoIdentify: cancelAutoIdentify,
             startCandidateSearch: startCandidateSearch,
             retryCandidateSearch: retryCandidateSearch,
-            subscribeReleaseLibraryStatus: subscribeReleaseLibraryStatus,
+            subscribeLibraryStatuses: subscribeLibraryStatuses,
             setCandidateLookupChoices: setCandidateLookupChoices,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
             setCandidatePresentation: setCandidatePresentation,
@@ -653,19 +641,9 @@ extension Importer {
         operations.retryCandidateSearch(candidateKey)
     }
 
-    func subscribeReleaseLibraryStatus(
-        source: BridgeCatalog,
-        releaseId: String,
-        sourceGroupId: String?,
-        onValue: @escaping @MainActor @Sendable (BridgeLibraryStatus) -> Void,
-        onError: @escaping @MainActor @Sendable (BridgeError) -> Void
-    ) -> any LiveSubscriptionProtocol {
-        operations.subscribeReleaseLibraryStatus(
-            source,
-            releaseId,
-            sourceGroupId,
-            ReleaseLibraryStatusSink(apply: onValue, fail: onError)
-        )
+    /// Open one live read of library membership for an import pane's offers.
+    func subscribeLibraryStatuses() -> LibraryStatusQuery {
+        operations.subscribeLibraryStatuses()
     }
 
     /// Record what a candidate's identification asks about — the whole value,

@@ -89,7 +89,6 @@ internal static partial class NativeBae
         Action<Exception> onError)
     {
         var subscription = handle.SubscribeQueueUpcoming();
-        var page = new UpcomingPage(subscription);
         try
         {
             subscription.SetWindows([new BridgeLibraryPageWindow(offset, limit)]);
@@ -97,43 +96,15 @@ internal static partial class NativeBae
         catch (BridgeException error)
         {
             onError(error);
-            return page;
         }
-        _ = Task.Run(async () =>
-        {
-            while (true)
-            {
-                BridgeQueueUpcomingSnapshot snapshot;
-                try
-                {
-                    snapshot = await subscription.Next();
-                }
-                catch (BridgeException.Cancelled)
-                {
-                    return;
-                }
-                catch (BridgeException error)
-                {
-                    onError(error);
-                    return;
-                }
-                onValue(new QueueUpcomingPage(
-                    snapshot.Revision,
-                    snapshot.Windows.SelectMany(window => window.Entries).ToArray()));
-            }
-        });
-        return page;
-    }
-
-    private sealed class UpcomingPage(QueueUpcomingSubscription subscription) : IDisposable
-    {
-        public void Dispose()
-        {
-            // Cancelling settles the pending read so the loop ends; freeing the
-            // object afterwards releases what core held for it.
-            _ = subscription.Cancel();
-            subscription.Dispose();
-        }
+        return ReadEachValue(
+            subscription,
+            subscription.Cancel,
+            subscription.Next,
+            snapshot => onValue(new QueueUpcomingPage(
+                snapshot.Revision,
+                snapshot.Windows.SelectMany(window => window.Entries).ToArray())),
+            onError);
     }
 
     internal static void AddReleaseToQueue(AppHandle handle, string releaseId) => handle.AddReleaseToQueue(releaseId);

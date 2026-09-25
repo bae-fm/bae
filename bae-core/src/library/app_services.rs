@@ -310,11 +310,15 @@ impl AppServices {
         })
     }
 
-    pub fn subscribe_release_library_status(
-        &self,
-        check: crate::db::LibraryCheck,
-    ) -> coven::LiveQuery<crate::db::LibraryStatus> {
-        self.inner.manager.subscribe_release_library_status(check)
+    /// The library membership of the releases an import pane offers, as one
+    /// live query whose checks move in place as the pane's offers change; it
+    /// starts with none.
+    pub fn subscribe_library_statuses(&self) -> crate::library::LibraryStatusSubscription {
+        crate::library::LibraryStatusSubscription::new(
+            self.inner
+                .manager
+                .subscribe_library_statuses(std::collections::BTreeSet::new()),
+        )
     }
 
     /// A storage page as it changes: its rows, the rows' pin markers coven

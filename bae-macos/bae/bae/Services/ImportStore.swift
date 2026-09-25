@@ -422,59 +422,55 @@ extension ImportStore {
     }
 
     /// Watch exactly the releases `desired` names for library membership,
-    /// dropping the subscriptions for releases no longer on offer. The caller
-    /// owns which releases those are — a search run's, as its providers land.
+    /// through the candidate's one library-status read, opened on first use.
+    /// The caller owns which releases those are — a search run's, as its
+    /// providers land.
     @MainActor
     func refreshLibraryStatusSubscriptions(
         importer: Importer,
         key: String,
-        desired: Set<ReleaseLibraryStatusSubscriptionKey>
+        desired: Set<BridgeLibraryCheck>
     ) {
-        guard candidate(forKey: key) != nil else { return }
-
-        mutateCandidate(forKey: key) { candidate in
-            candidate.libraryStatusSubscriptions =
-                candidate.libraryStatusSubscriptions.filter {
-                    desired.contains($0.key)
-                }
+        guard let candidate = candidate(forKey: key) else { return }
+        let observation: LibraryStatusObservation
+        if let existing = candidate.libraryStatusObservation {
+            observation = existing
         }
-
-        for statusKey in desired {
-            guard
-                candidate(forKey: key)?
-                    .libraryStatusSubscriptions[statusKey] == nil
-            else { continue }
-            let observation = ReleaseLibraryStatusObservation()
-            let identity = observation.identity
+        else {
+            observation = LibraryStatusObservation(
+                query: importer.subscribeLibraryStatuses()
+            )
             mutateCandidate(forKey: key) {
-                $0.libraryStatusSubscriptions[statusKey] = observation
+                $0.libraryStatusObservation = observation
             }
-            let subscription = importer.subscribeReleaseLibraryStatus(
-                source: statusKey.source,
-                releaseId: statusKey.releaseId,
-                sourceGroupId: statusKey.sourceGroupId,
-                onValue: { [weak self] status in
-                    guard
+            observation.start(
+                onValue: { [weak self, weak observation] statuses in
+                    guard let observation,
                         self?.candidate(forKey: key)?
-                            .libraryStatusSubscriptions[statusKey]?
-                            .identity == identity
+                            .libraryStatusObservation === observation
                     else { return }
                     self?
                         .mutateCandidate(forKey: key) {
-                            $0.libraryStatuses[status.releaseId] = status
+                            $0.libraryStatuses = statuses
                         }
                 },
-                onError: { [weak self] error in
-                    guard let line = error.displayLine else { return }
-                    guard
+                onError: { [weak self, weak observation] error in
+                    guard let observation,
                         self?.candidate(forKey: key)?
-                            .libraryStatusSubscriptions[statusKey]?
-                            .identity == identity
+                            .libraryStatusObservation === observation,
+                        let line = (error as? BridgeError)?.displayLine
                     else { return }
                     self?.recordPaneError(line, forKey: key)
                 }
             )
-            observation.install(subscription)
+        }
+        do {
+            try observation.setChecks(desired)
+        }
+        catch {
+            importStoreLogger.error(
+                "library status checks for \(key) were not requested: \(String(describing: error))"
+            )
         }
     }
 }

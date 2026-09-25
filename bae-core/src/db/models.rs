@@ -219,7 +219,7 @@ pub struct DbAlbumSummary {
 /// `source_group_id` is optional because a search result may not surface a group
 /// (rare for MusicBrainz, happens for Discogs releases with no master) — those
 /// candidates skip the album-level lookup.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LibraryCheck {
     pub release_id: String,
     pub source: Catalog,

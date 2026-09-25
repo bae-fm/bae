@@ -679,11 +679,14 @@ impl LibraryManager {
         Ok(self.database.check_releases_in_library(checks).await?)
     }
 
-    pub(crate) fn subscribe_release_library_status(
+    pub(crate) fn subscribe_library_statuses(
         &self,
-        check: crate::db::LibraryCheck,
-    ) -> coven::LiveQuery<crate::db::LibraryStatus> {
-        self.database.subscribe_release_library_status(check)
+        initial: std::collections::BTreeSet<crate::db::LibraryCheck>,
+    ) -> coven::ReconfigurableLiveQuery<
+        std::collections::BTreeSet<crate::db::LibraryCheck>,
+        Vec<crate::db::LibraryStatus>,
+    > {
+        self.database.subscribe_library_statuses(initial)
     }
 
     /// Every file of a release — audio files, and the metadata files (cover art,

@@ -2,6 +2,7 @@ pub mod app_services;
 mod browse;
 mod device_pairing;
 pub mod download_snapshot;
+mod library_status;
 pub(crate) mod live_uploads;
 mod local_lifecycle;
 pub mod manager;
@@ -27,6 +28,9 @@ pub use device_pairing::{
 };
 pub use download_snapshot::{
     DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState, DownloadTransferProgress,
+};
+pub use library_status::{
+    LibraryStatusSnapshot, LibraryStatusSubscription, LibraryStatusSubscriptionError,
 };
 pub use local_lifecycle::remove_local_library;
 pub use manager::*;

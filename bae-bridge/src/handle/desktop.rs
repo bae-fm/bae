@@ -122,28 +122,6 @@ impl AppHandle {
         let adapter = std::sync::Arc::new(crate::signals::ArtworkAnalyzerAdapter::new(analyzer));
         self.services.extraction_register_analyzer(adapter);
     }
-
-    pub fn subscribe_release_library_status(
-        &self,
-        source: crate::types::BridgeCatalog,
-        release_id: String,
-        source_group_id: Option<String>,
-        callback: Box<dyn crate::types::ReleaseLibraryStatusCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_live_query(
-            move |services| {
-                services.subscribe_release_library_status(bae_core::db::LibraryCheck {
-                    release_id,
-                    source: source.into_core(),
-                    source_group_id,
-                })
-            },
-            move |_, value| match value {
-                Ok(value) => callback.on_value(crate::types::BridgeLibraryStatus::from_core(value)),
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
-    }
 }
 
 forward! {

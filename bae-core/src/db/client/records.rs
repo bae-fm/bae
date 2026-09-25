@@ -246,17 +246,20 @@ impl Database {
             .await
     }
 
-    pub(crate) fn subscribe_release_library_status(
+    /// Follow the library membership of every release `initial` checks, in
+    /// one read per change. The releases on offer change by pointing the same
+    /// query at new checks through its request handle, not by opening another.
+    pub(crate) fn subscribe_library_statuses(
         &self,
-        check: LibraryCheck,
-    ) -> coven::LiveQuery<LibraryStatus> {
-        self.inner.handle.subscribe(move |sql| {
-            let mut statuses = check_releases_in_library_on(&sql, std::slice::from_ref(&check))
-                .map_err(CovenError::from)?;
-            Ok(statuses
-                .pop()
-                .expect("one library check produces one library status"))
-        })
+        initial: BTreeSet<LibraryCheck>,
+    ) -> coven::ReconfigurableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>> {
+        self.inner
+            .handle
+            .subscribe_reconfigurable(initial, |checks, sql| {
+                let checks: Vec<LibraryCheck> = checks.iter().cloned().collect();
+                check_releases_in_library_on(&sql, &checks).map_err(CovenError::from)
+            })
+            .process(|_, statuses| Ok(statuses))
     }
 }
 

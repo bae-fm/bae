@@ -551,34 +551,23 @@ struct ImportSearchFlowCoverSelectionTests {
 @Suite("ImportSearchFlow live library status")
 struct ImportSearchFlowLibraryStatusTests {
     @Test(
-        "a search result keeps its library status live until the candidate closes"
+        "a pane's offered releases stay live through one read until the candidate closes"
     )
     func resultStatusUpdatesAndCancels() async throws {
         let store = ImportStore()
         let candidate = PreviewData.folderCandidates[0]
         store.selectedCandidates[candidate.key] = candidate
-        let harness = ReleaseStatusHarness()
-        let importer = Importer(
-            subscribeReleaseLibraryStatus: harness.subscribe
-        )
+        let feed = LibraryStatusFeed()
+        let importer = Importer(subscribeLibraryStatuses: { feed.query() })
 
         store.refreshLibraryStatusSubscriptions(
             importer: importer,
             key: candidate.key,
             desired: ImportSearchFlow.releaseStatusKeys(state: state())
         )
-        await waitUntil { harness.callback(releaseId: "rel-live") != nil }
+        #expect(feed.requested.last?.map(\.releaseId) == ["rel-live"])
 
-        try #require(harness.callback(releaseId: "rel-live"))
-            .onValue(
-                value: BridgeLibraryStatus(
-                    releaseId: "rel-live",
-                    releaseInLibrary: true,
-                    albumInLibrary: true,
-                    albumTitle: "Album Title",
-                    albumId: "album-live"
-                )
-            )
+        feed.deliver(revision: 1, status("album-live"))
         await waitUntil {
             store.candidate(forKey: candidate.key)?
                 .libraryStatuses["rel-live"]?
@@ -586,54 +575,54 @@ struct ImportSearchFlowLibraryStatusTests {
         }
 
         store.selectedCandidates.removeValue(forKey: candidate.key)
-        #expect(harness.subscription(releaseId: "rel-live")?.cancelled == true)
+        await waitUntil { feed.cancelled }
     }
 
-    @Test("an old same-key status subscription cannot update its replacement")
-    func sameKeyReplacementRejectsOldCallbacks() async throws {
+    @Test(
+        "new offers move the same read, and a value for replaced ones is not shown"
+    )
+    func offersMoveOneRead() async throws {
         let store = ImportStore()
         let candidate = PreviewData.folderCandidates[0]
         store.selectedCandidates[candidate.key] = candidate
-        let harness = ReleaseStatusHarness()
-        let importer = Importer(
-            subscribeReleaseLibraryStatus: harness.subscribe
-        )
+        let feed = LibraryStatusFeed()
+        let importer = Importer(subscribeLibraryStatuses: { feed.query() })
         let desired = ImportSearchFlow.releaseStatusKeys(state: state())
 
-        store.refreshLibraryStatusSubscriptions(
-            importer: importer,
-            key: candidate.key,
-            desired: desired
-        )
-        await waitUntil { harness.callbackCount(releaseId: "rel-live") == 1 }
+        // The search is offered, cleared, and then re-run.
+        for checks in [desired, [], desired] {
+            store.refreshLibraryStatusSubscriptions(
+                importer: importer,
+                key: candidate.key,
+                desired: checks
+            )
+        }
+        #expect(feed.opened == 1)
+        #expect(feed.requested.count == 3)
 
-        // The search is cleared and then re-run: the second subscription
-        // replaces the first, and only it may write.
-        store.refreshLibraryStatusSubscriptions(
-            importer: importer,
-            key: candidate.key,
-            desired: []
-        )
-        store.refreshLibraryStatusSubscriptions(
-            importer: importer,
-            key: candidate.key,
-            desired: desired
-        )
-        await waitUntil { harness.callbackCount(releaseId: "rel-live") == 2 }
-
-        try deliverStatus(harness, index: 0, albumId: "album-old")
-        await Task.yield()
+        feed.deliver(revision: 1, status("album-old"))
+        for _ in 0..<50 { await Task.yield() }
         #expect(
             store.candidate(forKey: candidate.key)?
                 .libraryStatuses["rel-live"] == nil
         )
 
-        try deliverStatus(harness, index: 1, albumId: "album-new")
+        feed.deliver(revision: 3, status("album-new"))
         await waitUntil {
             store.candidate(forKey: candidate.key)?
                 .libraryStatuses["rel-live"]?
                 .albumId == "album-new"
         }
+    }
+
+    private func status(_ albumId: String) -> BridgeLibraryStatus {
+        BridgeLibraryStatus(
+            releaseId: "rel-live",
+            releaseInLibrary: true,
+            albumInLibrary: true,
+            albumTitle: "Album Title",
+            albumId: albumId
+        )
     }
 
     /// A candidate whose typed search turned up one release, as the pane
@@ -701,23 +690,6 @@ struct ImportSearchFlowLibraryStatusTests {
         )
     }
 
-    private func deliverStatus(
-        _ harness: ReleaseStatusHarness,
-        index: Int,
-        albumId: String
-    ) throws {
-        try #require(harness.callback(releaseId: "rel-live", index: index))
-            .onValue(
-                value: BridgeLibraryStatus(
-                    releaseId: "rel-live",
-                    releaseInLibrary: true,
-                    albumInLibrary: true,
-                    albumTitle: "Album Title",
-                    albumId: albumId
-                )
-            )
-    }
-
     private func waitUntil(_ predicate: () -> Bool) async {
         for _ in 0..<100 where !predicate() {
             await Task.yield()
@@ -726,52 +698,64 @@ struct ImportSearchFlowLibraryStatusTests {
     }
 }
 
-private final class ReleaseStatusHarness: @unchecked Sendable {
+/// A library-status read the test drives: it records every check request,
+/// numbers each one as core would, and hands `next` whatever the test
+/// delivers.
+private final class LibraryStatusFeed: @unchecked Sendable {
     private let lock = NSLock()
-    private var callbacks: [String: [ReleaseLibraryStatusCallback]] = [:]
-    private var subscriptions: [String: [TestReleaseStatusSubscription]] = [:]
+    private var openedCount = 0
+    private var requests: [[BridgeLibraryCheck]] = []
+    private var pending: [BridgeLibraryStatusSnapshot] = []
+    private var waiter:
+        CheckedContinuation<BridgeLibraryStatusSnapshot, any Error>?
+    private var wasCancelled = false
 
-    func subscribe(
-        _ source: BridgeCatalog,
-        _ releaseId: String,
-        _ sourceGroupId: String?,
-        _ callback: ReleaseLibraryStatusCallback
-    ) -> any LiveSubscriptionProtocol {
-        let subscription = TestReleaseStatusSubscription()
-        lock.withLock {
-            callbacks[releaseId, default: []].append(callback)
-            subscriptions[releaseId, default: []].append(subscription)
-        }
-        return subscription
+    var opened: Int { lock.withLock { openedCount } }
+    var requested: [[BridgeLibraryCheck]] { lock.withLock { requests } }
+    var cancelled: Bool { lock.withLock { wasCancelled } }
+
+    func query() -> LibraryStatusQuery {
+        lock.withLock { openedCount += 1 }
+        return LibraryStatusQuery(
+            setChecks: { [self] checks in
+                lock.withLock {
+                    requests.append(checks)
+                    return UInt64(requests.count)
+                }
+            },
+            next: { [self] in
+                try await withCheckedThrowingContinuation { continuation in
+                    let ready: BridgeLibraryStatusSnapshot? = lock.withLock {
+                        if pending.isEmpty {
+                            waiter = continuation
+                            return nil
+                        }
+                        return pending.removeFirst()
+                    }
+                    if let ready { continuation.resume(returning: ready) }
+                }
+            },
+            cancel: { [self] in
+                lock.withLock { wasCancelled = true }
+            }
+        )
     }
 
-    func callback(releaseId: String) -> ReleaseLibraryStatusCallback? {
-        callback(releaseId: releaseId, index: 0)
-    }
-
-    func callback(
-        releaseId: String,
-        index: Int
-    ) -> ReleaseLibraryStatusCallback? {
-        lock.withLock { callbacks[releaseId]?[index] }
-    }
-
-    func callbackCount(releaseId: String) -> Int {
-        lock.withLock { callbacks[releaseId]?.count ?? 0 }
-    }
-
-    func subscription(releaseId: String) -> TestReleaseStatusSubscription? {
-        lock.withLock { subscriptions[releaseId]?.first }
-    }
-}
-
-private final class TestReleaseStatusSubscription: LiveSubscriptionProtocol,
-    @unchecked Sendable
-{
-    private let lock = NSLock()
-    private(set) var cancelled = false
-
-    func cancel() {
-        lock.withLock { cancelled = true }
+    func deliver(revision: UInt64, _ status: BridgeLibraryStatus) {
+        let snapshot = BridgeLibraryStatusSnapshot(
+            statuses: [status.releaseId: status],
+            requestRevision: revision
+        )
+        let waiter:
+            CheckedContinuation<BridgeLibraryStatusSnapshot, any Error>? =
+                lock.withLock {
+                    if let waiter = self.waiter {
+                        self.waiter = nil
+                        return waiter
+                    }
+                    pending.append(snapshot)
+                    return nil
+                }
+        waiter?.resume(returning: snapshot)
     }
 }

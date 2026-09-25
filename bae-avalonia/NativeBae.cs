@@ -895,25 +895,37 @@ internal static partial class NativeBae
         AppHandle handle, string candidateKey, string trackId) =>
         CaptureError(() => Await(() => handle.DropCandidateTrack(candidateKey, trackId)));
 
-    internal static LiveSubscription SubscribeReleaseLibraryStatus(
+    // One release's library membership, read through a library-status
+    // subscription asked to check just that release.
+    internal static IDisposable SubscribeReleaseLibraryStatus(
         AppHandle handle,
         BridgeCatalog source,
         string releaseId,
         string? sourceGroupId,
         Action<BridgeLibraryStatus> onValue,
-        Action<Exception> onError) =>
-        handle.SubscribeReleaseLibraryStatus(
-            source,
-            releaseId,
-            sourceGroupId,
-            new ReleaseLibraryStatusSink(onValue, onError));
-
-    private sealed class ReleaseLibraryStatusSink(
-        Action<BridgeLibraryStatus> onValue,
-        Action<Exception> onError) : ReleaseLibraryStatusCallback
+        Action<Exception> onError)
     {
-        public void OnValue(BridgeLibraryStatus value) => onValue(value);
-        public void OnError(BridgeException error) => onError(error);
+        var subscription = handle.SubscribeLibraryStatuses();
+        try
+        {
+            subscription.SetChecks([new BridgeLibraryCheck(source, releaseId, sourceGroupId)]);
+        }
+        catch (BridgeException error)
+        {
+            onError(error);
+        }
+        return ReadEachValue(
+            subscription,
+            subscription.Cancel,
+            subscription.Next,
+            snapshot =>
+            {
+                if (snapshot.Statuses.TryGetValue(releaseId, out var status))
+                {
+                    onValue(status);
+                }
+            },
+            onError);
     }
 
     /// <summary>Commit a candidate. Nothing about the release rides in: the

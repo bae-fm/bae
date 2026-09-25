@@ -251,7 +251,7 @@ extension ImportSearchFlow {
     @MainActor
     static func releaseStatusKeys(
         state: ImportSearchState
-    ) -> Set<ReleaseLibraryStatusSubscriptionKey> {
+    ) -> Set<BridgeLibraryCheck> {
         let searched = (state.search?.groups ?? [])
             .map(ReleaseGroup.init(bridge:))
         return Set(
@@ -259,7 +259,7 @@ extension ImportSearchFlow {
                 .flatMap(\.pressings)
                 .flatMap(\.releases)
                 .map { release in
-                    ReleaseLibraryStatusSubscriptionKey(
+                    BridgeLibraryCheck(
                         source: release.source,
                         releaseId: release.releaseId,
                         sourceGroupId: release.sourceGroupId

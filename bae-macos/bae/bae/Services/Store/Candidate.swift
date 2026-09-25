@@ -21,28 +21,68 @@ enum SearchTab: Hashable {
     case barcode
 }
 
-struct ReleaseLibraryStatusSubscriptionKey: Hashable {
-    let source: BridgeCatalog
-    let releaseId: String
-    let sourceGroupId: String?
-}
+/// One candidate's live read of library membership for the releases its pane
+/// offers: the query, the task applying its values, and the revision of the
+/// newest checks, so a value answering checks since replaced is not shown.
+final class LibraryStatusObservation: Equatable, @unchecked Sendable {
+    private let query: LibraryStatusQuery
+    private var deliveries: Task<Void, Never>?
+    private var requested: UInt64 = 0
 
-final class ReleaseLibraryStatusObservation: Equatable, @unchecked Sendable {
-    let identity = UUID()
-    private var subscription: (any LiveSubscriptionProtocol)?
+    init(query: LibraryStatusQuery) {
+        self.query = query
+    }
 
-    func install(_ subscription: any LiveSubscriptionProtocol) {
-        precondition(self.subscription == nil)
-        self.subscription = subscription
+    /// Apply each value answering the newest checks, until the query ends.
+    @MainActor
+    func start(
+        onValue: @escaping @MainActor ([String: BridgeLibraryStatus]) -> Void,
+        onError: @escaping @MainActor (any Error) -> Void
+    ) {
+        let query = self.query
+        deliveries = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                do {
+                    let snapshot = try await query.next()
+                    guard let self else { return }
+                    if snapshot.requestRevision >= self.requested {
+                        onValue(snapshot.statuses)
+                    }
+                }
+                catch BridgeError.Cancelled {
+                    return
+                }
+                catch is CancellationError {
+                    return
+                }
+                catch {
+                    if !Task.isCancelled {
+                        onError(error)
+                    }
+                    return
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func setChecks(_ checks: Set<BridgeLibraryCheck>) throws {
+        requested = try query.setChecks(
+            checks.sorted {
+                ($0.releaseId, "\($0.source)") < ($1.releaseId, "\($1.source)")
+            }
+        )
     }
 
     deinit {
-        subscription?.cancel()
+        deliveries?.cancel()
+        let query = self.query
+        Task { await query.cancel() }
     }
 
     static func == (
-        lhs: ReleaseLibraryStatusObservation,
-        rhs: ReleaseLibraryStatusObservation
+        lhs: LibraryStatusObservation,
+        rhs: LibraryStatusObservation
     ) -> Bool {
         lhs === rhs
     }
@@ -329,9 +369,7 @@ struct Candidate: Equatable, Identifiable {
     /// offers with it, read with its row. `nil` for a re-identify session.
     var live: BridgeCandidateLiveState?
     var libraryStatuses: [String: BridgeLibraryStatus] = [:]
-    var libraryStatusSubscriptions:
-        [ReleaseLibraryStatusSubscriptionKey: ReleaseLibraryStatusObservation] =
-            [:]
+    var libraryStatusObservation: LibraryStatusObservation?
     /// Where the pane was when the person last left this candidate. A folder
     /// candidate's comes with its detail; a re-identify session's lives here.
     var session = CandidateSessionState()
@@ -406,7 +444,7 @@ struct Candidate: Equatable, Identifiable {
     func withSessionState(from existing: Candidate) -> Candidate {
         var copy = self
         copy.libraryStatuses = existing.libraryStatuses
-        copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
+        copy.libraryStatusObservation = existing.libraryStatusObservation
         return copy
     }
 
