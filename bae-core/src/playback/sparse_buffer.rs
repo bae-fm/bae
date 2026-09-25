@@ -17,6 +17,15 @@ use tokio::sync::Notify;
 use tracing::debug;
 
 pub(crate) const FILL_WINDOW_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
+/// The minimum the fill keeps buffered ahead of a reader whose track ceiling
+/// isn't set yet -- the brief probe phase before the decoder reads the header
+/// and seeks to the track's start. One window: the demuxer reads only the front
+/// metadata (header + seektable, ~100 KB for a FLAC) before it seeks, so keeping
+/// more than a window ahead of byte 0 just speculatively fetches front bytes the
+/// decoder abandons the instant it seeks away -- wasted reads and wasted buffer on
+/// every track that doesn't start at byte 0. Once the decoder
+/// seeks and sets its real ceiling (the track's end byte), read-ahead is bounded
+/// by that instead and reaches the rest of the track.
 pub(crate) const MIN_READAHEAD: u64 = FILL_WINDOW_SIZE;
 pub(crate) const KEEP_BEHIND: u64 = FILL_WINDOW_SIZE;
 
