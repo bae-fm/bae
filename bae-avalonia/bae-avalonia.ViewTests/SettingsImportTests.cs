@@ -195,6 +195,7 @@ public sealed class SettingsImportTests
             new AppearanceStore(AppearancePreferences.Default, _ => { }),
             new UpdateService(),
             () => Task.CompletedTask,
+            _ => null,
             _ => Task.CompletedTask,
             () => Task.CompletedTask);
         var content = new StackPanel();

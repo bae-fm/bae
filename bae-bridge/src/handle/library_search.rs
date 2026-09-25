@@ -24,7 +24,7 @@ impl AppHandle {
     pub fn subscribe_library_search(&self) -> std::sync::Arc<LibrarySearchSubscription> {
         std::sync::Arc::new(LibrarySearchSubscription {
             inner: self.services.subscribe_library_search(),
-            runtime: self.runtime.handle().clone(),
+            runtime: self.runtime.clone(),
         })
     }
 }

@@ -33,8 +33,8 @@ import uniffi.bae_bridge.UiEventCallback
  * shutdown — which saves the queue, current track, and position to the old
  * library's DB — before closing the handle that frees the DB, so switching back
  * later restores the queue. The forget path takes the opposite order-free route:
- * it closes without shutting down, because forgetLibrary already deleted the
- * directory a save would write into.
+ * it closes without shutting down, because the library was already closed for
+ * removal and there is nothing left to save into.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

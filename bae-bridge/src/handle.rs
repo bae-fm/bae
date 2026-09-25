@@ -33,8 +33,9 @@ pub struct AppHandle {
     desktop: bae_desktop::DesktopServices,
     #[cfg(feature = "cast")]
     cast: std::sync::Arc<bae_cast::CastController>,
+    runtime: tokio::runtime::Handle,
     /// Last so every retained service is dropped while its tasks can still run.
-    runtime: AppRuntime,
+    owned_runtime: OwnedRuntime,
 }
 
 /// The exported methods that are one call into the services behind the handle.
@@ -131,25 +132,26 @@ mod ui_events;
 use queue_projection::pump_ui_events;
 use ui_events::convert_ui_event;
 
-struct AppRuntime(Option<tokio::runtime::Runtime>);
+/// Owns the runtime every task of an open library runs on.
+/// [`AppHandle::close_library`] runs its last work on it and then drops it,
+/// waiting for every task on it to end; otherwise it shuts down in the
+/// background when the handle drops.
+struct OwnedRuntime(std::sync::Mutex<Option<tokio::runtime::Runtime>>);
 
-impl AppRuntime {
-    fn new(runtime: tokio::runtime::Runtime) -> Self {
-        Self(Some(runtime))
+impl OwnedRuntime {
+    /// Run `last` to completion, then shut the runtime down and wait for every
+    /// task on it to end. `None` when the runtime was already closed.
+    fn close<F: std::future::Future>(&self, last: F) -> Option<F::Output> {
+        let runtime = self.0.lock().expect("app runtime lock").take()?;
+        let output = runtime.block_on(last);
+        drop(runtime);
+        Some(output)
     }
 }
 
-impl std::ops::Deref for AppRuntime {
-    type Target = tokio::runtime::Runtime;
-
-    fn deref(&self) -> &Self::Target {
-        self.0.as_ref().expect("app runtime exists until drop")
-    }
-}
-
-impl Drop for AppRuntime {
+impl Drop for OwnedRuntime {
     fn drop(&mut self) {
-        if let Some(runtime) = self.0.take() {
+        if let Some(runtime) = self.0.lock().expect("app runtime lock").take() {
             runtime.shutdown_background();
         }
     }
@@ -193,7 +195,8 @@ impl AppHandle {
             desktop,
             #[cfg(feature = "cast")]
             cast,
-            runtime: AppRuntime::new(runtime),
+            runtime: runtime.handle().clone(),
+            owned_runtime: OwnedRuntime(std::sync::Mutex::new(Some(runtime))),
         })
     }
 
@@ -206,8 +209,36 @@ impl AppHandle {
         Build: FnOnce(std::sync::Arc<Self>) -> Fut + Send + 'static,
         Fut: std::future::Future<Output = Result<T, BridgeError>> + Send + 'static,
     {
-        let runtime = self.runtime.handle().clone();
+        let runtime = self.runtime.clone();
         crate::operation_runtime::run(runtime, move || build(self)).await
+    }
+}
+
+#[uniffi::export]
+impl AppHandle {
+    /// Close the library so nothing of this process holds its store: stop the
+    /// desktop services and the sync loop, end every background task, then
+    /// shut the app runtime down, waiting for every task on it to end. The
+    /// caller drops this handle next — its remaining services go with it — and
+    /// may then remove the library through `BridgeHost::remove_local_library`,
+    /// which refuses while anything still holds the store.
+    ///
+    /// Blocks until done, so it is called off the UI thread and never from the
+    /// app runtime. Every later call on this handle fails.
+    pub fn close_library(&self) -> Result<(), BridgeError> {
+        self.owned_runtime
+            .close(async {
+                #[cfg(feature = "desktop")]
+                self.desktop.shutdown().await;
+                self.services.close().await;
+            })
+            .ok_or_else(|| {
+                BridgeError::from(bae_core::library::LibraryError::Internal(
+                    "the library is already closed".to_string(),
+                ))
+            })?;
+        info!("Closed library");
+        Ok(())
     }
 }
 

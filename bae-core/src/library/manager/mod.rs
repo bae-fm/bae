@@ -800,6 +800,10 @@ pub struct LibraryManager {
     /// services read it back off this manager for their own events.
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
+    /// The manager's own background tasks (queue workers, the sync status and
+    /// outbox subscriptions, startup sync), which each hold a clone of it and
+    /// so of the store. [`LibraryManager::close`] ends them all.
+    tasks: service::BackgroundTasks,
     event_tx: broadcast::Sender<LibraryEvent>,
     /// The cloud-sync responsibility: the outbox projection over the live
     /// upload state, provider connection, membership, and the coven

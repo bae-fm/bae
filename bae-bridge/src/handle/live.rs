@@ -16,7 +16,7 @@ impl AppHandle {
         Fut: std::future::Future<Output = ()> + Send + 'static,
     {
         let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
+        let runtime = self.runtime.clone();
         let body_runtime = runtime.clone();
         let task = crate::operation_runtime::spawn(runtime, move || body(services, body_runtime));
         std::sync::Arc::new(crate::LiveSubscription::new(task))

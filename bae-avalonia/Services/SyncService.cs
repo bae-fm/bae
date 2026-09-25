@@ -109,11 +109,10 @@ internal sealed class SyncService
     public Func<Task<(bool Current, string? Error)>> LockActiveLibrary { get; init; }
         = () => throw new InvalidOperationException("SyncService stub: LockActiveLibrary not wired");
 
-    /// <summary>Remove the active library from this device: delete its local data
-    /// directory, clear the active-library pointer, and drop its encryption key. Any
-    /// cloud copy is untouched.</summary>
-    public Func<Task<(bool Current, string? Error)>> ForgetLibrary { get; init; }
-        = () => throw new InvalidOperationException("SyncService stub: ForgetLibrary not wired");
+    /// <summary>Close the active library so nothing of this process holds its
+    /// store, the first step of removing it from this device.</summary>
+    public Func<Task<(bool Current, string? Error)>> CloseLibraryForRemoval { get; init; }
+        = () => throw new InvalidOperationException("SyncService stub: CloseLibraryForRemoval not wired");
 
     /// <summary>How many blob uploads the sync drain runs at once (1..8). A
     /// persisted device-local config write.</summary>
@@ -171,7 +170,7 @@ internal sealed class SyncService
         CancelArtworkLoading = () =>
             session.WithCurrentHandle(handle => handle.CancelEagerCacheFill()),
         LockActiveLibrary = () => session.RunForCurrentHandle(NativeBae.LockActiveLibrary),
-        ForgetLibrary = () => session.RunForCurrentHandle(NativeBae.ForgetLibrary),
+        CloseLibraryForRemoval = () => session.RunForCurrentHandle(NativeBae.CloseLibrary),
         SetMaxConcurrentUploads = n => session.WithCurrentHandle(handle => NativeBae.SetMaxConcurrentUploads(handle, n)),
         SyncStatus = () => session.WithCurrentHandle(NativeBae.SyncStatus),
         OutboxSnapshot = () => session.RunForCurrentHandle(NativeBae.OutboxSnapshot),

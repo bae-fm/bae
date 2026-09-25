@@ -4,11 +4,11 @@ import Testing
 @testable import bae
 
 /// Covers the `AppDelegate` transitions that don't require a live library.
-/// Opening or forgetting a library goes through the global `initApp` /
-/// `forgetLibrary` bridge on a real opened core, which a unit test can't stand
-/// up; the removal semantics — deleting the data directory, active pointer, and
-/// key, and the fail-loud behavior — are covered by bae-core's library-manager
-/// lifecycle tests.
+/// Opening or forgetting a library goes through the global `initApp` bridge
+/// and a real opened core's `close`, which a unit test can't stand up; the
+/// removal semantics — deleting the data directory, active pointer, and every
+/// keyring entry once the library is closed, and refusing while it is open —
+/// are covered by bae-core's and bae-bridge's lifecycle tests.
 @MainActor
 @Suite("AppDelegate")
 struct AppDelegateTests {

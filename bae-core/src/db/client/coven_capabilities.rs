@@ -27,6 +27,11 @@ impl Database {
         self.inner.handle.transfer_limits()
     }
 
+    /// Stop the sync loop, keeping the connection for a later start.
+    pub(crate) fn stop_sync(&self) {
+        self.inner.handle.stop_sync();
+    }
+
     pub(crate) fn sync_now(&self) {
         self.inner.handle.sync_now();
     }

@@ -46,7 +46,7 @@ macro_rules! browse_subscription {
                     .collect::<Vec<_>>();
                 std::sync::Arc::new($object {
                     inner: self.services.$subscribe(&sort),
-                    runtime: self.runtime.handle().clone(),
+                    runtime: self.runtime.clone(),
                 })
             }
         }

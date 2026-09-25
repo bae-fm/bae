@@ -215,16 +215,14 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
     );
 }
 
-async fn setup_forget_library_manager(library_id: &str, home: &std::path::Path) -> LibraryManager {
-    let library_dir = crate::config::AppDir::under_home(home).registered_library(library_id);
-    setup_forget_library_manager_at(library_id, library_dir, home).await
-}
-
-async fn setup_forget_library_manager_at(
+/// A library opened at its registered directory, connected to a test cloud
+/// home (so it holds a device identity, a master key, and cloud credentials),
+/// with a host secret stored beside them.
+async fn open_library_to_forget(
+    app_dir: &crate::config::AppDir,
     library_id: &str,
-    library_dir: std::path::PathBuf,
-    home: &std::path::Path,
 ) -> LibraryManager {
+    let library_dir = app_dir.registered_library(library_id);
     let mut config = Config::with_defaults(
         library_id.to_string(),
         "test-device".to_string(),
@@ -234,18 +232,17 @@ async fn setup_forget_library_manager_at(
     config.cloud_home.provider = Some(crate::config::CloudProvider::CloudKit);
     crate::config::install_test_keyring();
     let database = Database::open(
-        StoreDir::new(home.to_path_buf()),
+        StoreDir::new(library_dir),
         config.inner.clone(),
         Arc::new(coven::SystemClock),
         crate::sync::synced_tables(),
         None,
     )
     .unwrap();
-    let config_handle = Arc::new(ConfigHandle::new(config));
     let manager = LibraryManager::new(
         database,
-        crate::config::AppDir::under_home(home),
-        config_handle,
+        app_dir.clone(),
+        Arc::new(ConfigHandle::new(config)),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
@@ -267,164 +264,55 @@ async fn setup_forget_library_manager_at(
     manager
 }
 
-fn assert_forget_material_available(manager: &LibraryManager) {
-    assert_eq!(
-        manager.cloud_home_key_state().unwrap(),
-        coven::CloudHomeKeyState::Available
-    );
-    assert_eq!(
-        manager
-            .database
-            .host_secret(crate::keys::MCP_BEARER_TOKEN)
-            .unwrap()
-            .as_deref(),
-        Some("forget-test-secret")
-    );
-}
-
-fn assert_forget_material_removed(manager: &LibraryManager) {
-    assert_eq!(
-        manager.cloud_home_key_state().unwrap(),
-        coven::CloudHomeKeyState::Locked
-    );
-    assert_eq!(
-        manager
-            .database
-            .host_secret(crate::keys::MCP_BEARER_TOKEN)
-            .unwrap(),
-        None
-    );
-}
-
-fn setup_forget_library_home(library_id: &str) -> (TempDir, std::path::PathBuf) {
-    let home = TempDir::new().unwrap();
-    let library_dir =
-        crate::config::AppDir::under_home(home.path()).registered_library(library_id);
-    (home, library_dir)
-}
-
+/// Forgetting a library on this device, once it is closed, leaves no keyring
+/// entry for it — master key, cloud credentials, host secrets — no directory,
+/// and no active-library pointer at it.
 #[tokio::test]
-async fn forget_library_returns_error_when_registered_path_cannot_be_removed() {
-    let library_id = format!("forget-fails-{}", Uuid::new_v4());
-    let (home, library_path) = setup_forget_library_home(&library_id);
+async fn forgetting_a_closed_library_leaves_no_keyring_entry_or_directory() {
+    let home = TempDir::new().unwrap();
     let app_dir = crate::config::AppDir::under_home(home.path());
-    std::fs::create_dir_all(library_path.parent().unwrap()).unwrap();
-    std::fs::write(&library_path, b"not a directory").unwrap();
+    let library_id = format!("forget-{}", Uuid::new_v4());
+    let manager = open_library_to_forget(&app_dir, &library_id).await;
     std::fs::write(app_dir.active_library_pointer(), &library_id).unwrap();
-    let manager = setup_forget_library_manager(&library_id, home.path()).await;
-    let err = manager
-        .forget_library()
-        .await
-        .expect_err("directory removal failure must surface");
+    let keys = coven::StoreKeys::bind(library_id.clone());
+    assert!(keys.get_encryption_key().unwrap().is_some());
+    assert!(keys.get_host_secret(crate::keys::MCP_BEARER_TOKEN).unwrap().is_some());
 
-    assert!(
-        err.to_string().contains("Failed to remove library data"),
-        "error should name the failed library data deletion: {err}"
-    );
+    manager.close().await;
+    drop(manager);
+    crate::library::remove_local_library(&app_dir, &library_id).unwrap();
+
+    assert_eq!(keys.get_encryption_key().unwrap(), None);
+    assert!(keys.get_cloud_home_credentials().unwrap().is_none());
+    for name in crate::keys::HOST_SECRET_NAMES {
+        assert_eq!(keys.get_host_secret(name).unwrap(), None, "{name}");
+    }
+    assert!(!app_dir.registered_library(&library_id).exists());
+    assert!(!app_dir.active_library_pointer().exists());
+}
+
+/// A library still open anywhere is not removed: coven refuses, and every
+/// keyring entry, the directory, and the active-library pointer stay.
+#[tokio::test]
+async fn removing_an_open_library_is_refused_and_removes_nothing() {
+    let home = TempDir::new().unwrap();
+    let app_dir = crate::config::AppDir::under_home(home.path());
+    let library_id = format!("forget-open-{}", Uuid::new_v4());
+    let manager = open_library_to_forget(&app_dir, &library_id).await;
+    std::fs::write(app_dir.active_library_pointer(), &library_id).unwrap();
+
+    let error = crate::library::remove_local_library(&app_dir, &library_id)
+        .expect_err("an open library is not removed");
+
+    assert!(error.to_string().contains("Failed to remove library data"), "{error}");
+    let keys = coven::StoreKeys::bind(library_id.clone());
+    assert!(keys.get_encryption_key().unwrap().is_some());
+    assert!(app_dir.registered_library(&library_id).exists());
     assert_eq!(
         std::fs::read_to_string(app_dir.active_library_pointer()).unwrap(),
         library_id
     );
-    assert_forget_material_available(&manager);
-}
-
-#[tokio::test]
-async fn forget_library_removes_registered_path_active_pointer_and_key() {
-    let library_id = format!("forget-succeeds-{}", Uuid::new_v4());
-    let (home, library_path) = setup_forget_library_home(&library_id);
-    let app_dir = crate::config::AppDir::under_home(home.path());
-    std::fs::create_dir_all(&library_path).unwrap();
-    std::fs::write(library_path.join("config.yaml"), b"library data").unwrap();
-    std::fs::write(app_dir.active_library_pointer(), &library_id).unwrap();
-    let manager = setup_forget_library_manager(&library_id, home.path()).await;
-    manager.forget_library().await.unwrap();
-
-    assert!(!library_path.exists());
-    assert!(!app_dir.active_library_pointer().exists());
-    assert_forget_material_removed(&manager);
-}
-
-#[tokio::test]
-async fn forget_library_accepts_missing_directory_and_pointer_on_retry() {
-    let library_id = format!("forget-retry-{}", Uuid::new_v4());
-    let (home, library_path) = setup_forget_library_home(&library_id);
-    let app_dir = crate::config::AppDir::under_home(home.path());
-    std::fs::create_dir_all(app_dir.active_library_pointer().parent().unwrap()).unwrap();
-    let manager = setup_forget_library_manager(&library_id, home.path()).await;
-    manager.forget_library().await.unwrap();
-
-    assert!(!library_path.exists());
-    assert!(!app_dir.active_library_pointer().exists());
-    assert_forget_material_removed(&manager);
-}
-
-#[tokio::test]
-async fn forget_library_returns_error_when_active_pointer_cannot_be_read() {
-    let library_id = format!("forget-pointer-fails-{}", Uuid::new_v4());
-    let (home, library_path) = setup_forget_library_home(&library_id);
-    let app_dir = crate::config::AppDir::under_home(home.path());
-    std::fs::create_dir_all(&library_path).unwrap();
-    std::fs::create_dir(app_dir.active_library_pointer()).unwrap();
-    let manager = setup_forget_library_manager(&library_id, home.path()).await;
-    let err = manager
-        .forget_library()
-        .await
-        .expect_err("active pointer read failure must surface");
-
-    assert!(
-        err.to_string()
-            .contains("Failed to read active-library pointer"),
-        "error should name the failed active pointer read: {err}"
-    );
-    assert!(library_path.exists());
-    assert!(app_dir.active_library_pointer().is_dir());
-    assert_forget_material_available(&manager);
-}
-
-#[tokio::test]
-async fn forget_library_returns_error_when_active_pointer_names_another_library() {
-    let library_id = format!("forget-pointer-mismatch-{}", Uuid::new_v4());
-    let (home, library_path) = setup_forget_library_home(&library_id);
-    let app_dir = crate::config::AppDir::under_home(home.path());
-    std::fs::create_dir_all(&library_path).unwrap();
-    std::fs::write(app_dir.active_library_pointer(), "different-library").unwrap();
-    let manager = setup_forget_library_manager(&library_id, home.path()).await;
-    let err = manager
-        .forget_library()
-        .await
-        .expect_err("active pointer mismatch must surface");
-
-    assert!(
-        err.to_string().contains("points at different-library"),
-        "error should name the active pointer mismatch: {err}"
-    );
-    assert!(library_path.exists());
-    assert_eq!(
-        std::fs::read_to_string(app_dir.active_library_pointer()).unwrap(),
-        "different-library"
-    );
-    assert_forget_material_available(&manager);
-}
-
-#[tokio::test]
-async fn forget_library_rejects_unregistered_library_dir() {
-    let library_id = format!("forget-unregistered-{}", Uuid::new_v4());
-    let home = TempDir::new().unwrap();
-    let library_path = home.path().join("external-library");
-    std::fs::create_dir_all(&library_path).unwrap();
-    let manager =
-        setup_forget_library_manager_at(&library_id, library_path.clone(), home.path()).await;
-    let err = manager
-        .forget_library()
-        .await
-        .expect_err("unregistered library directory must fail loudly");
-
-    assert!(
-        err.to_string().contains("does not match library id"),
-        "error should name the unregistered library directory: {err}"
-    );
-    assert!(library_path.exists());
-    assert_forget_material_available(&manager);
+    drop(manager);
 }
 
 #[tokio::test]

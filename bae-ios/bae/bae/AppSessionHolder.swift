@@ -154,24 +154,43 @@ final class AppSessionHolder {
         }
     }
 
-    /// Forget the active library on this device: delete its key, clear the
-    /// active pointer, and remove its files (the cloud copy is untouched). Then
-    /// drop the handle and re-discover — opening the next library or onboarding.
-    /// Called from Settings.
+    /// Forget the active library on this device. Its handle is closed first,
+    /// so nothing of this process holds its store; the service is released
+    /// and the host removes the library — its files, the active pointer, and
+    /// every keyring entry kept for it (the cloud copy is untouched). Then
+    /// re-discover — opening the next library or onboarding. Called from
+    /// Settings.
     func forgetActiveLibrary() {
-        guard let service = appService else {
+        guard let libraryId = activeLibraryId else {
             return
         }
         Task {
+            // Held only for the close, so no reference to the service outlives
+            // it once `appService` lets go: the host refuses to remove a store
+            // anything still holds.
+            var closing = appService
             do {
-                try await service.forgetLibrary()
+                try await Task.detached { [closing] in try closing?.closeLibrary() }.value
             }
             catch {
                 guard let message = error.displayLine else { return }
                 screen = .failed(message: message)
                 return
             }
+            closing = nil
+            screen = .loading
             appService = nil
+            do {
+                try await Task.detached { [host] in
+                    try host.removeLocalLibrary(libraryId: libraryId)
+                }
+                .value
+            }
+            catch {
+                guard let message = error.displayLine else { return }
+                screen = .failed(message: message)
+                return
+            }
             start()
         }
     }

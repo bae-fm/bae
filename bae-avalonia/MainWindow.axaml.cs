@@ -29,6 +29,7 @@ internal sealed partial class MainWindow : Window
         UpdateService updates,
         AppearanceStore appearance,
         Func<Task> closeLibrary,
+        Func<string, string?> removeLibrary,
         Func<string, Task> switchLibrary,
         Func<Task> applyUpdateAndRestart)
     {
@@ -69,7 +70,13 @@ internal sealed partial class MainWindow : Window
         // process-wide update service, and applying a staged update exits the app,
         // so the coordinator owns that path too.
         var settingsWindow = new SettingsWindow(
-            _app, appearance, updates, closeLibrary, switchLibrary, applyUpdateAndRestart);
+            _app,
+            appearance,
+            updates,
+            closeLibrary,
+            removeLibrary,
+            switchLibrary,
+            applyUpdateAndRestart);
         _shell = new MainShellView(_app, playback, dialogs, importDialogs);
 
         // The menu bar over the shell, carrying the library commands and the

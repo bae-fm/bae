@@ -339,16 +339,6 @@ forward! { async this => {
         Ok(this.services.remove_member(&public_key_hex).await?)
     }
 
-    /// Forget the active local library on this device: delete its key, clear the
-    /// active pointer, and remove its data directory (the owner's cloud copy is
-    /// untouched). The caller must drop this handle right after — the database
-    /// lives in the removed directory — and re-open / onboard from scratch.
-    fn forget_library() -> () {
-        this.services.forget_library().await?;
-        info!("Forgot local library");
-        Ok(())
-    }
-
     /// Enqueue releases to pin for offline. They join the in-memory serial
     /// download queue; the worker drains them one at a time. The DB lookups
     /// (resolving each release's title/size for its pane row) happen here; the

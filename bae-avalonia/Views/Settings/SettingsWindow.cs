@@ -34,6 +34,8 @@ internal sealed partial class SettingsWindow
     // an app-exit path — it tears the session down and relaunches into the staged
     // update, so the coordinator owns it the way it owns quitting.
     private readonly Func<Task> _closeToWelcome;
+    // Removes a closed library through the host; returns the failure, if any.
+    private readonly Func<string, string?> _removeLibrary;
     private readonly Func<string, Task> _switchLibrary;
     private readonly Func<Task> _applyUpdateAndRestart;
 
@@ -54,6 +56,7 @@ internal sealed partial class SettingsWindow
         AppearanceStore appearance,
         UpdateService updates,
         Func<Task> closeToWelcome,
+        Func<string, string?> removeLibrary,
         Func<string, Task> switchLibrary,
         Func<Task> applyUpdateAndRestart)
     {
@@ -61,6 +64,7 @@ internal sealed partial class SettingsWindow
         _appearance = appearance;
         _updates = updates;
         _closeToWelcome = closeToWelcome;
+        _removeLibrary = removeLibrary;
         _switchLibrary = switchLibrary;
         _applyUpdateAndRestart = applyUpdateAndRestart;
     }
@@ -351,8 +355,8 @@ internal sealed partial class SettingsWindow
                 return;
             }
 
-            var (forgetCurrent, error) = await _app.Sync.ForgetLibrary();
-            if (!forgetCurrent)
+            var (closedCurrent, error) = await _app.Sync.CloseLibraryForRemoval();
+            if (!closedCurrent)
             {
                 return;
             }
@@ -361,9 +365,15 @@ internal sealed partial class SettingsWindow
                 ShowSettingsError(Loc.Chrome("settings.remove.failed", "error", error));
                 return;
             }
-            // The local directory is gone; tear the handle down and return to welcome.
+            // The library is closed; release its handle, return to welcome, and
+            // remove it — the host refuses while anything still holds its store.
+            var removedLibraryId = libraryId;
             _window?.Close();
             await _closeToWelcome();
+            if (_removeLibrary(removedLibraryId) is { } removeError)
+            {
+                BaeDiagnostics.Logger.Error($"Could not remove the closed library: {removeError}");
+            }
         };
 
         renderers.Add(fresh =>

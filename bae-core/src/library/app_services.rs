@@ -679,7 +679,7 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(manager, get_discogs_token => get_discogs_token() -> Result<Option<String>, crate::library::LibraryError>);
     delegate_async!(manager, disconnect_cloud_provider => disconnect_cloud_provider() -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, forget_library => forget_library() -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, close => close() -> ());
     delegate_async!(manager, unlock_cloud_home => unlock_cloud_home(serialized_master_key: &str) -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), crate::library::LibraryError>);

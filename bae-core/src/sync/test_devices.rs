@@ -137,8 +137,8 @@ impl TwoDevices {
     /// Stop both sync loops: whatever each device writes next, the other does
     /// not see until [`Self::resume`].
     pub(crate) fn pause(&self) {
-        self.a.database().stop_sync_for_test();
-        self.b.database().stop_sync_for_test();
+        self.a.database().stop_sync();
+        self.b.database().stop_sync();
     }
 
     /// Reconnect both devices to the home, starting their loops again. A

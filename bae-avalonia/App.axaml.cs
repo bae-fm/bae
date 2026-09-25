@@ -277,7 +277,15 @@ public sealed partial class App : Application
     private void FinishOpenLibrary()
     {
         var main = new MainWindow(
-            Session, Host, MediaControl, Updates, _appearance!, CloseLibrary, SwitchLibrary, ApplyUpdateAndRestart);
+            Session,
+            Host,
+            MediaControl,
+            Updates,
+            _appearance!,
+            CloseLibrary,
+            libraryId => NativeBae.RemoveLocalLibrary(Host, libraryId),
+            SwitchLibrary,
+            ApplyUpdateAndRestart);
         _main = main;
         main.Show();
         // Attach from here rather than from the window's own Opened/Closed: a swap

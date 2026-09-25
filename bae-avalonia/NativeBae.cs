@@ -358,8 +358,15 @@ internal static partial class NativeBae
     internal static string? LockActiveLibrary(AppHandle handle) =>
         CaptureError(() => Await(handle.LockActiveLibrary));
 
-    internal static string? ForgetLibrary(AppHandle handle) =>
-        CaptureError(() => Await(handle.ForgetLibrary));
+    /// <summary>Close the library so nothing of this process holds its store;
+    /// the handle is released next, and the library removed through the host.</summary>
+    internal static string? CloseLibrary(AppHandle handle) =>
+        CaptureError(() => handle.CloseLibrary());
+
+    /// <summary>Remove a closed library from this device: its data directory, the
+    /// active-library pointer, and every keyring entry kept for it.</summary>
+    internal static string? RemoveLocalLibrary(BridgeHost host, string libraryId) =>
+        CaptureError(() => host.RemoveLocalLibrary(libraryId));
 
     internal static string? UnlockCloudHome(AppHandle handle, string serializedMasterKey) =>
         CaptureError(() => Await(() => handle.UnlockCloudHome(serializedMasterKey)));

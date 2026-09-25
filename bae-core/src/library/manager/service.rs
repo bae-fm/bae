@@ -6,6 +6,22 @@ async fn report_background_task_exit(task_name: &'static str, task: tokio::task:
     }
 }
 
+/// The manager's background tasks, and the signal that ends them.
+#[derive(Clone, Default)]
+pub(super) struct BackgroundTasks {
+    tracker: tokio_util::task::TaskTracker,
+    closing: tokio_util::sync::CancellationToken,
+}
+
+impl BackgroundTasks {
+    /// End every task and wait for each to be gone, with whatever it held.
+    async fn close(&self) {
+        self.closing.cancel();
+        self.tracker.close();
+        self.tracker.wait().await;
+    }
+}
+
 /// The live upload observer both constructors build before assembling the
 /// manager: the upload list coven's blob transitions are reported into and the
 /// observer that reports them.
@@ -155,6 +171,7 @@ impl LibraryManager {
             ids,
             diagnostics,
             runtime_handle,
+            tasks: BackgroundTasks::default(),
             event_tx,
             sync,
             sync_status,
@@ -192,13 +209,32 @@ impl LibraryManager {
         self.spawn_supervised_task(task_name, worker(manager));
     }
 
+    /// Run `task` on the manager's runtime until it ends or the manager closes.
+    /// A task that panics is reported, since nothing else awaits it.
     pub(super) fn spawn_supervised_task<F>(&self, task_name: &'static str, task: F)
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        let task = self.runtime_handle.spawn(task);
-        self.runtime_handle
-            .spawn(report_background_task_exit(task_name, task));
+        let closing = self.tasks.closing.clone();
+        let task = self.runtime_handle.spawn(async move {
+            tokio::select! {
+                () = closing.cancelled() => {}
+                () = task => {}
+            }
+        });
+        self.tasks.tracker.spawn_on(
+            report_background_task_exit(task_name, task),
+            &self.runtime_handle,
+        );
+    }
+
+    /// Close the library: stop the sync loop and end every background task
+    /// the manager runs, so none of them holds the store any longer. The
+    /// services built on the manager (playback, import) end their own work
+    /// when they are dropped.
+    pub async fn close(&self) {
+        self.database.stop_sync();
+        self.tasks.close().await;
     }
 
     pub(crate) fn current_transfer_action(&self, release_id: &str) -> Option<ReleaseStorageAction> {

@@ -916,16 +916,14 @@ extension AppDelegate {
 }
 
 extension AppDelegate {
-    /// Remove the active library from this device: the bridge deletes its data
-    /// directory, active-library pointer, and encryption key (the cloud copy,
-    /// if the library syncs, is untouched), then the open service is torn down
-    /// and the window returns to the welcome chooser. The bridge call must be
-    /// the handle's last operation — the database lives in the removed
-    /// directory — so teardown follows unconditionally on success. Errors
-    /// surface through the global error alert and leave the library open. The
-    /// master encryption key is dropped by core, not by a KeychainService call
-    /// here; the restore-code entry is left intact so a synced library can be
-    /// re-paired from the welcome screen.
+    /// Remove the active library from this device. Its handle is closed first,
+    /// so nothing of this process holds its store; the open service is then
+    /// released and the window returns to the welcome chooser, and the host
+    /// removes the library — its data directory, active-library pointer, and
+    /// every keyring entry coven and bae keep for it (the cloud copy, if the
+    /// library syncs, is untouched). A failure to close leaves the library
+    /// open behind the global error alert; a failure to remove is shown on the
+    /// welcome screen, and the library stays listed there.
     func forgetActiveLibrary() {
         guard let service = appService else {
             baeAppLogger.warning(
@@ -933,20 +931,18 @@ extension AppDelegate {
             )
             return
         }
+        let libraryId = service.libraryId
         forgetSlot.replace(
-            "forget",
-            work: { try await service.forgetLibrary() },
+            "close for removal",
+            work: { try service.closeLibrary() },
             onSuccess: {
-                // `forgetLibrary` is this handle's final operation because it
-                // removes the database directory. Release it without asking
-                // the deleted database to perform a later graceful shutdown.
                 self.prepareForLibraryShutdown()
                 self.releaseLibrarySession(service)
-                self.reloadLibraries()
+                self.removeClosedLibrary(libraryId)
             },
             onError: {
                 baeAppLogger.error(
-                    "Failed to remove library: \($0.localizedDescription)"
+                    "Failed to close the library for removal: \($0.localizedDescription)"
                 )
                 guard let displayed = DisplayError($0) else { return }
                 self.uiStore.showError(
@@ -954,6 +950,28 @@ extension AppDelegate {
                         String(localized: "Couldn't remove library")
                     )
                 )
+            }
+        )
+    }
+
+    /// Remove a library this process has closed. Started in a slot run of its
+    /// own, so the closing run — and the service it held — is gone first: the
+    /// host refuses while anything still holds the store.
+    private func removeClosedLibrary(_ libraryId: String) {
+        let host = requiredApplicationServices.host
+        forgetSlot.replace(
+            "remove \(libraryId)",
+            work: { try host.removeLocalLibrary(libraryId: libraryId) },
+            onSuccess: { self.reloadLibraries() },
+            onError: {
+                baeAppLogger.error(
+                    "Failed to remove library: \($0.localizedDescription)"
+                )
+                self.loadError = DisplayError($0)?
+                    .addingContext(
+                        String(localized: "Couldn't remove library")
+                    )
+                self.reloadLibraries()
             }
         )
     }

@@ -3,38 +3,40 @@ use crate::library::LibraryError;
 use std::ffi::OsStr;
 use std::path::{Component, Path};
 
-#[derive(Clone, Copy)]
-pub(crate) enum ActiveLibraryExpectation {
-    MayBeInactive,
-    MustNotNameAnotherLibrary,
-}
-
-pub(crate) struct PreparedLocalLibraryRemoval {
-    library_dir: std::path::PathBuf,
-    active_pointer: std::path::PathBuf,
-    clears_active_pointer: bool,
-}
-
-/// Remove a registered library without opening its database first. This is the
-/// welcome screen's path for a library whose database cannot be opened.
+/// Remove a closed library from this device: every keyring entry coven holds
+/// for it (its device identity, master key, and cloud credentials), bae's host
+/// secrets named in [`crate::keys::HOST_SECRET_NAMES`], and its directory. Its
+/// cloud copy and restore code, if any, are untouched.
 ///
-/// Coven deletes the store — every keyring entry it holds for it, bae's host
-/// secrets named in [`crate::keys::HOST_SECRET_NAMES`], then its directory —
-/// and refuses while the store is open anywhere. The active-library pointer is
-/// cleared only after that succeeds, and only when it names this library.
+/// The library must be closed: coven refuses while the store is open
+/// anywhere, and nothing is removed. The active-library pointer is cleared only
+/// after the removal succeeds, and only when it names this library. This is
+/// the welcome screen's removal of a library it never opened, and the end of
+/// forgetting the active one once its handle is closed.
 pub fn remove_local_library(app_dir: &AppDir, library_id: &str) -> Result<(), LibraryError> {
-    let removal = prepare_local_library_removal(
-        app_dir,
-        library_id,
-        ActiveLibraryExpectation::MayBeInactive,
-    )?;
+    validate_library_id(library_id)?;
+    let active_pointer = app_dir.active_library_pointer();
+    let clears_active_pointer =
+        read_active_pointer(&active_pointer)?.as_deref() == Some(library_id);
     coven::Coven::delete_store(
-        &coven::StoreDir::new(removal.library_dir.clone()),
+        &coven::StoreDir::new(app_dir.registered_library(library_id)),
         library_id,
         crate::keys::HOST_SECRET_NAMES,
     )
     .map_err(store_deletion_error)?;
-    removal.clear_active_pointer()
+    if clears_active_pointer {
+        match std::fs::remove_file(&active_pointer) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => {
+                return Err(LibraryError::Internal(format!(
+                    "Failed to clear active-library pointer at {}: {error}",
+                    active_pointer.display()
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn store_deletion_error(error: coven::StoreDeletionError) -> LibraryError {
@@ -46,75 +48,6 @@ fn store_deletion_error(error: coven::StoreDeletionError) -> LibraryError {
         coven::StoreDeletionError::Directory(error) => {
             LibraryError::Internal(format!("Failed to remove library data: {error}"))
         }
-    }
-}
-
-pub(crate) fn prepare_local_library_removal(
-    app_dir: &AppDir,
-    library_id: &str,
-    active_expectation: ActiveLibraryExpectation,
-) -> Result<PreparedLocalLibraryRemoval, LibraryError> {
-    validate_library_id(library_id)?;
-    let active_pointer = app_dir.active_library_pointer();
-    let active_library_id = read_active_pointer(&active_pointer)?;
-    if let Some(active_library_id) = &active_library_id {
-        if matches!(
-            active_expectation,
-            ActiveLibraryExpectation::MustNotNameAnotherLibrary
-        ) && active_library_id != library_id
-        {
-            return Err(LibraryError::Internal(format!(
-                "active-library pointer at {} points at {active_library_id}, not {library_id}",
-                active_pointer.display()
-            )));
-        }
-    }
-
-    let library_dir = app_dir.registered_library(library_id);
-    if library_dir.exists() && !library_dir.is_dir() {
-        return Err(LibraryError::Internal(format!(
-            "Failed to remove library data at {}: path is not a directory",
-            library_dir.display()
-        )));
-    }
-
-    Ok(PreparedLocalLibraryRemoval {
-        library_dir,
-        active_pointer,
-        clears_active_pointer: active_library_id.as_deref() == Some(library_id),
-    })
-}
-
-impl PreparedLocalLibraryRemoval {
-    pub(crate) fn remove(self) -> Result<(), LibraryError> {
-        match std::fs::remove_dir_all(&self.library_dir) {
-            Ok(()) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => {
-                return Err(LibraryError::Internal(format!(
-                    "Failed to remove library data at {}: {error}",
-                    self.library_dir.display()
-                )));
-            }
-        }
-        self.clear_active_pointer()
-    }
-
-    fn clear_active_pointer(self) -> Result<(), LibraryError> {
-        if self.clears_active_pointer {
-            match std::fs::remove_file(&self.active_pointer) {
-                Ok(()) => {}
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                Err(error) => {
-                    return Err(LibraryError::Internal(format!(
-                        "Failed to clear active-library pointer at {}: {error}",
-                        self.active_pointer.display()
-                    )));
-                }
-            }
-        }
-
-        Ok(())
     }
 }
 

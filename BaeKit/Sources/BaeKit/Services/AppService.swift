@@ -215,8 +215,12 @@ open class AppService: @unchecked Sendable, Observable {
         try await appHandle.savePlaybackState()
     }
 
-    public nonisolated func forgetLibrary() async throws {
-        try await appHandle.forgetLibrary()
+    /// Close the library so nothing of this process holds its store: stops
+    /// sync, ends every background task, and shuts the core's runtime down.
+    /// Blocks until done, so it runs off the main actor. The caller releases
+    /// this service next and may then remove the library through the host.
+    public nonisolated func closeLibrary() throws {
+        try appHandle.closeLibrary()
     }
 
     public func shutdown() async throws {

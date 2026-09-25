@@ -409,28 +409,31 @@ object AppSessionHolder {
     fun currentSession(): OpenLibrary? = current
 
     /**
-     * Forget the active library on this device: delete its key, clear the
-     * active pointer, and remove its files (the cloud copy is untouched), then
-     * dispose the session and re-discover — opening the next library or
-     * onboarding. The `forgetLibrary` call must precede `dispose`: the database
-     * lives in the directory it removes, so the handle is closed right after.
+     * Forget the active library on this device. Its handle closes the library
+     * first, so nothing of this process holds its store; the session is then
+     * disposed without a graceful shutdown (there is nothing left to save
+     * into), and the host removes the library — its files, the active
+     * pointer, and every keyring entry kept for it (the cloud copy is
+     * untouched). Then re-discover — opening the next library or onboarding.
      */
     suspend fun forgetActiveLibrary(
         context: Context,
         onScreen: (AppScreen) -> Unit,
     ) {
         val session = current ?: return
+        val host = (context.applicationContext as BaeApp).host
         try {
-            session.appHandle.forgetLibrary()
+            withContext(Dispatchers.IO) { session.appHandle.closeLibrary() }
+            session.closeForgottenLibrary()
+            current = null
+            withContext(Dispatchers.IO) { host.removeLocalLibrary(session.libraryId) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logger.error("forgetLibrary failed", e)
+            logger.error("removing the library failed", e)
             onScreen(AppScreen.Failed(e.message ?: "Failed to remove library"))
             return
         }
-        session.closeForgottenLibrary()
-        current = null
         openDiscoveredOrOnboard(context, onScreen)
     }
 

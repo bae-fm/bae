@@ -16,7 +16,7 @@ impl AppHandle {
             let session = this.services.start_device_pairing().await?;
             Ok(std::sync::Arc::new(BridgeDevicePairingSession {
                 inner: std::sync::Arc::new(session),
-                runtime: this.runtime.handle().clone(),
+                runtime: this.runtime.clone(),
             }))
         })
         .await

@@ -73,12 +73,6 @@ impl Database {
             .await
     }
 
-    /// Pause this device's sync loop, keeping its cloud home connected, so two
-    /// devices can write while neither sees the other.
-    pub fn stop_sync_for_test(&self) {
-        self.inner.handle.stop_sync();
-    }
-
     /// Write rows into this device's local-only tables — state no sync ever
     /// carries — the way the import pane's own writers would leave them.
     pub async fn execute_local_sql_for_test(&self, statements: &str) -> Result<(), DbError> {

@@ -523,6 +523,35 @@ mod tests {
             .is_empty());
     }
 
+    /// Forgetting the open library: close its handle, drop it, and remove it
+    /// through the host. Nothing of the closed handle still holds the store, so
+    /// the removal takes its directory and every keyring entry for it.
+    #[test]
+    fn a_closed_library_is_removed_with_its_keyring_entries() {
+        bae_core::config::install_test_keyring();
+        let (host, home) = test_host();
+        let created = host
+            .create_library(Some("Test Library".to_string()))
+            .expect("create a library");
+        let handle = init_app(created.id.clone(), 500, false, host.clone()).expect("open it");
+        let keys = coven::StoreKeys::bind(created.id.clone());
+        keys.set_host_secret("mcp_bearer_token", "forget-test-secret")
+            .expect("store a host secret");
+
+        handle.close_library().expect("close the library");
+        drop(handle);
+        host.remove_local_library(created.id.clone())
+            .expect("remove the closed library");
+
+        let registered = home.path().join(".bae").join("libraries").join(&created.id);
+        assert!(!registered.exists());
+        assert_eq!(keys.get_host_secret("mcp_bearer_token").unwrap(), None);
+        assert!(host
+            .discover_libraries()
+            .expect("discover libraries")
+            .is_empty());
+    }
+
     #[cfg(feature = "oauth-providers")]
     #[test]
     fn host_driven_oauth_flow_holds_at_most_one_pending_exchange() {

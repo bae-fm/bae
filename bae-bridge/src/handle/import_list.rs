@@ -52,7 +52,7 @@ impl AppHandle {
         &self,
         view: crate::types::BridgeImportListView,
     ) -> std::sync::Arc<ImportListSubscription> {
-        let runtime = self.runtime.handle().clone();
+        let runtime = self.runtime.clone();
         std::sync::Arc::new(ImportListSubscription {
             inner: self
                 .services
