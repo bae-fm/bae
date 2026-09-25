@@ -219,7 +219,7 @@ impl ImportService {
         let metadata_provenance = preparation.metadata_provenance;
         let selected_cover = preparation.cover;
         let user_edit = Some(preparation.draft.release_edit().shape()?);
-        let prepared_assets = preparation.assets;
+        let mut prepared_assets = preparation.assets;
 
         let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
         if let Some(snapshot) = file_tag_snapshot {
@@ -329,7 +329,7 @@ impl ImportService {
                 records,
                 user_edit,
                 &replacement_release_ids,
-                &prepared_assets.artist_images,
+                std::mem::take(&mut prepared_assets.artist_images),
             )
             .await?;
 
@@ -489,14 +489,14 @@ impl ImportService {
             db_album,
             db_release,
             existing_album_id,
-            remapped_track_artists,
-            remapped_album_artists,
+            track_artists,
+            album_artists,
             work_graph,
-            remapped_release_artist_roles,
-            remapped_track_artist_roles,
-            artists,
-            artist_external_id_updates,
-            artist_images,
+            release_artist_roles,
+            track_artist_roles,
+            artist_credits,
+            picked_artists,
+            prepared_artist_images,
             records,
             selected_cover,
             remote_cover_image,
@@ -729,10 +729,6 @@ impl ImportService {
         let library_image = cover_winner
             .as_ref()
             .map(|(image, bytes)| (image, bytes.as_slice()));
-        let artist_images: Vec<_> = artist_images
-            .iter()
-            .map(|(image, bytes)| (image, bytes.as_slice()))
-            .collect();
         let cover_rel_id = Some((album_id, db_release.id.as_str()));
 
         self.emit_phase_progress(run, &db_release.id, None, ImportPhase::Finalizing);
@@ -752,23 +748,25 @@ impl ImportService {
                 db_release,
                 tracks_to_files,
                 crate::db::ImportRows {
-                    track_artists: remapped_track_artists,
-                    album_artists: remapped_album_artists,
+                    track_artists,
+                    album_artists,
                     works: &work_graph.works,
                     work_artists: &work_graph.work_artists,
                     work_parts: &work_graph.work_parts,
                     track_works: &work_graph.track_works,
-                    release_artist_roles: remapped_release_artist_roles,
-                    track_artist_roles: remapped_track_artist_roles,
-                    artists,
-                    artist_external_id_updates,
+                    release_artist_roles,
+                    track_artist_roles,
+                    artists: crate::db::ArtistCredits {
+                        credits: artist_credits,
+                        picked: picked_artists,
+                    },
                     audio_formats: &built_audio.audio_formats,
                     audio_segments: &built_audio.audio_segments,
                     records,
                 },
                 prepared_files,
                 library_image,
-                &artist_images,
+                prepared_artist_images,
                 cover_rel_id,
                 replacement_plans,
                 remote_intent.then_some(crate::db::RemoteImport { pin }),

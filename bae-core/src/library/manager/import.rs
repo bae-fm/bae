@@ -416,6 +416,12 @@ impl LibraryManager {
     /// Track rows come straight off `tracks_to_files` — each `TrackFile` owns the
     /// `DbTrack` (with its populated `duration_ms`) that gets inserted. There is no
     /// parallel list of tracks or durations.
+    ///
+    /// The release's artist credits are resolved inside the write. The Discogs
+    /// pictures of the artists it creates are staged before the write, so they
+    /// are chosen from a read of the library just before it; the write refuses
+    /// to commit if its own resolution creates different artists, and the
+    /// import fails with that rather than landing a picture without its artist.
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn finalize_import_atomic(
         &self,
@@ -426,11 +432,26 @@ impl LibraryManager {
         rows: crate::db::ImportRows<'_>,
         files: Vec<crate::import::service::PreparedImportFile>,
         library_image: Option<(&DbLibraryImage, &[u8])>,
-        artist_images: &[(&DbLibraryImage, &[u8])],
+        prepared_artist_images: &[crate::import::PreparedArtistImage],
         primary_release_id: Option<(&str, &str)>,
         replacement_plans: &[ImportReplacementPlan],
         remote: Option<crate::db::RemoteImport>,
     ) -> Result<Option<u64>, LibraryError> {
+        let expected = self
+            .database
+            .resolve_artists(rows.artists.credits, rows.artists.picked)
+            .await?;
+        let expected_new_artists: Vec<String> = expected
+            .inserts
+            .iter()
+            .map(|artist| artist.id.clone())
+            .collect();
+        let artist_images =
+            self.materialize_prepared_artist_images(&expected.inserts, prepared_artist_images)?;
+        let artist_images: Vec<_> = artist_images
+            .iter()
+            .map(|(image, bytes)| (image, bytes.as_slice()))
+            .collect();
         // The home's storage mode decides the blob layout (opaque hashed-by-id vs.
         // browsable readable paths); the manager owns config, so it reads the mode
         // here rather than threading it from the importer.
@@ -448,7 +469,10 @@ impl LibraryManager {
                 rows,
                 files,
                 library_image,
-                artist_images,
+                crate::db::NewArtistImages {
+                    expected_new_artists: &expected_new_artists,
+                    images: &artist_images,
+                },
                 primary_release_id,
                 storage,
                 &replacement_deletes,

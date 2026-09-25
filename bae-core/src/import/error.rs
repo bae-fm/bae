@@ -168,7 +168,7 @@ pub enum ImportError {
     Edit(#[from] crate::import::EditValidationError),
 
     /// A library/DB operation failed (insert_import, finalize_import_atomic,
-    /// resolve_artists_for_import, replacement plans, coven_make_remote).
+    /// the artist credits it resolves, replacement plans, coven_make_remote).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error(transparent)]
     Db(#[from] crate::library::LibraryError),

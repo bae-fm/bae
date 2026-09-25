@@ -27,7 +27,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use strsim::jaro_winkler;
-use unicode_normalization::UnicodeNormalization;
+use crate::util::text::normalize;
 
 /// Extract catalog-number-like substrings, each tagged with its line's
 /// [`SignalOrigin`] (the Refine badges show where a candidate came from). Two
@@ -523,33 +523,6 @@ fn case_rank(s: &str) -> u8 {
         (false, true) => 0,  // all lowercase
         (false, false) => 0, // no letters — treat as lowercase for tie-break
     }
-}
-
-/// The clustering key for a line — never displayed. NFD decompose → drop
-/// combining marks (so diacritics go) → lowercase → collapse whitespace runs →
-/// strip leading/trailing non-alphanumerics.
-pub(crate) fn normalize(text: &str) -> String {
-    let decomposed: String = text
-        .nfd()
-        .filter(|c| !unicode_normalization::char::is_combining_mark(*c))
-        .collect();
-    let s = decomposed.to_lowercase();
-    let mut collapsed = String::with_capacity(s.len());
-    let mut prev_space = false;
-    for c in s.chars() {
-        if c.is_whitespace() {
-            if !prev_space {
-                collapsed.push(' ');
-                prev_space = true;
-            }
-        } else {
-            collapsed.push(c);
-            prev_space = false;
-        }
-    }
-    collapsed
-        .trim_matches(|c: char| !c.is_alphanumeric())
-        .to_string()
 }
 
 /// Append each of `new_lines` into its best-matching cluster, or start a new one.

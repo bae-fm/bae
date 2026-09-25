@@ -28,10 +28,17 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
         musicbrainz_artist_id: Some(crate::db::VARIOUS_ARTISTS.musicbrainz.to_string()),
         created_at: manager.clock.now(),
     };
-    let resolved = manager.resolve_artists_for_import(&[incoming]).await.unwrap();
+    let resolved = manager
+        .find_or_create_artists(std::slice::from_ref(&incoming))
+        .await
+        .unwrap();
 
-    assert_eq!(resolved.ids, [musicbrainz_artist.id]);
-    assert!(resolved.inserts.is_empty());
+    assert_eq!(resolved, [musicbrainz_artist.id]);
+    assert!(manager
+        .get_artist_by_id(&incoming.id)
+        .await
+        .unwrap()
+        .is_none());
 }
 
 #[tokio::test]
@@ -65,7 +72,7 @@ async fn cross_provider_mismatch_is_not_offered_as_a_two_artist_merge() {
     };
 
     let error = manager
-        .resolve_artists_for_import(&[incoming])
+        .find_or_create_artists(&[incoming])
         .await
         .expect_err("a third provider identity cannot be resolved by merging two artists");
 

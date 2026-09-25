@@ -50,8 +50,8 @@ async fn search_library_treats_like_metacharacters_as_literals() {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, _updated_at, created_at)
-            VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'stamp', '2026-01-01T00:00:00Z');
+            INSERT INTO artists (id, name, name_key, _updated_at, created_at)
+            VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'artist name primary', 'stamp', '2026-01-01T00:00:00Z');
 
             INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
             VALUES
@@ -167,11 +167,11 @@ async fn composer_page_uses_id_tiebreaker() {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+            INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
             VALUES
-                ('80cd3a5e-7fb7-4766-8ec3-d8e86575743b', 'Composer Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 'Composer Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 'Composer Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                ('80cd3a5e-7fb7-4766-8ec3-d8e86575743b', 'Composer Name Shared', 'composer name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                ('5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 'Composer Name Shared', 'composer name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                ('2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 'Composer Name Shared', 'composer name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
             INSERT INTO works (id, title, work_type, musicbrainz_work_id, _updated_at, created_at)
             VALUES
@@ -220,11 +220,11 @@ async fn composer_page_applies_secondary_criterion() {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+            INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
             VALUES
-                ('5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 'Composer Name A', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 'Composer Name B', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('4d93d615-4549-45d9-81d9-644f079d59bf', 'Composer Name Solo', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                ('5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 'Composer Name A', 'composer name a', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                ('2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 'Composer Name B', 'composer name b', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                ('4d93d615-4549-45d9-81d9-644f079d59bf', 'Composer Name Solo', 'composer name solo', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
             INSERT INTO works (id, title, work_type, musicbrainz_work_id, _updated_at, created_at)
             VALUES

@@ -657,6 +657,34 @@ impl ArtistAssignment {
         Self::Existing { artist }
     }
 
+    /// The artist row this assignment stands for in a write: a picked library
+    /// artist as itself, by its own id; a credit as a fresh row carrying what
+    /// it says, which the write resolves to a library artist when it commits.
+    pub(crate) fn credit(
+        &self,
+        ids: &dyn coven::IdProvider,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> crate::db::DbArtist {
+        match self {
+            Self::Existing { artist } => crate::db::DbArtist {
+                id: artist.artist_id.clone(),
+                name: artist.name.clone(),
+                sort_name: artist.sort_name.clone(),
+                discogs_artist_id: artist.discogs_artist_id.clone(),
+                musicbrainz_artist_id: artist.musicbrainz_artist_id.clone(),
+                created_at: now,
+            },
+            Self::New { seed } => crate::db::DbArtist {
+                id: ids.new_id(),
+                name: seed.name.clone(),
+                sort_name: seed.sort_name.clone(),
+                discogs_artist_id: seed.discogs_artist_id.clone(),
+                musicbrainz_artist_id: seed.musicbrainz_artist_id.clone(),
+                created_at: now,
+            },
+        }
+    }
+
     fn normalized(self) -> Self {
         match self {
             Self::Existing { artist } => Self::Existing { artist },

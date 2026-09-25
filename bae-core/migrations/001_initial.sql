@@ -12,10 +12,14 @@
 -- ── The library ───────────────────────────────────────────────────────────────
 
 -- Every artist the library knows, whether credited on a release, a track, or a
--- work. The provider ids are what a later lookup matches an incoming artist to.
+-- work. The provider ids are what a later lookup matches an incoming artist to
+-- first; `name_key` is what it matches by when no id does — the name folded by
+-- `util::text::normalize` (case, diacritics and spacing dropped), written in
+-- the same statement as `name`.
 CREATE TABLE IF NOT EXISTS artists (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    name_key TEXT NOT NULL,
     sort_name TEXT,
     discogs_artist_id TEXT,
     musicbrainz_artist_id TEXT,
@@ -25,6 +29,8 @@ CREATE TABLE IF NOT EXISTS artists (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_artists_name ON artists (name COLLATE NOCASE);
+
+CREATE INDEX IF NOT EXISTS idx_artists_name_key ON artists (name_key);
 
 CREATE INDEX IF NOT EXISTS idx_artists_discogs_id ON artists (discogs_artist_id);
 

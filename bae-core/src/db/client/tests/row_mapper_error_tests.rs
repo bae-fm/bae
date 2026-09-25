@@ -9,7 +9,7 @@ fn seeded_conn() -> Connection {
         .unwrap();
     let now = "2026-01-01T00:00:00Z";
     conn.execute(
-        "INSERT INTO artists (id, name, _updated_at, created_at) VALUES ('6c441836-aef7-4239-8a84-5336c4cce52c', 'Artist Name', ?, ?)",
+        "INSERT INTO artists (id, name, name_key, _updated_at, created_at) VALUES ('6c441836-aef7-4239-8a84-5336c4cce52c', 'Artist Name', 'artist name', ?, ?)",
         params![now, now],
     )
     .unwrap();

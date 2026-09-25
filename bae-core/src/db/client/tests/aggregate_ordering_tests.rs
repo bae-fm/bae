@@ -9,13 +9,13 @@ async fn aggregate_db() -> (Database, tempfile::TempDir) {
             "
             PRAGMA reverse_unordered_selects = ON;
 
-            INSERT INTO artists (id, name, _updated_at, created_at)
+            INSERT INTO artists (id, name, name_key, _updated_at, created_at)
             VALUES
-                ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'stamp', '2026-01-01T00:00:00Z'),
-                ('7e7d8df5-8292-4287-80be-7abd24f5a992', 'Artist Name First', 'stamp', '2026-01-01T00:00:00Z'),
-                ('863911c6-a6b6-40a7-8096-b85eb877f7c7', 'Artist Name Second', 'stamp', '2026-01-01T00:00:00Z'),
-                ('c0770501-2551-4e87-8801-93f780248cf3', 'Composer Name First', 'stamp', '2026-01-01T00:00:00Z'),
-                ('0d0e8916-becd-4d2c-89e0-7cc5c7005f83', 'Composer Name Second', 'stamp', '2026-01-01T00:00:00Z');
+                ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'artist name primary', 'stamp', '2026-01-01T00:00:00Z'),
+                ('7e7d8df5-8292-4287-80be-7abd24f5a992', 'Artist Name First', 'artist name first', 'stamp', '2026-01-01T00:00:00Z'),
+                ('863911c6-a6b6-40a7-8096-b85eb877f7c7', 'Artist Name Second', 'artist name second', 'stamp', '2026-01-01T00:00:00Z'),
+                ('c0770501-2551-4e87-8801-93f780248cf3', 'Composer Name First', 'composer name first', 'stamp', '2026-01-01T00:00:00Z'),
+                ('0d0e8916-becd-4d2c-89e0-7cc5c7005f83', 'Composer Name Second', 'composer name second', 'stamp', '2026-01-01T00:00:00Z');
 
             INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
             VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, NULL, 0, 'stamp', '2026-01-01T00:00:00Z');
@@ -119,10 +119,10 @@ async fn album_and_storage_pages_allow_missing_primary_artist() {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, _updated_at, created_at)
+            INSERT INTO artists (id, name, name_key, _updated_at, created_at)
             VALUES
-                ('7e7d8df5-8292-4287-80be-7abd24f5a992', 'Artist Name First', 'stamp', '2026-01-01T00:00:00Z'),
-                ('863911c6-a6b6-40a7-8096-b85eb877f7c7', 'Artist Name Second', 'stamp', '2026-01-01T00:00:00Z');
+                ('7e7d8df5-8292-4287-80be-7abd24f5a992', 'Artist Name First', 'artist name first', 'stamp', '2026-01-01T00:00:00Z'),
+                ('863911c6-a6b6-40a7-8096-b85eb877f7c7', 'Artist Name Second', 'artist name second', 'stamp', '2026-01-01T00:00:00Z');
 
             INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
             VALUES
@@ -182,10 +182,10 @@ async fn queue_db() -> (Database, tempfile::TempDir) {
             "
             PRAGMA reverse_unordered_selects = ON;
 
-            INSERT INTO artists (id, name, _updated_at, created_at)
+            INSERT INTO artists (id, name, name_key, _updated_at, created_at)
             VALUES
-                ('5b5f8c38-5237-4187-895c-28b1b2a43672', 'Track Artist Name First', 'stamp', '2026-01-01T00:00:00Z'),
-                ('8ccac2a7-7e60-4f52-881e-0b349ff78cc5', 'Track Artist Name Second', 'stamp', '2026-01-01T00:00:00Z');
+                ('5b5f8c38-5237-4187-895c-28b1b2a43672', 'Track Artist Name First', 'track artist name first', 'stamp', '2026-01-01T00:00:00Z'),
+                ('8ccac2a7-7e60-4f52-881e-0b349ff78cc5', 'Track Artist Name Second', 'track artist name second', 'stamp', '2026-01-01T00:00:00Z');
 
             INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
             VALUES ('0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z');
@@ -230,10 +230,10 @@ async fn release_detail_db() -> (Database, tempfile::TempDir) {
             "
             PRAGMA reverse_unordered_selects = ON;
 
-            INSERT INTO artists (id, name, _updated_at, created_at)
+            INSERT INTO artists (id, name, name_key, _updated_at, created_at)
             VALUES
-                ('5b5f8c38-5237-4187-895c-28b1b2a43672', 'Track Artist Name First', 'stamp', '2026-01-01T00:00:00Z'),
-                ('8ccac2a7-7e60-4f52-881e-0b349ff78cc5', 'Track Artist Name Second', 'stamp', '2026-01-01T00:00:00Z');
+                ('5b5f8c38-5237-4187-895c-28b1b2a43672', 'Track Artist Name First', 'track artist name first', 'stamp', '2026-01-01T00:00:00Z'),
+                ('8ccac2a7-7e60-4f52-881e-0b349ff78cc5', 'Track Artist Name Second', 'track artist name second', 'stamp', '2026-01-01T00:00:00Z');
 
             INSERT INTO tracks (position, id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
             VALUES

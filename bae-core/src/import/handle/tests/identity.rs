@@ -163,38 +163,23 @@ async fn one_import_reuses_an_external_id_waiting_to_be_added_to_an_existing_art
 }
 
 #[tokio::test]
-async fn edited_assignments_reuse_an_artist_waiting_to_be_inserted() {
+async fn credits_of_one_write_reuse_an_artist_waiting_to_be_inserted() {
     let (manager, _tmp) = setup_test_manager().await;
-    let assignments = vec![
-        crate::import::ArtistAssignment::New {
-            seed: crate::import::NewArtistSeed {
-                name: "Artist One".to_string(),
-                sort_name: None,
-                musicbrainz_artist_id: None,
-                discogs_artist_id: Some("d123".to_string()),
-            },
-        },
-        crate::import::ArtistAssignment::New {
-            seed: crate::import::NewArtistSeed {
-                name: "Artist One".to_string(),
-                sort_name: None,
-                musicbrainz_artist_id: Some("mb-abc".to_string()),
-                discogs_artist_id: Some("d123".to_string()),
-            },
-        },
-    ];
+    let discogs_credit = make_artist("Artist One", Some("d123"), None);
+    let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
 
     let resolved = manager
-        .resolve_artist_assignments(&assignments)
+        .find_or_create_artists(&[discogs_credit, cross_linked_credit])
         .await
         .unwrap();
 
-    assert_eq!(resolved.ids, vec![resolved.ids[0].clone(); 2]);
-    assert_eq!(resolved.inserts.len(), 1);
-    assert_eq!(
-        resolved.inserts[0].musicbrainz_artist_id.as_deref(),
-        Some("mb-abc")
-    );
+    assert_eq!(resolved, vec![resolved[0].clone(); 2]);
+    let saved = manager
+        .get_artist_by_id(&resolved[0])
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-abc"));
 }
 
 #[tokio::test]
@@ -227,19 +212,18 @@ async fn conflicting_exact_source_ids_fail_instead_of_choosing_an_artist() {
 }
 
 #[tokio::test]
-async fn test_same_name_without_ids_creates_a_distinct_artist() {
+async fn a_same_name_credit_without_ids_is_the_library_artist() {
     let (manager, _tmp) = setup_test_manager().await;
     let existing = make_artist("Artist One", None, None);
     manager.insert_artist(&existing).await.unwrap();
 
-    let incoming = make_artist("Artist One", None, None);
+    let incoming = make_artist("artist one", None, None);
     let resolved = manager
         .find_or_create_artists(std::slice::from_ref(&incoming))
         .await
         .unwrap();
 
-    assert_eq!(resolved[0], incoming.id);
-    assert_ne!(resolved[0], existing.id);
+    assert_eq!(resolved[0], existing.id);
 }
 
 #[tokio::test]
@@ -291,38 +275,32 @@ async fn test_same_name_different_discogs_id_creates_new() {
 }
 
 #[tokio::test]
-async fn test_disjoint_source_ids_do_not_merge_by_name() {
+async fn ids_of_different_catalogs_do_not_keep_a_name_match_apart() {
     let (manager, _tmp) = setup_test_manager().await;
-    // Existing has discogs ID only
+    // Existing has a Discogs ID only; the credit a MusicBrainz ID only.
+    // Neither contradicts the other, so the name decides.
     let existing = make_artist("Artist One", Some("d456"), None);
     manager.insert_artist(&existing).await.unwrap();
 
-    // A matching display name is not identity. Only an explicit existing
-    // assignment or a shared provider ID may join these rows.
     let incoming = make_artist("Artist One", None, Some("mb-xyz"));
     let resolved = manager
         .find_or_create_artists(std::slice::from_ref(&incoming))
         .await
         .unwrap();
 
-    assert_eq!(resolved[0], catalog_artist_id(&incoming));
-    assert_ne!(resolved[0], existing.id);
-
-    let unchanged = manager
+    assert_eq!(resolved[0], existing.id, "the artist keeps its own id");
+    let linked = manager
         .get_artist_by_id(&existing.id)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(unchanged.discogs_artist_id.as_deref(), Some("d456"));
-    assert_eq!(unchanged.musicbrainz_artist_id, None);
-
-    let inserted = manager
+    assert_eq!(linked.discogs_artist_id.as_deref(), Some("d456"));
+    assert_eq!(linked.musicbrainz_artist_id.as_deref(), Some("mb-xyz"));
+    assert!(manager
         .get_artist_by_id(&catalog_artist_id(&incoming))
         .await
         .unwrap()
-        .unwrap();
-    assert_eq!(inserted.discogs_artist_id, None);
-    assert_eq!(inserted.musicbrainz_artist_id.as_deref(), Some("mb-xyz"));
+        .is_none());
 }
 
 #[tokio::test]

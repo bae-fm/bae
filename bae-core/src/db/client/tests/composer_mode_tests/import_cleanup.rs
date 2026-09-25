@@ -144,7 +144,7 @@ struct Commit<'a> {
     rows: crate::db::ImportRows<'a>,
     files: Vec<crate::import::service::PreparedImportFile>,
     library_image: Option<(&'a DbLibraryImage, &'a [u8])>,
-    artist_images: &'a [(&'a DbLibraryImage, &'a [u8])],
+    artist_images: crate::db::NewArtistImages<'a>,
     /// `(album_id, release_id)`
     primary_release_id: Option<(&'a str, &'a str)>,
     replacement_deletes: &'a [ReleaseDeletion],
@@ -243,7 +243,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
             crate::db::ImportRows::default(),
             Vec::new(),
             None,
-            &[],
+            crate::db::NewArtistImages::default(),
             None,
             crate::config::HomeStorage::Opaque,
             &[],
@@ -298,12 +298,20 @@ async fn finalize_reimport_replacing_release(
     .await;
 
     let replacement = db.plan_release_deletion(replaced_release_id).await.unwrap();
+    let picked = [artist.id.clone()];
     commit_import(
         db,
         &release_new,
         Commit {
             album: Some(&album_new),
             track_files: &track_files,
+            rows: crate::db::ImportRows {
+                artists: crate::db::ArtistCredits {
+                    credits: std::slice::from_ref(&artist),
+                    picked: &picked,
+                },
+                ..Default::default()
+            },
             files: vec![file],
             replacement_deletes: &[replacement],
             ..Default::default()
@@ -317,10 +325,10 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+            INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
             VALUES
-                ('85f70840-aba5-4eb9-8e1a-0d319e53b798', 'Album Artist A', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('5412b7ad-bdc1-4561-8985-b6d6ef8a2880', 'Displayed Composer A', 'Hidden Composer Sort A', NULL, 'mb-artist-composer-a', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                ('85f70840-aba5-4eb9-8e1a-0d319e53b798', 'Album Artist A', 'album artist a', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                ('5412b7ad-bdc1-4561-8985-b6d6ef8a2880', 'Displayed Composer A', 'displayed composer a', 'Hidden Composer Sort A', NULL, 'mb-artist-composer-a', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
             INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
             VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '85f70840-aba5-4eb9-8e1a-0d319e53b798', 2026, '0252dedb-ee39-4547-8803-438dbeb57a64', 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
@@ -425,6 +433,8 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         now,
     )];
 
+    let credits = [album_artist.clone(), composer.clone()];
+    let picked = [album_artist.id.clone(), composer.id.clone()];
     commit_import(
         &db,
         &release,
@@ -432,6 +442,10 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
             album: Some(&album),
             track_files: &track_files,
             rows: crate::db::ImportRows {
+                artists: crate::db::ArtistCredits {
+                    credits: &credits,
+                    picked: &picked,
+                },
                 works: &works,
                 work_artists: &work_artists,
                 track_works: &track_works,

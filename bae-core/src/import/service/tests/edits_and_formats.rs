@@ -124,7 +124,6 @@ fn user_edit_overrides_album_year_and_pressing_fields() {
     apply_user_edit_to_seed(
         &edit,
         &mut seed,
-        &HashMap::new(),
         &test_clock(),
         &SequentialIdProvider::new("seed"),
     )
@@ -190,7 +189,6 @@ fn user_edit_can_fill_country_for_approximate_seed() {
     apply_user_edit_to_seed(
         &edit,
         &mut seed,
-        &HashMap::new(),
         &test_clock(),
         &SequentialIdProvider::new("seed"),
     )
@@ -233,7 +231,6 @@ fn user_edit_track_count_mismatch_is_an_error() {
     let err = apply_user_edit_to_seed(
         &edit,
         &mut seed,
-        &HashMap::new(),
         &test_clock(),
         &SequentialIdProvider::new("seed"),
     )
@@ -337,16 +334,14 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
         }],
     };
 
-    let existing_artists = HashMap::from([(seed_artist.id.clone(), seed_artist.clone())]);
-    let explicit_existing = apply_user_edit_to_seed(
+    let picked = apply_user_edit_to_seed(
         &edit,
         &mut seed,
-        &existing_artists,
         &test_clock(),
         &SequentialIdProvider::new("seed"),
     )
     .unwrap();
-    assert_eq!(explicit_existing, HashSet::from([seed_artist.id.clone()]));
+    assert_eq!(picked, HashSet::from([seed_artist.id.clone()]));
 
     // The MB-id-bearing artist row must still exist with its
     // source binding intact — no fresh placeholder created.
@@ -391,7 +386,6 @@ fn user_edit_renaming_album_artist_rebuilds_credits() {
     apply_user_edit_to_seed(
         &edit,
         &mut seed,
-        &HashMap::new(),
         &test_clock(),
         &SequentialIdProvider::new("seed"),
     )

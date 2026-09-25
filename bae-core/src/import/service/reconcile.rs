@@ -1,7 +1,7 @@
 //! Reconcile a parsed release against existing library state: apply the user's
-//! edit overlay, match the release to an existing album, record the import
-//! row, and remap parsed artist IDs to their real DB IDs — yielding the
-//! [`super::PreparedMetadata`] the worker runs the import from.
+//! edit overlay, match the release to an existing album, and resolve its works
+//! — yielding the [`super::PreparedMetadata`] the worker runs the import from.
+//! Its artist credits stay credits until the commit resolves them.
 
 use std::collections::HashMap;
 
@@ -39,11 +39,12 @@ fn retain_referenced_artists(
 }
 
 impl ImportService {
-    /// Reconcile the prepared release against existing library state, record the
-    /// import, and remap parsed artist IDs to their real DB IDs. Pure DB work and
-    /// string remapping — no network. The caller has already run the mapper its
-    /// selected metadata provenance calls for, so the input is a mapped `ParsedAlbum` plus its
-    /// raw external metadata pairs (empty for file metadata and direct entry).
+    /// Reconcile the prepared release against existing library state and apply
+    /// the user's edit overlay — yielding the [`PreparedMetadata`] the worker
+    /// runs the import from. Pure DB reads and string remapping — no network.
+    /// The caller has already run the mapper its selected metadata provenance
+    /// calls for, so the input is a mapped `ParsedAlbum` plus its raw external
+    /// metadata pairs (empty for file metadata and direct entry).
     ///
     /// The mapper's output carries the identity rows as they stand: a
     /// **External Release** keeps the selected pressing's `source_release_id`,
@@ -55,13 +56,17 @@ impl ImportService {
     ///
     /// The confirmation-page `user_edit` overlay applies last, so the user's
     /// edits win over every seeded value.
+    ///
+    /// Artists are not decided here. Every artist link keeps naming its credit,
+    /// and the commit resolves the credits inside its own transaction, against
+    /// the library as it stands when the release is written.
     pub(super) async fn reconcile_prepared_release(
         &self,
         parsed: crate::import::ParsedAlbum,
         records: Vec<crate::import::ReleaseRecord>,
         user_edit: Option<crate::import::ReleaseUserEdit>,
         replacement_release_ids: &[String],
-        prepared_artist_images: &[crate::import::PreparedArtistImage],
+        prepared_artist_images: Vec<crate::import::PreparedArtistImage>,
     ) -> Result<PreparedMetadata, crate::import::ImportError> {
         let library_manager = &self.library_manager;
 
@@ -69,18 +74,14 @@ impl ImportService {
 
         // The overlay applies after the seed, so the user's edits win over
         // every seeded value.
-        let explicit_existing_artist_ids = if let Some(edit) = user_edit {
-            let existing_artists =
-                super::load_existing_artist_assignments(&edit, library_manager).await?;
-            apply_user_edit_to_seed(
+        let picked_artists = match user_edit {
+            Some(edit) => apply_user_edit_to_seed(
                 &edit,
                 &mut parsed,
-                &existing_artists,
                 self.clock.as_ref(),
                 self.ids.as_ref(),
-            )?
-        } else {
-            std::collections::HashSet::new()
+            )?,
+            None => std::collections::HashSet::new(),
         };
 
         let crate::import::ParsedAlbum {
@@ -101,7 +102,12 @@ impl ImportService {
             .find_existing_album_for_import_excluding(&records, replacement_release_ids)
             .await?;
         match &existing_album_id {
-            Some(album_id) => db_release.album_id = album_id.clone(),
+            Some(album_id) => {
+                db_release.album_id = album_id.clone();
+                // The album is already in the library with its own artists;
+                // this release's album credits are not written.
+                album_artists.clear();
+            }
             // A new album for a release group is the group's album on every
             // device, so two devices importing into one group while apart
             // write one album.
@@ -126,61 +132,11 @@ impl ImportService {
             &track_artist_roles,
             &work_graph.work_artists,
         );
-
-        let resolved = library_manager
-            .resolve_artists_for_import_with_existing(&artists, &explicit_existing_artist_ids)
-            .await?;
-
-        let artist_id_map: HashMap<String, String> = artists
+        let picked_artists = artists
             .iter()
-            .zip(resolved.ids.iter())
-            .map(|(a, id)| (a.id.clone(), id.clone()))
+            .filter(|artist| picked_artists.contains(&artist.id))
+            .map(|artist| artist.id.clone())
             .collect();
-
-        if existing_album_id.is_none() {
-            db_album.artist_id = artist_id_map
-                .get(&db_album.artist_id)
-                .ok_or_else(|| crate::import::ImportError::Internal {
-                    detail: format!(
-                        "Primary artist ID {} not found in artist map",
-                        db_album.artist_id
-                    ),
-                })?
-                .clone();
-        }
-
-        let remapped_track_artists = remap_links(
-            &track_artists,
-            &artist_id_map,
-            "track artist",
-            |ta| &ta.artist_id,
-            |ta, artist_id| ta.artist_id = artist_id,
-        )?;
-        let remapped_album_artists = if existing_album_id.is_none() {
-            remap_links(
-                &album_artists,
-                &artist_id_map,
-                "album artist",
-                |aa| &aa.artist_id,
-                |aa, artist_id| aa.artist_id = artist_id,
-            )?
-        } else {
-            vec![]
-        };
-        let remapped_release_artist_roles = remap_links(
-            &release_artist_roles,
-            &artist_id_map,
-            "release artist role",
-            |role| &role.artist_id,
-            |role, artist_id| role.artist_id = artist_id,
-        )?;
-        let remapped_track_artist_roles = remap_links(
-            &track_artist_roles,
-            &artist_id_map,
-            "track artist role",
-            |role| &role.artist_id,
-            |role, artist_id| role.artist_id = artist_id,
-        )?;
 
         // A work performed by an already-imported release keeps that release's
         // `works` row, so every link this import writes points at the resolved id
@@ -196,16 +152,10 @@ impl ImportService {
             .collect();
 
         // A work_artists row points at both an artist and a work, and a
-        // work_parts row at two works, so each is remapped once per endpoint.
-        let work_artists_by_artist = remap_links(
-            &work_graph.work_artists,
-            &artist_id_map,
-            "work artist",
-            |link| &link.artist_id,
-            |link, artist_id| link.artist_id = artist_id,
-        )?;
+        // work_parts row at two works: the work ends are remapped here, the
+        // artist end when the commit resolves the credits.
         let remapped_work_artists = remap_links(
-            &work_artists_by_artist,
+            &work_graph.work_artists,
             &work_id_map,
             "work artist work",
             |link| &link.work_id,
@@ -233,13 +183,6 @@ impl ImportService {
             |link, work_id| link.work_id = work_id,
         )?;
 
-        let artist_images = library_manager
-            .materialize_prepared_artist_images(&resolved.inserts, prepared_artist_images)
-            .await?;
-
-        let artist_inserts = resolved.inserts;
-        let artist_external_id_updates = resolved.external_id_updates;
-
         Ok(PreparedMetadata {
             db_album,
             db_release,
@@ -248,19 +191,19 @@ impl ImportService {
             remote_cover_image: None,
             embedded_cover: None,
             existing_album_id,
-            remapped_track_artists,
-            remapped_album_artists,
+            track_artists,
+            album_artists,
             work_graph: ParsedWorkGraph {
                 works: resolved_works.inserts,
                 work_artists: remapped_work_artists,
                 work_parts: remapped_work_parts,
                 track_works: remapped_track_works,
             },
-            remapped_release_artist_roles,
-            remapped_track_artist_roles,
-            artists: artist_inserts,
-            artist_external_id_updates,
-            artist_images,
+            release_artist_roles,
+            track_artist_roles,
+            artist_credits: artists,
+            picked_artists,
+            prepared_artist_images,
             records,
             album_title,
         })

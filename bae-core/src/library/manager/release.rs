@@ -383,11 +383,11 @@ impl LibraryManager {
     }
 
     /// Write a release's metadata rows: album title and artists, release pressing
-    /// fields, and per-track titles, sides, track numbers, and artists. Resolves
-    /// explicit library IDs and exact external IDs, creates new name-only artists,
-    /// and writes the
+    /// fields, and per-track titles, sides, track numbers, and artists. A picked
+    /// library artist is linked as itself; every other credit is resolved by the
+    /// artist rule (`db::artist_resolution`) inside the commit that writes the
     /// album/release/track rows and replaces the `album_artists` /
-    /// `track_artists` junctions in one commit.
+    /// `track_artists` junctions.
     ///
     /// Track edits align positionally with the release's existing tracks (the
     /// edit can't add or remove tracks — `tracks.len()` must equal the
@@ -421,28 +421,30 @@ impl LibraryManager {
             )));
         }
 
-        let mut assignments = edit.album_artist_assignments.clone();
-        let album_assignment_count = assignments.len();
-        let mut track_ranges = Vec::with_capacity(edit.tracks.len());
-        for track in &edit.tracks {
-            let start = assignments.len();
-            if let crate::import::TrackArtistAssignments::Explicit(track_assignments) =
-                &track.artist_assignments
-            {
-                assignments.extend(track_assignments.iter().cloned());
-            }
-            track_ranges.push(start..assignments.len());
-        }
-        let resolved_artists = self.resolve_artist_assignments(&assignments).await?;
-        let album_artist_ids = &resolved_artists.ids[..album_assignment_count];
         let now = self.clock.now();
+        let mut credits: Vec<DbArtist> = Vec::new();
+        let mut picked: Vec<String> = Vec::new();
+        let mut credit_of = |assignment: &crate::import::ArtistAssignment| {
+            let credit = assignment.credit(self.ids.as_ref(), now);
+            let id = credit.id.clone();
+            if matches!(assignment, crate::import::ArtistAssignment::Existing { .. }) {
+                picked.push(id.clone());
+            }
+            credits.push(credit);
+            id
+        };
 
         // The `album.artist_id` FK is the primary album artist; additional
         // artists go in the `album_artists` junction with position >= 1
         // (mirrors the convention in {discogs,musicbrainz}_mapper.rs).
         // `get_artists_for_album` UNIONs the FK row in at sort_key = -1, so
         // including the primary in the junction too would duplicate it.
-        let primary_album_artist_id = album_artist_ids.first().ok_or_else(|| {
+        let album_credit_ids: Vec<String> = edit
+            .album_artist_assignments
+            .iter()
+            .map(&mut credit_of)
+            .collect();
+        let primary_album_artist_id = album_credit_ids.first().ok_or_else(|| {
             LibraryError::Internal(format!(
                 "release {release_id} metadata carries no album artist"
             ))
@@ -481,29 +483,26 @@ impl LibraryManager {
             })
             .collect();
 
-        let mut album_artists: Vec<DbAlbumArtist> = Vec::new();
-        for (i, artist_id) in album_artist_ids.iter().enumerate().skip(1) {
-            album_artists.push(DbAlbumArtist::new(&album_id, artist_id, i as i32, now));
-        }
+        let album_artists: Vec<DbAlbumArtist> = album_credit_ids
+            .iter()
+            .enumerate()
+            .skip(1)
+            .map(|(i, artist_id)| DbAlbumArtist::new(&album_id, artist_id, i as i32, now))
+            .collect();
 
         // Track artists have no FK on `tracks` — every artist (primary or
         // additional) goes in `track_artists` with positional ordering.
         let mut track_artists: Vec<DbTrackArtist> = Vec::new();
-        for ((existing, track), range) in existing_tracks
-            .iter()
-            .zip(edit.tracks.iter())
-            .zip(track_ranges)
-        {
-            if matches!(
-                track.artist_assignments,
-                crate::import::TrackArtistAssignments::AlbumArtists
-            ) {
+        for (existing, track) in existing_tracks.iter().zip(edit.tracks.iter()) {
+            let crate::import::TrackArtistAssignments::Explicit(assignments) =
+                &track.artist_assignments
+            else {
                 continue;
-            }
-            for (i, artist_id) in resolved_artists.ids[range].iter().enumerate() {
+            };
+            for (i, assignment) in assignments.iter().enumerate() {
                 track_artists.push(DbTrackArtist::new(
                     &existing.id,
-                    artist_id,
+                    &credit_of(assignment),
                     i as i32,
                     self.ids.new_id(),
                     now,
@@ -518,8 +517,10 @@ impl LibraryManager {
                 &updated_album,
                 &updated_release,
                 &track_updates,
-                &resolved_artists.inserts,
-                &resolved_artists.external_id_updates,
+                crate::db::ArtistCredits {
+                    credits: &credits,
+                    picked: &picked,
+                },
                 &album_artists,
                 &track_artists,
             )

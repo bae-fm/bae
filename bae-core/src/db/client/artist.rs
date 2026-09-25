@@ -9,103 +9,6 @@ impl Database {
         })
         .await
     }
-    /// Look up a single artist by a one-parameter equality query. The
-    /// `get_artist_by_*` / `find_artist_by_id` lookups differ only in the column
-    /// they match on, so they share this body.
-    async fn get_artist_by_sql(
-        &self,
-        query: &'static str,
-        value: String,
-    ) -> Result<Option<DbArtist>, DbError> {
-        self.read(move |sql| {
-            sql.query_row(query, params![value], row_to_artist)
-                .optional()
-                .map_err(DbError::from)
-        })
-        .await
-    }
-
-    /// The artist a Discogs artist id names, as it shows after any merge.
-    pub async fn get_artist_by_discogs_id(
-        &self,
-        discogs_artist_id: &str,
-    ) -> Result<Option<DbArtist>, DbError> {
-        self.get_artist_by_catalog_id(
-            "discogs_artist_id",
-            discogs_artist_id,
-            crate::db::identity::artist_id(None, Some(discogs_artist_id)),
-        )
-        .await
-    }
-
-    /// The artist a MusicBrainz artist id names, as it shows after any merge.
-    pub async fn get_artist_by_mb_id(&self, mb_id: &str) -> Result<Option<DbArtist>, DbError> {
-        self.get_artist_by_catalog_id(
-            "musicbrainz_artist_id",
-            mb_id,
-            crate::db::identity::artist_id(Some(mb_id), None),
-        )
-        .await
-    }
-
-    /// The artist whose `column` holds `catalog_id`, or whose row the catalog
-    /// id names (its column may have been filled in or edited since), followed
-    /// through any merge to the artist it shows as.
-    async fn get_artist_by_catalog_id(
-        &self,
-        column: &'static str,
-        catalog_id: &str,
-        identity: Option<String>,
-    ) -> Result<Option<DbArtist>, DbError> {
-        let catalog_id = catalog_id.to_string();
-        self.read(move |sql| {
-            sql.query_row(
-                &format!(
-                    "SELECT a.* FROM artists a WHERE a.id IN ( \
-                         SELECT {} FROM artists named \
-                         WHERE named.{column} = ?1 OR named.id = ?2) \
-                     ORDER BY a.id = ?2 DESC, a.id LIMIT 1",
-                    shown_artist_id("named.id")
-                ),
-                params![catalog_id, identity],
-                row_to_artist,
-            )
-            .optional()
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
-    /// Fill in an existing artist's NULL external IDs and sort_name via COALESCE.
-    /// Never overwrites a value that is already set.
-    pub async fn update_artist_external_ids(
-        &self,
-        id: &str,
-        discogs_id: Option<&str>,
-        mb_id: Option<&str>,
-        sort_name: Option<&str>,
-    ) -> Result<(), DbError> {
-        let (id, discogs_id, mb_id, sort_name) = (
-            id.to_string(),
-            discogs_id.map(str::to_string),
-            mb_id.map(str::to_string),
-            sort_name.map(str::to_string),
-        );
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            update_artist_external_ids_row(
-                &sql,
-                &id,
-                discogs_id.as_deref(),
-                mb_id.as_deref(),
-                sort_name.as_deref(),
-                &reg,
-            )
-            .map(|_| ())
-        })
-        .await
-    }
-
     pub async fn insert_album_artist(&self, album_artist: &DbAlbumArtist) -> Result<(), DbError> {
         let album_artist = album_artist.clone();
         self.call_sql(move |sql| {
@@ -152,8 +55,17 @@ impl Database {
     }
     /// Find artist by ID. Caller-provided ID — may not exist.
     pub async fn find_artist_by_id(&self, artist_id: &str) -> Result<Option<DbArtist>, DbError> {
-        self.get_artist_by_sql("SELECT * FROM artists WHERE id = ?", artist_id.to_string())
-            .await
+        let artist_id = artist_id.to_string();
+        self.read(move |sql| {
+            sql.query_row(
+                "SELECT * FROM artists WHERE id = ?",
+                params![artist_id],
+                row_to_artist,
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Search every stored artist, including artists without an album link.

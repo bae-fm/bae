@@ -8,13 +8,14 @@ pub(super) fn insert_artist_row(
     conn.execute(
         r#"
         INSERT INTO artists (
-            id, name, sort_name, discogs_artist_id,
+            id, name, name_key, sort_name, discogs_artist_id,
             musicbrainz_artist_id, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             artist.id,
             artist.name,
+            crate::util::text::normalize(&artist.name),
             artist.sort_name,
             artist.discogs_artist_id,
             artist.musicbrainz_artist_id,

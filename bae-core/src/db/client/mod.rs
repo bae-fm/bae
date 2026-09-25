@@ -40,6 +40,12 @@ pub use artist::{
 mod artist;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod artist_identity_merge;
+mod artist_resolution;
+pub(crate) use artist_resolution::ArtistCredits;
+pub use artist_resolution::ArtistWriteError;
+use artist_resolution::{
+    artist_write_failure, relink, relink_album_artists, relink_track_artists, relinked_album,
+};
 mod blobs;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod candidate_state_rows;
@@ -74,7 +80,7 @@ pub(crate) use blobs::{OutboxDisplayContext, OutboxDisplayRequest};
 pub(crate) use playback::{QueueCatalogProjection, QueueCatalogRequest};
 mod release;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use release::{ImportRows, RemoteImport};
+pub(crate) use release::{ImportRows, NewArtistImages, RemoteImport};
 mod release_deletion;
 pub use release_deletion::ReleaseDeletion;
 mod release_projection;

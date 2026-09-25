@@ -298,23 +298,23 @@ impl LibraryManager {
         Ok(answers)
     }
 
-    /// Turn candidate-owned image bytes into library image rows after artist
-    /// identities have been resolved. Existing library images win; this does
-    /// database reads and row construction only.
+    /// Turn candidate-owned image bytes into library image rows for the new
+    /// artists an import creates. An artist the import links to keeps its own
+    /// picture; this constructs rows only.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) async fn materialize_prepared_artist_images(
+    pub(crate) fn materialize_prepared_artist_images(
         &self,
         inserted_artists: &[DbArtist],
         prepared: &[crate::import::PreparedArtistImage],
-    ) -> Result<Vec<(DbLibraryImage, Vec<u8>)>, crate::import::ImportError> {
+    ) -> Result<Vec<(DbLibraryImage, Vec<u8>)>, LibraryError> {
         let by_discogs_id: HashMap<_, _> = prepared
             .iter()
             .map(|answer| (answer.discogs_artist_id(), answer))
             .collect();
         if by_discogs_id.len() != prepared.len() {
-            return Err(crate::import::ImportError::Internal {
-                detail: "prepared artist images contain a duplicate Discogs artist ID".into(),
-            });
+            return Err(LibraryError::Internal(
+                "prepared artist images contain a duplicate Discogs artist ID".into(),
+            ));
         }
         let mut images = Vec::new();
         for artist in inserted_artists {
@@ -322,11 +322,9 @@ impl LibraryManager {
                 continue;
             };
             let answer = by_discogs_id.get(discogs_artist_id).ok_or_else(|| {
-                crate::import::ImportError::Internal {
-                    detail: format!(
-                        "new Discogs artist {discogs_artist_id} has no prepared image answer"
-                    ),
-                }
+                LibraryError::Internal(format!(
+                    "new Discogs artist {discogs_artist_id} has no prepared image answer"
+                ))
             })?;
             let crate::import::PreparedArtistImage::Image {
                 source_url, image, ..

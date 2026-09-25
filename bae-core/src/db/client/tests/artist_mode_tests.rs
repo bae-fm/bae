@@ -10,13 +10,13 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+            INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
             VALUES
-                ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name B', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
-                ('7fa00099-f5d8-4ec2-88bd-e19d8edd7bb8', 'Artist Name A', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
-                ('f862abf2-3b15-4518-889b-1996d7100201', 'Various Artists', NULL, '194', NULL, 'stamp', '2026-01-01T00:00:00Z'),
-                ('b96d8066-777d-408d-8ae4-ed58c767e40c', 'Composer Name A', NULL, NULL, 'mb-artist-work-only', 'stamp', '2026-01-01T00:00:00Z'),
-                ('7d8362d9-b321-495a-89f7-4cd8998449a4', 'Artist Name C', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z');
+                ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name B', 'artist name b', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                ('7fa00099-f5d8-4ec2-88bd-e19d8edd7bb8', 'Artist Name A', 'artist name a', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                ('f862abf2-3b15-4518-889b-1996d7100201', 'Various Artists', 'various artists', NULL, '194', NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                ('b96d8066-777d-408d-8ae4-ed58c767e40c', 'Composer Name A', 'composer name a', NULL, NULL, 'mb-artist-work-only', 'stamp', '2026-01-01T00:00:00Z'),
+                ('7d8362d9-b321-495a-89f7-4cd8998449a4', 'Artist Name C', 'artist name c', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z');
 
             INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
             VALUES
@@ -58,13 +58,13 @@ async fn artist_search_ranks_exact_prefix_and_substring_matches() {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+            INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
             VALUES
-                ('0d3d77ce-a3ea-4d31-b5ff-e10facb0cc0b', 'Artist Search', NULL, 'discogs-exact', 'mb-exact', 'stamp', '2026-01-01T00:00:00Z'),
-                ('6b312597-2c63-454e-9341-065704bd5f9f', 'Artist Search Alpha', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
-                ('ef0f40c5-83b9-4e14-be41-210438e73ef1', 'Artist Search Beta', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
-                ('d5cfb57f-0df4-4c99-9a1a-a634161c2e2c', 'Name With Artist Search Inside', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
-                ('1dd8239d-493b-434a-b0dd-d2838a9b404a', 'Displayed Name', 'Artist Search Sort', NULL, NULL, 'stamp', '2026-01-01T00:00:00Z');
+                ('0d3d77ce-a3ea-4d31-b5ff-e10facb0cc0b', 'Artist Search', 'artist search', NULL, 'discogs-exact', 'mb-exact', 'stamp', '2026-01-01T00:00:00Z'),
+                ('6b312597-2c63-454e-9341-065704bd5f9f', 'Artist Search Alpha', 'artist search alpha', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                ('ef0f40c5-83b9-4e14-be41-210438e73ef1', 'Artist Search Beta', 'artist search beta', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                ('d5cfb57f-0df4-4c99-9a1a-a634161c2e2c', 'Name With Artist Search Inside', 'name with artist search inside', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                ('1dd8239d-493b-434a-b0dd-d2838a9b404a', 'Displayed Name', 'displayed name', 'Artist Search Sort', NULL, NULL, 'stamp', '2026-01-01T00:00:00Z');
             ",
         )
         .map(|_| ())
@@ -154,11 +154,11 @@ async fn artist_page_uses_id_tiebreaker() {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+            INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
             VALUES
-                ('1b4bafc9-0ece-4538-833e-4ff52feb6ef0', 'Artist Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('38fc314c-c130-4120-8ca9-38b870ccef3a', 'Artist Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                ('1b4bafc9-0ece-4538-833e-4ff52feb6ef0', 'Artist Name Shared', 'artist name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name Shared', 'artist name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                ('38fc314c-c130-4120-8ca9-38b870ccef3a', 'Artist Name Shared', 'artist name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
             INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
             VALUES
@@ -209,11 +209,11 @@ async fn artist_page_applies_secondary_criterion() {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+            INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
             VALUES
-                ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name A', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('38fc314c-c130-4120-8ca9-38b870ccef3a', 'Artist Name B', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('49549823-0e72-4747-891e-ee50e1611e3a', 'Artist Name Solo', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name A', 'artist name a', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                ('38fc314c-c130-4120-8ca9-38b870ccef3a', 'Artist Name B', 'artist name b', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                ('49549823-0e72-4747-891e-ee50e1611e3a', 'Artist Name Solo', 'artist name solo', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
             INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
             VALUES
@@ -262,10 +262,10 @@ async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+            INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
             VALUES
-                ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name A', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('4d0b27b7-c953-47f5-8614-70ed973923dc', 'Artist Name B', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name A', 'artist name a', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                ('4d0b27b7-c953-47f5-8614-70ed973923dc', 'Artist Name B', 'artist name b', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
             INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
             VALUES

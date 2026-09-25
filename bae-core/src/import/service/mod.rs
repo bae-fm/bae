@@ -66,8 +66,9 @@ pub(super) struct ImportFiles<'a> {
     pub(super) tracks: &'a [TrackFile],
 }
 
-/// What `reconcile_prepared_release` yields: the release's rows with parsed
-/// artist IDs already remapped to their real DB IDs, ready for the run pass.
+/// What `reconcile_prepared_release` yields: the release's rows, ready for the
+/// run pass. Every artist link names one of `artist_credits` by its id; the
+/// commit resolves the credits to library artists in its own transaction.
 struct PreparedMetadata {
     db_album: DbAlbum,
     db_release: DbRelease,
@@ -80,14 +81,20 @@ struct PreparedMetadata {
     /// download reported — checked at read time and dropped by the resize.
     embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
     existing_album_id: Option<String>,
-    remapped_track_artists: Vec<DbTrackArtist>,
-    remapped_album_artists: Vec<DbAlbumArtist>,
+    track_artists: Vec<DbTrackArtist>,
+    /// Empty when the release joins an album already in the library.
+    album_artists: Vec<DbAlbumArtist>,
+    /// Works resolved; `work_artists` still name their artist by credit.
     work_graph: ParsedWorkGraph,
-    remapped_release_artist_roles: Vec<DbReleaseArtistRole>,
-    remapped_track_artist_roles: Vec<DbTrackArtistRole>,
-    artists: Vec<crate::db::DbArtist>,
-    artist_external_id_updates: Vec<(String, crate::db::DbArtist)>,
-    artist_images: Vec<(crate::db::DbLibraryImage, Vec<u8>)>,
+    release_artist_roles: Vec<DbReleaseArtistRole>,
+    track_artist_roles: Vec<DbTrackArtistRole>,
+    /// Every artist the links above name, as the source or the person said.
+    artist_credits: Vec<crate::db::DbArtist>,
+    /// The credits that are library artists a person picked.
+    picked_artists: Vec<String>,
+    /// The candidate's Discogs picture answers, for whichever credits the
+    /// commit decides are new artists.
+    prepared_artist_images: Vec<crate::import::PreparedArtistImage>,
     /// Every catalog's description of this release. Empty for file metadata and
     /// direct entry, which name no catalog. Commit writes one
     /// record row per element.
@@ -666,24 +673,15 @@ pub(crate) fn retain_track_metadata(
 /// Overwrites the album title and original year, the release's pressing fields, and each track's
 /// title/side/track_number.
 ///
-/// Artist credits (`album_artists`, `track_artists`) are rebuilt only when the
-/// edit's names differ from the seed's, so an untouched artist field keeps the
-/// mapper's rows and their source-id linkage (e.g. `musicbrainz_artist_id`).
-/// Comparison uses the editor's own form shape: an empty per-track list means
-/// "track shares the album artist", so a seeded track whose credits match the
-/// album's (positionally, case-insensitive) compares equal to an empty edit.
+/// The album's and each explicit track's artist links are rebuilt from the
+/// edit's assignments: a picked library artist is linked by its own id, and a
+/// credit becomes a fresh credit row carrying its name and catalog ids. The
+/// commit resolves every credit against the library; the returned set names
+/// the picked ones, which it links as they are.
 ///
-/// A rebuild resolves names against the existing `artists` vec, inserting fresh
-/// `DbArtist` rows for unseen names with both source ids `None` — a
-/// user-introduced name has no source binding to record. The import-artist
-/// resolver canonicalizes them at DB-write time.
-///
-/// A `tracks` length mismatch is a structural error: the editor binds to the
-/// seeded track list and never adds or removes rows.
 fn apply_user_edit_to_seed(
     edit: &crate::import::ReleaseUserEdit,
     seed: &mut crate::import::ParsedAlbum,
-    existing_artists: &HashMap<String, crate::db::DbArtist>,
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
 ) -> Result<HashSet<String>, crate::import::ImportError> {
@@ -713,18 +711,17 @@ fn apply_user_edit_to_seed(
     }
 
     let now = clock.now();
-    let mut existing_artist_ids = HashSet::new();
+    let mut picked_artist_ids = HashSet::new();
 
     db_album.title = edit.album_title.clone();
     db_album.year = edit.album_year;
     db_album.artist_id = materialize_artist_assignment(
         &edit.album_artist_assignments[0],
         artists,
-        &mut existing_artist_ids,
-        existing_artists,
+        &mut picked_artist_ids,
         ids,
         now,
-    )?;
+    );
 
     db_release.pressing = crate::db::Pressing {
         year: edit.pressing.year,
@@ -746,11 +743,10 @@ fn apply_user_edit_to_seed(
         let artist_id = materialize_artist_assignment(
             assignment,
             artists,
-            &mut existing_artist_ids,
-            existing_artists,
+            &mut picked_artist_ids,
             ids,
             now,
-        )?;
+        );
         album_artists.push(DbAlbumArtist::new(
             &db_album.id,
             &artist_id,
@@ -768,11 +764,10 @@ fn apply_user_edit_to_seed(
                 let artist_id = materialize_artist_assignment(
                     assignment,
                     artists,
-                    &mut existing_artist_ids,
-                    existing_artists,
+                    &mut picked_artist_ids,
                     ids,
                     now,
-                )?;
+                );
                 track_artists.push(DbTrackArtist::new(
                     &track.id,
                     &artist_id,
@@ -784,78 +779,28 @@ fn apply_user_edit_to_seed(
         }
     }
 
-    Ok(existing_artist_ids)
+    Ok(picked_artist_ids)
 }
 
+/// The artist row one assignment links: a picked library artist as itself,
+/// recorded in `picked`; a credit as a new credit row.
 fn materialize_artist_assignment(
     assignment: &crate::import::ArtistAssignment,
     artists: &mut Vec<crate::db::DbArtist>,
-    existing_artist_ids: &mut HashSet<String>,
-    existing_artists: &HashMap<String, crate::db::DbArtist>,
+    picked: &mut HashSet<String>,
     ids: &dyn coven::IdProvider,
     now: chrono::DateTime<chrono::Utc>,
-) -> Result<String, crate::import::ImportError> {
-    match assignment {
-        crate::import::ArtistAssignment::Existing { artist } => {
-            let artist_id = &artist.artist_id;
-            let artist = existing_artists.get(artist_id).cloned().ok_or_else(|| {
-                crate::import::ImportError::Internal {
-                    detail: format!("selected artist {artist_id} no longer exists"),
-                }
-            })?;
-            if !artists.iter().any(|candidate| candidate.id == artist.id) {
-                artists.push(artist);
-            }
-            existing_artist_ids.insert(artist_id.clone());
-            Ok(artist_id.clone())
-        }
-        crate::import::ArtistAssignment::New { seed } => {
-            let id = ids.new_id();
-            artists.push(crate::db::DbArtist {
-                id: id.clone(),
-                name: seed.name.clone(),
-                sort_name: seed.sort_name.clone(),
-                discogs_artist_id: seed.discogs_artist_id.clone(),
-                musicbrainz_artist_id: seed.musicbrainz_artist_id.clone(),
-                created_at: now,
-            });
-            Ok(id)
+) -> String {
+    let artist = assignment.credit(ids, now);
+    let id = artist.id.clone();
+    if matches!(assignment, crate::import::ArtistAssignment::Existing { .. }) {
+        picked.insert(id.clone());
+        if artists.iter().any(|candidate| candidate.id == id) {
+            return id;
         }
     }
-}
-
-async fn load_existing_artist_assignments(
-    edit: &crate::import::ReleaseUserEdit,
-    library_manager: &LibraryManager,
-) -> Result<HashMap<String, crate::db::DbArtist>, crate::import::ImportError> {
-    let album = edit.album_artist_assignments.iter();
-    let tracks = edit
-        .tracks
-        .iter()
-        .flat_map(|track| match &track.artist_assignments {
-            crate::import::TrackArtistAssignments::AlbumArtists => [].as_slice().iter(),
-            crate::import::TrackArtistAssignments::Explicit(assignments) => assignments.iter(),
-        });
-    let mut out = HashMap::new();
-    for artist_id in album
-        .chain(tracks)
-        .filter_map(|assignment| match assignment {
-            crate::import::ArtistAssignment::Existing { artist } => Some(&artist.artist_id),
-            crate::import::ArtistAssignment::New { .. } => None,
-        })
-    {
-        if out.contains_key(artist_id) {
-            continue;
-        }
-        let artist = library_manager
-            .get_artist_by_id(artist_id)
-            .await?
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!("selected artist {artist_id} no longer exists"),
-            })?;
-        out.insert(artist_id.clone(), artist);
-    }
-    Ok(out)
+    artists.push(artist);
+    id
 }
 
 /// The release `release_ref` names, stored: as a fetch already stored it, or

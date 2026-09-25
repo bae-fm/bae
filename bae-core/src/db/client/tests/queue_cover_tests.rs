@@ -14,8 +14,8 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
         conn.execute_batch(
             &format!(
             "
-            INSERT INTO artists (id, name, _updated_at, created_at)
-            VALUES ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name', 'stamp', '2026-01-01T00:00:00Z');
+            INSERT INTO artists (id, name, name_key, _updated_at, created_at)
+            VALUES ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name', 'artist name', 'stamp', '2026-01-01T00:00:00Z');
 
             INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
             VALUES

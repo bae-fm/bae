@@ -28,8 +28,8 @@ pub(super) async fn live_db() -> (Database, tempfile::TempDir) {
     exec_batch(
         &db,
         &format!(
-            "INSERT INTO artists (id, name, _updated_at, created_at)
-             VALUES ('{ARTIST_ID}', 'Artist Name', 'seed', '2026-01-01T00:00:00Z');
+            "INSERT INTO artists (id, name, name_key, _updated_at, created_at)
+             VALUES ('{ARTIST_ID}', 'Artist Name', 'artist name', 'seed', '2026-01-01T00:00:00Z');
              INSERT INTO albums
                (id, title, artist_id, primary_release_id, is_compilation, _updated_at, created_at)
              VALUES ('{ALBUM_ID}', 'Album Title', '{ARTIST_ID}', '{RELEASE_ID}', 0, 'seed', '2026-01-01T00:00:00Z');
@@ -366,9 +366,9 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     exec_batch(
         &db,
         &format!(
-            "INSERT INTO artists (id, name, _updated_at, created_at) VALUES
-               ('{COMPOSER_ID}', 'Composer Name First', 'composer-v1', '2026-01-01T00:00:00Z'),
-               ('{OTHER_COMPOSER_ID}', 'Composer Name Second', 'composer-v1', '2026-01-02T00:00:00Z');
+            "INSERT INTO artists (id, name, name_key, _updated_at, created_at) VALUES
+               ('{COMPOSER_ID}', 'Composer Name First', 'composer name first', 'composer-v1', '2026-01-01T00:00:00Z'),
+               ('{OTHER_COMPOSER_ID}', 'Composer Name Second', 'composer name second', 'composer-v1', '2026-01-02T00:00:00Z');
              INSERT INTO works (id, title, work_type, musicbrainz_work_id, _updated_at, created_at) VALUES
                ('{COMPOSER_WORK_ID}', 'Work Title First', 'work', 'work-first', 'work-v1', '2026-01-01T00:00:00Z'),
                ('{OTHER_COMPOSER_WORK_ID}', 'Work Title Second', 'work', 'work-second', 'work-v1', '2026-01-02T00:00:00Z');
@@ -415,7 +415,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
 
     exec(
         &db,
-        "UPDATE artists SET name = 'Composer Name Renamed' WHERE id = ?1",
+        "UPDATE artists SET name = 'Composer Name Renamed', name_key = 'composer name renamed' WHERE id = ?1",
         &[OTHER_COMPOSER_ID],
     )
     .await;
@@ -526,8 +526,8 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     exec_batch(
         &db,
         &format!(
-            "INSERT INTO artists (id, name, _updated_at, created_at)
-             VALUES ('{INSERTED_COMPOSER_ID}', 'Composer Name Inserted', 'composer-v1', '2026-01-03T00:00:00Z');
+            "INSERT INTO artists (id, name, name_key, _updated_at, created_at)
+             VALUES ('{INSERTED_COMPOSER_ID}', 'Composer Name Inserted', 'composer name inserted', 'composer-v1', '2026-01-03T00:00:00Z');
              INSERT INTO works (id, title, work_type, musicbrainz_work_id, _updated_at, created_at)
              VALUES ('{INSERTED_COMPOSER_WORK_ID}', 'Work Title Inserted', 'work', 'work-inserted', 'work-v1', '2026-01-03T00:00:00Z');
              INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
@@ -766,8 +766,8 @@ async fn album_page_subscription_delivers_a_write_materialized_by_sync() {
     writer
         .call(|sql| {
             sql.execute_batch(&format!(
-                "INSERT INTO artists (id, name, _updated_at, created_at)
-                 VALUES ('{ARTIST_ID}', 'Artist Name', 'remote', '2026-01-01T00:00:00Z');
+                "INSERT INTO artists (id, name, name_key, _updated_at, created_at)
+                 VALUES ('{ARTIST_ID}', 'Artist Name', 'artist name', 'remote', '2026-01-01T00:00:00Z');
                  INSERT INTO albums
                    (id, title, artist_id, primary_release_id, is_compilation, _updated_at, created_at)
                  VALUES ('{ALBUM_ID}', 'Synced Album', '{ARTIST_ID}', '{RELEASE_ID}', 0, 'remote', '2026-01-01T00:00:00Z');

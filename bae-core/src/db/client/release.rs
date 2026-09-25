@@ -18,6 +18,12 @@ pub(crate) struct RemoteImport {
     pub(crate) pin: bool,
 }
 
+///
+/// Every artist link here — the album's artist, `album_artists`,
+/// `track_artists`, the role rows and `work_artists` — names its artist by the
+/// id of one of `artists.credits`. The commit resolves those credits to
+/// library artists inside its own transaction and writes each link to the
+/// artist its credit resolved to.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Default)]
 pub(crate) struct ImportRows<'a> {
@@ -29,13 +35,23 @@ pub(crate) struct ImportRows<'a> {
     pub track_works: &'a [DbTrackWork],
     pub release_artist_roles: &'a [DbReleaseArtistRole],
     pub track_artist_roles: &'a [DbTrackArtistRole],
-    pub artists: &'a [DbArtist],
-    /// `(artist_id, artist)` — an existing artist row whose empty source-id and
-    /// sort-name fields this import fills in.
-    pub artist_external_id_updates: &'a [(String, DbArtist)],
+    pub artists: super::artist_resolution::ArtistCredits<'a>,
     pub audio_formats: &'a [DbAudioFormat],
     pub audio_segments: &'a [DbAudioSegment],
     pub records: &'a [crate::import::ReleaseRecord],
+}
+
+/// Pictures for the new artists an import expects to create. Their bytes are
+/// staged before the transaction's SQL runs, so they are prepared against a
+/// read of the library just before it; the transaction resolves the credits
+/// again and refuses to commit if the new artists it would create are not
+/// exactly `expected_new_artists` — a picture is never left without its
+/// artist, and no new artist misses the picture prepared for it.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Default, Clone, Copy)]
+pub(crate) struct NewArtistImages<'a> {
+    pub expected_new_artists: &'a [String],
+    pub images: &'a [(&'a DbLibraryImage, &'a [u8])],
 }
 
 impl Database {
@@ -137,30 +153,34 @@ impl Database {
     /// by `track_updates` (existing track ID → edited row), plus a full replace of
     /// the `album_artists` and `track_artists` links.
     ///
+    /// The album's artist and every link name their artist by the id of one of
+    /// `artists.credits`; the credits are resolved to library artists inside
+    /// this transaction and each link is written to the artist its credit
+    /// resolved to.
+    ///
     /// Deliberately untouched: the stored catalog release (what the source
     /// said, independent of a user edit) and the release's records and where
     /// the draft was read (a record is orthogonal to editable metadata).
     #[allow(clippy::too_many_arguments)]
-    pub async fn update_release_metadata_user_edit(
+    pub(crate) async fn update_release_metadata_user_edit(
         &self,
         album_id: &str,
         release_id: &str,
         album: &DbAlbum,
         release: &DbRelease,
         track_updates: &[(String, DbTrack)],
-        artists: &[DbArtist],
-        artist_external_id_updates: &[(String, DbArtist)],
+        artists: ArtistCredits<'_>,
         album_artists: &[DbAlbumArtist],
         track_artists: &[DbTrackArtist],
-    ) -> Result<(), DbError> {
+    ) -> Result<(), ArtistWriteError> {
         let (
             album_id,
             release_id,
             album,
             release,
             track_updates,
-            artists,
-            artist_external_id_updates,
+            artist_credits,
+            picked_artists,
             album_artists,
             track_artists,
         ) = (
@@ -169,32 +189,30 @@ impl Database {
             album.clone(),
             release.clone(),
             track_updates.to_vec(),
-            artists.to_vec(),
-            artist_external_id_updates.to_vec(),
+            artists.credits.to_vec(),
+            artists.picked.to_vec(),
             album_artists.to_vec(),
             track_artists.to_vec(),
         );
         let now = self.inner.clock.now().to_rfc3339();
-        self.call_sql(move |sql| {
+        self.write_resolving_artists(move |sql| {
             let tx = &sql;
             // One HLC stamp for every synced row this edit touches.
             let reg = sql.stamp();
 
-            // Insert new artist rows and fill empty source-ID fields on existing
+            // Decide every credit against the library as it stands now, then
+            // insert new artist rows and fill empty source-ID fields on linked
             // artists before the album/track links below point at them.
-            for artist in &artists {
-                insert_artist_row(tx, artist, &reg)?;
+            let resolved = ArtistCredits {
+                credits: &artist_credits,
+                picked: &picked_artists,
             }
-            for (artist_id, artist) in &artist_external_id_updates {
-                update_artist_external_ids_row(
-                    tx,
-                    artist_id,
-                    artist.discogs_artist_id.as_deref(),
-                    artist.musicbrainz_artist_id.as_deref(),
-                    artist.sort_name.as_deref(),
-                    &reg,
-                )?;
-            }
+            .resolve_on(tx)?;
+            resolved.write_on(tx, &reg)?;
+            let artist_ids = resolved.id_map(&artist_credits);
+            let album = relinked_album(&album, &artist_ids)?;
+            let album_artists = relink_album_artists(Some(&album), &album_artists, &artist_ids)?;
+            let track_artists = relink_track_artists(&track_artists, &artist_ids)?;
 
             tx.execute(
                 r#"UPDATE albums SET title = ?, artist_id = ?, year = ?, is_compilation = ?,
@@ -416,7 +434,7 @@ impl Database {
         rows: ImportRows<'_>,
         files: Vec<crate::import::service::PreparedImportFile>,
         library_image: Option<(&DbLibraryImage, &[u8])>,
-        artist_images: &[(&DbLibraryImage, &[u8])],
+        artist_images: NewArtistImages<'_>,
         primary_release_id: Option<(&str, &str)>, // (album_id, release_id)
         // The cloud home's storage mode, which decides the blob layout: `Opaque`
         // keys each blob by its hashed id, `Browsable` lays it out at a readable
@@ -426,7 +444,7 @@ impl Database {
         // `Some` for a release that goes Remote from the start: its uploads
         // and intent are recorded in this same write.
         remote: Option<RemoteImport>,
-    ) -> Result<Vec<ImportReplacementOutcome>, DbError> {
+    ) -> Result<Vec<ImportReplacementOutcome>, ArtistWriteError> {
         let album = album.cloned();
         let release = release.clone();
         let tracks: Vec<DbTrack> = tracks_to_files
@@ -441,12 +459,15 @@ impl Database {
         let track_works = rows.track_works.to_vec();
         let release_artist_roles = rows.release_artist_roles.to_vec();
         let track_artist_roles = rows.track_artist_roles.to_vec();
-        let artists = rows.artists.to_vec();
-        let artist_external_id_updates = rows.artist_external_id_updates.to_vec();
+        let artist_credits = rows.artists.credits.to_vec();
+        let picked_artists = rows.artists.picked.to_vec();
+        let expected_new_artists: BTreeSet<String> =
+            artist_images.expected_new_artists.iter().cloned().collect();
         let audio_formats = rows.audio_formats.to_vec();
         let audio_segments = rows.audio_segments.to_vec();
         let library_image = library_image.map(|(image, bytes)| (image.clone(), bytes.to_vec()));
         let artist_images: Vec<(DbLibraryImage, Vec<u8>)> = artist_images
+            .images
             .iter()
             .map(|(image, bytes)| ((*image).clone(), (*bytes).to_vec()))
             .collect();
@@ -517,28 +538,38 @@ impl Database {
                             });
                     }
 
-                    // Insert new artist rows and fill empty source-ID fields on
-                    // existing artists: the album/release/track links below refer
-                    // to the resolved ids.
-                    for artist in &artists {
-                        insert_artist_row(tx, artist, &reg)?;
+                    // Every credit is decided here, against the library as it
+                    // stands inside this transaction, so an artist another
+                    // import committed a moment ago is the one this import
+                    // links to. New artists go in and linked ones are filled in
+                    // before the links below point at them.
+                    let credits = ArtistCredits {
+                        credits: &artist_credits,
+                        picked: &picked_artists,
+                    };
+                    let resolved = credits.resolve_on(tx).map_err(artist_write_failure)?;
+                    let inserted: BTreeSet<String> = resolved
+                        .inserts
+                        .iter()
+                        .map(|artist| artist.id.clone())
+                        .collect();
+                    if inserted != expected_new_artists {
+                        return Err(artist_write_failure(ArtistWriteError::LibraryChanged));
                     }
-                    for (artist_id, artist) in &artist_external_id_updates {
-                        update_artist_external_ids_row(
-                            tx,
-                            artist_id,
-                            artist.discogs_artist_id.as_deref(),
-                            artist.musicbrainz_artist_id.as_deref(),
-                            artist.sort_name.as_deref(),
-                            &reg,
-                        )?;
-                    }
+                    resolved.write_on(tx, &reg)?;
+                    let artist_ids = resolved.id_map(&artist_credits);
+                    let album_artists = relink_album_artists(album.as_ref(), &album_artists, &artist_ids)?;
+                    let track_artists = relink_track_artists(&track_artists, &artist_ids)?;
+                    let release_artist_roles = relink(&release_artist_roles, &artist_ids, "release artist role", |role| &mut role.artist_id)?;
+                    let track_artist_roles = relink(&track_artist_roles, &artist_ids, "track artist role", |role| &mut role.artist_id)?;
+                    let work_artists = relink(&work_artists, &artist_ids, "work artist", |link| &mut link.artist_id)?;
 
                     // A new album for a release group carries the group's id, so
                     // its row can be here already, emptied by an earlier delete
                     // or move: the import writes it whole either way.
                     if let Some(album) = &album {
-                        upsert_album_row(tx, album, &reg)?;
+                        let album = relinked_album(album, &artist_ids)?;
+                        upsert_album_row(tx, &album, &reg)?;
                         replace_album_artists(tx, &album.id, &album_artists, &reg, &now)?;
                     }
 
@@ -697,7 +728,7 @@ impl Database {
                 },
             )
             .await
-            .map_err(Self::coven_error)?;
+            .map_err(Self::artist_write_error)?;
         Ok(Arc::try_unwrap(replacement_outcomes)
             .expect("replacement outcomes captured only by finalize_import_atomic")
             .into_inner()

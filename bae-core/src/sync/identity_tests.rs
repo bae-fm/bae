@@ -15,13 +15,21 @@ const DISCOGS_ARTIST: &str = "3840";
 const MB_WORK: &str = "1d8e2b8f-8e9a-3b5c-9d1e-2f4a6b8c0d1e";
 const MB_GROUP: &str = "0c9f2c1e-5b8a-4c8e-9f3a-1b2c3d4e5f60";
 
+/// An artist a catalog names. Each catalog's artist carries its own name, so
+/// a MusicBrainz artist and a Discogs artist are two library artists until a
+/// person merges them, rather than one joined by name.
 fn catalog_artist(
     musicbrainz_artist_id: Option<&str>,
     discogs_artist_id: Option<&str>,
 ) -> DbArtist {
+    let name = match (musicbrainz_artist_id, discogs_artist_id) {
+        (Some(_), _) => "Artist Name One",
+        (None, Some(_)) => "Artist Name Two",
+        (None, None) => "Artist Name",
+    };
     DbArtist {
         id: uuid::Uuid::new_v4().to_string(),
-        name: "Artist".to_string(),
+        name: name.to_string(),
         sort_name: None,
         discogs_artist_id: discogs_artist_id.map(str::to_string),
         musicbrainz_artist_id: musicbrainz_artist_id.map(str::to_string),

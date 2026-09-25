@@ -45,8 +45,8 @@ async fn cover_versions_merges_chunks() {
     db.call(move |conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, _updated_at, created_at)
-            VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'stamp', '2026-01-01T00:00:00Z');
+            INSERT INTO artists (id, name, name_key, _updated_at, created_at)
+            VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'artist name primary', 'stamp', '2026-01-01T00:00:00Z');
 
             INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
             VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, 'cdb9e2f2-ba4c-43ac-8422-765445141290', 0, 'stamp', '2026-01-01T00:00:00Z');

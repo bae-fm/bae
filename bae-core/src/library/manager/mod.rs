@@ -256,6 +256,19 @@ impl From<coven::ApproveDevicePairingError> for LibraryError {
     }
 }
 
+impl From<crate::db::ArtistWriteError> for LibraryError {
+    fn from(error: crate::db::ArtistWriteError) -> Self {
+        match error {
+            crate::db::ArtistWriteError::IdentityConflict(conflict) => {
+                Self::ArtistIdentityConflict(conflict)
+            }
+            crate::db::ArtistWriteError::Db(error) => Self::Database(error),
+            other @ (crate::db::ArtistWriteError::Unresolvable(_)
+            | crate::db::ArtistWriteError::LibraryChanged) => Self::Import(other.to_string()),
+        }
+    }
+}
+
 impl From<crate::import::ArtistIdentityConflict> for LibraryError {
     fn from(error: crate::import::ArtistIdentityConflict) -> Self {
         Self::ArtistIdentityConflict(Box::new(error))
