@@ -2,18 +2,18 @@ import BaeKit
 import Foundation
 import Observation
 
+/// The album grid's multi-selection read live through one query, opened on
+/// the first selection: each selected album's summary is kept current in the
+/// library store — what the bulk actions act on — and an album the read finds
+/// gone leaves the selection. A new selection moves the same query.
 @MainActor
-private final class SelectedAlbumObservations {
-    private struct Observation {
-        let identity: UUID
-        let task: Task<Void, Never>
-    }
-
+private final class SelectedAlbums {
     private let library: Library
     private let libraryStore: LibraryStore
     private let uiStore: UiStore
     private weak var selection: AlbumGridSelection?
-    private var observations: [String: Observation] = [:]
+    private var query: AlbumSelectionQuery?
+    private var deliveries: Task<Void, Never>?
 
     init(library: Library, libraryStore: LibraryStore, uiStore: UiStore) {
         self.library = library
@@ -31,50 +31,54 @@ private final class SelectedAlbumObservations {
     }
 
     func selectionChanged(_ selectedIds: Set<String>) {
-        let removed = observations.keys.filter { !selectedIds.contains($0) }
-        for albumId in removed {
-            observations.removeValue(forKey: albumId)?.task.cancel()
+        if selectedIds.isEmpty && query == nil { return }
+        do {
+            try (query ?? open()).setAlbums(selectedIds.sorted())
         }
-        for albumId in selectedIds where observations[albumId] == nil {
-            observe(albumId: albumId)
-        }
-    }
-
-    private func observe(albumId: String) {
-        let identity = UUID()
-        let values = library.albumDetails(albumId)
-        let task = Task { [weak self] in
-            for await result in values {
-                guard !Task.isCancelled else { return }
-                self?.deliver(result, albumId: albumId, identity: identity)
-            }
-        }
-        observations[albumId] = Observation(identity: identity, task: task)
-    }
-
-    private func deliver(
-        _ result: Result<BridgeAlbumDetail?, BridgeError>,
-        albumId: String,
-        identity: UUID
-    ) {
-        guard observations[albumId]?.identity == identity else { return }
-        switch result {
-        case .success(let detail):
-            libraryStore.applyAlbumDetailSnapshot(
-                albumId: albumId,
-                bridge: detail
-            )
-            if detail == nil {
-                selection?.remove([albumId])
-            }
-        case .failure(let error):
+        catch {
             uiStore.showError(error)
         }
     }
 
+    private func open() -> AlbumSelectionQuery {
+        let query = library.albumSelection()
+        self.query = query
+        deliveries = Task { [weak self] in
+            while !Task.isCancelled {
+                do {
+                    let snapshot = try await query.next()
+                    guard let self else { return }
+                    self.deliver(snapshot)
+                }
+                catch BridgeError.Cancelled {
+                    return
+                }
+                catch {
+                    if !Task.isCancelled { self?.uiStore.showError(error) }
+                    return
+                }
+            }
+        }
+        return query
+    }
+
+    private func deliver(_ snapshot: BridgeAlbumSelectionSnapshot) {
+        for album in snapshot.albums {
+            _ = libraryStore.internAlbumSummary(album)
+        }
+        let present = Set(snapshot.albums.map(\.id))
+        let gone = snapshot.requested.filter { !present.contains($0) }
+        guard !gone.isEmpty else { return }
+        for albumId in gone {
+            libraryStore.applyAlbumDetailSnapshot(albumId: albumId, bridge: nil)
+        }
+        selection?.remove(gone)
+    }
+
     deinit {
-        for observation in observations.values {
-            observation.task.cancel()
+        deliveries?.cancel()
+        if let query {
+            Task { await query.cancel() }
         }
     }
 }
@@ -147,12 +151,12 @@ final class LibraryBrowseSession {
         libraryStore: LibraryStore,
         uiStore: UiStore
     ) {
-        let selectedAlbumObservations = SelectedAlbumObservations(
+        let selectedAlbums = SelectedAlbums(
             library: library,
             libraryStore: libraryStore,
             uiStore: uiStore
         )
-        self.albumSelection = selectedAlbumObservations.makeSelection()
+        self.albumSelection = selectedAlbums.makeSelection()
         albums = BrowseListSlot(
             defaultsKey: "librarySortCriteria",
             defaultCriteria: [

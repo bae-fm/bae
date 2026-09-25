@@ -94,6 +94,7 @@ macro_rules! forward {
     };
 }
 
+mod album_selection;
 mod base;
 mod cloud_operations;
 mod collection_subscription;

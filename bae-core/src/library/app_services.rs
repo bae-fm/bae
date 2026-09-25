@@ -171,6 +171,16 @@ impl AppServices {
         )
     }
 
+    /// The summaries of the albums the grid has selected, as one live query
+    /// whose ids move in place as the selection changes; it starts with none.
+    pub fn subscribe_album_selection(&self) -> crate::library::AlbumSelectionSubscription {
+        let manager = self.inner.manager.clone();
+        let query = manager.subscribe_album_selection(std::collections::BTreeSet::new());
+        crate::library::AlbumSelectionSubscription::new(query, move |projection| {
+            manager.resolve_album_selection(projection)
+        })
+    }
+
     /// The album's detail as it changes: its rows, the releases' pin markers
     /// coven watches, and the config, cloud-home, and transfer state it is
     /// resolved against.

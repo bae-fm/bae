@@ -30,7 +30,9 @@ use std::sync::Mutex;
 use tracing::warn;
 
 mod album;
-pub use album::{AlbumBrowseProjection, AlbumDetailProjection, LibrarySearchProjection};
+pub use album::{
+    AlbumBrowseProjection, AlbumDetailProjection, AlbumSelectionProjection, LibrarySearchProjection,
+};
 pub use artist::{
     ArtistBrowseProjection, ArtistDetailProjection, ComposerBrowseProjection,
     ComposerDetailProjection, WorkDetailProjection,

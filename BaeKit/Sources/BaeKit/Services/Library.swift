@@ -126,6 +126,9 @@ public final class Library: Sendable, Observable {
             -> any LiveSubscriptionProtocol
     /// One live library search, pointed at each new query in place.
     public let librarySearch: @Sendable () -> LibrarySearch
+    /// One live read of the album grid's multi-selection, pointed at each new
+    /// selection in place.
+    public let albumSelection: @Sendable () -> AlbumSelectionQuery
     public let searchArtists:
         @Sendable (_ query: String) async throws -> [BridgeArtistSearchResult]
     private let subscribeStorageProjection:
@@ -190,6 +193,9 @@ public final class Library: Sendable, Observable {
         librarySearch: @escaping @Sendable () -> LibrarySearch = {
             fatalError("Library search is not installed")
         },
+        albumSelection: @escaping @Sendable () -> AlbumSelectionQuery = {
+            fatalError("Library album selection is not installed")
+        },
         searchArtists:
             @escaping @Sendable (String) async throws
             -> [BridgeArtistSearchResult] = { _ in [] },
@@ -224,6 +230,7 @@ public final class Library: Sendable, Observable {
         self.artistBrowse = artistBrowse
         self.subscribeArtistDetail = subscribeArtistDetail
         self.librarySearch = librarySearch
+        self.albumSelection = albumSelection
         self.searchArtists = searchArtists
         self.subscribeStorageProjection = subscribeStorageProjection
         self.subscribeReleaseDetail = subscribeReleaseDetail
@@ -295,6 +302,7 @@ public final class Library: Sendable, Observable {
     // the desktop library page makes. The iOS `AppService` builds `Library`
     // via the designated initializer with just the iOS-available closures.
     #if !os(iOS)
+        // swiftlint:disable:next function_body_length
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 albumBrowse: {
@@ -332,6 +340,9 @@ public final class Library: Sendable, Observable {
                 },
                 librarySearch: {
                     LibrarySearch(handle.subscribeLibrarySearch())
+                },
+                albumSelection: {
+                    AlbumSelectionQuery(handle.subscribeAlbumSelection())
                 },
                 searchArtists: {
                     try await handle.searchArtists(query: $0)
@@ -463,6 +474,34 @@ extension LibraryBrowseQuery where Row == BridgeArtistSummary {
                     totalCount: Int(snapshot.totalCount)
                 )
             },
+            cancel: { try? await subscription.cancel() }
+        )
+    }
+}
+
+/// A live read of the album grid's multi-selection: set the selected ids,
+/// and take each value it delivers — the summary of every selected album
+/// still in the library, beside the ids it was asked for.
+public struct AlbumSelectionQuery: Sendable {
+    public let setAlbums: @Sendable ([String]) throws -> Void
+    public let next: @Sendable () async throws -> BridgeAlbumSelectionSnapshot
+    public let cancel: @Sendable () async -> Void
+
+    public init(
+        setAlbums: @escaping @Sendable ([String]) throws -> Void,
+        next:
+            @escaping @Sendable () async throws -> BridgeAlbumSelectionSnapshot,
+        cancel: @escaping @Sendable () async -> Void
+    ) {
+        self.setAlbums = setAlbums
+        self.next = next
+        self.cancel = cancel
+    }
+
+    init(_ subscription: any AlbumSelectionSubscriptionProtocol) {
+        self.init(
+            setAlbums: { try subscription.setAlbums(albumIds: $0) },
+            next: { try await subscription.next() },
             cancel: { try? await subscription.cancel() }
         )
     }

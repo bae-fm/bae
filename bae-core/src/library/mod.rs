@@ -1,3 +1,4 @@
+mod album_selection;
 pub mod app_services;
 mod browse;
 mod device_pairing;
@@ -19,6 +20,9 @@ pub mod storage_inspector;
 pub(crate) mod storage_transitions;
 pub(crate) mod sync_controller;
 pub mod upload_throughput;
+pub use album_selection::{
+    AlbumSelectionSnapshot, AlbumSelectionSubscription, AlbumSelectionSubscriptionError,
+};
 pub use app_services::*;
 pub use browse::*;
 pub use coven::{EagerCacheFillProgress, EagerCacheFillStatus};

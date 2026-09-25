@@ -265,6 +265,46 @@ impl Database {
             })
     }
 
+    /// Follow the summaries of the albums `initial` names — the grid's
+    /// multi-selection. An album missing from a value is not in the library.
+    /// The selection changes by pointing the same query at new ids through its
+    /// request handle, not by opening another one.
+    pub(crate) fn subscribe_album_selection(
+        &self,
+        initial: BTreeSet<String>,
+    ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, AlbumSelectionProjection> {
+        let select = album_summary_select();
+        self.inner
+            .handle
+            .subscribe_reconfigurable(initial, move |requested, sql| {
+                let album_ids: Vec<&String> = requested.iter().collect();
+                let mut rows = Vec::with_capacity(album_ids.len());
+                for chunk in album_ids.chunks(SQL_MAX_IN_VARS) {
+                    let query = format!(
+                        "{select} FROM albums a WHERE {ALBUM_A_IS_SHOWN} AND a.id IN ({})",
+                        in_clause_placeholders(chunk.len())
+                    );
+                    rows.extend(album_rows_on(
+                        &sql,
+                        &query,
+                        coven::rusqlite::params_from_iter(chunk.iter()),
+                    )?);
+                }
+                let shown = rows.iter().map(|row| row.id.clone()).collect::<Vec<_>>();
+                let cover_versions = album_cover_versions_on(&sql, &shown)?;
+                Ok((rows, cover_versions))
+            })
+            .process(|_, (rows, cover_versions)| {
+                Ok(AlbumSelectionProjection {
+                    albums: rows
+                        .into_iter()
+                        .map(AlbumSummaryRow::process)
+                        .collect::<Result<_, _>>()?,
+                    cover_versions,
+                })
+            })
+    }
+
     /// An album's 0-based position under a sort, or `None` when it isn't in the
     /// library. Wraps the *identical* `build_order_by` + `album_summary_artist_join`
     /// that `get_album_page` uses in a `ROW_NUMBER() OVER (ORDER BY …)` window, so
@@ -687,6 +727,12 @@ pub struct AlbumBrowseProjection {
     pub windows: Vec<crate::library::LibraryBrowseWindow<DbAlbumSummary>>,
     pub cover_versions: HashMap<String, String>,
     pub total_count: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AlbumSelectionProjection {
+    pub albums: Vec<DbAlbumSummary>,
+    pub cover_versions: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
