@@ -71,33 +71,66 @@ impl ImportService {
         .map_err(|error| crate::import::ImportError::Internal {
             detail: format!("folder date task failed: {error}"),
         })??;
-        let commit = services.folder_state_commit.clone().lock_owned().await;
-        let mut item = item.clone();
-        if let ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) = &mut item {
-            let content_hash = candidate.files.content_hash();
-            let edits = library_manager
-                .load_candidate_file_edits(&content_hash)
+        loop {
+            // The item as the file decisions stored right now describe it, and
+            // what its own tags seed it with, both read before the commit lock:
+            // reading a folder's tags off a network share takes as long as the
+            // share does, and every pane control waits on this lock.
+            let (item, edits_read) = Self::with_stored_file_edits(item, library_manager).await?;
+            let file_metadata = library_manager
+                .scan_item_seed(&item, generation, services.file_tags.clone())
                 .await?;
-            candidate.files.apply_candidate_file_edits(&edits)?;
-            candidate.file_edit_revision = edits.revision;
+            let commit = services.folder_state_commit.clone().lock_owned().await;
+            // A file decision stored while the tags were being read describes
+            // other files than the ones read: read them again, as decided now.
+            if let Some((content_hash, read_revision)) = &edits_read {
+                let stored = library_manager
+                    .load_candidate_file_edits(content_hash)
+                    .await?;
+                if stored.revision != *read_revision {
+                    drop(commit);
+                    continue;
+                }
+            }
+            let superseded = library_manager
+                .save_folder_scan_item_with_seed(
+                    &root.to_string_lossy(),
+                    generation,
+                    &item,
+                    file_metadata,
+                    folder_date,
+                )
+                .await?;
+            let Some(write) = superseded else {
+                return Ok(None);
+            };
+            return Ok(Some(PersistedScanItem {
+                commit,
+                item,
+                write,
+            }));
         }
-        let superseded = library_manager
-            .save_folder_scan_item_with_date(
-                &root.to_string_lossy(),
-                generation,
-                &item,
-                folder_date,
-                services.file_tags.as_ref(),
-            )
-            .await?;
-        let Some(write) = superseded else {
-            return Ok(None);
+    }
+
+    /// `item` with the file decisions stored for its files applied, and the
+    /// content hash they are stored under with the revision they stood at —
+    /// `None` for an item with no files to decide.
+    async fn with_stored_file_edits(
+        item: &ScanItem,
+        library_manager: &LibraryManager,
+    ) -> Result<(ScanItem, Option<(String, u64)>), crate::import::ImportError> {
+        let mut item = item.clone();
+        let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = &mut item else {
+            return Ok((item, None));
         };
-        Ok(Some(PersistedScanItem {
-            commit,
-            item,
-            write,
-        }))
+        let content_hash = candidate.files.content_hash();
+        let edits = library_manager
+            .load_candidate_file_edits(&content_hash)
+            .await?;
+        candidate.files.apply_candidate_file_edits(&edits)?;
+        candidate.file_edit_revision = edits.revision;
+        let revision = edits.revision;
+        Ok((item, Some((content_hash, revision))))
     }
 
     /// Tell the runtime and the list what one stored scan item changed: the

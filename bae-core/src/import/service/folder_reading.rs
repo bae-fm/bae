@@ -225,7 +225,7 @@ impl ImportService {
                 detail: format!("folder date task failed: {error}"),
             })??;
             let file_metadata = library_manager
-                .scan_item_seed(&item, stamp.generation, services.file_tags.as_ref())
+                .scan_item_seed(&item, stamp.generation, services.file_tags.clone())
                 .await?;
             items.push(crate::db::ScanItemToWrite {
                 item,

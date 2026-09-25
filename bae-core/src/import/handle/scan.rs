@@ -408,8 +408,7 @@ impl ImportServiceHandle {
                 // The snapshot is read under the lock the write holds: a scan
                 // that lands between the two restamps the candidate's
                 // generation, and the write refuses a snapshot stamped with
-                // the old one. The scan reads a folder's tags under this same
-                // lock, so the pick waits on it no longer than a scan does.
+                // the old one.
                 let _commit = self
                     .commit_lock_for_revision(
                         &candidate_key,

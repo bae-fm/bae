@@ -163,6 +163,24 @@ impl LibraryManager {
         .await
     }
 
+    /// [`Self::start_import_service`] reading folders' tags through
+    /// `file_tags`.
+    #[cfg(test)]
+    pub(crate) fn start_import_service_reading_tags_with(
+        &self,
+        runtime_handle: tokio::runtime::Handle,
+        file_tags: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
+    ) -> crate::import::ImportServiceHandle {
+        crate::import::ImportService::start_reading_tags_with(
+            runtime_handle,
+            self.clone(),
+            self.preparations.clone(),
+            self.clock.clone(),
+            self.ids.clone(),
+            file_tags,
+        )
+    }
+
     /// The fetched release `release` names, as its extraction stored it, or
     /// `None` when nothing has fetched it.
     pub(crate) async fn load_source_release(
@@ -253,15 +271,17 @@ impl LibraryManager {
             .await?)
     }
 
-    pub(crate) async fn save_folder_scan_item_with_date(
+    /// Store one scan item under `generation`, seeded with `file_metadata` —
+    /// the reading [`Self::scan_item_seed`] took of it, which the caller takes
+    /// before the folder-state commit lock and this stores under it.
+    pub(crate) async fn save_folder_scan_item_with_seed(
         &self,
         watched_folder_path: &str,
         generation: u64,
         item: &crate::import::folder_scanner::ScanItem,
+        file_metadata: Option<crate::import::file_metadata_seed::FileMetadataSeed>,
         folder_date: Option<crate::import::folder_scanner::FolderDate>,
-        reader: &dyn crate::import::file_tag_snapshot::FileTagReader,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
-        let file_metadata = self.scan_item_seed(item, generation, reader).await?;
         Ok(self
             .database
             .save_folder_scan_item_with_seed(
@@ -276,11 +296,15 @@ impl LibraryManager {
 
     /// What a candidate a pass is about to store under `generation` starts
     /// from: its own file tags when the pre-fill is on, nothing otherwise.
+    ///
+    /// Reads the folder's audio files, which on a network share takes as long
+    /// as the share does, so it runs on a blocking thread and never under the
+    /// folder-state commit lock every pane control waits on.
     pub(crate) async fn scan_item_seed(
         &self,
         item: &crate::import::folder_scanner::ScanItem,
         generation: u64,
-        reader: &dyn crate::import::file_tag_snapshot::FileTagReader,
+        reader: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> Result<Option<crate::import::file_metadata_seed::FileMetadataSeed>, LibraryError> {
         if !self.config_handle.config().prefs.prefill_with_file_metadata {
             return Ok(None);
@@ -298,7 +322,7 @@ impl LibraryManager {
         &self,
         item: &crate::import::folder_scanner::ScanItem,
         generation: u64,
-        reader: &dyn crate::import::file_tag_snapshot::FileTagReader,
+        reader: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> Result<Option<crate::import::file_metadata_seed::FileMetadataSeed>, LibraryError> {
         use crate::import::folder_scanner::ScanItem;
         let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = item else {
@@ -315,13 +339,20 @@ impl LibraryManager {
             return Ok(None);
         }
         let folder = candidate.path.display().to_string();
-        let read = crate::import::file_metadata_seed::FileMetadataSeed::read(
-            candidate,
-            generation,
-            reader,
-            self.clock.as_ref(),
-            self.ids.as_ref(),
-        );
+        let candidate = candidate.clone();
+        let clock = self.clock.clone();
+        let ids = self.ids.clone();
+        let read = tokio::task::spawn_blocking(move || {
+            crate::import::file_metadata_seed::FileMetadataSeed::read(
+                &candidate,
+                generation,
+                reader.as_ref(),
+                clock.as_ref(),
+                ids.as_ref(),
+            )
+        })
+        .await
+        .map_err(|error| LibraryError::Import(format!("file tag read task failed: {error}")))?;
         match read {
             Ok(seed) => Ok(Some(seed)),
             Err(error) => {
@@ -340,12 +371,19 @@ impl LibraryManager {
         generation: u64,
         item: &crate::import::folder_scanner::ScanItem,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
-        self.save_folder_scan_item_with_date(
+        let file_metadata = self
+            .scan_item_seed(
+                item,
+                generation,
+                std::sync::Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
+            )
+            .await?;
+        self.save_folder_scan_item_with_seed(
             watched_folder_path,
             generation,
             item,
+            file_metadata,
             None,
-            &crate::import::file_tag_snapshot::LoftyFileTagReader,
         )
         .await
     }

@@ -13,10 +13,8 @@ impl ImportService {
         clock: coven::ClockRef,
         ids: coven::IdRef,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
-        let (fs_tx, fs_rx) = mpsc::unbounded_channel::<WatchReport>();
         let runtime = CandidateRuntime::default();
         let event_tx = crate::import::handle::ImportEventBus::new(1024, runtime.clone());
-        let event_tx_for_worker = event_tx.clone();
         let services = crate::import::ImportServices::new(
             event_tx,
             library_manager.clone(),
@@ -24,6 +22,43 @@ impl ImportService {
             clock.clone(),
             ids.clone(),
         );
+        Ok(Self::start_with(runtime_handle, services, runtime))
+    }
+
+    /// [`Self::start`] reading folders' tags through `file_tags`, for a test
+    /// that decides how long a read takes.
+    #[cfg(test)]
+    pub(crate) fn start_reading_tags_with(
+        runtime_handle: tokio::runtime::Handle,
+        library_manager: LibraryManager,
+        preparations: crate::import::CandidatePreparations,
+        clock: coven::ClockRef,
+        ids: coven::IdRef,
+        file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
+    ) -> ImportServiceHandle {
+        let runtime = CandidateRuntime::default();
+        let event_tx = crate::import::handle::ImportEventBus::new(1024, runtime.clone());
+        let mut services = crate::import::ImportServices::new(
+            event_tx,
+            library_manager,
+            preparations,
+            clock,
+            ids,
+        );
+        services.file_tags = file_tags;
+        Self::start_with(runtime_handle, services, runtime)
+    }
+
+    fn start_with(
+        runtime_handle: tokio::runtime::Handle,
+        services: crate::import::ImportServices,
+        runtime: CandidateRuntime,
+    ) -> ImportServiceHandle {
+        let (fs_tx, fs_rx) = mpsc::unbounded_channel::<WatchReport>();
+        let event_tx_for_worker = services.event_tx.clone();
+        let library_manager = services.library_manager.clone();
+        let clock = services.clock.clone();
+        let ids = services.ids.clone();
 
         // Constructed before the watcher task spawns; the task doesn't need the
         // watcher, only the `fs_rx` end of its event channel.
@@ -62,13 +97,7 @@ impl ImportService {
             })
         });
 
-        Ok(ImportServiceHandle::new(
-            worker,
-            watcher,
-            services,
-            runtime,
-            runtime_handle,
-        ))
+        ImportServiceHandle::new(worker, watcher, services, runtime, runtime_handle)
     }
 
     pub(super) async fn do_import(&self, command: ImportCommand, expectation: ImportExpectation) {
