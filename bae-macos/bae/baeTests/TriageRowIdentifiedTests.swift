@@ -154,7 +154,6 @@ struct TriageRowIdentifiedTests {
             TriageRowView(
                 row: row,
                 coverContent: nil,
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }

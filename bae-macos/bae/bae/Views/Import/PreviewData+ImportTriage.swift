@@ -535,6 +535,51 @@
             )
         )
 
+        /// A Done row as the library has its release: read from a catalog,
+        /// with its album's year.
+        static let importedRowIdentified = importedRow(
+            for: importTabDoneCandidate,
+            title: importTabDoneCandidate.displayName,
+            year: 1997,
+            records: identifiedFromBothCatalogs
+        )
+
+        /// A Done row whose release was read off its files' tags: no catalog
+        /// describes it.
+        static let importedRowFromTags = importedRow(
+            for: folderCandidates[0],
+            title: "Album Title",
+            year: nil,
+            records: []
+        )
+
+        static func importedRow(
+            for candidate: Candidate,
+            title: String,
+            artist: String? = "Artist Name",
+            year: Int32?,
+            records: [BridgeReleaseRecord]
+        ) -> BridgeImportedRow {
+            BridgeImportedRow(
+                candidateKey: candidate.key,
+                displayPath: candidate.displayName,
+                actionBasis: BridgeCandidateActionBasis(
+                    actionable: true,
+                    placement: .done,
+                    lookupFailed: false
+                ),
+                release: BridgeImportedReleaseSummary(
+                    releaseId: "preview-release",
+                    albumId: "preview-album",
+                    title: title,
+                    artist: artist,
+                    year: year,
+                    cover: nil,
+                    records: records
+                )
+            )
+        }
+
         static let triageRowFailed = triageRow(
             for: importTabFailedCandidate,
             placement: .failed,
@@ -621,6 +666,9 @@
             triageRowFailed,
         ]
 
+        /// The row a selected Done candidate's own read carries: the pane
+        /// reads where the candidate is placed from it. The list shows the
+        /// candidate as `importedRowIdentified`.
         private static let importTabDoneRows = [
             triageRowDoneImported
         ]
@@ -643,7 +691,7 @@
                         candidateItem($0, isGroupMember: true)
                     }
             case .done:
-                return importTabDoneRows.map(candidateItem)
+                return [importedItem(importedRowIdentified)]
             case .skipped:
                 return [candidateItem(triageRowSkipped)]
                     + invalidCandidates.map(invalidItem)

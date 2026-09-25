@@ -1,4 +1,5 @@
-use super::live_query_tests::{candidate_names, list_request, live_db, scan_candidate};
+use super::import_list_live_query_tests::{candidate_names, list_request, scan_candidate};
+use super::live_query_tests::live_db;
 use std::time::Duration;
 
 /// The list is a live query over the scan tables, so a scan item written while

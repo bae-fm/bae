@@ -182,6 +182,7 @@ internal sealed partial class ImportStore : IDisposable
     {
         BridgeImportListItem.GroupHeader header => header.StableKey,
         BridgeImportListItem.Candidate candidate => candidate.StableKey,
+        BridgeImportListItem.Imported imported => imported.StableKey,
         BridgeImportListItem.Invalid invalid => invalid.StableKey,
         _ => throw new ArgumentOutOfRangeException(nameof(item), item, "Unknown list item"),
     };

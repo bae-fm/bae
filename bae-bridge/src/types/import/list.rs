@@ -40,10 +40,17 @@ pub enum BridgeImportListItem {
         /// How many entries the group holds in this tab, after the filter.
         entry_count: u32,
     },
+    /// A Pending or Skipped row, presented as what the candidate reads as.
     Candidate {
         stable_key: String,
         row: BridgeTriageRow,
         is_group_member: bool,
+    },
+    /// A Done row, presented as the library release it became. Never a group
+    /// member: only Pending rows join a group.
+    Imported {
+        stable_key: String,
+        row: BridgeImportedRow,
     },
     Invalid {
         stable_key: String,

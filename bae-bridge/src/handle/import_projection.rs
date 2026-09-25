@@ -246,6 +246,31 @@ impl crate::types::BridgeTriageRow {
     }
 }
 
+mirror_struct! {
+    crate::types::BridgeImportedReleaseSummary = bae_core::import::ImportedReleaseSummary,
+    from_core: fn,
+    fields: {
+        release_id,
+        album_id,
+        title,
+        artist,
+        year,
+        cover: (opt crate::types::BridgeImageRef),
+        records: (each crate::types::BridgeReleaseRecord),
+    },
+}
+
+mirror_struct! {
+    crate::types::BridgeImportedRow = bae_core::import::ImportedRow,
+    from_core: fn,
+    fields: {
+        candidate_key,
+        display_path,
+        action_basis: (crate::types::BridgeCandidateActionBasis),
+        release: (crate::types::BridgeImportedReleaseSummary),
+    },
+}
+
 mirror_enum! {
     crate::types::BridgeCandidateAction = bae_core::import::triage::CandidateAction,
     from_core: fn,
@@ -427,6 +452,10 @@ impl crate::types::BridgeImportListItem {
                 stable_key,
                 row: crate::types::BridgeTriageRow::from_core(row),
                 is_group_member,
+            },
+            bae_core::import::ImportListItem::Imported { row } => Self::Imported {
+                stable_key,
+                row: crate::types::BridgeImportedRow::from_core(row),
             },
             bae_core::import::ImportListItem::Invalid {
                 candidate,

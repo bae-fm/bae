@@ -571,15 +571,13 @@ impl ImportServiceHandle {
             .map(|projection| projection.resolve(&facts)))
     }
 
-    /// The first import list `accept` admits, waiting through the query's
-    /// values until one does. The list lands after the commit it reflects, so
-    /// a test that just observed a scan event waits here for the read.
+    /// The import list for `view` as one window over every item, kept open
+    /// for a test that watches one subscription deliver change after change.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn wait_for_list(
+    pub fn subscribe_whole_list(
         &self,
         view: crate::import::ImportListView,
-        mut accept: impl FnMut(&crate::import::ImportListSnapshot) -> bool,
-    ) -> crate::import::ImportListSnapshot {
+    ) -> crate::import::ImportListSubscription {
         let request = crate::import::ImportListRequest {
             view,
             windows: std::iter::once(crate::library::LibraryPageWindow {
@@ -590,13 +588,25 @@ impl ImportServiceHandle {
             upload_standing: Default::default(),
         };
         let query = self.library_manager.subscribe_import_list(request.clone());
-        let subscription = crate::import::ImportListSubscription::start(
+        crate::import::ImportListSubscription::start(
             query,
             self.library_manager.subscribe_folder_scan_progress(),
             request,
             self.library_manager.subscribe_outbox_values(),
             &self.runtime_handle,
-        );
+        )
+    }
+
+    /// The first import list `accept` admits, waiting through the query's
+    /// values until one does. The list lands after the commit it reflects, so
+    /// a test that just observed a scan event waits here for the read.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn wait_for_list(
+        &self,
+        view: crate::import::ImportListView,
+        mut accept: impl FnMut(&crate::import::ImportListSnapshot) -> bool,
+    ) -> crate::import::ImportListSnapshot {
+        let subscription = self.subscribe_whole_list(view);
         loop {
             let snapshot = subscription
                 .next()

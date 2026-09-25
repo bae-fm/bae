@@ -370,6 +370,45 @@ pub struct TriageRow {
     pub reading: TriageReading,
 }
 
+/// A Done row: the candidate that became a library release, presented as that
+/// release.
+///
+/// Its own shape rather than a [`TriageRow`] placed Done, because what a Done
+/// row shows is the library's and nothing of the candidate's: once the bytes
+/// are in the library, the person re-identifies, edits and re-covers the
+/// release there, and a row reading the candidate's draft or pick would go on
+/// saying what the candidate said before any of that.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportedRow {
+    /// The candidate's folder path — the key every other import call takes.
+    pub candidate_key: String,
+    pub display_path: String,
+    /// What the row's commands are decided from in the tables, handed back
+    /// with its live-state subscription: an import that just wrote the release
+    /// can still own the candidate for a moment.
+    pub action_basis: CandidateActionBasis,
+    pub release: ImportedReleaseSummary,
+}
+
+/// The library release a Done row became, as the library has it now.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportedReleaseSummary {
+    pub release_id: String,
+    pub album_id: String,
+    /// The album's title as the library holds it. Empty for a release reseeded
+    /// from tags that named none, which the person fills in the editor.
+    pub title: String,
+    /// The album's credited artists as they show after merges, joined, or
+    /// `None` when it credits none.
+    pub artist: Option<String>,
+    pub year: Option<i32>,
+    /// The release's own cover.
+    pub cover: Option<crate::album_detail::ImageRef>,
+    /// Every catalog's description of the release, in the order surfaces list
+    /// catalogs. Empty when no catalog describes it.
+    pub records: Vec<crate::import::ReleaseRecord>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct TriageGroup {
     pub key: FolderReleaseDecisionKey,

@@ -27,9 +27,9 @@ use super::mapping::MappingTable;
 use super::release_candidate::ReleaseCandidate;
 use super::search::ImportSearchReleaseDetail;
 use super::triage::{
-    import_status_of, place, CandidateActionBasis, CandidateLiveState, MatchedRelease,
-    TriageGroup, TriageImportStatus, TriageMetadataSummary, TriageRow, TriageRuntimeFacts,
-    TriageTabCounts,
+    import_status_of, place, CandidateActionBasis, CandidateLiveState, ImportedRow,
+    MatchedRelease, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriageRow,
+    TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{MetadataProvenance, RawReleaseEdit};
 use super::watched_folder::WatchedFolder;
@@ -160,9 +160,16 @@ pub enum ImportListItem {
         /// How many entries the group holds in this tab, after the filter.
         entry_count: u32,
     },
+    /// A candidate the list places in Pending or Skipped, presented as what
+    /// the candidate reads as.
     Candidate {
         row: TriageRow,
         is_group_member: bool,
+    },
+    /// A candidate the list places in Done, presented as the library release
+    /// it became. Never a group member: only Pending rows join a group.
+    Imported {
+        row: ImportedRow,
     },
     Invalid {
         candidate: InvalidCandidate,
@@ -187,6 +194,7 @@ impl ImportListItem {
                 group.key.relative_folder_path
             ),
             Self::Candidate { row, .. } => Self::candidate_stable_key(&row.candidate_key),
+            Self::Imported { row } => Self::candidate_stable_key(&row.candidate_key),
             Self::Invalid { candidate, .. } => {
                 format!("invalid:{}", candidate.path.display())
             }
@@ -217,7 +225,9 @@ pub(crate) struct GroupHeaderRow {
 pub(crate) struct PlacedRow {
     /// The row with `resolved_boundaries` empty, `matched` read off the
     /// verdict's lead, and a reading naming no records. The window fills all
-    /// three in from what it reads for the rows it materialises.
+    /// three in from what it reads for the rows it materialises — or, for a
+    /// row placed Done, reads the library release it became and presents
+    /// that instead.
     pub(crate) row: TriageRow,
     /// Index into [`crate::db::ImportQueueRows::candidates`].
     pub(crate) index: usize,

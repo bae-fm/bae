@@ -8,10 +8,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 const ARTIST_ID: &str = "96f0ef68-c284-4f74-b3f6-d9a4b48ee6d1";
-const ALBUM_ID: &str = "975b724f-fce7-4fdb-85be-9f57fd9ba496";
-const RELEASE_ID: &str = "44751464-1552-44be-8c5a-955cc5b61d12";
+pub(super) const ALBUM_ID: &str = "975b724f-fce7-4fdb-85be-9f57fd9ba496";
+pub(super) const RELEASE_ID: &str = "44751464-1552-44be-8c5a-955cc5b61d12";
 const OTHER_ALBUM_ID: &str = "5cf43aa4-8374-4ec4-bf08-239685a62f37";
-const IDENTITY_ID: &str = "d9af7374-f7de-4d5b-8f9e-19b250ca2693";
+pub(super) const IDENTITY_ID: &str = "d9af7374-f7de-4d5b-8f9e-19b250ca2693";
 const OTHER_RELEASE_ID: &str = "79764470-a937-42fd-bbd4-fce67651c72e";
 const COMPOSER_ID: &str = "735c571d-5dcf-4a52-af70-f080f6a82a2d";
 const OTHER_COMPOSER_ID: &str = "041df287-6a78-4db4-981d-70eb24bad7ec";
@@ -679,164 +679,6 @@ async fn album_detail_subscription_delivers_absence_after_deletion() {
         .expect("album deletion wakes album detail")
         .unwrap();
     assert!(deleted.detail.is_none());
-}
-
-/// The import list's request carries the view and the windows, so every test
-/// below states both.
-pub(super) fn list_request(
-    tab: crate::import::TriageTab,
-    windows: impl IntoIterator<Item = (u64, u64)>,
-) -> crate::import::ImportListRequest {
-    crate::import::ImportListRequest {
-        view: crate::import::ImportListView {
-            tab,
-            order: crate::import::ImportListOrder::PathAscending,
-            ..crate::import::ImportListView::default()
-        },
-        windows: windows
-            .into_iter()
-            .map(|(offset, limit)| crate::library::LibraryPageWindow { offset, limit })
-            .collect(),
-        upload_standing: Default::default(),
-    }
-}
-
-pub(super) fn scan_candidate(root: &str, name: &str) -> crate::import::folder_scanner::ScanItem {
-    crate::import::folder_scanner::ScanItem::Valid(super::candidate(root, name))
-}
-
-pub(super) fn candidate_names(projection: &crate::import::ImportListProjection) -> Vec<String> {
-    projection
-        .windows
-        .iter()
-        .flat_map(|window| &window.items)
-        .filter_map(|item| match item {
-            crate::import::ImportListItem::Candidate { row, .. } => Some(row.folder_name.clone()),
-            _ => None,
-        })
-        .collect()
-}
-
-#[tokio::test]
-async fn import_list_moves_a_row_to_done_when_its_content_hash_is_imported() {
-    let (db, _temp) = live_db().await;
-    let root = &crate::import::watched_folder::host_root("/music");
-    let item = scan_candidate(root, "release");
-    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
-        unreachable!("the fixture builds a valid candidate");
-    };
-    let content_hash = candidate.files.content_hash();
-    db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(root, generation, &item)
-        .await
-        .unwrap();
-    db.finish_folder_scan(root, generation, None).await.unwrap();
-
-    let mut live =
-        db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
-    let initial = live.next().await.into_result().unwrap();
-    assert_eq!(initial.total_count, 1);
-    assert_eq!(initial.summary.counts.pending, 1);
-    assert_eq!(initial.summary.counts.done, 0);
-
-    exec(
-        &db,
-        "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
-        &[content_hash.as_str(), RELEASE_ID],
-    )
-    .await;
-
-    let imported = tokio::time::timeout(Duration::from_secs(2), live.next())
-        .await
-        .expect("the imported release wakes the list")
-        .into_result()
-        .unwrap();
-    assert_eq!(imported.total_count, 0, "Pending no longer holds the row");
-    assert_eq!(imported.summary.counts.done, 1);
-}
-
-/// Moving the window is a request change, not a commit: the query reruns and
-/// says so without anything having been written.
-#[tokio::test]
-async fn import_list_moving_the_window_reruns_without_a_commit() {
-    let (db, _temp) = live_db().await;
-    let root = &crate::import::watched_folder::host_root("/music");
-    db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
-    for name in ["first", "second"] {
-        db.save_folder_scan_item(root, generation, &scan_candidate(root, name))
-            .await
-            .unwrap();
-    }
-    db.finish_folder_scan(root, generation, None).await.unwrap();
-
-    let live = db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 1)]));
-    let requests = live.requests();
-    let mut live = live;
-    let initial = live.next().await;
-    assert_eq!(
-        initial.cause(),
-        coven::ReconfigurableLiveQueryCause::Initial
-    );
-    assert_eq!(
-        candidate_names(&initial.into_result().unwrap()),
-        vec!["first".to_string()]
-    );
-
-    requests
-        .set(list_request(crate::import::TriageTab::Pending, [(1, 1)]))
-        .unwrap();
-    let moved = tokio::time::timeout(Duration::from_secs(2), live.next())
-        .await
-        .expect("the window change reruns the query");
-    assert_eq!(
-        moved.cause(),
-        coven::ReconfigurableLiveQueryCause::RequestChanged
-    );
-    assert_eq!(
-        candidate_names(&moved.into_result().unwrap()),
-        vec!["second".to_string()]
-    );
-}
-
-/// A commit that touches a table the list does not read leaves the projection
-/// equal, and coven withholds it: the tab does not re-render for a write it
-/// cannot show.
-#[tokio::test]
-async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
-    let (db, _temp) = live_db().await;
-    let root = &crate::import::watched_folder::host_root("/music");
-    db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
-    for name in ["first", "second"] {
-        db.save_folder_scan_item(root, generation, &scan_candidate(root, name))
-            .await
-            .unwrap();
-    }
-    db.finish_folder_scan(root, generation, None).await.unwrap();
-
-    let mut live =
-        db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 1)]));
-    let initial = live.next().await.into_result().unwrap();
-    assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
-
-    // What a walk records about the directories it read: the list projects
-    // candidates, and never reads this.
-    exec(
-        &db,
-        "INSERT INTO folder_scan_directory (watched_folder_path, path, modified_at) \
-         VALUES (?1, ?1, 1234)",
-        &[root.as_str()],
-    )
-    .await;
-
-    assert!(
-        tokio::time::timeout(Duration::from_millis(500), live.next())
-            .await
-            .is_err(),
-        "a commit the list reads nothing from delivers no value"
-    );
 }
 
 #[tokio::test]

@@ -62,29 +62,13 @@ public sealed class UploadProgressPresentationTests
     [Fact]
     public void AnImportedReleaseReadsItsCloudWorkOffTheOutbox()
     {
-        var status = new BridgeTriageImportStatus.Complete("release-a", "album-a");
         var progress = Progress();
 
         var active = Assert.IsType<ImportUploadObservation.Active>(
-            UploadProgressPresentation.ResolveImport(status, Snapshot(7, progress)));
+            UploadProgressPresentation.ResolveImport("release-a", Snapshot(7, progress)));
         Assert.Same(progress, active.Progress);
         Assert.IsType<ImportUploadObservation.Finished>(
-            UploadProgressPresentation.ResolveImport(status, Snapshot(7)));
-    }
-
-    // A failed import has no cloud state to read, and neither has a row no
-    // import has finished for.
-    [Fact]
-    public void AnUnfinishedImportHasNoCloudObservation()
-    {
-        Assert.Null(UploadProgressPresentation.ResolveImport(
-            new BridgeTriageImportStatus.Error(
-                new BridgeException.Diagnostic(
-                    new BridgeErrorCategory.Import(), "the disk filled")),
-            Snapshot(7, Progress())));
-        Assert.Null(UploadProgressPresentation.ResolveImport(
-            null,
-            Snapshot(7, Progress())));
+            UploadProgressPresentation.ResolveImport("release-a", Snapshot(7)));
     }
 
     // The bar and its label read the same two numbers off the same phase, so a

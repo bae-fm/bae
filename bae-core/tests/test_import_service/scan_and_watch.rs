@@ -555,3 +555,117 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
         .unwrap();
     wait_for_skipped(&f, &album, false).await;
 }
+
+/// A Done row presents the library release its import became, read from the
+/// library as the library has it now: editing that release after the import
+/// reaches the row through the list subscription already open, with nothing
+/// resubscribed.
+#[tokio::test]
+async fn a_done_row_follows_the_library_release_it_became() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+
+    let collection = f.temp_path().join("Collection");
+    let album = collection.join("Artist - Album");
+    fs::create_dir_all(&album).unwrap();
+    generate_tagged_album_files(
+        &album,
+        "Album",
+        "Artist",
+        None,
+        &[TaggedTrack {
+            filename: "01 Track.flac",
+            title: "Track",
+            track_number: 1,
+        }],
+    );
+    let album_key = album.to_string_lossy().into_owned();
+
+    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    f.handle
+        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .await
+        .unwrap();
+    scan_batch_until(&mut scan_rx, "the album candidate", |e| {
+        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(album_key.as_str()))
+    })
+    .await;
+    wait_for_candidates(&f, "the scanned candidate", |projection| {
+        candidate_rows(projection)
+            .iter()
+            .any(|row| row.candidate_key == album_key)
+    })
+    .await;
+
+    f.handle
+        .select_candidate_metadata_provenance(album_key.clone(), MetadataProvenance::FileMetadata)
+        .await
+        .unwrap();
+    let import_id = f
+        .handle
+        .start_import(&album_key, StorageMode::Local, false)
+        .await
+        .unwrap();
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+
+    let done = f.handle.subscribe_whole_list(bae_core::import::ImportListView {
+        tab: bae_core::import::TriageTab::Done,
+        ..bae_core::import::ImportListView::default()
+    });
+    let imported = next_imported_row(&done, &album_key, |_| true).await;
+    assert_eq!(imported.release.release_id, release_id);
+    assert_eq!(imported.release.title, "Album");
+    assert_eq!(imported.release.artist.as_deref(), Some("Artist"));
+
+    let mut form = f
+        .library_manager
+        .release_edit_seed(&release_id)
+        .await
+        .unwrap()
+        .edit;
+    form.album_title = "Album (Edited)".to_string();
+    f.library_manager
+        .apply_release_metadata_user_edit(&release_id, &form.shape().unwrap())
+        .await
+        .unwrap();
+
+    let edited = next_imported_row(&done, &album_key, |row| {
+        row.release.title != "Album"
+    })
+    .await;
+    assert_eq!(edited.release.title, "Album (Edited)");
+    assert_eq!(edited.release.artist.as_deref(), Some("Artist"));
+}
+
+/// The next Done row for `key` that `accept` admits, read off one open list
+/// subscription.
+async fn next_imported_row(
+    subscription: &bae_core::import::ImportListSubscription,
+    key: &str,
+    mut accept: impl FnMut(&bae_core::import::ImportedRow) -> bool,
+) -> bae_core::import::ImportedRow {
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            let snapshot = subscription
+                .next()
+                .await
+                .expect("the import list query stays open");
+            let row = snapshot
+                .windows
+                .iter()
+                .flat_map(|window| &window.items)
+                .find_map(|item| match item {
+                    bae_core::import::ImportListItem::Imported { row } if row.candidate_key == key => {
+                        Some(row.clone())
+                    }
+                    _ => None,
+                });
+            if let Some(row) = row.filter(|row| accept(row)) {
+                return row;
+            }
+        }
+    })
+    .await
+    .unwrap_or_else(|_| panic!("timed out waiting for the Done row for {key}"))
+}

@@ -152,20 +152,18 @@ struct ImportPreviewDataTests {
             PreviewData.releaseQueueScene(),
         ]
         for scene in scenes {
-            let rows = scene.itemsByTab.values.flatMap { $0 }
-                .compactMap {
-                    item -> BridgeTriageRow? in
-                    guard case .candidate(_, let row, _) = item else {
-                        return nil
+            let keys = scene.itemsByTab.values.flatMap { $0 }
+                .compactMap { item -> String? in
+                    switch item {
+                    case .candidate(_, let row, _): row.candidateKey
+                    case .imported(_, let row): row.candidateKey
+                    case .groupHeader, .invalid: nil
                     }
-                    return row
                 }
 
-            #expect(!rows.isEmpty)
+            #expect(!keys.isEmpty)
             #expect(
-                rows.allSatisfy {
-                    scene.store.selectedCandidates[$0.candidateKey] != nil
-                }
+                keys.allSatisfy { scene.store.selectedCandidates[$0] != nil }
             )
         }
     }
@@ -183,7 +181,12 @@ struct ImportPreviewDataTests {
         #expect(rows.contains { $0.placement == .ready })
         #expect(live.contains { $0.importing })
         #expect(rows.contains { $0.placement == .failed })
-        #expect(rows.contains { $0.placement == .done })
+        #expect(
+            entries.contains { item in
+                if case .imported = item { return true }
+                return false
+            }
+        )
         #expect(rows.contains { $0.placement == .skipped })
         #expect(
             rows.contains { row in

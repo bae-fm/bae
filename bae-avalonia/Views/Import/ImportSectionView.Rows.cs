@@ -24,6 +24,7 @@ internal sealed partial class ImportSectionView
                 header.Group,
                 header.Expanded),
             BridgeImportListItem.Candidate candidate => BuildRow(candidate.Row),
+            BridgeImportListItem.Imported imported => BuildImportedRow(imported.Row),
             BridgeImportListItem.Invalid invalid => BuildInvalidRow(invalid.InvalidCandidate),
             _ => new Panel(),
         };
@@ -110,7 +111,8 @@ internal sealed partial class ImportSectionView
         Grid.SetColumn(checkboxSlot, 0);
         grid.Children.Add(checkboxSlot);
 
-        var cover = BuildCover(row.CoverThumbnail);
+        var cover = BuildCover(
+            row.CoverThumbnail is { } coverSource ? ImageContent.ForCoverSource(coverSource) : null);
         cover.Margin = new Thickness(0, 7, 10, 7);
         Grid.SetColumn(cover, 1);
         grid.Children.Add(cover);
@@ -182,23 +184,20 @@ internal sealed partial class ImportSectionView
         return button;
     }
 
-    private Control BuildCover(BridgeCoverImageSource? coverSource)
+    private Control BuildCover(ImageContent? content)
     {
         var image = new Image { Width = 44, Height = 44, Stretch = Stretch.UniformToFill };
         var host = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(8), ClipToBounds = true, Child = image };
         host[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
-        if (coverSource is not null)
+        if (content is not null)
         {
-            _app.Images.Bind(image, ImageContent.ForCoverSource(coverSource), ImageWidths.Row);
+            _app.Images.Bind(image, content, ImageWidths.Row);
         }
         return host;
     }
 
     private Control BuildRowText(BridgeTriageRow row)
     {
-        var upload = UploadProgressPresentation.ResolveImport(
-            row.ImportStatus,
-            _storage.Outbox);
         var column = new StackPanel { Spacing = 0 };
         var title = new TextBlock
         {
@@ -218,21 +217,88 @@ internal sealed partial class ImportSectionView
             title.FontFamily = new FontFamily("monospace");
             leading = Icons.Glyph(Icons.Folder, 13, "BaeTextSecondaryBrush");
         }
-        column.Children.Add(TitleWithGlyphs(leading, title, row.Reading));
+        column.Children.Add(TitleWithGlyphs(
+            leading,
+            title,
+            row.Reading is BridgeTriageReading.Identified));
 
         if (SubLine(PlacementSubLine(row)) is { } subLine)
         {
             column.Children.Add(subLine);
         }
 
+        return column;
+    }
+
+    // One Done row: the library release the candidate became — its cover,
+    // title, artist and year, and whether a catalog describes it — as core
+    // read it from the library. Re-identifying, editing or re-covering the
+    // release reaches this row through the list's own query.
+    private Control BuildImportedRow(BridgeImportedRow row)
+    {
+        var release = row.Release;
+        var upload = UploadProgressPresentation.ResolveImport(
+            release.ReleaseId,
+            _storage.Outbox);
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("26,44,*,Auto"), Margin = new Thickness(9, 0, 0, 0) };
+
+        var cover = BuildCover(ImageContent.ForLibraryImage(release.Cover));
+        cover.Margin = new Thickness(0, 7, 10, 7);
+        Grid.SetColumn(cover, 1);
+        grid.Children.Add(cover);
+
+        var column = new StackPanel { Spacing = 0, Margin = new Thickness(0, 7, 8, 7) };
+        var title = new TextBlock
+        {
+            Text = release.Title is { Length: > 0 } albumTitle
+                ? albumTitle
+                : Loc.Chrome("import.metadata.album_title_placeholder"),
+            FontSize = 14,
+            FontWeight = FontWeight.SemiBold,
+            MaxLines = 1,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        title[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(
+            release.Title.Length > 0 ? "BaeTextPrimaryBrush" : "BaeTextSecondaryBrush");
+        column.Children.Add(TitleWithGlyphs(null, title, release.Records.Any()));
+        var byline = string.Join(
+            " · ",
+            new[] { release.Artist, release.Year?.ToString(System.Globalization.CultureInfo.InvariantCulture) }
+                .Where(part => !string.IsNullOrEmpty(part)));
+        if (SubLine(byline) is { } subLine)
+        {
+            column.Children.Add(subLine);
+        }
         if (upload is ImportUploadObservation.Active)
         {
             var bar = CloudProgressBar(upload);
             bar.Margin = new Thickness(0, 7, 0, 0);
             column.Children.Add(bar);
         }
+        Grid.SetColumn(column, 2);
+        grid.Children.Add(column);
 
-        return column;
+        if (upload is ImportUploadObservation.Active)
+        {
+            // Still going up to the cloud; the release is in the library
+            // either way.
+            var arrow = Icons.Glyph(Icons.ArrowUp, 14, "BaeTextSecondaryBrush");
+            arrow.Margin = new Thickness(0, 9, 10, 7);
+            arrow.VerticalAlignment = VerticalAlignment.Top;
+            Grid.SetColumn(arrow, 3);
+            grid.Children.Add(arrow);
+        }
+
+        var host = new Border { Child = grid, Background = Brushes.Transparent };
+        if (row.CandidateKey == _selectedKey)
+        {
+            host[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeSelectionTintBrush");
+        }
+        ToolTip.SetTip(host, row.DisplayPath);
+        host.Tapped += (_, _) => SelectCandidate(row.CandidateKey);
+        host.ContextMenu = new ContextMenu { ItemsSource = new List<Control> { RevealItem(row.CandidateKey) } };
+        return host;
     }
 
     // The title takes the remaining width and trims; the record arrow keeps
@@ -240,7 +306,7 @@ internal sealed partial class ImportSectionView
     private static Control TitleWithGlyphs(
         Control? leading,
         TextBlock title,
-        BridgeTriageReading reading)
+        bool readFromRecord)
     {
         var line = new Grid
         {
@@ -257,7 +323,7 @@ internal sealed partial class ImportSectionView
         Grid.SetColumn(title, column++);
         line.Children.Add(title);
 
-        var arrow = RecordArrow(reading);
+        var arrow = RecordArrow(readFromRecord);
         Grid.SetColumn(arrow, column);
         line.Children.Add(arrow);
         return line;
@@ -267,9 +333,8 @@ internal sealed partial class ImportSectionView
     // catalog record — the same glyph the records row links out with. Hidden
     // rather than absent for any other reading, so the line keeps its width.
     // It states a fact and answers nothing, so it takes no hits.
-    private static Control RecordArrow(BridgeTriageReading reading)
+    private static Control RecordArrow(bool readFromRecord)
     {
-        var readFromRecord = reading is BridgeTriageReading.Identified;
         var arrow = new TextBlock
         {
             Text = ImportPaneUi.OutboundArrow,
@@ -443,27 +508,12 @@ internal sealed partial class ImportSectionView
         return button;
     }
 
-    // What a row past the point of being asked anything shows: the failure's
-    // tag, or the completed import's mark and its cloud transition.
+    // What a failed import's row shows: the failure's tag. A completed
+    // import's row is the library release it became, which BuildImportedRow
+    // draws.
     private Control? ImportTrailing(BridgeTriageRow row) => row.ImportStatus switch
     {
-        BridgeTriageImportStatus.Complete =>
-            UploadProgressPresentation.ResolveImport(
-                row.ImportStatus,
-                _storage.Outbox) switch
-            {
-                ImportUploadObservation.Active =>
-                    Icons.Glyph(Icons.ArrowUp, 14, "BaeTextSecondaryBrush"),
-                ImportUploadObservation.Finished =>
-                    null,
-                _ => throw new InvalidOperationException(
-                    "a completed import has no upload observation"),
-            },
         BridgeTriageImportStatus.Error => Chip(Loc.Chrome("import.row.failed"), "BaeDangerBrush"),
-        // Already imported from a previous session (content-hash match), so
-        // there is no in-session status to read — the fact is the same, so the
-        // glyph is.
-        null => DotIcon("BaeSuccessBrush", "✓"),
         _ => null,
     };
 
@@ -495,23 +545,7 @@ internal sealed partial class ImportSectionView
 
     private ContextMenu? BuildRowContextMenu(BridgeTriageRow row)
     {
-        var items = new List<Control>();
-        var reveal = new MenuItem { Header = Loc.Chrome("libraries.reveal") };
-        reveal.Click += async (_, _) =>
-        {
-            var (current, result) = await _app.Import.CandidateSourceFolders(row.CandidateKey);
-            if (!current) return;
-            if (result.Error is { } error)
-            {
-                _app.ShowError(Loc.Chrome("import.error_title"), error);
-                return;
-            }
-            foreach (var folder in result.Folders!)
-            {
-                RevealInFileManager.Reveal(folder);
-            }
-        };
-        items.Add(reveal);
+        var items = new List<Control> { RevealItem(row.CandidateKey) };
         // A folder read as one release is this row and nothing else, so its row
         // is the only place left to say otherwise. A folder read as several is
         // a group of rows, and its header carries that choice.
@@ -525,6 +559,27 @@ internal sealed partial class ImportSectionView
             items.Add(regroup);
         }
         return new ContextMenu { ItemsSource = items };
+    }
+
+    // Reveal the folders a candidate's release is read from.
+    private MenuItem RevealItem(string candidateKey)
+    {
+        var reveal = new MenuItem { Header = Loc.Chrome("libraries.reveal") };
+        reveal.Click += async (_, _) =>
+        {
+            var (current, result) = await _app.Import.CandidateSourceFolders(candidateKey);
+            if (!current) return;
+            if (result.Error is { } error)
+            {
+                _app.ShowError(Loc.Chrome("import.error_title"), error);
+                return;
+            }
+            foreach (var folder in result.Folders!)
+            {
+                RevealInFileManager.Reveal(folder);
+            }
+        };
+        return reveal;
     }
 
     private Control BuildInvalidRow(BridgeInvalidCandidate invalid)

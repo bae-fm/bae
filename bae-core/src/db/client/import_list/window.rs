@@ -41,6 +41,14 @@ pub(super) fn materialise(
             } => {
                 let placed = &flat.rows[*index];
                 let scanned = &rows.candidates[placed.index];
+                // A Done row is the library release it became, read from the
+                // library: nothing the candidate says — its draft, its pick,
+                // its cover — is read for it.
+                if placed.row.placement == crate::import::TriagePlacement::Done {
+                    return Ok(WindowItemRows::Ready(ImportListItem::Imported {
+                        row: imported_row(sql, &placed.row)?,
+                    }));
+                }
                 let mut row = placed.row.clone();
                 // A resolved boundary is the row's offer to read its folder
                 // the other way, which is a question about a folder nobody has
@@ -124,6 +132,69 @@ pub(super) fn materialise(
             }
         })
         .collect()
+}
+
+/// A Done row, read from the library release its import wrote: the album's
+/// title, credited artists and year, the release's cover and its catalog
+/// records. Read here, inside the list's snapshot, so a re-identify, an edit, a
+/// new cover or a deleted release reruns the list and reaches the row.
+fn imported_row(
+    sql: &SqlReadContext<'_>,
+    placed: &crate::import::triage::TriageRow,
+) -> Result<crate::import::ImportedRow, DbError> {
+    let Some(crate::import::TriageImportStatus::Complete { release }) = &placed.import_status
+    else {
+        return Err(DbError::Message(format!(
+            "candidate {} is placed Done with no imported release",
+            placed.candidate_key
+        )));
+    };
+    let (album_id, title, artist, year, cover_version) = sql
+        .query_row(
+            &format!(
+                "SELECT r.album_id, a.title, NULLIF({artist_names}, '') AS artist_names, \
+                        a.year, (SELECT c.blob_id FROM covers c WHERE c.id = r.id) \
+                 FROM releases r JOIN albums a ON a.id = r.album_id \
+                 WHERE r.id = ?",
+                artist_names = super::super::query::album_artist_names_sql(),
+            ),
+            params![release.release_id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, Option<i32>>(3)?,
+                    row.get::<_, Option<String>>(4)?,
+                ))
+            },
+        )
+        .optional()?
+        .ok_or_else(|| {
+            DbError::Message(format!(
+                "candidate {} is placed Done on release {}, which has no album",
+                placed.candidate_key, release.release_id
+            ))
+        })?;
+    let records = super::super::read::get_release_records_on(sql, &release.release_id)?;
+    Ok(crate::import::ImportedRow {
+        candidate_key: placed.candidate_key.clone(),
+        display_path: placed.display_path.clone(),
+        action_basis: placed.action_basis.clone(),
+        release: crate::import::ImportedReleaseSummary {
+            cover: cover_version.map(|version| crate::album_detail::ImageRef {
+                id: release.release_id.clone(),
+                version,
+                image_type: crate::db::LibraryImageType::Cover,
+            }),
+            release_id: release.release_id.clone(),
+            album_id,
+            title,
+            artist,
+            year,
+            records,
+        },
+    })
 }
 
 pub(super) enum WindowItemRows {

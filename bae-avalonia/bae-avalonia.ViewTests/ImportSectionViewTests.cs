@@ -305,10 +305,9 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void ActivatingADoneRowOpensItsCandidate()
     {
-        var placement = new BridgeTriagePlacement.Done();
         var view = BuildView(
-            MatchedItems(placement),
-            MatchedSummary(placement, BridgeTriageTab.Done),
+            ImportedItems(),
+            MatchedSummary(new BridgeTriagePlacement.Done(), BridgeTriageTab.Done),
             BridgeTriageTab.Done);
 
         RaiseTap(CandidateRow(view));
@@ -452,13 +451,9 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void CloudImportReactsToOutboxProgress()
     {
-        var status = new BridgeTriageImportStatus.Complete(
-            "release-a",
-            "album-a");
-        var done = new BridgeTriagePlacement.Done();
         var (view, app) = BuildSection(
-            MatchedItems(done, status),
-            MatchedSummary(done, BridgeTriageTab.Done),
+            ImportedItems(),
+            MatchedSummary(new BridgeTriagePlacement.Done(), BridgeTriageTab.Done),
             BridgeTriageTab.Done);
 
         var restingRow = CandidateRow(view);
@@ -579,6 +574,29 @@ public sealed class ImportSectionViewTests
         window.Arrange(new Rect(0, 0, 900, 700));
         Dispatcher.UIThread.RunJobs();
     }
+
+    // One candidate imported as a library release — the shape a Done row
+    // takes, whatever the candidate read as before.
+    private static List<BridgeImportListItem> ImportedItems() => new()
+    {
+        new BridgeImportListItem.Imported(
+            PreviewData.CandidateStableKey(CandidateKey),
+            new BridgeImportedRow(
+                CandidateKey: CandidateKey,
+                DisplayPath: "Collection/Release 01",
+                ActionBasis: new BridgeCandidateActionBasis(
+                    Actionable: true,
+                    Placement: new BridgeTriagePlacement.Done(),
+                    LookupFailed: false),
+                Release: new BridgeImportedReleaseSummary(
+                    ReleaseId: "release-a",
+                    AlbumId: "album-a",
+                    Title: "Album Title",
+                    Artist: "Artist Name",
+                    Year: 1952,
+                    Cover: null,
+                    Records: []))),
+    };
 
     // One candidate carrying a settled match, under whichever placement the test
     // is asking about — the shape only the placement distinguishes.

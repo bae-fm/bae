@@ -306,12 +306,12 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
     );
 }
 
-/// The list's row for one candidate, over every tab — which tab it lands in is
-/// not what these tests are about.
+/// The list's row for one candidate, over the tabs that present a candidate's
+/// own reading — which of them it lands in is not what these tests are about.
+/// Done presents the library release instead.
 async fn queue_row(fixture: &Fixture, key: &str) -> crate::import::TriageRow {
     for tab in [
         crate::import::TriageTab::Pending,
-        crate::import::TriageTab::Done,
         crate::import::TriageTab::Skipped,
     ] {
         let view = crate::import::ImportListView {

@@ -20,9 +20,6 @@ struct TriageRowView: View {
 
     let row: BridgeTriageRow
     let coverContent: ImageContent?
-    /// The imported release's cloud transition, resolved by the list owner
-    /// that already observes the outbox.
-    let uploadObservation: UploadObservation?
     let isGroupMember: Bool
     let onReveal: () -> Void
     let onSkip: (_ skipped: Bool) -> Void
@@ -35,7 +32,6 @@ struct TriageRowView: View {
     init(
         row: BridgeTriageRow,
         coverContent: ImageContent?,
-        uploadObservation: UploadObservation?,
         isGroupMember: Bool,
         onReveal: @escaping () -> Void,
         onSkip: @escaping (_ skipped: Bool) -> Void,
@@ -47,7 +43,6 @@ struct TriageRowView: View {
     ) {
         self.row = row
         self.coverContent = coverContent
-        self.uploadObservation = uploadObservation
         self.isGroupMember = isGroupMember
         self.onReveal = onReveal
         self.onSkip = onSkip
@@ -63,7 +58,6 @@ struct TriageRowView: View {
                 row: row,
                 live: live,
                 coverContent: coverContent,
-                uploadObservation: uploadObservation,
                 isGroupMember: isGroupMember,
                 onReveal: onReveal,
                 onSkip: onSkip,
@@ -79,7 +73,6 @@ struct TriageRowContent: View {
     /// `nil` until the row's subscription has answered.
     let live: BridgeCandidateLiveState?
     let coverContent: ImageContent?
-    let uploadObservation: UploadObservation?
     let isGroupMember: Bool
     let onReveal: () -> Void
     let onSkip: (_ skipped: Bool) -> Void
@@ -169,13 +162,6 @@ struct TriageRowContent: View {
                 releaseSummary
             }
             stateLine
-            if let uploadObservation {
-                ProgressLine(
-                    uploadObservation.phaseText,
-                    progress: uploadObservation.progressBar.fraction
-                )
-                .font(.system(size: 11.5))
-            }
         }
     }
 
@@ -186,7 +172,7 @@ struct TriageRowContent: View {
     private var releaseSummary: some View {
         if let summary = ImportReleaseSummary(row: row) {
             ImportReleaseSummaryView(summary: summary, style: .sidebar) {
-                RecordArrow(reading: row.reading)
+                RecordArrow(readFromRecord: row.reading.readFromRecord)
             }
         }
     }
@@ -203,7 +189,7 @@ struct TriageRowContent: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
-            RecordArrow(reading: row.reading)
+            RecordArrow(readFromRecord: row.reading.readFromRecord)
                 .layoutPriority(1)
         }
     }
@@ -324,28 +310,16 @@ extension TriageRowContent {
         }
     }
 
-    /// What a row past the point of being asked anything shows: the failure's
-    /// tag, or the completed import's mark and its cloud transition.
+    /// What a failed import's row shows: the failure's tag. A completed
+    /// import's row is the library release it became, which `ImportedRowView`
+    /// draws.
     @ViewBuilder
     private var importTrailing: some View {
         switch row.importStatus {
-        case .complete:
-            if case .active = uploadObservation {
-                // Still going up to the cloud — the same arrow the storage
-                // queue marks an active upload with, and nothing else: the
-                // release is in the library either way.
-                trailingIcon("arrow.up.circle", tint: .secondary)
-            }
-            else {
-                EmptyView()
-            }
         case .error:
             chip(String(localized: "Failed"), tint: .red)
-        case nil:
-            // Already imported from a previous session (content-hash match),
-            // so there is no in-session status to read — the fact is the
-            // same, so the glyph is.
-            trailingIcon("checkmark.circle.fill", tint: .green)
+        case .complete, nil:
+            EmptyView()
         }
     }
 
@@ -381,7 +355,6 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowUnidentified
                 ),
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }
@@ -391,7 +364,6 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowPrefilledFromTags
                 ),
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }
@@ -401,7 +373,6 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowIdentifiedOnline
                 ),
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }
@@ -411,7 +382,6 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowIdentifiedSeveralMatches
                 ),
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }
@@ -421,7 +391,6 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowReady
                 ),
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }
@@ -431,7 +400,6 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowPickAPressing
                 ),
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }
@@ -441,7 +409,6 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowSeveralMatchesFromSignals
                 ),
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }
@@ -451,7 +418,6 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowAlreadyInLibrary
                 ),
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }
@@ -461,7 +427,6 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowNoMatch
                 ),
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }
@@ -471,17 +436,6 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowIdentifying
                 ),
-                uploadObservation: nil,
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
-            )
-            TriageRowView(
-                row: PreviewData.triageRowDoneImported,
-                coverContent: importStore.sidebarCover(
-                    for: PreviewData.triageRowDoneImported
-                ),
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }
@@ -491,7 +445,6 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowFailed
                 ),
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }
@@ -515,7 +468,6 @@ extension TriageRowContent {
                 TriageRowView(
                     row: row,
                     coverContent: importStore.sidebarCover(for: row),
-                    uploadObservation: nil,
                     isGroupMember: false,
                     onReveal: {},
                     onSkip: { _ in }
@@ -528,7 +480,6 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowReadFromRecord
                 ),
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }

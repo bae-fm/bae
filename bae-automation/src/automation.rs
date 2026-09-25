@@ -122,23 +122,24 @@ impl Automation {
                 .map_err(AutomationError::from)?;
             for window in projection.windows {
                 for item in window.items {
-                    match item {
-                        ImportListItem::Candidate { row, .. } => {
-                            let Some(detail) = self
-                                .services
-                                .load_import_candidate(&row.candidate_key)
-                                .await
-                                .map_err(AutomationError::from)?
-                            else {
-                                continue;
-                            };
-                            candidates.push(automation_candidate_from_folder(&detail, &runtime));
-                        }
+                    let candidate_key = match item {
+                        ImportListItem::Candidate { row, .. } => row.candidate_key,
+                        ImportListItem::Imported { row } => row.candidate_key,
                         ImportListItem::Invalid { candidate, .. } => {
                             candidates.push(automation_candidate_from_invalid(&candidate));
+                            continue;
                         }
-                        ImportListItem::GroupHeader { .. } => {}
-                    }
+                        ImportListItem::GroupHeader { .. } => continue,
+                    };
+                    let Some(detail) = self
+                        .services
+                        .load_import_candidate(&candidate_key)
+                        .await
+                        .map_err(AutomationError::from)?
+                    else {
+                        continue;
+                    };
+                    candidates.push(automation_candidate_from_folder(&detail, &runtime));
                 }
             }
         }

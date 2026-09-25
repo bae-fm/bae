@@ -184,32 +184,6 @@ private func readyRow(
     )
 }
 
-private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
-    BridgeTriageRow(
-        candidateKey: key,
-        folderName: title,
-        watchedFolderPath: "/w",
-        displayPath: title,
-        resolvedBoundaries: [],
-        combineAncestorKey: nil,
-        actionable: true,
-        placement: .done,
-        readyCheck: nil,
-        actionBasis: BridgeCandidateActionBasis(
-            actionable: true,
-            placement: .done,
-            lookupFailed: false
-        ),
-        matched: matchedRelease(releaseId: "rel-\(key)", title: title),
-        metadataSummary: nil,
-        coverThumbnail: nil,
-        selectable: false,
-        importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)"),
-        metadataProvenance: nil,
-        reading: .unidentified,
-    )
-}
-
 private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
     BridgeTriageRow(
         candidateKey: key,
@@ -914,6 +888,7 @@ extension ImportListPageSourceTests {
             else { return nil }
             switch item {
             case .candidate(_, let row, _): return row.candidateKey
+            case .imported(_, let row): return row.candidateKey
             case .groupHeader, .invalid: return nil
             }
         }

@@ -46,7 +46,6 @@ struct ImportCandidateSelectionTests {
             TriageRowView(
                 row: PreviewData.triageRowDoneImported,
                 coverContent: nil,
-                uploadObservation: nil,
                 isGroupMember: false,
                 onReveal: {},
                 onSkip: { _ in }
@@ -87,7 +86,6 @@ struct ImportCandidateSelectionTests {
                 TriageRowView(
                     row: row,
                     coverContent: nil,
-                    uploadObservation: nil,
                     isGroupMember: false,
                     onReveal: {},
                     onSkip: { _ in }

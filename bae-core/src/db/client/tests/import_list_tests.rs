@@ -781,8 +781,12 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
     .await
     .unwrap();
 
-    assert!(
-        tab(&db, TriageTab::Done).await.is_empty(),
+    assert_eq!(
+        db.load_import_list(request(TriageTab::Done).await)
+            .await
+            .unwrap()
+            .total_count,
+        0,
         "a failed attempt imported nothing, so nothing is done"
     );
     let failed = tab(&db, TriageTab::Pending).await;

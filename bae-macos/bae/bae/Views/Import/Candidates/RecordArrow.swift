@@ -8,14 +8,7 @@ import SwiftUI
 /// title line keeps its width whichever reading a row has. It states a fact
 /// and answers nothing, so it takes no hits and opens nothing.
 struct RecordArrow: View {
-    let reading: BridgeTriageReading
-
-    private var readFromRecord: Bool {
-        switch reading {
-        case .identified: true
-        case .prefilled, .unidentified: false
-        }
-    }
+    let readFromRecord: Bool
 
     var body: some View {
         Image(systemName: "arrow.up.right")
@@ -30,14 +23,29 @@ struct RecordArrow: View {
     }
 }
 
+extension BridgeTriageReading {
+    /// Whether the candidate's draft was read from a catalog's release.
+    var readFromRecord: Bool {
+        switch self {
+        case .identified: true
+        case .prefilled, .unidentified: false
+        }
+    }
+}
+
+extension BridgeImportedReleaseSummary {
+    /// Whether a catalog describes the library release.
+    var readFromRecord: Bool { !records.isEmpty }
+}
+
 #if DEBUG
 
     // MARK: - Previews
 
     #Preview("Read from a record, and not") {
         VStack(alignment: .leading, spacing: 8) {
-            RecordArrow(reading: .identified(records: []))
-            RecordArrow(reading: .prefilled)
+            RecordArrow(readFromRecord: true)
+            RecordArrow(readFromRecord: false)
         }
         .padding()
         .windowBackground()

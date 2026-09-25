@@ -17,21 +17,15 @@ internal abstract record ImportUploadObservation
 // Core owns phase selection and counters; this type only formats that projection.
 internal static class UploadProgressPresentation
 {
-    // The imported release's cloud transition, where the outbox holds one. A
-    // release with nothing queued is absent from the outbox, which is what
-    // "the import is done" reads as here.
-    public static ImportUploadObservation? ResolveImport(
-        BridgeTriageImportStatus? status,
-        BridgeOutboxSnapshot? snapshot)
-    {
-        if (status is not BridgeTriageImportStatus.Complete complete)
-        {
-            return null;
-        }
-        return snapshot?.PerRelease.TryGetValue(complete.ReleaseId, out var progress) == true
+    // An imported release's cloud transition: active while the outbox holds
+    // work for it, finished once it holds none — which is what "the import is
+    // done" reads as here.
+    public static ImportUploadObservation ResolveImport(
+        string releaseId,
+        BridgeOutboxSnapshot? snapshot) =>
+        snapshot?.PerRelease.TryGetValue(releaseId, out var progress) == true
             ? new ImportUploadObservation.Active(progress.Progress)
             : new ImportUploadObservation.Finished();
-    }
 
     public static string QueueSummary(
         BridgeOutboxPauseState pauseState,

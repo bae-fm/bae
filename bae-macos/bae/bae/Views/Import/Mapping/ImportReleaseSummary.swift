@@ -60,6 +60,19 @@ struct ImportReleaseSummary {
         sourceAudio = nil
     }
 
+    /// A Done row's library release: its title, and its artist beside its
+    /// year on the line under it.
+    init(release: BridgeImportedReleaseSummary) {
+        titleIsPlaceholder = release.title.isEmpty
+        title = release.title.isEmpty ? "Album title" : release.title
+        let byline = Self.factsLine([
+            release.artist, release.year.map { String($0) },
+        ])
+        artist = byline.isEmpty ? nil : byline
+        factsLine = ""
+        sourceAudio = nil
+    }
+
     private static func factsLine(_ facts: [String?]) -> String {
         facts.compactMap { $0?.isEmpty == false ? $0 : nil }
             .joined(separator: " \u{00b7} ")

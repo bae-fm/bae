@@ -515,6 +515,40 @@ pub struct BridgeTriageRow {
     pub reading: BridgeTriageReading,
 }
 
+/// A Done row: the candidate that became a library release, presented as that
+/// release as the library has it now. Its own shape rather than a
+/// `BridgeTriageRow` placed Done, so a Done row cannot show the candidate's
+/// draft or pick — re-identifying, editing or re-covering the release in the
+/// library is what the row shows.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeImportedRow {
+    /// The candidate's folder path — the key every other import call takes.
+    pub candidate_key: String,
+    pub display_path: String,
+    /// Handed back with the row's live-state subscription: an import that
+    /// just wrote the release can still own the candidate for a moment.
+    pub action_basis: BridgeCandidateActionBasis,
+    pub release: BridgeImportedReleaseSummary,
+}
+
+/// The library release a Done row became.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeImportedReleaseSummary {
+    pub release_id: String,
+    pub album_id: String,
+    /// The album's title. Empty for a release reseeded from tags that named
+    /// none.
+    pub title: String,
+    /// The album's credited artists, joined, or absent when it credits none.
+    pub artist: Option<String>,
+    pub year: Option<i32>,
+    /// The release's own cover.
+    pub cover: Option<crate::types::BridgeImageRef>,
+    /// Every catalog's description of the release, in the order surfaces list
+    /// catalogs. Empty when no catalog describes it.
+    pub records: Vec<crate::types::BridgeReleaseRecord>,
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTriageGroup {
     pub key: BridgeFolderReleaseDecisionKey,

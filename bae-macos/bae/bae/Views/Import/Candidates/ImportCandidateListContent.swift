@@ -533,6 +533,8 @@ extension ImportCandidateListContent {
                 releaseGroupHeader(group, expanded: expanded)
             case .candidate(_, let row, let isGroupMember):
                 candidateRow(row, isGroupMember: isGroupMember)
+            case .imported(_, let row):
+                importedRow(row)
             case .invalid(_, let invalid, let isGroupMember):
                 invalidRow(invalid, isGroupMember: isGroupMember)
             }
@@ -558,7 +560,7 @@ extension ImportCandidateListContent {
             switch item {
             case .groupHeader:
                 true
-            case .candidate, .invalid:
+            case .candidate, .imported, .invalid:
                 isGroupMember(at: index, in: list) == false
                     && isGroupMember(at: index - 1, in: list) == true
             }
@@ -579,6 +581,8 @@ extension ImportCandidateListContent {
             return false
         case .candidate(_, _, let isMember):
             return isMember
+        case .imported:
+            return false
         case .invalid(_, _, let isMember):
             return isMember
         }
@@ -643,7 +647,6 @@ extension ImportCandidateListContent {
         TriageRowView(
             row: row,
             coverContent: importStore.sidebarCover(for: row),
-            uploadObservation: uploadObservation(for: row),
             isGroupMember: isGroupMember,
             onReveal: { onReveal(row.candidateKey) },
             onSkip: { onSkip(row.candidateKey, $0) },
@@ -652,15 +655,15 @@ extension ImportCandidateListContent {
         .tag(row.candidateKey)
     }
 
-    private func uploadObservation(
-        for row: BridgeTriageRow
-    ) -> UploadObservation? {
-        guard case .complete(let releaseId, _) = row.importStatus else {
-            return nil
-        }
-        return outboxStore.persistedUploadObservation(
-            forRelease: releaseId
+    private func importedRow(_ row: BridgeImportedRow) -> some View {
+        ImportedRowView(
+            row: row,
+            uploadObservation: outboxStore.persistedUploadObservation(
+                forRelease: row.release.releaseId
+            ),
+            onReveal: { onReveal(row.candidateKey) }
         )
+        .tag(row.candidateKey)
     }
 
     /// An invalid folder isn't selectable — selecting its key is a no-op
