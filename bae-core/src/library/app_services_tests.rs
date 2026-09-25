@@ -161,9 +161,7 @@ async fn queue_upcoming_reads_every_window_of_a_live_context_tail_in_one_value()
     let queue = queue_value_with_context(&services).await;
     let subscription = services.subscribe_queue_upcoming(&tokio::runtime::Handle::current());
 
-    subscription
-        .set_windows(windows(&[(2, 3), (7, 2)]))
-        .unwrap();
+    subscription.set(windows(&[(2, 3), (7, 2)])).unwrap();
     let value = upcoming_until(&subscription, |value| value.windows.len() == 2).await;
 
     assert_eq!(value.revision, queue.revision);
@@ -193,9 +191,7 @@ async fn queue_upcoming_clamps_windows_to_the_live_tails_end() {
     let subscription = services.subscribe_queue_upcoming(&tokio::runtime::Handle::current());
 
     // The tail has 11 entries (track_ids[1..12]).
-    subscription
-        .set_windows(windows(&[(9, 100), (50, 10)]))
-        .unwrap();
+    subscription.set(windows(&[(9, 100), (50, 10)])).unwrap();
     let value = upcoming_until(&subscription, |value| value.windows.len() == 2).await;
 
     assert_eq!(
@@ -212,10 +208,10 @@ async fn queue_upcoming_moves_its_windows_in_place() {
     queue_value_with_context(&services).await;
     let subscription = services.subscribe_queue_upcoming(&tokio::runtime::Handle::current());
 
-    subscription.set_windows(windows(&[(0, 2)])).unwrap();
+    subscription.set(windows(&[(0, 2)])).unwrap();
     upcoming_until(&subscription, |value| value.windows.len() == 1).await;
 
-    subscription.set_windows(windows(&[(4, 2)])).unwrap();
+    subscription.set(windows(&[(4, 2)])).unwrap();
     let moved = upcoming_until(&subscription, |value| {
         value.windows.first().map(|window| window.window.offset) == Some(4)
     })
@@ -240,7 +236,7 @@ async fn queue_upcoming_follows_queue_revisions_without_resubscribing() {
     let (services, track_ids, _temp_dir) = playing_app_services(12).await;
     let queue = queue_value_with_context(&services).await;
     let subscription = services.subscribe_queue_upcoming(&tokio::runtime::Handle::current());
-    subscription.set_windows(windows(&[(2, 3)])).unwrap();
+    subscription.set(windows(&[(2, 3)])).unwrap();
     let first = upcoming_until(&subscription, |value| value.windows.len() == 1).await;
 
     // The manual lane is not part of the context tail the windows slice.
@@ -258,17 +254,4 @@ async fn queue_upcoming_follows_queue_revisions_without_resubscribing() {
     })
     .await;
     assert!(cleared.revision > queue.revision);
-}
-
-#[test]
-fn the_upload_queue_keeps_its_order_and_names_each_release_once() {
-    assert_eq!(
-        upload_queue_order(vec![
-            "release-b".to_string(),
-            "release-a".to_string(),
-            "release-b".to_string(),
-        ]),
-        ["release-b", "release-a"],
-        "queue order is what the Uploading filter lists by, so it is kept"
-    );
 }

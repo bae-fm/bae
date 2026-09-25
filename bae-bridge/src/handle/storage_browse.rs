@@ -1,3 +1,4 @@
+use super::detail::live_read_error;
 use super::*;
 
 /// One requested window of the Storage Manager list, with its rows.
@@ -60,7 +61,7 @@ impl StorageBrowseSubscription {
         windows: Vec<crate::types::BridgeLibraryPageWindow>,
     ) -> Result<(), BridgeError> {
         self.inner
-            .set_view(bae_core::library::StorageBrowseView {
+            .set(bae_core::library::StorageBrowseView {
                 sort: sort.into_core(),
                 filter: filter.into_core(),
                 windows: windows
@@ -68,7 +69,7 @@ impl StorageBrowseSubscription {
                     .map(crate::types::BridgeLibraryPageWindow::into_core)
                     .collect(),
             })
-            .map_err(storage_error)
+            .map_err(live_read_error)
     }
 
     pub async fn next(
@@ -97,7 +98,7 @@ impl StorageBrowseSubscription {
                     total_count: snapshot.total_count,
                     total_size: snapshot.total_size,
                 })
-                .map_err(storage_error)
+                .map_err(live_read_error)
         })
         .await
     }
@@ -109,14 +110,5 @@ impl StorageBrowseSubscription {
             Ok(())
         })
         .await
-    }
-}
-
-fn storage_error(error: bae_core::library::StorageBrowseSubscriptionError) -> BridgeError {
-    match error {
-        bae_core::library::StorageBrowseSubscriptionError::Cancelled => BridgeError::Cancelled,
-        bae_core::library::StorageBrowseSubscriptionError::Query(error) => {
-            BridgeError::database_query(error)
-        }
     }
 }

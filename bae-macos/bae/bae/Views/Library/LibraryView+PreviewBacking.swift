@@ -2,12 +2,6 @@
     import BaeKit
     import SwiftUI
 
-    private final class PreviewLibrarySubscription: LiveSubscriptionProtocol,
-        @unchecked Sendable
-    {
-        func cancel() {}
-    }
-
     // Canned `Library` + `LibraryBrowseSession` backings for the `LibraryView`
     // previews (and the whole-window `MainAppView` preview, which reuses
     // `previewGridBacking`). Each drives the production body through a real
@@ -113,14 +107,8 @@
             let workDetail = previewWorkDetail(work: works[0])
             let library = Library(
                 composerBrowse: { _ in .fixed(composers) },
-                subscribeComposerDetail: { _, callback in
-                    callback.onValue(value: composerDetail)
-                    return PreviewLibrarySubscription()
-                },
-                subscribeWorkDetail: { _, callback in
-                    callback.onValue(value: workDetail)
-                    return PreviewLibrarySubscription()
-                },
+                composerDetail: { .fixed { _ in composerDetail } },
+                workDetail: { .fixed { _ in workDetail } },
             )
             let session = LibraryBrowseSession(
                 library: library,

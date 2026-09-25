@@ -165,9 +165,9 @@ impl LibraryManager {
 
     pub(crate) fn subscribe_artist_detail(
         &self,
-        artist_id: &str,
-    ) -> coven::LiveQuery<crate::db::ArtistDetailProjection> {
-        self.database.subscribe_artist_detail(artist_id)
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, crate::db::ArtistDetailProjection> {
+        self.database.subscribe_artist_detail(initial)
     }
 
     pub(crate) fn resolve_artist_detail_projection(

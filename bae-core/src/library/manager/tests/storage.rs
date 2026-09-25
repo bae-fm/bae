@@ -703,7 +703,7 @@ async fn the_storage_view_moves_one_subscription() {
     assert_eq!(first.total_count, 3);
 
     values
-        .set_view(view(ascending, all, &[window(0, 1), window(2, 1)]))
+        .set(view(ascending, all, &[window(0, 1), window(2, 1)]))
         .unwrap();
     let scrolled = next_storage_value(&values).await;
     assert_eq!(titles(&scrolled), vec![vec!["Album 0"], vec!["Album 2"]]);
@@ -711,7 +711,7 @@ async fn the_storage_view_moves_one_subscription() {
 
     let descending = crate::db::SortDirection::Descending;
     values
-        .set_view(view(descending, all, &[window(0, 2)]))
+        .set(view(descending, all, &[window(0, 2)]))
         .unwrap();
     let resorted = next_storage_value(&values).await;
     assert_eq!(resorted.sort.direction, descending);
@@ -719,7 +719,7 @@ async fn the_storage_view_moves_one_subscription() {
 
     let local = crate::db::StorageFilter::Local;
     values
-        .set_view(view(descending, local, &[window(0, 2)]))
+        .set(view(descending, local, &[window(0, 2)]))
         .unwrap();
     let filtered = next_storage_value(&values).await;
     assert_eq!(filtered.filter, local);

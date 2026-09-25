@@ -322,8 +322,18 @@ extension LibraryArtworkBrowserTests {
             fetchReleaseImageBytes: { _, _ in bytes },
             fetchRemoteImage: { _ in bytes }
         )
-        let library = Library(subscribeReleaseDetail: { _, _ in Subscription() }
-        )
+        // A read that never answers: the sheet shows the release it was
+        // opened with.
+        let library = Library(releaseDetail: {
+            DetailQuery(
+                setId: { _ in },
+                next: {
+                    try await Task.sleep(for: .seconds(86_400))
+                    throw CancellationError()
+                },
+                cancel: {}
+            )
+        })
         return SnapshotTestSupport.hostInWindow(
             AnyView(
                 CoverSheetView(
@@ -363,12 +373,6 @@ extension LibraryArtworkBrowserTests {
             ),
             label: name
         )
-    }
-
-    private final class Subscription: LiveSubscriptionProtocol,
-        @unchecked Sendable
-    {
-        func cancel() {}
     }
 
     private func labels(_ observations: [SnapshotTestSupport.RecognizedLine])

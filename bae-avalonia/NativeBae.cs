@@ -389,12 +389,36 @@ internal static partial class NativeBae
     internal static string? ChangeCover(AppHandle handle, string releaseId, BridgeCoverSelection selection) =>
         CaptureError(() => Await(() => handle.ChangeCover(releaseId, selection)));
 
-    internal static LiveSubscription SubscribeAlbumDetail(
+    // One album's detail, read through an album-detail subscription pointed
+    // at just that album.
+    internal static IDisposable SubscribeAlbumDetail(
         AppHandle handle,
         string albumId,
         Action<AlbumDetail?> onValue,
-        Action<Exception> onError) =>
-        handle.SubscribeAlbumDetail(albumId, new AlbumDetailSink(onValue, onError));
+        Action<Exception> onError)
+    {
+        var subscription = handle.SubscribeAlbumDetail();
+        try
+        {
+            subscription.SetId(albumId);
+        }
+        catch (BridgeException error)
+        {
+            onError(error);
+        }
+        return ReadEachValue(
+            subscription,
+            subscription.Cancel,
+            subscription.Next,
+            snapshot =>
+            {
+                if (snapshot.Id == albumId)
+                {
+                    onValue(snapshot.Value is null ? null : new AlbumDetail(snapshot.Value));
+                }
+            },
+            onError);
+    }
 
     // The 0-based position of an album under the active sort, matching
     // GetAlbumPage's ordering, or null when the album isn't present. Lets a
@@ -418,15 +442,6 @@ internal static partial class NativeBae
         {
             return (null, exception.Message);
         }
-    }
-
-    private sealed class AlbumDetailSink(
-        Action<AlbumDetail?> onValue,
-        Action<Exception> onError) : AlbumDetailCallback
-    {
-        public void OnValue(BridgeAlbumDetail? value) =>
-            onValue(value is null ? null : new AlbumDetail(value));
-        public void OnError(BridgeException error) => onError(error);
     }
 
     // One page of the Storage Manager list, read through a storage browse

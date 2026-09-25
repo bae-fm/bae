@@ -25,6 +25,9 @@ struct AlbumDetailView: View {
     private var selectedReleaseId: String?
     @State
     private var showGallery = false
+    /// The view's one album read, moved as `albumId` changes.
+    @State
+    private var detailReader: DetailReader<BridgeAlbumDetail>?
 
     init(
         albumId: String,
@@ -77,18 +80,16 @@ struct AlbumDetailView: View {
         .safeAreaInset(edge: .bottom) {
             NowPlayingBar()
         }
-        .onChange(of: albumId, initial: true) { oldId, newId in
-            if oldId != newId {
-                libraryStore.deactivateAlbumDetail(albumId: oldId)
-            }
-            libraryStore.activateAlbumDetail(
-                albumId: newId,
-                library: library
-            )
-        }
-        .onDisappear {
-            libraryStore.deactivateAlbumDetail(albumId: albumId)
-        }
+        .onAppear { showAlbum(albumId) }
+        .onChange(of: albumId) { _, newId in showAlbum(newId) }
+        .onDisappear { detailReader?.close() }
+    }
+
+    private func showAlbum(_ albumId: String) {
+        let reader =
+            detailReader ?? libraryStore.albumDetailReader(library: library)
+        detailReader = reader
+        reader.show(albumId)
     }
 
     /// The pre-content placeholder for a release whose detail hasn't loaded:
@@ -98,10 +99,7 @@ struct AlbumDetailView: View {
     private func detailPlaceholder() -> some View {
         if let error = libraryStore.albumDetailErrors[albumId] {
             LoadFailureView(line: error.line) {
-                libraryStore.retryAlbumDetail(
-                    albumId: albumId,
-                    library: library
-                )
+                detailReader?.retry()
             }
         }
         else {

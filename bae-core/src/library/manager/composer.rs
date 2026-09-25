@@ -49,9 +49,9 @@ impl LibraryManager {
 
     pub(crate) fn subscribe_composer_detail(
         &self,
-        artist_id: &str,
-    ) -> coven::LiveQuery<crate::db::ComposerDetailProjection> {
-        self.database.subscribe_composer_detail(artist_id)
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, crate::db::ComposerDetailProjection> {
+        self.database.subscribe_composer_detail(initial)
     }
 
     pub(crate) fn resolve_composer_detail_projection(
@@ -167,9 +167,9 @@ impl LibraryManager {
 
     pub(crate) fn subscribe_work_detail(
         &self,
-        work_id: &str,
-    ) -> coven::LiveQuery<crate::db::WorkDetailProjection> {
-        self.database.subscribe_work_detail(work_id)
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, crate::db::WorkDetailProjection> {
+        self.database.subscribe_work_detail(initial)
     }
 
     pub(crate) fn resolve_work_detail_projection(

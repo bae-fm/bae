@@ -4,46 +4,6 @@ import Testing
 
 @testable import bae
 
-private final class AlbumDetailSubscriptionProbe: @unchecked Sendable {
-    private let lock = NSLock()
-    private var callbacks: [AlbumDetailCallback] = []
-    private var subscriptions: [AlbumProbeSubscription] = []
-
-    func subscribe(callback: AlbumDetailCallback)
-        -> any LiveSubscriptionProtocol
-    {
-        let subscription = AlbumProbeSubscription()
-        lock.withLock {
-            callbacks.append(callback)
-            subscriptions.append(subscription)
-        }
-        return subscription
-    }
-
-    func emitError(subscription: Int) {
-        let callback = lock.withLock { callbacks[subscription] }
-        callback.onError(
-            error: .Diagnostic(
-                category: .internal,
-                detail: "album detail failed"
-            )
-        )
-    }
-
-    func emitValue(subscription: Int, value: BridgeAlbumDetail?) {
-        let callback = lock.withLock { callbacks[subscription] }
-        callback.onValue(value: value)
-    }
-
-    func isCancelled(subscription: Int) -> Bool {
-        lock.withLock { subscriptions[subscription].cancelled }
-    }
-
-    var count: Int {
-        lock.withLock { callbacks.count }
-    }
-}
-
 /// Stands in for the album browse query: records the windows the list's pages
 /// ask for, and answers them with whatever rows a test emits.
 private final class AlbumBrowseProbe: @unchecked Sendable {
@@ -101,19 +61,6 @@ private final class AlbumBrowseProbe: @unchecked Sendable {
             }
             if let ready { continuation.resume(returning: ready) }
         }
-    }
-}
-
-private final class AlbumProbeSubscription: LiveSubscriptionProtocol,
-    @unchecked Sendable
-{
-    private let lock = NSLock()
-    private var isCancelled = false
-
-    var cancelled: Bool { lock.withLock { isCancelled } }
-
-    func cancel() {
-        lock.withLock { isCancelled = true }
     }
 }
 
@@ -245,6 +192,43 @@ struct LibraryProjectionStoreSearchTests {
             probe.openCount == 1,
             "typing moves one search, never opens another"
         )
+    }
+}
+
+@Suite("LibraryProjectionStore details")
+struct LibraryProjectionStoreDetailTests {
+    @MainActor
+    @Test(
+        "moving the composer pane moves its one read, and clearing it reads nothing"
+    )
+    func composerPaneMovesOneRead() async {
+        let feed = DetailFeed<BridgeComposerDetail>()
+        let store = LibraryProjectionStore(
+            library: Library(composerDetail: { feed.query() })
+        )
+
+        store.activateComposer("composer-1")
+        store.activateComposer("composer-2")
+        feed.emit(id: "composer-1", value: nil)
+        feed.emit(id: "composer-2", value: nil)
+        await waitForStoreUpdate { store.composer.delivered }
+
+        #expect(feed.opened == 1)
+        #expect(feed.requested == ["composer-1", "composer-2"])
+
+        store.deactivateComposer("composer-1")
+        #expect(
+            feed.requested.count == 2,
+            "a composer no longer shown is not the one read"
+        )
+        store.deactivateComposer("composer-2")
+        store.activateComposer("composer-3")
+
+        #expect(
+            feed.requested == ["composer-1", "composer-2", nil, "composer-3"]
+        )
+        #expect(feed.opened == 1)
+        #expect(!feed.isCancelled(read: 0))
     }
 }
 
@@ -437,42 +421,42 @@ private final class AlbumSelectionProbe: @unchecked Sendable {
 @Suite("LibraryStore album detail ownership")
 struct LibraryStoreAlbumDetailOwnershipTests {
     @MainActor
-    @Test("retry replaces the failed observation and rejects its late value")
-    func retryRejectsOldObservation() async {
-        let probe = AlbumDetailSubscriptionProbe()
+    @Test("retry replaces the failed read and rejects its late value")
+    func retryRejectsOldRead() async {
+        let feed = DetailFeed<BridgeAlbumDetail>()
         let store = LibraryStore()
-        let library = Library(
-            subscribeAlbumDetail: { _, callback in
-                probe.subscribe(callback: callback)
-            }
+        let reader = store.albumDetailReader(
+            library: Library(albumDetail: { feed.query() })
         )
 
-        store.activateAlbumDetail(albumId: "album-1", library: library)
-        await waitForStoreUpdate { probe.count == 1 }
-        probe.emitError(subscription: 0)
+        reader.show("album-1")
+        feed.emitError()
         await waitForStoreUpdate {
             store.albumDetailErrors["album-1"] != nil
         }
 
-        store.retryAlbumDetail(albumId: "album-1", library: library)
-        await waitForStoreUpdate { probe.count == 2 }
-        #expect(probe.isCancelled(subscription: 0))
-        probe.emitValue(
-            subscription: 1,
+        reader.retry()
+        await waitForStoreUpdate { feed.isCancelled(read: 0) }
+        #expect(feed.opened == 2)
+        feed.emit(
+            read: 1,
+            id: "album-1",
             value: makeBridgeAlbumDetail(title: "Replacement Title")
         )
         await waitForStoreUpdate {
             store.albumSummaries["album-1"]?.title == "Replacement Title"
         }
-        probe.emitValue(
-            subscription: 0,
+        feed.emit(
+            read: 0,
+            id: "album-1",
             value: makeBridgeAlbumDetail(title: "Old Title")
         )
         await Task.yield()
 
         #expect(store.albumSummaries["album-1"]?.title == "Replacement Title")
 
-        store.deactivateAlbumDetail(albumId: "album-1")
-        #expect(probe.isCancelled(subscription: 1))
+        reader.close()
+        await waitForStoreUpdate { feed.isCancelled(read: 1) }
+        #expect(feed.isCancelled(read: 1))
     }
 }

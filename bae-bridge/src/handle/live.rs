@@ -1,5 +1,5 @@
-//! The stream shapes behind `AppHandle`'s `subscribe_*` calls — a coven live
-//! query, a channel of values core resolves, a watch — each wrapped in the
+//! The stream shapes behind `AppHandle`'s callback `subscribe_*` calls — a
+//! channel of values core resolves, a watch — each wrapped in the
 //! `LiveSubscription` the host cancels.
 
 use super::*;
@@ -20,26 +20,6 @@ impl AppHandle {
         let body_runtime = runtime.clone();
         let task = crate::operation_runtime::spawn(runtime, move || body(services, body_runtime));
         std::sync::Arc::new(crate::LiveSubscription::new(task))
-    }
-
-    /// Hand `deliver` every value a coven live query produces and every query
-    /// failure. A live query has no end of its own: the loop runs until the host
-    /// cancels the subscription.
-    pub(super) fn subscribe_live_query<T>(
-        &self,
-        open: impl FnOnce(&AppServices) -> coven::LiveQuery<T> + Send + 'static,
-        deliver: impl Fn(&AppServices, Result<T, coven::CovenError>) + Send + 'static,
-    ) -> std::sync::Arc<crate::LiveSubscription>
-    where
-        T: Clone + PartialEq + Send + 'static,
-    {
-        self.live_subscription(move |services, _| async move {
-            let mut query = open(&services);
-            loop {
-                let value = query.next().await;
-                deliver(&services, value);
-            }
-        })
     }
 
     /// Hand `deliver` every value core sends on a subscription channel. The loop

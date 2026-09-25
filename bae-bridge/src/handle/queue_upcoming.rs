@@ -1,3 +1,4 @@
+use super::detail::live_read_error;
 use super::*;
 
 /// One requested window of the context's upcoming tail, with its entries.
@@ -45,13 +46,13 @@ impl QueueUpcomingSubscription {
         windows: Vec<crate::types::BridgeLibraryPageWindow>,
     ) -> Result<(), BridgeError> {
         self.inner
-            .set_windows(
+            .set(
                 windows
                     .into_iter()
                     .map(crate::types::BridgeLibraryPageWindow::into_core)
                     .collect(),
             )
-            .map_err(upcoming_error)
+            .map_err(live_read_error)
     }
 
     pub async fn next(
@@ -63,7 +64,7 @@ impl QueueUpcomingSubscription {
                 .next()
                 .await
                 .map(BridgeQueueUpcomingSnapshot::from_core)
-                .map_err(upcoming_error)
+                .map_err(live_read_error)
         })
         .await
     }
@@ -94,15 +95,6 @@ impl BridgeQueueUpcomingSnapshot {
                         .collect(),
                 })
                 .collect(),
-        }
-    }
-}
-
-fn upcoming_error(error: bae_core::library::QueueUpcomingSubscriptionError) -> BridgeError {
-    match error {
-        bae_core::library::QueueUpcomingSubscriptionError::Cancelled => BridgeError::Cancelled,
-        bae_core::library::QueueUpcomingSubscriptionError::Query(error) => {
-            BridgeError::internal(error)
         }
     }
 }

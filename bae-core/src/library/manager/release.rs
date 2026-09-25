@@ -553,9 +553,9 @@ impl LibraryManager {
 
     pub(crate) fn subscribe_release_detail(
         &self,
-        release_id: &str,
-    ) -> coven::LiveQuery<crate::db::ReleaseDetailProjection> {
-        self.database.subscribe_release_detail(release_id)
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, crate::db::ReleaseDetailProjection> {
+        self.database.subscribe_release_detail(initial)
     }
 
     /// The release's representative file id: what its pin marker is watched

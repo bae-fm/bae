@@ -29,12 +29,13 @@ public final class LibraryProjectionStore {
 
     @ObservationIgnored
     private let library: Library
+    /// Each detail pane's one read, moved to the item the pane shows.
     @ObservationIgnored
-    private var composerTask: Task<Void, Never>?
+    private var composerReader: DetailReader<BridgeComposerDetail>?
     @ObservationIgnored
-    private var artistTask: Task<Void, Never>?
+    private var artistReader: DetailReader<BridgeArtistDetail>?
     @ObservationIgnored
-    private var workTask: Task<Void, Never>?
+    private var workReader: DetailReader<BridgeWorkDetail>?
     /// The one live search the search field drives while it is open, and
     /// the loop taking its values.
     @ObservationIgnored
@@ -46,12 +47,6 @@ public final class LibraryProjectionStore {
     @ObservationIgnored
     private var searchDebounce: Task<Void, Never>?
     @ObservationIgnored
-    private var composerId: String?
-    @ObservationIgnored
-    private var artistId: String?
-    @ObservationIgnored
-    private var workId: String?
-    @ObservationIgnored
     private var searchQuery: String?
 
     public init(library: Library) {
@@ -59,78 +54,64 @@ public final class LibraryProjectionStore {
     }
 
     public func activateComposer(_ id: String) {
-        guard composerId != id || composerTask == nil else { return }
-        composerId = id
-        composer = LibraryProjectionState()
-        composerTask?.cancel()
-        composerTask = Task { [weak self, library] in
-            for await result in library.composerDetails(id) {
-                guard !Task.isCancelled, self?.composerId == id else { return }
-                switch result {
-                case .success(let value):
-                    self?.composer = LibraryProjectionState(
-                        value: value,
-                        delivered: true
-                    )
-                case .failure(let error):
-                    self?.composer = LibraryProjectionState(
-                        value: self?.composer.value,
-                        delivered: self?.composer.delivered ?? false,
-                        error: DisplayError(error)
-                    )
-                }
-            }
-        }
+        if composerReader?.id != id { composer = LibraryProjectionState() }
+        composerReader =
+            composerReader
+            ?? detailReader(
+                open: library.composerDetail,
+                state: \.composer
+            )
+        composerReader?.show(id)
     }
 
     public func activateArtist(_ id: String) {
-        guard artistId != id || artistTask == nil else { return }
-        artistId = id
-        artist = LibraryProjectionState()
-        artistTask?.cancel()
-        artistTask = Task { [weak self, library] in
-            for await result in library.artistDetails(id) {
-                guard !Task.isCancelled, self?.artistId == id else { return }
-                switch result {
-                case .success(let value):
-                    self?.artist = LibraryProjectionState(
-                        value: value,
-                        delivered: true
-                    )
-                case .failure(let error):
-                    self?.artist = LibraryProjectionState(
-                        value: self?.artist.value,
-                        delivered: self?.artist.delivered ?? false,
-                        error: DisplayError(error)
-                    )
-                }
-            }
-        }
+        if artistReader?.id != id { artist = LibraryProjectionState() }
+        artistReader =
+            artistReader
+            ?? detailReader(
+                open: library.artistDetail,
+                state: \.artist
+            )
+        artistReader?.show(id)
     }
 
     public func activateWork(_ id: String) {
-        guard workId != id || workTask == nil else { return }
-        workId = id
-        work = LibraryProjectionState()
-        workTask?.cancel()
-        workTask = Task { [weak self, library] in
-            for await result in library.workDetails(id) {
-                guard !Task.isCancelled, self?.workId == id else { return }
-                switch result {
-                case .success(let value):
-                    self?.work = LibraryProjectionState(
-                        value: value,
-                        delivered: true
-                    )
-                case .failure(let error):
-                    self?.work = LibraryProjectionState(
-                        value: self?.work.value,
-                        delivered: self?.work.delivered ?? false,
-                        error: DisplayError(error)
-                    )
-                }
+        if workReader?.id != id { work = LibraryProjectionState() }
+        workReader =
+            workReader
+            ?? detailReader(
+                open: library.workDetail,
+                state: \.work
+            )
+        workReader?.show(id)
+    }
+
+    /// A detail pane's read, writing each value it delivers — and each
+    /// failure, over the value already shown — into `state`.
+    private func detailReader<Value: Sendable>(
+        open: @escaping @Sendable () -> DetailQuery<Value>,
+        state: ReferenceWritableKeyPath<
+            LibraryProjectionStore, LibraryProjectionState<Value>
+        >
+    ) -> DetailReader<Value> {
+        DetailReader(
+            open: open,
+            onValue: { [weak self] _, value in
+                self?[keyPath: state] = LibraryProjectionState(
+                    value: value,
+                    delivered: true
+                )
+            },
+            onError: { [weak self] _, error in
+                guard let self else { return }
+                let current = self[keyPath: state]
+                self[keyPath: state] = LibraryProjectionState(
+                    value: current.value,
+                    delivered: current.delivered,
+                    error: DisplayError(error)
+                )
             }
-        }
+        )
     }
 
     /// Follow the search field's text: the one live search moves to it once
@@ -211,24 +192,18 @@ public final class LibraryProjectionStore {
     }
 
     public func deactivateComposer(_ id: String) {
-        guard composerId == id else { return }
-        composerTask?.cancel()
-        composerTask = nil
-        composerId = nil
+        guard composerReader?.id == id else { return }
+        composerReader?.clear()
     }
 
     public func deactivateArtist(_ id: String) {
-        guard artistId == id else { return }
-        artistTask?.cancel()
-        artistTask = nil
-        artistId = nil
+        guard artistReader?.id == id else { return }
+        artistReader?.clear()
     }
 
     public func deactivateWork(_ id: String) {
-        guard workId == id else { return }
-        workTask?.cancel()
-        workTask = nil
-        workId = nil
+        guard workReader?.id == id else { return }
+        workReader?.clear()
     }
 
     /// Close the live search: the search field is gone.

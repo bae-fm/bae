@@ -3,7 +3,6 @@ package fm.bae.app.data
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,62 +22,95 @@ internal data class LiveQueryState<Value>(
     val error: BridgeException? = null,
 )
 
-private fun <Value> MutableStateFlow<LiveQueryState<Value>>.apply(event: LiveQueryEvent<Value?>) {
-    value =
-        when (event) {
-            is LiveQueryEvent.Value -> LiveQueryState(value = event.value, delivered = true)
-            is LiveQueryEvent.Error -> value.copy(error = event.error)
-        }
-}
-
+/**
+ * One detail pane's live read, kept for as long as the pane's store is: [activate] moves it to the
+ * item the pane shows, [deactivate] leaves it reading nothing, and only a value answering the item
+ * shown now reaches [state].
+ */
 internal class DetailQueryStore<Value>(
     private val scope: CoroutineScope,
-    private val subscribe: (String) -> Flow<LiveQueryEvent<Value?>>,
+    private val open: () -> DetailRead<Value>,
 ) {
     private val mutableState = MutableStateFlow(LiveQueryState<Value>())
     val state: StateFlow<LiveQueryState<Value>> = mutableState.asStateFlow()
     private var parameter: String? = null
-    private var job: Job? = null
-    private var generation = 0L
+    private var read: DetailRead<Value>? = null
+    private var deliveries: Job? = null
 
     fun activate(value: String) {
-        if (parameter == value && job?.isActive == true) return
+        if (parameter == value && read != null) return
         parameter = value
-        start(value)
+        mutableState.value = LiveQueryState()
+        request(value)
     }
 
+    /** Read the item shown now again on a fresh read, after one failed. */
     fun retry() {
-        parameter?.let(::start)
+        val current = parameter ?: return
+        closeRead()
+        mutableState.value = LiveQueryState()
+        request(current)
     }
 
     fun deactivate(value: String) {
         if (parameter != value) return
-        job?.cancel()
-        job = null
         parameter = null
-        generation++
+        val current = read ?: return
+        // A read that can no longer be pointed anywhere has ended; the next
+        // activation opens another.
+        runCatching { current.setId(null) }.onFailure { error ->
+            if (error !is BridgeException) throw error
+            closeRead()
+        }
     }
 
     fun cancel() {
-        job?.cancel()
-        job = null
         parameter = null
-        generation++
+        closeRead()
     }
 
-    private fun start(value: String) {
-        job?.cancel()
-        generation++
-        val currentGeneration = generation
-        mutableState.value = LiveQueryState()
-        job =
-            scope.launch {
-                subscribe(value).collect { event ->
-                    if (generation == currentGeneration) {
-                        mutableState.apply(event)
-                    }
+    private fun request(value: String) {
+        val current = read ?: openRead()
+        try {
+            current.setId(value)
+        } catch (error: BridgeException) {
+            mutableState.value = mutableState.value.copy(error = error)
+        }
+    }
+
+    private fun openRead(): DetailRead<Value> {
+        val opened = open()
+        read = opened
+        deliveries = scope.launch { deliver(opened) }
+        return opened
+    }
+
+    private suspend fun deliver(opened: DetailRead<Value>) {
+        var reading = true
+        while (reading) {
+            val delivered = runCatching { opened.next() }
+            delivered.getOrNull()?.let { delivery ->
+                val shown = parameter
+                if (shown != null && delivery.id == shown) {
+                    mutableState.value = LiveQueryState(value = delivery.value, delivered = true)
                 }
             }
+            val error = delivered.exceptionOrNull() ?: continue
+            if (error !is BridgeException) throw error
+            if (error is BridgeException.Cancelled) {
+                reading = false
+            } else if (parameter != null) {
+                mutableState.value = mutableState.value.copy(error = error)
+            }
+        }
+    }
+
+    private fun closeRead() {
+        deliveries?.cancel()
+        deliveries = null
+        val closing = read ?: return
+        read = null
+        scope.launch { closing.cancel() }
     }
 }
 
@@ -172,10 +204,10 @@ internal class LibraryQueryStores(
     library: Library,
     scope: CoroutineScope,
 ) {
-    val album = DetailQueryStore<BridgeAlbumDetail>(scope, library::albumDetails)
-    val artist = DetailQueryStore<BridgeArtistDetail>(scope, library::artistDetails)
-    val composer = DetailQueryStore<BridgeComposerDetail>(scope, library::composerDetails)
-    val work = DetailQueryStore<BridgeWorkDetail>(scope, library::workDetails)
+    val album = DetailQueryStore<BridgeAlbumDetail>(scope, library::albumDetail)
+    val artist = DetailQueryStore<BridgeArtistDetail>(scope, library::artistDetail)
+    val composer = DetailQueryStore<BridgeComposerDetail>(scope, library::composerDetail)
+    val work = DetailQueryStore<BridgeWorkDetail>(scope, library::workDetail)
     val search = SearchQueryStore(library, scope)
 
     fun cancel() {

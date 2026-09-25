@@ -248,27 +248,21 @@ enum PreviewData {
 
 }
 
-private final class PreviewLibrarySubscription: LiveSubscriptionProtocol,
-    @unchecked Sendable
-{
-    func cancel() {}
-}
-
 // MARK: - Seeded stores
 
 extension PreviewData {
     static func library() -> Library {
         Library(
-            subscribeAlbumDetail: { albumId, callback in
-                let detail = albums.first { $0.id == albumId }
-                    .map {
-                        BridgeAlbumDetail(
-                            album: $0,
-                            releases: [release(albumId: albumId)]
-                        )
-                    }
-                callback.onValue(value: detail)
-                return PreviewLibrarySubscription()
+            albumDetail: {
+                .fixed { albumId in
+                    albums.first { $0.id == albumId }
+                        .map {
+                            BridgeAlbumDetail(
+                                album: $0,
+                                releases: [release(albumId: albumId)]
+                            )
+                        }
+                }
             }
         )
     }

@@ -42,11 +42,6 @@ pub enum BridgeLiveQueryCause {
 }
 
 callbacks! {
-    AlbumDetailCallback: on_value(value: Option<BridgeAlbumDetail>) + on_error;
-    ReleaseDetailCallback: on_value(value: Option<BridgeRelease>) + on_error;
-    ArtistDetailCallback: on_value(value: Option<BridgeArtistDetail>) + on_error;
-    ComposerDetailCallback: on_value(value: Option<BridgeComposerDetail>) + on_error;
-    WorkDetailCallback: on_value(value: Option<BridgeWorkDetail>) + on_error;
     QueueCallback: on_value(value: BridgeQueueSnapshot) + on_error;
     OutboxCallback: on_value(value: BridgeOutboxSnapshot) + on_error;
 

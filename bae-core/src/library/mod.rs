@@ -1,9 +1,11 @@
 mod album_selection;
 pub mod app_services;
 mod browse;
+mod detail;
 mod device_pairing;
 pub mod download_snapshot;
 mod library_status;
+mod live_read;
 pub(crate) mod live_uploads;
 mod local_lifecycle;
 pub mod manager;
@@ -27,6 +29,7 @@ pub use album_selection::{
 pub use app_services::*;
 pub use browse::*;
 pub use coven::{EagerCacheFillProgress, EagerCacheFillStatus};
+pub use detail::{DetailSnapshot, DetailSubscription};
 pub use device_pairing::{
     inspect_device_pairing_offer, DevicePairingOfferInfo, DevicePairingSession, PairingDevice,
     PendingDevicePairingJoinInfo,
@@ -37,6 +40,7 @@ pub use download_snapshot::{
 pub use library_status::{
     LibraryStatusSnapshot, LibraryStatusSubscription, LibraryStatusSubscriptionError,
 };
+pub use live_read::{LiveRead, LiveReadError};
 pub use local_lifecycle::remove_local_library;
 pub use manager::*;
 pub use outbox_snapshot::{
@@ -44,10 +48,7 @@ pub use outbox_snapshot::{
     UploadIssue, UploadPhase, UploadProgress, UploadReleaseGroup, UploadState,
 };
 pub use output_snapshot::{OutputKind, OutputOp, OutputProgress, OutputSnapshot, OutputState};
-pub use queue_upcoming::{
-    QueueUpcomingSnapshot, QueueUpcomingSubscription, QueueUpcomingSubscriptionError,
-    QueueUpcomingWindow,
-};
+pub use queue_upcoming::{QueueUpcomingSnapshot, QueueUpcomingSubscription, QueueUpcomingWindow};
 pub use queued_releases::QueuedReleases;
 pub use release_queue::{CountLabel, ReleaseQueue};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -58,10 +59,7 @@ pub use search::{
 };
 /// How a device join this library invited ended. The controller itself stays
 /// crate-private; this outcome is part of the public sharing surface.
-pub use storage_browse::{
-    StorageBrowseSnapshot, StorageBrowseSubscription, StorageBrowseSubscriptionError,
-    StorageBrowseView,
-};
+pub use storage_browse::{StorageBrowseSnapshot, StorageBrowseSubscription, StorageBrowseView};
 pub use upload_throughput::UploadThroughput;
 
 #[cfg(test)]

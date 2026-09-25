@@ -14,24 +14,25 @@ struct StorageContentsInspector: View {
 
     let releaseId: String
 
+    /// The inspector's one release read, moved as `releaseId` changes.
     @State
-    private var observationTask: Task<Void, Never>?
+    private var detailReader: DetailReader<BridgeRelease>?
 
     var body: some View {
         VStack(spacing: 0) {
             StorageTransferControls(releaseId: releaseId)
             fileList
         }
-        .onAppear { startObservation() }
-        .onChange(of: releaseId) { _, _ in startObservation() }
-        .onDisappear { observationTask?.cancel() }
+        .onAppear { showRelease(releaseId) }
+        .onChange(of: releaseId) { _, newId in showRelease(newId) }
+        .onDisappear { detailReader?.close() }
     }
 
     private var fileList: some View {
         Group {
             if let error = libraryStore.releaseDetailErrors[releaseId] {
                 LoadFailureView(line: error.line) {
-                    startObservation()
+                    detailReader?.retry()
                 }
             }
             else if let detail = libraryStore.releaseDetails[releaseId] {
@@ -59,14 +60,10 @@ struct StorageContentsInspector: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func startObservation() {
-        observationTask?.cancel()
-        observationTask = Task { @MainActor in
-            await libraryStore.observeReleaseDetail(
-                releaseId: releaseId,
-                library: library,
-                onValue: {}
-            )
-        }
+    private func showRelease(_ releaseId: String) {
+        let reader =
+            detailReader ?? libraryStore.releaseDetailReader(library: library)
+        detailReader = reader
+        reader.show(releaseId)
     }
 }

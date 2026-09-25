@@ -113,9 +113,9 @@ impl LibraryManager {
 
     pub(crate) fn subscribe_album_detail(
         &self,
-        album_id: &str,
-    ) -> coven::LiveQuery<crate::db::AlbumDetailProjection> {
-        self.database.subscribe_album_detail(album_id)
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, crate::db::AlbumDetailProjection> {
+        self.database.subscribe_album_detail(initial)
     }
 
     /// Each release's representative file id, in release order: what the

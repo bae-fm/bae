@@ -174,11 +174,6 @@ extension BridgeAlbum: Identifiable {}
 @MainActor
 @Observable
 public final class LibraryStore {
-    private struct AlbumDetailObservation {
-        let identity: UUID
-        let task: Task<Void, Never>
-    }
-
     // ── Entity storage ────────────────────────────────────────────────
 
     /// Album summaries. Read by the library grid and any row renderer
@@ -216,15 +211,12 @@ public final class LibraryStore {
     public private(set) var artistSummaries: [String: BridgeArtistSummary] =
         [:]
 
-    /// Per-release detail-load failures, keyed by release id. `loadReleaseDetail`
-    /// records the failure here instead of swallowing it, so the album detail
+    /// Per-release detail-read failures, keyed by release id. A release
+    /// detail read records the failure here instead of swallowing it, so the
     /// view can show an error + Retry rather than spinning on the placeholder.
-    /// Cleared when a load for that release starts again or succeeds.
+    /// Cleared when a read for that release delivers.
     public private(set) var releaseDetailErrors: [String: DisplayError] = [:]
     public private(set) var albumDetailErrors: [String: DisplayError] = [:]
-
-    @ObservationIgnored
-    private var albumDetailObservations: [String: AlbumDetailObservation] = [:]
 
     /// Total albums in the open library, or `nil` before any album list has
     /// reported a count. Written by the app-owned album page subscription and
@@ -359,84 +351,43 @@ public final class LibraryStore {
         _ = internReleaseDetail(bridge)
     }
 
-    // MARK: - Detail subscriptions
+    // MARK: - Detail reads
 
-    public func activateAlbumDetail(albumId: String, library: Library) {
-        guard albumDetailObservations[albumId] == nil else { return }
-        replaceAlbumDetailObservation(albumId: albumId, library: library)
-    }
-
-    public func retryAlbumDetail(albumId: String, library: Library) {
-        replaceAlbumDetailObservation(albumId: albumId, library: library)
-    }
-
-    public func deactivateAlbumDetail(albumId: String) {
-        albumDetailObservations.removeValue(forKey: albumId)?.task.cancel()
-    }
-
-    private func replaceAlbumDetailObservation(
-        albumId: String,
-        library: Library
-    ) {
-        albumDetailObservations.removeValue(forKey: albumId)?.task.cancel()
-        albumDetailErrors.removeValue(forKey: albumId)
-        let identity = UUID()
-        let task = Task { [weak self, library] in
-            guard let self else { return }
-            await self.consumeAlbumDetail(
-                albumId: albumId,
-                identity: identity,
-                library: library
-            )
-        }
-        albumDetailObservations[albumId] = AlbumDetailObservation(
-            identity: identity,
-            task: task
+    /// A read for one album detail view: each value lands in the album and
+    /// release slices, and a failure is recorded against the album shown.
+    public func albumDetailReader(library: Library)
+        -> DetailReader<BridgeAlbumDetail>
+    {
+        DetailReader(
+            open: library.albumDetail,
+            onValue: { [weak self] albumId, detail in
+                self?.albumDetailErrors.removeValue(forKey: albumId)
+                self?.applyAlbumDetailSnapshot(albumId: albumId, bridge: detail)
+            },
+            onError: { [weak self] albumId, error in
+                self?.albumDetailErrors[albumId] = DisplayError(error)
+            }
         )
     }
 
-    private func consumeAlbumDetail(
-        albumId: String,
-        identity: UUID,
-        library: Library
-    ) async {
-        for await result in library.albumDetails(albumId) {
-            guard !Task.isCancelled,
-                albumDetailObservations[albumId]?.identity == identity
-            else {
-                return
+    /// A read for one release detail view: each value lands in the release
+    /// slices, and a failure is recorded against the release shown.
+    public func releaseDetailReader(library: Library)
+        -> DetailReader<BridgeRelease>
+    {
+        DetailReader(
+            open: library.releaseDetail,
+            onValue: { [weak self] releaseId, detail in
+                self?.releaseDetailErrors.removeValue(forKey: releaseId)
+                self?
+                    .applyReleaseDetailSnapshot(
+                        releaseId: releaseId,
+                        bridge: detail
+                    )
+            },
+            onError: { [weak self] releaseId, error in
+                self?.releaseDetailErrors[releaseId] = DisplayError(error)
             }
-            switch result {
-            case .success(let detail):
-                albumDetailErrors.removeValue(forKey: albumId)
-                applyAlbumDetailSnapshot(albumId: albumId, bridge: detail)
-            case .failure(let error):
-                albumDetailErrors[albumId] = DisplayError(error)
-            }
-        }
-        if albumDetailObservations[albumId]?.identity == identity {
-            albumDetailObservations.removeValue(forKey: albumId)
-        }
+        )
     }
-
-    public func observeReleaseDetail(
-        releaseId: String,
-        library: Library,
-        onValue: @escaping @MainActor @Sendable () -> Void
-    ) async {
-        for await result in library.releaseDetails(releaseId) {
-            if Task.isCancelled {
-                return
-            }
-            switch result {
-            case .success(let detail):
-                releaseDetailErrors.removeValue(forKey: releaseId)
-                applyReleaseDetailSnapshot(releaseId: releaseId, bridge: detail)
-                onValue()
-            case .failure(let error):
-                releaseDetailErrors[releaseId] = DisplayError(error)
-            }
-        }
-    }
-
 }

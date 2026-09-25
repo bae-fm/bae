@@ -351,15 +351,19 @@ impl Database {
             .await
     }
 
+    /// Follow the artist `initial` names, or none. The detail view moves to
+    /// another artist through the request handle, not another query.
     pub(crate) fn subscribe_artist_detail(
         &self,
-        artist_id: &str,
-    ) -> coven::LiveQuery<ArtistDetailProjection> {
-        let artist_id = artist_id.to_string();
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, ArtistDetailProjection> {
         self.inner
             .handle
-            .subscribe(move |sql| {
-                let detail = find_artist_detail_on(&sql, &artist_id).map_err(CovenError::from)?;
+            .subscribe_reconfigurable(initial, |artist_id, sql| {
+                let Some(artist_id) = artist_id else {
+                    return Ok((None, HashMap::new(), HashMap::new()));
+                };
+                let detail = find_artist_detail_on(&sql, artist_id).map_err(CovenError::from)?;
                 let (artist_ids, album_ids) = match &detail {
                     Some(detail) => (
                         vec![detail.artist.artist.id.clone()],
@@ -377,7 +381,7 @@ impl Database {
                 let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
                 Ok((detail, image_versions, cover_versions))
             })
-            .process(|(detail, image_versions, cover_versions)| {
+            .process(|_, (detail, image_versions, cover_versions)| {
                 Ok(ArtistDetailProjection {
                     detail: detail.map(ArtistDetailRows::process).transpose()?,
                     image_versions,
@@ -396,15 +400,19 @@ impl Database {
             .await
     }
 
+    /// Follow the composer `initial` names, or none. The detail view moves to
+    /// another composer through the request handle, not another query.
     pub(crate) fn subscribe_composer_detail(
         &self,
-        artist_id: &str,
-    ) -> coven::LiveQuery<ComposerDetailProjection> {
-        let artist_id = artist_id.to_string();
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, ComposerDetailProjection> {
         self.inner
             .handle
-            .subscribe(move |sql| {
-                let detail = find_composer_detail_on(&sql, &artist_id).map_err(CovenError::from)?;
+            .subscribe_reconfigurable(initial, |artist_id, sql| {
+                let Some(artist_id) = artist_id else {
+                    return Ok((None, HashMap::new(), HashMap::new()));
+                };
+                let detail = find_composer_detail_on(&sql, artist_id).map_err(CovenError::from)?;
                 let (artist_ids, release_ids) = match &detail {
                     Some(detail) => (
                         vec![detail.composer.artist.id.clone()],
@@ -425,7 +433,7 @@ impl Database {
                         .map_err(CovenError::from)?;
                 Ok((detail, image_versions, cover_versions))
             })
-            .process(|(detail, image_versions, cover_versions)| {
+            .process(|_, (detail, image_versions, cover_versions)| {
                 Ok(ComposerDetailProjection {
                     detail: detail.map(ComposerDetailRows::process),
                     image_versions,
@@ -463,42 +471,51 @@ impl Database {
             .await
     }
 
+    /// Follow the work `initial` names, or none. The detail view moves to
+    /// another work through the request handle, not another query.
     pub(crate) fn subscribe_work_detail(
         &self,
-        work_id: &str,
-    ) -> coven::LiveQuery<WorkDetailProjection> {
-        let work_id = work_id.to_string();
-        self.inner.handle.subscribe(move |sql| {
-            let detail = find_work_detail_on(&sql, &work_id).map_err(CovenError::from)?;
-            let release_ids = match &detail {
-                Some(detail) => detail
-                    .work
-                    .representative_release_id
-                    .iter()
-                    .cloned()
-                    .chain(
-                        detail
-                            .child_works
-                            .iter()
-                            .filter_map(|work| work.representative_release_id.clone()),
-                    )
-                    .chain(
-                        detail
-                            .releases
-                            .iter()
-                            .map(|release| release.release_id.clone()),
-                    )
-                    .collect::<Vec<_>>(),
-                None => Vec::new(),
-            };
-            let cover_versions =
-                super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
-                    .map_err(CovenError::from)?;
-            Ok(WorkDetailProjection {
-                detail,
-                cover_versions,
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, WorkDetailProjection> {
+        self.inner
+            .handle
+            .subscribe_reconfigurable(initial, |work_id, sql| {
+                let Some(work_id) = work_id else {
+                    return Ok(WorkDetailProjection {
+                        detail: None,
+                        cover_versions: HashMap::new(),
+                    });
+                };
+                let detail = find_work_detail_on(&sql, work_id).map_err(CovenError::from)?;
+                let release_ids = match &detail {
+                    Some(detail) => detail
+                        .work
+                        .representative_release_id
+                        .iter()
+                        .cloned()
+                        .chain(
+                            detail
+                                .child_works
+                                .iter()
+                                .filter_map(|work| work.representative_release_id.clone()),
+                        )
+                        .chain(
+                            detail
+                                .releases
+                                .iter()
+                                .map(|release| release.release_id.clone()),
+                        )
+                        .collect::<Vec<_>>(),
+                    None => Vec::new(),
+                };
+                let cover_versions =
+                    super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
+                        .map_err(CovenError::from)?;
+                Ok(WorkDetailProjection {
+                    detail,
+                    cover_versions,
+                })
             })
-        })
     }
 }
 

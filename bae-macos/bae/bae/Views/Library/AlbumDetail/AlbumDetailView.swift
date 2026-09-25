@@ -46,6 +46,9 @@ struct AlbumDetailView: View {
     private var exportError: String?
     @State
     private var exportTask: Task<Void, Never>?
+    /// The view's one album read, moved as `albumId` changes.
+    @State
+    private var detailReader: DetailReader<BridgeAlbumDetail>?
 
     var body: some View {
         Group {
@@ -139,17 +142,10 @@ struct AlbumDetailView: View {
                 detailPlaceholder(releaseId: nil)
             }
         }
-        .onChange(of: albumId, initial: true) { oldId, newId in
-            if oldId != newId {
-                libraryStore.deactivateAlbumDetail(albumId: oldId)
-            }
-            libraryStore.activateAlbumDetail(
-                albumId: newId,
-                library: library
-            )
-        }
+        .onAppear { showAlbum(albumId) }
+        .onChange(of: albumId) { _, newId in showAlbum(newId) }
         .onDisappear {
-            libraryStore.deactivateAlbumDetail(albumId: albumId)
+            detailReader?.close()
             uiStore.dismissModal()
             exportTask?.cancel()
             storageTask?.cancel()
@@ -185,16 +181,20 @@ struct AlbumDetailView: View {
 
     // MARK: - Data helpers
 
+    private func showAlbum(_ albumId: String) {
+        let reader =
+            detailReader ?? libraryStore.albumDetailReader(library: library)
+        detailReader = reader
+        reader.show(albumId)
+    }
+
     /// The placeholder shown before the album detail subscription delivers its
     /// first value. A failed subscription can be replaced from Retry.
     @ViewBuilder
     private func detailPlaceholder(releaseId _: String?) -> some View {
         if let error = libraryStore.albumDetailErrors[albumId] {
             LoadFailureView(line: error.line) {
-                libraryStore.retryAlbumDetail(
-                    albumId: albumId,
-                    library: library
-                )
+                detailReader?.retry()
             }
         }
         else {

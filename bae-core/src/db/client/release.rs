@@ -294,25 +294,29 @@ impl Database {
             .await
     }
 
+    /// Follow the release `initial` names, or none. The detail view moves
+    /// to another release through the request handle, not another query.
     pub(crate) fn subscribe_release_detail(
         &self,
-        release_id: &str,
-    ) -> coven::LiveQuery<ReleaseDetailProjection> {
-        let release_id = release_id.to_string();
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, ReleaseDetailProjection> {
         self.inner
             .handle
-            .subscribe(move |sql| {
+            .subscribe_reconfigurable(initial, |release_id, sql| {
+                let Some(release_id) = release_id else {
+                    return Ok((None, HashMap::new()));
+                };
                 let context =
-                    find_release_detail_context_on(&sql, &release_id).map_err(CovenError::from)?;
+                    find_release_detail_context_on(&sql, release_id).map_err(CovenError::from)?;
                 let cover_versions = super::blobs::image_versions_on(
                     &sql,
                     LibraryImageType::Cover,
-                    std::slice::from_ref(&release_id),
+                    std::slice::from_ref(release_id),
                 )
                 .map_err(CovenError::from)?;
                 Ok((context, cover_versions))
             })
-            .process(|(context, cover_versions)| {
+            .process(|_, (context, cover_versions)| {
                 Ok(ReleaseDetailProjection {
                     context: context.map(super::release_projection::ReleaseContextRows::process),
                     cover_versions,

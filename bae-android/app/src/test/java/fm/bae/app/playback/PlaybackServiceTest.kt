@@ -29,15 +29,17 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AlbumBrowseSubscription
-import uniffi.bae_bridge.AlbumDetailCallback
+import uniffi.bae_bridge.AlbumDetailSubscription
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumBrowseSnapshot
 import uniffi.bae_bridge.BridgeAlbumBrowseWindow
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumDetailSnapshot
 import uniffi.bae_bridge.BridgeComposerBrowseSnapshot
 import uniffi.bae_bridge.BridgeComposerBrowseWindow
 import uniffi.bae_bridge.BridgeComposerDetail
+import uniffi.bae_bridge.BridgeComposerDetailSnapshot
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDiagnostics
@@ -48,12 +50,14 @@ import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
 import uniffi.bae_bridge.BridgeLiveQueryCause
 import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeReleaseDetailSnapshot
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeWorkDetail
+import uniffi.bae_bridge.BridgeWorkDetailSnapshot
 import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ComposerBrowseSubscription
-import uniffi.bae_bridge.ComposerDetailCallback
+import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
 import uniffi.bae_bridge.EagerCacheFillStatusCallback
@@ -63,10 +67,10 @@ import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.OutboxCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
-import uniffi.bae_bridge.ReleaseDetailCallback
+import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.SyncStatusCallback
 import uniffi.bae_bridge.UiEventCallback
-import uniffi.bae_bridge.WorkDetailCallback
+import uniffi.bae_bridge.WorkDetailSubscription
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -206,7 +210,7 @@ internal class FakeAppHandle(
     val liveSubscriptions = mutableListOf<FakeLiveSubscription>()
     val albumBrowseSubscriptions = mutableListOf<FakeAlbumBrowseSubscription>()
     val composerBrowseSubscriptions = mutableListOf<FakeComposerBrowseSubscription>()
-    val albumDetailSubscriptions = mutableListOf<FakeLiveSubscription>()
+    val albumDetailSubscriptions = mutableListOf<FakeAlbumDetailSubscription>()
     val searchSubscriptions = mutableListOf<FakeLibrarySearchSubscription>()
 
     private fun liveSubscription(): FakeLiveSubscription = FakeLiveSubscription().also(liveSubscriptions::add)
@@ -262,37 +266,15 @@ internal class FakeAppHandle(
     override fun subscribeComposerBrowse(sortCriteria: List<BridgeComposerSortCriterion>): ComposerBrowseSubscription =
         FakeComposerBrowseSubscription(composerPages).also(composerBrowseSubscriptions::add)
 
-    override fun subscribeAlbumDetail(
-        albumId: String,
-        callback: AlbumDetailCallback,
-    ): LiveSubscription {
-        callback.onValue(albumDetails[albumId])
-        return liveSubscription().also(albumDetailSubscriptions::add)
-    }
+    override fun subscribeAlbumDetail(): AlbumDetailSubscription =
+        FakeAlbumDetailSubscription(FakeDetailRead { albumDetails[it] }).also(albumDetailSubscriptions::add)
 
-    override fun subscribeComposerDetail(
-        artistId: String,
-        callback: ComposerDetailCallback,
-    ): LiveSubscription {
-        callback.onValue(composerDetails[artistId])
-        return liveSubscription()
-    }
+    override fun subscribeComposerDetail(): ComposerDetailSubscription =
+        FakeComposerDetailSubscription(FakeDetailRead { composerDetails[it] })
 
-    override fun subscribeWorkDetail(
-        workId: String,
-        callback: WorkDetailCallback,
-    ): LiveSubscription {
-        callback.onValue(workDetails[workId])
-        return liveSubscription()
-    }
+    override fun subscribeWorkDetail(): WorkDetailSubscription = FakeWorkDetailSubscription(FakeDetailRead { workDetails[it] })
 
-    override fun subscribeReleaseDetail(
-        releaseId: String,
-        callback: ReleaseDetailCallback,
-    ): LiveSubscription {
-        callback.onValue(releaseDetails[releaseId])
-        return liveSubscription()
-    }
+    override fun subscribeReleaseDetail(): ReleaseDetailSubscription = FakeReleaseDetailSubscription(FakeDetailRead { releaseDetails[it] })
 
     override fun subscribeLibrarySearch(): LibrarySearchSubscription =
         FakeLibrarySearchSubscription { query ->
@@ -317,6 +299,78 @@ internal class FakeAppHandle(
     ) {
         playReleaseCalls.add(Triple(releaseId, startTrackIndex, shuffle))
     }
+}
+
+/**
+ * A detail read that answers each id it is pointed at with what [lookup] finds for it, recording
+ * every id and whether it was cancelled.
+ */
+internal class FakeDetailRead<Value>(
+    private val lookup: (String) -> Value?,
+) {
+    private val events = Channel<Pair<String?, Value?>>(Channel.UNLIMITED)
+    val requestedIds = mutableListOf<String?>()
+    var cancelled = false
+
+    fun setId(id: String?) {
+        requestedIds += id
+        events.trySend(id to id?.let(lookup))
+    }
+
+    suspend fun next(): Pair<String?, Value?> = events.receive()
+
+    fun cancel() {
+        cancelled = true
+        events.close(BridgeException.Cancelled())
+    }
+}
+
+internal class FakeAlbumDetailSubscription(
+    val read: FakeDetailRead<BridgeAlbumDetail>,
+) : AlbumDetailSubscription(NoHandle) {
+    override fun setId(id: String?) = read.setId(id)
+
+    override suspend fun next(): BridgeAlbumDetailSnapshot = read.next().let { (id, value) -> BridgeAlbumDetailSnapshot(id, value) }
+
+    override suspend fun cancel() = read.cancel()
+
+    override fun close() = read.cancel()
+}
+
+internal class FakeComposerDetailSubscription(
+    val read: FakeDetailRead<BridgeComposerDetail>,
+) : ComposerDetailSubscription(NoHandle) {
+    override fun setId(id: String?) = read.setId(id)
+
+    override suspend fun next(): BridgeComposerDetailSnapshot = read.next().let { (id, value) -> BridgeComposerDetailSnapshot(id, value) }
+
+    override suspend fun cancel() = read.cancel()
+
+    override fun close() = read.cancel()
+}
+
+internal class FakeWorkDetailSubscription(
+    val read: FakeDetailRead<BridgeWorkDetail>,
+) : WorkDetailSubscription(NoHandle) {
+    override fun setId(id: String?) = read.setId(id)
+
+    override suspend fun next(): BridgeWorkDetailSnapshot = read.next().let { (id, value) -> BridgeWorkDetailSnapshot(id, value) }
+
+    override suspend fun cancel() = read.cancel()
+
+    override fun close() = read.cancel()
+}
+
+internal class FakeReleaseDetailSubscription(
+    val read: FakeDetailRead<BridgeRelease>,
+) : ReleaseDetailSubscription(NoHandle) {
+    override fun setId(id: String?) = read.setId(id)
+
+    override suspend fun next(): BridgeReleaseDetailSnapshot = read.next().let { (id, value) -> BridgeReleaseDetailSnapshot(id, value) }
+
+    override suspend fun cancel() = read.cancel()
+
+    override fun close() = read.cancel()
 }
 
 internal class FakeLiveSubscription : LiveSubscription(NoHandle) {

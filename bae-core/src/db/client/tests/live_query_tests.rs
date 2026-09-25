@@ -614,8 +614,8 @@ async fn album_browse_ignores_an_unread_table() {
 #[tokio::test]
 async fn album_detail_subscription_ignores_an_unread_column() {
     let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_album_detail(ALBUM_ID);
-    live.next().await.unwrap();
+    let mut live = db.subscribe_album_detail(Some(ALBUM_ID.to_string()));
+    live.next().await.into_result().unwrap();
 
     exec(
         &db,
@@ -669,14 +669,15 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
 #[tokio::test]
 async fn album_detail_subscription_delivers_absence_after_deletion() {
     let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_album_detail(ALBUM_ID);
-    assert!(live.next().await.unwrap().detail.is_some());
+    let mut live = db.subscribe_album_detail(Some(ALBUM_ID.to_string()));
+    assert!(live.next().await.into_result().unwrap().detail.is_some());
 
     exec(&db, "DELETE FROM albums WHERE id = ?1", &[ALBUM_ID]).await;
 
     let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("album deletion wakes album detail")
+        .into_result()
         .unwrap();
     assert!(deleted.detail.is_none());
 }

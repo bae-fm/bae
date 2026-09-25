@@ -2,12 +2,6 @@
     import BaeKit
     import SwiftUI
 
-    private final class PreviewStorageSubscription: LiveSubscriptionProtocol,
-        @unchecked Sendable
-    {
-        func cancel() {}
-    }
-
     // Preview fixtures for the Storage Manager: its transfer/sync queue rows
     // (downloads, exports, cloud-outbox uploads) and its release /
     // file table cells, plus a seeded `Library` + stores so the whole screen
@@ -553,11 +547,8 @@
                 }
             )
             return Library(
-                storageBrowse: { _, _ in .fixed(rows) },
-                subscribeReleaseDetail: { releaseId, callback in
-                    callback.onValue(value: details[releaseId])
-                    return PreviewStorageSubscription()
-                }
+                releaseDetail: { .fixed { details[$0] } },
+                storageBrowse: { _, _ in .fixed(rows) }
             )
         }
 

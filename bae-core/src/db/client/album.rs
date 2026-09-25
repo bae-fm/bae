@@ -385,15 +385,19 @@ impl Database {
             .await
     }
 
+    /// Follow the album `initial` names, or none. The detail view moves to
+    /// another album through the request handle, not another query.
     pub(crate) fn subscribe_album_detail(
         &self,
-        album_id: &str,
-    ) -> coven::LiveQuery<AlbumDetailProjection> {
-        let album_id = album_id.to_string();
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, AlbumDetailProjection> {
         self.inner
             .handle
-            .subscribe(move |sql| {
-                let detail = find_album_detail_on(&sql, &album_id).map_err(CovenError::from)?;
+            .subscribe_reconfigurable(initial, |album_id, sql| {
+                let Some(album_id) = album_id else {
+                    return Ok((None, HashMap::new()));
+                };
+                let detail = find_album_detail_on(&sql, album_id).map_err(CovenError::from)?;
                 let release_ids = match &detail {
                     Some(detail) => detail
                         .releases
@@ -407,7 +411,7 @@ impl Database {
                         .map_err(CovenError::from)?;
                 Ok((detail, cover_versions))
             })
-            .process(|(detail, cover_versions)| {
+            .process(|_, (detail, cover_versions)| {
                 Ok(AlbumDetailProjection {
                     detail: detail.map(AlbumDetailRows::process),
                     cover_versions,

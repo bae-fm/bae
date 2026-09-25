@@ -55,18 +55,32 @@ struct LibraryView: View {
         .onChange(of: session.detailSelection.composerId, initial: true) {
             oldId,
             newId in
-            if let oldId { libraryProjections.deactivateComposer(oldId) }
-            if let newId { libraryProjections.activateComposer(newId) }
+            // Another item moves the pane's one read; only clearing the
+            // selection ends it.
+            if let newId {
+                libraryProjections.activateComposer(newId)
+            }
+            else if let oldId {
+                libraryProjections.deactivateComposer(oldId)
+            }
         }
         .onChange(of: session.detailSelection.workId, initial: true) {
             oldId,
             newId in
-            if let oldId { libraryProjections.deactivateWork(oldId) }
-            if let newId { libraryProjections.activateWork(newId) }
+            if let newId {
+                libraryProjections.activateWork(newId)
+            }
+            else if let oldId {
+                libraryProjections.deactivateWork(oldId)
+            }
         }
         .onChange(of: session.selectedArtistId, initial: true) { oldId, newId in
-            if let oldId { libraryProjections.deactivateArtist(oldId) }
-            if let newId { libraryProjections.activateArtist(newId) }
+            if let newId {
+                libraryProjections.activateArtist(newId)
+            }
+            else if let oldId {
+                libraryProjections.deactivateArtist(oldId)
+            }
         }
         .onChange(of: libraryProjections.composer.value) { _, detail in
             guard let detail,

@@ -99,6 +99,7 @@ mod base;
 mod cloud_operations;
 mod collection_subscription;
 mod configuration;
+mod detail;
 mod device_pairing;
 mod library_search;
 #[cfg(feature = "desktop")]

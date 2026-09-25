@@ -65,40 +65,6 @@ pub struct AppServices {
     inner: Arc<AppServicesInner>,
 }
 
-/// The releases the upload queue holds, once each, in queue order — the
-/// order the Storage Manager's Uploading filter lists them in.
-fn upload_queue_order(ids: Vec<String>) -> Vec<String> {
-    let mut seen = std::collections::HashSet::new();
-    ids.into_iter()
-        .filter(|id| seen.insert(id.clone()))
-        .collect()
-}
-
-/// Each requested window of `projection`'s upcoming tail with the entries in
-/// it, clamped to the tail's end.
-fn upcoming_slices<'a>(
-    projection: &'a crate::playback::PlaybackQueueProjection,
-    requested: &crate::library::LibraryPageWindows,
-) -> Vec<(
-    crate::library::LibraryPageWindow,
-    &'a [crate::playback::QueueEntry],
-)> {
-    let tail = projection
-        .context
-        .as_ref()
-        .map(|context| context.upcoming.as_slice())
-        .unwrap_or(&[]);
-    requested
-        .iter()
-        .map(|window| {
-            (
-                window.clone(),
-                crate::queue::clamp_upcoming_page(tail, window.offset, window.limit),
-            )
-        })
-        .collect()
-}
-
 impl std::fmt::Debug for AppServices {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppServices")
@@ -172,135 +138,6 @@ impl AppServices {
         })
     }
 
-    /// The album's detail as it changes: its rows, the releases' pin markers
-    /// coven watches, and the config, cloud-home, and transfer state it is
-    /// resolved against.
-    pub fn subscribe_album_detail_values(
-        &self,
-        runtime_handle: &tokio::runtime::Handle,
-        album_id: String,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<
-        Result<Option<crate::album_detail::AlbumDetail>, crate::library::LibraryError>,
-    > {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let services = self.clone();
-        let manager = services.inner.manager.clone();
-        let mut query =
-            live_query_events(runtime_handle, manager.subscribe_album_detail(&album_id));
-        let mut pins = manager.watch_release_pins();
-        let mut config = services.subscribe_config_changes();
-        let mut cloud_home = manager.subscribe_cloud_home();
-        let mut transfers = services.subscribe_transfer_values();
-        runtime_handle.spawn(async move {
-            let mut last: Option<(crate::db::AlbumDetailProjection, Vec<bool>)> = None;
-            loop {
-                let value = tokio::select! {
-                    event = query.recv() => match event {
-                        None => return,
-                        Some(Ok(projection)) => {
-                            match pins.watch(LibraryManager::album_detail_pin_files(&projection)).await {
-                                Ok(pinned) => {
-                                    last = Some((projection.clone(), pinned.clone()));
-                                    manager.resolve_album_detail_projection(projection, pinned)
-                                }
-                                Err(error) => Err(error),
-                            }
-                        }
-                        Some(Err(error)) => Err(error),
-                    },
-                    answer = pins.changed() => match (answer, last.as_mut()) {
-                        (Ok(pinned), Some((projection, last_pinned))) => {
-                            *last_pinned = pinned.clone();
-                            manager.resolve_album_detail_projection(projection.clone(), pinned)
-                        }
-                        (Ok(_), None) => continue,
-                        (Err(error), _) => Err(error),
-                    },
-                    changed = async { tokio::select! {
-                        value = config.changed() => value,
-                        value = cloud_home.changed() => value,
-                        value = transfers.changed() => value,
-                    }} => {
-                        if changed.is_err() { return; }
-                        config.borrow_and_update();
-                        cloud_home.borrow_and_update();
-                        transfers.borrow_and_update();
-                        let Some((projection, pinned)) = last.clone() else { continue };
-                        manager.resolve_album_detail_projection(projection, pinned)
-                    }
-                };
-                if tx.send(value).is_err() { return; }
-            }
-        });
-        rx
-    }
-
-    /// One release's detail as it changes: its rows, its pin marker coven
-    /// watches, and the config, cloud-home, and transfer state it is resolved
-    /// against.
-    pub fn subscribe_release_detail_values(
-        &self,
-        runtime_handle: &tokio::runtime::Handle,
-        release_id: String,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<
-        Result<Option<crate::album_detail::ReleaseDetail>, crate::library::LibraryError>,
-    > {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let services = self.clone();
-        let manager = services.inner.manager.clone();
-        let mut query = live_query_events(
-            runtime_handle,
-            manager.subscribe_release_detail(&release_id),
-        );
-        let mut pins = manager.watch_release_pins();
-        let mut config = services.subscribe_config_changes();
-        let mut cloud_home = manager.subscribe_cloud_home();
-        let mut transfers = services.subscribe_transfer_values();
-        runtime_handle.spawn(async move {
-            let mut last: Option<(crate::db::ReleaseDetailProjection, bool)> = None;
-            loop {
-                let value = tokio::select! {
-                    event = query.recv() => match event {
-                        None => return,
-                        Some(Ok(projection)) => {
-                            match pins.watch(LibraryManager::release_detail_pin_files(&projection)).await {
-                                Ok(pinned) => {
-                                    let pinned = pinned.first().copied().unwrap_or(false);
-                                    last = Some((projection.clone(), pinned));
-                                    manager.resolve_release_detail_projection(&release_id, projection, pinned)
-                                }
-                                Err(error) => Err(error),
-                            }
-                        }
-                        Some(Err(error)) => Err(error),
-                    },
-                    answer = pins.changed() => match (answer, last.as_mut()) {
-                        (Ok(pinned), Some((projection, last_pinned))) => {
-                            *last_pinned = pinned.first().copied().unwrap_or(false);
-                            manager.resolve_release_detail_projection(&release_id, projection.clone(), *last_pinned)
-                        }
-                        (Ok(_), None) => continue,
-                        (Err(error), _) => Err(error),
-                    },
-                    changed = async { tokio::select! {
-                        value = config.changed() => value,
-                        value = cloud_home.changed() => value,
-                        value = transfers.changed() => value,
-                    }} => {
-                        if changed.is_err() { return; }
-                        config.borrow_and_update();
-                        cloud_home.borrow_and_update();
-                        transfers.borrow_and_update();
-                        let Some((projection, pinned)) = last.clone() else { continue };
-                        manager.resolve_release_detail_projection(&release_id, projection, pinned)
-                    }
-                };
-                if tx.send(value).is_err() { return; }
-            }
-        });
-        rx
-    }
-
     /// One live library search, pointed at a new query in place as the
     /// person types; it starts with no query.
     pub fn subscribe_library_search(&self) -> crate::library::LibrarySearchSubscription {
@@ -322,152 +159,6 @@ impl AppServices {
         )
     }
 
-    /// The Storage Manager list as it changes, read in the view the
-    /// subscription is asked for: its rows, the rows' pin markers coven
-    /// watches, the upload queue (which the Uploading filter lists, in queue
-    /// order), and the config, cloud-home, download, and transfer state the
-    /// rows are resolved against. One query serves every window: a new view or
-    /// upload queue points it at what that reads.
-    pub fn subscribe_storage_browse(
-        &self,
-        runtime_handle: &tokio::runtime::Handle,
-        initial: crate::library::StorageBrowseView,
-    ) -> crate::library::StorageBrowseSubscription {
-        let (view_tx, mut views) = tokio::sync::watch::channel(initial);
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let services = self.clone();
-        let manager = services.inner.manager.clone();
-        let query_runtime = runtime_handle.clone();
-        let mut outbox = services.subscribe_outbox_values();
-        let mut cloud_home = manager.subscribe_cloud_home();
-        let mut config = services.subscribe_config_changes();
-        let mut downloads = services.subscribe_download_values();
-        let mut transfers = services.subscribe_transfer_values();
-        let mut pins = manager.watch_release_pins();
-        let task = runtime_handle.spawn(async move {
-            // The upload queue as the outbox holds it now, read only while
-            // the Uploading filter is shown.
-            let upload_queue = |outbox: &mut tokio::sync::watch::Receiver<
-                Option<Result<crate::library::OutboxSnapshot, String>>,
-            >| {
-                let current = outbox.borrow_and_update().clone();
-                let services = services.clone();
-                async move {
-                    match current {
-                        Some(Ok(snapshot)) => Ok(snapshot.transitioning_release_ids()),
-                        Some(Err(error)) => Err(crate::library::LibraryError::Internal(error)),
-                        None => services
-                            .outbox_snapshot()
-                            .await
-                            .map(|snapshot| snapshot.transitioning_release_ids()),
-                    }
-                    .map(upload_queue_order)
-                }
-            };
-            let mut view = views.borrow_and_update().clone();
-            let mut uploading = Vec::new();
-            if view.filter == crate::db::StorageFilter::Uploading {
-                match upload_queue(&mut outbox).await {
-                    Ok(ids) => uploading = ids,
-                    Err(error) => {
-                        let _ = tx.send(Err(error));
-                        return;
-                    }
-                }
-            }
-            let request_for = |view: &crate::library::StorageBrowseView, uploading: &[String]| {
-                crate::db::StorageBrowseRequest {
-                    sort: view.sort,
-                    filter: view.filter,
-                    uploading: uploading.to_vec(),
-                    windows: view.windows.clone(),
-                }
-            };
-            let mut request = request_for(&view, &uploading);
-            let mut query = reconfigurable_live_query_events(
-                &query_runtime,
-                manager.subscribe_storage_browse(request.clone()),
-            );
-            let mut last: Option<(crate::db::StorageBrowseProjection, Vec<bool>)> = None;
-            loop {
-                let value = tokio::select! {
-                    event = query.recv() => match event {
-                        None => return,
-                        Some(Ok(projection)) => {
-                            match pins.watch(LibraryManager::storage_browse_pin_files(&projection)).await {
-                                Ok(pinned) => {
-                                    last = Some((projection.clone(), pinned.clone()));
-                                    Ok(manager.resolve_storage_browse(projection, pinned))
-                                }
-                                Err(error) => Err(error),
-                            }
-                        }
-                        Some(Err(error)) => Err(error),
-                    },
-                    answer = pins.changed() => match (answer, last.as_mut()) {
-                        (Ok(pinned), Some((projection, last_pinned))) => {
-                            *last_pinned = pinned.clone();
-                            Ok(manager.resolve_storage_browse(projection.clone(), pinned))
-                        }
-                        (Ok(_), None) => continue,
-                        (Err(error), _) => Err(error),
-                    },
-                    changed = views.changed() => {
-                        if changed.is_err() { return; }
-                        view = views.borrow_and_update().clone();
-                        uploading = if view.filter == crate::db::StorageFilter::Uploading {
-                            match upload_queue(&mut outbox).await {
-                                Ok(ids) => ids,
-                                Err(error) => {
-                                    if tx.send(Err(error)).is_err() { return; }
-                                    continue;
-                                }
-                            }
-                        } else {
-                            Vec::new()
-                        };
-                        let next = request_for(&view, &uploading);
-                        if next != request {
-                            request = next;
-                            last = None;
-                            query.set(request.clone());
-                        }
-                        continue;
-                    }
-                    changed = outbox.changed(), if view.filter == crate::db::StorageFilter::Uploading => {
-                        if changed.is_err() { return; }
-                        match outbox.borrow_and_update().clone() {
-                            // Byte progress leaves the queue as it was, and
-                            // reads nothing again.
-                            Some(Ok(snapshot)) => {
-                                uploading = upload_queue_order(snapshot.transitioning_release_ids());
-                                let next = request_for(&view, &uploading);
-                                if next != request {
-                                    request = next;
-                                    last = None;
-                                    query.set(request.clone());
-                                }
-                                continue;
-                            }
-                            Some(Err(error)) => Err(crate::library::LibraryError::Internal(error)),
-                            None => continue,
-                        }
-                    }
-                    changed = async { tokio::select! { value = cloud_home.changed() => value, value = config.changed() => value, value = downloads.changed() => value, value = transfers.changed() => value } } => {
-                        if changed.is_err() { return; }
-                        cloud_home.borrow_and_update(); config.borrow_and_update(); downloads.borrow_and_update(); transfers.borrow_and_update();
-                        let Some((projection, pinned)) = last.clone() else { continue };
-                        Ok(manager.resolve_storage_browse(projection, pinned))
-                    }
-                };
-                if tx.send(value).is_err() {
-                    return;
-                }
-            }
-        });
-        crate::library::StorageBrowseSubscription::new(view_tx, rx, task)
-    }
-
     pub fn subscribe_artist_browse(
         &self,
         sort: &[crate::db::ArtistSortCriterion],
@@ -480,22 +171,6 @@ impl AppServices {
                 manager.resolve_artist_browse(projection, request_revision, cause)
             },
         )
-    }
-
-    pub fn subscribe_artist_detail(
-        &self,
-        artist_id: &str,
-    ) -> coven::LiveQuery<crate::db::ArtistDetailProjection> {
-        self.inner.manager.subscribe_artist_detail(artist_id)
-    }
-
-    pub fn resolve_artist_detail_projection(
-        &self,
-        projection: crate::db::ArtistDetailProjection,
-    ) -> Option<crate::album_detail::ArtistDetail> {
-        self.inner
-            .manager
-            .resolve_artist_detail_projection(projection)
     }
 
     pub fn subscribe_composer_browse(
@@ -512,38 +187,6 @@ impl AppServices {
         )
     }
 
-    pub fn subscribe_composer_detail(
-        &self,
-        artist_id: &str,
-    ) -> coven::LiveQuery<crate::db::ComposerDetailProjection> {
-        self.inner.manager.subscribe_composer_detail(artist_id)
-    }
-
-    pub fn resolve_composer_detail_projection(
-        &self,
-        projection: crate::db::ComposerDetailProjection,
-    ) -> Option<crate::album_detail::ComposerDetail> {
-        self.inner
-            .manager
-            .resolve_composer_detail_projection(projection)
-    }
-
-    pub fn subscribe_work_detail(
-        &self,
-        work_id: &str,
-    ) -> coven::LiveQuery<crate::db::WorkDetailProjection> {
-        self.inner.manager.subscribe_work_detail(work_id)
-    }
-
-    pub fn resolve_work_detail_projection(
-        &self,
-        projection: crate::db::WorkDetailProjection,
-    ) -> Option<crate::album_detail::WorkDetail> {
-        self.inner
-            .manager
-            .resolve_work_detail_projection(projection)
-    }
-
     pub fn subscribe_playback_progress(
         &self,
     ) -> tokio::sync::mpsc::UnboundedReceiver<crate::playback::PlaybackProgress> {
@@ -554,150 +197,6 @@ impl AppServices {
         &self,
     ) -> tokio::sync::watch::Receiver<crate::playback::PlaybackValues> {
         self.inner.playback.subscribe_values()
-    }
-
-    pub fn subscribe_queue_values(
-        &self,
-        runtime_handle: &tokio::runtime::Handle,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<
-        Result<crate::queue::ResolvedQueueSnapshot, crate::library::LibraryError>,
-    > {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let services = self.clone();
-        let query_runtime = runtime_handle.clone();
-        runtime_handle.spawn(async move {
-            let manager = &services.inner.manager;
-            let mut queue_values = services.inner.playback.subscribe_queue_values();
-            let mut projection = queue_values.borrow_and_update().clone();
-            let mut request = crate::library::manager::queue_catalog_request(&projection);
-            let mut catalog = reconfigurable_live_query_events(
-                &query_runtime,
-                manager.subscribe_queue_catalog(request.clone()),
-            );
-            // The catalog last read for `request`, so a queue change that
-            // shows the same tracks — reordered, say — resolves again
-            // without another read.
-            let mut current = None;
-            loop {
-                tokio::select! {
-                    event = catalog.recv() => {
-                        let Some(result) = event else { return };
-                        let value = result.map(|read: crate::db::QueueCatalogProjection| {
-                            current = Some(read.clone());
-                            manager.resolve_queue_catalog(projection.clone(), read)
-                        });
-                        if tx.send(value).is_err() { return; }
-                    }
-                    changed = queue_values.changed() => {
-                        if changed.is_err() { return; }
-                        projection = queue_values.borrow_and_update().clone();
-                        let next = crate::library::manager::queue_catalog_request(&projection);
-                        if next != request {
-                            request = next;
-                            current = None;
-                            catalog.set(request.clone());
-                        } else if let Some(read) = current.clone() {
-                            let value = manager.resolve_queue_catalog(projection.clone(), read);
-                            if tx.send(Ok(value)).is_err() { return; }
-                        }
-                    }
-                }
-            }
-        });
-        rx
-    }
-
-    /// The context's upcoming tail, read in the windows the subscription is
-    /// asked for — none until the first [`set_windows`]. One catalog query
-    /// serves every window: a new window set or a queue revision points it at
-    /// the tracks now in those windows, and one that leaves those tracks
-    /// alone resolves the read it already has.
-    ///
-    /// [`set_windows`]: crate::library::QueueUpcomingSubscription::set_windows
-    pub fn subscribe_queue_upcoming(
-        &self,
-        runtime_handle: &tokio::runtime::Handle,
-    ) -> crate::library::QueueUpcomingSubscription {
-        let (windows_tx, mut windows) =
-            tokio::sync::watch::channel(crate::library::LibraryPageWindows::new());
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let services = self.clone();
-        let query_runtime = runtime_handle.clone();
-        let task = runtime_handle.spawn(async move {
-            let manager = &services.inner.manager;
-            let mut queue_values = services.inner.playback.subscribe_queue_values();
-            let mut projection = queue_values.borrow_and_update().clone();
-            let mut requested = windows.borrow_and_update().clone();
-            let catalog_request =
-                |projection: &crate::playback::PlaybackQueueProjection,
-                 requested: &crate::library::LibraryPageWindows| {
-                    crate::db::QueueCatalogRequest::for_entries(
-                        upcoming_slices(projection, requested)
-                            .into_iter()
-                            .flat_map(|(_, entries)| entries),
-                        None,
-                    )
-                };
-            let snapshot = |projection: &crate::playback::PlaybackQueueProjection,
-                            requested: &crate::library::LibraryPageWindows,
-                            read: &crate::db::QueueCatalogProjection| {
-                crate::library::QueueUpcomingSnapshot {
-                    revision: projection.revision,
-                    windows: upcoming_slices(projection, requested)
-                        .into_iter()
-                        .map(|(window, entries)| crate::library::QueueUpcomingWindow {
-                            window,
-                            items: manager.resolve_queue_entries(read, entries),
-                        })
-                        .collect(),
-                }
-            };
-            let mut request = catalog_request(&projection, &requested);
-            let mut catalog = reconfigurable_live_query_events(
-                &query_runtime,
-                manager.subscribe_queue_catalog(request.clone()),
-            );
-            // The catalog last read for `request`: a queue revision or a
-            // window change that shows the same tracks resolves it again
-            // without another read.
-            let mut current: Option<crate::db::QueueCatalogProjection> = None;
-            loop {
-                tokio::select! {
-                    event = catalog.recv() => {
-                        let Some(result) = event else { return };
-                        let value = result.map(|read| {
-                            let value = snapshot(&projection, &requested, &read);
-                            current = Some(read);
-                            value
-                        });
-                        if tx.send(value).is_err() { return; }
-                        continue;
-                    }
-                    changed = queue_values.changed() => {
-                        if changed.is_err() { return; }
-                        projection = queue_values.borrow_and_update().clone();
-                    }
-                    changed = windows.changed() => {
-                        if changed.is_err() { return; }
-                        requested = windows.borrow_and_update().clone();
-                    }
-                }
-                let next = catalog_request(&projection, &requested);
-                if next != request {
-                    request = next;
-                    current = None;
-                    catalog.set(request.clone());
-                } else if let Some(read) = current.as_ref() {
-                    if tx
-                        .send(Ok(snapshot(&projection, &requested, read)))
-                        .is_err()
-                    {
-                        return;
-                    }
-                }
-            }
-        });
-        crate::library::QueueUpcomingSubscription::new(windows_tx, rx, task)
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -989,10 +488,13 @@ impl AppServices {
     }
 }
 
+mod detail_reads;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import;
 mod live_query_events;
-use live_query_events::{live_query_events, reconfigurable_live_query_events};
+mod queue_reads;
+mod storage_reads;
+use live_query_events::reconfigurable_live_query_events;
 #[cfg(test)]
 #[path = "app_services_tests.rs"]
 mod tests;

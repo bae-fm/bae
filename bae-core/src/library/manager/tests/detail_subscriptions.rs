@@ -7,7 +7,7 @@
 /// reaching its first value: a subscription that keeps restarting its read
 /// delivers neither a value nor an error, which reads on screen as a spinner
 /// that never resolves. The release detail and the storage page merge their
-/// queries the same way, through the same `live_query_events`.
+/// queries the same way, through the same `reconfigurable_live_query_events`.
 ///
 /// The load here is sync-shaped without a sync loop: reads keeping coven's
 /// reader connection busy so the query's read waits its turn behind them, and a
@@ -56,9 +56,17 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
         .expect("start the import service");
     let services = crate::library::AppServices::new(manager, playback, import);
 
-    let mut values = services
-        .subscribe_album_detail_values(&tokio::runtime::Handle::current(), album.id.clone());
-    let delivered = tokio::time::timeout(std::time::Duration::from_secs(10), values.recv()).await;
+    let values = services.subscribe_album_detail(&tokio::runtime::Handle::current());
+    values.set(Some(album.id.clone())).unwrap();
+    let delivered = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            match values.next().await {
+                Ok(snapshot) if snapshot.id.is_none() => continue,
+                other => return other,
+            }
+        }
+    })
+    .await;
 
     // Dropping `services` joins the playback and import threads, so it happens
     // on a blocking thread, and before the assertions so a failure reports
@@ -73,8 +81,53 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
 
     let detail = delivered
         .expect("the album detail arrives while sync-shaped load runs")
-        .expect("the subscription stays open")
         .expect("the album detail resolves")
+        .value
         .expect("the album is present");
     assert_eq!(detail.album.id, album.id);
+}
+
+/// A detail view that moves to another album moves its one read: the next
+/// value answers the new id, and clearing the id reads nothing.
+#[tokio::test]
+async fn album_detail_moves_between_albums_on_one_subscription() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let mut albums = Vec::new();
+    for title in ["Album One", "Album Two"] {
+        let mut album = create_test_album();
+        album.title = title.to_string();
+        manager.database.insert_album(&album).await.unwrap();
+        insert_release(&manager, &create_test_release(&album.id)).await;
+        albums.push(album);
+    }
+    let services = crate::library::AppServices::for_test(manager)
+        .await
+        .unwrap();
+    let values = services.subscribe_album_detail(&tokio::runtime::Handle::current());
+    let next_for = |id: Option<String>| {
+        let values = &values;
+        async move {
+            loop {
+                let snapshot =
+                    tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+                        .await
+                        .expect("the album detail delivers")
+                        .expect("the album detail resolves");
+                if snapshot.id == id {
+                    return snapshot;
+                }
+            }
+        }
+    };
+
+    values.set(Some(albums[0].id.clone())).unwrap();
+    let first = next_for(Some(albums[0].id.clone())).await;
+    assert_eq!(first.value.expect("present").album.title, "Album One");
+
+    values.set(Some(albums[1].id.clone())).unwrap();
+    let second = next_for(Some(albums[1].id.clone())).await;
+    assert_eq!(second.value.expect("present").album.title, "Album Two");
+
+    values.set(None).unwrap();
+    assert!(next_for(None).await.value.is_none());
 }
