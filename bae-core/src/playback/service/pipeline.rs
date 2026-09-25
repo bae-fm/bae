@@ -96,7 +96,7 @@ impl PlaybackService {
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PlaybackError {
-                        reason: e.into_ui_reason(),
+                        reason: e.ui_reason(),
                     },
                 );
                 // stop()'s cache-wide cancel releases the outgoing tracks'

@@ -35,27 +35,38 @@ pub use probe::seek_landing_bytes;
 pub use probe::{probe_audio_from_path, ProbeResult};
 pub use resample::Resampler;
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum StreamingDecodeError {
-    #[error("streaming input cancelled")]
+/// Why a decode stopped short of its window.
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum DecodeError {
+    /// The input was cancelled: teardown, or the caller aborting. Nothing
+    /// failed.
+    #[error("decode input cancelled")]
     InputCancelled,
+    /// The source's bytes could not be read -- a missing file, a full disk, a
+    /// dropped network volume, a failed cloud fetch. Says nothing about the
+    /// audio: the bytes never reached the decoder. Carries the read's own error.
+    #[error("source read failed: {0}")]
+    SourceRead(std::sync::Arc<crate::playback::PlaybackError>),
+    /// The bytes that arrived don't decode as audio.
     #[error("{0}")]
     Decode(String),
 }
 
-impl StreamingDecodeError {
+impl DecodeError {
     fn decode(message: impl Into<String>) -> Self {
         Self::Decode(message.into())
     }
 
-    fn input_error(
-        cancel_status: &std::sync::atomic::AtomicBool,
+    /// Classify a failure after the input was opened: a read failure the AVIO
+    /// callback recorded is the cause, whatever FFmpeg reported for it;
+    /// otherwise it is the decode's own failure.
+    fn after_read(
+        read_failure: Option<std::sync::Arc<crate::playback::PlaybackError>>,
         message: impl Into<String>,
     ) -> Self {
-        if cancel_status.load(std::sync::atomic::Ordering::Relaxed) {
-            Self::InputCancelled
-        } else {
-            Self::Decode(message.into())
+        match read_failure {
+            Some(error) => Self::SourceRead(error),
+            None => Self::decode(message),
         }
     }
 }

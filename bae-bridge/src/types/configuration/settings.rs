@@ -623,6 +623,7 @@ impl From<bae_core::import::ImportError> for BridgeError {
             | ImportError::UnusableFile { .. }
             | ImportError::LocalCover { .. }
             | ImportError::DecodeVerification { .. }
+            | ImportError::SourceRead { .. }
             | ImportError::AlreadyInLibrary { .. }
             | ImportError::Edit(_)
             | ImportError::SheetBinding { .. }

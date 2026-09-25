@@ -469,7 +469,7 @@ impl PlaybackService {
             Ok(pair) => pair,
             Err(e) => {
                 error!("remote: failed to resolve track {track_id}: {e}");
-                self.fail_remote(PlaybackError::database(e).into_ui_reason())
+                self.fail_remote(PlaybackError::database(e).ui_reason())
                     .await;
                 return;
             }

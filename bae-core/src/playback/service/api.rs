@@ -121,7 +121,7 @@ pub(crate) enum PlaybackCommand {
     /// decides (see `handle_read_failed`).
     ReadFailed {
         buffer_id: u64,
-        error: PlaybackError,
+        error: Arc<PlaybackError>,
     },
     /// The system default output device changed. Rebuilds the persistent output
     /// stream over the same source so playback follows the new default (a no-op

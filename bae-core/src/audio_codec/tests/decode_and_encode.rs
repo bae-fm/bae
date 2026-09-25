@@ -516,7 +516,7 @@ fn decode_audio_rejects_truncated_flac_packet_stream() {
     let err =
         decode_audio(buffer_from(&flac_data), None, None).expect_err("truncated FLAC must fail");
     assert!(
-        err.contains("Failed to send packet"),
+        matches!(&err, DecodeError::Decode(message) if message.contains("Failed to send packet")),
         "unexpected decode error: {err}"
     );
 }
@@ -921,7 +921,10 @@ fn test_streaming_decode_treats_cancelled_input_as_normal_stop() {
 
     let result = decode_audio_streaming(buffer, &mut sink, None, None, None, None, None, token);
 
-    assert_eq!(result, Err(StreamingDecodeError::InputCancelled));
+    assert!(
+        matches!(result, Err(DecodeError::InputCancelled)),
+        "{result:?}"
+    );
     assert!(!source.producer_finished());
     assert_eq!(source.samples_decoded(), 0);
 }

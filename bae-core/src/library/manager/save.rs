@@ -111,8 +111,8 @@ impl LibraryManager {
     /// sparse buffer sized to the stored file size, filled on demand through
     /// coven's locality-aware ranged read (the user's own file, the local
     /// store, the cache, or the cloud with decrypt). A read failure — or a
-    /// blob shorter than the stored size — cancels the buffer, which fails the
-    /// decode loudly.
+    /// blob shorter than the stored size — fails the buffer, and the decode
+    /// fails loudly with that read's error.
     fn open_release_file_stream(
         &self,
         file: &crate::db::DbFile,

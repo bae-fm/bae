@@ -87,13 +87,27 @@ fn pick_window_gap(
     None
 }
 
+/// Why a buffer stopped serving bytes. Terminal: the first stop wins and a
+/// buffer never resumes.
+#[derive(Debug, Clone)]
+pub enum BufferStop {
+    /// Torn down by its owner (playback stopped, a preview ended). Nothing
+    /// failed; the readers just stop.
+    Cancelled,
+    /// The fill could not read the source. The error is the read's own (a
+    /// missing file, a full disk, a dropped network volume, a cloud fetch), so
+    /// a reader that hits it reports *that*, not whatever its decoder makes of
+    /// the bytes that never came.
+    Failed(Arc<PlaybackError>),
+}
+
 /// Internal state protected by mutex.
 struct SparseInner {
     /// Buffered ranges, sorted by start offset, non-overlapping.
     ranges: Vec<BufferedRange>,
-    /// Full cancel: stops both the fill (the producer) and the decoders (the
-    /// consumers).
-    cancelled: bool,
+    /// Set once the buffer stops: stops both the fill (the producer) and the
+    /// decoders (the consumers), and says why.
+    stop: Option<BufferStop>,
     /// Each live reader's current read position, keyed by reader id. The fill
     /// loop reads this to fetch the window each reader needs next (read-ahead)
     /// and to evict bytes every reader has passed. Per-reader, not a single
@@ -152,7 +166,7 @@ impl SparseStreamingBuffer {
         Self {
             inner: Mutex::new(SparseInner {
                 ranges: Vec::new(),
-                cancelled: false,
+                stop: None,
                 demands: HashMap::new(),
             }),
             total_size,
@@ -398,10 +412,15 @@ impl SparseStreamingBuffer {
         self.fill_wake.notify_one();
     }
 
-    /// Fetch on demand until the buffer is cancelled or its last real user is
+    /// Fetch on demand until the buffer stops or its last real user is
     /// dropped. The wake signal remains private: this owner clones it for the
     /// loop, then releases its own strong reference before every await.
-    pub async fn fill_on_demand<F, Fut>(self: Arc<Self>, fetch: F) -> Result<(), PlaybackError>
+    ///
+    /// A failed fetch (or a short one) fails the buffer with that error, which
+    /// unblocks every reader with it, and returns it for the owner to report.
+    /// A failure on a buffer already stopped or dropped belongs to a track that
+    /// has left, so it returns `Ok` and nothing reports it.
+    pub async fn fill_on_demand<F, Fut>(self: Arc<Self>, fetch: F) -> Result<(), Arc<PlaybackError>>
     where
         F: Fn(u64, u64) -> Fut,
         Fut: std::future::Future<Output = Result<Vec<u8>, PlaybackError>>,
@@ -423,8 +442,8 @@ impl SparseStreamingBuffer {
                 debug!("fill_on_demand: buffer dropped, stopping");
                 return Ok(());
             };
-            if buffer.is_cancelled() {
-                debug!("fill_on_demand: buffer cancelled, stopping");
+            if buffer.is_stopped() {
+                debug!("fill_on_demand: buffer stopped, stopping");
                 return Ok(());
             }
 
@@ -441,13 +460,27 @@ impl SparseStreamingBuffer {
             };
 
             let window = FILL_WINDOW_SIZE.min(gap_end - gap_start);
-            let data = fetch(gap_start, window).await?;
-            if data.len() != window as usize {
-                return Err(PlaybackError::internal(format!(
+            let fetched = match fetch(gap_start, window).await {
+                Ok(data) if data.len() == window as usize => Ok(data),
+                Ok(data) => Err(PlaybackError::internal(format!(
                     "Source read returned {} bytes for requested {window} at {gap_start}",
                     data.len()
-                )));
-            }
+                ))),
+                Err(error) => Err(error),
+            };
+            let data = match fetched {
+                Ok(data) => data,
+                Err(error) => {
+                    let error = Arc::new(error);
+                    return match weak_buffer.upgrade() {
+                        Some(buffer) if buffer.fail(error.clone()) => Err(error),
+                        _ => {
+                            debug!("fill_on_demand: read failed on a stopped or dropped buffer: {error}");
+                            Ok(())
+                        }
+                    };
+                }
+            };
 
             let Some(buffer) = weak_buffer.upgrade() else {
                 debug!(
@@ -459,13 +492,31 @@ impl SparseStreamingBuffer {
         }
     }
 
-    /// Full cancel, for stopping playback entirely: `read()` returns `None`,
-    /// `is_cancelled()` returns `true`, and an active fill sees the flag at its
-    /// next loop top and exits (a parked fill exits when the buffer is dropped).
+    /// Full cancel, for stopping playback entirely: `read()` returns
+    /// [`BufferStop::Cancelled`], `is_cancelled()` returns `true`, and an active
+    /// fill sees the stop at its next loop top and exits (a parked fill exits
+    /// when the buffer is dropped). A buffer that already failed stays failed.
     pub fn cancel(&self) {
+        self.stop_with(BufferStop::Cancelled);
+    }
+
+    /// Stop the buffer because its source could not be read: every reader,
+    /// blocked or next to read, gets [`BufferStop::Failed`] with `error`.
+    /// Returns `false` when the buffer had already stopped -- teardown ran
+    /// first, so the failure belongs to a track that has left the pipeline and
+    /// there is nothing to report.
+    pub fn fail(&self, error: Arc<PlaybackError>) -> bool {
+        self.stop_with(BufferStop::Failed(error))
+    }
+
+    fn stop_with(&self, stop: BufferStop) -> bool {
         let mut inner = self.inner.lock().unwrap();
-        inner.cancelled = true;
+        if inner.stop.is_some() {
+            return false;
+        }
+        inner.stop = Some(stop);
         self.data_available.notify_all();
+        true
     }
 
     /// Wake every reader blocked in `read()`, so one whose per-decoder cancel
@@ -476,7 +527,19 @@ impl SparseStreamingBuffer {
 
     pub fn is_cancelled(&self) -> bool {
         let inner = self.inner.lock().unwrap();
-        inner.cancelled
+        matches!(inner.stop, Some(BufferStop::Cancelled))
+    }
+
+    fn is_stopped(&self) -> bool {
+        self.inner.lock().unwrap().stop.is_some()
+    }
+
+    /// The source-read error this buffer failed with, if it did.
+    pub fn failure(&self) -> Option<Arc<PlaybackError>> {
+        match &self.inner.lock().unwrap().stop {
+            Some(BufferStop::Failed(error)) => Some(error.clone()),
+            Some(BufferStop::Cancelled) | None => None,
+        }
     }
 
     #[cfg(test)]
@@ -541,10 +604,11 @@ pub struct BufferReader {
 
 impl BufferReader {
     /// Move the cursor to `pos`, which need not be buffered — the next `read()`
-    /// blocks until the fill delivers it. `false` once the buffer is cancelled.
+    /// blocks until the fill delivers it. `false` once the buffer has stopped
+    /// (the next `read()` says why).
     pub fn seek(&mut self, pos: u64) -> bool {
         let mut inner = self.buffer.inner.lock().unwrap();
-        if inner.cancelled {
+        if inner.stop.is_some() {
             return false;
         }
         // Publish the new position as this reader's demand so the fill loop
@@ -561,9 +625,10 @@ impl BufferReader {
         true
     }
 
-    /// Read from the current position, blocking until bytes are there. `None` if
-    /// cancelled, `Some(0)` at EOF.
-    pub fn read(&mut self, buf: &mut [u8]) -> Option<usize> {
+    /// Read from the current position, blocking until bytes are there. `Ok(0)`
+    /// at EOF; `Err` once the buffer has stopped (or this reader's own cancel
+    /// token is set), saying why.
+    pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, BufferStop> {
         let mut inner = self.buffer.inner.lock().unwrap();
 
         loop {
@@ -571,7 +636,12 @@ impl BufferReader {
                 .cancel_token
                 .as_ref()
                 .is_some_and(|t| t.load(std::sync::atomic::Ordering::Relaxed));
-            if inner.cancelled || token_cancelled {
+            let stop = match &inner.stop {
+                Some(stop) => Some(stop.clone()),
+                None if token_cancelled => Some(BufferStop::Cancelled),
+                None => None,
+            };
+            if let Some(stop) = stop {
                 if let Some(started) = self.wait_started.take() {
                     let waited = started.elapsed();
                     if waited >= READ_WAIT_LOG_AFTER {
@@ -580,14 +650,14 @@ impl BufferReader {
                             reader = self.id,
                             pos = self.read_pos,
                             waited_ms = waited.as_millis(),
-                            buffer_cancelled = inner.cancelled,
+                            ?stop,
                             token_cancelled,
-                            "sparse buffer reader cancelled while waiting for bytes"
+                            "sparse buffer reader stopped while waiting for bytes"
                         );
                     }
                     self.last_wait_log = None;
                 }
-                return None;
+                return Err(stop);
             }
 
             // Publish where this reader needs bytes so the fill loop fetches
@@ -629,7 +699,7 @@ impl BufferReader {
                     // drew down.
                     publish_demand_pos(&mut inner.demands, self.id, self.read_pos);
                     self.buffer.wake_fill();
-                    return Some(to_read);
+                    return Ok(to_read);
                 }
             }
 
@@ -638,7 +708,7 @@ impl BufferReader {
             // in a not-yet-fetched gap below total waits for the fill to deliver
             // it.
             if read_pos >= self.buffer.total_size {
-                return Some(0);
+                return Ok(0);
             }
 
             // Nothing buffered here yet: the demand published above tells the

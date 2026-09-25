@@ -183,7 +183,7 @@ impl PlaybackService {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PlaybackError {
-                    reason: e.into_ui_reason(),
+                    reason: e.ui_reason(),
                 },
             );
             self.stop().await;

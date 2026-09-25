@@ -9,8 +9,15 @@ pub enum PlaybackError {
     NotFound(&'static str, String),
     #[error("Invalid FLAC: {0}")]
     InvalidFlac(String),
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
+    /// A source read failed. `context` names the operation (which file, which
+    /// byte range); `source` is the OS error itself, kind intact, so a caller
+    /// can tell a missing file from a full disk from a dropped network volume.
+    #[error("{context}: {source}")]
+    Io {
+        context: String,
+        #[source]
+        source: std::io::Error,
+    },
     /// An async task panicked or was cancelled.
     #[error("Task failed: {0}")]
     TaskFailed(String),
@@ -36,7 +43,7 @@ impl PlaybackError {
     /// "not playable yet" cases are user-actionable and keyed; every other mode
     /// is un-enumerable for the UI and goes to the diagnostic arm with the error
     /// chain as opaque, log-only detail.
-    pub fn into_ui_reason(self) -> crate::ui::PlaybackErrorReason {
+    pub fn ui_reason(&self) -> crate::ui::PlaybackErrorReason {
         use crate::ui::PlaybackErrorReason;
         match self {
             PlaybackError::SyncDisconnected => PlaybackErrorReason::SyncDisconnected,
@@ -59,7 +66,10 @@ impl PlaybackError {
     pub fn internal(msg: impl Into<String>) -> Self {
         Self::Internal(msg.into())
     }
-    pub fn io(msg: impl Into<String>) -> Self {
-        Self::Io(std::io::Error::other(msg.into()))
+    pub fn io(context: impl Into<String>, source: std::io::Error) -> Self {
+        Self::Io {
+            context: context.into(),
+            source,
+        }
     }
 }

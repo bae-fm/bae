@@ -125,6 +125,18 @@ pub enum ImportError {
     #[error("decode verification failed for {} track(s): {}", broken.len(), broken.join("; "))]
     DecodeVerification { broken: Vec<String> },
 
+    /// A source file could not be read while the import decoded it (loudness
+    /// and decode verification). Carries the read's own error — a missing
+    /// file, a full disk, a dropped network volume — and says nothing about
+    /// the audio, unlike `DecodeVerification`: importing again once the source
+    /// is readable is the remedy.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("the source audio for {track} could not be read: {error}")]
+    SourceRead {
+        track: String,
+        error: std::sync::Arc<crate::playback::PlaybackError>,
+    },
+
     /// Per-pressing duplicate rejection: an Exact identity already in the
     /// library. The Display text is user-facing — the UI renders it verbatim.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

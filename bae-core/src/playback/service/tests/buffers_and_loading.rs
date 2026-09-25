@@ -97,7 +97,7 @@ async fn read_failure_on_the_preloaded_next_discards_it_and_keeps_playing() {
     service
         .handle_read_failed(
             preload_buffer.id(),
-            PlaybackError::not_found("release file", "preload-file"),
+            std::sync::Arc::new(PlaybackError::not_found("release file", "preload-file")),
         )
         .await;
 
@@ -138,7 +138,7 @@ async fn read_failure_on_the_playing_track_reports_the_error() {
     service
         .handle_read_failed(
             current_buffer.id(),
-            PlaybackError::not_found("release file", "current-file"),
+            std::sync::Arc::new(PlaybackError::not_found("release file", "current-file")),
         )
         .await;
 
@@ -164,7 +164,7 @@ async fn read_failure_on_a_buffer_out_of_play_is_ignored() {
     service
         .handle_read_failed(
             abandoned_buffer.id(),
-            PlaybackError::not_found("release file", "abandoned-file"),
+            std::sync::Arc::new(PlaybackError::not_found("release file", "abandoned-file")),
         )
         .await;
 

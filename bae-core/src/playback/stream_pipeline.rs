@@ -10,7 +10,7 @@
 //! diagnostic logging from here so the two players can't drift on the
 //! decode/seek mapping.
 
-use crate::audio_codec::StreamingDecodeError;
+use crate::audio_codec::DecodeError;
 use crate::playback::audio_output::{
     audio_event_channel, AudioEvent, AudioEventReceiver, AudioOutput, AudioStream,
 };
@@ -189,11 +189,11 @@ impl StreamDecodeParams {
         &self,
         sink: &mut TrackSink,
         cancel: Arc<AtomicBool>,
-    ) -> Result<(), StreamingDecodeError> {
+    ) -> Result<(), DecodeError> {
         if self.leading_silence_frames > 0 {
             sink.push_silence_frames_blocking(self.leading_silence_frames);
             if cancel.load(Ordering::Relaxed) || sink.is_cancelled() {
-                return Err(StreamingDecodeError::InputCancelled);
+                return Err(DecodeError::InputCancelled);
             }
         }
 
@@ -216,14 +216,14 @@ impl StreamDecodeParams {
                 cancel.clone(),
             )?;
             if cancel.load(Ordering::Relaxed) || sink.is_cancelled() {
-                return Err(StreamingDecodeError::InputCancelled);
+                return Err(DecodeError::InputCancelled);
             }
         }
 
         if self.trailing_silence_frames > 0 {
             sink.push_silence_frames_blocking(self.trailing_silence_frames);
             if cancel.load(Ordering::Relaxed) || sink.is_cancelled() {
-                return Err(StreamingDecodeError::InputCancelled);
+                return Err(DecodeError::InputCancelled);
             }
         }
 
@@ -271,7 +271,8 @@ impl StreamDecodeParams {
                 segment.span.end_sample,
                 sink,
                 cancel.clone(),
-            )?;
+            )
+            .map_err(|e| e.to_string())?;
         }
         push_silence_to_sink(sink, self.trailing_silence_frames, channels, &cancel)?;
         Ok(())

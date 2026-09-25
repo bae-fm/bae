@@ -4,12 +4,12 @@
 //! - Local files (non-storage releases, or storage releases with local backend)
 //! - Cloud storage (storage releases with cloud backend)
 
-use crate::playback::sparse_buffer::{SharedSparseBuffer, SparseStreamingBuffer, FILL_WINDOW_SIZE};
+use crate::playback::sparse_buffer::{SharedSparseBuffer, FILL_WINDOW_SIZE};
 #[cfg(test)]
 use crate::playback::sparse_buffer::{KEEP_BEHIND, MIN_READAHEAD};
 use crate::playback::PlaybackError;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::Notify;
 use tracing::{debug, error, info};
@@ -23,8 +23,8 @@ use tracing::{debug, error, info};
 /// the foreground via [`FetchArbiter::set_foreground`] whenever a track becomes
 /// current.
 pub struct FetchArbiter {
-    /// The [`SparseStreamingBuffer::id`] of the foreground (playing) track, or
-    /// `u64::MAX` for none.
+    /// The [`crate::playback::sparse_buffer::SparseStreamingBuffer::id`] of the
+    /// foreground (playing) track, or `u64::MAX` for none.
     foreground_buffer: AtomicU64,
     /// Count of foreground fetches currently awaiting bytes. A preload fetch
     /// waits while this is non-zero.
@@ -95,11 +95,13 @@ impl FetchArbiter {
     }
 }
 
-/// Invoked at most once, when the fill fails; the buffer is cancelled right
-/// after, so blocked readers unblock and the decoder surfaces the failure.
-/// Playback emits a `PlaybackProgress::PlaybackError` here; loudness and save
-/// log the cause and let their decode failure carry the outcome.
-pub type FillErrorHandler = Box<dyn FnOnce(PlaybackError) + Send>;
+/// Invoked at most once, when the fill fails, after the buffer has been failed
+/// with the same error — so blocked readers have already unblocked with it and
+/// a decoder reports it as its own outcome. Playback needs the handler anyway:
+/// only its command loop knows whether the buffer feeds the playing track or a
+/// preload, which decides whether playback halts. Loudness and save only log
+/// here; their decode error carries the cause.
+pub type FillErrorHandler = Box<dyn FnOnce(Arc<PlaybackError>) + Send>;
 
 /// Reads audio data into a sparse buffer for streaming decode.
 ///
@@ -134,33 +136,26 @@ impl LocalReader {
     }
 }
 
+/// Fail the buffer with a read error raised before its fill started (the
+/// source would not open), then report it.
 fn fail_audio_read(on_error: FillErrorHandler, buffer: &SharedSparseBuffer, error: PlaybackError) {
-    // A buffer that is already cancelled means teardown ran before this read
-    // returned: the user switched away while a reader was parked in an in-flight
-    // `read().await` past its top-of-loop cancel check. The Err it eventually
-    // returns belongs to a track that has already left the pipeline, so there is
-    // nothing left to report — exit cancelled.
-    if buffer.is_cancelled() {
-        debug!("ignoring read failure on a cancelled buffer: {error}");
+    let error = Arc::new(error);
+    // A buffer that already stopped means teardown ran before this read
+    // returned: the user switched away while the open was in flight. The error
+    // belongs to a track that has already left the pipeline, so there is
+    // nothing left to report.
+    if !buffer.fail(error.clone()) {
+        debug!("ignoring read failure on a stopped buffer: {error}");
         return;
     }
-    error!("audio read failed: {error}");
-    on_error(error);
-    buffer.cancel();
+    report_fill_failure(on_error, error);
 }
 
-/// Report a fill failure, upgrading the fill's `Weak` to reach the buffer. If
-/// the buffer is already gone, the track was torn down before this error
-/// surfaced -- there's nothing to halt, so just log and drop it.
-fn report_fill_failure(
-    on_error: FillErrorHandler,
-    buffer: &Weak<SparseStreamingBuffer>,
-    error: PlaybackError,
-) {
-    match buffer.upgrade() {
-        Some(buf) => fail_audio_read(on_error, &buf, error),
-        None => debug!("ignoring fill failure on a dropped buffer: {error}"),
-    }
+/// Report a failure the buffer already carries (the fill failed it before
+/// returning the error).
+fn report_fill_failure(on_error: FillErrorHandler, error: Arc<PlaybackError>) {
+    error!("audio read failed: {error}");
+    on_error(error);
 }
 
 impl AudioDataReader for LocalReader {
@@ -170,15 +165,13 @@ impl AudioDataReader for LocalReader {
         tokio::spawn(async move {
             use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
-            let weak_buffer = Arc::downgrade(&buffer);
-
             let file = match tokio::fs::File::open(&path).await {
                 Ok(f) => f,
                 Err(e) => {
-                    report_fill_failure(
+                    fail_audio_read(
                         on_error,
-                        &weak_buffer,
-                        PlaybackError::io(format!("Failed to open file {path}: {e}")),
+                        &buffer,
+                        PlaybackError::io(format!("Failed to open {path}"), e),
                     );
                     return;
                 }
@@ -196,15 +189,14 @@ impl AudioDataReader for LocalReader {
                         f.seek(std::io::SeekFrom::Start(src_off))
                             .await
                             .map_err(|e| {
-                                PlaybackError::io(format!(
-                                    "Failed to seek {path} to {src_off}: {e}"
-                                ))
+                                PlaybackError::io(format!("Failed to seek {path} to {src_off}"), e)
                             })?;
                         let mut buf = vec![0u8; len as usize];
                         f.read_exact(&mut buf).await.map_err(|e| {
-                            PlaybackError::io(format!(
-                                "Failed to read {len} bytes at {src_off} from {path}: {e}"
-                            ))
+                            PlaybackError::io(
+                                format!("Failed to read {len} bytes at {src_off} from {path}"),
+                                e,
+                            )
                         })?;
                         Ok(buf)
                     }
@@ -212,7 +204,7 @@ impl AudioDataReader for LocalReader {
                 .await;
 
             if let Err(e) = result {
-                report_fill_failure(on_error, &weak_buffer, e);
+                report_fill_failure(on_error, e);
             }
         });
     }
@@ -402,7 +394,6 @@ impl AudioDataReader for CovenBlobReader {
             // competing with the playing track.
             let fetched = AtomicU64::new(0);
             let started = Instant::now();
-            let weak_buffer = Arc::downgrade(&buffer);
             let result = buffer.fill_on_demand(|src_off, len| {
                 let fut = stream.read_at(src_off, len);
                 let arbiter = &arbiter;
@@ -444,7 +435,7 @@ impl AudioDataReader for CovenBlobReader {
             .await;
 
             if let Err(e) = result {
-                report_fill_failure(on_error, &weak_buffer, e);
+                report_fill_failure(on_error, e);
             }
         });
     }

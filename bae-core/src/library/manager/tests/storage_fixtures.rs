@@ -323,8 +323,8 @@ async fn playback_error_reason_for_file(
             let _ = error_tx.send(error);
         }),
     );
-    // Register demand so the fill fetches; the failed fetch cancels the
-    // buffer, which unblocks this read with `None`.
+    // Register demand so the fill fetches; the failed fetch fails the
+    // buffer, which unblocks this read with the failure.
     let demand = tokio::task::spawn_blocking(move || {
         let mut r = buffer.new_reader();
         let mut b = [0u8; 1];
@@ -335,11 +335,18 @@ async fn playback_error_reason_for_file(
             .recv()
             .await
             .expect("error channel open")
-            .into_ui_reason()
+            .ui_reason()
     })
     .await
     .expect("a playback error must be reported");
-    demand.await.expect("demand read task");
+    let read = demand.await.expect("demand read task");
+    assert!(
+        matches!(
+            read,
+            Err(crate::playback::sparse_buffer::BufferStop::Failed(_))
+        ),
+        "the waiting read ends on the fetch failure: {read:?}"
+    );
     reason
 }
 

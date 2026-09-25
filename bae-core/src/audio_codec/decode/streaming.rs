@@ -25,7 +25,7 @@ pub fn decode_audio_streaming(
     stop_at_sample: Option<u64>,
     end_byte: Option<u64>,
     cancel_token: Arc<std::sync::atomic::AtomicBool>,
-) -> Result<u32, StreamingDecodeError> {
+) -> Result<u32, DecodeError> {
     install_ffmpeg_log_callback();
     reset_ffmpeg_errors();
 
@@ -52,7 +52,7 @@ unsafe fn decode_audio_streaming_impl(
     stop_at_sample: Option<u64>,
     end_byte: Option<u64>,
     cancel_token: Arc<std::sync::atomic::AtomicBool>,
-) -> Result<u32, StreamingDecodeError> {
+) -> Result<u32, DecodeError> {
     use ffmpeg_sys_next::*;
 
     // Wall-clock origin for the first-sample latency log below: it spans the probe
@@ -60,32 +60,22 @@ unsafe fn decode_audio_streaming_impl(
     // audio sample -- the whole "how long before playback starts" window.
     let decode_start = Instant::now();
 
-    let cancel_status = cancel_token.clone();
     let BufferInput {
         mut fmt_ctx,
         avio,
         avio_ctx_ptr,
-    } = open_buffer_input(&buffer, cancel_token).map_err(|e| {
-        let message = e.message();
-        match e {
-            BufferInputError::Alloc(_) => StreamingDecodeError::decode(message),
-            BufferInputError::Open(_) | BufferInputError::Probe(_) => {
-                StreamingDecodeError::input_error(&cancel_status, message)
-            }
-        }
-    })?;
+    } = open_buffer_input(&buffer, cancel_token.clone())
+        .map_err(|e| e.into_decode_error(&cancel_token))?;
 
     let (audio, codec_ctx) = match open_probed_audio_codec(fmt_ctx) {
         Ok(opened) => opened,
         Err(ProbedAudioCodecOpenError::MissingStream(e)) => {
-            close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-            let _ = Box::from_raw(avio_ctx_ptr);
-            return Err(StreamingDecodeError::decode(e));
+            let read_failure = release_buffer_input(&mut fmt_ctx, avio, avio_ctx_ptr);
+            return Err(DecodeError::after_read(read_failure, e));
         }
         Err(ProbedAudioCodecOpenError::Codec { error, .. }) => {
-            close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-            let _ = Box::from_raw(avio_ctx_ptr);
-            return Err(StreamingDecodeError::decode(error.message()));
+            let read_failure = release_buffer_input(&mut fmt_ctx, avio, avio_ctx_ptr);
+            return Err(DecodeError::after_read(read_failure, error.message()));
         }
     };
 
@@ -93,9 +83,8 @@ unsafe fn decode_audio_streaming_impl(
     let channels = (*audio.codecpar).ch_layout.nb_channels as u32;
     if channels == 0 {
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode(CHANNEL_COUNT_ERROR));
+        let read_failure = release_buffer_input(&mut fmt_ctx, avio, avio_ctx_ptr);
+        return Err(DecodeError::after_read(read_failure, CHANNEL_COUNT_ERROR));
     }
 
     debug!("Streaming AVIO decoder: {}Hz, {}ch", sample_rate, channels);
@@ -111,9 +100,8 @@ unsafe fn decode_audio_streaming_impl(
     )
     .map_err(|e| {
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        let _ = Box::from_raw(avio_ctx_ptr);
-        StreamingDecodeError::decode(e)
+        let read_failure = release_buffer_input(&mut fmt_ctx, avio, avio_ctx_ptr);
+        DecodeError::after_read(read_failure, e)
     })?;
 
     // The by-byte seek is for FLAC, whose frame byte is recorded at import; APE
@@ -173,9 +161,7 @@ unsafe fn decode_audio_streaming_impl(
             avio,
         );
         let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode(
-            "Failed to allocate frame/packet",
-        ));
+        return Err(DecodeError::decode("Failed to allocate frame/packet"));
     }
 
     let resources = BufferDecodeResources {
@@ -203,8 +189,14 @@ unsafe fn decode_audio_streaming_impl(
     );
     let samples_output = out.samples_output();
 
+    let read_failure = (*resources.avio_ctx_ptr).read_failure();
     drop(resources);
-    let discarded_packet_count = loop_result.map_err(StreamingDecodeError::decode)?;
+    // A failed source read ends FFmpeg's packet loop the way EOF does; the
+    // read's error is the outcome, not the truncated segment.
+    if let Some(error) = read_failure {
+        return Err(DecodeError::SourceRead(error));
+    }
+    let discarded_packet_count = loop_result.map_err(DecodeError::decode)?;
 
     let fatal_error_count = get_ffmpeg_errors();
     let error_count = fatal_error_count.saturating_add(discarded_packet_count);

@@ -10,8 +10,8 @@ use super::avio::{
     close_input_and_free_custom_avio, free_custom_avio_context, free_format_and_custom_avio,
     streaming_avio_read_callback, streaming_avio_seek_callback, StreamingAvioContext,
 };
-use super::{av_err_str, DecodedAudio, DecodedSink, StreamingDecodeError, AVIO_BUFFER_SIZE};
-use crate::playback::{SharedSparseBuffer, TrackSink};
+use super::{av_err_str, DecodeError, DecodedAudio, DecodedSink, AVIO_BUFFER_SIZE};
+use crate::playback::{PlaybackError, SharedSparseBuffer, TrackSink};
 use std::cell::Cell;
 use std::os::raw::{c_int, c_void};
 use std::ptr;
@@ -309,16 +309,41 @@ enum BufferInputError {
     Alloc(&'static str),
     Open(i32),
     Probe(i32),
+    /// The open or probe failed because a read of the source failed. Whatever
+    /// FFmpeg reported for it (an empty probe reads as "Invalid data found") is
+    /// a consequence, not the cause.
+    SourceRead(Arc<PlaybackError>),
 }
 
 impl BufferInputError {
-    fn message(&self) -> String {
+    /// The decode's error for a failed open. An open or probe that failed while
+    /// `cancel` is set failed because its reads were cut off, not because the
+    /// input is bad.
+    fn into_decode_error(self, cancel: &std::sync::atomic::AtomicBool) -> DecodeError {
+        let cancelled = cancel.load(std::sync::atomic::Ordering::Relaxed);
         match self {
-            Self::Alloc(what) => (*what).to_string(),
-            Self::Open(ret) => format!("Failed to open input: {}", av_err_str(*ret)),
-            Self::Probe(ret) => format!("Failed to find stream info: {}", av_err_str(*ret)),
+            Self::SourceRead(error) => DecodeError::SourceRead(error),
+            Self::Alloc(what) => DecodeError::decode(what),
+            Self::Open(_) | Self::Probe(_) if cancelled => DecodeError::InputCancelled,
+            Self::Open(ret) => {
+                DecodeError::decode(format!("Failed to open input: {}", av_err_str(ret)))
+            }
+            Self::Probe(ret) => {
+                DecodeError::decode(format!("Failed to find stream info: {}", av_err_str(ret)))
+            }
         }
     }
+}
+
+/// Close an opened input and free its streaming AVIO reader, returning the
+/// source-read failure that reader hit, if any, so the caller's error names it.
+unsafe fn release_buffer_input(
+    fmt_ctx: &mut *mut ffmpeg_sys_next::AVFormatContext,
+    avio: *mut ffmpeg_sys_next::AVIOContext,
+    avio_ctx_ptr: *mut StreamingAvioContext,
+) -> Option<Arc<PlaybackError>> {
+    close_input_and_free_custom_avio(fmt_ctx, avio);
+    Box::from_raw(avio_ctx_ptr).read_failure()
 }
 
 /// Build the streaming AVIO over `buffer` and open + probe the demuxer on it.
@@ -385,8 +410,8 @@ unsafe fn open_buffer_input(
                 BufferInputError::Probe(ret)
             }
         };
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(error);
+        let read_failure = Box::from_raw(avio_ctx_ptr).read_failure();
+        return Err(read_failure.map_or(error, BufferInputError::SourceRead));
     }
 
     Ok(BufferInput {
@@ -404,7 +429,7 @@ pub fn decode_audio(
     buffer: SharedSparseBuffer,
     start_sample: Option<u64>,
     end_sample: Option<u64>,
-) -> Result<DecodedAudio, String> {
+) -> Result<DecodedAudio, DecodeError> {
     let mut sink = CollectingSink {
         samples: Vec::new(),
         format: None,
@@ -454,7 +479,7 @@ pub fn decode_audio_to_sink(
     end_sample: Option<u64>,
     sink: &mut dyn DecodedSink,
     cancel: Arc<std::sync::atomic::AtomicBool>,
-) -> Result<(), String> {
+) -> Result<(), DecodeError> {
     decode_audio_to_sink_with_handling(
         buffer,
         None,
@@ -482,7 +507,7 @@ pub(crate) fn decode_audio_to_sink_with_seek(
     stop_at_sample: Option<u64>,
     sink: &mut dyn DecodedSink,
     cancel: Arc<std::sync::atomic::AtomicBool>,
-) -> Result<(), String> {
+) -> Result<(), DecodeError> {
     decode_audio_to_sink_with_handling(
         buffer,
         seek_to_byte,
@@ -505,7 +530,7 @@ fn decode_audio_to_sink_with_handling(
     invalid_packet_handling: InvalidPacketHandling,
     sink: &mut dyn DecodedSink,
     cancel: Arc<std::sync::atomic::AtomicBool>,
-) -> Result<(), String> {
+) -> Result<(), DecodeError> {
     // SAFETY: every FFmpeg pointer the decode allocates lives and dies inside it.
     unsafe {
         decode_buffer_to_sink_impl(
@@ -531,7 +556,7 @@ unsafe fn decode_buffer_to_sink_impl(
     invalid_packet_handling: InvalidPacketHandling,
     sink: &mut dyn DecodedSink,
     cancel: Arc<std::sync::atomic::AtomicBool>,
-) -> Result<(), String> {
+) -> Result<(), DecodeError> {
     use ffmpeg_sys_next::*;
 
     // Count this decode's fatal FFmpeg errors, so the sink can flag a track whose
@@ -545,7 +570,7 @@ unsafe fn decode_buffer_to_sink_impl(
         mut fmt_ctx,
         avio,
         avio_ctx_ptr,
-    } = open_buffer_input(&buffer, cancel.clone()).map_err(|e| e.message())?;
+    } = open_buffer_input(&buffer, cancel.clone()).map_err(|e| e.into_decode_error(&cancel))?;
 
     // Count only the audio decode's errors: probing an embedded cover during
     // `find_stream_info` above may have logged its own.
@@ -554,9 +579,8 @@ unsafe fn decode_buffer_to_sink_impl(
     let (audio, codec_ctx) = match open_probed_audio_codec(fmt_ctx) {
         Ok(opened) => opened,
         Err(ProbedAudioCodecOpenError::MissingStream(e)) => {
-            close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-            let _ = Box::from_raw(avio_ctx_ptr);
-            return Err(e);
+            let read_failure = release_buffer_input(&mut fmt_ctx, avio, avio_ctx_ptr);
+            return Err(DecodeError::after_read(read_failure, e));
         }
         Err(ProbedAudioCodecOpenError::Codec {
             audio,
@@ -573,15 +597,15 @@ unsafe fn decode_buffer_to_sink_impl(
                 stop_at_sample,
                 sink,
             );
-            close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-            let _ = Box::from_raw(avio_ctx_ptr);
+            if let Some(error) = release_buffer_input(&mut fmt_ctx, avio, avio_ctx_ptr) {
+                return Err(DecodeError::SourceRead(error));
+            }
             sink.add_decode_error_count(get_ffmpeg_errors());
-            return result;
+            return result.map_err(DecodeError::Decode);
         }
         Err(ProbedAudioCodecOpenError::Codec { error, .. }) => {
-            close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-            let _ = Box::from_raw(avio_ctx_ptr);
-            return Err(error.message());
+            let read_failure = release_buffer_input(&mut fmt_ctx, avio, avio_ctx_ptr);
+            return Err(DecodeError::after_read(read_failure, error.message()));
         }
     };
 
@@ -589,9 +613,8 @@ unsafe fn decode_buffer_to_sink_impl(
     let channels = (*audio.codecpar).ch_layout.nb_channels as u32;
     if channels == 0 {
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(CHANNEL_COUNT_ERROR.to_string());
+        let read_failure = release_buffer_input(&mut fmt_ctx, avio, avio_ctx_ptr);
+        return Err(DecodeError::after_read(read_failure, CHANNEL_COUNT_ERROR));
     }
 
     sink.on_format(sample_rate, channels);
@@ -606,9 +629,8 @@ unsafe fn decode_buffer_to_sink_impl(
         Ok(ctx) => ctx,
         Err(e) => {
             avcodec_free_context(&mut (codec_ctx as *mut _));
-            close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-            let _ = Box::from_raw(avio_ctx_ptr);
-            return Err(e);
+            let read_failure = release_buffer_input(&mut fmt_ctx, avio, avio_ctx_ptr);
+            return Err(DecodeError::after_read(read_failure, e));
         }
     };
 
@@ -637,7 +659,7 @@ unsafe fn decode_buffer_to_sink_impl(
             avio,
         );
         let _ = Box::from_raw(avio_ctx_ptr);
-        return Err("Failed to allocate frame/packet".to_string());
+        return Err(DecodeError::decode("Failed to allocate frame/packet"));
     }
 
     let resources = BufferDecodeResources {
@@ -665,7 +687,15 @@ unsafe fn decode_buffer_to_sink_impl(
         &mut out,
     );
 
+    let read_failure = (*resources.avio_ctx_ptr).read_failure();
     drop(resources);
+
+    // A failed source read ends FFmpeg's packet loop the way EOF does, so the
+    // loop's own result can look clean over a truncated window; the read's
+    // error is the outcome.
+    if let Some(error) = read_failure {
+        return Err(DecodeError::SourceRead(error));
+    }
 
     // A verifying sink flags a broken decode off this count.
     sink.add_decode_error_count(get_ffmpeg_errors());
@@ -673,15 +703,15 @@ unsafe fn decode_buffer_to_sink_impl(
         sink.add_discarded_packet_count(*discarded_packets);
     }
 
-    result?;
+    result.map_err(DecodeError::Decode)?;
 
-    // A cancelled input (a failed fill cancelling the buffer, or the caller
-    // aborting) leaves the output truncated; reporting success would let a
-    // consumer treat a partial decode as the whole window. The AVIO read
-    // callback sets this token when the buffer is cancelled under the decode,
-    // so both abort paths land here.
+    // A cancelled input (the buffer torn down, or the caller aborting) leaves
+    // the output truncated; reporting success would let a consumer treat a
+    // partial decode as the whole window. The AVIO read callback sets this
+    // token when the buffer is cancelled under the decode, so both abort paths
+    // land here.
     if cancel.load(std::sync::atomic::Ordering::Relaxed) {
-        return Err("decode input cancelled".to_string());
+        return Err(DecodeError::InputCancelled);
     }
 
     Ok(())

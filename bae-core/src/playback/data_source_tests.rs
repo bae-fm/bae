@@ -52,8 +52,8 @@ fn drain(buffer: &SharedSparseBuffer) -> Vec<u8> {
     let mut chunk = vec![0u8; 1024];
     loop {
         match reader.read(&mut chunk) {
-            Some(0) | None => break,
-            Some(n) => out.extend_from_slice(&chunk[..n]),
+            Ok(0) | Err(_) => break,
+            Ok(n) => out.extend_from_slice(&chunk[..n]),
         }
     }
     out
@@ -69,7 +69,7 @@ async fn drain_async(buffer: SharedSparseBuffer) -> Vec<u8> {
 /// receiving end, so a test can assert on the reported failure.
 fn capturing_error_handler() -> (
     FillErrorHandler,
-    tokio_mpsc::UnboundedReceiver<PlaybackError>,
+    tokio_mpsc::UnboundedReceiver<Arc<PlaybackError>>,
 ) {
     let (tx, rx) = tokio_mpsc::unbounded_channel();
     (
@@ -81,13 +81,21 @@ fn capturing_error_handler() -> (
 }
 
 async fn next_fill_error(
-    error_rx: &mut tokio_mpsc::UnboundedReceiver<PlaybackError>,
+    error_rx: &mut tokio_mpsc::UnboundedReceiver<Arc<PlaybackError>>,
     context: &str,
 ) -> String {
     error_rx.recv().await.expect(context).to_string()
 }
 
 const WINDOW: u64 = CLOUD_STREAM_READ_SIZE;
+
+/// The OS error kind a failed buffer carries, when it failed on an I/O error.
+fn failure_kind(buffer: &SharedSparseBuffer) -> Option<std::io::ErrorKind> {
+    buffer.failure().and_then(|error| match error.as_ref() {
+        PlaybackError::Io { source, .. } => Some(source.kind()),
+        _ => None,
+    })
+}
 
 /// A preload reader's fetch waits while the playing track has a fetch in
 /// flight, and proceeds once the playing track goes idle. This is the gate
@@ -189,7 +197,7 @@ async fn seek_fetches_only_the_demanded_window_not_the_skipped_prefix() {
     // Read one byte at the seek target from the real blocking unit.
     let one = tokio::task::spawn_blocking(move || {
         let mut b = [0u8; 1];
-        let n = reader.read(&mut b);
+        let n = reader.read(&mut b).ok();
         // Hold the reader until after the read so its demand stays registered.
         drop(reader);
         n
@@ -243,7 +251,7 @@ async fn read_at_the_ceiling_is_served_not_starved() {
         Duration::from_secs(5),
         tokio::task::spawn_blocking(move || {
             let mut b = [0u8; 1];
-            let n = reader.read(&mut b);
+            let n = reader.read(&mut b).ok();
             drop(reader);
             n
         }),
@@ -281,7 +289,7 @@ async fn prefetched_start_window_removes_the_seek_target_fetch() {
         let read_log = start_recording_fill(blob, None, &buffer);
         let served = tokio::task::spawn_blocking(move || {
             let mut b = [0u8; 1];
-            let n = reader.read(&mut b);
+            let n = reader.read(&mut b).ok();
             drop(reader);
             n
         })
@@ -416,18 +424,18 @@ async fn backward_seek_into_evicted_region_refetches_the_window() {
         let mut filled = 0;
         while filled < sink.len() {
             match reader.read(&mut sink[filled..]) {
-                Some(0) => panic!(
+                Ok(0) => panic!(
                     "unexpected EOF at {filled} reading a {}-byte file",
                     16 * WINDOW
                 ),
-                None => panic!("unexpected cancel at {filled}"),
-                Some(read) => filled += read,
+                Err(stop) => panic!("unexpected stop at {filled}: {stop:?}"),
+                Ok(read) => filled += read,
             }
         }
         // Seek back into the evicted window and read it again.
         assert!(reader.seek(WINDOW));
         let mut b = [0u8; 32];
-        let n = reader.read(&mut b);
+        let n = reader.read(&mut b).ok();
         (n, b)
     })
     .await
@@ -513,7 +521,7 @@ async fn blocked_reader_unblocks_on_demanded_window_not_sequential_catch_up() {
 
     let read_handle = tokio::task::spawn_blocking(move || {
         let mut b = [0u8; 1];
-        let n = reader.read(&mut b);
+        let n = reader.read(&mut b).ok();
         drop(reader);
         n
     });
@@ -589,7 +597,7 @@ async fn local_seek_into_large_file_serves_target_via_shared_fill() {
     let chunk_len = 4096usize;
     let read = tokio::task::spawn_blocking(move || {
         let mut out = vec![0u8; chunk_len];
-        let n = seek_reader.read(&mut out);
+        let n = seek_reader.read(&mut out).ok();
         drop(seek_reader);
         (n, out)
     });
@@ -627,10 +635,11 @@ async fn test_local_file_reader_nonexistent_file() {
     reader.start_reading(buffer.clone(), on_error);
     let result = drain_async(buffer.clone()).await;
 
-    // Buffer should be cancelled (error case)
-    assert!(
-        buffer.is_cancelled(),
-        "Buffer should be cancelled for nonexistent file"
+    // The buffer fails with the open's own error, kind intact.
+    assert_eq!(
+        failure_kind(&buffer),
+        Some(std::io::ErrorKind::NotFound),
+        "the buffer carries the open's NotFound"
     );
     assert!(result.is_empty());
     let error = next_fill_error(
@@ -639,7 +648,7 @@ async fn test_local_file_reader_nonexistent_file() {
     )
     .await;
     assert!(
-        error.contains("Failed to open file"),
+        error.contains("Failed to open"),
         "expected open failure, got: {error}"
     );
 }
@@ -657,7 +666,10 @@ async fn test_local_file_reader_read_error_reports_error() {
     reader.start_reading(buffer.clone(), on_error);
     let result = drain_async(buffer.clone()).await;
 
-    assert!(buffer.is_cancelled());
+    assert!(
+        buffer.failure().is_some(),
+        "the buffer carries the read failure"
+    );
     assert!(result.is_empty());
     let error = next_fill_error(
         &mut error_rx,
@@ -669,7 +681,89 @@ async fn test_local_file_reader_read_error_reports_error() {
     // open. Either way the reader must report a fill error and cancel — the
     // phase the refusal lands in is the OS's, not the contract's.
     assert!(
-        error.contains("Failed to read") || error.contains("Failed to open file"),
+        error.contains("Failed to read") || error.contains("Failed to open"),
         "expected a read or open failure, got: {error}"
     );
+}
+
+/// A fetch that fails fails the buffer with that error and returns it for
+/// the owner to report; a reader blocked on the missing window gets the same
+/// error, not a cancel. Bytes already buffered before the failure don't keep
+/// the reader going: the stop is terminal.
+#[tokio::test]
+async fn a_failed_fetch_fails_the_buffer_with_the_read_error() {
+    let source_size = 4 * WINDOW;
+    let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+    let buffer = create_sparse_buffer(source_size);
+
+    // The reader waits on the second window, which the fetch can't read.
+    let mut reader = buffer.new_reader();
+    assert!(reader.seek(WINDOW));
+    let fill = tokio::spawn(buffer.clone().fill_on_demand(move |start, len| {
+        let result = if start == 0 {
+            Ok(blob[..len as usize].to_vec())
+        } else {
+            Err(PlaybackError::io(
+                format!("Failed to read {len} bytes at {start} from /volume/track.flac"),
+                std::io::Error::from(std::io::ErrorKind::StorageFull),
+            ))
+        };
+        async move { result }
+    }));
+
+    let stop = timeout(
+        Duration::from_secs(5),
+        tokio::task::spawn_blocking(move || {
+            let mut b = [0u8; 1];
+            reader.read(&mut b)
+        }),
+    )
+    .await
+    .expect("a failed fetch must unblock the reader")
+    .expect("read task");
+    let Err(crate::playback::sparse_buffer::BufferStop::Failed(seen)) = stop else {
+        panic!("the reader must get the read failure, got {stop:?}");
+    };
+    assert!(seen.to_string().contains("/volume/track.flac"), "{seen}");
+
+    let reported = timeout(Duration::from_secs(5), fill)
+        .await
+        .expect("the fill exits on the failure")
+        .expect("fill task")
+        .expect_err("the fill returns the failure for its owner to report");
+    assert!(Arc::ptr_eq(&reported, &seen), "one error, not a copy");
+    assert_eq!(failure_kind(&buffer), Some(std::io::ErrorKind::StorageFull));
+}
+
+/// A fetch that fails after teardown belongs to a track that left the
+/// pipeline: the buffer stays cancelled and the fill reports nothing.
+#[tokio::test]
+async fn a_fetch_failing_after_teardown_reports_nothing() {
+    let buffer = create_sparse_buffer(WINDOW);
+    let gate = Arc::new(ReadGate::new());
+    let mut reader = buffer.new_reader();
+    assert!(reader.seek(0));
+    let fetch_gate = gate.clone();
+    let fill = tokio::spawn(buffer.clone().fill_on_demand(move |start, _len| {
+        let gate = fetch_gate.clone();
+        async move {
+            gate.wait_for(start).await;
+            Err::<Vec<u8>, _>(PlaybackError::internal("late read failure"))
+        }
+    }));
+    for _ in 0..20 {
+        tokio::task::yield_now().await;
+    }
+
+    buffer.cancel();
+    gate.release(0);
+
+    timeout(Duration::from_secs(5), fill)
+        .await
+        .expect("the fill exits")
+        .expect("fill task")
+        .expect("a failure after teardown is not reported");
+    assert!(buffer.is_cancelled());
+    assert!(buffer.failure().is_none());
+    drop(reader);
 }

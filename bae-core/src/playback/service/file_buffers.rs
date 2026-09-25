@@ -186,7 +186,7 @@ pub(super) async fn prepare_track_for_playback(
 /// to the command loop, naming the buffer it failed on. The loop is the only
 /// place that knows whether that buffer feeds the current track or a preloaded
 /// next, which is what decides whether the failure halts playback. (The fill
-/// itself cancels the buffer right after, unblocking the decoder.)
+/// has already failed the buffer with the same error, unblocking the decoder.)
 fn playback_fill_error_handler(
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     buffer_id: u64,

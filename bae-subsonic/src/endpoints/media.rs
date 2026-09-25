@@ -14,6 +14,7 @@ use bae_core::audio_codec::{decode_audio_to_sink, StreamEncodeFormat, StreamingE
 use bae_core::config::SaveCodec;
 use bae_core::db::LibraryImageType;
 use bae_core::library::AppServices;
+use bae_core::playback::sparse_buffer::BufferStop;
 use bae_core::playback::SharedSparseBuffer;
 use bytes::Bytes;
 use tokio::sync::mpsc;
@@ -150,10 +151,16 @@ fn reader_body(buffer: SharedSparseBuffer, start: u64, len: u64) -> Body {
         while remaining > 0 {
             let want = remaining.min(chunk.len() as u64) as usize;
             match reader.read(&mut chunk[..want]) {
-                // EOF or a cancelled buffer (the reader logs the cause): end the
-                // body. A short body signals the truncation to the client.
-                Some(0) | None => break,
-                Some(n) => {
+                // EOF or a cancelled buffer: end the body. A short body
+                // signals the truncation to the client.
+                Ok(0) | Err(BufferStop::Cancelled) => break,
+                // The source couldn't be read: fail the body with the read's
+                // error, so the response aborts instead of ending as if clean.
+                Err(BufferStop::Failed(error)) => {
+                    let _ = tx.blocking_send(Err(std::io::Error::other(error)));
+                    break;
+                }
+                Ok(n) => {
                     remaining -= n as u64;
                     if tx
                         .blocking_send(Ok(Bytes::copy_from_slice(&chunk[..n])))

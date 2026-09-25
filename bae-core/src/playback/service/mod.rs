@@ -33,7 +33,7 @@ use super::{
     repeat_to_str, source_to_str, ContextSource, ContextStart, NextEntry, PersistedPlayback,
     PreviousAction, PublishedQueue, QueueEntryId, QueueSnapshot,
 };
-use crate::audio_codec::StreamingDecodeError;
+use crate::audio_codec::DecodeError;
 use crate::db::{DbAudioSegmentRole, DbPlaybackContext, DbPlaybackState};
 use crate::diagnostics::{
     AnomalyKind, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
@@ -117,16 +117,20 @@ enum StagedNextOnReplace {
     Preserve,
 }
 
-pub(crate) fn log_streaming_decode_failure(
-    context: &str,
-    error: StreamingDecodeError,
-) -> Option<String> {
+pub(crate) fn log_streaming_decode_failure(context: &str, error: DecodeError) -> Option<String> {
     match error {
-        StreamingDecodeError::InputCancelled => {
+        DecodeError::InputCancelled => {
             debug!("{context} stopped after input cancellation");
             None
         }
-        StreamingDecodeError::Decode(message) => {
+        // The fill that failed the buffer already reported this read failure
+        // to the command loop (`ReadFailed`), which knows whether the buffer
+        // feeds the playing track or a preload and so whether playback halts.
+        DecodeError::SourceRead(error) => {
+            debug!("{context} stopped on a source read failure the fill reported: {error}");
+            None
+        }
+        DecodeError::Decode(message) => {
             error!("{context} failed: {message}");
             Some(message)
         }

@@ -11,7 +11,7 @@ pub(crate) fn decode_audio_to_verifying_sink(
     end_sample: Option<u64>,
     sink: &mut dyn DecodedSink,
     cancel: Arc<std::sync::atomic::AtomicBool>,
-) -> Result<(), String> {
+) -> Result<(), DecodeError> {
     decode_audio_to_sink_with_handling(
         buffer,
         None,

@@ -176,7 +176,7 @@ impl PlaybackService {
     ///   failure then if it persists;
     /// - neither: the buffer left the pipeline (released or stopped) before this
     ///   failure surfaced, so there is nothing left to halt.
-    pub(super) async fn handle_read_failed(&mut self, buffer_id: u64, error: PlaybackError) {
+    pub(super) async fn handle_read_failed(&mut self, buffer_id: u64, error: Arc<PlaybackError>) {
         if let PlaybackSlot::Active(cur) = &self.slot {
             if cur.prepared.reads_buffer(buffer_id) {
                 error!(
@@ -186,7 +186,7 @@ impl PlaybackService {
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PlaybackError {
-                        reason: error.into_ui_reason(),
+                        reason: error.ui_reason(),
                     },
                 );
                 return;
@@ -293,7 +293,7 @@ impl PlaybackService {
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PlaybackError {
-                        reason: PlaybackError::database(e).into_ui_reason(),
+                        reason: PlaybackError::database(e).ui_reason(),
                     },
                 );
                 return;
@@ -700,7 +700,7 @@ impl PlaybackService {
                                     PlaybackCommand::AutoAdvance { track_id },
                                 );
                             }
-                            // A mid-flight read failure cancels the buffer and the decoder
+                            // A mid-flight read failure fails the buffer and the decoder
                             // exits without a TrackCompleted, so without this the UI would
                             // sit in Playing forever.
                             PlaybackProgress::PlaybackError { .. } => {

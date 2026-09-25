@@ -10,7 +10,7 @@ fn test_append_and_read_single_range() {
     let mut reader = buffer.new_reader();
     let mut buf = [0u8; 5];
     reader.seek(0);
-    assert_eq!(reader.read(&mut buf), Some(5));
+    assert_eq!(reader.read(&mut buf).ok(), Some(5));
     assert_eq!(&buf, b"hello");
 }
 
@@ -50,7 +50,7 @@ fn test_adjacent_ranges_merge() {
     let mut reader = buffer.new_reader();
     reader.seek(0);
     let mut buf = [0u8; 8];
-    assert_eq!(reader.read(&mut buf), Some(8));
+    assert_eq!(reader.read(&mut buf).ok(), Some(8));
     assert_eq!(&buf, b"aaaabbbb");
 }
 
@@ -65,7 +65,7 @@ fn test_overlapping_ranges_merge() {
     let mut reader = buffer.new_reader();
     reader.seek(0);
     let mut buf = [0u8; 10];
-    assert_eq!(reader.read(&mut buf), Some(10));
+    assert_eq!(reader.read(&mut buf).ok(), Some(10));
     // First 4 bytes are 'a', bytes 4-9 are 'b'
     assert_eq!(&buf, b"aaaabbbbbb");
 }
@@ -79,7 +79,7 @@ fn test_read_blocks_until_data_available() {
         let mut reader = buf_clone.new_reader();
         let mut data = [0u8; 5];
         reader.seek(0);
-        reader.read(&mut data)
+        reader.read(&mut data).ok()
     });
 
     thread::sleep(Duration::from_millis(10));
@@ -110,13 +110,13 @@ fn test_seek_and_read_from_different_ranges() {
     // Read from first range
     reader.seek(0);
     let mut buf = [0u8; 5];
-    assert_eq!(reader.read(&mut buf), Some(5));
+    assert_eq!(reader.read(&mut buf).ok(), Some(5));
     assert_eq!(&buf, b"first");
 
     // Seek to second range and read
     reader.seek(100);
     let mut buf = [0u8; 6];
-    assert_eq!(reader.read(&mut buf), Some(6));
+    assert_eq!(reader.read(&mut buf).ok(), Some(6));
     assert_eq!(&buf, b"second");
 }
 
@@ -130,13 +130,16 @@ fn test_cancel_unblocks_reader() {
         let mut reader = buf_clone.new_reader();
         let mut data = [0u8; 5];
         reader.seek(50); // Position not buffered
-        reader.read(&mut data)
+        matches!(reader.read(&mut data), Err(BufferStop::Cancelled))
     });
 
     thread::sleep(Duration::from_millis(10));
     buffer.cancel();
 
-    assert_eq!(handle.join().unwrap(), None);
+    assert!(
+        handle.join().unwrap(),
+        "a cancel unblocks the reader as a cancel"
+    );
 }
 
 #[test]
@@ -149,10 +152,10 @@ fn test_eof_with_total_size() {
     // Read all data
     reader.seek(0);
     let mut buf = [0u8; 20];
-    assert_eq!(reader.read(&mut buf), Some(8));
+    assert_eq!(reader.read(&mut buf).ok(), Some(8));
 
     // Reaching the total size is end-of-file.
-    assert_eq!(reader.read(&mut buf), Some(0));
+    assert_eq!(reader.read(&mut buf).ok(), Some(0));
 }
 
 #[test]
@@ -200,17 +203,17 @@ fn test_multiple_readers_independent_positions() {
 
     // Reader 1 reads from start
     let mut buf1 = [0u8; 3];
-    assert_eq!(reader1.read(&mut buf1), Some(3));
+    assert_eq!(reader1.read(&mut buf1).ok(), Some(3));
     assert_eq!(&buf1, b"abc");
 
     // Reader 2 seeks to middle and reads
     reader2.seek(5);
     let mut buf2 = [0u8; 3];
-    assert_eq!(reader2.read(&mut buf2), Some(3));
+    assert_eq!(reader2.read(&mut buf2).ok(), Some(3));
     assert_eq!(&buf2, b"fgh");
 
     // Reader 1 continues from where it left off
-    assert_eq!(reader1.read(&mut buf1), Some(3));
+    assert_eq!(reader1.read(&mut buf1).ok(), Some(3));
     assert_eq!(&buf1, b"def");
 }
 
@@ -226,19 +229,70 @@ fn token_cancel_only_affects_one_reader() {
     let handle = thread::spawn(move || {
         let mut reader1 = reader_buffer.new_reader_with_cancel(reader_cancel);
         let mut buf = [0u8; 5];
-        reader1.read(&mut buf)
+        matches!(reader1.read(&mut buf), Err(BufferStop::Cancelled))
     });
 
     thread::sleep(Duration::from_millis(10));
     cancel1.store(true, std::sync::atomic::Ordering::Release);
     buffer.wake_readers();
 
-    assert_eq!(join_within(handle, Duration::from_millis(500)), Some(None));
+    assert_eq!(join_within(handle, Duration::from_millis(500)), Some(true));
 
     buffer.append_at(0, b"hello");
     let mut buf = [0u8; 5];
-    assert_eq!(reader2.read(&mut buf), Some(5));
+    assert_eq!(reader2.read(&mut buf).ok(), Some(5));
     assert_eq!(&buf, b"hello");
+}
+
+/// A failed fill unblocks a waiting reader with the read's own error, and the
+/// first stop wins: a later cancel doesn't turn the failure into a cancel, and
+/// a failure after teardown is not taken (it belongs to a track that left).
+#[test]
+fn a_failed_buffer_hands_readers_the_read_error_and_the_first_stop_wins() {
+    let buffer = create_sparse_buffer(100);
+    let buf_clone = buffer.clone();
+    let handle = thread::spawn(move || {
+        let mut reader = buf_clone.new_reader();
+        let mut data = [0u8; 5];
+        match reader.read(&mut data) {
+            Err(BufferStop::Failed(error)) => Some(error.to_string()),
+            other => panic!("expected the read failure, got {other:?}"),
+        }
+    });
+
+    thread::sleep(Duration::from_millis(10));
+    let full = Arc::new(PlaybackError::io(
+        "Failed to read 100 bytes at 0 from /volume/track.flac",
+        std::io::Error::from(std::io::ErrorKind::StorageFull),
+    ));
+    assert!(buffer.fail(full), "the first stop is taken");
+
+    let seen = join_within(handle, Duration::from_secs(5))
+        .expect("a failure unblocks the reader")
+        .expect("the reader saw the failure");
+    assert!(
+        seen.contains("/volume/track.flac"),
+        "the reader gets the read's own error: {seen}"
+    );
+
+    buffer.cancel();
+    assert!(
+        !buffer.is_cancelled(),
+        "a later cancel doesn't mask the failure"
+    );
+    let kind = buffer.failure().and_then(|error| match error.as_ref() {
+        PlaybackError::Io { source, .. } => Some(source.kind()),
+        _ => None,
+    });
+    assert_eq!(kind, Some(std::io::ErrorKind::StorageFull));
+
+    let torn_down = create_sparse_buffer(100);
+    torn_down.cancel();
+    assert!(
+        !torn_down.fail(Arc::new(PlaybackError::internal("late read failure"))),
+        "a failure after teardown is not taken"
+    );
+    assert!(torn_down.is_cancelled());
 }
 
 #[test]
@@ -319,7 +373,7 @@ fn read_publishes_demand_at_the_advanced_position() {
     assert!(buffer.demands_sorted().is_empty());
 
     let mut buf = [0u8; 4];
-    assert_eq!(reader.read(&mut buf), Some(4));
+    assert_eq!(reader.read(&mut buf).ok(), Some(4));
     // After reading 4 bytes the demand has advanced to where the next read
     // will land, so the fill loop reads ahead of the playhead.
     assert_eq!(buffer.demands_sorted(), vec![4]);
@@ -424,7 +478,7 @@ fn blocked_reader_publishes_demand_at_its_blocked_position() {
         let mut reader = buf.new_reader();
         assert!(reader.seek(500));
         let mut out = [0u8; 4];
-        reader.read(&mut out)
+        reader.read(&mut out).ok()
     });
 
     // Let the reader reach its blocked wait, then inspect its published demand.
@@ -454,7 +508,7 @@ fn evict_before_drops_passed_ranges_and_trims_a_straddling_one() {
     let mut reader = buffer.new_reader();
     assert!(reader.seek(5));
     let mut buf = [0u8; 5];
-    assert_eq!(reader.read(&mut buf), Some(5));
+    assert_eq!(reader.read(&mut buf).ok(), Some(5));
     assert_eq!(&buf, b"56789");
     drop(reader);
 
@@ -481,10 +535,10 @@ fn append_before_an_existing_range_inserts_in_sorted_order() {
     let mut reader = buffer.new_reader();
     let mut buf = [0u8; 4];
     reader.seek(0);
-    assert_eq!(reader.read(&mut buf), Some(4));
+    assert_eq!(reader.read(&mut buf).ok(), Some(4));
     assert_eq!(&buf, b"aaaa");
     reader.seek(100);
-    assert_eq!(reader.read(&mut buf), Some(4));
+    assert_eq!(reader.read(&mut buf).ok(), Some(4));
     assert_eq!(&buf, b"bbbb");
 }
 

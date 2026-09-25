@@ -5,10 +5,11 @@
 //! pairs with the `unsafe extern "C"` read/write/seek callbacks FFmpeg invokes
 //! directly.
 
-use crate::playback::SharedSparseBuffer;
+use crate::playback::sparse_buffer::BufferStop;
+use crate::playback::{PlaybackError, SharedSparseBuffer};
 use std::io::{Seek, SeekFrom, Write};
 use std::os::raw::{c_int, c_void};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use tracing::warn;
 
 // --- AVIO custom I/O implementation ---
@@ -45,6 +46,12 @@ pub(crate) struct StreamingAvioContext {
     /// Set by the playback service to stop this decoder alone, leaving the others
     /// on the same buffer running.
     cancel_token: Arc<std::sync::atomic::AtomicBool>,
+    /// The source-read error a read of this decoder's hit, if one did. FFmpeg
+    /// only sees an I/O error code from the read callback, and what it makes of
+    /// one depends on where it lands (an empty probe is "Invalid data found", a
+    /// mid-stream one ends the packet loop like EOF), so the decode consults
+    /// this to report the read's own cause instead.
+    read_failure: OnceLock<Arc<PlaybackError>>,
 }
 
 impl StreamingAvioContext {
@@ -57,7 +64,12 @@ impl StreamingAvioContext {
             reader: std::sync::Mutex::new(reader),
             buffer,
             cancel_token,
+            read_failure: OnceLock::new(),
         }
+    }
+
+    pub(super) fn read_failure(&self) -> Option<Arc<PlaybackError>> {
+        self.read_failure.get().cloned()
     }
 
     pub(super) fn set_readahead_ceiling(&self, ceiling: u64) {
@@ -78,14 +90,20 @@ pub(crate) unsafe extern "C" fn streaming_avio_read_callback(
 
     let output = std::slice::from_raw_parts_mut(buf, buf_size as usize);
     match ctx.reader.lock().unwrap().read(output) {
-        Some(0) => ffmpeg_sys_next::AVERROR_EOF,
-        Some(n) => n as c_int,
-        None => {
+        Ok(0) => ffmpeg_sys_next::AVERROR_EOF,
+        Ok(n) => n as c_int,
+        Err(BufferStop::Cancelled) => {
             // The buffer was cancelled under us: set our own token too, so the
             // decode loop sees the cancellation rather than reading it as EOF.
             ctx.cancel_token
                 .store(true, std::sync::atomic::Ordering::Relaxed);
             ffmpeg_sys_next::AVERROR_EOF
+        }
+        Err(BufferStop::Failed(error)) => {
+            // Every later read fails the same way (the stop is terminal), so the
+            // first error is the one to keep.
+            let _ = ctx.read_failure.set(error);
+            ffmpeg_sys_next::AVERROR(ffmpeg_sys_next::EIO)
         }
     }
 }
