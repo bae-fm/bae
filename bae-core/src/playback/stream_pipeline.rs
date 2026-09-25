@@ -152,11 +152,6 @@ impl StreamDecodeParams {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn set_leading_silence_frames(&mut self, frames: u64) {
-        self.leading_silence_frames = frames;
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn leading_silence_frames(&self) -> u64 {
         self.leading_silence_frames
     }

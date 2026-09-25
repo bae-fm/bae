@@ -1,6 +1,10 @@
 use crate::audio_codec::{EncodeFormat, StreamingEncoder};
 use crate::library::SaveTrackPlan;
-use std::path::Path;
+use crate::playback::track_sources::{run_tracks_over_sources, SourceStream};
+use crate::playback::SharedSparseBuffer;
+use std::collections::HashMap;
+use std::num::NonZeroUsize;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tracing::{debug, warn};
@@ -85,7 +89,7 @@ pub(crate) fn sanitize_filename_stem(input: &str) -> String {
         .to_string()
 }
 
-pub struct SaveService;
+pub(crate) struct SaveService;
 
 struct CancelOnDrop(Arc<AtomicBool>);
 
@@ -131,29 +135,77 @@ impl Drop for OutputPathsGuard {
     }
 }
 
+/// One track handed to a release image's encoder thread: its decode, and
+/// where to send back its CUE entry.
+struct ImageTrack {
+    index: usize,
+    track_id: String,
+    title: String,
+    performer: String,
+    audio_pregap_samples: Option<i64>,
+    decode: crate::playback::stream_pipeline::StreamDecodeParams,
+    reply: tokio::sync::oneshot::Sender<Result<CueTrack, String>>,
+}
+
 impl SaveService {
-    /// Export a single track to the given format.
+    /// Save each track to its own output path, up to `parallelism` at once.
     ///
     /// For one-file-per-track: decodes and re-encodes to the target format.
     /// For CUE/FLAC: extracts, decodes, and re-encodes as a standalone file.
     /// Embeds metadata (title, artist, album, year, track number, cover art).
+    /// A source file is open only while a track reading it is being saved
+    /// (see [`run_tracks_over_sources`]); `open` opens one by release file id.
+    /// `on_saved` runs as each track's file is written.
     ///
     /// On future-drop the cancel flag flips, the encoder loop exits between
     /// frames, and any partially-written output file is removed.
-    pub async fn save_track(
-        plan: SaveTrackPlan,
-        output_path: &Path,
-        preset: crate::config::SavePreset,
+    pub(crate) async fn save_tracks(
+        tracks: Vec<(SaveTrackPlan, PathBuf)>,
+        cover_image_bytes: Option<Vec<u8>>,
+        codec: crate::config::SaveCodec,
+        parallelism: NonZeroUsize,
+        open: impl Fn(&String) -> SourceStream,
+        on_saved: Arc<dyn Fn() + Send + Sync>,
     ) -> Result<(), String> {
-        Self::save_track_with_codec(plan, output_path, preset.codec).await
+        let cover_image_bytes = Arc::new(cover_image_bytes);
+        run_tracks_over_sources(
+            tracks,
+            parallelism,
+            |(plan, _): &(SaveTrackPlan, PathBuf)| plan.source_files(),
+            open,
+            |(plan, output_path), streams| {
+                let cover_image_bytes = cover_image_bytes.clone();
+                let codec = codec.clone();
+                let on_saved = on_saved.clone();
+                async move {
+                    Self::save_track_with_codec(
+                        plan,
+                        streams,
+                        cover_image_bytes,
+                        output_path,
+                        codec,
+                    )
+                    .await?;
+                    on_saved();
+                    Ok(())
+                }
+            },
+        )
+        .await
+        .map(|_| ())
     }
 
-    pub async fn save_release_image_with_cue(
+    /// Save every track, in order, into one audio image with a CUE sheet
+    /// indexing them. Tracks stream into the image one at a time; a source
+    /// file is open only while a track reading it is being encoded.
+    pub(crate) async fn save_release_image_with_cue(
         plans: Vec<SaveTrackPlan>,
+        cover_image_bytes: Option<Vec<u8>>,
         output_audio_path: &Path,
         output_cue_path: &Path,
         catalog: Option<String>,
         preset: crate::config::SavePreset,
+        open: impl Fn(&String) -> SourceStream,
     ) -> Result<(), String> {
         if plans.is_empty() {
             return Err("release image export requires at least one track".to_string());
@@ -170,7 +222,6 @@ impl SaveService {
         let channels = stored_channels(&plans[0])?;
         let release_title = plans[0].resolved.tags.album.clone();
         let release_performer = plans[0].resolved.tags.artist.clone();
-        let cover_image_bytes = plans[0].cover_image_bytes.clone();
         let is_digital = plans[0].resolved.is_digital;
         let year = plans[0].resolved.tags.year;
         let cue_file_type = cue_file_type(&preset.codec)?;
@@ -196,75 +247,87 @@ impl SaveService {
         };
         let total_tracks = plans.len() as u32;
 
-        let output_audio_path_owned = output_audio_path.to_path_buf();
-        let output_cue_path_owned = output_cue_path.to_path_buf();
-        let cancel_for_blocking = Arc::clone(&cancel);
+        let output_audio_path = output_audio_path.to_path_buf();
+        let output_cue_path = output_cue_path.to_path_buf();
+        // Declared before the encode starts, so every exit below removes the
+        // partial image and sheet unless the save commits them.
+        let mut output_guard =
+            OutputPathsGuard::new(vec![output_audio_path.clone(), output_cue_path.clone()]);
+
+        // The encoder lives on one thread for the whole image (FFmpeg's
+        // contexts cannot move between threads); tracks reach it in order,
+        // one at a time, each while its sources are open.
+        let (tracks_tx, tracks_rx) = std::sync::mpsc::channel::<ImageTrack>();
+        let encode = tokio::task::spawn_blocking({
+            let output_audio_path = output_audio_path.clone();
+            let cancel = cancel.clone();
+            move || -> Result<(), String> {
+                let file = std::fs::File::create(&output_audio_path)
+                    .map_err(|e| format!("Failed to create release image: {e}"))?;
+                let mut encoder =
+                    StreamingEncoder::seekable(format, Box::new(file), cancel.clone());
+                let mut current_sample_frame = 0u64;
+                let mut failed = false;
+                for track in tracks_rx {
+                    let entry = encode_image_track(
+                        &track,
+                        &mut encoder,
+                        &mut current_sample_frame,
+                        sample_rate,
+                        channels,
+                        cancel.clone(),
+                    );
+                    failed |= entry.is_err();
+                    // The track's save is waiting on this answer; one that
+                    // stopped waiting was cancelled with the whole save.
+                    let _ = track.reply.send(entry);
+                }
+                if failed {
+                    return Ok(());
+                }
+                encoder.finish()
+            }
+        });
+
+        let tracks = run_tracks_over_sources(
+            plans.into_iter().enumerate().collect(),
+            NonZeroUsize::MIN,
+            |(_, plan): &(usize, SaveTrackPlan)| plan.source_files(),
+            open,
+            |(index, plan), streams| {
+                let tracks_tx = tracks_tx.clone();
+                async move {
+                    let decode = plan.decode(&streams).map_err(|e| e.to_string())?;
+                    drop(streams);
+                    let (reply, entry) = tokio::sync::oneshot::channel();
+                    tracks_tx
+                        .send(ImageTrack {
+                            index,
+                            track_id: plan.audio_meta.track.id.clone(),
+                            title: plan.resolved.tags.title.clone(),
+                            performer: plan.resolved.tags.artist.clone(),
+                            audio_pregap_samples: plan.audio_meta.audio_format.pregap_samples,
+                            decode,
+                            reply,
+                        })
+                        .map_err(|_| "the release image encoder stopped".to_string())?;
+                    entry
+                        .await
+                        .map_err(|_| "the release image encoder stopped".to_string())?
+                }
+            },
+        )
+        .await;
+        drop(tracks_tx);
+        // The encoder's own failure (it could not create the image, or finish
+        // it) explains a track's "stopped" better than the track does.
+        encode
+            .await
+            .map_err(|e| format!("encode task join error: {e}"))??;
+        let cue_tracks = tracks?;
 
         tokio::task::spawn_blocking(move || -> Result<(), String> {
-            let mut output_guard = OutputPathsGuard::new(vec![
-                output_audio_path_owned.clone(),
-                output_cue_path_owned.clone(),
-            ]);
-
-            let file = std::fs::File::create(&output_audio_path_owned)
-                .map_err(|e| format!("Failed to create release image: {e}"))?;
-            let mut encoder =
-                StreamingEncoder::seekable(format, Box::new(file), cancel_for_blocking.clone());
-
-            // One track at a time into the shared encoder: silence + segments
-            // stream through, and the accepted-frame delta is the track's length
-            // for its CUE INDEX lines. The encoder's equal-shape rule turns a
-            // PCM-shape change between tracks into a loud failure.
-            let mut cue_tracks = Vec::with_capacity(plans.len());
-            let mut current_sample_frame = 0u64;
-            for (index, plan) in plans.iter().enumerate() {
-                let pregap_sample_frames = plan
-                    .decode
-                    .leading_silence_frames()
-                    .checked_add(non_negative_samples(
-                        plan.audio_meta.audio_format.pregap_samples,
-                    )?)
-                    .ok_or_else(|| "CUE pregap sample count overflow".to_string())?;
-
-                let frames_before = encoder.frames_accepted();
-                plan.decode.run_to_sink(
-                    sample_rate,
-                    channels,
-                    &mut encoder,
-                    cancel_for_blocking.clone(),
-                )?;
-                if let Some(error) = encoder.error() {
-                    return Err(error.to_string());
-                }
-                let segment_sample_frames = encoder.frames_accepted() - frames_before;
-                if pregap_sample_frames > segment_sample_frames {
-                    return Err(format!(
-                        "track {} pregap exceeds decoded segment length",
-                        plan.audio_meta.track.id
-                    ));
-                }
-
-                cue_tracks.push(CueTrack {
-                    number: u8::try_from(index + 1)
-                        .map_err(|_| "CUE track number exceeds 99".to_string())?,
-                    title: plan.resolved.tags.title.clone(),
-                    performer: plan.resolved.tags.artist.clone(),
-                    index_00_sample_frame: (pregap_sample_frames > 0)
-                        .then_some(current_sample_frame),
-                    index_01_sample_frame: current_sample_frame
-                        .checked_add(pregap_sample_frames)
-                        .ok_or_else(|| {
-                        "CUE index sample count overflow".to_string()
-                    })?,
-                });
-                current_sample_frame = current_sample_frame
-                    .checked_add(segment_sample_frames)
-                    .ok_or_else(|| "release image sample count overflow".to_string())?;
-            }
-
-            encoder.finish()?;
-
-            if cancel_for_blocking.load(Ordering::Relaxed) {
+            if cancel.load(Ordering::Relaxed) {
                 return Err("export cancelled".to_string());
             }
 
@@ -281,15 +344,15 @@ impl SaveService {
                 sample_rate,
                 &cue_tracks,
             );
-            std::fs::write(&output_cue_path_owned, cue)
+            std::fs::write(&output_cue_path, cue)
                 .map_err(|e| format!("Failed to write CUE sheet: {e}"))?;
 
-            if cancel_for_blocking.load(Ordering::Relaxed) {
+            if cancel.load(Ordering::Relaxed) {
                 return Err("export cancelled".to_string());
             }
 
             write_tags(
-                &output_audio_path_owned,
+                &output_audio_path,
                 tag_type,
                 &tags,
                 None,
@@ -298,22 +361,23 @@ impl SaveService {
                 cover_image_bytes.as_deref(),
             )?;
 
-            if cancel_for_blocking.load(Ordering::Relaxed) {
+            if cancel.load(Ordering::Relaxed) {
                 return Err("export cancelled".to_string());
             }
-
-            output_guard.commit();
             Ok(())
         })
         .await
         .map_err(|e| format!("encode task join error: {e}"))??;
 
+        output_guard.commit();
         Ok(())
     }
 
     async fn save_track_with_codec(
         plan: SaveTrackPlan,
-        output_path: &Path,
+        streams: HashMap<String, SharedSparseBuffer>,
+        cover_image_bytes: Arc<Option<Vec<u8>>>,
+        output_path: PathBuf,
         codec: crate::config::SaveCodec,
     ) -> Result<(), String> {
         let track_id = plan.audio_meta.track.id.clone();
@@ -326,17 +390,18 @@ impl SaveService {
         let tag_type = codec_tag_type(&codec);
         let sample_rate = stored_sample_rate(&plan)?;
         let channels = stored_channels(&plan)?;
+        let decode = plan.decode(&streams).map_err(|e| e.to_string())?;
+        drop(streams);
 
-        let output_path_owned = output_path.to_path_buf();
         let cancel_for_blocking = Arc::clone(&cancel);
         tokio::task::spawn_blocking(move || -> Result<(), String> {
-            let mut output_guard = OutputPathsGuard::new(vec![output_path_owned.clone()]);
+            let mut output_guard = OutputPathsGuard::new(vec![output_path.clone()]);
 
-            let file = std::fs::File::create(&output_path_owned)
+            let file = std::fs::File::create(&output_path)
                 .map_err(|e| format!("Failed to create track file: {e}"))?;
             let mut encoder =
                 StreamingEncoder::seekable(format, Box::new(file), cancel_for_blocking.clone());
-            plan.decode.run_to_sink(
+            decode.run_to_sink(
                 sample_rate,
                 channels,
                 &mut encoder,
@@ -355,13 +420,13 @@ impl SaveService {
             }
 
             write_tags(
-                &output_path_owned,
+                &output_path,
                 tag_type,
                 &plan.resolved.tags,
                 plan.resolved.track_number.map(|n| n as u32),
                 plan.resolved.total_tracks as u32,
                 plan.resolved.is_digital,
-                plan.cover_image_bytes.as_deref(),
+                cover_image_bytes.as_deref(),
             )?;
 
             if cancel_for_blocking.load(Ordering::Relaxed) {
@@ -377,6 +442,54 @@ impl SaveService {
         debug!("Successfully exported track {}", track_id);
         Ok(())
     }
+}
+
+/// Stream one track of a release image into its encoder and index it: its
+/// CUE track entry, with INDEX 00 where its pregap starts and INDEX 01 where
+/// its audio does.
+fn encode_image_track(
+    track: &ImageTrack,
+    encoder: &mut StreamingEncoder,
+    current_sample_frame: &mut u64,
+    sample_rate: u32,
+    channels: u32,
+    cancel: Arc<AtomicBool>,
+) -> Result<CueTrack, String> {
+    let pregap_sample_frames = track
+        .decode
+        .leading_silence_frames()
+        .checked_add(non_negative_samples(track.audio_pregap_samples)?)
+        .ok_or_else(|| "CUE pregap sample count overflow".to_string())?;
+
+    let frames_before = encoder.frames_accepted();
+    track
+        .decode
+        .run_to_sink(sample_rate, channels, encoder, cancel)?;
+    if let Some(error) = encoder.error() {
+        return Err(error.to_string());
+    }
+    let segment_sample_frames = encoder.frames_accepted() - frames_before;
+    if pregap_sample_frames > segment_sample_frames {
+        return Err(format!(
+            "track {} pregap exceeds decoded segment length",
+            track.track_id
+        ));
+    }
+
+    let start = *current_sample_frame;
+    *current_sample_frame = start
+        .checked_add(segment_sample_frames)
+        .ok_or_else(|| "release image sample count overflow".to_string())?;
+    Ok(CueTrack {
+        number: u8::try_from(track.index + 1)
+            .map_err(|_| "CUE track number exceeds 99".to_string())?,
+        title: track.title.clone(),
+        performer: track.performer.clone(),
+        index_00_sample_frame: (pregap_sample_frames > 0).then_some(start),
+        index_01_sample_frame: start
+            .checked_add(pregap_sample_frames)
+            .ok_or_else(|| "CUE index sample count overflow".to_string())?,
+    })
 }
 
 /// The stored sample rate for this plan's track, validated usable. The decode
@@ -624,295 +737,5 @@ fn write_tags(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::library::manager::{ResolvedSaveTags, SaveTags};
-
-    fn resolved(
-        title: &str,
-        track_number: Option<i32>,
-        total_tracks: usize,
-        disc: Option<i32>,
-        year: Option<i32>,
-    ) -> ResolvedSaveTags {
-        ResolvedSaveTags {
-            tags: SaveTags {
-                title: title.to_string(),
-                artist: "Artist Name".to_string(),
-                album: "Album Title".to_string(),
-                year,
-                disc,
-            },
-            track_number,
-            total_tracks,
-            is_digital: true,
-        }
-    }
-
-    use crate::config::SaveFilenameToken::{Album, Artist, Title, TrackNumber, Year};
-
-    #[test]
-    fn default_pattern_all_present_pads_track_number() {
-        let r = resolved("Track Title", Some(3), 10, None, Some(2001));
-        assert_eq!(
-            render_save_filename(&[TrackNumber, Title], &r),
-            "03 Track Title"
-        );
-    }
-
-    #[test]
-    fn absent_values_drop_out_of_the_join() {
-        let r = resolved("Track Title", None, 10, None, None);
-        assert_eq!(
-            render_save_filename(&[TrackNumber, Title, Year], &r),
-            "Track Title"
-        );
-    }
-
-    #[test]
-    fn full_pattern_substitutes_every_token() {
-        let r = resolved("Track Title", Some(3), 10, Some(2), Some(2001));
-        assert_eq!(
-            render_save_filename(&[Artist, Album, TrackNumber, Title], &r),
-            "Artist Name Album Title 03 Track Title"
-        );
-    }
-
-    #[test]
-    fn slash_and_colon_become_dashes() {
-        let r = resolved("Some/Weird:Title", None, 1, None, None);
-        assert_eq!(render_save_filename(&[Title], &r), "Some-Weird-Title");
-    }
-
-    #[test]
-    fn path_escape_leaves_no_separator() {
-        let r = resolved("../secret", None, 1, None, None);
-        let name = render_save_filename(&[Title], &r);
-        assert!(!name.contains('/'), "no forward slash in {name}");
-        assert!(!name.contains('\\'), "no backslash in {name}");
-    }
-
-    #[test]
-    fn empty_render_falls_back_to_title() {
-        let r = resolved("Fallback Title", None, 1, None, None);
-        assert_eq!(render_save_filename(&[TrackNumber], &r), "Fallback Title");
-    }
-
-    #[test]
-    fn release_image_cue_places_indexes_from_track_windows() {
-        let cue = render_cue_sheet(
-            "Album Title",
-            "Artist Name",
-            None,
-            None,
-            "Album.flac",
-            "WAVE",
-            44_100,
-            &[
-                CueTrack {
-                    number: 1,
-                    title: "Opening".to_string(),
-                    performer: "Artist Name".to_string(),
-                    index_00_sample_frame: Some(0),
-                    index_01_sample_frame: 44_100 * 2,
-                },
-                CueTrack {
-                    number: 2,
-                    title: "Second".to_string(),
-                    performer: "Artist Name".to_string(),
-                    index_00_sample_frame: Some(44_100 * 10),
-                    index_01_sample_frame: 44_100 * 12,
-                },
-            ],
-        );
-
-        assert!(cue.contains("FILE \"Album.flac\" WAVE"));
-        assert!(cue.contains("  TRACK 01 AUDIO\n"));
-        assert!(cue.contains("    INDEX 00 00:00:00\n"));
-        assert!(cue.contains("    INDEX 01 00:02:00\n"));
-        assert!(cue.contains("  TRACK 02 AUDIO\n"));
-        assert!(cue.contains("    INDEX 00 00:10:00\n"));
-        assert!(cue.contains("    INDEX 01 00:12:00\n"));
-    }
-
-    #[test]
-    fn release_image_cue_writes_catalog_and_date() {
-        let cue = render_cue_sheet(
-            "Album Title",
-            "Artist Name",
-            Some("0123456789012"),
-            Some(2024),
-            "Album.flac",
-            "WAVE",
-            44_100,
-            &[CueTrack {
-                number: 1,
-                title: "Opening".to_string(),
-                performer: "Artist Name".to_string(),
-                index_00_sample_frame: None,
-                index_01_sample_frame: 0,
-            }],
-        );
-
-        assert!(cue.contains("CATALOG 0123456789012\n"));
-        assert!(cue.contains("REM DATE 2024\n"));
-    }
-
-    /// Encode a short FLAC and run the real `write_tags` over it with `cover`.
-    /// Returns the temp dir — which has to outlive the read-back — and the
-    /// tagged file's path.
-    fn write_tags_to_encoded_flac(cover: Option<&[u8]>) -> (tempfile::TempDir, std::path::PathBuf) {
-        crate::audio_codec::init();
-        let samples: Vec<i32> = (0..4410)
-            .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
-            .collect();
-        let flac = crate::audio_codec::encode_i32(
-            crate::audio_codec::EncodeFormat::Flac {
-                bits_per_sample: 16,
-            },
-            &samples,
-            44100,
-            1,
-        )
-        .unwrap();
-
-        let tags = SaveTags {
-            title: "Track Title".to_string(),
-            artist: "Artist Name".to_string(),
-            album: "Album Title".to_string(),
-            year: Some(2001),
-            disc: Some(1),
-        };
-
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("tagged.flac");
-        std::fs::write(&path, &flac).unwrap();
-        write_tags(
-            &path,
-            lofty::tag::TagType::VorbisComments,
-            &tags,
-            Some(3),
-            10,
-            true,
-            cover,
-        )
-        .unwrap();
-        (dir, path)
-    }
-
-    /// Exercises the real `write_tags` against an encoded FLAC: every known tag
-    /// and the cover image are embedded.
-    #[test]
-    fn write_tags_writes_every_known_field() {
-        use lofty::prelude::*;
-        use lofty::tag::TagType;
-
-        let cover_bytes = {
-            let img = image::RgbImage::from_pixel(8, 8, image::Rgb([120, 40, 200]));
-            let mut buf = std::io::Cursor::new(Vec::new());
-            image::DynamicImage::ImageRgb8(img)
-                .write_to(&mut buf, image::ImageFormat::Png)
-                .unwrap();
-            buf.into_inner()
-        };
-
-        let (_dir, path) = write_tags_to_encoded_flac(Some(&cover_bytes));
-
-        let tagged = lofty::read_from_path(&path).unwrap();
-        let tag = tagged
-            .tag(TagType::VorbisComments)
-            .expect("VorbisComments tag present");
-        assert_eq!(tag.title().as_deref(), Some("Track Title"));
-        assert_eq!(tag.artist().as_deref(), Some("Artist Name"));
-        assert_eq!(tag.album().as_deref(), Some("Album Title"));
-        assert_eq!(tag.track(), Some(3));
-        assert_eq!(tag.track_total(), Some(10));
-        assert_eq!(tag.disk(), Some(1));
-        assert!(!tag.pictures().is_empty(), "cover embedded");
-    }
-
-    /// The counterpart: when the preset doesn't embed (so the plan carries no
-    /// cover bytes), `write_tags` embeds no picture — every other tag still lands.
-    #[test]
-    fn write_tags_without_cover_embeds_no_picture() {
-        use lofty::prelude::*;
-        use lofty::tag::TagType;
-
-        let (_dir, path) = write_tags_to_encoded_flac(None);
-
-        let tagged = lofty::read_from_path(&path).unwrap();
-        let tag = tagged
-            .tag(TagType::VorbisComments)
-            .expect("VorbisComments tag present");
-        assert_eq!(tag.title().as_deref(), Some("Track Title"));
-        assert_eq!(tag.track(), Some(3));
-        assert!(
-            tag.pictures().is_empty(),
-            "no cover bytes means no embedded picture"
-        );
-    }
-
-    /// AAC exports write MP4 `ilst` atoms. Encode a real .m4a, tag it with the
-    /// container `codec_tag_type` picks for AAC, and read every field back —
-    /// proving the tag type is wired to a container lofty writes natively.
-    #[test]
-    fn write_tags_round_trips_through_mp4_ilst() {
-        use lofty::prelude::*;
-        use lofty::tag::TagType;
-
-        crate::audio_codec::init();
-        let samples: Vec<i32> = (0..44_100 * 2)
-            .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
-            .collect();
-        let m4a = crate::audio_codec::encode_i32(
-            crate::audio_codec::EncodeFormat::Aac { bitrate_kbps: 256 },
-            &samples,
-            44_100,
-            2,
-        )
-        .unwrap();
-
-        let cover_bytes = {
-            let img = image::RgbImage::from_pixel(8, 8, image::Rgb([120, 40, 200]));
-            let mut buf = std::io::Cursor::new(Vec::new());
-            image::DynamicImage::ImageRgb8(img)
-                .write_to(&mut buf, image::ImageFormat::Jpeg)
-                .unwrap();
-            buf.into_inner()
-        };
-
-        let tags = SaveTags {
-            title: "Track Title".to_string(),
-            artist: "Artist Name".to_string(),
-            album: "Album Title".to_string(),
-            year: Some(2001),
-            disc: Some(1),
-        };
-
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("tagged.m4a");
-        std::fs::write(&path, &m4a).unwrap();
-        let tag_type = codec_tag_type(&crate::config::SaveCodec::Aac { bitrate_kbps: 256 });
-        assert_eq!(tag_type, TagType::Mp4Ilst);
-        write_tags(
-            &path,
-            tag_type,
-            &tags,
-            Some(3),
-            10,
-            true,
-            Some(&cover_bytes),
-        )
-        .unwrap();
-
-        let tagged = lofty::read_from_path(&path).unwrap();
-        let tag = tagged.tag(TagType::Mp4Ilst).expect("MP4 ilst tag present");
-        assert_eq!(tag.title().as_deref(), Some("Track Title"));
-        assert_eq!(tag.artist().as_deref(), Some("Artist Name"));
-        assert_eq!(tag.album().as_deref(), Some("Album Title"));
-        assert_eq!(tag.track(), Some(3));
-        assert_eq!(tag.track_total(), Some(10));
-        assert_eq!(tag.disk(), Some(1));
-        assert!(!tag.pictures().is_empty(), "cover embedded");
-    }
-}
+#[path = "save_tests.rs"]
+mod tests;

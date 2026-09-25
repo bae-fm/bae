@@ -51,8 +51,6 @@ pub use output_snapshot::{OutputKind, OutputOp, OutputProgress, OutputSnapshot, 
 pub use queue_upcoming::{QueueUpcomingSnapshot, QueueUpcomingSubscription, QueueUpcomingWindow};
 pub use queued_releases::QueuedReleases;
 pub use release_queue::{CountLabel, ReleaseQueue};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use save::SaveService;
 pub use search::{
     LibrarySearchQuery, LibrarySearchSnapshot, LibrarySearchSubscription,
     LibrarySearchSubscriptionError, SEARCH_RESULT_LIMIT,
@@ -81,29 +79,14 @@ pub type Downloads = QueuedReleases<(), DownloadTransferProgress, DownloadSnapsh
 /// The export and save queue with the Exporting pane's stream.
 pub type Outputs = QueuedReleases<output_snapshot::OutputRequest, u8, OutputSnapshot>;
 
+/// One track of a save: its tags, its stored audio, and which of its audio
+/// the saved file carries. Holds no open source; a save opens the files a
+/// plan reads only while that track is being saved.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub struct SaveTrackPlan {
-    audio_buffers: Vec<SaveAudioBuffer>,
+pub(crate) struct SaveTrackPlan {
     resolved: manager::ResolvedSaveTags,
-    cover_image_bytes: Option<Vec<u8>>,
-    decode: crate::playback::stream_pipeline::StreamDecodeParams,
     audio_meta: manager::TrackAudioMeta,
-}
-
-#[cfg(all(
-    feature = "test-utils",
-    not(any(target_os = "ios", target_os = "android"))
-))]
-impl SaveTrackPlan {
-    pub fn has_cover_image_for_test(&self) -> bool {
-        self.cover_image_bytes.is_some()
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) struct SaveAudioBuffer {
-    file_id: String,
-    buffer: crate::playback::SharedSparseBuffer,
+    window: manager::SaveWindow,
 }
 
 #[derive(Debug, thiserror::Error)]

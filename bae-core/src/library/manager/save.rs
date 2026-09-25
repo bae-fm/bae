@@ -6,6 +6,8 @@
 use super::*;
 use crate::library::SaveTrackPlan;
 use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
+use crate::playback::track_sources::SourceStream;
+use std::num::NonZeroUsize;
 
 impl LibraryManager {
     /// Resolve one track's tag data from the database alone — the tag fields, its
@@ -61,50 +63,38 @@ impl LibraryManager {
         })
     }
 
-    /// Assemble everything `SaveService::save_track` needs for a
-    /// track in one pass: streaming handles on the source audio, tag fields,
-    /// cover image bytes, neighbour counts, and the raw audio-format aggregate
-    /// for decoding. Cloud-only tracks stream + decrypt window by window during
-    /// the decode — export never requires a local copy.
-    ///
-    /// `embed_cover` is the preset's choice: when false the cover blob is never
-    /// read (no wasted download/decrypt), so `cover_image_bytes` is `Some` only
-    /// when the preset embeds *and* the release has art.
-    pub async fn get_save_track_plan(
+    /// One track's save plan under `window`: its tag data and stored audio,
+    /// read from the database alone. No source is opened here; the save opens
+    /// the files the plan reads while it saves that track.
+    async fn save_track_plan(
         &self,
-        track_id: &str,
-        embed_cover: bool,
+        meta: TrackAudioMeta,
+        window: SaveWindow,
     ) -> Result<SaveTrackPlan, LibraryError> {
-        let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let resolved = self.resolve_save_tags(&meta).await?;
-
-        let mut audio_buffers = Vec::new();
-        for audio_file in &meta.audio_files {
-            audio_buffers.push(crate::library::SaveAudioBuffer {
-                file_id: audio_file.id.clone(),
-                buffer: self.open_release_file_stream(audio_file),
-            });
-        }
-
-        // The exported file embeds the art of the release the track is actually on,
-        // not the album's primary release's — the same rule playback applies. When
-        // the preset doesn't embed, skip the blob read entirely.
-        let cover_image_bytes = if embed_cover {
-            match self.cover_ref(&meta.release.id).await? {
-                Some(image) => self.read_image_blob(&image).await?,
-                None => None,
-            }
-        } else {
-            None
-        };
-
         Ok(SaveTrackPlan {
-            decode: save_decode_from_meta(&meta, &audio_buffers)?,
-            audio_buffers,
             resolved,
-            cover_image_bytes,
             audio_meta: meta,
+            window,
         })
+    }
+
+    /// The cover bytes a save of `release_id` embeds: the art of the release
+    /// the tracks are on, the same rule playback applies. `None` when the
+    /// preset does not embed — the blob is then never read — or the release
+    /// has no art.
+    pub async fn save_cover_image(
+        &self,
+        release_id: &str,
+        embed_cover: bool,
+    ) -> Result<Option<Vec<u8>>, LibraryError> {
+        if !embed_cover {
+            return Ok(None);
+        }
+        match self.cover_ref(release_id).await? {
+            Some(image) => self.read_image_blob(&image).await,
+            None => Ok(None),
+        }
     }
 
     /// Open a streaming read of one release file for the save decoder: a
@@ -113,83 +103,41 @@ impl LibraryManager {
     /// store, the cache, or the cloud with decrypt). A read failure — or a
     /// blob shorter than the stored size — fails the buffer, and the decode
     /// fails loudly with that read's error.
-    fn open_release_file_stream(
-        &self,
-        file: &crate::db::DbFile,
-    ) -> crate::playback::SharedSparseBuffer {
+    fn open_save_source(&self, file: &crate::db::DbFile) -> SourceStream {
         use crate::playback::data_source::{create_audio_reader, FetchArbiter};
 
-        let buffer = crate::playback::sparse_buffer::create_sparse_buffer(file.file_size as u64);
         // A fresh arbiter per file: save has no foreground track to prioritize,
         // so every fetch runs ungated.
         let reader = create_audio_reader(self, &file.id, FetchArbiter::new(), None, false);
         let file_id = file.id.clone();
-        reader.start_reading(
-            buffer.clone(),
+        SourceStream::start(
+            reader,
+            file.file_size as u64,
             Box::new(move |error| {
                 tracing::warn!("save: streaming release file {file_id} failed: {error}");
             }),
-        );
-        buffer
+        )
     }
 
-    /// Build the decode window for a standalone track file under `placement`
-    /// and install it on the plan — first opening streams for any next-track
-    /// pregap file the plan didn't already hold (a multi-FILE CUE can put the
-    /// appended pregap in a file this track doesn't use).
-    fn set_track_file_decode(
-        &self,
-        plan: &mut SaveTrackPlan,
-        next_meta: Option<&TrackAudioMeta>,
-        placement: crate::config::SavePregapPlacement,
-        is_first_track: bool,
-    ) -> Result<(), LibraryError> {
-        use crate::config::SavePregapPlacement;
-
-        if let Some(next) = next_meta {
-            if matches!(
-                placement,
-                SavePregapPlacement::AppendToPreviousExceptHtoa
-                    | SavePregapPlacement::AppendToPreviousIncludingHtoa
-            ) {
-                self.open_streams_for_next_pregap(plan, next);
-            }
-        }
-        plan.decode = save_decode_for_track_file(
-            &plan.audio_meta,
-            next_meta,
-            placement,
-            is_first_track,
-            &plan.audio_buffers,
-        )?;
-        Ok(())
-    }
-
-    /// Open streams for the next track's pregap-segment files that this track's
-    /// plan didn't already open.
-    fn open_streams_for_next_pregap(&self, plan: &mut SaveTrackPlan, next: &TrackAudioMeta) {
-        for segment in next
-            .audio_segments
-            .iter()
-            .filter(|segment| segment.role == crate::db::DbAudioSegmentRole::AudioPregap)
-        {
-            if plan
-                .audio_buffers
-                .iter()
-                .any(|buffer| buffer.file_id == segment.file_id)
-            {
-                continue;
-            }
-            let file = next
-                .audio_files
-                .iter()
-                .find(|file| file.id == segment.file_id)
-                .expect("TrackAudioMeta resolves every segment file");
-            plan.audio_buffers.push(crate::library::SaveAudioBuffer {
-                file_id: file.id.clone(),
-                buffer: self.open_release_file_stream(file),
-            });
-        }
+    /// Every release file `plans` read, by id, for opening them as the save
+    /// reaches the tracks reading them.
+    fn save_source_files<'a>(
+        plans: impl IntoIterator<Item = &'a SaveTrackPlan>,
+    ) -> HashMap<String, crate::db::DbFile> {
+        plans
+            .into_iter()
+            .flat_map(|plan| {
+                let next = match &plan.window {
+                    SaveWindow::TrackFile { next, .. } => next.as_ref(),
+                    SaveWindow::ImageTrack => None,
+                };
+                plan.audio_meta
+                    .audio_files
+                    .iter()
+                    .chain(next.into_iter().flat_map(|next| next.audio_files.iter()))
+            })
+            .map(|file| (file.id.clone(), file.clone()))
+            .collect()
     }
 
     /// The default filename (stem, no extension) a single-track "Save As…"
@@ -238,39 +186,48 @@ impl LibraryManager {
                     "export preset {preset_id} is not available for track save"
                 ))
             })?;
-        let mut plan = self
-            .get_save_track_plan(track_id, preset.embed_cover)
-            .await?;
+        let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let release_tracks = self
             .database
-            .get_tracks_for_release(&plan.audio_meta.release.id)
+            .get_tracks_for_release(&meta.release.id)
             .await?;
         let track_index = release_tracks
             .iter()
-            .position(|track| track.id == plan.audio_meta.track.id)
+            .position(|track| track.id == meta.track.id)
             .ok_or_else(|| {
                 LibraryError::Save(format!(
                     "track {} is not ordered in release {}",
-                    plan.audio_meta.track.id, plan.audio_meta.release.id
+                    meta.track.id, meta.release.id
                 ))
             })?;
-        let next_meta = if track_index + 1 < release_tracks.len() {
-            Some(
-                TrackAudioMeta::resolve(&self.database, &release_tracks[track_index + 1].id)
-                    .await?,
-            )
-        } else {
-            None
+        let next = match release_tracks.get(track_index + 1) {
+            Some(next) => Some(TrackAudioMeta::resolve(&self.database, &next.id).await?),
+            None => None,
         };
-        self.set_track_file_decode(
-            &mut plan,
-            next_meta.as_ref(),
-            preset.pregap_placement,
-            track_index == 0,
-        )?;
-        SaveService::save_track(plan, output_path, preset)
-            .await
-            .map_err(LibraryError::Save)
+        let cover = self
+            .save_cover_image(&meta.release.id, preset.embed_cover)
+            .await?;
+        let plan = self
+            .save_track_plan(
+                meta,
+                SaveWindow::TrackFile {
+                    next,
+                    placement: preset.pregap_placement,
+                    is_first_track: track_index == 0,
+                },
+            )
+            .await?;
+        let sources = Self::save_source_files([&plan]);
+        SaveService::save_tracks(
+            vec![(plan, output_path.to_path_buf())],
+            cover,
+            preset.codec,
+            NonZeroUsize::MIN,
+            |file_id: &String| self.open_save_source(&sources[file_id]),
+            Arc::new(|| {}),
+        )
+        .await
+        .map_err(LibraryError::Save)
     }
 
     pub(super) async fn save_release_tracks_to_dir(
@@ -287,24 +244,35 @@ impl LibraryManager {
             self.set_output_progress(release_id, 100);
             return Ok(());
         }
+        let cover = self
+            .save_cover_image(release_id, preset.embed_cover)
+            .await?;
+        let mut metas = Vec::with_capacity(tracks.len());
+        for track in &tracks {
+            metas.push(TrackAudioMeta::resolve(&self.database, &track.id).await?);
+        }
+        // Each track's plan carries the track after it, whose audio pregap a
+        // placement may append to this one's file.
+        let nexts: Vec<Option<TrackAudioMeta>> = metas
+            .iter()
+            .skip(1)
+            .cloned()
+            .map(Some)
+            .chain(std::iter::once(None))
+            .collect();
         let mut used_paths = std::collections::HashSet::new();
-
-        for (index, track) in tracks.iter().enumerate() {
-            let mut plan = self
-                .get_save_track_plan(&track.id, preset.embed_cover)
+        let mut saves = Vec::with_capacity(tracks.len());
+        for (index, (meta, next)) in metas.into_iter().zip(nexts).enumerate() {
+            let plan = self
+                .save_track_plan(
+                    meta,
+                    SaveWindow::TrackFile {
+                        next,
+                        placement: preset.pregap_placement,
+                        is_first_track: index == 0,
+                    },
+                )
                 .await?;
-            let next_meta = if index + 1 < tracks.len() {
-                Some(TrackAudioMeta::resolve(&self.database, &tracks[index + 1].id).await?)
-            } else {
-                None
-            };
-            self.set_track_file_decode(
-                &mut plan,
-                next_meta.as_ref(),
-                preset.pregap_placement,
-                index == 0,
-            )?;
-
             let stem =
                 crate::library::save::render_save_filename(&preset.filename_tokens, &plan.resolved);
             let output_path = unique_output_path(
@@ -313,14 +281,37 @@ impl LibraryManager {
                 preset.codec.extension(),
                 &mut used_paths,
             );
-            SaveService::save_track(plan, &output_path, preset.clone())
-                .await
-                .map_err(LibraryError::Save)?;
-            let percent = (((index + 1) * 100) / total.max(1)) as u8;
-            self.set_output_progress(release_id, percent);
+            saves.push((plan, output_path));
         }
 
-        Ok(())
+        let sources = Self::save_source_files(saves.iter().map(|(plan, _)| plan));
+        let saved = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let on_saved = {
+            let manager = self.clone();
+            let release_id = release_id.to_string();
+            Arc::new(move || {
+                let saved = saved.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                manager.set_output_progress(&release_id, ((saved * 100) / total.max(1)) as u8);
+            })
+        };
+        // Decoding and encoding are CPU work: save as many tracks at once as
+        // there are cores, which also bounds the source files open at once.
+        let parallelism = std::thread::available_parallelism().unwrap_or_else(|error| {
+            tracing::warn!(
+                "could not read the available parallelism ({error}); saving one track at a time"
+            );
+            NonZeroUsize::MIN
+        });
+        SaveService::save_tracks(
+            saves,
+            cover,
+            preset.codec,
+            parallelism,
+            |file_id: &String| self.open_save_source(&sources[file_id]),
+            on_saved,
+        )
+        .await
+        .map_err(LibraryError::Save)
     }
 
     async fn save_release_image_with_cue_to_dir(
@@ -332,17 +323,12 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         let mut plans = Vec::with_capacity(tracks.len());
         for track in tracks {
-            let mut plan = self
-                .get_save_track_plan(&track.id, preset.embed_cover)
-                .await?;
-            // The plan already carries the as-stored window (every segment, no
-            // silence); the image save only adds the track's generated pregap
-            // as leading silence so the CUE indexes line up.
-            plan.decode.set_leading_silence_frames(non_negative_samples(
-                plan.audio_meta.audio_format.generated_pregap_samples,
-            ));
-            plans.push(plan);
+            let meta = TrackAudioMeta::resolve(&self.database, &track.id).await?;
+            plans.push(self.save_track_plan(meta, SaveWindow::ImageTrack).await?);
         }
+        let cover = self
+            .save_cover_image(release_id, preset.embed_cover)
+            .await?;
 
         let release = self
             .get_release_by_id(release_id)
@@ -362,81 +348,140 @@ impl LibraryManager {
         let output_audio_path = staging_dir.join(format!("{stem}.{}", preset.codec.extension()));
         let output_cue_path = staging_dir.join(format!("{stem}.cue"));
 
+        let sources = Self::save_source_files(&plans);
         SaveService::save_release_image_with_cue(
             plans,
+            cover,
             &output_audio_path,
             &output_cue_path,
             release.pressing.barcode,
             preset,
+            |file_id: &String| self.open_save_source(&sources[file_id]),
         )
         .await
         .map_err(LibraryError::Save)
     }
 }
 
-/// The decode window for a track exactly as stored: every segment (audio
-/// pregap included), no added silence. The CUE-image save seeds each track
-/// from this and sets its leading generated-pregap silence itself.
-fn save_decode_from_meta(
-    meta: &TrackAudioMeta,
-    buffers: &[crate::library::SaveAudioBuffer],
-) -> Result<StreamDecodeParams, LibraryError> {
-    Ok(StreamDecodeParams::new(
-        save_decode_segments(meta, buffers, true)?,
-        byte_seekable(meta),
-        0,
-        0,
-    ))
+/// Which of a track's stored audio a saved file carries.
+pub(crate) enum SaveWindow {
+    /// One track of a release image: every segment as stored (audio pregap
+    /// included), led by its generated pregap as silence so the image's CUE
+    /// indexes line up.
+    ImageTrack,
+    /// A standalone track file under `placement`: the CUE audio pregap can be
+    /// excluded, kept (HTOA on the first track), or relocated — the `next`
+    /// track's pregap segments appended here, with its generated pregap as
+    /// trailing silence.
+    TrackFile {
+        next: Option<TrackAudioMeta>,
+        placement: crate::config::SavePregapPlacement,
+        is_first_track: bool,
+    },
 }
 
-/// The decode window for a standalone track file under `placement`: the CUE
-/// audio pregap can be excluded, kept (HTOA on the first track), or relocated —
-/// the *next* track's pregap segments appended here, with its generated pregap
-/// as trailing silence.
-fn save_decode_for_track_file(
-    meta: &TrackAudioMeta,
-    next_meta: Option<&TrackAudioMeta>,
-    placement: crate::config::SavePregapPlacement,
-    is_first_track: bool,
-    buffers: &[crate::library::SaveAudioBuffer],
-) -> Result<StreamDecodeParams, LibraryError> {
-    let own_audio_pregap = non_negative_samples(meta.audio_format.pregap_samples);
-    let own_generated_pregap = non_negative_samples(meta.audio_format.generated_pregap_samples);
-    let includes_htoa = is_first_track
-        && placement == crate::config::SavePregapPlacement::AppendToPreviousIncludingHtoa;
-    let mut segments = save_decode_segments(meta, buffers, includes_htoa || own_audio_pregap == 0)?;
-    let leading_silence_frames = if includes_htoa {
-        own_generated_pregap
-    } else {
-        0
-    };
+/// The segments a saved track file decodes, in order, and the silence around
+/// them.
+struct SaveSegments<'a> {
+    segments: Vec<&'a crate::db::DbAudioSegment>,
+    leading_silence_frames: u64,
+    trailing_silence_frames: u64,
+}
 
-    let mut trailing_silence_frames = 0;
-    if matches!(
-        placement,
-        crate::config::SavePregapPlacement::AppendToPreviousExceptHtoa
-            | crate::config::SavePregapPlacement::AppendToPreviousIncludingHtoa
-    ) {
-        if let Some(next) = next_meta {
-            let next_audio_pregap = non_negative_samples(next.audio_format.pregap_samples);
-            if next_audio_pregap > 0 {
-                segments.extend(save_decode_segments_for_role(
-                    next,
-                    buffers,
-                    crate::db::DbAudioSegmentRole::AudioPregap,
-                )?);
+impl SaveTrackPlan {
+    fn segments(&self) -> SaveSegments<'_> {
+        let meta = &self.audio_meta;
+        match &self.window {
+            SaveWindow::ImageTrack => SaveSegments {
+                segments: meta.audio_segments.iter().collect(),
+                leading_silence_frames: non_negative_samples(
+                    meta.audio_format.generated_pregap_samples,
+                ),
+                trailing_silence_frames: 0,
+            },
+            SaveWindow::TrackFile {
+                next,
+                placement,
+                is_first_track,
+            } => {
+                use crate::config::SavePregapPlacement;
+
+                let own_audio_pregap = non_negative_samples(meta.audio_format.pregap_samples);
+                let includes_htoa = *is_first_track
+                    && *placement == SavePregapPlacement::AppendToPreviousIncludingHtoa;
+                let include_own_pregap = includes_htoa || own_audio_pregap == 0;
+                let mut segments: Vec<_> = meta
+                    .audio_segments
+                    .iter()
+                    .filter(|segment| {
+                        include_own_pregap || segment.role == crate::db::DbAudioSegmentRole::Main
+                    })
+                    .collect();
+                let leading_silence_frames = if includes_htoa {
+                    non_negative_samples(meta.audio_format.generated_pregap_samples)
+                } else {
+                    0
+                };
+                let mut trailing_silence_frames = 0;
+                if matches!(
+                    placement,
+                    SavePregapPlacement::AppendToPreviousExceptHtoa
+                        | SavePregapPlacement::AppendToPreviousIncludingHtoa
+                ) {
+                    if let Some(next) = next {
+                        if non_negative_samples(next.audio_format.pregap_samples) > 0 {
+                            segments.extend(next.audio_segments.iter().filter(|segment| {
+                                segment.role == crate::db::DbAudioSegmentRole::AudioPregap
+                            }));
+                        }
+                        trailing_silence_frames =
+                            non_negative_samples(next.audio_format.generated_pregap_samples);
+                    }
+                }
+                SaveSegments {
+                    segments,
+                    leading_silence_frames,
+                    trailing_silence_frames,
+                }
             }
-            trailing_silence_frames =
-                non_negative_samples(next.audio_format.generated_pregap_samples);
         }
     }
 
-    Ok(StreamDecodeParams::new(
-        segments,
-        byte_seekable(meta),
-        leading_silence_frames,
-        trailing_silence_frames,
-    ))
+    /// The release files this track's saved audio reads, by id.
+    pub(crate) fn source_files(&self) -> Vec<String> {
+        self.segments()
+            .segments
+            .iter()
+            .map(|segment| segment.file_id.clone())
+            .collect()
+    }
+
+    /// The decode of this track's saved audio from its files' open `streams`.
+    pub(crate) fn decode(
+        &self,
+        streams: &HashMap<String, crate::playback::SharedSparseBuffer>,
+    ) -> Result<StreamDecodeParams, LibraryError> {
+        let window = self.segments();
+        let segments = window
+            .segments
+            .iter()
+            .map(|segment| {
+                let stream = streams.get(&segment.file_id).ok_or_else(|| {
+                    LibraryError::Save(format!(
+                        "no audio stream opened for file {}",
+                        segment.file_id
+                    ))
+                })?;
+                Ok(SegmentDecodeParams::new(stream.clone(), segment.span(), 0))
+            })
+            .collect::<Result<Vec<_>, LibraryError>>()?;
+        Ok(StreamDecodeParams::new(
+            segments,
+            byte_seekable(&self.audio_meta),
+            window.leading_silence_frames,
+            window.trailing_silence_frames,
+        ))
+    }
 }
 
 /// Whether this track's codec supports a by-byte jump to a recorded landing.
@@ -444,57 +489,6 @@ fn save_decode_for_track_file(
 /// sample-seeks its mandatory index instead.
 fn byte_seekable(meta: &TrackAudioMeta) -> bool {
     meta.audio_format.content_type != crate::util::content_type::ContentType::Ape
-}
-
-fn save_decode_segments(
-    meta: &TrackAudioMeta,
-    buffers: &[crate::library::SaveAudioBuffer],
-    include_audio_pregap: bool,
-) -> Result<Vec<SegmentDecodeParams>, LibraryError> {
-    meta.audio_segments
-        .iter()
-        .filter(|segment| {
-            include_audio_pregap || segment.role == crate::db::DbAudioSegmentRole::Main
-        })
-        .map(|segment| save_segment_decode(segment, buffers))
-        .collect()
-}
-
-fn save_decode_segments_for_role(
-    meta: &TrackAudioMeta,
-    buffers: &[crate::library::SaveAudioBuffer],
-    role: crate::db::DbAudioSegmentRole,
-) -> Result<Vec<SegmentDecodeParams>, LibraryError> {
-    meta.audio_segments
-        .iter()
-        .filter(|segment| segment.role == role)
-        .map(|segment| save_segment_decode(segment, buffers))
-        .collect()
-}
-
-fn save_segment_decode(
-    segment: &crate::db::DbAudioSegment,
-    buffers: &[crate::library::SaveAudioBuffer],
-) -> Result<SegmentDecodeParams, LibraryError> {
-    Ok(SegmentDecodeParams::new(
-        segment_stream(buffers, &segment.file_id)?,
-        segment.span(),
-        0,
-    ))
-}
-
-/// The opened stream for `file_id` in the plan's registry. Missing means the
-/// window references a file no stream was opened for — fail at build time
-/// rather than mid-decode.
-fn segment_stream(
-    buffers: &[crate::library::SaveAudioBuffer],
-    file_id: &str,
-) -> Result<crate::playback::SharedSparseBuffer, LibraryError> {
-    buffers
-        .iter()
-        .find(|buffer| buffer.file_id == file_id)
-        .map(|buffer| buffer.buffer.clone())
-        .ok_or_else(|| LibraryError::Save(format!("no audio stream opened for file {file_id}")))
 }
 
 fn non_negative_samples(samples: Option<i64>) -> u64 {

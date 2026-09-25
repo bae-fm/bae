@@ -226,11 +226,11 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
     assert!(err.is_err(), "an unknown preset id is rejected");
 }
 
-/// Plan assembly reads the cover only when the preset embeds: with art on the
+/// A save reads the cover only when the preset embeds: with art on the
 /// release, `embed_cover: true` carries the bytes and `false` carries none — the
 /// blob read is skipped entirely.
 #[tokio::test]
-async fn get_save_track_plan_skips_cover_read_when_not_embedding() {
+async fn save_cover_image_skips_the_read_when_not_embedding() {
     support::tracing_init();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
@@ -239,25 +239,21 @@ async fn get_save_track_plan_skips_cover_read_when_not_embedding() {
     // A folder cover so the imported release actually has art to embed.
     support::write_cover_png(&album_dir.join("cover.png"));
     let release_id = import_unknown_local(&f, &album_dir).await;
-    let tracks = f.mgr.get_tracks_for_release(&release_id).await.unwrap();
 
     let with_cover = f
         .mgr
-        .get_save_track_plan(&tracks[0].id, true)
+        .save_cover_image(&release_id, true)
         .await
-        .expect("plan with embedding");
-    assert!(
-        with_cover.has_cover_image_for_test(),
-        "embedding reads the release's cover"
-    );
+        .expect("cover when embedding");
+    assert!(with_cover.is_some(), "embedding reads the release's cover");
 
     let without_cover = f
         .mgr
-        .get_save_track_plan(&tracks[0].id, false)
+        .save_cover_image(&release_id, false)
         .await
-        .expect("plan without embedding");
+        .expect("no cover when not embedding");
     assert!(
-        !without_cover.has_cover_image_for_test(),
+        without_cover.is_none(),
         "not embedding skips the cover read"
     );
 }
@@ -401,4 +397,142 @@ fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
     let buffer = bae_core::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, bytes);
     buffer
+}
+
+/// A release save preset over `placement`, FLAC at the source depth.
+fn flac_save_preset(id: &str, placement: SavePregapPlacement) -> SavePreset {
+    SavePreset {
+        id: id.to_string(),
+        name: id.to_string(),
+        codec: SaveCodec::Flac {
+            bit_depth: SaveBitDepth::Source,
+        },
+        filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
+        pregap_placement: placement,
+        applies_to_track: false,
+        applies_to_release: true,
+        embed_cover: false,
+    }
+}
+
+/// Save `release_id` under `preset` into a fresh target, returning the most
+/// files under `source_dir` the save held open at once. Every source is closed
+/// by the time the save returns.
+async fn peak_sources_open_saving(
+    f: &ExportFixture,
+    release_id: &str,
+    source_dir: &Path,
+    preset: SavePreset,
+) -> usize {
+    let mut presets = f.mgr.save_presets();
+    presets.push(preset.clone());
+    f.mgr.set_save_presets(presets).unwrap();
+    let target = f.temp_path().join(format!("export-{}", preset.id));
+    fs::create_dir_all(&target).unwrap();
+
+    let sampler = bae_core::open_files_peak::OpenFilesPeak::start(source_dir);
+    f.mgr
+        .export_release(release_id, &target, OutputKind::Save { preset })
+        .await
+        .expect("the release save succeeds");
+    let peak = sampler.finish();
+    coven::assert_no_open_files_under(source_dir);
+    peak
+}
+
+fn cores() -> usize {
+    std::thread::available_parallelism()
+        .expect("available parallelism")
+        .get()
+}
+
+/// Saving a release of a file per track opens each track's file only while
+/// that track is being saved: at most one per core for track files, and one
+/// at a time for an image the tracks stream into in order.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_release_save_holds_a_bounded_number_of_track_files_open() {
+    support::tracing_init();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    for n in 1..=24 {
+        support::write_tagged_flac(&album_dir, &format!("{n:02}.flac"), &format!("Track {n}"));
+    }
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    assert_eq!(
+        f.mgr
+            .get_tracks_for_release(&release_id)
+            .await
+            .unwrap()
+            .len(),
+        24
+    );
+
+    let per_track = peak_sources_open_saving(
+        &f,
+        &release_id,
+        &album_dir,
+        flac_save_preset("tracks", SavePregapPlacement::AppendToPreviousExceptHtoa),
+    )
+    .await;
+    assert!(
+        (1..=cores()).contains(&per_track),
+        "{per_track} of 24 track files open at once over {} cores",
+        cores()
+    );
+
+    let image = peak_sources_open_saving(
+        &f,
+        &release_id,
+        &album_dir,
+        flac_save_preset("image", SavePregapPlacement::SingleFileWithCue),
+    )
+    .await;
+    assert_eq!(image, 1, "the image save reads one track file at a time");
+}
+
+/// Saving a release whose tracks share one CUE image reads the image through
+/// one open file, whether its tracks are saved at once or streamed into one
+/// new image.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_release_save_reads_a_cue_image_through_one_open_file() {
+    support::tracing_init();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    fs::copy(
+        bae_test_support::fixture_dir!("cue_flac", "Test Album.flac"),
+        album_dir.join("Test Album.flac"),
+    )
+    .unwrap();
+    let mut cue = String::from(
+        "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\nFILE \"Test Album.flac\" WAVE\n",
+    );
+    for n in 0..12 {
+        cue.push_str(&format!(
+            "  TRACK {:02} AUDIO\n    TITLE \"Track {}\"\n    INDEX 01 00:{:02}:00\n",
+            n + 1,
+            n + 1,
+            n * 2
+        ));
+    }
+    fs::write(album_dir.join("Test Album.cue"), cue).unwrap();
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    assert_eq!(
+        f.mgr
+            .get_tracks_for_release(&release_id)
+            .await
+            .unwrap()
+            .len(),
+        12
+    );
+
+    for preset in [
+        flac_save_preset("tracks", SavePregapPlacement::AppendToPreviousExceptHtoa),
+        flac_save_preset("image", SavePregapPlacement::SingleFileWithCue),
+    ] {
+        let id = preset.id.clone();
+        let peak = peak_sources_open_saving(&f, &release_id, &album_dir, preset).await;
+        assert_eq!(peak, 1, "the {id} save reads the image as one open file");
+    }
 }

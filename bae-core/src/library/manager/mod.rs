@@ -90,6 +90,8 @@ mod release;
 mod release_edit;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod save;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use save::SaveWindow;
 mod storage;
 mod sync;
 mod sync_status;
@@ -543,6 +545,7 @@ pub(crate) struct ImportReplacementPlan {
 /// `ResolvedTrackAudio`; the export path still needs the raw rows (a segment's
 /// byte range, its CUE sample bounds) for whole-file decode, so this raw shape
 /// stays `pub(crate)`.
+#[derive(Clone)]
 pub(crate) struct TrackAudioMeta {
     pub track: DbTrack,
     pub release: DbRelease,
