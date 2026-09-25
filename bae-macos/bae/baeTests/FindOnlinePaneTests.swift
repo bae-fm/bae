@@ -491,7 +491,7 @@ struct FindOnlineSectionGlyphTests {
         #expect(
             FindOnlineSectionGlyph(
                 identifyState: PreviewData.searchStateFoundExact.identifyState
-            ) == .matched
+            ) == .none
         )
         #expect(
             FindOnlineSectionGlyph(
@@ -520,7 +520,7 @@ struct FindOnlineSectionGlyphTests {
         )
         #expect(
             FindOnlineSectionGlyph(search: PreviewData.manualSearchRun)
-                == .matched
+                == .none
         )
         #expect(
             FindOnlineSectionGlyph(search: PreviewData.searchRunEmpty) == .empty
@@ -537,7 +537,6 @@ struct FindOnlineSectionGlyphTests {
     func vacancy() {
         #expect(FindOnlineSectionGlyph.empty.isVacant)
         #expect(FindOnlineSectionGlyph.nothing.isVacant)
-        #expect(!FindOnlineSectionGlyph.matched.isVacant)
         #expect(!FindOnlineSectionGlyph.working.isVacant)
         #expect(!FindOnlineSectionGlyph.failed.isVacant)
         #expect(!FindOnlineSectionGlyph.none.isVacant)

@@ -12,12 +12,11 @@ enum FindOnlineSection: Equatable {
 
 /// The one status glyph a section header carries, open or collapsed.
 enum FindOnlineSectionGlyph: Equatable {
-    /// Nothing has run yet.
+    /// Nothing to report: nothing has run yet, or it ran and found
+    /// matches, which are the section's own content.
     case none
     /// A lookup is under way.
     case working
-    /// Done, with matches.
-    case matched
     /// Done, and nothing matched.
     case empty
     /// A lookup failed.
@@ -33,7 +32,7 @@ enum FindOnlineSectionGlyph: Equatable {
         case .triangulating:
             self = .working
         case .found(_, let groups, _, _, _, _, _):
-            self = groups.isEmpty ? .empty : .matched
+            self = groups.isEmpty ? .empty : .none
         case .notFoundAnywhere:
             self = .empty
         case .manualOnly:
@@ -52,7 +51,7 @@ enum FindOnlineSectionGlyph: Equatable {
         }
         switch search.status {
         case .searching: self = .working
-        case .found: self = .matched
+        case .found: self = .none
         case .noMatches: self = .empty
         case .failed: self = .failed
         }
@@ -64,7 +63,7 @@ enum FindOnlineSectionGlyph: Equatable {
     var isVacant: Bool {
         switch self {
         case .empty, .nothing: true
-        case .none, .working, .matched, .failed: false
+        case .none, .working, .failed: false
         }
     }
 }
@@ -132,10 +131,6 @@ struct FindOnlineSectionGlyphView: View {
                 ProgressView()
                     .controlSize(.small)
                     .scaleEffect(0.6)
-            case .matched:
-                Image(systemName: "checkmark.circle")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.green)
             case .empty:
                 CountCapsule(count: 0)
             case .failed:
@@ -175,13 +170,6 @@ struct FindOnlineSectionGlyphView: View {
                 section: .automatic,
                 isOpen: false,
                 glyph: .empty,
-                onOpen: {}
-            )
-            Divider()
-            FindOnlineSectionHeader(
-                section: .automatic,
-                isOpen: false,
-                glyph: .matched,
                 onOpen: {}
             )
             Divider()
