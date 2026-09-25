@@ -429,7 +429,9 @@ internal static partial class NativeBae
         public void OnError(BridgeException error) => onError(error);
     }
 
-    internal static LiveSubscription SubscribeStorage(
+    // One page of the Storage Manager list, read through a storage browse
+    // subscription asked for just this page's window.
+    internal static IDisposable SubscribeStorage(
         AppHandle handle,
         StorageTab tab,
         StorageSortField field,
@@ -437,21 +439,28 @@ internal static partial class NativeBae
         ulong offset,
         ulong limit,
         Action<IReadOnlyList<BridgeStorageRow>, int, long> onValue,
-        Action<Exception> onError) =>
-        handle.SubscribeStorageProjection(
-            new BridgeStorageSort(ToBridge(field), ToBridgeStorageDirection(direction)),
-            ToBridge(tab),
-            offset,
-            limit,
-            new StorageProjectionSink(onValue, onError));
-
-    private sealed class StorageProjectionSink(
-        Action<IReadOnlyList<BridgeStorageRow>, int, long> onValue,
-        Action<Exception> onError) : StorageProjectionCallback
+        Action<Exception> onError)
     {
-        public void OnValue(BridgeStorageProjection value) =>
-            onValue(value.Page.Rows, checked((int)value.Page.TotalCount), checked((long)value.TotalSize));
-        public void OnError(BridgeException error) => onError(error);
+        var sort = new BridgeStorageSort(ToBridge(field), ToBridgeStorageDirection(direction));
+        var filter = ToBridge(tab);
+        var subscription = handle.SubscribeStorageBrowse(sort, filter);
+        try
+        {
+            subscription.SetView(sort, filter, [new BridgeLibraryPageWindow(offset, limit)]);
+        }
+        catch (BridgeException error)
+        {
+            onError(error);
+        }
+        return ReadEachValue(
+            subscription,
+            subscription.Cancel,
+            subscription.Next,
+            snapshot => onValue(
+                snapshot.Windows.SelectMany(window => window.Rows).ToList(),
+                checked((int)snapshot.TotalCount),
+                checked((long)snapshot.TotalSize)),
+            onError);
     }
 
     private static BridgeStorageFilter ToBridge(StorageTab tab) => tab switch

@@ -261,20 +261,14 @@ async fn queue_upcoming_follows_queue_revisions_without_resubscribing() {
 }
 
 #[test]
-fn storage_sync_queue_reconfigures_only_when_membership_changes() {
-    let mut current = vec!["release-a".to_string(), "release-b".to_string()];
-
-    assert!(!replace_transitioning_release_ids(
-        &mut current,
-        vec![
+fn the_upload_queue_keeps_its_order_and_names_each_release_once() {
+    assert_eq!(
+        upload_queue_order(vec![
             "release-b".to_string(),
             "release-a".to_string(),
             "release-b".to_string(),
-        ]
-    ));
-    assert!(replace_transitioning_release_ids(
-        &mut current,
-        vec!["release-a".to_string(), "release-c".to_string()]
-    ));
-    assert_eq!(current, ["release-a", "release-c"]);
+        ]),
+        ["release-b", "release-a"],
+        "queue order is what the Uploading filter lists by, so it is kept"
+    );
 }

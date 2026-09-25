@@ -87,69 +87,6 @@ extension BridgeArtistSummary: Identifiable {
     public var id: String { artistId }
 }
 
-// MARK: - Storage page source
-
-/// Page source backed by `AppHandle` for the Storage Manager table.
-/// Each row carries a `ReleaseSummary` + its parent `AlbumSummary` on
-/// the wire (two slices worth of data in one call). The ingest closure
-/// splits them into the `releaseSummaries` and `albumSummaries` slices;
-/// the view renders by iterating `ids` (release ids) and resolving via
-/// both slices at render time.
-public struct StoragePageSource: PageSource {
-    private let library: Library
-    private let onTotalSize: @MainActor @Sendable (UInt64) -> Void
-    public let sort: BridgeStorageSort
-    public let filter: BridgeStorageFilter
-
-    public init(
-        library: Library,
-        sort: BridgeStorageSort,
-        filter: BridgeStorageFilter,
-        onTotalSize: @escaping @MainActor @Sendable (UInt64) -> Void
-    ) {
-        self.library = library
-        self.sort = sort
-        self.filter = filter
-        self.onTotalSize = onTotalSize
-    }
-
-    public func subscribe(
-        offset: Int,
-        limit: Int,
-        onValue:
-            @escaping @MainActor @Sendable ([BridgeStorageRow], Int) -> Void,
-        onError: @escaping @MainActor @Sendable (any Error) -> Void
-    ) -> any PageSubscription {
-        let library = library
-        let sort = sort
-        let filter = filter
-        let onTotalSize = onTotalSize
-        return TaskPageSubscription(
-            Task {
-                for await result in library.storageProjections(
-                    sort: sort,
-                    filter: filter,
-                    offset: UInt64(offset),
-                    limit: UInt64(limit)
-                ) {
-                    switch result {
-                    case .success(let projection):
-                        await onTotalSize(projection.totalSize)
-                        await onValue(
-                            projection.page.rows,
-                            Int(projection.page.totalCount)
-                        )
-                    case .failure(let error):
-                        await onError(error)
-                    }
-                }
-            }
-        )
-    }
-}
-
-/// `BridgeStorageRow` already has a stable id (the release id); lift it
-/// into `Identifiable` so `PaginatedList<BridgeStorageRow>` compiles.
 extension BridgeStorageRow: Identifiable {
     public var id: String {
         release.id

@@ -751,18 +751,21 @@ mirror_enum! {
 
 mirror_enum! {
     BridgeStorageSortField = bae_core::db::StorageSortField,
+    from_core: fn,
     into_core: fn,
     variants: { AlbumTitle, ArtistNames, Media, FileCount, TotalSize },
 }
 
 mirror_enum! {
     BridgeStorageSortDirection = bae_core::db::SortDirection,
+    from_core: fn,
     into_core: fn,
     variants: { Ascending, Descending },
 }
 
 mirror_struct! {
     BridgeStorageSort = bae_core::db::StorageSortCriterion,
+    from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: {
         field: (BridgeStorageSortField),
@@ -772,6 +775,7 @@ mirror_struct! {
 
 mirror_enum! {
     BridgeStorageFilter = bae_core::db::StorageFilter,
+    from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { All, Remote, Local, Uploading },
 }

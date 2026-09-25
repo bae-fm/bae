@@ -64,17 +64,6 @@ private final class ArtistDetailSink: ArtistDetailCallback, @unchecked Sendable
     func onError(error: BridgeError) { sink.onError(error) }
 }
 
-private final class StorageProjectionSink: StorageProjectionCallback,
-    @unchecked Sendable
-{
-    private let sink: LibraryLiveValueSink<BridgeStorageProjection>
-    init(_ sink: LibraryLiveValueSink<BridgeStorageProjection>) {
-        self.sink = sink
-    }
-    func onValue(value: BridgeStorageProjection) { sink.onValue(value) }
-    func onError(error: BridgeError) { sink.onError(error) }
-}
-
 private func libraryLiveValue<Value: Sendable, Callback: Sendable>(
     callback: (LibraryLiveValueSink<Value>) -> Callback,
     subscribe: (Callback) -> any LiveSubscriptionProtocol
@@ -131,12 +120,11 @@ public final class Library: Sendable, Observable {
     public let albumSelection: @Sendable () -> AlbumSelectionQuery
     public let searchArtists:
         @Sendable (_ query: String) async throws -> [BridgeArtistSearchResult]
-    private let subscribeStorageProjection:
-        @Sendable (
-            _ sort: BridgeStorageSort, _ filter: BridgeStorageFilter,
-            _ offset: UInt64, _ limit: UInt64,
-            _ callback: StorageProjectionCallback
-        ) -> any LiveSubscriptionProtocol
+    /// The Storage Manager list under a first sort and filter, read through
+    /// one query whose view moves in place.
+    public let storageBrowse:
+        @Sendable (_ sort: BridgeStorageSort, _ filter: BridgeStorageFilter)
+            -> StorageBrowseQuery
     private let subscribeReleaseDetail:
         @Sendable (_ releaseId: String, _ callback: ReleaseDetailCallback)
             -> any LiveSubscriptionProtocol
@@ -199,12 +187,10 @@ public final class Library: Sendable, Observable {
         searchArtists:
             @escaping @Sendable (String) async throws
             -> [BridgeArtistSearchResult] = { _ in [] },
-        subscribeStorageProjection:
-            @escaping @Sendable (
-                BridgeStorageSort, BridgeStorageFilter, UInt64, UInt64,
-                StorageProjectionCallback
-            ) -> any LiveSubscriptionProtocol = { _, _, _, _, _ in
-                fatalError("Library storage subscription is not installed")
+        storageBrowse:
+            @escaping @Sendable (BridgeStorageSort, BridgeStorageFilter)
+            -> StorageBrowseQuery = { _, _ in
+                fatalError("Library storage browse is not installed")
             },
         subscribeReleaseDetail:
             @escaping @Sendable (String, ReleaseDetailCallback)
@@ -232,7 +218,7 @@ public final class Library: Sendable, Observable {
         self.librarySearch = librarySearch
         self.albumSelection = albumSelection
         self.searchArtists = searchArtists
-        self.subscribeStorageProjection = subscribeStorageProjection
+        self.storageBrowse = storageBrowse
         self.subscribeReleaseDetail = subscribeReleaseDetail
         self.resolveToTrackIds = resolveToTrackIds
         self.setLibraryFullWidth = setLibraryFullWidth
@@ -274,20 +260,6 @@ public final class Library: Sendable, Observable {
         )
     }
 
-    public func storageProjections(
-        sort: BridgeStorageSort,
-        filter: BridgeStorageFilter,
-        offset: UInt64,
-        limit: UInt64
-    ) -> LibraryLiveValue<BridgeStorageProjection> {
-        libraryLiveValue(
-            callback: StorageProjectionSink.init,
-            subscribe: {
-                subscribeStorageProjection(sort, filter, offset, limit, $0)
-            }
-        )
-    }
-
     public func releaseDetails(_ releaseId: String)
         -> LibraryLiveValue<BridgeRelease?>
     {
@@ -302,7 +274,6 @@ public final class Library: Sendable, Observable {
     // the desktop library page makes. The iOS `AppService` builds `Library`
     // via the designated initializer with just the iOS-available closures.
     #if !os(iOS)
-        // swiftlint:disable:next function_body_length
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 albumBrowse: {
@@ -347,13 +318,9 @@ public final class Library: Sendable, Observable {
                 searchArtists: {
                     try await handle.searchArtists(query: $0)
                 },
-                subscribeStorageProjection: {
-                    handle.subscribeStorageProjection(
-                        sort: $0,
-                        filter: $1,
-                        offset: $2,
-                        limit: $3,
-                        callback: $4
+                storageBrowse: {
+                    StorageBrowseQuery(
+                        handle.subscribeStorageBrowse(sort: $0, filter: $1)
                     )
                 },
                 subscribeReleaseDetail: {
@@ -368,7 +335,7 @@ public final class Library: Sendable, Observable {
             )
         }
     #else
-        // `getAlbumIndex` and `subscribeStorageProjection` back desktop-only
+        // `getAlbumIndex` and `storageBrowse` back desktop-only
         // surfaces (album-index scrolling and the Storage Manager) and go
         // unused here.
         // This wires only the reads iOS actually makes; the rest keep their

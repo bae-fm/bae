@@ -184,12 +184,6 @@ impl BridgeTrackSearchResult {
 }
 
 mirror_struct! {
-    BridgeStoragePage = bae_core::album_detail::StoragePage,
-    from_core: pub(super) fn,
-    fields: { rows: (each BridgeStorageRow), total_count },
-}
-
-mirror_struct! {
     BridgeSearchResults = bae_core::album_detail::SearchResults,
     from_core: pub(crate) fn,
     fields: {

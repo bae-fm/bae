@@ -26,7 +26,9 @@ use bae_core::db::{
     Database, DbAlbum, DbFile, DbRelease, Pressing, SortDirection, StorageFilter,
     StorageSortCriterion, StorageSortField,
 };
-use bae_core::library::{AppServices, CancellationToken, LibraryManager, StorageProjectionValue};
+use bae_core::library::{
+    AppServices, CancellationToken, LibraryManager, StorageBrowseSubscription, StorageBrowseView,
+};
 use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
@@ -561,21 +563,18 @@ async fn make_local_missing_blob_fails_leaving_summary_remote() {
 // ---------------------------------------------------------------------------
 
 async fn next_storage_release(
-    rx: &mut tokio::sync::mpsc::UnboundedReceiver<
-        Result<StorageProjectionValue, bae_core::library::LibraryError>,
-    >,
+    subscription: &StorageBrowseSubscription,
     release_id: &str,
 ) -> bae_core::album_detail::ReleaseSummary {
     loop {
-        let value = tokio::time::timeout(std::time::Duration::from_secs(5), rx.recv())
+        let value = tokio::time::timeout(std::time::Duration::from_secs(5), subscription.next())
             .await
             .expect("storage subscription delivers a value")
-            .expect("storage subscription remains open")
             .expect("storage projection resolves");
         if let Some(row) = value
-            .page
-            .rows
+            .windows
             .into_iter()
+            .flat_map(|window| window.rows)
             .find(|row| row.release.id == release_id)
         {
             return row.release;
@@ -596,17 +595,23 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     let (release_id, _files) = create_local_release(&mgr, &source_dir, &[("a.flac", b"a")]).await;
 
     let services = AppServices::for_test(mgr.clone()).await.unwrap();
-    let mut values = services.subscribe_storage_values(
+    let values = services.subscribe_storage_browse(
         &tokio::runtime::Handle::current(),
-        StorageSortCriterion {
-            field: StorageSortField::AlbumTitle,
-            direction: SortDirection::Ascending,
+        StorageBrowseView {
+            sort: StorageSortCriterion {
+                field: StorageSortField::AlbumTitle,
+                direction: SortDirection::Ascending,
+            },
+            filter: StorageFilter::All,
+            windows: [bae_core::library::LibraryPageWindow {
+                offset: 0,
+                limit: 50,
+            }]
+            .into_iter()
+            .collect(),
         },
-        StorageFilter::All,
-        0,
-        50,
     );
-    let before = next_storage_release(&mut values, &release_id).await;
+    let before = next_storage_release(&values, &release_id).await;
     assert!(
         before.storage_actions.is_empty(),
         "no cloud home → no storage actions"
@@ -615,7 +620,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     mgr.connect_test_cloud_home(cloud, CloudCipher::Encrypted(enc))
         .await
         .unwrap();
-    let after = next_storage_release(&mut values, &release_id).await;
+    let after = next_storage_release(&values, &release_id).await;
     assert!(
         after
             .storage_actions

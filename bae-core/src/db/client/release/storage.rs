@@ -145,30 +145,27 @@ impl Database {
             .await
     }
 
-    /// Follow one storage page. The request is the releases the upload
-    /// queue holds, in queue order, which only the Uploading filter reads; a
-    /// queue change points the same query at the new set through its request
-    /// handle.
-    pub(crate) fn subscribe_storage_page(
+    /// Follow the Storage Manager list: every window the request names under
+    /// its sort and filter, with the filtered set's count and total size read
+    /// once per run. A new sort, filter, window set, or upload queue points the
+    /// same query at it through its request handle.
+    pub(crate) fn subscribe_storage_browse(
         &self,
-        sort: &StorageSortCriterion,
-        filter: StorageFilter,
-        uploading: Vec<String>,
-        offset: u64,
-        limit: u64,
-    ) -> coven::ReconfigurableLiveQuery<Vec<String>, StoragePageProjection> {
-        let sort = *sort;
+        initial: StorageBrowseRequest,
+    ) -> coven::ReconfigurableLiveQuery<StorageBrowseRequest, StorageBrowseProjection> {
         self.inner
             .handle
-            .subscribe_reconfigurable(uploading, move |uploading, sql| {
-                let queue_ordered = filter == StorageFilter::Uploading && !uploading.is_empty();
+            .subscribe_reconfigurable(initial, move |request, sql| {
+                let uploading = request.uploading.as_slice();
+                let queue_ordered =
+                    request.filter == StorageFilter::Uploading && !uploading.is_empty();
                 let (order_by, needs_artist_sort_join) = if queue_ordered {
                     ("upload_queue.position".to_string(), false)
                 } else {
-                    storage_order_by(&sort)
+                    storage_order_by(&request.sort)
                 };
                 let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
-                let where_clause = storage_filter_where(filter, uploading.len());
+                let where_clause = storage_filter_where(request.filter, uploading.len());
                 let page_where = if queue_ordered { "" } else { &where_clause };
                 let query = storage_page_query(
                     &order_by,
@@ -176,39 +173,61 @@ impl Database {
                     page_where,
                     usize::from(queue_ordered) * uploading.len(),
                 );
-                let rows = storage_page_on(&sql, &query, uploading, offset, limit)
-                    .map_err(CovenError::from)?;
+                let windows = request
+                    .windows
+                    .iter()
+                    .map(|window| {
+                        Ok((
+                            window.clone(),
+                            storage_page_on(&sql, &query, uploading, window.offset, window.limit)
+                                .map_err(CovenError::from)?,
+                        ))
+                    })
+                    .collect::<Result<Vec<_>, CovenError>>()?;
                 let total_count =
                     storage_count_on(&sql, &where_clause, uploading).map_err(CovenError::from)?;
                 let total_size = storage_total_size_on(&sql, &where_clause, uploading)
                     .map_err(CovenError::from)?;
-                let album_ids = rows
+                let album_ids = windows
                     .iter()
-                    .map(|(_, album)| album.id.clone())
+                    .flat_map(|(_, rows)| rows.iter().map(|(_, album)| album.id.clone()))
                     .collect::<Vec<_>>();
                 let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
-                Ok((rows, total_count, total_size, cover_versions))
+                Ok((windows, total_count, total_size, cover_versions))
             })
-            .process(|_, (rows, total_count, total_size, mut cover_versions)| {
-                let rows = super::release_projection::process_storage_rows(rows)?;
-                let cover_ids = rows
-                    .iter()
-                    .flat_map(|row| {
-                        [row.release.id.clone()]
-                            .into_iter()
-                            .chain(resolve_primary_release_id(
-                                row.album.primary_release_id.as_deref(),
-                                row.album.release_ids.iter().map(String::as_str),
-                            ))
+            .process(
+                |request, (windows, total_count, total_size, mut cover_versions)| {
+                    let windows = windows
+                        .into_iter()
+                        .map(|(window, rows)| {
+                            Ok(crate::library::LibraryBrowseWindow {
+                                window,
+                                rows: super::release_projection::process_storage_rows(rows)?,
+                            })
+                        })
+                        .collect::<Result<Vec<_>, CovenError>>()?;
+                    let cover_ids = windows
+                        .iter()
+                        .flat_map(|window| &window.rows)
+                        .flat_map(|row| {
+                            [row.release.id.clone()]
+                                .into_iter()
+                                .chain(resolve_primary_release_id(
+                                    row.album.primary_release_id.as_deref(),
+                                    row.album.release_ids.iter().map(String::as_str),
+                                ))
+                        })
+                        .collect::<HashSet<_>>();
+                    cover_versions.retain(|id, _| cover_ids.contains(id));
+                    Ok(StorageBrowseProjection {
+                        sort: request.sort,
+                        filter: request.filter,
+                        windows,
+                        total_count,
+                        total_size,
+                        cover_versions,
                     })
-                    .collect::<HashSet<_>>();
-                cover_versions.retain(|id, _| cover_ids.contains(id));
-                Ok(StoragePageProjection {
-                    rows,
-                    total_count,
-                    total_size,
-                    cover_versions,
-                })
-            })
+                },
+            )
     }
 }

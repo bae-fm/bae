@@ -65,22 +65,13 @@ pub struct AppServices {
     inner: Arc<AppServicesInner>,
 }
 
-pub struct StorageProjectionValue {
-    pub page: crate::album_detail::StoragePage,
-    pub total_size: u64,
-}
-
-/// Replace the Sync-queue filter's absolute release set only when durable
-/// membership changed. Byte-progress snapshots keep the same IDs and must not
-/// rebuild the database page subscription at buffer cadence.
-fn replace_transitioning_release_ids(current: &mut Vec<String>, mut next: Vec<String>) -> bool {
-    next.sort();
-    next.dedup();
-    if *current == next {
-        return false;
-    }
-    *current = next;
-    true
+/// The releases the upload queue holds, once each, in queue order — the
+/// order the Storage Manager's Uploading filter lists them in.
+fn upload_queue_order(ids: Vec<String>) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    ids.into_iter()
+        .filter(|id| seen.insert(id.clone()))
+        .collect()
 }
 
 /// Each requested window of `projection`'s upcoming tail with the entries in
@@ -331,20 +322,18 @@ impl AppServices {
         )
     }
 
-    /// A storage page as it changes: its rows, the rows' pin markers coven
-    /// watches, the outbox's transitioning releases (for the Uploading
-    /// filter), and the config, cloud-home, download, and transfer state it is
-    /// resolved against.
-    pub fn subscribe_storage_values(
+    /// The Storage Manager list as it changes, read in the view the
+    /// subscription is asked for: its rows, the rows' pin markers coven
+    /// watches, the upload queue (which the Uploading filter lists, in queue
+    /// order), and the config, cloud-home, download, and transfer state the
+    /// rows are resolved against. One query serves every window: a new view or
+    /// upload queue points it at what that reads.
+    pub fn subscribe_storage_browse(
         &self,
         runtime_handle: &tokio::runtime::Handle,
-        sort: crate::db::StorageSortCriterion,
-        filter: crate::db::StorageFilter,
-        offset: u64,
-        limit: u64,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<
-        Result<StorageProjectionValue, crate::library::LibraryError>,
-    > {
+        initial: crate::library::StorageBrowseView,
+    ) -> crate::library::StorageBrowseSubscription {
+        let (view_tx, mut views) = tokio::sync::watch::channel(initial);
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
         let manager = services.inner.manager.clone();
@@ -355,45 +344,60 @@ impl AppServices {
         let mut downloads = services.subscribe_download_values();
         let mut transfers = services.subscribe_transfer_values();
         let mut pins = manager.watch_release_pins();
-        let resolve = move |projection, pinned| {
-            let (page, total_size) = manager.resolve_storage_page_projection(projection, pinned);
-            StorageProjectionValue { page, total_size }
-        };
-        runtime_handle.spawn(async move {
-            let mut transitioning = if filter == crate::db::StorageFilter::Uploading {
-                let current = { outbox.borrow_and_update().clone() };
-                match current {
-                    Some(Ok(snapshot)) => snapshot.transitioning_release_ids(),
-                    Some(Err(error)) => {
-                        let _ = tx.send(Err(crate::library::LibraryError::Internal(error)));
+        let task = runtime_handle.spawn(async move {
+            // The upload queue as the outbox holds it now, read only while
+            // the Uploading filter is shown.
+            let upload_queue = |outbox: &mut tokio::sync::watch::Receiver<
+                Option<Result<crate::library::OutboxSnapshot, String>>,
+            >| {
+                let current = outbox.borrow_and_update().clone();
+                let services = services.clone();
+                async move {
+                    match current {
+                        Some(Ok(snapshot)) => Ok(snapshot.transitioning_release_ids()),
+                        Some(Err(error)) => Err(crate::library::LibraryError::Internal(error)),
+                        None => services
+                            .outbox_snapshot()
+                            .await
+                            .map(|snapshot| snapshot.transitioning_release_ids()),
+                    }
+                    .map(upload_queue_order)
+                }
+            };
+            let mut view = views.borrow_and_update().clone();
+            let mut uploading = Vec::new();
+            if view.filter == crate::db::StorageFilter::Uploading {
+                match upload_queue(&mut outbox).await {
+                    Ok(ids) => uploading = ids,
+                    Err(error) => {
+                        let _ = tx.send(Err(error));
                         return;
                     }
-                    None => match services.outbox_snapshot().await {
-                        Ok(snapshot) => snapshot.transitioning_release_ids(),
-                        Err(error) => { let _ = tx.send(Err(error)); return; }
-                    },
                 }
-            } else { Vec::new() };
+            }
+            let request_for = |view: &crate::library::StorageBrowseView, uploading: &[String]| {
+                crate::db::StorageBrowseRequest {
+                    sort: view.sort,
+                    filter: view.filter,
+                    uploading: uploading.to_vec(),
+                    windows: view.windows.clone(),
+                }
+            };
+            let mut request = request_for(&view, &uploading);
             let mut query = reconfigurable_live_query_events(
                 &query_runtime,
-                services.inner.manager.subscribe_storage_page(
-                    &sort,
-                    filter,
-                    transitioning.clone(),
-                    offset,
-                    limit,
-                ),
+                manager.subscribe_storage_browse(request.clone()),
             );
-            let mut last: Option<(crate::db::StoragePageProjection, Vec<bool>)> = None;
+            let mut last: Option<(crate::db::StorageBrowseProjection, Vec<bool>)> = None;
             loop {
                 let value = tokio::select! {
                     event = query.recv() => match event {
                         None => return,
                         Some(Ok(projection)) => {
-                            match pins.watch(LibraryManager::storage_page_pin_files(&projection)).await {
+                            match pins.watch(LibraryManager::storage_browse_pin_files(&projection)).await {
                                 Ok(pinned) => {
                                     last = Some((projection.clone(), pinned.clone()));
-                                    Ok(resolve(projection, pinned))
+                                    Ok(manager.resolve_storage_browse(projection, pinned))
                                 }
                                 Err(error) => Err(error),
                             }
@@ -403,18 +407,45 @@ impl AppServices {
                     answer = pins.changed() => match (answer, last.as_mut()) {
                         (Ok(pinned), Some((projection, last_pinned))) => {
                             *last_pinned = pinned.clone();
-                            Ok(resolve(projection.clone(), pinned))
+                            Ok(manager.resolve_storage_browse(projection.clone(), pinned))
                         }
                         (Ok(_), None) => continue,
                         (Err(error), _) => Err(error),
                     },
-                    changed = outbox.changed(), if filter == crate::db::StorageFilter::Uploading => {
+                    changed = views.changed() => {
+                        if changed.is_err() { return; }
+                        view = views.borrow_and_update().clone();
+                        uploading = if view.filter == crate::db::StorageFilter::Uploading {
+                            match upload_queue(&mut outbox).await {
+                                Ok(ids) => ids,
+                                Err(error) => {
+                                    if tx.send(Err(error)).is_err() { return; }
+                                    continue;
+                                }
+                            }
+                        } else {
+                            Vec::new()
+                        };
+                        let next = request_for(&view, &uploading);
+                        if next != request {
+                            request = next;
+                            last = None;
+                            query.set(request.clone());
+                        }
+                        continue;
+                    }
+                    changed = outbox.changed(), if view.filter == crate::db::StorageFilter::Uploading => {
                         if changed.is_err() { return; }
                         match outbox.borrow_and_update().clone() {
+                            // Byte progress leaves the queue as it was, and
+                            // reads nothing again.
                             Some(Ok(snapshot)) => {
-                                let next = snapshot.transitioning_release_ids();
-                                if replace_transitioning_release_ids(&mut transitioning, next) {
-                                    query.set(transitioning.clone());
+                                uploading = upload_queue_order(snapshot.transitioning_release_ids());
+                                let next = request_for(&view, &uploading);
+                                if next != request {
+                                    request = next;
+                                    last = None;
+                                    query.set(request.clone());
                                 }
                                 continue;
                             }
@@ -426,13 +457,15 @@ impl AppServices {
                         if changed.is_err() { return; }
                         cloud_home.borrow_and_update(); config.borrow_and_update(); downloads.borrow_and_update(); transfers.borrow_and_update();
                         let Some((projection, pinned)) = last.clone() else { continue };
-                        Ok(resolve(projection, pinned))
+                        Ok(manager.resolve_storage_browse(projection, pinned))
                     }
                 };
-                if tx.send(value).is_err() { return; }
+                if tx.send(value).is_err() {
+                    return;
+                }
             }
         });
-        rx
+        crate::library::StorageBrowseSubscription::new(view_tx, rx, task)
     }
 
     pub fn subscribe_artist_browse(

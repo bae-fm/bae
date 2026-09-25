@@ -196,15 +196,6 @@ pub struct BridgeStorageRow {
     pub album: BridgeAlbum,
 }
 
-/// One page of the Storage Manager list. `total_count` reflects the
-/// filtered subset, not the full library — so paginated list machinery
-/// knows where to stop.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeStoragePage {
-    pub rows: Vec<BridgeStorageRow>,
-    pub total_count: u64,
-}
-
 /// Column the Storage Manager can sort by. Mirrors the sortable
 /// columns `StorageManagerView` renders today.
 #[derive(Debug, Clone, Copy, uniffi::Enum)]

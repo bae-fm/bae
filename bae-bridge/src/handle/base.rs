@@ -88,34 +88,6 @@ impl AppHandle {
         )
     }
 
-    pub fn subscribe_storage_projection(
-        &self,
-        sort: BridgeStorageSort,
-        filter: BridgeStorageFilter,
-        offset: u64,
-        limit: u64,
-        callback: Box<dyn crate::types::StorageProjectionCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_channel(
-            move |services, runtime| {
-                services.subscribe_storage_values(
-                    runtime,
-                    sort.into_core(),
-                    filter.into_core(),
-                    offset,
-                    limit,
-                )
-            },
-            move |value| match value {
-                Ok(value) => callback.on_value(crate::types::BridgeStorageProjection {
-                    page: BridgeStoragePage::from_core(value.page),
-                    total_size: value.total_size,
-                }),
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
-    }
-
     // =========================================================================
     // Playback
     // =========================================================================

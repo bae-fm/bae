@@ -178,57 +178,67 @@ impl LibraryManager {
         Ok(StoragePage { rows, total_count })
     }
 
-    pub(crate) fn subscribe_storage_page(
+    pub(crate) fn subscribe_storage_browse(
         &self,
-        sort: &crate::db::StorageSortCriterion,
-        filter: crate::db::StorageFilter,
-        transitioning_release_ids: Vec<String>,
-        offset: u64,
-        limit: u64,
-    ) -> coven::ReconfigurableLiveQuery<Vec<String>, crate::db::StoragePageProjection> {
-        self.database
-            .subscribe_storage_page(sort, filter, transitioning_release_ids, offset, limit)
+        initial: crate::db::StorageBrowseRequest,
+    ) -> coven::ReconfigurableLiveQuery<
+        crate::db::StorageBrowseRequest,
+        crate::db::StorageBrowseProjection,
+    > {
+        self.database.subscribe_storage_browse(initial)
     }
 
-    /// Each row's representative file id, in row order: what the page's pin
-    /// markers are watched by.
-    pub(crate) fn storage_page_pin_files(
-        projection: &crate::db::StoragePageProjection,
+    /// Each row's representative file id, in window then row order: what the
+    /// list's pin markers are watched by.
+    pub(crate) fn storage_browse_pin_files(
+        projection: &crate::db::StorageBrowseProjection,
     ) -> Vec<Option<String>> {
         projection
-            .rows
+            .windows
             .iter()
+            .flat_map(|window| &window.rows)
             .map(|row| row.release.any_file_id.clone())
             .collect()
     }
 
-    /// Resolve a storage-page delivery with its rows' pin markers, one per row
-    /// in order (see [`Self::storage_page_pin_files`]).
-    pub(crate) fn resolve_storage_page_projection(
+    /// Resolve a Storage Manager delivery with its rows' pin markers, one per
+    /// row in the order [`Self::storage_browse_pin_files`] lists them.
+    pub(crate) fn resolve_storage_browse(
         &self,
-        projection: crate::db::StoragePageProjection,
+        projection: crate::db::StorageBrowseProjection,
         pin_states: Vec<bool>,
-    ) -> (StoragePage, u64) {
+    ) -> crate::library::StorageBrowseSnapshot {
         let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let has_cloud_home = self.has_cloud_home();
-        let mut rows = Vec::with_capacity(projection.rows.len());
-        for (raw, pinned) in projection.rows.into_iter().zip(pin_states) {
-            let transfer_action = self.current_transfer_action(&raw.release.id);
-            rows.push(StorageRow::from_raw(
-                raw,
-                has_cloud_home,
-                pinned,
-                transfer_action,
-                |release_id| covers.get(release_id).cloned(),
-            ));
+        let mut pin_states = pin_states.into_iter();
+        let windows = projection
+            .windows
+            .into_iter()
+            .map(|window| crate::library::LibraryBrowseWindow {
+                window: window.window,
+                rows: window
+                    .rows
+                    .into_iter()
+                    .map(|raw| {
+                        let transfer_action = self.current_transfer_action(&raw.release.id);
+                        StorageRow::from_raw(
+                            raw,
+                            has_cloud_home,
+                            pin_states.next().expect("one pin state per row"),
+                            transfer_action,
+                            |release_id| covers.get(release_id).cloned(),
+                        )
+                    })
+                    .collect(),
+            })
+            .collect();
+        crate::library::StorageBrowseSnapshot {
+            sort: projection.sort,
+            filter: projection.filter,
+            windows,
+            total_count: projection.total_count,
+            total_size: projection.total_size,
         }
-        (
-            StoragePage {
-                rows,
-                total_count: projection.total_count,
-            },
-            projection.total_size,
-        )
     }
 
     /// Count storage rows matching `filter`. Matches `get_storage_page`'s

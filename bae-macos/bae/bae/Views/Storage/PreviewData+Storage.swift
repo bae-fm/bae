@@ -553,24 +553,7 @@
                 }
             )
             return Library(
-                subscribeStorageProjection: { _, _, offset, limit, callback in
-                    let start = min(Int(offset), rows.count)
-                    let end = min(start + Int(limit), rows.count)
-                    callback.onValue(
-                        value: BridgeStorageProjection(
-                            page: BridgeStoragePage(
-                                rows: Array(rows[start..<end]),
-                                totalCount: UInt64(rows.count)
-                            ),
-                            totalSize: UInt64(
-                                rows.reduce(0) {
-                                    $0 + $1.release.totalSize
-                                }
-                            )
-                        )
-                    )
-                    return PreviewStorageSubscription()
-                },
+                storageBrowse: { _, _ in .fixed(rows) },
                 subscribeReleaseDetail: { releaseId, callback in
                     callback.onValue(value: details[releaseId])
                     return PreviewStorageSubscription()
@@ -642,8 +625,8 @@
     extension Library {
         /// The storage page source over this library — the seam
         /// `StorageManagerView` builds internally, exposed for the preview list.
-        fileprivate var storagePageSource: StoragePageSource {
-            StoragePageSource(
+        fileprivate var storagePageSource: StorageBrowsePageSource {
+            StorageBrowsePageSource(
                 library: self,
                 sort: BridgeStorageSort(
                     field: .albumTitle,

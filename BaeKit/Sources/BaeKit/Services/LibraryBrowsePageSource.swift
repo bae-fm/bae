@@ -45,7 +45,7 @@ public struct LibraryBrowseQuery<Row: Sendable>: Sendable {
     /// A query over a fixed, already-sorted list, for previews and tests:
     /// every window request is answered with its slice.
     public static func fixed(_ rows: [Row]) -> LibraryBrowseQuery<Row> {
-        let requests = FixedRequests()
+        let requests = FixedRequests<[BridgeLibraryPageWindow]>()
         return LibraryBrowseQuery(
             setWindows: { requests.request($0) },
             next: {
@@ -67,52 +67,48 @@ public struct LibraryBrowseQuery<Row: Sendable>: Sendable {
     }
 }
 
-/// The window requests a fixed query answers: the latest one not yet
-/// answered, handed to the one reader waiting for it.
-private final class FixedRequests: @unchecked Sendable {
+/// The requests a fixed query answers: the latest one not yet answered,
+/// handed to the one reader waiting for it.
+final class FixedRequests<Request: Sendable>: @unchecked Sendable {
     private let lock = NSLock()
-    private var pending: [BridgeLibraryPageWindow]?
-    private var waiter:
-        CheckedContinuation<[BridgeLibraryPageWindow], any Error>?
+    private var pending: Request?
+    private var waiter: CheckedContinuation<Request, any Error>?
     private var closed = false
 
-    func request(_ windows: [BridgeLibraryPageWindow]) {
-        let waiter: CheckedContinuation<[BridgeLibraryPageWindow], any Error>? =
-            lock.withLock {
-                if let waiter = self.waiter {
-                    self.waiter = nil
-                    return waiter
-                }
-                pending = windows
-                return nil
+    func request(_ request: Request) {
+        let waiter: CheckedContinuation<Request, any Error>? = lock.withLock {
+            if let waiter = self.waiter {
+                self.waiter = nil
+                return waiter
             }
-        waiter?.resume(returning: windows)
+            pending = request
+            return nil
+        }
+        waiter?.resume(returning: request)
     }
 
-    func next() async throws -> [BridgeLibraryPageWindow] {
+    func next() async throws -> Request {
         try await withCheckedThrowingContinuation { continuation in
-            let result: Result<[BridgeLibraryPageWindow], any Error>? =
-                lock.withLock {
-                    if closed { return .failure(CancellationError()) }
-                    if let pending {
-                        self.pending = nil
-                        return .success(pending)
-                    }
-                    waiter = continuation
-                    return nil
+            let result: Result<Request, any Error>? = lock.withLock {
+                if closed { return .failure(CancellationError()) }
+                if let pending {
+                    self.pending = nil
+                    return .success(pending)
                 }
+                waiter = continuation
+                return nil
+            }
             if let result { continuation.resume(with: result) }
         }
     }
 
     func close() {
-        let waiter: CheckedContinuation<[BridgeLibraryPageWindow], any Error>? =
-            lock.withLock {
-                closed = true
-                let waiter = self.waiter
-                self.waiter = nil
-                return waiter
-            }
+        let waiter: CheckedContinuation<Request, any Error>? = lock.withLock {
+            closed = true
+            let waiter = self.waiter
+            self.waiter = nil
+            return waiter
+        }
         waiter?.resume(throwing: CancellationError())
     }
 }

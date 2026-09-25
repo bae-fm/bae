@@ -17,6 +17,10 @@ public final class StorageManagerStore {
     private var rebuildTask: Task<Void, Never>?
     @ObservationIgnored
     private var generation = 0
+    /// The manager's one live read, opened by the first `update` and kept
+    /// across sort and filter changes until `cancel`.
+    @ObservationIgnored
+    private var pageSource: StorageBrowsePageSource?
 
     public init(
         library: Library,
@@ -37,16 +41,24 @@ public final class StorageManagerStore {
         generation += 1
         let currentGeneration = generation
         totalSize = nil
-        let newList = StorageList(
-            pageSource: StoragePageSource(
+        let pageSource: StorageBrowsePageSource
+        if let existing = self.pageSource {
+            existing.setView(sort: sort, filter: filter)
+            pageSource = existing
+        }
+        else {
+            pageSource = StorageBrowsePageSource(
                 library: library,
                 sort: sort,
                 filter: filter,
                 onTotalSize: { [weak self] value in
-                    guard self?.generation == currentGeneration else { return }
                     self?.totalSize = value
                 }
-            ),
+            )
+            self.pageSource = pageSource
+        }
+        let newList = StorageList(
+            pageSource: pageSource,
             ingest: { [libraryStore] rows in
                 for row in rows {
                     _ = libraryStore.internAlbumSummary(row.album)
@@ -69,5 +81,7 @@ public final class StorageManagerStore {
         rebuildTask?.cancel()
         rebuildTask = nil
         list?.cancel()
+        pageSource?.close()
+        pageSource = nil
     }
 }

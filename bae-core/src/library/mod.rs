@@ -16,6 +16,7 @@ pub mod release_queue;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod save;
 pub mod search;
+mod storage_browse;
 pub mod storage_inspector;
 pub(crate) mod storage_transitions;
 pub(crate) mod sync_controller;
@@ -57,6 +58,10 @@ pub use search::{
 };
 /// How a device join this library invited ended. The controller itself stays
 /// crate-private; this outcome is part of the public sharing surface.
+pub use storage_browse::{
+    StorageBrowseSnapshot, StorageBrowseSubscription, StorageBrowseSubscriptionError,
+    StorageBrowseView,
+};
 pub use upload_throughput::UploadThroughput;
 
 #[cfg(test)]

@@ -19,7 +19,9 @@ use bae_core::db::{
     DbAlbum, DbFile, DbRelease, Pressing, SortDirection, StorageFilter, StorageSortCriterion,
     StorageSortField,
 };
-use bae_core::library::{AppServices, CancellationToken, LibraryManager, StorageProjectionValue};
+use bae_core::library::{
+    AppServices, CancellationToken, LibraryManager, StorageBrowseSubscription, StorageBrowseView,
+};
 use bae_core::storage::transfer::{read_release_file_bytes, TransferProgress, TransferService};
 use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
@@ -235,22 +237,19 @@ fn completed(events: &[TransferProgress]) -> bool {
 }
 
 async fn expect_storage_state(
-    rx: &mut tokio::sync::mpsc::UnboundedReceiver<
-        Result<StorageProjectionValue, bae_core::library::LibraryError>,
-    >,
+    subscription: &StorageBrowseSubscription,
     release_id: &str,
     expected: ReleaseStorageState,
 ) {
     loop {
-        let value = tokio::time::timeout(std::time::Duration::from_secs(5), rx.recv())
+        let value = tokio::time::timeout(std::time::Duration::from_secs(5), subscription.next())
             .await
             .expect("storage subscription delivers a value")
-            .expect("storage subscription remains open")
             .expect("storage projection resolves");
         if value
-            .page
-            .rows
+            .windows
             .iter()
+            .flat_map(|window| &window.rows)
             .any(|row| row.release.id == release_id && row.release.storage_state == expected)
         {
             return;
@@ -554,21 +553,27 @@ async fn transition_completions_deliver_storage_values() {
     let (_a, release_id, _named) =
         create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
     let services = AppServices::for_test(mgr.clone()).await.unwrap();
-    let mut values = services.subscribe_storage_values(
+    let values = services.subscribe_storage_browse(
         &tokio::runtime::Handle::current(),
-        StorageSortCriterion {
-            field: StorageSortField::AlbumTitle,
-            direction: SortDirection::Ascending,
+        StorageBrowseView {
+            sort: StorageSortCriterion {
+                field: StorageSortField::AlbumTitle,
+                direction: SortDirection::Ascending,
+            },
+            filter: StorageFilter::All,
+            windows: [bae_core::library::LibraryPageWindow {
+                offset: 0,
+                limit: 50,
+            }]
+            .into_iter()
+            .collect(),
         },
-        StorageFilter::All,
-        0,
-        50,
     );
-    expect_storage_state(&mut values, &release_id, ReleaseStorageState::Local).await;
+    expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
 
     mgr.coven_make_remote(&release_id, false).await.unwrap();
     wait_for_landed_make_remote(&mgr, &release_id).await;
-    expect_storage_state(&mut values, &release_id, ReleaseStorageState::Remote).await;
+    expect_storage_state(&values, &release_id, ReleaseStorageState::Remote).await;
 
     let dest = tmp.path().join("brought-back");
     mgr.coven_make_local(
@@ -578,5 +583,5 @@ async fn transition_completions_deliver_storage_values() {
     )
     .await
     .unwrap();
-    expect_storage_state(&mut values, &release_id, ReleaseStorageState::Local).await;
+    expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
 }

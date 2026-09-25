@@ -17,10 +17,10 @@ use crate::types::{
     BridgeMakeReleasesRemoteOutcome, BridgePairingDevice, BridgePlaybackValues,
     BridgePreviewTarget, BridgeQueueSnapshot, BridgeRelease, BridgeReleaseRoleSummary,
     BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults,
-    BridgeSortCriterion, BridgeStorageFilter, BridgeStoragePage, BridgeStorageRow,
-    BridgeStorageSort, BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup,
-    BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary,
-    BridgeWorkSummary, BridgeWorkTrackSummary,
+    BridgeSortCriterion, BridgeStorageFilter, BridgeStorageRow, BridgeStorageSort,
+    BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
+    BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary, BridgeWorkSummary,
+    BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{BridgeMcpServerStatus, BridgeStorageMode, BridgeSubsonicServerStatus};
@@ -131,6 +131,7 @@ mod playback_persistence;
 mod queue_projection;
 mod queue_upcoming;
 mod service_status;
+mod storage_browse;
 mod sync_status;
 mod ui_events;
 use queue_projection::pump_ui_events;

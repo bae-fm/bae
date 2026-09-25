@@ -516,25 +516,31 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     let services = crate::library::AppServices::for_test(manager.clone())
         .await
         .unwrap();
-    let mut values = services.subscribe_storage_values(
+    let values = services.subscribe_storage_browse(
         &tokio::runtime::Handle::current(),
-        crate::db::StorageSortCriterion {
-            field: crate::db::StorageSortField::AlbumTitle,
-            direction: crate::db::SortDirection::Ascending,
+        crate::library::StorageBrowseView {
+            sort: crate::db::StorageSortCriterion {
+                field: crate::db::StorageSortField::AlbumTitle,
+                direction: crate::db::SortDirection::Ascending,
+            },
+            filter: crate::db::StorageFilter::All,
+            windows: [crate::library::LibraryPageWindow {
+                offset: 0,
+                limit: 50,
+            }]
+            .into_iter()
+            .collect(),
         },
-        crate::db::StorageFilter::All,
-        0,
-        50,
     );
-    let pinned = |value: &crate::library::StorageProjectionValue| {
+    let pinned = |value: &crate::library::StorageBrowseSnapshot| {
         value
-            .page
-            .rows
+            .windows
             .iter()
+            .flat_map(|window| &window.rows)
             .find(|row| row.release.id == release.id)
             .map(|row| row.release.pinned)
     };
-    let first = values.recv().await.unwrap().unwrap();
+    let first = values.next().await.unwrap();
     assert_eq!(pinned(&first), Some(false));
 
     manager
@@ -543,10 +549,9 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
         .unwrap();
 
     loop {
-        let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
+        let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
             .await
             .expect("the pin reaches the storage view")
-            .unwrap()
             .unwrap();
         if pinned(&value) == Some(true) {
             break;
@@ -639,4 +644,91 @@ async fn making_a_release_remote_with_no_provider_connected_is_a_network_failure
         .expect_err("no provider is connected");
 
     assert_eq!(error.category(), crate::ui::UiErrorCategory::Network, "{error}");
+}
+
+#[cfg(feature = "test-utils")]
+async fn next_storage_value(
+    values: &crate::library::StorageBrowseSubscription,
+) -> crate::library::StorageBrowseSnapshot {
+    tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+        .await
+        .expect("the storage view delivers")
+        .expect("the storage view resolves")
+}
+
+/// The Storage Manager reads through one subscription: moving its windows,
+/// its sort, or its filter delivers the new view on the same subscription,
+/// with the filtered set's count and total size beside every value.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn the_storage_view_moves_one_subscription() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    seed_albums(&manager, 3).await;
+    let services = crate::library::AppServices::for_test(manager.clone())
+        .await
+        .unwrap();
+    let window = |offset, limit| crate::library::LibraryPageWindow { offset, limit };
+    let view = |direction, filter, windows: &[crate::library::LibraryPageWindow]| {
+        crate::library::StorageBrowseView {
+            sort: crate::db::StorageSortCriterion {
+                field: crate::db::StorageSortField::AlbumTitle,
+                direction,
+            },
+            filter,
+            windows: windows.iter().cloned().collect(),
+        }
+    };
+    let titles = |value: &crate::library::StorageBrowseSnapshot| {
+        value
+            .windows
+            .iter()
+            .map(|window| {
+                window
+                    .rows
+                    .iter()
+                    .map(|row| row.album.title.clone())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+    };
+    let ascending = crate::db::SortDirection::Ascending;
+    let all = crate::db::StorageFilter::All;
+    let values = services.subscribe_storage_browse(
+        &tokio::runtime::Handle::current(),
+        view(ascending, all, &[window(0, 2)]),
+    );
+
+    let first = next_storage_value(&values).await;
+    assert_eq!(titles(&first), vec![vec!["Album 0", "Album 1"]]);
+    assert_eq!(first.total_count, 3);
+
+    values
+        .set_view(view(ascending, all, &[window(0, 1), window(2, 1)]))
+        .unwrap();
+    let scrolled = next_storage_value(&values).await;
+    assert_eq!(titles(&scrolled), vec![vec!["Album 0"], vec!["Album 2"]]);
+    assert_eq!(scrolled.total_count, 3, "one count answers every window");
+
+    let descending = crate::db::SortDirection::Descending;
+    values
+        .set_view(view(descending, all, &[window(0, 2)]))
+        .unwrap();
+    let resorted = next_storage_value(&values).await;
+    assert_eq!(resorted.sort.direction, descending);
+    assert_eq!(titles(&resorted), vec![vec!["Album 2", "Album 1"]]);
+
+    let local = crate::db::StorageFilter::Local;
+    values
+        .set_view(view(descending, local, &[window(0, 2)]))
+        .unwrap();
+    let filtered = next_storage_value(&values).await;
+    assert_eq!(filtered.filter, local);
+    assert_eq!(
+        filtered.total_count,
+        manager.get_storage_count(local).await.unwrap()
+    );
+    assert_eq!(
+        filtered.total_size,
+        manager.get_storage_total_size(local).await.unwrap()
+    );
 }

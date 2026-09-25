@@ -111,9 +111,24 @@ pub(super) fn storage_total_size_on(
     .map_err(DbError::from)
 }
 
+/// What the Storage Manager list reads: the sort and filter it shows, the
+/// windows of that list it holds, and — under the Uploading filter only — the
+/// releases the upload queue holds, in queue order, which order that list.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageBrowseRequest {
+    pub sort: StorageSortCriterion,
+    pub filter: StorageFilter,
+    pub uploading: Vec<String>,
+    pub windows: crate::library::LibraryPageWindows,
+}
+
+/// Every requested window of the Storage Manager list under the sort and
+/// filter it was read for, and the filtered set's count and total size.
 #[derive(Debug, Clone, PartialEq)]
-pub struct StoragePageProjection {
-    pub rows: Vec<DbStorageRow>,
+pub struct StorageBrowseProjection {
+    pub sort: StorageSortCriterion,
+    pub filter: StorageFilter,
+    pub windows: Vec<crate::library::LibraryBrowseWindow<DbStorageRow>>,
     pub total_count: u64,
     pub total_size: u64,
     pub cover_versions: HashMap<String, String>,
