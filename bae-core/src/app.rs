@@ -208,6 +208,11 @@ where
         crate::audio_codec::init()
     });
 
+    #[cfg(unix)]
+    timing.stage(&library_id, "raise open-file limit", || {
+        crate::util::open_file_limit::raise_open_file_limit()
+    });
+
     let config_handle = Arc::new(ConfigHandle::new(config));
 
     // The one transport every outbound request goes out on, and the providers
