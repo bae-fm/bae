@@ -265,25 +265,20 @@ impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
     }
 }
 
-/// Open a stream over one source file for the tracks that read it. `None` when
-/// its non-UTF-8 path cannot be carried by the reader; its tracks stay
-/// unmeasured. The fill task owns the open handle and closes it once the
-/// returned buffer is dropped. A read failure fails the buffer with the read's
-/// error, which the decode reading it returns as its outcome.
-fn open_source_stream(path: &std::path::Path, size: u64) -> Option<SharedSparseBuffer> {
-    let Some(path_str) = path.to_str() else {
-        warn!("loudness: non-UTF-8 path {path:?}; its tracks stay unmeasured");
-        return None;
-    };
+/// Open a stream over one source file for the tracks that read it. The fill
+/// task owns the open handle and closes it once the returned buffer is
+/// dropped. A read failure fails the buffer with the read's error, which the
+/// decode reading it returns as its outcome.
+fn open_source_stream(path: &std::path::Path, size: u64) -> SharedSparseBuffer {
     let buffer = create_sparse_buffer(size);
     let error_path = path.to_path_buf();
-    Box::new(LocalReader::new(path_str)).start_reading(
+    Box::new(LocalReader::new(path)).start_reading(
         buffer.clone(),
         Box::new(move |error| {
             warn!("loudness: streaming {error_path:?} failed: {error}");
         }),
     );
-    Some(buffer)
+    buffer
 }
 
 /// Measure each track's loudness + true peak and the album's combined loudness,
@@ -425,7 +420,7 @@ pub(super) async fn measure_loudness(
                 Some(buffer) => Some(buffer.clone()),
                 None => sources
                     .get(&segment.file_id)
-                    .and_then(|(path, size)| open_source_stream(path, *size))
+                    .map(|(path, size)| open_source_stream(path, *size))
                     .inspect(|buffer| {
                         open_streams.insert(segment.file_id.clone(), buffer.clone());
                     }),

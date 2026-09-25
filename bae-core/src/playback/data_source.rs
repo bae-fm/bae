@@ -121,17 +121,14 @@ pub trait AudioDataReader: Send + 'static {
     fn start_reading(self: Box<Self>, buffer: SharedSparseBuffer, on_error: FillErrorHandler);
 }
 
-/// Reads from local filesystem.
-///
-/// Used for:
-/// - Non-storage releases (files at original import location)
-/// - Storage releases with local backend
+/// Reads a file the caller names by path: a file being previewed, or an
+/// import's sources before they are the library's.
 pub struct LocalReader {
-    path: String,
+    path: std::path::PathBuf,
 }
 
 impl LocalReader {
-    pub fn new(path: impl Into<String>) -> Self {
+    pub fn new(path: impl Into<std::path::PathBuf>) -> Self {
         Self { path: path.into() }
     }
 }
@@ -171,7 +168,7 @@ impl AudioDataReader for LocalReader {
                     fail_audio_read(
                         on_error,
                         &buffer,
-                        PlaybackError::io(format!("Failed to open {path}"), e),
+                        PlaybackError::io(format!("Failed to open {}", path.display()), e),
                     );
                     return;
                 }
@@ -189,12 +186,18 @@ impl AudioDataReader for LocalReader {
                         f.seek(std::io::SeekFrom::Start(src_off))
                             .await
                             .map_err(|e| {
-                                PlaybackError::io(format!("Failed to seek {path} to {src_off}"), e)
+                                PlaybackError::io(
+                                    format!("Failed to seek {} to {src_off}", path.display()),
+                                    e,
+                                )
                             })?;
                         let mut buf = vec![0u8; len as usize];
                         f.read_exact(&mut buf).await.map_err(|e| {
                             PlaybackError::io(
-                                format!("Failed to read {len} bytes at {src_off} from {path}"),
+                                format!(
+                                    "Failed to read {len} bytes at {src_off} from {}",
+                                    path.display()
+                                ),
                                 e,
                             )
                         })?;

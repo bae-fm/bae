@@ -560,9 +560,7 @@ async fn test_local_file_reader_full_file() {
     temp_file.write_all(test_data).unwrap();
     temp_file.flush().unwrap();
 
-    let reader = Box::new(LocalReader::new(
-        temp_file.path().to_str().expect("temp path is UTF-8"),
-    ));
+    let reader = Box::new(LocalReader::new(temp_file.path()));
     let buffer = create_sparse_buffer(test_data.len() as u64);
 
     reader.start_reading(buffer.clone(), Box::new(|_| {}));
@@ -583,9 +581,7 @@ async fn local_seek_into_large_file_serves_target_via_shared_fill() {
     temp_file.write_all(&data).unwrap();
     temp_file.flush().unwrap();
 
-    let reader = Box::new(LocalReader::new(
-        temp_file.path().to_str().expect("temp path is UTF-8"),
-    ));
+    let reader = Box::new(LocalReader::new(temp_file.path()));
     let buffer = create_sparse_buffer(source_size);
 
     // Register the seek demand before the fill loop starts (the seek case).
@@ -621,11 +617,7 @@ async fn test_local_file_reader_nonexistent_file() {
     let test_data = b"deleted before read";
     temp_file.write_all(test_data).unwrap();
     temp_file.flush().unwrap();
-    let path = temp_file
-        .path()
-        .to_str()
-        .expect("temp path is UTF-8")
-        .to_string();
+    let path = temp_file.path().to_path_buf();
     drop(temp_file);
 
     let reader = Box::new(LocalReader::new(path));
@@ -657,9 +649,7 @@ async fn test_local_file_reader_nonexistent_file() {
 async fn test_local_file_reader_read_error_reports_error() {
     let dir = tempfile::tempdir().unwrap();
 
-    let reader = Box::new(LocalReader::new(
-        dir.path().to_str().expect("temp path is UTF-8"),
-    ));
+    let reader = Box::new(LocalReader::new(dir.path()));
     let buffer = create_sparse_buffer(1);
 
     let (on_error, mut error_rx) = capturing_error_handler();

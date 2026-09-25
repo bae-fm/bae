@@ -82,7 +82,7 @@ async fn i32_decode_names_the_read_error_when_the_first_read_fails() {
         .expect_err("reading a directory fails")
         .kind();
     let buffer = create_sparse_buffer(64 * 1024);
-    Box::new(LocalReader::new(dir.path().to_str().expect("UTF-8 path")))
+    Box::new(LocalReader::new(dir.path()))
         .start_reading(buffer.clone(), Box::new(|_| {}));
 
     let result = tokio::task::spawn_blocking(move || decode_audio(buffer, None, None).map(|_| ()))

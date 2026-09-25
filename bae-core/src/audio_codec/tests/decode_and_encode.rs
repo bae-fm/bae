@@ -382,7 +382,7 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
     std::io::Write::write_all(&mut temp, &wav).unwrap();
     std::io::Write::flush(&mut temp).unwrap();
     let buffer = create_sparse_buffer(wav.len() as u64);
-    Box::new(LocalReader::new(temp.path().to_str().expect("UTF-8 path")))
+    Box::new(LocalReader::new(temp.path()))
         .start_reading(buffer.clone(), Box::new(|_| {}));
 
     let streamed = tokio::task::spawn_blocking({
