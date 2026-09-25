@@ -132,7 +132,7 @@ impl LibraryManager {
         uploads: UploadObserver,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
-        let sync_status = SyncStatus::new(database.clone());
+        let sync_status = SyncStatus::new(&database);
         let sync = SyncController::new(
             config_handle.clone(),
             database.clone(),
@@ -227,7 +227,6 @@ impl LibraryManager {
         self.sync
             .connect_test_cloud_home(cloud_home, cipher)
             .await?;
-        self.sync_status.publish();
         Ok(())
     }
 
@@ -244,7 +243,6 @@ impl LibraryManager {
         self.sync
             .connect_test_cloud_home_caller_driven(cloud_home, cipher)
             .await?;
-        self.sync_status.publish();
         Ok(())
     }
 
@@ -435,10 +433,8 @@ impl LibraryManager {
                 // A cycle in progress (CheckingStorage / Publishing) shows the
                 // spinner; a terminal status ends it. `SyncStatusUpdate` holds
                 // what the status says about the rest of the banner.
-                let syncing = matches!(
-                    status,
-                    SyncLoopStatus::CheckingStorage | SyncLoopStatus::Publishing
-                );
+                let syncing = super::sync_status::is_cycling(&status);
+                let connection = super::sync_status::SyncConnection::of(&status);
                 let SyncStatusUpdate {
                     error: error_update,
                     last_sync_time: last_sync_update,
@@ -464,6 +460,10 @@ impl LibraryManager {
                     }
                     if syncing != state.syncing {
                         state.syncing = syncing;
+                        changed = true;
+                    }
+                    if connection != state.connection {
+                        state.connection = connection;
                         changed = true;
                     }
                     if let Some(raw) = last_sync_update {

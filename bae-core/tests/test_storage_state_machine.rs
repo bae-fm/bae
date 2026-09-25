@@ -589,6 +589,9 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
 
     let tmp = TempDir::new().unwrap();
     let (_db, mgr, cloud, enc) = setup_manager(&tmp).await;
+    // The status subscription folds coven's connection lifecycle into the
+    // sync values the storage view re-resolves on.
+    mgr.start();
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(&mgr, &source_dir, &[("a.flac", b"a")]).await;
 

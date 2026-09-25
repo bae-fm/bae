@@ -24,25 +24,15 @@ use std::sync::{Arc, Mutex};
 pub(super) struct SyncStatus {
     state: Arc<Mutex<SyncStatusState>>,
     values: tokio::sync::watch::Sender<SyncStatusSnapshot>,
-    /// Whether the loop is running is coven's to say, and the snapshot
-    /// reports it beside the banner state.
-    database: Database,
 }
 
 impl SyncStatus {
-    pub(super) fn new(database: Database) -> Self {
-        let state = SyncStatusState::initial(&database);
-        let (values, _) = tokio::sync::watch::channel(SyncStatusSnapshot {
-            error: None,
-            blocked: Vec::new(),
-            last_sync_time: None,
-            syncing: state.syncing,
-            sync_ready: database.is_syncing(),
-        });
+    pub(super) fn new(database: &Database) -> Self {
+        let state = SyncStatusState::initial(&database.subscribe_sync_status().borrow());
+        let (values, _) = tokio::sync::watch::channel(state.snapshot());
         Self {
             state: Arc::new(Mutex::new(state)),
             values,
-            database,
         }
     }
 
@@ -55,31 +45,45 @@ impl SyncStatus {
             change(&mut state)
         };
         if changed {
-            self.publish();
+            self.values.send_replace(self.snapshot());
         }
         result
     }
 
-    /// The banner as it stands, with whether the loop is running now.
+    /// The banner as it stands.
     pub(super) fn snapshot(&self) -> SyncStatusSnapshot {
-        let state = self.state.lock().unwrap().clone();
-        SyncStatusSnapshot {
-            error: state.error,
-            blocked: state.blocked,
-            last_sync_time: state.last_sync_time,
-            syncing: state.syncing,
-            sync_ready: self.database.is_syncing(),
-        }
-    }
-
-    /// Send the stream the current snapshot. For a change outside the
-    /// state — the loop connecting — that moves what the snapshot reports.
-    pub(super) fn publish(&self) {
-        self.values.send_replace(self.snapshot());
+        self.state.lock().unwrap().snapshot()
     }
 
     pub(super) fn subscribe(&self) -> tokio::sync::watch::Receiver<SyncStatusSnapshot> {
         self.values.subscribe()
+    }
+}
+
+/// Whether this library has a cloud connection and a sync loop running on it,
+/// as coven's status stream says.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum SyncConnection {
+    /// No cloud connection is installed.
+    Disconnected,
+    /// A connection is installed and its loop is stopped.
+    Stopped,
+    /// A connection is installed and its loop runs.
+    Running,
+}
+
+impl SyncConnection {
+    pub(super) fn of(status: &SyncLoopStatus) -> Self {
+        match status {
+            SyncLoopStatus::Disconnected => Self::Disconnected,
+            SyncLoopStatus::Stopped => Self::Stopped,
+            SyncLoopStatus::Offline
+            | SyncLoopStatus::CheckingStorage
+            | SyncLoopStatus::Publishing
+            | SyncLoopStatus::Synchronized(_)
+            | SyncLoopStatus::Blocked { .. }
+            | SyncLoopStatus::Failed { .. } => Self::Running,
+        }
     }
 }
 
@@ -92,18 +96,38 @@ pub(super) struct SyncStatusState {
     pub(super) last_sync_time_raw: Option<String>,
     pub(super) last_sync_time: Option<i64>,
     pub(super) syncing: bool,
+    pub(super) connection: SyncConnection,
 }
 
 impl SyncStatusState {
-    fn initial(database: &Database) -> Self {
+    fn initial(status: &SyncLoopStatus) -> Self {
         Self {
             error: None,
             blocked: Vec::new(),
             last_sync_time_raw: None,
             last_sync_time: None,
-            syncing: database.is_syncing(),
+            syncing: is_cycling(status),
+            connection: SyncConnection::of(status),
         }
     }
+
+    fn snapshot(&self) -> SyncStatusSnapshot {
+        SyncStatusSnapshot {
+            error: self.error.clone(),
+            blocked: self.blocked.clone(),
+            last_sync_time: self.last_sync_time,
+            syncing: self.syncing,
+            sync_ready: self.connection == SyncConnection::Running,
+        }
+    }
+}
+
+/// A cycle in progress shows the spinner; any other status ends it.
+pub(super) fn is_cycling(status: &SyncLoopStatus) -> bool {
+    matches!(
+        status,
+        SyncLoopStatus::CheckingStorage | SyncLoopStatus::Publishing
+    )
 }
 
 /// What one sync-loop status says about the banner state.

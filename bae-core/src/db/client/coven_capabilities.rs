@@ -17,10 +17,6 @@ impl Database {
         self.inner.handle.cancel_eager_cache_fill();
     }
 
-    pub(crate) fn is_syncing(&self) -> bool {
-        self.inner.handle.is_syncing()
-    }
-
     /// Replace the concurrent blob-transfer limits for every later upload
     /// drain and pin.
     pub(crate) fn set_transfer_limits(&self, limits: coven::TransferLimits) {
@@ -29,10 +25,6 @@ impl Database {
 
     pub(crate) fn transfer_limits(&self) -> coven::TransferLimits {
         self.inner.handle.transfer_limits()
-    }
-
-    pub(crate) fn is_connected(&self) -> bool {
-        self.inner.handle.is_connected()
     }
 
     pub(crate) fn sync_now(&self) {

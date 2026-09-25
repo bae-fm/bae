@@ -5,10 +5,7 @@
 //! membership operations.
 //!
 //! `LibraryManager` holds one `SyncController` and delegates its public sync API
-//! to it. The controller never references the manager back; the resolver-side
-//! work that a few sync entry points also need (re-emitting every album after a
-//! cloud-home change) stays on the manager, which calls the controller for the
-//! sync part and does the re-emit itself.
+//! to it. The controller never references the manager back.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -425,8 +422,7 @@ impl SyncController {
         Ok(())
     }
 
-    /// OAuth sign-in + persist for a browsable/opaque provider, then connect. The
-    /// manager re-emits every album after this returns.
+    /// OAuth sign-in + persist for a browsable/opaque provider, then connect.
     #[cfg(feature = "oauth-providers")]
     pub(crate) async fn sign_in_cloud_provider(
         &self,
@@ -485,8 +481,8 @@ impl SyncController {
     }
 
     /// Ask Coven to stop the sync loop and forget the cloud-home credentials,
-    /// then clear bae's cloud-home config. The manager re-emits every album
-    /// (storage actions lost) after this returns.
+    /// then clear bae's cloud-home config. The status stream then says the
+    /// library is disconnected, which every view re-resolves on.
     pub(crate) async fn disconnect_cloud_provider(&self) -> Result<(), LibraryError> {
         // Capture the provider before the config clear below drops it, so the
         // telemetry names which provider was disconnected.
@@ -583,8 +579,8 @@ impl SyncController {
     /// it. Without the loop the test's drain is the whole truth. What the loop
     /// would have done — publishing a transition's Store write, which is what
     /// finishes a make-Remote and gives a host-provided blob its cloud locator —
-    /// does not happen here, and `is_sync_ready` stays false, so a test that
-    /// needs either keeps the loop-driven connect.
+    /// does not happen here, so a test that needs it keeps the loop-driven
+    /// connect. Coven's status stream reads as connected either way.
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn connect_test_cloud_home_caller_driven(
         &self,

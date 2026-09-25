@@ -11,8 +11,14 @@ impl LibraryManager {
         self.config_handle.config().cloud_home.provider.is_some()
     }
 
+    /// Whether a cloud connection is installed, as coven's status stream says
+    /// now.
     pub fn has_cloud_home(&self) -> bool {
-        self.database.is_connected()
+        self.sync_connection() != super::sync_status::SyncConnection::Disconnected
+    }
+
+    fn sync_connection(&self) -> super::sync_status::SyncConnection {
+        super::sync_status::SyncConnection::of(&self.database.subscribe_sync_status().borrow())
     }
 
     /// Pause or resume the cloud-upload pipeline. New enqueues still land in
@@ -33,7 +39,7 @@ impl LibraryManager {
     /// Make-Remote does not require this: it durably queues against a connected
     /// cloud home, then remains queued until a loop can drain and publish it.
     pub fn is_sync_ready(&self) -> bool {
-        self.database.is_syncing()
+        self.sync_connection() == super::sync_status::SyncConnection::Running
     }
 
     pub fn get_sync_status(&self) -> SyncStatusSnapshot {

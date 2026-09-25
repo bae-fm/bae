@@ -52,7 +52,6 @@ use coven::ClockRef;
 #[cfg(any(test, feature = "test-utils"))]
 use coven::ExactCloudHome;
 use coven::IdRef;
-use coven::SyncLoopStatus;
 
 /// Transient library events can burst during imports and sync catch-up.
 mod service;

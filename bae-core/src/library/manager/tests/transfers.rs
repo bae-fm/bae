@@ -484,8 +484,8 @@ async fn outbox_snapshot_identifies_the_cover_blob() {
 #[tokio::test]
 async fn make_remote_publishes_its_durable_queue_before_returning() {
     let (manager, temp_dir) = setup_test_manager().await;
+    // A caller-driven connection: no sync loop drains the queue behind the test.
     connect_test_cloud(&manager).await;
-    assert!(!manager.is_sync_ready(), "the test exercises queueing without a sync loop");
     let release = insert_local_release_with_files(
         &manager,
         &temp_dir.path().join("publish-queue"),
