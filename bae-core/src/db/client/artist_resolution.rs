@@ -79,7 +79,9 @@ impl Database {
     }
 
     /// Resolve `credits` against the library as it stands, without writing:
-    /// what a write committing them now would link and create.
+    /// what a write committing them now would link and create. Only an
+    /// import previews its resolution, and the mobile builds do not import.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn resolve_artists(
         &self,
         credits: &[DbArtist],
