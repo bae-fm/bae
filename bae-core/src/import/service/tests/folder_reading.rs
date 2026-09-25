@@ -465,7 +465,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
     );
     let other = fixture
         .manager()
-        .load_folder_scan_item(&root.join("Other/Record").to_string_lossy())
+        .load_folder_scan_item(&root.join("Other").join("Record").to_string_lossy())
         .await
         .unwrap();
     let Some(ScanItem::Valid(other)) = other else {
