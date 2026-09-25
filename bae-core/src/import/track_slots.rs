@@ -663,32 +663,22 @@ pub(crate) fn resolve_track_files(
     Ok(track_files)
 }
 
-/// The persisted scanned audio a binding names. Audio that is no longer there
-/// is a refusal: the mapping named samples this import cannot read, and the
-/// folder changed under the choice.
+/// The persisted scanned audio a binding names. Audio that is no longer among
+/// the candidate's files is a refusal: the mapping named samples this import
+/// cannot read, and the folder changed under the choice. Whether each file on
+/// disk is still the one scanned is the import's own check, made once for
+/// every release file before any is read
+/// ([`crate::import::file_identity::validate_scanned_file_identities`]).
 fn audio_file<'a>(
     files: &'a CategorizedFiles,
     audio: &AudioFile,
 ) -> Result<&'a ScannedFile, ImportError> {
-    let file = files
+    files
         .audio()
         .find(|file| file.relative_path == audio.file_id())
         .ok_or_else(|| ImportError::UnusableFile {
             detail: format!("{} is no longer in the folder", audio.file_id()),
-        })?;
-    let metadata = std::fs::metadata(&file.path).map_err(|error| ImportError::UnusableFile {
-        detail: format!("cannot read {}: {error}", file.path.display()),
-    })?;
-    let modified_at_ns = super::folder_scanner::file_modified_at_ns(&file.path, &metadata)
-        .map_err(|error| ImportError::UnusableFile {
-            detail: error.to_string(),
-        })?;
-    if metadata.len() != file.size || modified_at_ns != file.modified_at_ns {
-        return Err(ImportError::UnusableFile {
-            detail: format!("{} changed after it was scanned", file.path.display()),
-        });
-    }
-    Ok(file)
+        })
 }
 
 /// A file's name without its extension — the title an unnamed slot writes.
