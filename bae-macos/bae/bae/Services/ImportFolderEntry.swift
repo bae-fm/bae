@@ -4,12 +4,9 @@ import Foundation
 /// The one way a folder someone chose becomes something to import. The folder
 /// picker (from the menu, the import tab or the empty library), a drop on the
 /// window and Finder's Open With all come through here, so what each of them
-/// checks, reports and navigates to is the same.
-///
-/// Core reads the folder before it answers — adding it, or reading again the
-/// watched folder that already covers it — and says where its releases stand.
-/// This only shows that answer: the album when the library already has all of
-/// it, the waiting candidates when it does not.
+/// checks, reports and navigates to is the same: the folder is handed to core
+/// and the window goes to the import tab, where its releases appear as the
+/// scan finds them.
 @MainActor
 struct ImportFolderEntry {
     let importer: Importer
@@ -26,8 +23,7 @@ struct ImportFolderEntry {
     }
 
     /// Take in the folder at `url`. Only a folder can be imported; anything
-    /// else is said so rather than ignored. The window says the folder is
-    /// being read until core has answered.
+    /// else is said so rather than ignored.
     @discardableResult
     func take(_ url: URL) -> Task<Void, Never>? {
         var isDirectory: ObjCBool = false
@@ -43,34 +39,14 @@ struct ImportFolderEntry {
             )
             return nil
         }
-        let reading = uiStore.beginReadingFolder(named: url.lastPathComponent)
+        uiStore.navigateToImport()
         return Task {
-            defer { uiStore.endReadingFolder(reading) }
             do {
-                show(try await importer.chooseFolder(url.path))
+                try await importer.addWatchedFolder(url.path)
             }
             catch {
                 report(error)
             }
-        }
-    }
-
-    private func show(_ chosen: BridgeChosenFolder) {
-        switch chosen {
-        case .inLibrary(let albumId):
-            uiStore.navigateToAlbum(albumId)
-        case .inImportQueue(let candidateKeys):
-            guard let first = candidateKeys.first else {
-                assertionFailure("core names no candidate for a waiting folder")
-                uiStore.navigateToImport()
-                return
-            }
-            uiStore.navigateToImportCandidate(
-                first,
-                selecting: Set(candidateKeys)
-            )
-        case .noReleases:
-            uiStore.navigateToImport()
         }
     }
 

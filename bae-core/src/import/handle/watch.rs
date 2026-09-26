@@ -38,78 +38,19 @@ impl ImportServiceHandle {
     /// row is keyed by before anything here uses it, so the OS watch and the
     /// durable row name the folder the same way.
     ///
-    /// Choosing a folder that is already watched re-reads it. It is not an
-    /// error and it must not be nothing: the user pointed at a folder and asked
-    /// for it to be taken in, and a call that returned to a list which never
-    /// moved — no scan, no status, no log line — is how a folder that could not
-    /// be read stayed invisible however many times it was picked.
+    /// Choosing a folder that is already watched, or one inside a watched
+    /// folder, re-reads that watched folder. It is not an error and it must not
+    /// be nothing: the user pointed at a folder and asked for it to be taken
+    /// in, and a call that returned to a list which never moved — no scan, no
+    /// status, no log line — is how a folder that could not be read stayed
+    /// invisible however many times it was picked.
     pub async fn add_watched_folder(&self, path: String) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        self.committed(async move { this.add_watched_folder_write(path, None).await })
+        self.committed(async move { this.add_watched_folder_write(path).await })
             .await
     }
 
-    /// Take in a folder someone chose to import, and say what it is to the
-    /// library once it has been read.
-    ///
-    /// A folder at or below a watched folder is already covered by it: that
-    /// root is read again rather than a second, overlapping one added. A
-    /// folder holding watched folders takes them over. Any other folder is
-    /// added. Either way this returns once the read is over,
-    /// so the answer is about what is on disk now — and a read that failed is
-    /// that answer, as an error, rather than a conclusion drawn from what an
-    /// earlier read left stored.
-    pub async fn choose_folder(
-        &self,
-        path: String,
-    ) -> Result<crate::import::ChosenFolder, crate::import::ImportError> {
-        let chosen = crate::import::watched_folder::canonical_absolute_root(&path)?;
-        let covering = self
-            .watched_folders()
-            .await?
-            .into_iter()
-            .find(|folder| std::path::Path::new(&chosen).starts_with(&folder.path));
-        let (completion, read) = tokio::sync::oneshot::channel();
-        let root = match covering {
-            Some(folder) => {
-                self.send_watcher_command(
-                    WatcherCommand::Refresh {
-                        path: std::path::PathBuf::from(&folder.path),
-                        completion,
-                    },
-                    "failed to request folder refresh",
-                )?;
-                folder.path
-            }
-            None => {
-                let this = self.clone();
-                let added = chosen.clone();
-                self.committed(async move {
-                    this.add_watched_folder_write(added, Some(completion)).await
-                })
-                .await?;
-                chosen.clone()
-            }
-        };
-        read.await
-            .map_err(|_| crate::import::ImportError::Internal {
-                detail: "folder read ended without a result".to_string(),
-            })?
-            .map_err(|detail| crate::import::ImportError::Watch { detail })?;
-        match self
-            .library_manager
-            .load_chosen_folder(root.clone(), std::path::PathBuf::from(chosen))
-            .await?
-        {
-            crate::import::list::ChosenFolderRead::Read(folder) => Ok(folder),
-            crate::import::list::ChosenFolderRead::ScanFailed(detail) => {
-                Err(crate::import::ImportError::FolderUnread { path: root, detail })
-            }
-        }
-    }
-
-    /// Store `path` as watched and ask for it to be read. `completion`, when
-    /// given, hears when that read is over.
+    /// Store `path` as watched and ask for it to be read.
     ///
     /// A folder holding watched folders is watched in their place rather
     /// than refused as overlapping them: they are the same files under a
@@ -117,31 +58,32 @@ impl ImportServiceHandle {
     async fn add_watched_folder_write(
         &self,
         path: String,
-        completion: Option<tokio::sync::oneshot::Sender<Result<(), String>>>,
     ) -> Result<(), crate::import::ImportError> {
         let path = crate::import::watched_folder::canonical_absolute_root(&path)?;
-        let inner: Vec<std::path::PathBuf> = self
-            .watched_folders()
-            .await?
+        let watched = self.watched_folders().await?;
+        if let Some(covering) = watched.iter().find(|folder| {
+            folder.path != path && std::path::Path::new(&path).starts_with(&folder.path)
+        }) {
+            info!("{path} is inside the watched folder {}; re-reading it", covering.path);
+            return self.send_watcher_command(
+                WatcherCommand::Rescan(std::path::PathBuf::from(&covering.path)),
+                "Failed to start watching folder",
+            );
+        }
+        let inner: Vec<std::path::PathBuf> = watched
             .into_iter()
             .map(|folder| std::path::PathBuf::from(folder.path))
             .filter(|root| root.as_path() != std::path::Path::new(&path) && root.starts_with(&path))
             .collect();
         if !inner.is_empty() {
-            return self.adopt_watched_folders(path, inner, completion).await;
+            return self.adopt_watched_folders(path, inner).await;
         }
         let _commit = self.folder_state_commit.lock("add a watched folder").await;
         let added = self
             .library_manager
             .add_watched_import_folder(&path)
             .await?;
-        let read = match completion {
-            Some(completion) => WatcherCommand::Refresh {
-                path: std::path::PathBuf::from(&path),
-                completion,
-            },
-            None => WatcherCommand::Rescan(std::path::PathBuf::from(&path)),
-        };
+        let read = WatcherCommand::Rescan(std::path::PathBuf::from(&path));
         if !added {
             info!("{path} is already watched; re-reading it");
             return self.send_watcher_command(read, "Failed to start watching folder");
@@ -168,7 +110,6 @@ impl ImportServiceHandle {
         &self,
         parent: String,
         inner: Vec<std::path::PathBuf>,
-        read: Option<tokio::sync::oneshot::Sender<Result<(), String>>>,
     ) -> Result<(), crate::import::ImportError> {
         info!("{parent} takes over the watched folders inside it: {inner:?}");
         let (adopted, landed) = tokio::sync::oneshot::channel();
@@ -177,7 +118,6 @@ impl ImportServiceHandle {
                 parent: std::path::PathBuf::from(&parent),
                 inner,
                 adopted,
-                read,
             },
             "failed to request watching a folder in place of the ones inside it",
         )?;

@@ -706,8 +706,7 @@ impl From<bae_core::import::ImportError> for BridgeError {
             | ImportError::SheetBinding { .. }
             | ImportError::FileRole { .. }
             | ImportError::WatchedFolder { .. }
-            | ImportError::Watch { .. }
-            | ImportError::FolderUnread { .. } => BridgeErrorCategory::Import,
+            | ImportError::Watch { .. } => BridgeErrorCategory::Import,
         };
         BridgeError::diagnostic(category, detail)
     }

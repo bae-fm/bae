@@ -164,9 +164,8 @@ impl ImportService {
                                 parent,
                                 inner,
                                 adopted,
-                                read,
                             } => {
-                                active_roots.adopt(parent, inner, adopted, read);
+                                active_roots.adopt(parent, inner, adopted);
                             }
                             WatcherCommand::Shutdown { completion } => {
                                 active_roots.shutdown().await;

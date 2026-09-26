@@ -278,13 +278,11 @@ pub(crate) enum WatcherCommand {
         completion: tokio::sync::oneshot::Sender<Result<(), String>>,
     },
     /// Watch `parent` in place of the watched folders `inner` inside it.
-    /// `adopted` hears once the durable change lands or why it did not;
-    /// `read`, when given, once `parent` has then been read.
+    /// `adopted` hears once the durable change lands or why it did not.
     Adopt {
         parent: std::path::PathBuf,
         inner: Vec<std::path::PathBuf>,
         adopted: tokio::sync::oneshot::Sender<Result<(), String>>,
-        read: Option<tokio::sync::oneshot::Sender<Result<(), String>>>,
     },
     Shutdown {
         completion: std::sync::mpsc::Sender<()>,

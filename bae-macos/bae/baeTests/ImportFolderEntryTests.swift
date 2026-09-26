@@ -20,82 +20,48 @@ struct ImportFolderEntryTests {
         return url
     }
 
-    private func take(
-        _ url: URL,
-        answering chosen: @escaping @Sendable () throws -> BridgeChosenFolder
-    ) async -> UiStore {
+    @Test("a chosen folder goes to the import tab before core answers")
+    func aFolderGoesToImportAtOnce() async throws {
         let uiStore = UiStore()
         let entry = ImportFolderEntry(
-            importer: Importer(chooseFolder: { _ in try chosen() }),
+            importer: Importer(addWatchedFolder: { _ in }),
             uiStore: uiStore
         )
-        let task = entry.take(url)
-        #expect(uiStore.foldersBeingRead.map(\.name) == [url.lastPathComponent])
+
+        let task = entry.take(try folder())
+        #expect(uiStore.activeSection == .importing)
         await task?.value
-        #expect(uiStore.foldersBeingRead.isEmpty)
-        return uiStore
-    }
-
-    @Test("a folder the library already holds shows its album")
-    func inLibraryShowsTheAlbum() async throws {
-        let uiStore = await take(try folder()) {
-            .inLibrary(albumId: "album-1")
-        }
-
-        #expect(uiStore.activeSection == .library)
-        #expect(uiStore.selectedAlbumId == "album-1")
-        #expect(uiStore.pendingAlbumReveal?.albumId == "album-1")
-    }
-
-    @Test("a folder with releases still to import selects and reveals them")
-    func waitingReleasesAreSelectedAndRevealed() async throws {
-        let uiStore = await take(try folder()) {
-            .inImportQueue(candidateKeys: ["/music/Album 1", "/music/Album 2"])
-        }
-
         #expect(uiStore.activeSection == .importing)
-        #expect(
-            uiStore.selectedFolderCandidates == [
-                "/music/Album 1", "/music/Album 2",
-            ]
-        )
-        #expect(
-            uiStore.pendingImportCandidateReveal?.candidateKey
-                == "/music/Album 1"
-        )
+        #expect(uiStore.lastError == nil)
     }
 
-    @Test("a folder with no releases goes to the import tab")
-    func noReleasesGoesToImport() async throws {
-        let uiStore = await take(try folder()) { .noReleases }
-
-        #expect(uiStore.activeSection == .importing)
-        #expect(uiStore.pendingImportCandidateReveal == nil)
-    }
-
-    @Test("a failed read is reported and goes nowhere")
+    @Test("a failed add is reported")
     func failureIsReported() async throws {
-        let uiStore = await take(try folder()) { throw ReadRefused() }
+        let uiStore = UiStore()
+        let entry = ImportFolderEntry(
+            importer: Importer(addWatchedFolder: { _ in throw ReadRefused() }),
+            uiStore: uiStore
+        )
 
-        #expect(uiStore.activeSection == .library)
+        await entry.take(try folder())?.value
+
         #expect(uiStore.lastError != nil)
     }
 
-    @Test("a file is refused before anything is read")
+    @Test("a file is refused before anything is added")
     func aFileIsRefused() throws {
         let file = try folder().appendingPathComponent("01 Track.flac")
         FileManager.default.createFile(atPath: file.path, contents: Data())
         let uiStore = UiStore()
         let entry = ImportFolderEntry(
-            importer: Importer(chooseFolder: { _ in
-                Issue.record("a file is never read")
-                return .noReleases
+            importer: Importer(addWatchedFolder: { _ in
+                Issue.record("a file is never added")
             }),
             uiStore: uiStore
         )
 
         #expect(entry.take(file) == nil)
         #expect(uiStore.lastError != nil)
-        #expect(uiStore.foldersBeingRead.isEmpty)
+        #expect(uiStore.activeSection == .library)
     }
 }

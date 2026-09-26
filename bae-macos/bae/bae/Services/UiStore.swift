@@ -76,13 +76,6 @@ struct PendingImportCandidateReveal {
     let seq: Int
 }
 
-/// A folder someone chose to import that is still being read, for the status
-/// line the window shows until it is.
-struct FolderBeingRead: Identifiable {
-    let id = UUID()
-    let name: String
-}
-
 struct ReleaseGroupDisclosureID: Hashable {
     let key: BridgeFolderReleaseDecisionKey
 
@@ -174,8 +167,6 @@ class UiStore: @unchecked Sendable {
     // ── Overlays ────────────────────────────────────────────────────────
 
     var lightbox: Cursor<LightboxItem>?
-    /// The folders chosen to import that are still being read, oldest first.
-    private(set) var foldersBeingRead: [FolderBeingRead] = []
     private(set) var modalBuilder: (() -> AnyView)?
     private(set) var isImportFolderPickerPresented = false
 
@@ -455,16 +446,6 @@ class UiStore: @unchecked Sendable {
 
     func setImportFolderPickerPresented(_ presented: Bool) {
         isImportFolderPickerPresented = presented
-    }
-
-    func beginReadingFolder(named name: String) -> FolderBeingRead.ID {
-        let folder = FolderBeingRead(name: name)
-        foldersBeingRead.append(folder)
-        return folder.id
-    }
-
-    func endReadingFolder(_ id: FolderBeingRead.ID) {
-        foldersBeingRead.removeAll { $0.id == id }
     }
 
     // MARK: - Find online notice methods

@@ -140,8 +140,8 @@ struct RootAdoptionSchedule {
     inner: Vec<PathBuf>,
     task: tokio::task::JoinHandle<()>,
     adopted: RefreshCompletion,
-    /// Who waits for the read of the adopting folder: the caller that asked,
-    /// and the refresh callers of the folders it takes over.
+    /// Who waits for the read of the adopting folder: the refresh callers of
+    /// the folders it takes over.
     read_waiters: Vec<RefreshCompletion>,
 }
 
@@ -635,14 +635,12 @@ impl ActiveRoots {
 
 impl ActiveRoots {
     /// Watch `parent` in place of the watched folders `inner` inside it.
-    /// `adopted` hears whether the durable change landed; `read`, when given,
-    /// joins the read of `parent` that follows it.
+    /// `adopted` hears whether the durable change landed.
     pub(super) fn adopt(
         &mut self,
         parent: PathBuf,
         inner: Vec<PathBuf>,
         adopted: RefreshCompletion,
-        read: Option<RefreshCompletion>,
     ) {
         let busy = self.roots.contains_key(&parent)
             || inner.iter().any(|root| {
@@ -653,14 +651,11 @@ impl ActiveRoots {
                 "{} or a watched folder inside it is already being removed or taken over",
                 parent.display()
             );
-            root_tasks::answer(adopted, Err(error.clone()));
-            if let Some(read) = read {
-                root_tasks::answer(read, Err(error));
-            }
+            root_tasks::answer(adopted, Err(error));
             return;
         }
         let mut scans = Vec::new();
-        let mut read_waiters: Vec<RefreshCompletion> = read.into_iter().collect();
+        let mut read_waiters: Vec<RefreshCompletion> = Vec::new();
         for root in &inner {
             if let Some(RootActivity::Scanning(mut schedule)) = self.roots.remove(root) {
                 schedule.scan.cancellation.cancel();

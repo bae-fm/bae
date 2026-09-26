@@ -268,14 +268,13 @@ forward! {
                 .map_err(BridgeError::database)
         }
 
-        /// Take in a folder someone chose to import — adding it, or reading
-        /// again the watched folder that already covers it — and say, once it
-        /// has been read, where its releases stand.
-        fn choose_import_folder(path: String) -> crate::types::BridgeChosenFolder {
+        /// Take in a folder someone chose to import: watch it, or read again
+        /// the watched folder that already covers it. The folder's releases
+        /// appear in the import list as its read finds them.
+        fn add_watched_folder(path: String) -> () {
             this.services
-                .import_choose_folder(path)
+                .import_add_watched_folder(path)
                 .await
-                .map(crate::types::BridgeChosenFolder::from_core)
                 .map_err(BridgeError::import)
         }
 
