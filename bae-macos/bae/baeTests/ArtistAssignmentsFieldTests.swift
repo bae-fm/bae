@@ -49,7 +49,8 @@ struct ArtistAssignmentsFieldTests {
 
     /// A compilation credits more artists than the line can hold. The header
     /// summarizes them into the width it has instead of running off the pane,
-    /// so the year still follows the artists on that line.
+    /// and the album's year keeps a line of its own under them, starting where
+    /// the title does.
     @MainActor
     @Test("a compilation's artists stay inside the header")
     func manyArtistsStayInsideTheHeader() async throws {
@@ -68,15 +69,20 @@ struct ArtistAssignmentsFieldTests {
             let yearFrame = try #require(
                 frame(ofFieldShowing: draft.albumYear, in: host)
             )
-            let artistField = try #require(
-                frames
-                    .filter {
-                        $0.midY > yearFrame.minY && $0.midY < yearFrame.maxY
-                    }
-                    .max { $0.width < $1.width }
+            let titleFrame = try #require(
+                frame(ofFieldShowing: draft.albumTitle, in: host)
             )
-            #expect(artistField.width > yearFrame.width)
-            #expect(artistField.maxX <= yearFrame.minX)
+            let otherFields = SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTextField }
+                .filter { $0.stringValue != draft.albumYear }
+                .map { $0.convert($0.bounds, to: host) }
+            #expect(
+                !otherFields.contains {
+                    $0.midY > yearFrame.minY && $0.midY < yearFrame.maxY
+                },
+                "the album year shares its line with no other field"
+            )
+            #expect(abs(yearFrame.minX - titleFrame.minX) < 1)
         }
     }
 

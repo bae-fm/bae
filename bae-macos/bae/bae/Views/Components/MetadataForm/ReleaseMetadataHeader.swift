@@ -108,7 +108,8 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
 }
 
 /// Album identity rendered as a document heading that becomes editable on
-/// hover and focus: the title, the artist line, and the audio facts.
+/// hover and focus: the title, the artist line, the album's year, and the
+/// audio facts.
 struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
@@ -126,31 +127,29 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
                 editingCommands: editingCommands,
                 onCommit: { await writer.setField(.albumTitle, $0) },
             )
-            HStack(alignment: .center, spacing: 6) {
-                ArtistAssignmentsField(
-                    assignments: values.albumArtistAssignments,
-                    placeholder: String(localized: "Album artist"),
-                    onChange: { assignments in
-                        Task { await writer.setAlbumArtists(assignments) }
-                    },
-                )
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary)
-                .modifier(FieldChrome(focused: false, style: .inline))
-                Text(verbatim: "\u{00b7}")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.quaternary)
-                CommittedTextField(
-                    placeholder: String(localized: "Year"),
-                    value: values.albumYear,
-                    chrome: .inline,
-                    font: .systemFont(ofSize: 13),
-                    textColor: .secondaryLabelColor,
-                    editingCommands: editingCommands,
-                    onCommit: { await writer.setField(.albumYear, $0) },
-                )
-                .frame(width: 72)
-            }
+            ArtistAssignmentsField(
+                assignments: values.albumArtistAssignments,
+                placeholder: String(localized: "Album artist"),
+                onChange: { assignments in
+                    Task { await writer.setAlbumArtists(assignments) }
+                },
+            )
+            .font(.system(size: 14))
+            .foregroundStyle(.secondary)
+            .modifier(FieldChrome(focused: false, style: .inline))
+            // The album's original year, a line of its own under the
+            // artists and drawn a step fainter, as the library's album
+            // heading draws it — the pressing's own year is the Release
+            // facts' Year below.
+            CommittedTextField(
+                placeholder: String(localized: "Album year"),
+                value: values.albumYear,
+                chrome: .inline,
+                font: .systemFont(ofSize: 13),
+                textColor: .tertiaryLabelColor,
+                editingCommands: editingCommands,
+                onCommit: { await writer.setField(.albumYear, $0) },
+            )
             audioFacts()
                 .padding(.horizontal, FieldChrome.inlineHorizontalPadding)
         }
