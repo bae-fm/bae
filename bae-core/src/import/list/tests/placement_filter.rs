@@ -11,6 +11,7 @@ fn every_placement() -> ImportQueueRows {
         candidate("Ready"),
         candidate("Several"),
         candidate("Nothing Found"),
+        candidate("Wrong Medium"),
         candidate("Failed Import"),
         candidate("Unanswered"),
         candidate("Imported"),
@@ -23,6 +24,8 @@ fn every_placement() -> ImportQueueRows {
     rows.states
         .insert("hash-Nothing Found".to_string(), not_found_state());
     rows.states
+        .insert("hash-Wrong Medium".to_string(), wrong_medium_state());
+    rows.states
         .insert("hash-Failed Import".to_string(), ready_state("mb-2"));
     rows.failures
         .insert("hash-Failed Import".to_string(), "boom".to_string());
@@ -30,6 +33,18 @@ fn every_placement() -> ImportQueueRows {
     rows.skipped
         .insert((root(), "Set Aside".to_string()));
     rows
+}
+
+/// A verdict whose one release the folder's own files rule out: a 96 kHz rip
+/// against a CD.
+fn wrong_medium_state() -> CandidateStateListRow {
+    let mut state = ready_state("mb-cd");
+    if let Some(verdict) = state.verdict.as_mut() {
+        verdict.medium_conflict = Some(crate::identify::MediumConflict::NotCdAudio {
+            sample_rate_hz: 96_000,
+        });
+    }
+    state
 }
 
 fn shown(rows: &ImportQueueRows, tab: TriageTab, placement: PlacementFilter) -> Vec<String> {
@@ -56,12 +71,17 @@ fn every_placement_filter_keeps_exactly_its_own_rows() {
                 "candidate Ready",
                 "candidate Several",
                 "candidate Unanswered",
+                "candidate Wrong Medium",
             ],
         ),
         (PlacementFilter::Ready, vec!["candidate Ready"]),
         (
             PlacementFilter::NeedsYou(None),
-            vec!["candidate Nothing Found", "candidate Several"],
+            vec![
+                "candidate Nothing Found",
+                "candidate Several",
+                "candidate Wrong Medium",
+            ],
         ),
         (
             PlacementFilter::NeedsYou(Some(NeedsYouKind::SeveralMatches)),
@@ -70,6 +90,10 @@ fn every_placement_filter_keeps_exactly_its_own_rows() {
         (
             PlacementFilter::NeedsYou(Some(NeedsYouKind::NoMatch)),
             vec!["candidate Nothing Found"],
+        ),
+        (
+            PlacementFilter::NeedsYou(Some(NeedsYouKind::MediumDisagrees)),
+            vec!["candidate Wrong Medium"],
         ),
         (
             PlacementFilter::NeedsYou(Some(NeedsYouKind::LookupFailed)),
@@ -146,7 +170,7 @@ fn the_ready_set_and_the_text_filter_follow_the_placement_filter() {
         vec![key("Also Ready").as_str()]
     );
     assert_eq!(
-        ready_texted.summary.counts.pending, 6,
+        ready_texted.summary.counts.pending, 7,
         "the tab counts are the whole queue's, whatever the list shows"
     );
 }
