@@ -429,7 +429,9 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     }
 
     /// A blank draft keeps its title and album year beside the cover and
-    /// all six release fields below it, ready to edit.
+    /// the release's four text fields — year, label, catalog number, barcode
+    /// — below it, ready to edit. The typed facts (media, country, status,
+    /// packaging, details) are menus beside them, not text fields.
     func testIdentityFieldsSitBesideTheCoverAndReleaseFieldsUnderIt()
         async throws
     {
@@ -449,9 +451,10 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 .compactMap { $0 as? NSTextField }
                 .filter(\.isEditable)
             let cover = try coverFrame(in: host)
-            XCTAssertEqual(fields.count, 8)
+            XCTAssertEqual(fields.count, 6)
             for placeholder in [
-                String(localized: "Album title"), String(localized: "Year"),
+                String(localized: "Album title"),
+                String(localized: "Album year"),
             ] {
                 let field = try XCTUnwrap(
                     fields.first { $0.placeholderString == placeholder }
@@ -466,7 +469,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             let releaseFields = fields.filter {
                 $0.placeholderAttributedString?.string == "\u{2014}"
             }
-            XCTAssertEqual(releaseFields.count, 6)
+            XCTAssertEqual(releaseFields.count, 4)
             for field in releaseFields {
                 let frame = field.convert(field.bounds, to: host)
                 XCTAssertTrue(
@@ -603,11 +606,21 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
 
     /// The menu the two draft commands live behind.
     private func menuFrame(in host: NSView) throws -> NSRect {
+        let menu = try sourceMenuButton(in: host)
+        return menu.convert(menu.bounds, to: host)
+    }
+
+    /// The card's own menu, told apart from the release grid's fact menus by
+    /// what it holds: the command that resets the draft.
+    private func sourceMenuButton(in host: NSView) throws -> NSPopUpButton {
         let menus = SnapshotTestSupport.descendants(of: host)
             .compactMap { $0 as? NSPopUpButton }
+            .filter { button in
+                SnapshotTestSupport.populateMenu(button)
+                return (button.menu?.indexOfItem(withTitle: "Reset") ?? -1) >= 0
+            }
         XCTAssertEqual(menus.count, 1)
-        let menu = try XCTUnwrap(menus.first)
-        return menu.convert(menu.bounds, to: host)
+        return try XCTUnwrap(menus.first)
     }
 
     private func focusFrames(in host: NSView) -> [NSRect] {
@@ -705,12 +718,7 @@ extension ImportMetadataCardLayoutTests {
     }
 
     private func sourceMenu(in host: NSView) throws -> NSMenu {
-        let button = try XCTUnwrap(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSPopUpButton }.first
-        )
-        SnapshotTestSupport.populateMenu(button)
-        return try XCTUnwrap(button.menu)
+        try XCTUnwrap(sourceMenuButton(in: host).menu)
     }
 
     func testSourceAudioSummaryHasNoDisclosureControl() async throws {

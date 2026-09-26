@@ -72,7 +72,7 @@ struct InlineFieldHeightTests {
                 let fields = SnapshotTestSupport.descendants(of: host)
                     .compactMap { $0 as? NSTextField }
                     .filter(\.isEditable)
-                #expect(fields.count == 8)
+                #expect(fields.count == 6)
                 for field in fields {
                     #expect(
                         field.frame.height == field.intrinsicContentSize.height,
