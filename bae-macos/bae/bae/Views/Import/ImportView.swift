@@ -185,24 +185,6 @@ struct ImportView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Mark the candidate at `key` skipped or unskipped. The import-candidate
-    /// projection re-tabs the row once the skip toggle round-trips through
-    /// core.
-    func setCandidateSkipped(_ key: String, _ skipped: Bool) {
-        Task {
-            do {
-                try await importer.setCandidateSkipped(key, skipped)
-            }
-            catch {
-                if let line = error.displayLine {
-                    uiStore.showError(
-                        String(localized: "Couldn't update skip state: \(line)")
-                    )
-                }
-            }
-        }
-    }
-
     /// Stop watching `path`. If the selected candidate lived in that folder,
     /// clear the selection — the import-candidate projection drops the
     /// folder's candidates when the new watched-folder list arrives.
