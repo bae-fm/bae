@@ -66,7 +66,7 @@ pub fn discogs_test_release(
         id: id.to_string(),
         title: title.to_string(),
         year: Some(2024),
-        format: vec![],
+        formats: vec![],
         country: Some("US".to_string()),
         label: vec!["Test Label".to_string()],
         covers: vec![],
@@ -184,7 +184,11 @@ pub fn seed_discogs_test_release(
         "country": release.country,
         "master_id": master_id,
         "identifiers": release.barcode.iter().map(|value| serde_json::json!({ "type": "Barcode", "value": value })).collect::<Vec<_>>(),
-        "formats": release.format.iter().map(|name| serde_json::json!({ "name": name })).collect::<Vec<_>>(),
+        "formats": release.formats.iter().map(|format| serde_json::json!({
+            "name": format.name,
+            "qty": format.qty,
+            "descriptions": format.descriptions,
+        })).collect::<Vec<_>>(),
         "labels": release.label.iter().enumerate().map(|(index, name)| serde_json::json!({
             "name": name,
             "catno": if index == 0 { release.catno.clone() } else { None },

@@ -104,10 +104,12 @@ async fn restoring_middle_audio_initializes_only_that_row_from_current_preferenc
             .unwrap();
         handle
             .set_candidate_edit_field(
-                &key,
-                crate::import::CandidateEditField::AlbumTitle,
-                "Typed Album".into(),
-            )
+            &key,
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: "Typed Album".into(),
+            },
+        )
             .await
             .unwrap();
         handle
@@ -236,8 +238,10 @@ async fn restoration_rejects_a_stale_metadata_offer_without_overwriting_edits() 
     handle
         .set_candidate_edit_field(
             &key,
-            crate::import::CandidateEditField::AlbumTitle,
-            "New title".into(),
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: "New title".into(),
+            },
         )
         .await
         .unwrap();
@@ -663,8 +667,10 @@ async fn restoration_prepared_before_a_newer_edit_cannot_overwrite_it() {
         std::time::Duration::from_secs(2),
         handle.set_candidate_edit_field(
             &key,
-            crate::import::CandidateEditField::AlbumTitle,
-            "Changed during tag reading".into(),
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: "Changed during tag reading".into(),
+            },
         ),
     )
     .await;

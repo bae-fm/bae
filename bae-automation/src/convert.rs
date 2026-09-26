@@ -233,10 +233,8 @@ mirror_enum! {
         AlbumTitle,
         AlbumYear,
         PressingYear,
-        Format,
         Label,
         CatalogNumber,
-        Country,
         Barcode,
     },
 }
@@ -324,16 +322,16 @@ impl AutomationMetadataResult {
     /// verdict, and its `media` and `links` are the evidence the pressing
     /// rows were paired by — neither is something an MCP client reads.
     pub(crate) fn from_core(result: MetadataResult) -> Self {
+        let facts = result.facts();
         Self {
             source: result.source.into(),
             release_id: result.release_id,
             title: result.title,
             artist: result.artist,
             year: result.year,
-            format: result.format,
             label: result.label,
             catalog_number: result.catalog_number,
-            country: result.country,
+            facts,
             barcodes: result.barcodes,
             cover_art: result.cover_art.map(AutomationRemoteCover::from_core),
             source_group_id: result.source_group_id,
@@ -401,11 +399,10 @@ impl AutomationReleaseDetail {
             title: detail.title,
             artist: detail.artist,
             year: detail.year,
-            format: detail.format,
             label: detail.label,
             catalog_number: detail.catalog_number,
-            country: detail.country,
             barcode: detail.barcode,
+            facts: detail.facts,
             track_count: detail.track_count,
             tracks: detail
                 .tracks
@@ -422,10 +419,10 @@ impl AutomationReleaseDetail {
 }
 
 mirror_struct! {
-    AutomationPressingEdit = PressingEdit,
+    AutomationPressingEdit = bae_core::pressing::Pressing,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    fields: { year, format, label, catalog_number, country, barcode },
+    fields: { year, label, catalog_number, barcode, facts },
 }
 
 /// Converts editable values and their artist assignments across the automation boundary.
@@ -720,11 +717,11 @@ impl AutomationRelease {
     pub(crate) fn from_core(release: ReleaseDetail) -> Self {
         Self {
             summary: AutomationReleaseSummary::from_core(release.summary),
-            display_name: release.display_name,
+            name: AutomationReleaseName::from_core(release.name),
             year: release.year,
             label: release.label,
             catalog_number: release.catalog_number,
-            country: release.country,
+            facts: release.facts,
             total_duration_ms: release.total_duration_ms,
             tracks: release
                 .tracks
@@ -781,7 +778,7 @@ mirror_struct! {
     fields: {
         id,
         album_id,
-        format,
+        media,
         storage_state: (into),
         pinned,
         storage_actions: (each into),

@@ -388,7 +388,7 @@
         static func storageRelease(
             id: String = "rel-store-1",
             albumId: String = "album-store-1",
-            format: String? = "CD",
+            media: [BridgeMediaCount] = PreviewData.media(.cd),
             storageState: BridgeReleaseStorageState = .remote,
             pinned: Bool = false,
             transfer: BridgeReleaseStorageAction? = nil,
@@ -399,7 +399,7 @@
                 from: BridgeReleaseSummary(
                     id: id,
                     albumId: albumId,
-                    format: format,
+                    media: media,
                     storageState: storageState,
                     pinned: pinned,
                     storageActions: [],
@@ -447,8 +447,10 @@
                 "Ensemble Name",
                 "Unknown Artist",
             ]
-            let media: [String?] = [
-                "CD", "12\" Vinyl", "Cassette", "MiniDisc", "Digital", nil,
+            let media: [[BridgeMediaCount]] = [
+                PreviewData.media(.cd), PreviewData.media(.vinyl, 2),
+                PreviewData.media(.cassette), PreviewData.media(.miniDisc),
+                PreviewData.media(.digital), [],
             ]
 
             return (1...28)
@@ -460,7 +462,7 @@
                         title: titles[(index - 1) % titles.count],
                         artist: artists[(index - 1) % artists.count],
                         year: index % 7 == 0 ? nil : Int32(1980 + index),
-                        format: media[(index - 1) % media.count],
+                        media: media[(index - 1) % media.count],
                         storageState: isRemote ? .remote : .local,
                         pinned: isRemote && index % 4 == 0,
                         transfer: index == 5 ? .pin : nil,
@@ -476,7 +478,7 @@
             title: String,
             artist: String,
             year: Int32? = 2021,
-            format: String? = "CD",
+            media: [BridgeMediaCount] = PreviewData.media(.cd),
             storageState: BridgeReleaseStorageState,
             pinned: Bool = false,
             transfer: BridgeReleaseStorageAction? = nil,
@@ -487,7 +489,7 @@
                 release: BridgeReleaseSummary(
                     id: releaseId,
                     albumId: albumId,
-                    format: format,
+                    media: media,
                     storageState: storageState,
                     pinned: pinned,
                     storageActions: [],
@@ -582,12 +584,11 @@
             return BridgeRelease(
                 id: row.release.id,
                 albumId: row.release.albumId,
-                displayName: row.album.title,
+                name: .named(name: row.album.title),
                 year: row.album.year,
-                format: row.release.format,
                 label: nil,
                 catalogNumber: nil,
-                country: nil,
+                facts: PreviewData.pressingFacts(media: row.release.media),
                 storageState: row.release.storageState,
                 pinned: row.release.pinned,
                 storageActions: row.release.storageActions,

@@ -5,6 +5,8 @@ import SwiftUI
 /// field independently; persisted-release sessions update their working form.
 struct ReleaseFieldWriter {
     let setField: @MainActor (BridgeCandidateEditField, String) async -> Void
+    /// A choice of what the pressing is, from one of the form's pickers.
+    let setPressingFact: @MainActor (BridgePressingFactEdit) async -> Void
     let setAlbumArtists: @MainActor ([BridgeArtistAssignment]) async -> Void
 
     init(
@@ -12,12 +14,17 @@ struct ReleaseFieldWriter {
             @escaping @MainActor (
                 BridgeCandidateEditField, String
             ) async -> Void,
+        setPressingFact:
+            @escaping @MainActor (
+                BridgePressingFactEdit
+            ) async -> Void = { _ in },
         setAlbumArtists:
             @escaping @MainActor (
                 [BridgeArtistAssignment]
             ) async -> Void = { _ in }
     ) {
         self.setField = setField
+        self.setPressingFact = setPressingFact
         self.setAlbumArtists = setAlbumArtists
     }
 
@@ -28,13 +35,17 @@ struct ReleaseFieldWriter {
                 case .albumTitle: form.wrappedValue.albumTitle = value
                 case .albumYear: form.wrappedValue.albumYear = value
                 case .pressingYear: form.wrappedValue.pressing.year = value
-                case .format: form.wrappedValue.pressing.format = value
                 case .label: form.wrappedValue.pressing.label = value
                 case .catalogNumber:
                     form.wrappedValue.pressing.catalogNumber = value
-                case .country: form.wrappedValue.pressing.country = value
                 case .barcode: form.wrappedValue.pressing.barcode = value
                 }
+            },
+            setPressingFact: { fact in
+                form.wrappedValue.pressing.facts = bridgeApplyPressingFact(
+                    facts: form.wrappedValue.pressing.facts,
+                    edit: fact
+                )
             },
             setAlbumArtists: { assignments in
                 form.wrappedValue.albumArtistAssignments = assignments
@@ -193,10 +204,10 @@ struct ReleasePressingFieldsGrid: View {
                     )
                 }
                 GridRow {
-                    field(
-                        .format,
-                        label: coreString("core.release.media"),
-                        text: values.pressing.format
+                    rowLabel(coreString("core.release.media"))
+                    MediaCountsEditor(
+                        media: values.pressing.facts.media,
+                        write: writer.setPressingFact
                     )
                 }
                 GridRow {
@@ -207,10 +218,10 @@ struct ReleasePressingFieldsGrid: View {
                     )
                 }
                 GridRow {
-                    field(
-                        .country,
-                        label: String(localized: "Country"),
-                        text: values.pressing.country
+                    rowLabel(String(localized: "Country"))
+                    ReleaseAreaPicker(
+                        area: values.pressing.facts.area,
+                        write: writer.setPressingFact
                     )
                 }
                 GridRow {
@@ -229,8 +240,38 @@ struct ReleasePressingFieldsGrid: View {
                         monospaced: true
                     )
                 }
+                GridRow {
+                    rowLabel(String(localized: "Status"))
+                    ReleaseStatusPicker(
+                        status: values.pressing.facts.status,
+                        write: writer.setPressingFact
+                    )
+                }
+                GridRow {
+                    rowLabel(String(localized: "Packaging"))
+                    PackagingPicker(
+                        packaging: values.pressing.facts.packaging,
+                        write: writer.setPressingFact
+                    )
+                }
+                GridRow {
+                    rowLabel(String(localized: "Details"))
+                    DiscogsDetailsEditor(
+                        details: values.pressing.facts.discogsDetails,
+                        write: writer.setPressingFact
+                    )
+                }
             }
         }
+    }
+
+    /// A row's label, right-aligned in its column.
+    private func rowLabel(_ label: String) -> some View {
+        Text(label)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .frame(width: Self.labelWidth, alignment: .trailing)
     }
 
     /// One row: the label right-aligned in its column, the field as wide as
@@ -243,11 +284,7 @@ struct ReleasePressingFieldsGrid: View {
         text: String,
         monospaced: Bool = false
     ) -> some View {
-        Text(label)
-            .font(.system(size: 12))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .frame(width: Self.labelWidth, alignment: .trailing)
+        rowLabel(label)
         CommittedTextField(
             placeholder: "\u{2014}",
             value: text,

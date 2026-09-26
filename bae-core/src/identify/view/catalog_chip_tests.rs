@@ -39,7 +39,10 @@ fn pressing(
         catalog_number: catalog.map(str::to_string),
         label: label.map(str::to_string),
         year,
-        country: country.map(str::to_string),
+        area: country.map(crate::pressing::area),
+        status: None,
+        packaging: None,
+        discogs_details: Vec::new(),
         ..MetadataResult::for_test(MB, release_id, Some(group_id))
     }
 }

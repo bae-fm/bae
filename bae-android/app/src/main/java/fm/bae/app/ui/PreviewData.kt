@@ -18,10 +18,15 @@ import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryImageType
+import uniffi.bae_bridge.BridgeMediaCount
+import uniffi.bae_bridge.BridgeMedium
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
+import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeReleaseArea
+import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSidePausePrompt
@@ -116,12 +121,18 @@ object PreviewData {
         BridgeRelease(
             id = id,
             albumId = albumId,
-            displayName = "Release",
+            name = BridgeReleaseName.Named("Release"),
             year = 2020,
-            format = "LP",
             label = "Label Name",
             catalogNumber = "CAT-001",
-            country = "US",
+            facts =
+                BridgePressingFacts(
+                    area = BridgeReleaseArea.Country("US"),
+                    media = listOf(BridgeMediaCount(BridgeMedium.VINYL, 1u)),
+                    status = null,
+                    packaging = null,
+                    discogsDetails = emptyList(),
+                ),
             storageState = BridgeReleaseStorageState.LOCAL,
             pinned = false,
             storageActions = emptyList(),

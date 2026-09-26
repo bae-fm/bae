@@ -283,9 +283,9 @@ pub struct PickedTracklist<'a> {
     /// Track row `n` of the table is addressed as `{track_id_prefix}-{n}`.
     pub track_id_prefix: &'a str,
     pub source: TracklistSource,
-    /// The pressing format of the release being committed — what decides
+    /// The physical medium of the release being committed — what decides
     /// whether a row's position reads `8`, `A1`, or `2-3`.
-    pub format: Option<&'a str>,
+    pub medium: Option<crate::pressing::PhysicalMedium>,
 }
 
 /// Project the mapping table for one folder, against the tracklist picked for
@@ -541,7 +541,7 @@ pub(crate) fn draft_mapping_table(
         }
         let mut row = sources[position].1.clone();
         let position = crate::util::format::compute_track_position(
-            Some(&draft.pressing.format),
+            draft.pressing.facts.physical_medium(),
             track.edit.side,
             Some(track.edit.track_number),
             multi_side,
@@ -772,7 +772,7 @@ impl RowBuilder<'_> {
         };
         let edit = slot.track();
         let position = crate::util::format::compute_track_position(
-            picked.format,
+            picked.medium,
             edit.side,
             edit.track_number,
             self.multi_side,
@@ -800,7 +800,7 @@ impl RowBuilder<'_> {
         };
         let side = i32::try_from(number).expect("a sheet disc number fits in i32");
         crate::util::format::track_side(&crate::util::format::compute_track_position(
-            picked.format,
+            picked.medium,
             Some(side),
             None,
             self.multi_side,

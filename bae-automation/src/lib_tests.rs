@@ -98,11 +98,10 @@ mod release_metadata_update_input {
             album_year: None,
             pressing: AutomationPressingEdit {
                 year: None,
-                format: None,
                 label: None,
                 catalog_number: None,
-                country: None,
                 barcode: None,
+                facts: Default::default(),
             },
             tracks: Vec::new(),
         }
@@ -194,7 +193,10 @@ fn release_storage_state_and_actions_serialize_snake_case() {
     let summary = AutomationReleaseSummary::from_core(bae_core::album_detail::ReleaseSummary {
         id: "rel-1".to_string(),
         album_id: "alb-1".to_string(),
-        format: Some("FLAC".to_string()),
+        media: vec![bae_core::pressing::MediaCount {
+            medium: bae_core::pressing::Medium::Digital,
+            count: 1,
+        }],
         storage_state: ReleaseStorageState::Remote,
         pinned: true,
         storage_actions: vec![
@@ -224,7 +226,7 @@ fn a_local_release_serializes_its_state_and_absent_transfer() {
     let summary = AutomationReleaseSummary::from_core(bae_core::album_detail::ReleaseSummary {
         id: "rel-2".to_string(),
         album_id: "alb-1".to_string(),
-        format: None,
+        media: Vec::new(),
         storage_state: ReleaseStorageState::Local,
         pinned: false,
         storage_actions: Vec::new(),
@@ -292,10 +294,14 @@ mod identify_mirrors {
             title: "Album Title".to_string(),
             artist: Some("Artist Name".to_string()),
             year: Some(1999),
-            format: Some("CD".to_string()),
             label: Some("Label Name".to_string()),
             catalog_number: Some("CAT-1".to_string()),
-            country: Some("US".to_string()),
+            area: Some(bae_core::pressing::ReleaseArea::Country(
+                bae_core::pressing::Country::from_code("US").unwrap(),
+            )),
+            media: bae_core::pressing::StatedMedia::PerMedium(vec![Some(
+                bae_core::pressing::Medium::Cd,
+            )]),
             ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some(group_id))
         }
     }
@@ -626,7 +632,7 @@ mod release_storage_action {
         AutomationReleaseSummary {
             id: "release-1".to_string(),
             album_id: "album-1".to_string(),
-            format: Some("FLAC".to_string()),
+            media: Vec::new(),
             storage_state: AutomationReleaseStorageState::Remote,
             pinned: false,
             storage_actions: actions,

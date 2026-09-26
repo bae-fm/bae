@@ -106,10 +106,9 @@ async fn pure_reads_use_the_read_connection() {
                     album_year: String::new(),
                     pressing: bae_core::import::RawPressingEdit {
                         year: String::new(),
-                        format: String::new(),
                         label: String::new(),
                         catalog_number: String::new(),
-                        country: String::new(),
+                        facts: Default::default(),
                         barcode: String::new(),
                     },
                     tracks: Vec::new(),

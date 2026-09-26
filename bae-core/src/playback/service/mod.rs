@@ -58,7 +58,7 @@ use crate::playback::source;
 use crate::playback::source::{TrackCrossing, TrackFmt};
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use crate::playback::TrackStream;
-use crate::util::format::PhysicalMedium;
+use crate::pressing::PhysicalMedium;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
@@ -504,7 +504,7 @@ fn side_boundary_between(
         return None;
     }
     let (title_key, countdown_key, side_label) = match current_side.medium {
-        PhysicalMedium::Vinyl | PhysicalMedium::Cassette => (
+        PhysicalMedium::Record | PhysicalMedium::Cassette => (
             SIDE_PAUSE_TITLE_KEY,
             SIDE_PAUSE_COUNTDOWN_KEY,
             crate::util::format::side_letter(current_side.number),

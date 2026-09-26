@@ -5,7 +5,7 @@
 //! shape, without writing the release's rows or touching its records.
 use bae_test_support as support;
 
-use bae_core::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease, DbTrack, Pressing};
+use bae_core::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease, DbTrack};
 use bae_core::import::payloads::ReleasePayloads;
 use bae_core::import::{ArtistAssignment, ArtistCredit, Catalog, MetadataRef, ReleaseRecord};
 use bae_core::util::content_type::ContentType;
@@ -54,7 +54,7 @@ fn make_release(album_id: &str) -> DbRelease {
         id: Uuid::new_v4().to_string(),
         album_id: album_id.to_string(),
         release_name: None,
-        pressing: Pressing::blank(),
+        pressing: bae_core::pressing::Pressing::blank(),
         draft_from_tags: false,
         remote: true,
         source_folder_name: None,
@@ -115,7 +115,7 @@ async fn edit_seed_exposes_reset_eligibility_from_where_the_draft_was_read() {
             1985,
             "Label Name",
             "CAT-1",
-            "JP",
+            "Japan",
             &["Track Title"],
         ),
     )
@@ -203,6 +203,8 @@ fn mb_release_json(
         title: title.to_string(),
         date: Some("1999-01-01".to_string()),
         country: Some("US".to_string()),
+        status: None,
+        packaging: None,
         barcode: Some("0123456789".to_string()),
         artist_credit: vec![MbArtistCredit {
             name: artist.to_string(),
@@ -309,10 +311,21 @@ async fn reset_mb_returns_full_pressing_data_from_the_stored_release() {
         }]
     );
     assert_eq!(edit.pressing.year, Some(1999));
-    assert_eq!(edit.pressing.format.as_deref(), Some("CD"));
+    assert_eq!(
+        edit.pressing.facts.media,
+        vec![bae_core::pressing::MediaCount {
+            medium: bae_core::pressing::Medium::Cd,
+            count: 1,
+        }]
+    );
     assert_eq!(edit.pressing.label.as_deref(), Some("Test Label"));
     assert_eq!(edit.pressing.catalog_number.as_deref(), Some("CAT-001"));
-    assert_eq!(edit.pressing.country.as_deref(), Some("US"));
+    assert_eq!(
+        edit.pressing.facts.area,
+        Some(bae_core::pressing::ReleaseArea::Country(
+            bae_core::pressing::Country::from_code("US").unwrap()
+        ))
+    );
     assert_eq!(edit.pressing.barcode.as_deref(), Some("0123456789"));
     assert_eq!(edit.tracks.len(), 2);
     assert_eq!(edit.tracks[0].title, "Cached Track 1");
@@ -421,7 +434,7 @@ async fn reset_discogs_returns_full_pressing_data_from_the_stored_release() {
             1985,
             "Cached Label",
             "CACHE-1",
-            "JP",
+            "Japan",
             &["Cached Discogs Track"],
         ),
     )
@@ -442,10 +455,21 @@ async fn reset_discogs_returns_full_pressing_data_from_the_stored_release() {
         }]
     );
     assert_eq!(edit.pressing.year, Some(1985));
-    assert_eq!(edit.pressing.format.as_deref(), Some("CD"));
+    assert_eq!(
+        edit.pressing.facts.media,
+        vec![bae_core::pressing::MediaCount {
+            medium: bae_core::pressing::Medium::Cd,
+            count: 1,
+        }]
+    );
     assert_eq!(edit.pressing.label.as_deref(), Some("Cached Label"));
     assert_eq!(edit.pressing.catalog_number.as_deref(), Some("CACHE-1"));
-    assert_eq!(edit.pressing.country.as_deref(), Some("JP"));
+    assert_eq!(
+        edit.pressing.facts.area,
+        Some(bae_core::pressing::ReleaseArea::Country(
+            bae_core::pressing::Country::from_code("JP").unwrap()
+        ))
+    );
     assert_eq!(edit.tracks.len(), 1);
     assert_eq!(edit.tracks[0].title, "Cached Discogs Track");
 }
@@ -535,7 +559,7 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
         vec![ArtistAssignment::named("Tag Artist")]
     );
     assert_eq!(edit.pressing.year, Some(2010));
-    assert_eq!(edit.pressing.format, None);
+    assert!(edit.pressing.facts.media.is_empty());
     assert_eq!(edit.tracks.len(), 2);
     assert_eq!(edit.tracks[0].title, "Tag Track 1");
     assert_eq!(edit.tracks[1].title, "Tag Track 2");

@@ -1,6 +1,6 @@
 use super::assemble::ArtistRef;
 use super::{Catalog, ImportError};
-use crate::db::Pressing;
+use crate::pressing::Pressing;
 
 /// Album facts can come from a release or its parent without claiming a
 /// particular pressing or borrowing that parent's tracklist.
@@ -66,15 +66,6 @@ pub(crate) struct ReleaseMetadata {
 impl ReleaseMetadata {
     pub(crate) fn fill_missing(&mut self, other: Self) {
         self.album.fill_missing(other.album);
-        let pressing = &mut self.pressing;
-        pressing.year = pressing.year.or(other.pressing.year);
-        pressing.format = pressing.format.take().or(other.pressing.format);
-        pressing.label = pressing.label.take().or(other.pressing.label);
-        pressing.catalog_number = pressing
-            .catalog_number
-            .take()
-            .or(other.pressing.catalog_number);
-        pressing.country = pressing.country.take().or(other.pressing.country);
-        pressing.barcode = pressing.barcode.take().or(other.pressing.barcode);
+        self.pressing.fill_missing(other.pressing);
     }
 }

@@ -63,14 +63,7 @@ struct WorkDetailView: View {
     private func workReleaseMetadata(
         _ release: BridgeWorkReleaseSummary
     ) -> String {
-        precondition(
-            !release.displayName.isEmpty,
-            "work release display name is empty for \(release.releaseId)"
-        )
-        if let format = release.format, !format.isEmpty {
-            return "\(release.displayName) \u{00B7} \(format)"
-        }
-        return release.displayName
+        release.metadataText
     }
 }
 

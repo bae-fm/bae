@@ -256,6 +256,8 @@ fn seed_mb_release_with_catalog(
         title: "Album Title".to_string(),
         date: Some("1996".to_string()),
         country: Some("US".to_string()),
+        status: None,
+        packaging: None,
         barcode: None,
         artist_credit: vec![crate::musicbrainz::MbArtistCredit {
             name: "Artist Name".to_string(),

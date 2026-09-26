@@ -162,7 +162,7 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.pressing.format = Some("2xCD".to_string());
+    release.pressing.facts = crate::pressing::made_of(crate::pressing::Medium::Cd, 2);
     let first = crate::db::DbTrack::new_test(&release.id, TRACK_1, "First Track", Some(1));
     let mut second = crate::db::DbTrack::new_test(&release.id, TRACK_2, "Second Track", Some(1));
     second.side = Some(2);
@@ -263,12 +263,11 @@ async fn release_metadata_edit_preserves_records_and_audio() {
                     "Edited Album Artist",
                 )],
                 album_year: Some(1984),
-                pressing: crate::import::PressingEdit {
+                pressing: crate::pressing::Pressing {
                     year: Some(1991),
-                    format: Some("CD".to_string()),
                     label: Some("Edited Label".to_string()),
                     catalog_number: Some("CAT-1".to_string()),
-                    country: Some("US".to_string()),
+                    facts: crate::pressing::PressingFacts { area: Some(crate::pressing::area("US")), ..Default::default() },
                     barcode: Some("123456789".to_string()),
                 },
                 tracks: vec![crate::import::TrackUserEdit {

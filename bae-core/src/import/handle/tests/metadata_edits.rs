@@ -19,10 +19,12 @@ async fn assert_every_mutation_refused(
     refused(
         handle
             .set_candidate_edit_field(
-                key,
-                crate::import::CandidateEditField::AlbumTitle,
-                album_title.to_string(),
-            )
+            key,
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: album_title.to_string(),
+            },
+        )
             .await
             .map(drop),
     );
@@ -92,8 +94,10 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
     handle
         .set_candidate_edit_field(
             &key,
-            crate::import::CandidateEditField::AlbumTitle,
-            "Typed Title".to_string(),
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: "Typed Title".to_string(),
+            },
         )
         .await
         .unwrap();
@@ -108,8 +112,10 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
     handle
         .set_candidate_edit_field(
             &key,
-            crate::import::CandidateEditField::AlbumTitle,
-            String::new(),
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: String::new(),
+            },
         )
         .await
         .unwrap();
@@ -143,8 +149,10 @@ async fn an_edit_with_no_metadata_source_updates_the_draft() {
     handle
         .set_candidate_edit_field(
             &key,
-            crate::import::CandidateEditField::PressingYear,
-            "1991".into(),
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::PressingYear,
+                value: "1991".into(),
+            },
         )
         .await
         .unwrap();

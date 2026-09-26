@@ -123,11 +123,13 @@
                 albumYear: "1983",
                 pressing: BridgeRawPressingEdit(
                     year: "1997",
-                    format: "CD",
                     label: "Some Label",
                     catalogNumber: "CAT-0001",
-                    country: "US",
-                    barcode: "000000000000"
+                    barcode: "000000000000",
+                    facts: PreviewData.pressingFacts(
+                        country: "US",
+                        media: PreviewData.media(.cd)
+                    )
                 ),
                 tracks: (1...trackCount)
                     .map { n in

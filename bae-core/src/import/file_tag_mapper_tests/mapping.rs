@@ -163,7 +163,7 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
 
     assert_eq!(parsed.album.title, "Album Alpha");
     assert_eq!(parsed.tracks[0].title, "Track Alpha");
-    assert_eq!(parsed.release.pressing.format, None);
+    assert!(parsed.release.pressing.facts.media.is_empty());
 }
 
 #[test]
@@ -391,7 +391,7 @@ fn flac_with_vorbis_comments_basic() {
     assert_eq!(parsed.album.title, "Album Title");
     assert_eq!(parsed.album.year, Some(1999));
     assert_eq!(parsed.release.pressing.year, Some(1999));
-    assert_eq!(parsed.release.pressing.format, None);
+    assert!(parsed.release.pressing.facts.media.is_empty());
     assert!(parsed.release.draft_from_tags);
 
     assert_eq!(parsed.tracks.len(), 2);

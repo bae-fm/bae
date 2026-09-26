@@ -5,7 +5,7 @@ fn release(source: Catalog, release_id: &str) -> MetadataResult {
 }
 
 fn evidence(a: &MetadataResult, b: &MetadataResult) -> PressingEvidence {
-    PressingEvidence::between(&PressingFacts::of(a), &PressingFacts::of(b))
+    PressingEvidence::between(&ComparedPressing::of(a), &ComparedPressing::of(b))
 }
 
 /// A stated barcode that is not a code is skipped, which leaves the record
@@ -27,35 +27,41 @@ fn an_unusable_barcode_leaves_the_comparison_unknown() {
     );
 }
 
-/// A country as its code or its name is one country; MusicBrainz's regions
-/// are compared with each other and with nothing else.
+/// Two countries are one or two; a region matches only itself and
+/// contradicts nothing, since it spans countries and overlaps other regions.
 #[test]
 fn countries_and_regions_compare_by_what_they_name() {
+    use crate::pressing::{area, Region, ReleaseArea};
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
-    a.country = Some("JP".to_string());
-    b.country = Some("Japan".to_string());
+    a.area = Some(area("JP"));
+    b.area = ReleaseArea::discogs("Japan");
     assert_eq!(evidence(&a, &b).country, Comparison::Same);
-    b.country = Some("US".to_string());
+    b.area = Some(area("US"));
     assert_eq!(evidence(&a, &b).country, Comparison::Different);
-    a.country = Some("XE".to_string());
-    b.country = Some("Europe".to_string());
+    a.area = Some(area("XE"));
+    b.area = ReleaseArea::discogs("Europe");
     assert_eq!(evidence(&a, &b).country, Comparison::Same);
-    b.country = Some("Worldwide".to_string());
-    assert_eq!(evidence(&a, &b).country, Comparison::Different);
-    b.country = Some("DE".to_string());
+    b.area = Some(ReleaseArea::Region(Region::UkAndEurope));
+    assert_eq!(
+        evidence(&a, &b).country,
+        Comparison::Unknown,
+        "two regions that overlap"
+    );
+    b.area = Some(area("XW"));
+    assert_eq!(
+        evidence(&a, &b).country,
+        Comparison::Unknown,
+        "a worldwide release is sold in Europe too"
+    );
+    b.area = Some(area("DE"));
     assert_eq!(
         evidence(&a, &b).country,
         Comparison::Unknown,
         "a region against a country"
     );
-    a.country = Some("Atlantis".to_string());
-    b.country = Some("Atlantis".to_string());
-    assert_eq!(
-        evidence(&a, &b).country,
-        Comparison::Unknown,
-        "two unresolved values"
-    );
+    b.area = None;
+    assert_eq!(evidence(&a, &b).country, Comparison::Unknown);
 }
 
 /// The trade word a label trails is dropped; anything else different is
@@ -89,15 +95,24 @@ fn catalog_numbers_compare_squashed_and_never_disagree() {
     assert_eq!(evidence(&a, &b).catalog, Comparison::Unknown);
 }
 
-/// A MusicBrainz record's media, one format name per medium.
+/// A MusicBrainz record's media, one format name per medium, read in
+/// MusicBrainz's list.
 fn per_medium(names: &[&str]) -> StatedMedia {
-    StatedMedia::PerMedium(names.iter().map(|name| Some(name.to_string())).collect())
+    crate::pressing::musicbrainz::media("mb-1", names.iter().map(|name| Some(*name)))
 }
 
-/// A Discogs record's `format` array: its format names followed by their
-/// descriptions, flat.
-fn descriptors(words: &[&str]) -> StatedMedia {
-    StatedMedia::Descriptors(words.iter().map(|word| word.to_string()).collect())
+/// A Discogs record's format entries, each a format name and its
+/// descriptions, read in Discogs's lists.
+fn formats(entries: &[(&str, &[&str])]) -> StatedMedia {
+    let entries: Vec<crate::discogs::DiscogsFormat> = entries
+        .iter()
+        .map(|(name, descriptions)| crate::discogs::DiscogsFormat {
+            name: name.to_string(),
+            qty: "1".to_string(),
+            descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
+        })
+        .collect();
+    crate::pressing::discogs_formats::read("dg-1", &entries).media
 }
 
 /// What a MusicBrainz record stating `a` and a Discogs record stating `b`
@@ -116,13 +131,13 @@ fn media(a: StatedMedia, b: StatedMedia) -> Comparison {
 #[test]
 fn media_compare_as_the_carriers_each_catalogs_words_name() {
     assert_eq!(
-        media(per_medium(&["CD"]), descriptors(&["CD", "Album"])),
+        media(per_medium(&["CD"]), formats(&[("CD", &["Album"])])),
         Comparison::Same
     );
     assert_eq!(
         media(
             per_medium(&["CD"]),
-            descriptors(&["File", "FLAC", "Album", "Reissue"])
+            formats(&[("File", &["FLAC", "Album", "Reissue"])])
         ),
         Comparison::Different,
         "a download is not a CD"
@@ -130,14 +145,14 @@ fn media_compare_as_the_carriers_each_catalogs_words_name() {
     assert_eq!(
         media(
             per_medium(&["CD", "DVD-Video"]),
-            descriptors(&["CD", "Album", "DVD", "DVD-Video", "NTSC"])
+            formats(&[("CD", &["Album"]), ("DVD", &["DVD-Video", "NTSC"])])
         ),
         Comparison::Same
     );
     assert_eq!(
         media(
             per_medium(&["CD", "DVD-Video"]),
-            descriptors(&["CD", "Album"])
+            formats(&[("CD", &["Album"])])
         ),
         Comparison::Different,
         "the Discogs record names what it is made of, and there is no DVD in it"
@@ -145,7 +160,7 @@ fn media_compare_as_the_carriers_each_catalogs_words_name() {
     assert_eq!(
         media(
             per_medium(&["Hybrid SACD"]),
-            descriptors(&["SACD", "Hybrid", "Multichannel"])
+            formats(&[("SACD", &["Hybrid", "Multichannel"])])
         ),
         Comparison::Same,
         "a hybrid SACD is an SACD on both catalogs"
@@ -156,23 +171,22 @@ fn media_compare_as_the_carriers_each_catalogs_words_name() {
 #[test]
 fn a_format_name_is_the_same_name_in_any_case() {
     assert_eq!(
-        media(per_medium(&["cd"]), descriptors(&["CD"])),
+        media(per_medium(&["cd"]), formats(&[("CD", &[])])),
         Comparison::Same
     );
 }
 
-/// A Discogs word outside both of its lists is almost always a description —
-/// those are added regularly while the format names barely move — so it is
+/// A Discogs description outside its list says nothing bae reads, so it is
 /// passed over; a MusicBrainz medium names a format, so a word outside that
-/// list leaves the medium unknown. Either way the word is logged, because
-/// what needs fixing is the vocabulary.
+/// list leaves the medium unknown. Either way the word is logged when it is
+/// read, because what needs fixing is the vocabulary.
 #[test]
 fn a_word_outside_the_vocabulary_is_logged_and_settles_by_catalog() {
     let logs = crate::test_logs::capture_warn_logs(|| {
         assert_eq!(
             media(
                 per_medium(&["CD"]),
-                descriptors(&["CD", "Album", "Zorblax"])
+                formats(&[("CD", &["Album", "Zorblax"])])
             ),
             Comparison::Same
         );
@@ -186,7 +200,7 @@ fn a_word_outside_the_vocabulary_is_logged_and_settles_by_catalog() {
         assert_eq!(
             media(
                 per_medium(&["CD", "Zorblax Disc"]),
-                descriptors(&["CD", "Album"])
+                formats(&[("CD", &["Album"])])
             ),
             Comparison::Unknown,
             "what the second MusicBrainz medium is cannot be said"
@@ -205,16 +219,16 @@ fn a_word_outside_the_vocabulary_is_logged_and_settles_by_catalog() {
 fn a_medium_left_unstated_is_weighed_against_a_complete_account() {
     assert_eq!(
         media(
-            StatedMedia::PerMedium(vec![Some("CD".to_string()), None]),
-            descriptors(&["Cassette"])
+            StatedMedia::PerMedium(vec![Some(crate::pressing::Medium::Cd), None]),
+            formats(&[("Cassette", &[])])
         ),
         Comparison::Different,
-        "the Discogs array lists the release's formats, and a CD is not among them"
+        "the Discogs entries are the release's formats, and a CD is not among them"
     );
     assert_eq!(
         media(
-            StatedMedia::PerMedium(vec![Some("CD".to_string()), None]),
-            descriptors(&["CD", "Album"])
+            StatedMedia::PerMedium(vec![Some(crate::pressing::Medium::Cd), None]),
+            formats(&[("CD", &["Album"])])
         ),
         Comparison::Unknown,
         "the Discogs record lacks nothing the MusicBrainz one knows, and what \
@@ -225,9 +239,12 @@ fn a_medium_left_unstated_is_weighed_against_a_complete_account() {
         Comparison::Unknown
     );
     assert_eq!(
-        media(StatedMedia::Undescribed, descriptors(&["Album", "Reissue"])),
+        media(
+            StatedMedia::Undescribed,
+            formats(&[("Hybrid", &["Album", "Reissue"])])
+        ),
         Comparison::Unknown,
-        "descriptions alone name no carrier"
+        "a hybrid disc whose kind is not stated names no carrier"
     );
 }
 

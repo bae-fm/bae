@@ -4,7 +4,7 @@ import Observation
 /// Slim per-release projection — what list views (storage manager,
 /// release pickers) render one row per release. Identity-stable
 /// `@Observable` class: in-band mutations like pin toggle, size
-/// updates, or format fixes re-render the row without rebuilding the
+/// updates, or media fixes re-render the row without rebuilding the
 /// list.
 ///
 /// Composed into [`ReleaseDetail`] — the detail wraps its summary so
@@ -30,7 +30,8 @@ public struct TransferState: Equatable {
 public final class ReleaseSummary: Identifiable {
     public let id: String
     public let albumId: String
-    public var format: String?
+    /// What the release is made of, each carrier with its count.
+    public var media: [BridgeMediaCount]
     public var storageState: BridgeReleaseStorageState
     /// Whether coven keeps this release's blobs pinned locally on this device
     /// — the orthogonal coven-cache property, meaningful only when
@@ -54,6 +55,11 @@ public final class ReleaseSummary: Identifiable {
     /// the same way they refresh storage state.
     public var transfer: TransferState?
 
+    /// The media in the current locale's words: "2×CD", "Vinyl".
+    public var mediaText: String {
+        PressingText.media(media)
+    }
+
     /// Total release size formatted for the current locale, e.g. "350 MB".
     /// bae-core emits the raw byte count; the UI formats it.
     public var totalSizeText: String {
@@ -63,7 +69,7 @@ public final class ReleaseSummary: Identifiable {
     public init(from bridge: BridgeReleaseSummary) {
         id = bridge.id
         albumId = bridge.albumId
-        format = bridge.format
+        media = bridge.media
         storageState = bridge.storageState
         pinned = bridge.pinned
         storageActions = bridge.storageActions
@@ -78,7 +84,7 @@ public final class ReleaseSummary: Identifiable {
     public init(from bridge: BridgeRelease) {
         id = bridge.id
         albumId = bridge.albumId
-        format = bridge.format
+        media = bridge.facts.media
         storageState = bridge.storageState
         pinned = bridge.pinned
         storageActions = bridge.storageActions
@@ -91,8 +97,8 @@ public final class ReleaseSummary: Identifiable {
     /// Per-field conditional assignment. Only fields that changed
     /// trigger @Observable re-render.
     public func update(from bridge: BridgeReleaseSummary) {
-        if format != bridge.format {
-            format = bridge.format
+        if media != bridge.media {
+            media = bridge.media
         }
         if storageState != bridge.storageState {
             storageState = bridge.storageState
@@ -119,8 +125,8 @@ public final class ReleaseSummary: Identifiable {
     }
 
     public func update(from bridge: BridgeRelease) {
-        if format != bridge.format {
-            format = bridge.format
+        if media != bridge.facts.media {
+            media = bridge.facts.media
         }
         if storageState != bridge.storageState {
             storageState = bridge.storageState

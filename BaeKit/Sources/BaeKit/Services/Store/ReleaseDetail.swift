@@ -12,8 +12,14 @@ import Foundation
 /// also sees the same identity-stable summary instance.
 public struct ReleaseDetail: Identifiable {
     public let summary: ReleaseSummary
+    /// What a list of the album's releases calls this one, in the current
+    /// locale.
     public var displayName: String
     public var compactMetadata: String
+    /// What the pressing is, worded: "Japan · 2×CD" and "Promo · Reissue".
+    /// Either is empty when the release states none of its parts.
+    public var pressingSummary: String
+    public var pressingDetails: String
     public var totalDuration: BridgeDurationUnits?
     public var tracks: [Track]
     public var trackGroups: [TrackGroup]
@@ -39,18 +45,22 @@ public struct ReleaseDetail: Identifiable {
 
     public init(summary: ReleaseSummary, bridge: BridgeRelease) {
         self.summary = summary
-        displayName = bridge.displayName
+        displayName = bridge.name.text
+        pressingSummary = PressingText.summary(bridge.facts)
+        pressingDetails = PressingText.details(bridge.facts)
         // The play time ends the line, in the words core chose for it
         // ("39 min" / "1 hr, 18 min"); absent when no track reports a length.
         compactMetadata = [
             bridge.year.map { String($0) },
-            bridge.format,
+            pressingSummary,
             bridge.label,
             bridge.catalogNumber,
-            bridge.country,
+            pressingDetails,
             bridge.totalDuration?.text,
         ]
-        .compactMap { $0 }.joined(separator: " \u{00B7} ")
+        .compactMap { $0 }
+        .filter { !$0.isEmpty }
+        .joined(separator: QueueSummary.message("core.audio.list_separator"))
         totalDuration = bridge.totalDuration
         tracks = bridge.tracks.map(Track.init(from:))
         trackGroups = bridge.trackGroups.map(TrackGroup.init(from:))

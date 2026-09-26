@@ -4,11 +4,13 @@ mod error;
 mod identify;
 mod library;
 mod metadata_edit;
+mod pressing;
 
 pub use error::AutomationError;
 pub use identify::*;
 pub use library::*;
 pub use metadata_edit::*;
+pub use pressing::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationConfig {
@@ -469,10 +471,10 @@ pub struct AutomationMetadataResult {
     pub title: String,
     pub artist: Option<String>,
     pub year: Option<i32>,
-    pub format: Option<String>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
-    pub country: Option<String>,
+    /// What the record says the pressing is.
+    pub facts: bae_core::pressing::PressingFacts,
     /// Every barcode this source prints for the pressing, in its order;
     /// empty where it prints none.
     pub barcodes: Vec<String>,
@@ -548,11 +550,11 @@ pub struct AutomationReleaseDetail {
     pub title: String,
     pub artist: Option<String>,
     pub year: Option<i32>,
-    pub format: Option<String>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
-    pub country: Option<String>,
     pub barcode: Option<String>,
+    #[schemars(schema_with = "pressing_facts_schema")]
+    pub facts: bae_core::pressing::PressingFacts,
     pub track_count: u32,
     pub tracks: Vec<AutomationReleaseTrack>,
     pub cover_art: Vec<AutomationRemoteCover>,
@@ -696,18 +698,17 @@ pub struct CandidateMetadataProvenanceInput {
     pub provenance: AutomationMetadataProvenance,
 }
 
-/// One field of a candidate's metadata form. Years are text because the form
-/// is text; the commit parses them.
+/// One text field of a candidate's metadata form. Years are text because the
+/// form is text; the commit parses them. What the pressing is is chosen, with
+/// `import_candidate_pressing_fact_set`.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationCandidateEditField {
     AlbumTitle,
     AlbumYear,
     PressingYear,
-    Format,
     Label,
     CatalogNumber,
-    Country,
     Barcode,
 }
 

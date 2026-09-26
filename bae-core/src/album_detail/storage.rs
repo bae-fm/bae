@@ -13,7 +13,7 @@ pub struct ReleaseStorageSummary {
     pub album_id: String,
     pub album_title: String,
     pub artist_names: String,
-    pub format: Option<String>,
+    pub media: Vec<crate::pressing::MediaCount>,
     /// The release's storage state — Local (local) or Remote (cloud) —
     /// derived from the shared `releases.remote` fact. Orthogonal to `pinned`.
     pub storage_state: ReleaseStorageState,
@@ -47,7 +47,7 @@ impl ReleaseStorageSummary {
             album_id: raw.album_id,
             album_title: raw.album_title,
             artist_names: raw.artist_names,
-            format: raw.format,
+            media: raw.media,
             file_count: raw.file_count,
             total_size: raw.total_size,
         }

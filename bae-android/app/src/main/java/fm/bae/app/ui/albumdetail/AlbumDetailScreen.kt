@@ -327,7 +327,7 @@ internal fun AlbumDetailContent(
                         FilterChip(
                             selected = rel.id == selectedRelease?.id,
                             onClick = { callbacks.onSelectRelease(rel.id) },
-                            label = { Text(rel.displayName, maxLines = 1) },
+                            label = { Text(rel.name.text(context), maxLines = 1) },
                         )
                     }
                 }

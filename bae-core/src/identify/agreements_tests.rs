@@ -31,8 +31,8 @@ const NO_LOOKUP: LookupProvenance = LookupProvenance {
 /// the folder name and the provider's record, so they take no part.
 #[test]
 fn a_catalog_number_is_stated_however_its_separators_fall() {
-    let folder = text(&["AC-DC - Dirty Deeds [16033-2]"]);
-    for stated in ["16033 2", "16033-2", "160332", "16033.2"] {
+    let folder = text(&["Artist - Album [10101-2]"]);
+    for stated in ["10101 2", "10101-2", "101012", "10101.2"] {
         let judged = agreements_of(
             &MetadataResult {
                 catalog_number: Some(stated.to_string()),
@@ -63,7 +63,7 @@ fn digits_inside_a_longer_run_state_no_catalog_number() {
 /// A field the result does not state cannot be agreed with.
 #[test]
 fn a_field_the_result_leaves_out_is_no_agreement() {
-    let judged = agreements_of(&result(), &text(&["Atlantic 1976 US"]), &NO_LOOKUP);
+    let judged = agreements_of(&result(), &text(&["Harbor 1976 US"]), &NO_LOOKUP);
     assert_eq!(judged, Agreements::NONE);
 }
 
@@ -71,12 +71,15 @@ fn a_field_the_result_leaves_out_is_no_agreement() {
 fn the_label_the_year_and_the_country_are_read_out_of_the_text() {
     let judged = agreements_of(
         &MetadataResult {
-            label: Some("Atlantic Records".to_string()),
+            label: Some("Harbor Records".to_string()),
             year: Some(1976),
-            country: Some("US".to_string()),
+            area: Some(crate::pressing::area("US")),
+            status: None,
+            packaging: None,
+            discogs_details: Vec::new(),
             ..result()
         },
-        &text(&["Atlantic Records, Inc.", "Made in US · 1976"]),
+        &text(&["Harbor Records, Inc.", "Made in US · 1976"]),
         &NO_LOOKUP,
     );
     assert!(judged.label && judged.year && judged.country);
@@ -89,7 +92,10 @@ fn the_label_the_year_and_the_country_are_read_out_of_the_text() {
 fn a_country_code_inside_a_word_states_nothing() {
     let judged = agreements_of(
         &MetadataResult {
-            country: Some("US".to_string()),
+            area: Some(crate::pressing::area("US")),
+            status: None,
+            packaging: None,
+            discogs_details: Vec::new(),
             ..result()
         },
         &text(&["The House That Blues Built"]),
@@ -175,12 +181,12 @@ fn a_barcode_is_the_one_agreement_that_does_not_stand_alone() {
 #[test]
 fn a_struck_out_catalog_number_states_nothing() {
     let folder = CandidateText::of(
-        &[line("AC-DC - Dirty Deeds [16033-2]")],
-        &["16033-2".to_string()],
+        &[line("Artist - Album [10101-2]")],
+        &["10101-2".to_string()],
     );
     let judged = agreements_of(
         &MetadataResult {
-            catalog_number: Some("16033-2".to_string()),
+            catalog_number: Some("10101-2".to_string()),
             ..result()
         },
         &folder,
@@ -194,7 +200,7 @@ fn a_struck_out_catalog_number_states_nothing() {
 /// thing about the release and stands on its own.
 #[test]
 fn striking_out_a_value_leaves_the_other_fields_alone() {
-    let folder = CandidateText::of(&[line("Atlantic 1976 US")], &["1976".to_string()]);
+    let folder = CandidateText::of(&[line("Harbor 1976 US")], &["1976".to_string()]);
     let judged = agreements_of(
         &MetadataResult {
             catalog_number: Some("1976".to_string()),
@@ -230,54 +236,48 @@ fn striking_out_a_number_a_lookup_asked_leaves_its_agreement() {
     assert!(judged.catalog);
 }
 
-/// A provider answers a country as a code and a folder writes it out, so the
-/// two have to meet: `JP` is what a folder saying "Japan" states, and `Japan`
-/// is what one saying "JP" states.
+/// A catalog states a country as a code or a name and a folder writes it
+/// either way, so the two have to meet: Japan is what a folder saying "Japan"
+/// or "JP" states, and a region is stated by any name a catalog writes it as.
 #[test]
-fn a_country_agrees_whichever_of_them_spells_it_out() {
-    for (stated, folder) in [
-        ("JP", "1979 - Van Halen II (Warner Bros., 20P2-2031, Japan)"),
-        ("Japan", "1979 - Van Halen II (Warner Bros., 20P2-2031, JP)"),
-        (
-            "Japan",
-            "1979 - Van Halen II (Warner Bros., 20P2-2031, Japan)",
-        ),
-        ("US", "Dirty Deeds Done Dirt Cheap (United States)"),
-        ("United States", "Dirty Deeds Done Dirt Cheap (US)"),
+fn an_area_agrees_whichever_way_the_folder_spells_it() {
+    for (area, folder) in [
+        ("JP", "1979 - Album (Label, CAT-1, Japan)"),
+        ("JP", "1979 - Album (Label, CAT-1, JP)"),
+        ("US", "Album (United States)"),
+        ("US", "Album (US)"),
+        ("XE", "Album (Europe)"),
     ] {
         let judged = agreements_of(
             &MetadataResult {
-                country: Some(stated.to_string()),
+                area: Some(crate::pressing::area(area)),
                 ..result()
             },
             &text(&[folder]),
             &NO_LOOKUP,
         );
-        assert!(judged.country, "{stated} against {folder}");
+        assert!(judged.country, "{area} against {folder}");
     }
 }
 
-/// The other spellings are one country's, not any country's: a folder that
-/// names a different one states nothing about this release.
+/// The other spellings are one area's, not any area's: a folder that names a
+/// different one states nothing about this release.
 #[test]
-fn a_country_the_folder_does_not_name_is_no_agreement() {
-    for (stated, folder) in [
-        (
-            "JP",
-            "1979 - Van Halen II (Warner Bros., 20P2-2031, Germany)",
-        ),
-        ("Japan", "1979 - Van Halen II (Warner Bros., 20P2-2031, DE)"),
-        ("XW", "1979 - Van Halen II (Warner Bros., 20P2-2031, Japan)"),
+fn an_area_the_folder_does_not_name_is_no_agreement() {
+    for (area, folder) in [
+        ("JP", "1979 - Album (Label, CAT-1, Germany)"),
+        ("JP", "1979 - Album (Label, CAT-1, DE)"),
+        ("XW", "1979 - Album (Label, CAT-1, Japan)"),
     ] {
         let judged = agreements_of(
             &MetadataResult {
-                country: Some(stated.to_string()),
+                area: Some(crate::pressing::area(area)),
                 ..result()
             },
             &text(&[folder]),
             &NO_LOOKUP,
         );
-        assert!(!judged.country, "{stated} against {folder}");
+        assert!(!judged.country, "{area} against {folder}");
     }
 }
 
@@ -312,21 +312,21 @@ fn a_rows_agreements_are_its_records_together() {
 
 /// The trade word a label trails its name with says what kind of business it
 /// is, not which one, so the two name one label however either of them writes
-/// it: a folder saying "Warner Bros." states a result's "Warner Bros.
-/// Records", and a folder saying "Atlantic Records" states an "Atlantic".
+/// it: a folder saying "North Star" states a result's "North Star Records",
+/// and a folder saying "Harbor Records" states a "Harbor".
 #[test]
 fn a_label_agrees_without_the_trade_word_either_of_them_prints() {
     for (stated, folder) in [
         (
-            "Warner Bros. Records",
-            "1979 - Van Halen II (Warner Bros., 20P2-2031, JP)",
+            "North Star Records",
+            "1979 - Album (North Star, AB1-2031, JP)",
         ),
-        ("Atlantic", "Atlantic Records, Inc."),
-        ("Sony Music", "Sony"),
-        ("Sony", "Sony Music"),
-        ("Blue Note Records", "Blue Note Recordings"),
-        ("Nonesuch Record Co.", "Nonesuch"),
-        ("Ninja Tune", "Ninja Tune"),
+        ("Harbor", "Harbor Records, Inc."),
+        ("Meridian Music", "Meridian"),
+        ("Meridian", "Meridian Music"),
+        ("Grey Stone Records", "Grey Stone Recordings"),
+        ("Lantern Record Co.", "Lantern"),
+        ("Paper Kite", "Paper Kite"),
     ] {
         let judged = agreements_of(
             &MetadataResult {
@@ -350,7 +350,7 @@ fn a_label_that_is_only_trade_words_states_nothing() {
                 label: Some(stated.to_string()),
                 ..result()
             },
-            &text(&["Atlantic Records, Inc.", "Sony Music Entertainment"]),
+            &text(&["Harbor Records, Inc.", "Meridian Music Entertainment"]),
             &NO_LOOKUP,
         );
         assert!(!judged.label, "{stated} names no label");
@@ -362,9 +362,9 @@ fn a_label_that_is_only_trade_words_states_nothing() {
 #[test]
 fn a_label_the_folder_does_not_name_is_no_agreement() {
     for (stated, folder) in [
-        ("Columbia Records", "Atlantic Records, Inc."),
-        ("Warner Bros. Records", "Warner Music"),
-        ("Blue Note", "Note Records"),
+        ("Summit Records", "Harbor Records, Inc."),
+        ("North Star Records", "North Music"),
+        ("Grey Stone", "Stone Records"),
     ] {
         let judged = agreements_of(
             &MetadataResult {

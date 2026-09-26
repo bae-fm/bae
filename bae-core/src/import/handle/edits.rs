@@ -72,17 +72,16 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    /// Record one album-level field the user typed.
+    /// Record one album-level field the user typed or chose.
     pub async fn set_candidate_edit_field(
         &self,
         candidate_key: &str,
-        field: crate::import::CandidateEditField,
-        value: String,
+        edit: crate::import::DraftFieldEdit,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
         self.committed(async move {
-            this.set_candidate_edit_field_write(&candidate_key, field, value)
+            this.set_candidate_edit_field_write(&candidate_key, edit)
                 .await
         })
         .await
@@ -91,8 +90,7 @@ impl ImportServiceHandle {
     async fn set_candidate_edit_field_write(
         &self,
         candidate_key: &str,
-        field: crate::import::CandidateEditField,
-        value: String,
+        edit: crate::import::DraftFieldEdit,
     ) -> Result<(), crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
@@ -106,8 +104,7 @@ impl ImportServiceHandle {
                 &candidate.key(),
                 &hash,
                 candidate.file_edit_revision,
-                field,
-                &value,
+                edit,
             )
             .await?;
         Ok(())

@@ -16,7 +16,7 @@ impl Database {
             r.id AS release_id, \
             r.album_id, \
             a.title AS album_title, \
-            r.format, \
+            r.media, \
             r.remote, \
             (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
             {artist_names} AS artist_names, \

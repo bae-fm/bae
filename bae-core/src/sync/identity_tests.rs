@@ -6,8 +6,7 @@
 use super::test_devices::{run_two_device_test, TestDevice, TwoDevices};
 use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackWork, DbWork};
 use crate::import::{
-    ArtistAssignment, Catalog, ExistingArtist, MetadataRef, PressingEdit, ReleaseRecord,
-    ReleaseUserEdit,
+    ArtistAssignment, Catalog, ExistingArtist, MetadataRef, ReleaseRecord, ReleaseUserEdit,
 };
 
 const MB_ARTIST: &str = "5b11f4ce-a62d-471e-81fc-a69a8278c7da";
@@ -309,7 +308,7 @@ async fn album_artist_edit(device: &TestDevice, artist_ids: &[&str]) -> ReleaseU
         album_title: "Album".to_string(),
         album_artist_assignments: assignments,
         album_year: None,
-        pressing: PressingEdit::blank(),
+        pressing: crate::pressing::Pressing::blank(),
         tracks: Vec::new(),
     }
 }
@@ -439,9 +438,9 @@ async fn draft_crediting(device: &TestDevice, artist_id: &str) {
             "INSERT INTO import_candidate_state (content_hash, folder_path) \
                  VALUES ('draft', '/Album');
              INSERT INTO import_candidate_edit \
-                 (content_hash, album_title, album_year, year, format, label, \
-                  catalog_number, country, barcode, author, draft_blank, draft_valid) \
-                 VALUES ('draft', 'Album', '', '', '', '', '', '', '', 'person', 0, 1);
+                 (content_hash, album_title, album_year, year, label, \
+                  catalog_number, barcode, author, draft_blank, draft_valid) \
+                 VALUES ('draft', 'Album', '', '', '', '', '', 'person', 0, 1);
              INSERT INTO import_candidate_album_artist_assignment \
                  (content_hash, position, assignment_kind, artist_id) \
                  VALUES ('draft', 0, 'picked', '{artist_id}');"

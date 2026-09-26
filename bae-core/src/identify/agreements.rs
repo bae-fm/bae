@@ -24,6 +24,7 @@
 
 use super::combine::LookupProvenance;
 use crate::import::search::MetadataResult;
+use crate::pressing::ReleaseArea;
 use crate::signals::TextLine;
 use crate::util::text::squash;
 use std::collections::HashSet;
@@ -130,10 +131,7 @@ pub fn agreements_of(
         year: result
             .year
             .is_some_and(|year| text.states(&year.to_string())),
-        country: result
-            .country
-            .as_deref()
-            .is_some_and(|value| text.states_country(value)),
+        country: result.area.is_some_and(|area| text.states_area(area)),
     }
 }
 
@@ -226,18 +224,17 @@ impl CandidateText {
         super::label::stated(value).is_some_and(|name| self.states_run(&name))
     }
 
-    /// Whether the text states `value` as a country, however either of them
-    /// writes it. A provider answers a code and a folder writes the name out,
-    /// so a result saying `JP` is stated by a folder saying `Japan`, and one
-    /// saying `Japan` by a folder saying `JP`.
-    pub fn states_country(&self, value: &str) -> bool {
-        if self.states(value) {
-            return true;
+    /// Whether the text states `area`, however it writes it. A country is
+    /// stated by its code or any of its names — a folder saying `Japan`
+    /// states `JP`, one saying `JP` states Japan — and a region by any name
+    /// a catalog writes it as.
+    pub fn states_area(&self, area: ReleaseArea) -> bool {
+        match area {
+            ReleaseArea::Country(country) => {
+                self.states(country.code()) || country.names().iter().any(|name| self.states(name))
+            }
+            ReleaseArea::Region(region) => region.written_names().any(|name| self.states(name)),
         }
-        let Some(country) = super::country::named(value) else {
-            return false;
-        };
-        self.states(country.code) || country.names.iter().any(|name| self.states(name))
     }
 
     /// Whether the person struck `value` out as a catalog number.

@@ -227,17 +227,23 @@ impl Database {
                 ],
             )?;
 
+            let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
             tx.execute(
-                r#"UPDATE releases SET year = ?, format = ?, label = ?, catalog_number = ?,
-                    country = ?, barcode = ?,
+                r#"UPDATE releases SET year = ?, label = ?, catalog_number = ?, barcode = ?,
+                    country = ?, region = ?, media = ?, status = ?, packaging = ?,
+                    discogs_details = ?,
                     _updated_at = ? WHERE id = ?"#,
                 params![
                     release.pressing.year,
-                    release.pressing.format,
                     release.pressing.label,
                     release.pressing.catalog_number,
-                    release.pressing.country,
                     release.pressing.barcode,
+                    facts.country,
+                    facts.region,
+                    facts.media,
+                    facts.status,
+                    facts.packaging,
+                    facts.discogs_details,
                     reg,
                     release_id,
                 ],

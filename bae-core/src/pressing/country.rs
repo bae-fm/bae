@@ -1,60 +1,82 @@
-//! The country a release's own field names, however it is written.
+//! The countries of ISO 3166-1, and the names they are written out as.
 //!
-//! A provider states where a pressing was made as a code — MusicBrainz answers
-//! `JP` — and a folder writes it out — `Japan`. Neither spelling is more
-//! correct than the other, so ranking asks this table for the rest of them: a
-//! code's written-out names, or a name's code.
+//! MusicBrainz states where a pressing was released as the country's alpha-2
+//! code — `JP` — and Discogs and a folder write it out — `Japan`. A
+//! [`Country`] is one of the standard's officially assigned codes; the names
+//! beside each code are the English forms a folder is as likely to print,
+//! which ranking looks for in a folder's text.
 //!
-//! Only the officially assigned ISO 3166-1 alpha-2 codes are here. A value
-//! outside the standard — MusicBrainz answers `XE` for a Europe-wide release
-//! and `XW` for a worldwide one — names no country, and is looked for in the
-//! text as the plain string it is.
+//! A value outside the standard — MusicBrainz's `XE` for a Europe-wide
+//! release, a state that no longer exists — is no country; it is a
+//! [`crate::pressing::Region`].
 
-use crate::util::text::squash;
-use std::collections::HashMap;
-use std::sync::OnceLock;
+/// One country of ISO 3166-1: an officially assigned alpha-2 code.
+/// Constructed only from the table, so every value is a code the standard
+/// assigns and a surface can name it in the reader's language.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Country(u8);
 
-/// One country: its alpha-2 code, and the English names it is written out as.
+impl Country {
+    /// The country `code` names, whatever its case. `None` for a code the
+    /// standard does not assign.
+    pub fn from_code(code: &str) -> Option<Self> {
+        COUNTRIES
+            .iter()
+            .position(|row| row.code.eq_ignore_ascii_case(code))
+            .map(|at| Self(at as u8))
+    }
+
+    /// The alpha-2 code.
+    pub fn code(self) -> &'static str {
+        COUNTRIES[self.0 as usize].code
+    }
+
+    /// The English names the country is written out as: the standard's own
+    /// first, then the forms in common use.
+    pub fn names(self) -> &'static [&'static str] {
+        COUNTRIES[self.0 as usize].names
+    }
+
+    /// Every country, in code order.
+    pub fn all() -> impl Iterator<Item = Self> {
+        (0..COUNTRIES.len()).map(|at| Self(at as u8))
+    }
+}
+
+impl std::fmt::Debug for Country {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Country({})", self.code())
+    }
+}
+
+impl serde::Serialize for Country {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.code())
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Country {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let code = <std::borrow::Cow<'de, str>>::deserialize(deserializer)?;
+        Self::from_code(&code).ok_or_else(|| {
+            serde::de::Error::custom(format!("{code:?} is not an ISO 3166-1 country code"))
+        })
+    }
+}
+
+/// One row of the table: a code and the English names it is written out as.
 /// The first name is the standard's own; any after it are forms in common use
 /// that a folder is as likely to print. Spacing and punctuation are not a
 /// form of their own — `Viet Nam` is looked up the same as `Vietnam`.
-pub(crate) struct Country {
-    pub code: &'static str,
-    pub names: &'static [&'static str],
-}
-
-/// The country `value` names, whether `value` is its code or one of its names.
-/// `None` when nothing in the standard is written that way.
-///
-/// Compared the way the candidate's text is read — case, spacing, punctuation
-/// and diacritics dropped — so `JP`, `jp`, `Japan` and `japan` all reach the
-/// same country.
-pub(crate) fn named(value: &str) -> Option<&'static Country> {
-    let value = squash(value);
-    (!value.is_empty())
-        .then(|| index().get(&value).map(|&at| &COUNTRIES[at]))
-        .flatten()
-}
-
-/// Every spelling in the table, to the country it names. Built once.
-fn index() -> &'static HashMap<String, usize> {
-    static INDEX: OnceLock<HashMap<String, usize>> = OnceLock::new();
-    INDEX.get_or_init(|| {
-        let mut index = HashMap::new();
-        for (at, country) in COUNTRIES.iter().enumerate() {
-            index.insert(squash(country.code), at);
-            for name in country.names {
-                index.insert(squash(name), at);
-            }
-        }
-        index
-    })
+struct CountryRow {
+    code: &'static str,
+    names: &'static [&'static str],
 }
 
 /// Shorthand for one row of the table.
 macro_rules! country {
     ($code:literal, $($name:literal),+ $(,)?) => {
-        Country {
+        CountryRow {
             code: $code,
             names: &[$($name),+],
         }
@@ -62,7 +84,7 @@ macro_rules! country {
 }
 
 /// ISO 3166-1 alpha-2, in code order.
-static COUNTRIES: &[Country] = &[
+static COUNTRIES: &[CountryRow] = &[
     country!("AD", "Andorra"),
     country!("AE", "United Arab Emirates", "UAE"),
     country!("AF", "Afghanistan"),
@@ -321,6 +343,8 @@ static COUNTRIES: &[Country] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::util::text::squash;
+    use std::collections::HashMap;
 
     /// Every spelling reaches exactly one country: a code or a name that two
     /// rows share would silently answer for whichever came last.
@@ -349,22 +373,33 @@ mod tests {
         assert_eq!(codes, sorted, "the table is in code order");
     }
 
+    /// The table's codes are the standard's officially assigned ones, code
+    /// for code.
     #[test]
-    fn a_code_and_its_names_reach_the_same_country() {
-        let japan = named("JP").expect("JP is a country");
-        assert_eq!(japan.code, "JP");
-        assert_eq!(named("japan").map(|c| c.code), Some("JP"));
-        assert_eq!(named("U.S.A.").map(|c| c.code), Some("US"));
-        assert_eq!(named("côte d'ivoire").map(|c| c.code), Some("CI"));
+    fn the_codes_are_the_standards_own() {
+        assert_eq!(
+            COUNTRIES.iter().map(|row| row.code).collect::<Vec<_>>(),
+            super::super::recorded(include_str!(
+                "../../test-fixtures/pressing-vocabulary/iso-3166-1-alpha-2.txt"
+            ))
+        );
     }
 
-    /// A value the standard does not carry names no country — MusicBrainz's
-    /// `XE` and `XW` among them.
     #[test]
-    fn a_value_outside_the_standard_names_no_country() {
-        assert!(named("XE").is_none());
-        assert!(named("XW").is_none());
-        assert!(named("").is_none());
-        assert!(named("Atlantic").is_none());
+    fn a_code_reads_in_any_case() {
+        let japan = Country::from_code("JP").expect("JP is a country");
+        assert_eq!(japan.code(), "JP");
+        assert_eq!(japan.names(), &["Japan"]);
+        assert_eq!(Country::from_code("jp"), Some(japan));
+    }
+
+    /// A code the standard does not assign names no country — MusicBrainz's
+    /// `XE` and `XW` and the codes of states that no longer exist among them.
+    #[test]
+    fn a_code_outside_the_standard_names_no_country() {
+        assert!(Country::from_code("XE").is_none());
+        assert!(Country::from_code("XW").is_none());
+        assert!(Country::from_code("SU").is_none());
+        assert!(Country::from_code("").is_none());
     }
 }

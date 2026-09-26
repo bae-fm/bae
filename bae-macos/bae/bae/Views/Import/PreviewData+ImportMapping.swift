@@ -170,11 +170,13 @@
             title: moreTracksEditValues.albumTitle,
             artist: "Artist Name",
             year: 1997,
-            format: "CD",
             label: "Some Label",
             catalogNumber: "CAT-0001",
-            country: "US",
             barcode: "000000000000",
+            facts: PreviewData.pressingFacts(
+                country: "US",
+                media: PreviewData.media(.cd)
+            ),
             trackCount: 10,
             tracks: editMetadataDraft(trackCount: 10).tracks.enumerated()
                 .map {
@@ -677,11 +679,10 @@
             albumYear: "",
             pressing: BridgeRawPressingEdit(
                 year: "",
-                format: "",
                 label: "",
                 catalogNumber: "",
-                country: "",
-                barcode: ""
+                barcode: "",
+                facts: PreviewData.pressingFacts()
             ),
             tracks: (1...9)
                 .map { index in

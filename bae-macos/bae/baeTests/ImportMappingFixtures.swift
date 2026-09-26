@@ -350,11 +350,13 @@ extension MappingFixtures {
         albumYear: 1987,
         pressing: BridgePressingEdit(
             year: 1996,
-            format: "CD",
             label: nil,
             catalogNumber: nil,
-            country: nil,
-            barcode: nil
+            barcode: nil,
+            facts: PreviewData.pressingFacts(
+                country: nil,
+                media: PreviewData.media(.cd)
+            )
         ),
         tracks: []
     )
@@ -365,11 +367,13 @@ extension MappingFixtures {
         albumYear: "1987",
         pressing: BridgeRawPressingEdit(
             year: "1996",
-            format: "CD",
             label: "",
             catalogNumber: "",
-            country: "",
-            barcode: ""
+            barcode: "",
+            facts: PreviewData.pressingFacts(
+                country: nil,
+                media: PreviewData.media(.cd)
+            )
         ),
         tracks: []
     )
@@ -380,11 +384,10 @@ extension MappingFixtures {
         albumYear: "",
         pressing: BridgeRawPressingEdit(
             year: "",
-            format: "",
             label: "",
             catalogNumber: "",
-            country: "",
-            barcode: ""
+            barcode: "",
+            facts: PreviewData.pressingFacts()
         ),
         tracks: []
     )
@@ -398,11 +401,13 @@ extension MappingFixtures {
         title: "Album Title",
         artist: "Artist Name",
         year: 1996,
-        format: "CD",
         label: nil,
         catalogNumber: nil,
-        country: nil,
         barcode: nil,
+        facts: PreviewData.pressingFacts(
+            country: nil,
+            media: PreviewData.media(.cd)
+        ),
         trackCount: 12,
         tracks: [],
         coverArt: [],
@@ -413,11 +418,13 @@ extension MappingFixtures {
     /// claim about, and what an edit is read against.
     static let exactPressing = BridgeRawPressingEdit(
         year: "1996",
-        format: "CD",
         label: "",
         catalogNumber: "",
-        country: "",
-        barcode: ""
+        barcode: "",
+        facts: PreviewData.pressingFacts(
+            country: nil,
+            media: PreviewData.media(.cd)
+        )
     )
 
     static let emptyFiles = BridgeCandidateFiles(

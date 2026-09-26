@@ -6,6 +6,7 @@ use super::lookup_choice_rows::load_lookup_choices_on;
 use super::signal_rows::load_signals_on;
 use super::verdict_rows::{
     identification_of, match_of, read_match_row, read_verdict_row, unreadable, MatchEntries,
+    StoredMedium,
     StoredMatches, VERDICT_COLUMNS,
 };
 use super::*;
@@ -200,7 +201,8 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
 const STATE_COLUMNS: &str = "content_hash, folder_path, edit_revision, metadata_revision";
 
 const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_id, title, artist, \
-     year, format, label, catalog_number, country, media_kind, cover_url, \
+     year, label, catalog_number, country, region, status, packaging, discogs_details, \
+     media_kind, cover_url, \
      cover_label, cover_source, cover_standing, source_group_id, album_links, source_tracks_kind, \
      source_tracks_count, \
      by_disc_id, by_barcode, by_catalog, by_search, named_by_catalog, named_by_key, narrowed_out";
@@ -266,7 +268,8 @@ pub(crate) fn load_matches_rows_on(
         },
     )?;
     let media = sql.query(
-        "SELECT content_hash, position, media_kind, format FROM import_candidate_match_medium \
+        "SELECT content_hash, position, media_kind, medium, quantity \
+         FROM import_candidate_match_medium \
          WHERE :only IS NULL OR content_hash = :only \
          ORDER BY content_hash, position, ordinal",
         named_params! { ":only": only },
@@ -274,8 +277,15 @@ pub(crate) fn load_matches_rows_on(
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, i64>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, Option<String>>(3)?,
+                StoredMedium {
+                    kind: row.get(2)?,
+                    medium: super::super::pressing_columns::keyed(
+                        row,
+                        "medium",
+                        crate::pressing::Medium::from_key,
+                    )?,
+                    quantity: row.get(4)?,
+                },
             ))
         },
     )?;
@@ -332,12 +342,12 @@ pub(crate) fn load_matches_rows_on(
                 .cover_copies
                 .push(crate::import::cover_art::DownscaledCopy { url, max_edge });
         }
-        for (content_hash, position, kind, format) in media {
+        for (content_hash, position, medium) in media {
             entries
                 .entry((content_hash, position))
                 .or_default()
                 .media
-                .push((kind, format));
+                .push(medium);
         }
         for (content_hash, position, catalog, key) in links {
             entries

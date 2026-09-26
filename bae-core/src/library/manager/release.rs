@@ -458,14 +458,7 @@ impl LibraryManager {
         };
 
         let updated_release = DbRelease {
-            pressing: Pressing {
-                year: edit.pressing.year,
-                format: edit.pressing.format.clone(),
-                label: edit.pressing.label.clone(),
-                catalog_number: edit.pressing.catalog_number.clone(),
-                country: edit.pressing.country.clone(),
-                barcode: edit.pressing.barcode.clone(),
-            },
+            pressing: edit.pressing.clone(),
             ..release.clone()
         };
 

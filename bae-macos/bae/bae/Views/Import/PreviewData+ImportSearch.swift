@@ -17,10 +17,12 @@
                         source: .musicBrainz,
                         releaseId: "rel-123",
                         year: 1988,
-                        format: "CD",
                         label: "Label Name",
                         catalogNumber: "1871-2",
-                        country: "US",
+                        facts: PreviewData.pressingFacts(
+                            country: "US",
+                            media: PreviewData.media(.cd)
+                        ),
                         barcodes: [],
                         sourceGroupId: "group-preview"
                     )
@@ -39,10 +41,12 @@
                         source: .musicBrainz,
                         releaseId: "rel-456",
                         year: 1996,
-                        format: "CD",
                         label: "Label Name",
                         catalogNumber: "6006-2",
-                        country: "US",
+                        facts: PreviewData.pressingFacts(
+                            country: "US",
+                            media: PreviewData.media(.cd)
+                        ),
                         barcodes: ["0123456789012"],
                         sourceGroupId: "group-preview"
                     ),
@@ -50,10 +54,14 @@
                         source: .discogs,
                         releaseId: "rel-456-d",
                         year: 1996,
-                        format: "CD, Album, Reissue",
                         label: "Label Name",
                         catalogNumber: "6006-2",
-                        country: "US",
+                        facts: PreviewData.pressingFacts(
+                            country: "US",
+                            media: PreviewData.media(.cd),
+                            status: .promotion,
+                            discogsDetails: [.reissue]
+                        ),
                         barcodes: ["0123456789012"],
                         sourceGroupId: "master-6"
                     ),
@@ -172,10 +180,12 @@
                                         source: .musicBrainz,
                                         releaseId: "rel-aaa",
                                         year: 1996,
-                                        format: "CD",
                                         label: "Label Name",
                                         catalogNumber: "6006-2",
-                                        country: "US",
+                                        facts: PreviewData.pressingFacts(
+                                            country: "US",
+                                            media: PreviewData.media(.cd)
+                                        ),
                                         barcodes: ["0123456789012"],
                                         sourceGroupId: "grp-1"
                                     )
@@ -194,10 +204,12 @@
                                         source: .musicBrainz,
                                         releaseId: "rel-bbb",
                                         year: 1996,
-                                        format: "CD",
                                         label: "Another Label",
                                         catalogNumber: "AL-1234",
-                                        country: "JP",
+                                        facts: PreviewData.pressingFacts(
+                                            country: "JP",
+                                            media: PreviewData.media(.cd)
+                                        ),
                                         barcodes: [],
                                         sourceGroupId: "grp-1"
                                     )
@@ -246,10 +258,12 @@
                                         source: .musicBrainz,
                                         releaseId: "rel-ccc",
                                         year: 2005,
-                                        format: "CD",
                                         label: "Reissue Records",
                                         catalogNumber: "RR-500",
-                                        country: "EU",
+                                        facts: PreviewData.pressingFacts(
+                                            region: .europe,
+                                            media: PreviewData.media(.cd)
+                                        ),
                                         barcodes: ["0123456789029"],
                                         sourceGroupId: "grp-2"
                                     ),
@@ -257,11 +271,15 @@
                                         source: .discogs,
                                         releaseId: "rel-ddd",
                                         year: 2005,
-                                        format:
-                                            "CD, Album, Reissue, Remastered",
                                         label: "Reissue Records",
                                         catalogNumber: "RR-500",
-                                        country: "EU",
+                                        facts: PreviewData.pressingFacts(
+                                            region: .europe,
+                                            media: PreviewData.media(.cd),
+                                            discogsDetails: [
+                                                .reissue, .remastered,
+                                            ]
+                                        ),
                                         barcodes: ["0123456789029"],
                                         sourceGroupId: "master-7"
                                     ),
@@ -317,10 +335,12 @@
                                     source: .musicBrainz,
                                     releaseId: "rel-disc-1",
                                     year: 1996,
-                                    format: "CD",
                                     label: "Label A",
                                     catalogNumber: "AAA-001",
-                                    country: "US",
+                                    facts: PreviewData.pressingFacts(
+                                        country: "US",
+                                        media: PreviewData.media(.cd)
+                                    ),
                                     barcodes: [],
                                     sourceGroupId: "group-disc"
                                 )
@@ -364,10 +384,12 @@
                                     source: .musicBrainz,
                                     releaseId: "rel-bar-1",
                                     year: 2001,
-                                    format: "CD",
                                     label: "Label B",
                                     catalogNumber: "BBB-002",
-                                    country: "JP",
+                                    facts: PreviewData.pressingFacts(
+                                        country: "JP",
+                                        media: PreviewData.media(.cd)
+                                    ),
                                     barcodes: [],
                                     sourceGroupId: "group-bar"
                                 )

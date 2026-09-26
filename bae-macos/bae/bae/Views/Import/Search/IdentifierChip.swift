@@ -297,15 +297,14 @@ struct LookupReleasesPopover: View {
     }
 }
 
-/// One pressing a lookup found: year, label, catalog number, region and
-/// format — the facts that tell pressings of one album apart.
+/// One pressing a lookup found: year, label, catalog number, where it was
+/// released and what it is made of — the facts that tell pressings of one
+/// album apart.
 struct LookupReleaseLine: View {
     let pressing: Pressing
 
     private var pressed: String {
-        [pressing.lead.country, pressing.lead.format]
-            .compactMap { $0 }
-            .joined(separator: " \u{00b7} ")
+        pressing.summaryText
     }
 
     var body: some View {

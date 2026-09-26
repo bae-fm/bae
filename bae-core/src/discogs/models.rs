@@ -19,7 +19,7 @@ pub struct DiscogsRelease {
     pub id: String,
     pub title: String,
     pub year: Option<u32>,
-    pub format: Vec<String>,
+    pub formats: Vec<DiscogsFormat>,
     pub country: Option<String>,
     pub label: Vec<String>,
     pub covers: Vec<RemoteCover>,
@@ -29,6 +29,24 @@ pub struct DiscogsRelease {
     pub extraartists: Option<Vec<DiscogsRoleArtist>>,
     pub tracklist: Vec<DiscogsTrack>,
     pub master_id: Option<String>,
+}
+
+/// One entry of a release's `formats`, as Discogs states it: a name from
+/// its format list, how many of that medium the release holds, and
+/// descriptions from its description list. The search and release endpoints
+/// state the same shape.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub struct DiscogsFormat {
+    pub name: String,
+    /// The count, as the string Discogs writes it.
+    #[serde(default = "one")]
+    pub qty: String,
+    #[serde(default)]
+    pub descriptions: Vec<String>,
+}
+
+fn one() -> String {
+    "1".to_string()
 }
 
 /// Album metadata stated by a master, independent of any particular pressing.

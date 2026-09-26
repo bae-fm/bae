@@ -29,9 +29,9 @@ struct ImportReleaseSummary {
         switch provenance {
         case .externalRelease:
             factsLine = Self.factsLine([
-                values.pressing.format,
+                PressingText.media(values.pressing.facts.media),
                 values.pressing.year,
-                values.pressing.country,
+                values.pressing.facts.area?.text,
                 values.pressing.catalogNumber,
                 trackText,
             ])

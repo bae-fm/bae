@@ -45,7 +45,7 @@ impl LibraryManager {
 
         let year = meta.release.pressing.year.or(album.year);
         let is_digital =
-            crate::util::format::is_digital_format(meta.release.pressing.format.as_deref());
+            crate::util::format::is_disc_numbered(meta.release.pressing.facts.physical_medium());
 
         let tags = SaveTags {
             title: meta.track.title.clone(),

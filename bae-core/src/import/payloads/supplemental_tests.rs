@@ -89,7 +89,10 @@ fn malformed_linked_release_credit_keeps_its_pressing_fields_and_valid_credit() 
     assert_eq!(parsed.album.title, "Selected Album");
     assert_eq!(parsed.album.year, Some(1979));
     assert_eq!(parsed.release.pressing.year, Some(1985));
-    assert_eq!(parsed.release.pressing.country.as_deref(), Some("JP"));
+    assert_eq!(
+        parsed.release.pressing.facts.area,
+        Some(crate::pressing::area("JP"))
+    );
     assert_eq!(
         parsed.release.pressing.barcode.as_deref(),
         Some("1234567890123")

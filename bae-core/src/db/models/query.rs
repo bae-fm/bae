@@ -104,7 +104,7 @@ pub struct DbWorkReleaseSummary {
     pub album_title: String,
     pub release_name: Option<String>,
     pub year: Option<i32>,
-    pub format: Option<String>,
+    pub media: Vec<crate::pressing::MediaCount>,
     pub release_index: i64,
 }
 
@@ -140,7 +140,7 @@ pub struct DbReleaseStorageSummary {
     pub album_id: String,
     pub album_title: String,
     pub artist_names: String,
-    pub format: Option<String>,
+    pub media: Vec<crate::pressing::MediaCount>,
     /// The shared `releases.remote` fact: audio in the cloud vs local to a device.
     /// The resolver reads `Local` straight off `!remote`; for a remote release it
     /// asks coven's cache (via `any_file_id`) whether it is pinned.
@@ -251,7 +251,7 @@ pub struct DbTrackWithArtists {
 pub struct DbReleaseSummary {
     pub id: String,
     pub album_id: String,
-    pub format: Option<String>,
+    pub media: Vec<crate::pressing::MediaCount>,
     /// The shared `releases.remote` fact: audio in the cloud vs local to a device.
     /// The resolver reads `Local` straight off `!remote`; for a remote release it
     /// asks coven's cache (via `any_file_id`) whether it is pinned.

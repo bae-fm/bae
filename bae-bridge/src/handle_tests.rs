@@ -674,8 +674,17 @@ fn work_detail_conversion_preserves_work_release_rows() {
             release_id: "release-a".to_string(),
             album_id: "album-a".to_string(),
             album_title: "Album Title A".to_string(),
-            display_name: "2026 CD".to_string(),
-            format: Some("CD".to_string()),
+            name: bae_core::album_detail::ReleaseName::Described {
+                year: Some(2026),
+                media: vec![bae_core::pressing::MediaCount {
+                    medium: bae_core::pressing::Medium::Cd,
+                    count: 2,
+                }],
+            },
+            media: vec![bae_core::pressing::MediaCount {
+                medium: bae_core::pressing::Medium::Cd,
+                count: 2,
+            }],
             cover: None,
         }],
         tracks: Vec::new(),
@@ -688,8 +697,18 @@ fn work_detail_conversion_preserves_work_release_rows() {
     assert_eq!(release.release_id, "release-a");
     assert_eq!(release.album_id, "album-a");
     assert_eq!(release.album_title, "Album Title A");
-    assert_eq!(release.display_name, "2026 CD");
-    assert_eq!(release.format.as_deref(), Some("CD"));
+    let two_cds = vec![crate::types::BridgeMediaCount {
+        medium: crate::types::BridgeMedium::Cd,
+        count: 2,
+    }];
+    assert_eq!(
+        release.name,
+        crate::types::BridgeReleaseName::Described {
+            year: Some(2026),
+            media: two_cds.clone(),
+        }
+    );
+    assert_eq!(release.media, two_cds);
 }
 
 /// A failing sync cycle's fault has to reach the front-ends, not just the log.

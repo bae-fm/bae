@@ -294,6 +294,8 @@ fn mb_release_json(release_id: &str, release_group_id: &str) -> String {
         title: "Album Title".to_string(),
         date: Some("1996".to_string()),
         country: Some("US".to_string()),
+        status: None,
+        packaging: None,
         barcode: None,
         artist_credit: vec![crate::musicbrainz::MbArtistCredit {
             name: "Artist Name".to_string(),
@@ -374,7 +376,10 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         .unwrap()
         .unwrap()
         .draft;
-    assert_eq!(draft.pressing.format, "12\" Vinyl");
+    assert_eq!(
+        draft.pressing.facts.media,
+        crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1).media
+    );
     assert!(draft.tracks.iter().all(|track| track.edit.side.is_none()));
     assert_eq!(
         draft

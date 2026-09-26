@@ -349,7 +349,9 @@ pub struct BridgeMatchEvidence {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMatchedPressing {
     pub year: Option<i32>,
-    pub format: Option<String>,
+    /// What the source says the release is made of, each carrier with its
+    /// count.
+    pub media: Vec<BridgeMediaCount>,
     /// What the source says the release holds, when it has said.
     pub track_count: Option<u32>,
 }

@@ -166,17 +166,19 @@ pub(super) fn insert_release_row(
         )
         .map_err(|e| DbError::Message(e.to_string()))?;
     }
+    let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
     conn.execute(
         r#"
         INSERT INTO releases (
             id, album_id, release_name, year,
             draft_from_tags,
-            format, label, catalog_number, country, barcode,
+            label, catalog_number, barcode,
+            country, region, media, status, packaging, discogs_details,
             remote,
             source_folder_name, content_hash,
             album_loudness_lufs, album_peak_linear,
             _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             release.id,
@@ -184,11 +186,15 @@ pub(super) fn insert_release_row(
             release.release_name,
             release.pressing.year,
             release.draft_from_tags,
-            release.pressing.format,
             release.pressing.label,
             release.pressing.catalog_number,
-            release.pressing.country,
             release.pressing.barcode,
+            facts.country,
+            facts.region,
+            facts.media,
+            facts.status,
+            facts.packaging,
+            facts.discogs_details,
             release.remote,
             release.source_folder_name,
             release.content_hash,

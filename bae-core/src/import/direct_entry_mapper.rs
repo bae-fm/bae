@@ -4,7 +4,7 @@ use super::assemble::{assemble_parsed_album, AlbumArtistScope, ArtistRef, Releas
 use super::folder_scanner::CategorizedFiles;
 use super::track_slots::direct_entry_track_rows;
 use super::ParsedAlbum;
-use crate::db::Pressing;
+use crate::pressing::Pressing;
 use coven::{Clock, IdProvider};
 
 /// Build blank release metadata without reading filenames, CUE titles, embedded
@@ -38,14 +38,7 @@ pub(crate) fn map_direct_entry_candidate_to_db(
             additional_artists: Vec::new(),
             album_year: None,
             is_compilation: false,
-            pressing: Pressing {
-                year: None,
-                format: None,
-                label: None,
-                catalog_number: None,
-                country: None,
-                barcode: None,
-            },
+            pressing: Pressing::blank(),
             metadata_provenance: None,
             album_artist_scope: AlbumArtistScope::ReleaseCredits,
             release_roles: Vec::new(),

@@ -224,6 +224,8 @@ fn seed_mb_release_with_track_count(
     let response = MbReleaseResponse {
         date: Some("2004".to_string()),
         country: Some("GB".to_string()),
+        status: None,
+        packaging: None,
         artist_credit: vec![MbArtistCredit {
             name: "Artist Name".to_string(),
             artist: Some(MbArtistRef {
@@ -417,6 +419,8 @@ fn seed_mb_release_with_front_cover(
     mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
     let response = MbReleaseResponse {
         country: None,
+        status: None,
+        packaging: None,
         artist_credit: vec![MbArtistCredit {
             name: "Artist Name".to_string(),
             artist: None,

@@ -39,13 +39,21 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
     handle
         .set_candidate_edit_field(
             &key,
-            CandidateEditField::AlbumTitle,
-            "Typed Title".to_string(),
+            crate::import::DraftFieldEdit::Text {
+                field: CandidateEditField::AlbumTitle,
+                value: "Typed Title".to_string(),
+            },
         )
         .await
         .unwrap();
     handle
-        .set_candidate_edit_field(&key, CandidateEditField::Label, "Typed Label".to_string())
+        .set_candidate_edit_field(
+            &key,
+            crate::import::DraftFieldEdit::Text {
+                field: CandidateEditField::Label,
+                value: "Typed Label".to_string(),
+            },
+        )
         .await
         .unwrap();
     handle
@@ -80,7 +88,13 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
         ).await
         .unwrap();
     handle
-        .set_candidate_edit_field(&key, CandidateEditField::Barcode, "5099749".to_string())
+        .set_candidate_edit_field(
+            &key,
+            crate::import::DraftFieldEdit::Text {
+                field: CandidateEditField::Barcode,
+                value: "5099749".to_string(),
+            },
+        )
         .await
         .unwrap();
 

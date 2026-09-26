@@ -20,7 +20,7 @@ fn stored(release: &DiscogsRelease) -> SourceRelease {
         archive_groups: Vec::new(),
         mediums: mediums(release),
         catalog: CatalogFacts::Discogs {
-            formats: release.format.clone(),
+            media: pressing(release).1,
             release_roles: release_roles(release),
         },
         unfetched: Vec::new(),
@@ -110,7 +110,7 @@ fn make_release(tracklist: Vec<DiscogsTrack>) -> DiscogsRelease {
         id: "test-123".to_string(),
         title: "Album Title A".to_string(),
         year: Some(2024),
-        format: vec![],
+        formats: vec![],
         country: None,
         label: vec![],
         covers: vec![],
@@ -399,7 +399,11 @@ fn test_single_disc() {
         make_track("3", "Track 3"),
     ]);
 
-    release.format = vec!["CD".into()];
+    release.formats = vec![crate::discogs::DiscogsFormat {
+        name: "CD".into(),
+        qty: "1".into(),
+        descriptions: vec!["Album".into()],
+    }];
     let parsed = map(&release).unwrap();
     let tracks = &parsed.tracks;
     assert_eq!(tracks.len(), 3);

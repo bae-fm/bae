@@ -193,7 +193,10 @@ pub struct DiscogsSearchResult {
     pub id: u64,
     pub title: String,
     pub year: Option<String>,
-    pub format: Option<Vec<String>>,
+    /// The release's format entries. Absent from the response for a release
+    /// with none.
+    #[serde(default)]
+    pub formats: Vec<crate::discogs::DiscogsFormat>,
     pub country: Option<String>,
     pub label: Option<Vec<String>>,
     pub catno: Option<String>,
@@ -255,7 +258,7 @@ struct ReleaseResponse {
     id: u64,
     title: String,
     year: Option<u32>,
-    formats: Option<Vec<Format>>,
+    formats: Option<Vec<crate::discogs::DiscogsFormat>>,
     #[serde(
         default,
         deserialize_with = "crate::serde_helpers::empty_string_as_none"
@@ -301,14 +304,6 @@ struct MasterResponse {
     year: Option<u32>,
     artists: Option<Vec<ArtistCredit>>,
     images: Option<Vec<Image>>,
-}
-#[derive(Debug, Deserialize)]
-struct Format {
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
-    name: Option<String>,
 }
 #[derive(Debug, Deserialize)]
 struct Image {
@@ -470,10 +465,7 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         title: release.title,
         // Discogs encodes an unknown year as zero.
         year: release.year.filter(|year| *year != 0),
-        format: formats
-            .into_iter()
-            .filter_map(|format| format.name)
-            .collect(),
+        formats,
         country: release.country,
         label: label_names,
         catno,

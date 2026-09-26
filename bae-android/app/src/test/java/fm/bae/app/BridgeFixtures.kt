@@ -20,7 +20,9 @@ import uniffi.bae_bridge.BridgeLookupCatalogSetting
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeOutboxPauseState
 import uniffi.bae_bridge.BridgeOutboxSnapshot
+import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSaveBitDepth
@@ -72,12 +74,18 @@ object BridgeFixtures {
         BridgeRelease(
             id = id,
             albumId = albumId,
-            displayName = "Release",
+            name = BridgeReleaseName.Numbered(1),
             year = null,
-            format = null,
             label = null,
             catalogNumber = null,
-            country = null,
+            facts =
+                BridgePressingFacts(
+                    area = null,
+                    media = emptyList(),
+                    status = null,
+                    packaging = null,
+                    discogsDetails = emptyList(),
+                ),
             storageState = BridgeReleaseStorageState.LOCAL,
             pinned = false,
             storageActions = emptyList(),

@@ -143,10 +143,10 @@ impl BridgeCandidateFiles {
 }
 
 mirror_struct! {
-    BridgePressingEdit = bae_core::import::PressingEdit,
+    BridgePressingEdit = bae_core::pressing::Pressing,
     from_core: pub(super) fn,
     into_core: pub(super) fn,
-    fields: { year, format, label, catalog_number, country, barcode },
+    fields: { year, label, catalog_number, barcode, facts: (BridgePressingFacts) },
 }
 
 mirror_enum! {

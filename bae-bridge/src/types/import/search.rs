@@ -16,10 +16,11 @@ pub struct BridgeMetadataResult {
     pub source: BridgeCatalog,
     pub release_id: String,
     pub year: Option<i32>,
-    pub format: Option<String>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
-    pub country: Option<String>,
+    /// What the record says the pressing is: where it was released, its
+    /// media, status, packaging and Discogs details.
+    pub facts: BridgePressingFacts,
     /// Every barcode this source prints for the pressing, in its order;
     /// empty where it prints none.
     pub barcodes: Vec<String>,
@@ -123,6 +124,9 @@ pub struct BridgeReleaseGroupSource {
 pub struct BridgePressing {
     pub releases: Vec<BridgeMetadataResult>,
     pub pick: crate::types::BridgeMetadataProvenance,
+    /// What the pressing is, as its records together state it: the lead's
+    /// facts, filled in where the lead is silent from the other records.
+    pub facts: BridgePressingFacts,
 }
 
 /// One provider's part of a candidate's manual search. Mirrors

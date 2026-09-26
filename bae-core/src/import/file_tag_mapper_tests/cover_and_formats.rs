@@ -106,7 +106,7 @@ fn mp3_with_id3v2_tags() {
     let parsed = map_tags(&[f1]).unwrap();
     assert_eq!(parsed.album.title, "MP3 Album");
     assert_eq!(parsed.album.year, Some(2010));
-    assert_eq!(parsed.release.pressing.format, None);
+    assert!(parsed.release.pressing.facts.media.is_empty());
     assert_eq!(parsed.tracks.len(), 1);
     assert_eq!(parsed.tracks[0].title, "MP3 Track");
     assert_eq!(parsed.artists[0].name, "MP3 Artist");
@@ -139,7 +139,7 @@ fn m4a_with_mp4_ilst_tags() {
 
     assert_eq!(parsed.album.title, "Album Title");
     assert_eq!(parsed.album.year, Some(2020));
-    assert_eq!(parsed.release.pressing.format, None);
+    assert!(parsed.release.pressing.facts.media.is_empty());
     assert_eq!(parsed.tracks.len(), 1);
     assert_eq!(parsed.tracks[0].title, "Track One");
 }
@@ -168,7 +168,7 @@ fn aac_m4a_with_mp4_ilst_tags_leaves_release_media_blank() {
 
     let parsed = map_tags(&[f1]).unwrap();
 
-    assert_eq!(parsed.release.pressing.format, None);
+    assert!(parsed.release.pressing.facts.media.is_empty());
 }
 
 /// A few JPEG SOI/EOI bytes — enough to round-trip as opaque cover
@@ -449,7 +449,7 @@ fn file_tag_import_leaves_media_blank_for_every_source_codec() {
     ] {
         let parsed = map_tags_with_folder(&[fixture_dir.join(name)], Some("Album Title"))
             .unwrap_or_else(|e| panic!("{name}: {e}"));
-        assert_eq!(parsed.release.pressing.format, None, "{name}");
+        assert!(parsed.release.pressing.facts.media.is_empty(), "{name}");
     }
 }
 

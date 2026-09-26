@@ -12,7 +12,8 @@ use crate::identify::{
 };
 use crate::import::album_links::AlbumLinks;
 use crate::import::cover_art::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
-use crate::import::search::{MetadataResult, SourceTracks, StatedMedia};
+use crate::import::search::{MetadataResult, SourceTracks};
+use crate::pressing::{Medium, StatedFormat, StatedMedia};
 use crate::import::{Catalog, MetadataRef};
 use std::str::FromStr;
 
@@ -200,25 +201,31 @@ fn insert_match(
         AlbumLinks::Read(_) => ALBUM_LINKS_READ,
         AlbumLinks::Unread => ALBUM_LINKS_UNREAD,
     };
-    let (media_kind, media_entries): (&str, Vec<Option<&str>>) = match &result.media {
+    let (media_kind, media_entries): (&str, Vec<(Option<Medium>, u32)>) = match &result.media {
         StatedMedia::Undescribed => (MEDIA_UNDESCRIBED, Vec::new()),
         StatedMedia::PerMedium(entries) => (
             MEDIA_PER_MEDIUM,
-            entries.iter().map(Option::as_deref).collect(),
+            entries.iter().map(|medium| (*medium, 1)).collect(),
         ),
-        StatedMedia::Descriptors(tokens) => (
-            MEDIA_DESCRIPTORS,
-            tokens.iter().map(|token| Some(token.as_str())).collect(),
+        StatedMedia::Formats(formats) => (
+            MEDIA_FORMATS,
+            formats
+                .iter()
+                .map(|format| (format.medium, format.quantity))
+                .collect(),
         ),
     };
+    let facts = super::super::pressing_columns::FactColumns::of(&result.facts());
     sql.execute(
         "INSERT INTO import_candidate_match \
-             (content_hash, position, pressing, source, release_id, title, artist, year, format, \
-              label, catalog_number, country, media_kind, cover_url, cover_label, cover_source, \
+             (content_hash, position, pressing, source, release_id, title, artist, year, \
+              label, catalog_number, country, region, status, packaging, discogs_details, \
+              media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, by_disc_id, by_barcode, by_catalog, by_search, \
               named_by_catalog, named_by_key, narrowed_out) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
+                 ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -228,10 +235,13 @@ fn insert_match(
             result.title,
             result.artist,
             result.year,
-            result.format,
             result.label,
             result.catalog_number,
-            result.country,
+            facts.country,
+            facts.region,
+            facts.status,
+            facts.packaging,
+            facts.discogs_details,
             media_kind,
             cover.map(|cover| cover.image.url.as_str()),
             cover.map(|cover| cover.label.as_str()),
@@ -267,17 +277,18 @@ fn insert_match(
             params![content_hash, position, ordinal_column(ordinal)?, barcode],
         )?;
     }
-    for (ordinal, format) in media_entries.iter().enumerate() {
+    for (ordinal, (medium, quantity)) in media_entries.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_medium \
-                 (content_hash, position, media_kind, ordinal, format) \
-             VALUES (?, ?, ?, ?, ?)",
+                 (content_hash, position, media_kind, ordinal, medium, quantity) \
+             VALUES (?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 position,
                 media_kind,
                 ordinal_column(ordinal)?,
-                format
+                medium.map(Medium::key),
+                quantity,
             ],
         )?;
     }
@@ -336,7 +347,15 @@ const ALBUM_LINKS_UNREAD: &str = "unread";
 /// The stored `media_kind` values, one per [`StatedMedia`] shape.
 pub(super) const MEDIA_UNDESCRIBED: &str = "undescribed";
 pub(super) const MEDIA_PER_MEDIUM: &str = "per_medium";
-pub(super) const MEDIA_DESCRIPTORS: &str = "descriptors";
+pub(super) const MEDIA_FORMATS: &str = "formats";
+
+/// One medium row of a match: the media kind it was written for, the carrier
+/// it names and how many of it.
+pub(super) struct StoredMedium {
+    pub(super) kind: String,
+    pub(super) medium: Option<Medium>,
+    pub(super) quantity: u32,
+}
 
 /// The ordinal-ordered rows the child tables hold for one match, read in the
 /// same pass as its row and handed to [`match_of`].
@@ -345,10 +364,9 @@ pub(super) struct MatchEntries {
     pub(super) barcodes: Vec<String>,
     /// The downscaled copies of the match's cover.
     pub(super) cover_copies: Vec<DownscaledCopy>,
-    /// `(media_kind, format)`: the kind rides on every medium row, so a row
-    /// whose kind disagrees with its match's is unreadable rather than
-    /// silently reinterpreted.
-    pub(super) media: Vec<(String, Option<String>)>,
+    /// The kind rides on every medium row, so a row whose kind disagrees with
+    /// its match's is unreadable rather than silently reinterpreted.
+    pub(super) media: Vec<StoredMedium>,
     pub(super) links: Vec<(String, String)>,
     /// The album link rows, for a match whose album links were read.
     pub(super) album_links: Vec<AlbumLinkRow>,
@@ -400,7 +418,7 @@ pub(super) struct MatchColumns {
 
 /// The match its columns and its child rows describe. The media kind and the
 /// medium rows have to agree: a kind with no entries is `undescribed`, a
-/// `descriptors` row states its format, and a row of another kind is a
+/// `per_medium` row counts one medium, and a row of another kind is a
 /// different match's.
 pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<MatchRow, DbError> {
     let MatchColumns {
@@ -425,9 +443,9 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
             "match {position} of {content_hash} holds {media_kind} media but {what}"
         ))
     };
-    for (kind, _) in &media {
-        if *kind != media_kind {
-            return Err(mismatch(&format!("a {kind} medium row")));
+    for stored in &media {
+        if stored.kind != media_kind {
+            return Err(mismatch(&format!("a {} medium row", stored.kind)));
         }
     }
     result.media = match media_kind.as_str() {
@@ -437,14 +455,24 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
             }
             StatedMedia::Undescribed
         }
-        MEDIA_PER_MEDIUM => {
-            StatedMedia::PerMedium(media.into_iter().map(|(_, format)| format).collect())
-        }
-        MEDIA_DESCRIPTORS => StatedMedia::Descriptors(
+        MEDIA_PER_MEDIUM => StatedMedia::PerMedium(
             media
                 .into_iter()
-                .map(|(_, format)| format.ok_or_else(|| mismatch("a descriptor row states none")))
+                .map(|stored| {
+                    (stored.quantity == 1)
+                        .then_some(stored.medium)
+                        .ok_or_else(|| mismatch("a medium row counts more than one"))
+                })
                 .collect::<Result<_, _>>()?,
+        ),
+        MEDIA_FORMATS => StatedMedia::Formats(
+            media
+                .into_iter()
+                .map(|stored| StatedFormat {
+                    medium: stored.medium,
+                    quantity: stored.quantity,
+                })
+                .collect(),
         ),
         other => return Err(unreadable("media_kind", other)),
     };
@@ -529,6 +557,7 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
         Some(other) => return Err(unreadable("source_tracks_kind", other)),
     };
     let source: String = row.get("source")?;
+    let facts = super::super::pressing_columns::read_facts_without_media(row, "")?;
     Ok(MatchColumns {
         content_hash: row.get("content_hash")?,
         position: row.get("position")?,
@@ -541,10 +570,12 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
             title: row.get("title")?,
             artist: row.get("artist")?,
             year: row.get("year")?,
-            format: row.get("format")?,
             label: row.get("label")?,
             catalog_number: row.get("catalog_number")?,
-            country: row.get("country")?,
+            area: facts.area,
+            status: facts.status,
+            packaging: facts.packaging,
+            discogs_details: facts.discogs_details,
             barcodes: Vec::new(),
             media: StatedMedia::Undescribed,
             links: Vec::new(),

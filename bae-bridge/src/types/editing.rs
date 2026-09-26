@@ -1,6 +1,10 @@
 #[cfg(feature = "desktop")]
 use super::*;
-use super::{BridgeImageRef, BridgeSourceAudioLayout, BridgeSourceAudioSummary, BridgeTrackSide};
+use super::{
+    BridgeDiscogsDetail, BridgeImageRef, BridgeMediaCount, BridgePackaging, BridgePressingFacts,
+    BridgeReleaseArea, BridgeReleaseStatus, BridgeSourceAudioLayout, BridgeSourceAudioSummary,
+    BridgeTrackSide,
+};
 
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
@@ -16,11 +20,10 @@ pub struct BridgeReleaseDetail {
     pub title: String,
     pub artist: Option<String>,
     pub year: Option<i32>,
-    pub format: Option<String>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
-    pub country: Option<String>,
     pub barcode: Option<String>,
+    pub facts: BridgePressingFacts,
     pub track_count: u32,
     pub tracks: Vec<BridgeReleaseTrack>,
     pub cover_art: Vec<BridgeRemoteCover>,
@@ -95,16 +98,16 @@ pub struct BridgeReleaseUserEdit {
     pub tracks: Vec<BridgeTrackUserEdit>,
 }
 
-/// Mirror of `bae_core::import::PressingEdit`. Groups the six pressing
-/// fields a release carries; per-field `None` means "this field isn't set".
+/// Mirror of `bae_core::pressing::Pressing` as an edit claims it: a
+/// release's identifiers and year, and what it is. Per-field `None` means
+/// "this field isn't set".
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePressingEdit {
     pub year: Option<i32>,
-    pub format: Option<String>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
-    pub country: Option<String>,
     pub barcode: Option<String>,
+    pub facts: BridgePressingFacts,
 }
 
 /// One per existing track, in track order.
@@ -625,19 +628,18 @@ pub fn bridge_mapping_tracks(table: BridgeMappingTable) -> Vec<BridgeRawTrackEdi
         .collect()
 }
 
-/// One album-level field of the import pane's metadata form.
+/// One album-level text field of the import pane's metadata form.
 ///
 /// Each is written on its own as the user leaves it, so the pane holds no copy
-/// of the form: the field commits, the per-candidate query redraws.
+/// of the form: the field commits, the per-candidate query redraws. What the
+/// pressing is is chosen rather than typed: [`BridgePressingFactEdit`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeCandidateEditField {
     AlbumTitle,
     AlbumYear,
     PressingYear,
-    Format,
     Label,
     CatalogNumber,
-    Country,
     Barcode,
 }
 
@@ -649,12 +651,76 @@ mirror_enum! {
         AlbumTitle,
         AlbumYear,
         PressingYear,
-        Format,
         Label,
         CatalogNumber,
-        Country,
         Barcode,
     },
+}
+
+/// One choice of what the pressing is, made with a picker that offers only
+/// the vocabulary's values. Mirrors `bae_core::import::PressingFactEdit`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgePressingFactEdit {
+    Area {
+        area: Option<BridgeReleaseArea>,
+    },
+    Media {
+        media: Vec<BridgeMediaCount>,
+    },
+    Status {
+        status: Option<BridgeReleaseStatus>,
+    },
+    Packaging {
+        packaging: Option<BridgePackaging>,
+    },
+    DiscogsDetails {
+        discogs_details: Vec<BridgeDiscogsDetail>,
+    },
+}
+
+#[cfg(feature = "desktop")]
+impl BridgePressingFactEdit {
+    pub(crate) fn into_core(self) -> bae_core::import::PressingFactEdit {
+        use bae_core::import::PressingFactEdit;
+        match self {
+            Self::Area { area } => PressingFactEdit::Area(area.map(BridgeReleaseArea::into_core)),
+            Self::Media { media } => PressingFactEdit::Media(
+                media.into_iter().map(BridgeMediaCount::into_core).collect(),
+            ),
+            Self::Status { status } => {
+                PressingFactEdit::Status(status.map(BridgeReleaseStatus::into_core))
+            }
+            Self::Packaging { packaging } => {
+                PressingFactEdit::Packaging(packaging.map(BridgePackaging::into_core))
+            }
+            Self::DiscogsDetails { discogs_details } => PressingFactEdit::DiscogsDetails(
+                discogs_details
+                    .into_iter()
+                    .map(BridgeDiscogsDetail::into_core)
+                    .collect(),
+            ),
+        }
+    }
+
+    /// This choice, applied to the facts a form holds — what a form bound to
+    /// a value rather than a candidate does with it.
+    pub(crate) fn applied_to(self, facts: BridgePressingFacts) -> BridgePressingFacts {
+        let mut facts = facts.into_core();
+        self.into_core().apply(&mut facts);
+        BridgePressingFacts::from_core(facts)
+    }
+}
+
+/// `facts` with `edit` applied, the way the draft applies it: a medium with a
+/// count of zero is left out, a detail is kept once. The library release
+/// editor holds its form itself and applies each choice through this.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_apply_pressing_fact(
+    facts: BridgePressingFacts,
+    edit: BridgePressingFactEdit,
+) -> BridgePressingFacts {
+    edit.applied_to(facts)
 }
 
 /// Raw edit-metadata form values, exactly as the editor holds them — text
@@ -706,16 +772,16 @@ pub struct BridgeReleaseEditDisplayContext {
 }
 
 /// Raw pressing fields as the editor holds them. Mirrors
-/// `bae_core::import::RawPressingEdit`: each is the text the user typed,
-/// empty meaning "not set"; `year` is text (parsed at shape time).
+/// `bae_core::import::RawPressingEdit`: each text field is the text the user
+/// typed, empty meaning "not set"; `year` is text (parsed at shape time).
+/// `facts` is what the person chose with the form's pickers.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRawPressingEdit {
     pub year: String,
-    pub format: String,
     pub label: String,
     pub catalog_number: String,
-    pub country: String,
     pub barcode: String,
+    pub facts: BridgePressingFacts,
 }
 
 /// One raw track row from the editor. Mirrors

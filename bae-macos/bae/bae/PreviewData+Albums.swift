@@ -92,7 +92,7 @@
         private struct ReleaseIdentifiers {
             let label: String
             let catalogNumber: String
-            let country: String
+            let area: BridgeReleaseArea
         }
 
         private enum ReleaseTrackLayout {
@@ -101,22 +101,22 @@
         }
 
         private struct ReleaseFixture {
-            let displayName: String?
+            let name: String?
             let year: Int32?
-            let format: String
+            let media: [BridgeMediaCount]
             let tracks: ReleaseTrackLayout
             let identifiers: ReleaseIdentifiers?
 
             init(
-                format: String,
+                media: [BridgeMediaCount],
                 tracks: ReleaseTrackLayout,
-                displayName: String? = nil,
+                name: String? = nil,
                 year: Int32? = nil,
                 identifiers: ReleaseIdentifiers? = nil,
             ) {
-                self.displayName = displayName
+                self.name = name
                 self.year = year
-                self.format = format
+                self.media = media
                 self.tracks = tracks
                 self.identifiers = identifiers
             }
@@ -143,8 +143,9 @@
             case .twoPart(let first, let second):
                 let sides = twoSide(
                     artist: album.artist,
-                    isVinyl: fixture.format.contains("Vinyl")
-                        || fixture.format.contains("Cassette"),
+                    isVinyl: fixture.media.contains {
+                        $0.medium == .vinyl || $0.medium == .cassette
+                    },
                     disc1: first,
                     disc2: second,
                 )
@@ -155,12 +156,18 @@
             return BridgeRelease(
                 id: id,
                 albumId: album.id,
-                displayName: fixture.displayName ?? "\(year) \(fixture.format)",
+                name: fixture.name.map { .named(name: $0) }
+                    ?? .described(year: year, media: fixture.media),
                 year: year,
-                format: fixture.format,
                 label: fixture.identifiers?.label,
                 catalogNumber: fixture.identifiers?.catalogNumber,
-                country: fixture.identifiers?.country,
+                facts: BridgePressingFacts(
+                    area: fixture.identifiers?.area,
+                    media: fixture.media,
+                    status: nil,
+                    packaging: nil,
+                    discogsDetails: []
+                ),
                 storageState: .local,
                 pinned: false,
                 storageActions: [],
@@ -219,12 +226,12 @@
         private static func makeDetail(
             album: AlbumFixture,
             tracks: [String],
-            format: String,
+            media: [BridgeMediaCount],
         ) -> BridgeAlbumDetail {
             makeDetail(
                 album: album,
                 primary: ReleaseFixture(
-                    format: format,
+                    media: media,
                     tracks: .flat(tracks),
                 ),
             )
@@ -234,17 +241,17 @@
             album: AlbumFixture,
             first: [String],
             second: [String],
-            format: String,
+            media: [BridgeMediaCount],
         ) -> BridgeAlbumDetail {
             makeDetail(
                 album: album,
                 primary: ReleaseFixture(
-                    format: format,
+                    media: media,
                     tracks: .twoPart(first: first, second: second),
                     identifiers: ReleaseIdentifiers(
                         label: "Some Label",
                         catalogNumber: "CAT-001",
-                        country: "US",
+                        area: .country(code: "US"),
                     ),
                 ),
             )
@@ -267,7 +274,7 @@
                     "Night Transmission",
                     "Signal Lost", "Airwave", "Carrier Wave", "Sign Off",
                 ],
-                format: "Digital"
+                media: [BridgeMediaCount(medium: .digital, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -281,7 +288,7 @@
                     "Driftwood", "Fog Horn",
                     "Pier 17", "Last Ferry",
                 ],
-                format: "Vinyl"
+                media: [BridgeMediaCount(medium: .vinyl, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -295,7 +302,7 @@
                     "Integral", "Convergence",
                     "QED",
                 ],
-                format: "CD"
+                media: [BridgeMediaCount(medium: .cd, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -305,7 +312,7 @@
                     year: 1974,
                 ),
                 primary: .init(
-                    format: "Vinyl",
+                    media: [BridgeMediaCount(medium: .vinyl, count: 1)],
                     tracks: .flat(
                         [
                             "Tick", "Borrowed", "Overdue", "Extension",
@@ -313,12 +320,12 @@
                             "Grace Period",
                         ]
                     ),
-                    displayName: "1974 Vinyl",
+
                     year: 1974,
                 ),
                 additional: [
                     .init(
-                        format: "2xCD",
+                        media: [BridgeMediaCount(medium: .cd, count: 2)],
                         tracks: .twoPart(
                             first: [
                                 "Tick", "Borrowed", "Overdue", "Extension",
@@ -330,7 +337,7 @@
                                 "Final Notice (Live)",
                             ],
                         ),
-                        displayName: "1996 Reissue",
+                        name: "1996 Reissue",
                         year: 1996,
                     )
                 ]
@@ -347,7 +354,7 @@
                     "Root Bound",
                     "Water Day", "New Growth",
                 ],
-                format: "Digital"
+                media: [BridgeMediaCount(medium: .digital, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -361,7 +368,7 @@
                     "Terminal Velocity",
                     "Escape", "Gravity Well",
                 ],
-                format: "Vinyl"
+                media: [BridgeMediaCount(medium: .vinyl, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -375,7 +382,7 @@
                     "Scattered Showers",
                     "Clearing Skies", "Weekend Outlook",
                 ],
-                format: "Digital"
+                media: [BridgeMediaCount(medium: .digital, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -387,7 +394,7 @@
                 tracks: [
                     "A-D", "E-H", "I-L", "M-P", "Q-T", "U-Z", "Miscellaneous",
                 ],
-                format: "CD"
+                media: [BridgeMediaCount(medium: .cd, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -401,7 +408,7 @@
                     "Exit Ticket",
                     "Night Rate",
                 ],
-                format: "Digital"
+                media: [BridgeMediaCount(medium: .digital, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -415,7 +422,7 @@
                     "Busy Signal",
                     "Disconnected",
                 ],
-                format: "Cassette"
+                media: [BridgeMediaCount(medium: .cassette, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -428,7 +435,7 @@
                     "Union", "Intersection", "Complement", "Subset",
                     "Empty Set", "Cardinality",
                 ],
-                format: "CD"
+                media: [BridgeMediaCount(medium: .cd, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -442,7 +449,7 @@
                     "Default",
                     "Refinance",
                 ],
-                format: "Digital"
+                media: [BridgeMediaCount(medium: .digital, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -456,7 +463,7 @@
                     "Spring Bloom",
                     "Perennial",
                 ],
-                format: "Vinyl"
+                media: [BridgeMediaCount(medium: .vinyl, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -470,7 +477,7 @@
                     "Launch Day",
                     "Open Water",
                 ],
-                format: "CD"
+                media: [BridgeMediaCount(medium: .cd, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -483,7 +490,7 @@
                     "15 Items", "Price Check", "Coupon", "Self Scan",
                     "Bagging Area", "Receipt",
                 ],
-                format: "Digital"
+                media: [BridgeMediaCount(medium: .digital, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -495,7 +502,7 @@
                 tracks: [
                     "Lobby", "Ascent", "Landing", "Fire Door", "Roof Access",
                 ],
-                format: "Vinyl"
+                media: [BridgeMediaCount(medium: .vinyl, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -508,7 +515,7 @@
                     "Take a Ticket", "Now Serving", "Please Wait",
                     "Next Window", "Closed",
                 ],
-                format: "CD"
+                media: [BridgeMediaCount(medium: .cd, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -521,7 +528,7 @@
                     "Classifieds", "Obituaries", "Comics", "Crossword",
                     "Horoscope", "Editorial",
                 ],
-                format: "Digital"
+                media: [BridgeMediaCount(medium: .digital, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -534,7 +541,7 @@
                     "Countdown", "Ignition", "Max Q", "MECO", "Orbit Achieved",
                     "Houston",
                 ],
-                format: "CD"
+                media: [BridgeMediaCount(medium: .cd, count: 1)]
             ),
             makeDetail(
                 album: .init(
@@ -547,7 +554,7 @@
                     "Warm Up", "Paper Jam", "Toner Low", "Duplex", "Staple",
                     "Output Tray",
                 ],
-                format: "Digital"
+                media: [BridgeMediaCount(medium: .digital, count: 1)]
             ),
             makeDetailTwoPart(
                 album: .init(
@@ -565,7 +572,7 @@
                     "Deleted Scenes", "Alternate Ending", "Director's Cut",
                     "Blooper Reel",
                 ],
-                format: "12\" Vinyl"
+                media: [BridgeMediaCount(medium: .vinyl, count: 1)]
             ),
             makeDetailTwoPart(
                 album: .init(
@@ -585,7 +592,7 @@
                     "Addendum",
                     "Corrigenda", "Afterword", "About the Author",
                 ],
-                format: "CD"
+                media: [BridgeMediaCount(medium: .cd, count: 1)]
             ),
             // Nine tracks over eight: the first disc splits into two columns,
             // the second is short enough to stay one.
@@ -604,7 +611,7 @@
                     "Levelling", "Plumb Line", "Sight Line", "Chainage",
                     "Offset", "Bearing", "Elevation", "Closure",
                 ],
-                format: "CD"
+                media: [BridgeMediaCount(medium: .cd, count: 1)]
             ),
         ]
 

@@ -8,16 +8,38 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeAudioFormat
+import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeSourceAudioDescriptor
 import uniffi.bae_bridge.BridgeSourceAudioLayout
 import uniffi.bae_bridge.BridgeSourceAudioSummary
+import uniffi.bae_bridge.BridgeTermLabel
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class BridgeReleaseFormatTest {
     private val context: Context = RuntimeEnvironment.getApplication()
     private val stereoKey: (Long) -> String? = { "core.audio.channels.stereo" }
+
+    /** What the pressing is sits after the year, its details after the catalog number. */
+    @Test
+    fun pressingFactsTakeTheirPlacesInTheLine() {
+        val release = BridgeFixtures.release(id = "release-1", albumId = "album-1")
+        assertEquals(
+            "Japan · CD · Promo",
+            release.compactMetadataText(
+                context,
+                stereoKey,
+                {
+                    listOf(
+                        BridgeFactTerm.Country("JP"),
+                        BridgeFactTerm.Label(BridgeTermLabel.Verbatim("CD")),
+                    )
+                },
+                { listOf(BridgeFactTerm.Label(BridgeTermLabel.Localized("core.pressing.status.promotion"))) },
+            ),
+        )
+    }
 
     @Test
     fun releaseMetadataUsesTheAllFilesSummaryInsteadOfTheFirstFile() {
@@ -64,7 +86,7 @@ class BridgeReleaseFormatTest {
         assertEquals(
             "Various · FLAC · 44.1 kHz · 16-bit · stereo · " +
                 "MP3 · 320 kbps · 48 kHz · stereo",
-            release.compactMetadataText(context, stereoKey),
+            release.compactMetadataText(context, stereoKey, { emptyList() }, { emptyList() }),
         )
     }
 }

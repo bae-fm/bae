@@ -130,7 +130,11 @@ private func matchedRelease(
         title: title,
         artist: "Artist",
         pressing: trackCount.map {
-            BridgeMatchedPressing(year: 2000, format: "CD", trackCount: $0)
+            BridgeMatchedPressing(
+                year: 2000,
+                media: PreviewData.media(.cd),
+                trackCount: $0
+            )
         },
         cover: cover,
         evidence: BridgeMatchEvidence(source: .musicBrainz, signal: .discId)

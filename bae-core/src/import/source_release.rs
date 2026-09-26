@@ -9,12 +9,13 @@
 //! heading rows are laid out against it, are chosen here from the stored
 //! tracklist and the lengths the caller measured.
 
-use crate::db::Pressing;
+use crate::pressing::Pressing;
 use crate::import::assemble::{ArtistRef, PartDirection};
 use crate::import::cover_art::RemoteCover;
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_metadata::ReleaseMetadata;
-use crate::import::search::{ImportSearchReleaseDetail, SourceTracks, StatedMedia};
+use crate::import::search::{ImportSearchReleaseDetail, SourceTracks};
+use crate::pressing::{Medium, StatedMedia};
 use crate::import::{Catalog, ImportError, MetadataRef, ParsedAlbum, ReleaseRecord};
 
 /// The catalogs bae fetches releases from are exactly the ones it asks, so a
@@ -99,9 +100,9 @@ pub(crate) enum CatalogFacts {
         links: Vec<MetadataRef>,
     },
     Discogs {
-        /// The format names and qualifiers, one flat list that does not say
-        /// which medium each describes.
-        formats: Vec<String>,
+        /// What the release's format entries say it is made of, entry by
+        /// entry with each entry's quantity.
+        media: StatedMedia,
         /// The composer credits the release states for itself rather than for
         /// one track.
         release_roles: Vec<RoleCredit>,
@@ -111,9 +112,10 @@ pub(crate) enum CatalogFacts {
 /// One medium: a disc, a side pair of a record, a layer of a hybrid disc.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct SourceMedium {
-    /// The carrier MusicBrainz states for this medium. Discogs states its
-    /// formats for the whole release instead.
-    pub(crate) format: Option<String>,
+    /// The carrier MusicBrainz states for this medium, `None` where its
+    /// format names none bae knows. Discogs states its formats for the whole
+    /// release instead.
+    pub(crate) medium: Option<Medium>,
     pub(crate) entries: Vec<TracklistEntry>,
 }
 
@@ -399,14 +401,11 @@ impl SourceRelease {
     /// What this release states about its media.
     pub(crate) fn stated_media(&self) -> StatedMedia {
         match &self.catalog {
+            CatalogFacts::MusicBrainz { .. } if self.mediums.is_empty() => StatedMedia::Undescribed,
             CatalogFacts::MusicBrainz { .. } => StatedMedia::PerMedium(
-                self.mediums
-                    .iter()
-                    .map(|medium| medium.format.clone())
-                    .collect(),
+                self.mediums.iter().map(|medium| medium.medium).collect(),
             ),
-            CatalogFacts::Discogs { formats, .. } if formats.is_empty() => StatedMedia::Undescribed,
-            CatalogFacts::Discogs { formats, .. } => StatedMedia::Descriptors(formats.clone()),
+            CatalogFacts::Discogs { media, .. } => media.clone(),
         }
     }
 
@@ -463,11 +462,10 @@ impl SourceRelease {
             title: self.metadata.album.title.clone(),
             artist: self.artist_line(),
             year: pressing.year,
-            format: pressing.format,
             label: pressing.label,
             catalog_number: pressing.catalog_number,
-            country: pressing.country,
             barcode: pressing.barcode,
+            facts: pressing.facts,
             media: self.stated_media(),
             links: self.links(),
             track_count: tracks.len() as u32,

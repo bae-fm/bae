@@ -80,7 +80,7 @@ pub struct LeadMatch {
     pub title: String,
     pub artist: Option<String>,
     pub year: Option<i32>,
-    pub format: Option<String>,
+    pub media: Vec<crate::pressing::MediaCount>,
     /// The lead match's cover, with the copies its catalog serves.
     pub cover: Option<crate::import::cover_art::RemoteImageSet>,
     pub source_tracks: Option<SourceTracks>,
@@ -100,7 +100,7 @@ impl LeadMatch {
             title: result.title.clone(),
             artist: result.artist.clone(),
             year: result.year,
-            format: result.format.clone(),
+            media: result.media.counts(),
             cover: result
                 .cover_art
                 .as_ref()

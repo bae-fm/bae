@@ -11,6 +11,7 @@ mod import;
 mod library_playback;
 mod live_results;
 mod playback_values;
+mod pressing;
 mod signal_origin;
 mod storage_inspector;
 
@@ -25,6 +26,7 @@ pub use import::*;
 pub use library_playback::*;
 pub use live_results::*;
 pub use playback_values::*;
+pub use pressing::*;
 pub use signal_origin::*;
 pub use storage_inspector::*;
 

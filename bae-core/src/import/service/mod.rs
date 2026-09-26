@@ -740,14 +740,7 @@ fn apply_user_edit_to_seed(
         now,
     );
 
-    db_release.pressing = crate::db::Pressing {
-        year: edit.pressing.year,
-        format: edit.pressing.format.clone(),
-        label: edit.pressing.label.clone(),
-        catalog_number: edit.pressing.catalog_number.clone(),
-        country: edit.pressing.country.clone(),
-        barcode: edit.pressing.barcode.clone(),
-    };
+    db_release.pressing = edit.pressing.clone();
 
     for (track, t_edit) in db_tracks.iter_mut().zip(edit.tracks.iter()) {
         track.title = t_edit.title.clone();

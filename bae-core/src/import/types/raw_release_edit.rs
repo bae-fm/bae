@@ -11,7 +11,9 @@ use crate::import::ImportError;
 
 /// Edit-metadata form values exactly as the editor holds them — text the user
 /// typed, not yet normalized. Artist assignments retain their identity while
-/// pressing fields are raw strings (empty means "not set"); `year` is text.
+/// pressing text fields are raw strings (empty means "not set"); `year` is
+/// text. What the pressing is — its area, media, status, packaging and
+/// details — is chosen rather than typed, so the form holds it typed.
 ///
 /// The editor binds directly to this shape and calls
 /// [`shape`](RawReleaseEdit::shape) both to gate its Save button and to build
@@ -123,11 +125,10 @@ impl RawReleaseEdit {
             && self.album_artist_assignments.is_empty()
             && self.album_year.trim().is_empty()
             && self.pressing.year.trim().is_empty()
-            && self.pressing.format.trim().is_empty()
             && self.pressing.label.trim().is_empty()
             && self.pressing.catalog_number.trim().is_empty()
-            && self.pressing.country.trim().is_empty()
             && self.pressing.barcode.trim().is_empty()
+            && self.pressing.facts.is_empty()
             && self.tracks.iter().all(|track| {
                 track.title.trim().is_empty()
                     && matches!(
@@ -188,17 +189,17 @@ impl AsRef<TrackArtistAssignments> for CandidateTrack {
     }
 }
 
-/// Raw pressing fields as the editor holds them: each is the text the user
-/// typed, empty meaning "not set". `year` is text because the form is
-/// text; `shape` parses it.
+/// Raw pressing fields as the editor holds them: each text field is the text
+/// the user typed, empty meaning "not set". `year` is text because the form
+/// is text; `shape` parses it. `facts` is what the person chose from bae's
+/// vocabulary, and needs no parsing.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RawPressingEdit {
     pub year: String,
-    pub format: String,
     pub label: String,
     pub catalog_number: String,
-    pub country: String,
     pub barcode: String,
+    pub facts: crate::pressing::PressingFacts,
 }
 
 /// One raw track row from the editor. `id` is the editor's stable row
@@ -325,28 +326,28 @@ impl RawTrackEdit {
 }
 
 impl RawPressingEdit {
-    /// Parse and normalize raw pressing text into a wire [`PressingEdit`]:
-    /// empty fields become `None`; the year parses as an integer.
-    fn shape(&self) -> Result<PressingEdit, EditValidationError> {
-        Ok(PressingEdit {
+    /// Parse and normalize raw pressing text into a wire
+    /// [`Pressing`](crate::pressing::Pressing): empty fields become `None`;
+    /// the year parses as an integer.
+    fn shape(&self) -> Result<crate::pressing::Pressing, EditValidationError> {
+        Ok(crate::pressing::Pressing {
             year: parse_optional_year(&self.year)?,
-            format: trim_to_option(&self.format),
             label: trim_to_option(&self.label),
             catalog_number: trim_to_option(&self.catalog_number),
-            country: trim_to_option(&self.country),
             barcode: trim_to_option(&self.barcode),
+            facts: self.facts.clone(),
         })
     }
 
-    /// Render a wire [`PressingEdit`] back to raw editor text.
-    pub fn from_pressing(pressing: &PressingEdit) -> Self {
+    /// Render a wire [`Pressing`](crate::pressing::Pressing) back to raw
+    /// editor text.
+    pub fn from_pressing(pressing: &crate::pressing::Pressing) -> Self {
         Self {
             year: pressing.year.map(|y| y.to_string()).unwrap_or_default(),
-            format: option_to_raw(&pressing.format),
             label: option_to_raw(&pressing.label),
             catalog_number: option_to_raw(&pressing.catalog_number),
-            country: option_to_raw(&pressing.country),
             barcode: option_to_raw(&pressing.barcode),
+            facts: pressing.facts.clone(),
         }
     }
 }

@@ -95,6 +95,7 @@ mod track;
 #[cfg(test)]
 mod tests;
 
+mod pressing_columns;
 mod query;
 mod read;
 mod write;

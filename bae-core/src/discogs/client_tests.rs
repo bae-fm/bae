@@ -67,7 +67,7 @@ fn search_result_with_cover_fields(
         id: 1,
         title: "Artist Name - Album Title".to_string(),
         year: None,
-        format: None,
+        formats: Vec::new(),
         country: None,
         label: None,
         catno: None,
@@ -280,7 +280,9 @@ fn blank_pressing_fields_are_absent_in_discogs_documents() {
         .to_string();
         let release = parse_discogs_release_json(&raw).unwrap();
         assert!(release.country.is_none());
-        assert!(release.format.is_empty());
+        let (pressing, media) = crate::import::discogs_mapper::pressing(&release);
+        assert!(pressing.facts.is_empty());
+        assert_eq!(media, crate::pressing::StatedMedia::Undescribed);
         assert!(release.label.is_empty());
         assert!(release.catno.is_none());
         assert!(release.barcode.is_none());

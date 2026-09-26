@@ -2,7 +2,8 @@ use super::assemble::{
     assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, ReleaseRole, TrackEvent, TrackIr,
 };
 use super::ParsedAlbum;
-use crate::db::{is_various_artists, Pressing};
+use crate::db::is_various_artists;
+use crate::pressing::{PhysicalMedium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
 use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::search::ReleaseTrack;
@@ -85,25 +86,45 @@ pub(crate) fn metadata(release: &DiscogsRelease) -> super::release_metadata::Rel
             artists: release_refs,
             year: None,
         },
-        pressing: pressing(release),
+        pressing: pressing(release).0,
     }
 }
 
-/// The pressing fields shared by detail and imported metadata.
-pub(crate) fn pressing(release: &DiscogsRelease) -> Pressing {
-    let format = if release.format.is_empty() {
-        None
-    } else {
-        Some(release.format.join(", "))
-    };
-    Pressing {
+/// The pressing a Discogs release describes, shared by detail and imported
+/// metadata, and its media in the release's own shape.
+pub(crate) fn pressing(release: &DiscogsRelease) -> (Pressing, StatedMedia) {
+    let formats = crate::pressing::discogs_formats::read(&release.id, &release.formats);
+    let pressing = Pressing {
         year: release.year.map(|y| y as i32),
-        format,
         label: release.label.first().cloned(),
         catalog_number: release.catno.clone(),
-        country: release.country.clone(),
         barcode: release.barcode.clone(),
+        facts: PressingFacts {
+            area: release
+                .country
+                .as_deref()
+                .and_then(|name| area(&release.id, name)),
+            media: formats.media.counts(),
+            status: formats.status,
+            packaging: formats.packaging,
+            discogs_details: formats.details,
+        },
+    };
+    (pressing, formats.media)
+}
+
+/// The area a Discogs release's `country` names. A name outside Discogs's
+/// list is logged and left out: the list is what needs it.
+pub(crate) fn area(release_id: &str, name: &str) -> Option<ReleaseArea> {
+    let area = ReleaseArea::discogs(name);
+    if area.is_none() {
+        warn!(
+            discogs_release_id = release_id,
+            country = name,
+            "a Discogs release country is outside Discogs's country list"
+        );
     }
+    area
 }
 
 /// The composer credits a Discogs release states for itself rather than for
@@ -142,7 +163,7 @@ pub(crate) fn mediums(release: &DiscogsRelease) -> Vec<SourceMedium> {
     medium_tracklists(&release.tracklist)
         .iter()
         .map(|rows| SourceMedium {
-            format: None,
+            medium: None,
             entries: tracklist_entries(&release.id, rows),
         })
         .collect()
@@ -236,10 +257,10 @@ fn title_of(entry: &TracklistEntry) -> &str {
         .expect("a Discogs tracklist row states its title")
 }
 
-/// The release formats of a stored Discogs release.
-fn formats(release: &SourceRelease) -> &[String] {
+/// What a stored Discogs release's formats say it is made of.
+fn formats(release: &SourceRelease) -> &StatedMedia {
     match &release.catalog {
-        CatalogFacts::Discogs { formats, .. } => formats,
+        CatalogFacts::Discogs { media, .. } => media,
         CatalogFacts::MusicBrainz { .. } => {
             unreachable!("a Discogs reading is asked only of a Discogs release")
         }
@@ -329,7 +350,7 @@ pub(crate) fn map(
 /// display credits per source row (preserving the artist-pool discovery order);
 /// display credits are deduped across a collapsed track's source rows by Discogs
 /// artist id, first occurrence wins, with positions compacted `0..n`.
-fn discogs_track_ir(formats: &[String], pt: &ProcessedTrack) -> TrackIr {
+fn discogs_track_ir(formats: &StatedMedia, pt: &ProcessedTrack) -> TrackIr {
     let mut events: Vec<TrackEvent> = Vec::new();
     let mut seen_credit_ids: HashSet<Option<String>> = HashSet::new();
     let mut credit_position = 0i32;
@@ -782,12 +803,12 @@ pub(crate) fn medium_tracklists(
     mediums.into_iter().map(|(_, rows)| rows).collect()
 }
 
-/// A known CD contains one side even when its track positions omit a disc.
-pub(crate) fn release_track_side(formats: &[String], track: &ProcessedTrack) -> Option<i32> {
+/// A known compact disc contains one side even when its track positions
+/// omit a disc.
+pub(crate) fn release_track_side(formats: &StatedMedia, track: &ProcessedTrack) -> Option<i32> {
     track.side.or_else(|| {
         formats
-            .iter()
-            .any(|format| format.contains("CD"))
+            .any(|medium| medium.physical() == Some(PhysicalMedium::Cd))
             .then_some(1)
     })
 }

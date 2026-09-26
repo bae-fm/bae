@@ -1,6 +1,6 @@
 use super::*;
 use crate::import::album_links::AlbumLinks;
-use crate::import::search::StatedMedia;
+use crate::pressing::{Medium, StatedFormat, StatedMedia};
 
 /// The tests are about how results bucket, pair and order by year, none of
 /// which the candidate's text takes part in.
@@ -15,12 +15,14 @@ pub(super) fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) ->
         title: "Album Title".to_string(),
         artist: Some("Artist Name".to_string()),
         year,
-        format: None,
         label: None,
         catalog_number: None,
-        country: None,
+        area: None,
+        status: None,
+        packaging: None,
+        discogs_details: Vec::new(),
         barcodes: Vec::new(),
-        media: crate::import::search::StatedMedia::Undescribed,
+        media: crate::pressing::StatedMedia::Undescribed,
         links: Vec::new(),
         cover_art: None,
         source_group_id: group_id.map(str::to_string),
@@ -489,22 +491,21 @@ fn label_spelling_neither_blocks_nor_fabricates_identity() {
 }
 
 /// A barcode in a different but equivalent representation, or a country as
-/// its name rather than its code, is the same fact; a medium described with
-/// qualifiers is the same medium.
+/// its name rather than its code, is the same fact; a medium one catalog
+/// lists per disc and the other as a format entry is the same medium.
 #[test]
 fn equivalent_representations_pair_and_distinct_identifiers_do_not() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.barcodes = vec!["0 12345 67890 5".to_string()];
-    one.country = Some("JP".to_string());
-    one.media = StatedMedia::PerMedium(vec![Some("CD".to_string())]);
+    one.area = Some(crate::pressing::area("JP"));
+    one.media = StatedMedia::PerMedium(vec![Some(Medium::Cd)]);
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
     other.barcodes = vec!["0012345678905".to_string()];
-    other.country = Some("Japan".to_string());
-    other.media = StatedMedia::Descriptors(vec![
-        "CD".to_string(),
-        "Album".to_string(),
-        "Reissue".to_string(),
-    ]);
+    other.area = crate::pressing::ReleaseArea::discogs("Japan");
+    other.media = StatedMedia::Formats(vec![StatedFormat {
+        medium: Some(Medium::Cd),
+        quantity: 1,
+    }]);
     let groups = grouped(vec![one, other]);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
 
@@ -527,21 +528,24 @@ fn equivalent_representations_pair_and_distinct_identifiers_do_not() {
 fn meaningful_conflicts_prevent_inferred_pairs() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.barcodes = vec!["012345678905".to_string()];
-    one.country = Some("US".to_string());
+    one.area = Some(crate::pressing::area("US"));
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
     other.barcodes = vec!["012345678905".to_string()];
-    other.country = Some("Germany".to_string());
+    other.area = crate::pressing::ReleaseArea::discogs("Germany");
     let groups = grouped(vec![one.clone(), other.clone()]);
     assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 
-    other.country = Some("United States".to_string());
+    other.area = crate::pressing::ReleaseArea::discogs("US");
     other.year = Some(1993);
     let groups = grouped(vec![one.clone(), other.clone()]);
     assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 
     other.year = Some(1992);
-    one.media = StatedMedia::PerMedium(vec![Some("CD".to_string())]);
-    other.media = StatedMedia::Descriptors(vec!["Vinyl".to_string(), "LP".to_string()]);
+    one.media = StatedMedia::PerMedium(vec![Some(Medium::Cd)]);
+    other.media = StatedMedia::Formats(vec![StatedFormat {
+        medium: Some(Medium::Vinyl),
+        quantity: 1,
+    }]);
     let groups = grouped(vec![one, other]);
     assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 }
@@ -554,17 +558,15 @@ fn meaningful_conflicts_prevent_inferred_pairs() {
 fn a_file_release_is_not_the_cd_whose_catalog_number_it_carries() {
     let mut cd = mb("mb-1", Some("group-x"), Some(2013));
     cd.catalog_number = Some("CAT-7".to_string());
-    cd.country = Some("JP".to_string());
-    cd.media = StatedMedia::PerMedium(vec![Some("CD".to_string())]);
+    cd.area = Some(crate::pressing::area("JP"));
+    cd.media = StatedMedia::PerMedium(vec![Some(Medium::Cd)]);
     let mut download = discogs("dg-1", Some("master-7"), Some(2013));
     download.catalog_number = Some("CAT-7".to_string());
-    download.country = Some("Japan".to_string());
-    download.media = StatedMedia::Descriptors(vec![
-        "File".to_string(),
-        "FLAC".to_string(),
-        "Album".to_string(),
-        "Reissue".to_string(),
-    ]);
+    download.area = crate::pressing::ReleaseArea::discogs("Japan");
+    download.media = StatedMedia::Formats(vec![StatedFormat {
+        medium: Some(Medium::Digital),
+        quantity: 1,
+    }]);
     let groups = grouped(vec![cd, download]);
     assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 }
@@ -710,11 +712,11 @@ fn releases_sharing_a_barcode_are_one_pressing() {
 fn releases_sharing_a_catalog_number_are_not_one_pressing() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.catalog_number = Some("CAT-7 ".to_string());
-    one.country = Some("JP".to_string());
+    one.area = Some(crate::pressing::area("JP"));
     one.label = Some("Label Name".to_string());
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
     other.catalog_number = Some("cat-7".to_string());
-    other.country = Some("Japan".to_string());
+    other.area = crate::pressing::ReleaseArea::discogs("Japan");
     other.label = Some("Label Name".to_string());
 
     let groups = grouped(vec![one, other]);
@@ -919,4 +921,32 @@ fn rows_either_side_of_the_disclosure_are_one_card() {
     assert_eq!(ids(&groups[0].sections[0].narrowed_out), vec!["dg-1"]);
     assert!(groups[1].sections[0].pressings.is_empty());
     assert_eq!(ids(&groups[1].sections[0].narrowed_out), vec!["mb-2"]);
+}
+
+/// A row's facts are its records' together: what the lead states, and what
+/// the other catalog states where the lead is silent.
+#[test]
+fn a_pressings_facts_fill_in_from_its_other_records() {
+    use crate::pressing::{area, DiscogsDetail, ReleaseStatus};
+    let mut musicbrainz = mb("mb-1", Some("group-x"), Some(1992));
+    musicbrainz.barcodes = vec!["012345678905".to_string()];
+    musicbrainz.area = Some(area("JP"));
+    musicbrainz.status = Some(ReleaseStatus::Official);
+    musicbrainz.media = StatedMedia::PerMedium(vec![Some(Medium::Cd)]);
+    let mut discogs = discogs("dg-1", Some("master-7"), Some(1992));
+    discogs.barcodes = vec!["012345678905".to_string()];
+    discogs.status = Some(ReleaseStatus::Promotion);
+    discogs.discogs_details = vec![DiscogsDetail::Reissue];
+    let groups = grouped(vec![musicbrainz, discogs]);
+    let pressing = groups[0].sections[0].pressings[0].clone();
+    assert_eq!(pressing.releases.len(), 2, "the two records are one pressing");
+    let facts = pressing.facts();
+    assert_eq!(facts.area, Some(area("JP")));
+    assert_eq!(
+        facts.status,
+        Some(ReleaseStatus::Official),
+        "the lead's own status stands"
+    );
+    assert_eq!(facts.discogs_details, vec![DiscogsDetail::Reissue]);
+    assert_eq!(facts.media, crate::pressing::made_of(Medium::Cd, 1).media);
 }

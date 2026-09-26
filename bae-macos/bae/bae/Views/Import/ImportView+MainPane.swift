@@ -173,6 +173,11 @@ extension ImportView {
                     try await importer.setCandidateEditField(key, field, value)
                 }
             },
+            setPressingFact: { fact in
+                await saveCandidateEdit {
+                    try await importer.setCandidatePressingFact(key, fact)
+                }
+            },
             setAlbumArtists: { assignments in
                 await saveCandidateEdit {
                     try await importer.setCandidateAlbumArtists(

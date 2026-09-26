@@ -96,8 +96,8 @@ pub struct BridgeWorkReleaseSummary {
     pub release_id: String,
     pub album_id: String,
     pub album_title: String,
-    pub display_name: String,
-    pub format: Option<String>,
+    pub name: BridgeReleaseName,
+    pub media: Vec<BridgeMediaCount>,
     pub cover: Option<BridgeImageRef>,
 }
 

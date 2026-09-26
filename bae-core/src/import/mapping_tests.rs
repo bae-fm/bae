@@ -5,6 +5,7 @@ use crate::import::folder_scanner::{
 };
 use crate::import::probe::{source_durations, SourceDurations};
 use crate::import::track_slots::{slot_table, SourceTrack};
+use crate::pressing::PhysicalMedium;
 use crate::import::TrackUserEdit;
 use std::fs;
 use std::path::Path;
@@ -62,14 +63,14 @@ fn scan(root: &Path) -> CategorizedFiles {
 }
 
 /// The table an external release's picked tracklist maps onto, addressed as
-/// `import-track-{n}` — what most of these tests project. `format` is the
-/// pressing format whose shape decides whether a row's position reads `8`,
+/// `import-track-{n}` — what most of these tests project. `medium` is the
+/// physical medium whose shape decides whether a row's position reads `8`,
 /// `A1`, or `2-3`.
 fn external_table(
     files: &CategorizedFiles,
     slots: &SlotTable,
     durations: &SourceDurations,
-    format: Option<&str>,
+    medium: Option<PhysicalMedium>,
 ) -> MappingTable {
     mapping_table(
         files,
@@ -77,7 +78,7 @@ fn external_table(
             slots,
             track_id_prefix: "import-track",
             source: TracklistSource::ExternalRelease,
-            format,
+            medium,
         }),
         durations,
     )
@@ -176,7 +177,7 @@ fn a_track_without_a_metadata_duration_uses_its_stored_probe() {
             slots: &slots,
             track_id_prefix: "candidate-track",
             source: TracklistSource::CandidateFiles,
-            format: None,
+            medium: None,
         }),
         &durations,
     );
@@ -342,7 +343,7 @@ fn standalone_tracks_are_sectioned_by_release_side() {
     }
     let slots = slot_table(&tracks, &files, &durations);
 
-    let table = external_table(&files, &slots, &durations, Some("Vinyl"));
+    let table = external_table(&files, &slots, &durations, Some(PhysicalMedium::Record));
 
     assert_eq!(table.track_sections.len(), 2);
     assert_eq!(
@@ -395,7 +396,7 @@ fn each_cue_is_one_section_on_its_assigned_disc() {
     }
     let slots = slot_table(&tracks, &files, &durations);
 
-    let table = external_table(&files, &slots, &durations, Some("2xCD"));
+    let table = external_table(&files, &slots, &durations, Some(PhysicalMedium::Cd));
 
     assert_eq!(table.track_sections.len(), 2);
     for (section, (disc, sheet_id)) in table
@@ -789,7 +790,7 @@ fn source_disc_assignments_do_not_change_included_metadata_positions() {
     let files = scan(tmp.path());
     let mut draft = crate::import::pane::blank_candidate_draft(&files);
     draft.tracks.remove(1);
-    draft.pressing.format = "Vinyl".into();
+    draft.pressing.facts = crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1);
     for track in &mut draft.tracks {
         track.edit.side = None;
     }

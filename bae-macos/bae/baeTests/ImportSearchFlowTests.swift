@@ -619,7 +619,8 @@ struct ImportSearchFlowLibraryStatusTests {
     /// A candidate whose typed search turned up one release, as the pane
     /// renders it.
     private func state() -> ImportSearchState {
-        PreviewData.searchState(
+        let cdFacts = PreviewData.pressingFacts(media: PreviewData.media(.cd))
+        return PreviewData.searchState(
             identifyState: .idle,
             search: BridgeCandidateSearch(
                 query: .general(artist: "Artist Name", album: "Album Title"),
@@ -653,10 +654,9 @@ struct ImportSearchFlowLibraryStatusTests {
                                                 source: .musicBrainz,
                                                 releaseId: "rel-live",
                                                 year: 2000,
-                                                format: "CD",
                                                 label: nil,
                                                 catalogNumber: nil,
-                                                country: nil,
+                                                facts: cdFacts,
                                                 barcodes: [],
                                                 sourceGroupId: "group-live"
                                             )

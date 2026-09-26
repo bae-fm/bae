@@ -26,7 +26,7 @@ pub use progress::*;
 mod catalog;
 pub use catalog::{parse_catalog_url, Catalog, CatalogPage};
 mod candidate_edit_field;
-pub use candidate_edit_field::CandidateEditField;
+pub use candidate_edit_field::{CandidateEditField, DraftFieldEdit, PressingFactEdit};
 mod artist_assignment;
 pub use artist_assignment::{
     artists_standing, ArtistAssignment, ArtistCredit, ArtistStanding, ArtistsStanding,
@@ -382,8 +382,8 @@ impl ReleaseRecord {
 /// A new catalog release chosen for a release already in the library.
 ///
 /// - **ExternalRelease** — "this IS my pressing." The record carries
-///   `key = release_ref.key`, pressing-level metadata (year, format, label,
-///   catalog number, country) seeds from the picked release, and the release
+///   `key = release_ref.key`, pressing-level metadata (year, label, catalog
+///   number, and what the pressing is) seeds from the picked release, and the release
 ///   records that exact external provenance.
 /// - **FileMetadata** — no catalog claim. No records, file-metadata
 ///   provenance, and a fresh album. Metadata seeds from what the folder's own
@@ -444,40 +444,11 @@ pub struct ReleaseUserEdit {
     pub album_title: String,
     pub album_artist_assignments: Vec<ArtistAssignment>,
     pub album_year: Option<i32>,
-    pub pressing: PressingEdit,
+    /// The pressing the edit claims: either the whole of a picked release's,
+    /// or [`Pressing::blank()`] filled in with what the person knows (file
+    /// metadata or direct entry).
+    pub pressing: crate::pressing::Pressing,
     pub tracks: Vec<TrackUserEdit>,
-}
-
-/// Per-pressing fields a release carries. Grouped because they share one
-/// identity-claim rule: either all six come from a picked release, or the user
-/// starts with all six blank and fills in what they know (file metadata or direct
-/// entry).
-/// A per-field `None` means "not known yet" within whichever case the editor
-/// is in; the whole-block "no pressing claim" is [`PressingEdit::blank()`], so
-/// no caller has to spell out six `None`s.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PressingEdit {
-    pub year: Option<i32>,
-    pub format: Option<String>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
-    pub country: Option<String>,
-    pub barcode: Option<String>,
-}
-
-impl PressingEdit {
-    /// All fields `None`. Pre-fill for editors where the user hasn't
-    /// claimed a specific pressing yet (file metadata and direct-entry imports).
-    pub fn blank() -> Self {
-        Self {
-            year: None,
-            format: None,
-            label: None,
-            catalog_number: None,
-            country: None,
-            barcode: None,
-        }
-    }
 }
 
 /// The audio a track's samples come from.

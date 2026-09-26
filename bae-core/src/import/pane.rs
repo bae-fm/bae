@@ -41,7 +41,7 @@ pub(crate) fn blank_source_for_tracks(
             album_title: String::new(),
             album_artist_assignments: Vec::new(),
             album_year: None,
-            pressing: crate::import::PressingEdit::blank(),
+            pressing: crate::pressing::Pressing::blank(),
             tracks,
         },
         CANDIDATE_TRACK_ID_PREFIX,
@@ -291,7 +291,7 @@ pub(crate) fn file_metadata_pane(
         &source_tracks,
         FILE_TAG_TRACK_ID_PREFIX,
         TracklistSource::CandidateFiles,
-        seed.pressing.format.as_deref(),
+        seed.pressing.facts.physical_medium(),
     );
     Ok(PanePick {
         release: None,
@@ -317,7 +317,7 @@ fn table_for(
     source_tracks: &[SourceTrack],
     track_id_prefix: &str,
     source: TracklistSource,
-    format: Option<&str>,
+    medium: Option<crate::pressing::PhysicalMedium>,
 ) -> MappingTable {
     let slots = slot_table(source_tracks, files, durations);
     mapping_table(
@@ -326,7 +326,7 @@ fn table_for(
             slots: &slots,
             track_id_prefix,
             source,
-            format,
+            medium,
         }),
         durations,
     )

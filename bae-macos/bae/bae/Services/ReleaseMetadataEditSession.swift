@@ -63,6 +63,9 @@ final class ReleaseMetadataEditSession {
             setField: { [weak self] field, value in
                 self?.setField(field, value)
             },
+            setPressingFact: { [weak self] fact in
+                self?.setPressingFact(fact)
+            },
             setAlbumArtists: { [weak self] assignments in
                 self?.setAlbumArtists(assignments)
             }
@@ -180,12 +183,20 @@ final class ReleaseMetadataEditSession {
         case .albumTitle: form.albumTitle = value
         case .albumYear: form.albumYear = value
         case .pressingYear: form.pressing.year = value
-        case .format: form.pressing.format = value
         case .label: form.pressing.label = value
         case .catalogNumber: form.pressing.catalogNumber = value
-        case .country: form.pressing.country = value
         case .barcode: form.pressing.barcode = value
         }
+        formRevision += 1
+        hasChanges = true
+        failureMessage = nil
+    }
+
+    private func setPressingFact(_ fact: BridgePressingFactEdit) {
+        form.pressing.facts = bridgeApplyPressingFact(
+            facts: form.pressing.facts,
+            edit: fact
+        )
         formRevision += 1
         hasChanges = true
         failureMessage = nil

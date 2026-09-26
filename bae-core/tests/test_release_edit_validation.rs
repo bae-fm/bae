@@ -8,10 +8,8 @@
 //! `LibraryManager::apply_release_metadata_user_edit`. These tests drive that
 //! write path the way those surfaces do, with no editor in front of it.
 
-use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, Pressing};
-use bae_core::import::{
-    ArtistAssignment, PressingEdit, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit,
-};
+use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
+use bae_core::import::{ArtistAssignment, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit};
 use bae_core::library::LibraryError;
 use chrono::Utc;
 use uuid::Uuid;
@@ -39,7 +37,7 @@ async fn seed(db: &Database) -> (String, String) {
         id: Uuid::new_v4().to_string(),
         album_id: album.id.clone(),
         release_name: None,
-        pressing: Pressing::blank(),
+        pressing: bae_core::pressing::Pressing::blank(),
         draft_from_tags: true,
         remote: true,
         source_folder_name: None,
@@ -75,7 +73,7 @@ fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUser
             .map(|name| ArtistAssignment::named(*name))
             .collect(),
         album_year: None,
-        pressing: PressingEdit::blank(),
+        pressing: bae_core::pressing::Pressing::blank(),
         tracks: vec![TrackUserEdit {
             title: "Original Track".to_string(),
             side: Some(1),

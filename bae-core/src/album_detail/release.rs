@@ -31,8 +31,9 @@ pub(crate) struct ReleaseResolveCtx {
 pub struct ReleaseSummary {
     pub id: String,
     pub album_id: String,
-    /// Release media such as "CD" or "Vinyl"; `None` if unknown.
-    pub format: Option<String>,
+    /// What the release is made of, each carrier with its count; empty if
+    /// unknown.
+    pub media: Vec<crate::pressing::MediaCount>,
     /// Local or Remote, from the shared `releases.remote` fact. Orthogonal to
     /// `pinned`.
     pub storage_state: ReleaseStorageState,
@@ -63,7 +64,7 @@ impl ReleaseSummary {
         ReleaseSummary {
             id: raw.id,
             album_id: raw.album_id,
-            format: raw.format,
+            media: raw.media,
             storage_state,
             pinned: ctx.pinned,
             storage_actions: available_storage_actions(
@@ -85,14 +86,15 @@ impl ReleaseSummary {
 #[derive(Debug, Clone)]
 pub struct ReleaseDetail {
     pub summary: ReleaseSummary,
-    /// The stored `release_name`, else "$year $format", else "Release $N" from the
-    /// release's position within its album. The resolver picks that position, so no
-    /// consumer needs the index.
-    pub display_name: String,
+    /// The stored `release_name`, else its year and media, else its position
+    /// within its album. The resolver picks that position, so no consumer needs
+    /// the index.
+    pub name: ReleaseName,
     pub year: Option<i32>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
-    pub country: Option<String>,
+    /// What the pressing is: its area, media, status, packaging and details.
+    pub facts: crate::pressing::PressingFacts,
     /// Summed across all tracks, in milliseconds. The UI formats it.
     pub total_duration_ms: i64,
     pub tracks: Vec<TrackDetail>,
@@ -224,7 +226,7 @@ impl ReleaseEditDisplayContext {
                 });
             }
             let position = crate::util::format::compute_track_position(
-                raw.release.pressing.format.as_deref(),
+                raw.release.pressing.facts.physical_medium(),
                 entry.track.side,
                 entry.track.track_number,
                 has_multiple_sides,
@@ -251,7 +253,7 @@ impl ReleaseEditDisplayContext {
 impl ReleaseDetail {
     /// Joins per-track artist names (falling back to the album's), projects each
     /// file's stored scan facts, groups tracks by side, builds the gallery, derives
-    /// `display_name`, and composes the slim [`ReleaseSummary`].
+    /// `name`, and composes the slim [`ReleaseSummary`].
     ///
     /// Both ordinary reads and subscriptions route through here, so the resolve
     /// logic stays in one place.
@@ -285,7 +287,7 @@ impl ReleaseDetail {
                     join_artist_names(&entry.artists)
                 };
                 let position = crate::util::format::compute_track_position(
-                    release.pressing.format.as_deref(),
+                    release.pressing.facts.physical_medium(),
                     entry.track.side,
                     entry.track.track_number,
                     has_multiple_sides,
@@ -366,10 +368,10 @@ impl ReleaseDetail {
             });
         }
 
-        let display_name = release_display_name(
+        let name = ReleaseName::of(
             release.release_name.as_deref(),
             release.pressing.year,
-            release.pressing.format.as_deref(),
+            &release.pressing.facts.media,
             (release_index + 1) as i64,
         );
 
@@ -379,7 +381,7 @@ impl ReleaseDetail {
             DbReleaseSummary {
                 id: release.id.clone(),
                 album_id: release.album_id.clone(),
-                format: release.pressing.format.clone(),
+                media: release.pressing.facts.media.clone(),
                 remote: release.remote,
                 any_file_id: files.first().map(|f| f.id.clone()),
                 file_count,
@@ -390,11 +392,11 @@ impl ReleaseDetail {
 
         let detail = ReleaseDetail {
             summary,
-            display_name,
+            name,
             year: release.pressing.year,
             label: release.pressing.label,
             catalog_number: release.pressing.catalog_number,
-            country: release.pressing.country,
+            facts: release.pressing.facts,
             total_duration_ms,
             tracks,
             track_groups,

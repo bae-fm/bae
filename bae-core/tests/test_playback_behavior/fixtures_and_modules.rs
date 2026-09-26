@@ -489,7 +489,16 @@ fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRe
     let mut release = create_test_album();
     release.id = format!("side-pause-{format}-{}", positions.join("_"));
     release.title = format!("{format} Side Pause Fixture");
-    release.format = vec![format.to_string()];
+    // "2xCD" is two of a CD format entry; a bare name is one.
+    let (qty, name) = format
+        .split_once('x')
+        .filter(|(qty, _)| qty.parse::<u32>().is_ok())
+        .unwrap_or(("1", format));
+    release.formats = vec![bae_core::discogs::DiscogsFormat {
+        name: name.to_string(),
+        qty: qty.to_string(),
+        descriptions: Vec::new(),
+    }];
     for (track, position) in release.tracklist.iter_mut().zip(positions) {
         track.position = position.to_string();
     }

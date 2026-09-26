@@ -343,7 +343,7 @@ mirror_enum! {
 mirror_struct! {
     crate::types::BridgeMatchedPressing = bae_core::import::MatchedPressing,
     from_core: fn,
-    fields: { year, format, track_count },
+    fields: { year, media: (each crate::types::BridgeMediaCount), track_count },
 }
 
 mirror_struct! {

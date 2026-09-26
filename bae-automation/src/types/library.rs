@@ -9,11 +9,11 @@ use super::*;
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationRelease {
     pub summary: AutomationReleaseSummary,
-    pub display_name: String,
+    pub name: AutomationReleaseName,
     pub year: Option<i32>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
-    pub country: Option<String>,
+    pub facts: bae_core::pressing::PressingFacts,
     pub total_duration_ms: i64,
     pub tracks: Vec<AutomationTrackDetail>,
     pub track_groups: Vec<AutomationTrackGroup>,
@@ -29,7 +29,7 @@ pub struct AutomationRelease {
 pub struct AutomationReleaseSummary {
     pub id: String,
     pub album_id: String,
-    pub format: Option<String>,
+    pub media: Vec<bae_core::pressing::MediaCount>,
     /// Where the audio lives. Orthogonal to `pinned`.
     pub storage_state: AutomationReleaseStorageState,
     /// Whether a Remote release is kept offline on this device — the orthogonal

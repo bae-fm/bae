@@ -320,10 +320,15 @@ async fn set_records_does_not_touch_metadata_columns() {
     manager.database.insert_album(&album).await.unwrap();
 
     let mut release = create_test_release(&album.id);
-    release.pressing.format = Some("Vinyl".to_string());
+    release.pressing.facts = crate::pressing::PressingFacts {
+        area: Some(crate::pressing::area("US")),
+        status: Some(crate::pressing::ReleaseStatus::Official),
+        packaging: Some(crate::pressing::Packaging::GatefoldCover),
+        discogs_details: vec![crate::pressing::DiscogsDetail::Remastered],
+        ..crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1)
+    };
     release.pressing.label = Some("My Label".to_string());
     release.pressing.catalog_number = Some("CAT-123".to_string());
-    release.pressing.country = Some("US".to_string());
     release.pressing.barcode = Some("1234567890".to_string());
     release.pressing.year = Some(1999);
     manager.database.insert_release(&release).await.unwrap();
@@ -362,10 +367,9 @@ async fn set_records_does_not_touch_metadata_columns() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(after.pressing.format.as_deref(), Some("Vinyl"));
+    assert_eq!(after.pressing.facts, release.pressing.facts);
     assert_eq!(after.pressing.label.as_deref(), Some("My Label"));
     assert_eq!(after.pressing.catalog_number.as_deref(), Some("CAT-123"));
-    assert_eq!(after.pressing.country.as_deref(), Some("US"));
     assert_eq!(after.pressing.barcode.as_deref(), Some("1234567890"));
     assert_eq!(after.pressing.year, Some(1999));
 

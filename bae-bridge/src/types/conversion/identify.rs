@@ -2,14 +2,13 @@ use super::super::*;
 
 impl BridgeMetadataResult {
     pub(crate) fn from_core(r: bae_core::import::search::MetadataResult) -> Self {
+        let facts = BridgePressingFacts::from_core(r.facts());
         let bae_core::import::search::MetadataResult {
             source,
             release_id,
             year,
-            format,
             label,
             catalog_number,
-            country,
             barcodes,
             source_group_id,
             // Dropped: the card carries the album's title/artist/cover, so a
@@ -21,9 +20,13 @@ impl BridgeMetadataResult {
             // a pressing row renders; the sidebar reads the classification the
             // rule produced from it.
             source_tracks: _,
-            // What the record said about its media and its counterparts is
-            // pairing evidence; the row renders `format`, and the pairing it
-            // fed is already the row.
+            // What the record said about the pressing is the facts read above;
+            // its media in their own shape and its counterparts are pairing
+            // evidence, and the pairing they fed is already the row.
+            area: _,
+            status: _,
+            packaging: _,
+            discogs_details: _,
             media: _,
             links: _,
             // Which cards the albums join is already the grouping's answer.
@@ -33,10 +36,9 @@ impl BridgeMetadataResult {
             source: BridgeCatalog::from_core(source),
             release_id,
             year,
-            format,
             label,
             catalog_number,
-            country,
+            facts,
             barcodes,
             source_group_id,
         }
@@ -83,16 +85,15 @@ impl BridgeReleaseDetail {
             title,
             artist,
             year,
-            format,
             label,
             catalog_number,
-            country,
             barcode,
+            facts,
             track_count,
             tracks,
             cover_art,
             // Pairing evidence the result a pick becomes carries; the picker
-            // renders `format` and the pressing fields.
+            // renders the facts.
             media: _,
             links: _,
         } = d;
@@ -103,11 +104,10 @@ impl BridgeReleaseDetail {
             title,
             artist,
             year,
-            format,
             label,
             catalog_number,
-            country,
             barcode,
+            facts: BridgePressingFacts::from_core(facts),
             track_count,
             tracks: tracks
                 .into_iter()
@@ -383,6 +383,7 @@ impl BridgePressing {
     fn from_core(pressing: bae_core::import::release_group::Pressing) -> Self {
         BridgePressing {
             pick: crate::types::BridgeMetadataProvenance::from_core(pressing.pick()),
+            facts: BridgePressingFacts::from_core(pressing.facts()),
             releases: pressing
                 .releases
                 .into_iter()

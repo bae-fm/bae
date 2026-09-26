@@ -79,11 +79,11 @@ impl BridgeRelease {
     pub(super) fn from_core(rel: bae_core::album_detail::ReleaseDetail) -> Self {
         let bae_core::album_detail::ReleaseDetail {
             summary,
-            display_name,
+            name,
             year,
             label,
             catalog_number,
-            country,
+            facts,
             total_duration_ms,
             tracks,
             track_groups,
@@ -100,7 +100,7 @@ impl BridgeRelease {
         let BridgeReleaseSummary {
             id,
             album_id,
-            format,
+            media: _,
             storage_state,
             pinned,
             storage_actions,
@@ -109,15 +109,16 @@ impl BridgeRelease {
             total_size,
             cover,
         } = BridgeReleaseSummary::from_core(summary);
+        // The summary's media are the facts' media, which the release carries
+        // whole.
         BridgeRelease {
             id,
             album_id,
-            display_name,
+            name: crate::types::BridgeReleaseName::from_core(name),
             year,
-            format,
             label,
             catalog_number,
-            country,
+            facts: crate::types::BridgePressingFacts::from_core(facts),
             storage_state,
             pinned,
             storage_actions,
@@ -210,7 +211,7 @@ mirror_struct! {
     fields: {
         id,
         album_id,
-        format,
+        media: (each crate::types::BridgeMediaCount),
         storage_state: (crate::types::BridgeReleaseStorageState),
         pinned,
         storage_actions: (each crate::types::BridgeReleaseStorageAction),
@@ -512,8 +513,8 @@ mirror_struct! {
         release_id,
         album_id,
         album_title,
-        display_name,
-        format,
+        name: (crate::types::BridgeReleaseName),
+        media: (each crate::types::BridgeMediaCount),
         cover: (opt crate::types::BridgeImageRef),
     },
 }

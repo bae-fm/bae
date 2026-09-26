@@ -157,7 +157,10 @@ async fn work_detail_release_rows_carry_album_release_display_fields() {
     assert_eq!(release.album_title, "Album Title A");
     assert_eq!(release.release_name, None);
     assert_eq!(release.year, Some(2026));
-    assert_eq!(release.format.as_deref(), Some("CD"));
+    assert_eq!(
+        release.media,
+        crate::pressing::made_of(crate::pressing::Medium::Cd, 1).media
+    );
     assert_eq!(release.release_index, 1);
 }
 

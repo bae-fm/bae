@@ -55,7 +55,7 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert!(release.draft_from_tags);
     assert_eq!(release.pressing.year, Some(2003));
-    assert_eq!(release.pressing.format, None);
+    assert!(release.pressing.facts.media.is_empty());
 
     let records = f.db.get_release_records(&release_id).await.unwrap();
     assert!(
@@ -106,7 +106,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
         vec![file_tag_artist_assignment("Test Artist")]
     );
     assert_eq!(draft.pressing.year, "");
-    assert_eq!(draft.pressing.format, "");
+    assert!(draft.pressing.facts.is_empty());
 
     let draft_tracks: Vec<(String, TrackArtistAssignments)> = draft
         .tracks
@@ -147,7 +147,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.year, None, "the tags state no year");
-    assert_eq!(release.pressing.format, None, "and no medium");
+    assert!(release.pressing.facts.media.is_empty(), "and no medium");
 
     let album_detail =
         f.db.find_album_detail(&album_id)
@@ -397,12 +397,20 @@ async fn file_metadata_import_with_user_edit_overlay() {
         album_title: "Edited Title".to_string(),
         album_artist_assignments: vec![ArtistAssignment::named("Artist Edited")],
         album_year: Some(1998),
-        pressing: PressingEdit {
+        pressing: bae_core::pressing::Pressing {
             year: Some(2010),
-            format: Some("CD".to_string()),
             label: Some("Edited Label".to_string()),
             catalog_number: Some("EDIT-1".to_string()),
-            country: Some("JP".to_string()),
+            facts: bae_core::pressing::PressingFacts {
+                area: Some(bae_core::pressing::ReleaseArea::Country(
+                    bae_core::pressing::Country::from_code("JP").unwrap(),
+                )),
+                media: vec![bae_core::pressing::MediaCount {
+                    medium: bae_core::pressing::Medium::Cd,
+                    count: 1,
+                }],
+                ..Default::default()
+            },
             barcode: Some("4943674000000".to_string()),
         },
         tracks: vec![TrackUserEdit {
@@ -430,10 +438,21 @@ async fn file_metadata_import_with_user_edit_overlay() {
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.year, Some(2010));
-    assert_eq!(release.pressing.format.as_deref(), Some("CD"));
+    assert_eq!(
+        release.pressing.facts.media,
+        vec![bae_core::pressing::MediaCount {
+            medium: bae_core::pressing::Medium::Cd,
+            count: 1,
+        }]
+    );
     assert_eq!(release.pressing.label.as_deref(), Some("Edited Label"));
     assert_eq!(release.pressing.catalog_number.as_deref(), Some("EDIT-1"));
-    assert_eq!(release.pressing.country.as_deref(), Some("JP"));
+    assert_eq!(
+        release.pressing.facts.area,
+        Some(bae_core::pressing::ReleaseArea::Country(
+            bae_core::pressing::Country::from_code("JP").unwrap()
+        ))
+    );
     assert_eq!(release.pressing.barcode.as_deref(), Some("4943674000000"));
     assert!(release.draft_from_tags);
 

@@ -259,7 +259,7 @@ extension EditMetadataSheetTests {
         let seed = PreviewData.releaseEditSeed(trackCount: 2)
         var source = seed.edit
         source.albumTitle = "Source title"
-        source.pressing.country = ""
+        source.pressing.facts = PreviewData.pressingFacts()
         let sourceForm = source
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
@@ -268,20 +268,22 @@ extension EditMetadataSheetTests {
             reset: { _ in sourceForm }
         )
         await session.fieldWriter.setField(.albumTitle, "Edited title")
-        await session.fieldWriter.setField(.country, "JP")
+        await session.fieldWriter.setPressingFact(
+            .area(area: .country(code: "JP"))
+        )
 
         session.resetToSource()
         try await Wait.until { !session.isBusy }
         #expect(!session.isBusy)
         #expect(session.form.albumTitle == "Source title")
-        #expect(session.form.pressing.country.isEmpty)
+        #expect(session.form.pressing.facts.area == nil)
         #expect(session.hasChanges)
 
         session.cancelChanges()
         try await Wait.until { !session.isBusy }
         #expect(!session.isBusy)
         #expect(session.form.albumTitle == seed.edit.albumTitle)
-        #expect(session.form.pressing.country == seed.edit.pressing.country)
+        #expect(session.form.pressing.facts == seed.edit.pressing.facts)
         #expect(!session.hasChanges)
     }
 }

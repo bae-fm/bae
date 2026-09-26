@@ -1,70 +1,30 @@
 //! Pure formatters over `crate::album_detail`'s position types: no state, no
 //! I/O, no database. `compute_track_position` picks a track's position case from
-//! the release format; `track_position_text` renders it ("A1"); the rest
-//! classify the format and group tracks by side.
+//! the release's physical medium; `track_position_text` renders it ("A1"); the
+//! rest group tracks by side.
+
+use crate::pressing::PhysicalMedium;
 
 /// Convert a 1-indexed side number to a letter (1=A, 2=B, ..., 26=Z).
 pub fn side_letter(side: i32) -> String {
     ((b'A' + (side - 1) as u8) as char).to_string()
 }
 
-/// A physical release medium whose side or disc boundaries can pause playback.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PhysicalMedium {
-    Vinyl,
-    Cassette,
-    Cd,
-}
-
-enum FormatKind {
-    Physical(PhysicalMedium),
-    Digital, // Downloads or unrecognized formats
-}
-
-/// The physical medium a free-text format string names: the first of vinyl,
-/// cassette and CD the string carries, whatever case it is written in —
-/// providers and folders write "Vinyl", "vinyl" and "VINYL". `None` where
-/// the string names none of them, which reads the same for a download and
-/// for a word this classification has never heard of.
-///
-/// A display and playback classifier over free text: it answers whether a
-/// release has sides or discs, and its answer is no evidence about a
-/// pressing. What a catalog states a release's media to be is read from that
-/// catalog's own list of format names, by `crate::import::medium`.
-pub fn physical_medium(format: Option<&str>) -> Option<PhysicalMedium> {
-    let lowered = format?.to_lowercase();
-    [
-        ("vinyl", PhysicalMedium::Vinyl),
-        ("cassette", PhysicalMedium::Cassette),
-        ("cd", PhysicalMedium::Cd),
-    ]
-    .into_iter()
-    .find(|(needle, _)| lowered.contains(needle))
-    .map(|(_, medium)| medium)
-}
-
-fn detect_format(format: Option<&str>) -> FormatKind {
-    match physical_medium(format) {
-        Some(medium) => FormatKind::Physical(medium),
-        None => FormatKind::Digital,
-    }
-}
-
-/// Whether a release format is a digital-style medium (CD, digital, or
-/// anything unknown). Returns `false` for side-based physical formats
-/// like vinyl or cassette, where "disc number" isn't the right label.
-pub fn is_digital_format(format: Option<&str>) -> bool {
-    matches!(
-        detect_format(format),
-        FormatKind::Digital | FormatKind::Physical(PhysicalMedium::Cd)
+/// Whether a release's media number their parts as discs rather than sides:
+/// a compact disc, a download, or media nothing says are sided. `false` for
+/// a record or a cassette, where "disc number" isn't the right label.
+pub fn is_disc_numbered(medium: Option<PhysicalMedium>) -> bool {
+    !matches!(
+        medium,
+        Some(PhysicalMedium::Record | PhysicalMedium::Cassette)
     )
 }
 
 /// The structured [`crate::album_detail::TrackPosition`] for a track: picks the
-/// case (sided physical / multi-disc digital / flat) from the release format and
-/// fills its domain fields. `side` is 1-indexed.
+/// case (sided physical / multi-disc digital / flat) from the release's
+/// physical medium and fills its domain fields. `side` is 1-indexed.
 pub fn compute_track_position(
-    format: Option<&str>,
+    medium: Option<PhysicalMedium>,
     side: Option<i32>,
     track_number: Option<i32>,
     has_multiple_sides: bool,
@@ -76,19 +36,17 @@ pub fn compute_track_position(
             None => TrackPosition::Unnumbered,
         };
     };
-    match detect_format(format) {
-        FormatKind::Physical(PhysicalMedium::Vinyl | PhysicalMedium::Cassette) => {
-            match track_number {
-                Some(number) => TrackPosition::Sided {
-                    side_letter: side_letter(side),
-                    number,
-                },
-                None => TrackPosition::SidedUnnumbered {
-                    side_letter: side_letter(side),
-                },
-            }
-        }
-        FormatKind::Digital | FormatKind::Physical(PhysicalMedium::Cd) => {
+    match medium {
+        Some(PhysicalMedium::Record | PhysicalMedium::Cassette) => match track_number {
+            Some(number) => TrackPosition::Sided {
+                side_letter: side_letter(side),
+                number,
+            },
+            None => TrackPosition::SidedUnnumbered {
+                side_letter: side_letter(side),
+            },
+        },
+        None | Some(PhysicalMedium::Cd) => {
             if has_multiple_sides {
                 match track_number {
                     Some(number) => TrackPosition::Disc { disc: side, number },
@@ -180,52 +138,27 @@ mod tests {
     #[test]
     fn test_vinyl_position() {
         assert_eq!(
-            compute_track_position(Some("2xLP, Vinyl"), Some(1), Some(2), true),
+            compute_track_position(Some(PhysicalMedium::Record), Some(1), Some(2), true),
             sided("A", 2)
         );
         assert_eq!(
-            compute_track_position(Some("Vinyl"), Some(3), Some(1), true),
+            compute_track_position(Some(PhysicalMedium::Record), Some(3), Some(1), true),
             sided("C", 1)
         );
     }
 
     #[test]
-    fn physical_medium_detection() {
-        assert_eq!(
-            physical_medium(Some("2xLP, Vinyl")),
-            Some(PhysicalMedium::Vinyl)
-        );
-        assert_eq!(
-            physical_medium(Some("Cassette")),
-            Some(PhysicalMedium::Cassette)
-        );
-        assert_eq!(physical_medium(Some("2xCD")), Some(PhysicalMedium::Cd));
-        assert_eq!(physical_medium(Some("Digital Media")), None);
-        assert_eq!(physical_medium(None), None);
-    }
-
-    /// The case a format string is written in is not evidence of anything,
-    /// and a string naming several media is classified by the first of them.
-    #[test]
-    fn a_format_string_reads_the_same_in_any_case() {
-        assert_eq!(
-            physical_medium(Some("CD + 12\" vinyl")),
-            Some(PhysicalMedium::Vinyl)
-        );
-        assert_eq!(
-            physical_medium(Some("CASSETTE")),
-            Some(PhysicalMedium::Cassette)
-        );
-        assert_eq!(
-            physical_medium(Some("2xlp, vinyl")),
-            Some(PhysicalMedium::Vinyl)
-        );
+    fn records_and_cassettes_number_sides_and_the_rest_discs() {
+        assert!(!is_disc_numbered(Some(PhysicalMedium::Record)));
+        assert!(!is_disc_numbered(Some(PhysicalMedium::Cassette)));
+        assert!(is_disc_numbered(Some(PhysicalMedium::Cd)));
+        assert!(is_disc_numbered(None));
     }
 
     #[test]
     fn test_cassette_position() {
         assert_eq!(
-            compute_track_position(Some("Cassette"), Some(2), Some(3), true),
+            compute_track_position(Some(PhysicalMedium::Cassette), Some(2), Some(3), true),
             sided("B", 3)
         );
     }
@@ -233,7 +166,7 @@ mod tests {
     #[test]
     fn test_cd_single_disc() {
         assert_eq!(
-            compute_track_position(Some("CD"), Some(1), Some(5), false),
+            compute_track_position(Some(PhysicalMedium::Cd), Some(1), Some(5), false),
             TrackPosition::Flat { number: 5 }
         );
     }
@@ -241,7 +174,7 @@ mod tests {
     #[test]
     fn test_cd_multi_disc() {
         assert_eq!(
-            compute_track_position(Some("2xCD"), Some(2), Some(3), true),
+            compute_track_position(Some(PhysicalMedium::Cd), Some(2), Some(3), true),
             TrackPosition::Disc { disc: 2, number: 3 }
         );
     }
@@ -257,17 +190,17 @@ mod tests {
     #[test]
     fn missing_track_number_is_explicit_position_state() {
         assert_eq!(
-            compute_track_position(Some("Vinyl"), Some(1), None, true),
+            compute_track_position(Some(PhysicalMedium::Record), Some(1), None, true),
             TrackPosition::SidedUnnumbered {
                 side_letter: "A".to_string()
             }
         );
         assert_eq!(
-            compute_track_position(Some("2xCD"), Some(2), None, true),
+            compute_track_position(Some(PhysicalMedium::Cd), Some(2), None, true),
             TrackPosition::DiscUnnumbered { disc: 2 }
         );
         assert_eq!(
-            compute_track_position(Some("CD"), Some(1), None, false),
+            compute_track_position(Some(PhysicalMedium::Cd), Some(1), None, false),
             TrackPosition::Unnumbered
         );
     }

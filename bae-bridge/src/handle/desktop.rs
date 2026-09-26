@@ -477,7 +477,27 @@ forward! {
         ) -> () {
             Ok(this
                 .services
-                .import_set_candidate_edit_field(&candidate_key, field.into_core(), value)
+                .import_set_candidate_edit_field(
+                    &candidate_key,
+                    bae_core::import::DraftFieldEdit::Text {
+                        field: field.into_core(),
+                        value,
+                    },
+                )
+                .await?)
+        }
+
+        /// Record one choice of what the candidate's pressing is.
+        fn set_candidate_pressing_fact(
+            candidate_key: String,
+            fact: crate::types::BridgePressingFactEdit,
+        ) -> () {
+            Ok(this
+                .services
+                .import_set_candidate_edit_field(
+                    &candidate_key,
+                    bae_core::import::DraftFieldEdit::PressingFact(fact.into_core()),
+                )
                 .await?)
         }
 

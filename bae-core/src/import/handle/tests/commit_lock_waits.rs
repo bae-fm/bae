@@ -101,8 +101,10 @@ async fn retitle(handle: &ImportServiceHandle, key: &str) {
     handle
         .set_candidate_edit_field(
             key,
-            crate::import::CandidateEditField::AlbumTitle,
-            "Retitled".to_string(),
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: "Retitled".to_string(),
+            },
         )
         .await
         .unwrap();

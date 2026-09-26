@@ -174,6 +174,20 @@ pub struct MbReleaseResponse {
         deserialize_with = "crate::serde_helpers::empty_string_as_none"
     )]
     pub country: Option<String>,
+    /// How official the release is, as MusicBrainz names it ("Official",
+    /// "Promotion", …). Absent where no status is set.
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub status: Option<String>,
+    /// The release's outermost packaging, as MusicBrainz names it ("Jewel
+    /// Case", "Digipak", …). Absent where none is set.
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub packaging: Option<String>,
     #[serde(
         default,
         deserialize_with = "crate::serde_helpers::empty_string_as_none"
@@ -227,6 +241,20 @@ pub struct SearchRelease {
         deserialize_with = "crate::serde_helpers::empty_string_as_none"
     )]
     pub country: Option<String>,
+    /// How official the release is, as MusicBrainz names it ("Official",
+    /// "Promotion", …). Absent where no status is set.
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub status: Option<String>,
+    /// The release's outermost packaging, as MusicBrainz names it ("Jewel
+    /// Case", "Digipak", …). Absent where none is set.
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub packaging: Option<String>,
     /// `ws/2/release?query=` states the pressing's barcode. An empty string
     /// means the release carries none.
     #[serde(

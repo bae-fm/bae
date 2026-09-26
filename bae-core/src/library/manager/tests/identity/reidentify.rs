@@ -165,6 +165,8 @@ fn make_mb_release_for_re_identify(
         title: "Album Title".to_string(),
         date: Some("2024-01-01".to_string()),
         country: None,
+        status: None,
+        packaging: None,
         barcode: None,
         artist_credit: vec![MbArtistCredit {
             name: "Artist Name".to_string(),

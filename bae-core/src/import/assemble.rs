@@ -14,8 +14,9 @@
 
 use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
-    DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart, Pressing,
+    DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
 };
+use crate::pressing::Pressing;
 use crate::import::types::{Catalog, MetadataProvenance};
 use crate::import::{ParsedAlbum, ParsedWorkGraph};
 use chrono::{DateTime, Utc};

@@ -425,13 +425,12 @@ mod conversion_roundtrip {
                 bae_core::import::ArtistAssignment::named("Artist Beta"),
             ],
             album_year: Some(1987),
-            pressing: bae_core::import::PressingEdit {
+            pressing: bae_core::pressing::Pressing {
                 year: Some(1990),
-                format: Some("CD".to_string()),
                 label: Some("Label Name".to_string()),
                 catalog_number: Some("CAT-1".to_string()),
-                country: Some("US".to_string()),
                 barcode: Some("012345678905".to_string()),
+                facts: every_kind_of_fact(),
             },
             tracks: vec![bae_core::import::TrackUserEdit {
                 title: "Track Title".to_string(),
@@ -465,11 +464,10 @@ mod conversion_roundtrip {
             album_year: "1987".to_string(),
             pressing: bae_core::import::RawPressingEdit {
                 year: "1990".to_string(),
-                format: "CD".to_string(),
                 label: "Label Name".to_string(),
                 catalog_number: "CAT-1".to_string(),
-                country: "US".to_string(),
                 barcode: "012345678905".to_string(),
+                facts: every_kind_of_fact(),
             },
             tracks: vec![bae_core::import::RawTrackEdit {
                 id: "row-1".to_string(),
@@ -504,11 +502,10 @@ mod conversion_roundtrip {
             album_year: String::new(),
             pressing: bae_core::import::RawPressingEdit {
                 year: String::new(),
-                format: String::new(),
                 label: String::new(),
                 catalog_number: String::new(),
-                country: String::new(),
                 barcode: String::new(),
+                facts: bae_core::pressing::PressingFacts::default(),
             },
             tracks: vec![bae_core::import::RawTrackEdit {
                 id: "track-id".to_string(),
@@ -564,12 +561,13 @@ mod conversion_roundtrip {
             title: "Album Title".to_string(),
             artist: Some("Artist Name".to_string()),
             year: Some(1990),
-            format: Some("CD".to_string()),
             label: Some("Label Name".to_string()),
             catalog_number: Some("CAT-1".to_string()),
-            country: Some("US".to_string()),
             barcode: Some("012345678905".to_string()),
-            media: bae_core::import::search::StatedMedia::PerMedium(vec![Some("CD".to_string())]),
+            facts: every_kind_of_fact(),
+            media: bae_core::pressing::StatedMedia::PerMedium(vec![Some(
+                bae_core::pressing::Medium::Cd,
+            )]),
             links: vec![bae_core::import::MetadataRef::new(
                 bae_core::import::Catalog::Discogs,
                 "42",
@@ -605,6 +603,30 @@ mod conversion_roundtrip {
         assert_eq!(bridge.tracks[0].position, core.tracks[0].position);
         assert_eq!(bridge.cover_art.len(), core.cover_art.len());
         assert_eq!(bridge.barcode, core.barcode);
+        assert_eq!(bridge.facts.into_core(), core.facts);
+    }
+}
+
+/// Facts stating one of every kind: a region, two media, a status, a
+/// packaging and details of both wordings.
+#[cfg(feature = "desktop")]
+fn every_kind_of_fact() -> bae_core::pressing::PressingFacts {
+    use bae_core::pressing::*;
+    PressingFacts {
+        area: Some(ReleaseArea::Region(Region::UkAndEurope)),
+        media: vec![
+            MediaCount {
+                medium: Medium::Cd,
+                count: 2,
+            },
+            MediaCount {
+                medium: Medium::Dvd,
+                count: 1,
+            },
+        ],
+        status: Some(ReleaseStatus::Promotion),
+        packaging: Some(Packaging::Digipak),
+        discogs_details: vec![DiscogsDetail::Reissue, DiscogsDetail::Size12In],
     }
 }
 

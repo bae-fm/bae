@@ -56,27 +56,39 @@ pub(crate) fn join_artist_names(artists: &[DbArtist]) -> String {
         .join(", ")
 }
 
-pub(crate) fn release_display_name(
-    release_name: Option<&str>,
-    year: Option<i32>,
-    format: Option<&str>,
-    release_number: i64,
-) -> String {
-    if let Some(name) = release_name {
-        return name.to_string();
-    }
+/// What a release is called where a list of an album's releases names it.
+/// Each surface words it in the reader's language.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReleaseName {
+    /// The name the person gave it.
+    Named(String),
+    /// No name: its year and media, whichever it states.
+    Described {
+        year: Option<i32>,
+        media: Vec<crate::pressing::MediaCount>,
+    },
+    /// No name and nothing to describe it by: its place among the album's
+    /// releases, counted from one.
+    Numbered(i64),
+}
 
-    let mut parts = Vec::new();
-    if let Some(year) = year {
-        parts.push(year.to_string());
-    }
-    if let Some(format) = format {
-        parts.push(format.to_string());
-    }
-    if parts.is_empty() {
-        format!("Release {release_number}")
-    } else {
-        parts.join(" ")
+impl ReleaseName {
+    /// The stored `release_name`, else the year and media it states, else its
+    /// place among the album's releases.
+    pub(crate) fn of(
+        release_name: Option<&str>,
+        year: Option<i32>,
+        media: &[crate::pressing::MediaCount],
+        release_number: i64,
+    ) -> Self {
+        match release_name {
+            Some(name) => Self::Named(name.to_string()),
+            None if year.is_some() || !media.is_empty() => Self::Described {
+                year,
+                media: media.to_vec(),
+            },
+            None => Self::Numbered(release_number),
+        }
     }
 }
 

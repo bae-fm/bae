@@ -184,11 +184,13 @@
                 title: "Album Title One",
                 artist: "Artist Name",
                 year: 1996,
-                format: "CD",
                 label: "Label Name",
                 catalogNumber: "6006-2",
-                country: "US",
                 barcode: nil,
+                facts: PreviewData.pressingFacts(
+                    country: "US",
+                    media: PreviewData.media(.cd)
+                ),
                 trackCount: 9,
                 tracks: tracks,
                 coverArt: [],

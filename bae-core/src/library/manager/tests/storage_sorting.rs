@@ -54,13 +54,15 @@ async fn storage_page_sort_by_media_nulls_last() {
 
     for (title, media) in &[
         ("Album No Media", None),
-        ("Album CD", Some("CD")),
-        ("Album Vinyl", Some("Vinyl")),
+        ("Album CD", Some(crate::pressing::Medium::Cd)),
+        ("Album Vinyl", Some(crate::pressing::Medium::Vinyl)),
     ] {
         let mut album = create_test_album();
         album.title = title.to_string();
         let mut release = create_test_release(&album.id);
-        release.pressing.format = media.map(str::to_string);
+        release.pressing.facts = media
+            .map(|medium| crate::pressing::made_of(medium, 1))
+            .unwrap_or_default();
         manager.database.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;
     }
@@ -76,6 +78,17 @@ async fn storage_page_sort_by_media_nulls_last() {
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     // Unknown media sorts last in both directions.
     assert_eq!(titles, vec!["Album CD", "Album Vinyl", "Album No Media"]);
+
+    let desc = crate::db::StorageSortCriterion {
+        field: crate::db::StorageSortField::Media,
+        direction: crate::db::SortDirection::Descending,
+    };
+    let page = manager
+        .get_storage_page(&desc, crate::db::StorageFilter::All, 0, 10)
+        .await
+        .unwrap();
+    let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
+    assert_eq!(titles, vec!["Album Vinyl", "Album CD", "Album No Media"]);
 }
 
 #[tokio::test]

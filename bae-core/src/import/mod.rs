@@ -44,7 +44,6 @@ desktop_only! {
     pub mod mapping;
     /// The carriers MusicBrainz and Discogs name, in each catalog's own
     /// closed list of format names.
-    pub(crate) mod medium;
     /// Which of a release's mediums a folder's audio is a rip of.
     pub(crate) mod medium_coverage;
     pub mod musicbrainz_mapper;
@@ -226,8 +225,8 @@ desktop_only! {
 pub use types::{
     artists_standing, asked_sources, is_the_only_asked_source, parse_catalog_url, ArtistAssignment,
     ArtistCredit, ArtistStanding, ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField,
-    CandidateTrack, Catalog, CatalogAvailability, CatalogPage, CreditResolution,
-    EditValidationError, ExistingArtist, MetadataProvenance, MetadataRef, PressingEdit,
+    CandidateTrack, Catalog, CatalogAvailability, CatalogPage, CreditResolution, DraftFieldEdit,
+    EditValidationError, ExistingArtist, MetadataProvenance, MetadataRef, PressingFactEdit,
     RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
     ReleaseRecord, ReleaseUserEdit, ResolvedCredit, SourceAvailability, TrackArtistAssignments,
     TrackUserEdit,

@@ -4,7 +4,15 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
     let tracks: Vec<(&str, &str)> = tracks.iter().map(|title| (*title, "3:00")).collect();
     DiscogsRelease {
         year: Some(1996),
-        format: vec!["CD".to_string()],
+        formats: vec![bae_core::discogs::DiscogsFormat {
+            name: "CD".to_string(),
+            qty: "1".to_string(),
+            descriptions: vec![
+                "Album".to_string(),
+                "Reissue".to_string(),
+                "Promo".to_string(),
+            ],
+        }],
         label: vec!["Label Name".to_string()],
         catno: Some("CAT-001".to_string()),
         master_id: Some(master_id.to_string()),
@@ -13,8 +21,8 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
 }
 
 /// A catalog-backed import: the record carries the catalog's key for the
-/// release, and the pressing fields (year, format, label, catalog number,
-/// country) seed from the picked release.
+/// release, and the pressing fields (year, label, catalog number, and what the
+/// pressing is) seed from the picked release.
 #[tokio::test]
 async fn a_picked_release_writes_its_id_and_pressing_fields() {
     support::tracing_init();
@@ -43,10 +51,23 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.year, Some(1996));
-    assert_eq!(release.pressing.format.as_deref(), Some("CD"));
     assert_eq!(release.pressing.label.as_deref(), Some("Label Name"));
     assert_eq!(release.pressing.catalog_number.as_deref(), Some("CAT-001"));
-    assert_eq!(release.pressing.country.as_deref(), Some("US"));
+    assert_eq!(
+        release.pressing.facts,
+        bae_core::pressing::PressingFacts {
+            area: Some(bae_core::pressing::ReleaseArea::Country(
+                bae_core::pressing::Country::from_code("US").unwrap()
+            )),
+            media: vec![bae_core::pressing::MediaCount {
+                medium: bae_core::pressing::Medium::Cd,
+                count: 1,
+            }],
+            status: Some(bae_core::pressing::ReleaseStatus::Promotion),
+            packaging: None,
+            discogs_details: vec![bae_core::pressing::DiscogsDetail::Reissue],
+        }
+    );
 
     // The record the draft was read from points at the picked release.
     assert!(!release.draft_from_tags);
@@ -84,10 +105,10 @@ async fn a_user_edit_overlays_the_picked_release() {
         album_title: "Edited Title".to_string(),
         album_artist_assignments: vec![ArtistAssignment::named("Artist Edited")],
         album_year: Some(1977),
-        pressing: PressingEdit {
+        pressing: bae_core::pressing::Pressing {
             // User typed JP — we expect this to land on the release row.
-            country: Some("JP".to_string()),
-            ..PressingEdit::blank()
+            facts: bae_core::pressing::PressingFacts { area: Some(bae_core::pressing::ReleaseArea::Country(bae_core::pressing::Country::from_code("JP").unwrap())), ..Default::default() },
+            ..bae_core::pressing::Pressing::blank()
         },
         tracks: vec![TrackUserEdit {
             title: "Edited Track".to_string(),
@@ -117,11 +138,16 @@ async fn a_user_edit_overlays_the_picked_release() {
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    assert_eq!(release.pressing.country.as_deref(), Some("JP"));
+    assert_eq!(
+        release.pressing.facts.area,
+        Some(bae_core::pressing::ReleaseArea::Country(
+            bae_core::pressing::Country::from_code("JP").unwrap()
+        ))
+    );
     // The overlay is the whole pressing block, so the fields it leaves empty
     // are written empty over the seed's.
     assert!(release.pressing.year.is_none());
-    assert!(release.pressing.format.is_none());
+    assert!(release.pressing.facts.media.is_empty());
 
     let album =
         f.db.find_album_by_id(&release.album_id)

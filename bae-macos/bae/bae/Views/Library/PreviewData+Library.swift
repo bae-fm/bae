@@ -141,8 +141,8 @@
                         releaseId: "release-\(index)",
                         albumId: "album-\(index)",
                         albumTitle: "Album Title \(index + 1)",
-                        displayName: "Album Title \(index + 1)",
-                        format: "2\u{00D7}LP",
+                        name: .named(name: "Album Title \(index + 1)"),
+                        media: PreviewData.media(.vinyl, 2),
                         cover: nil,
                     )
                 },

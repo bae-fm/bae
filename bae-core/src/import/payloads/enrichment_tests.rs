@@ -155,8 +155,16 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
         parsed.release.pressing.label.as_deref(),
         Some("Selected Label")
     );
-    assert_eq!(parsed.release.pressing.format.as_deref(), Some("Vinyl"));
-    assert_eq!(parsed.release.pressing.country.as_deref(), Some("JP"));
+    assert_eq!(
+        parsed.release.pressing.facts.media,
+        crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1).media,
+        "the selected pressing's own media, not the linked release's CD"
+    );
+    assert_eq!(
+        parsed.release.pressing.facts.area,
+        Some(crate::pressing::area("JP")),
+        "the linked release fills the area the selected one leaves out"
+    );
     assert_eq!(
         parsed.release.pressing.barcode.as_deref(),
         Some("1234567890123")
@@ -166,7 +174,7 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
     assert_eq!(parsed.tracks[1].side, Some(2));
     let detail = payloads.extract().unwrap().detail_for_audio(&[], &[]).unwrap();
     assert_eq!(detail.label, parsed.release.pressing.label);
-    assert_eq!(detail.country, parsed.release.pressing.country);
+    assert_eq!(detail.facts, parsed.release.pressing.facts);
     assert_eq!(detail.year, parsed.release.pressing.year);
 }
 

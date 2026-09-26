@@ -1,3 +1,5 @@
+use super::{BridgeMediaCount, BridgePressingFacts, BridgeReleaseName};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDiscogsTokenStatus {
     NotConfigured,
@@ -269,7 +271,8 @@ pub fn bridge_transfer_action_key(action: BridgeReleaseStorageAction) -> String 
 pub struct BridgeReleaseSummary {
     pub id: String,
     pub album_id: String,
-    pub format: Option<String>,
+    /// What the release is made of, each carrier with its count.
+    pub media: Vec<BridgeMediaCount>,
     /// The release's storage state — Local (local) or Remote (cloud).
     pub storage_state: BridgeReleaseStorageState,
     /// Whether coven keeps this release's blobs pinned (kept offline) on this
@@ -295,12 +298,14 @@ pub struct BridgeReleaseSummary {
 pub struct BridgeRelease {
     pub id: String,
     pub album_id: String,
-    pub display_name: String,
+    /// What a list of the album's releases calls this one.
+    pub name: BridgeReleaseName,
     pub year: Option<i32>,
-    pub format: Option<String>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
-    pub country: Option<String>,
+    /// What the pressing is: where it was released, its media, status,
+    /// packaging and Discogs details.
+    pub facts: BridgePressingFacts,
     /// The release's storage state — Local (local) or Remote (cloud).
     pub storage_state: BridgeReleaseStorageState,
     /// Whether coven keeps this release's blobs pinned (kept offline) on this

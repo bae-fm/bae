@@ -62,25 +62,25 @@ pub struct WorkReleaseSummary {
     pub release_id: String,
     pub album_id: String,
     pub album_title: String,
-    pub display_name: String,
-    pub format: Option<String>,
+    pub name: ReleaseName,
+    pub media: Vec<crate::pressing::MediaCount>,
     pub cover: Option<ImageRef>,
 }
 
 impl WorkReleaseSummary {
     pub(crate) fn from_raw(raw: DbWorkReleaseSummary, cover: Option<ImageRef>) -> Self {
-        let display_name = release_display_name(
+        let name = ReleaseName::of(
             raw.release_name.as_deref(),
             raw.year,
-            raw.format.as_deref(),
+            &raw.media,
             raw.release_index,
         );
         Self {
             release_id: raw.release_id,
             album_id: raw.album_id,
             album_title: raw.album_title,
-            display_name,
-            format: raw.format,
+            name,
+            media: raw.media,
             cover,
         }
     }

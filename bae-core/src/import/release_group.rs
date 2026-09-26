@@ -28,7 +28,7 @@
 
 use crate::identify::agreements::Agreements;
 use crate::import::cover_art::RemoteCover;
-use crate::import::pressing_evidence::{PressingEvidence, PressingFacts, Support};
+use crate::import::pressing_evidence::{ComparedPressing, PressingEvidence, Support};
 use crate::import::search::MetadataResult;
 use crate::import::types::{Catalog, MetadataRef};
 
@@ -176,6 +176,19 @@ impl Pressing {
                 .map(|at| releases[at].take().expect("each record is placed once"))
                 .collect(),
         }
+    }
+
+    /// What the pressing is, as its records together state it: the lead's
+    /// facts, with each part the lead leaves unstated taken from the other
+    /// records in their order — MusicBrainz's status beside Discogs's
+    /// details, one catalog's country where the other names none.
+    pub fn facts(&self) -> crate::pressing::PressingFacts {
+        let mut records = self.releases.iter().map(MetadataResult::facts);
+        let mut facts = records.next().unwrap_or_default();
+        for other in records {
+            facts.fill_missing(other);
+        }
+        facts
     }
 
     /// The release a row picks when the person picks the row itself.
@@ -509,7 +522,7 @@ fn formed_pressings(rows: &[u32]) -> Vec<Vec<usize>> {
 /// it stands, and a set named once stays open for the levels below. Nothing
 /// depends on the order the records arrived in.
 fn gather_pressings(releases: &[MetadataResult]) -> Vec<Vec<usize>> {
-    let facts: Vec<PressingFacts<'_>> = releases.iter().map(PressingFacts::of).collect();
+    let facts: Vec<ComparedPressing<'_>> = releases.iter().map(ComparedPressing::of).collect();
     let count = releases.len();
     let mut supported = vec![vec![false; count]; count];
     let mut edges: Vec<(Support, usize, usize)> = Vec::new();

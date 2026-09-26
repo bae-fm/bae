@@ -66,12 +66,11 @@ fn make_seed_album_release_track() -> (
         id: "release-1".to_string(),
         album_id: album.id.clone(),
         release_name: None,
-        pressing: crate::db::Pressing {
+        pressing: crate::pressing::Pressing {
             year: Some(2020),
-            format: Some("CD".to_string()),
             label: Some("Label Name".to_string()),
             catalog_number: Some("CAT-001".to_string()),
-            country: None,
+            facts: Default::default(),
             barcode: None,
         },
         draft_from_tags: false,
@@ -104,12 +103,14 @@ fn user_edit_overrides_album_year_and_pressing_fields() {
         album_title: "Edited Title".to_string(),
         album_artist_assignments: vec![crate::import::ArtistAssignment::named("Edited Artist")],
         album_year: Some(1981),
-        pressing: crate::import::PressingEdit {
+        pressing: crate::pressing::Pressing {
             year: Some(1995),
-            format: Some("Vinyl".to_string()),
             label: Some("Edited Label".to_string()),
             catalog_number: Some("EDIT-1".to_string()),
-            country: Some("JP".to_string()),
+            facts: crate::pressing::PressingFacts {
+                area: Some(crate::pressing::area("JP")),
+                ..crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1)
+            },
             barcode: Some("4943674000000".to_string()),
         },
         tracks: vec![crate::import::TrackUserEdit {
@@ -132,13 +133,18 @@ fn user_edit_overrides_album_year_and_pressing_fields() {
     assert_eq!(seed.album.title, "Edited Title");
     assert_eq!(seed.album.year, Some(1981));
     assert_eq!(seed.release.pressing.year, Some(1995));
-    assert_eq!(seed.release.pressing.format.as_deref(), Some("Vinyl"));
     assert_eq!(seed.release.pressing.label.as_deref(), Some("Edited Label"));
     assert_eq!(
         seed.release.pressing.catalog_number.as_deref(),
         Some("EDIT-1")
     );
-    assert_eq!(seed.release.pressing.country.as_deref(), Some("JP"));
+    assert_eq!(
+        seed.release.pressing.facts,
+        crate::pressing::PressingFacts {
+            area: Some(crate::pressing::area("JP")),
+            ..crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1)
+        }
+    );
     assert_eq!(
         seed.release.pressing.barcode.as_deref(),
         Some("4943674000000")
@@ -164,7 +170,7 @@ fn user_edit_can_fill_country_for_approximate_seed() {
     // them via the editor and the overlay applies the value.
     let (album, mut release, track, seed_artist) = make_seed_album_release_track();
     // Simulate the Approximate-cleared release row.
-    release.pressing = crate::db::Pressing::blank();
+    release.pressing = crate::pressing::Pressing::blank();
     let mut seed = seed_parsed(album, release, vec![track], vec![seed_artist]);
 
     let edit = crate::import::ReleaseUserEdit {
@@ -173,9 +179,12 @@ fn user_edit_can_fill_country_for_approximate_seed() {
             seed.artists[0].name.clone(),
         )],
         album_year: seed.album.year,
-        pressing: crate::import::PressingEdit {
-            country: Some("JP".to_string()),
-            ..crate::import::PressingEdit::blank()
+        pressing: crate::pressing::Pressing {
+            facts: crate::pressing::PressingFacts {
+                area: Some(crate::pressing::area("JP")),
+                ..Default::default()
+            },
+            ..crate::pressing::Pressing::blank()
         },
         tracks: vec![crate::import::TrackUserEdit {
             title: seed.tracks[0].title.clone(),
@@ -194,9 +203,12 @@ fn user_edit_can_fill_country_for_approximate_seed() {
     )
     .unwrap();
 
-    assert_eq!(seed.release.pressing.country.as_deref(), Some("JP"));
+    assert_eq!(
+        seed.release.pressing.facts.area,
+        Some(crate::pressing::area("JP"))
+    );
     assert!(seed.release.pressing.year.is_none());
-    assert!(seed.release.pressing.format.is_none());
+    assert!(seed.release.pressing.facts.media.is_empty());
 }
 
 #[test]
@@ -208,7 +220,7 @@ fn user_edit_track_count_mismatch_is_an_error() {
         album_title: "T".to_string(),
         album_artist_assignments: vec![crate::import::ArtistAssignment::named("A")],
         album_year: None,
-        pressing: crate::import::PressingEdit::blank(),
+        pressing: crate::pressing::Pressing::blank(),
         // Two edits but seed has one track.
         tracks: vec![
             crate::import::TrackUserEdit {
@@ -271,12 +283,11 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
         id: "release-1".to_string(),
         album_id: album.id.clone(),
         release_name: None,
-        pressing: crate::db::Pressing {
+        pressing: crate::pressing::Pressing {
             year: Some(2020),
-            format: None,
             label: None,
             catalog_number: None,
-            country: None,
+            facts: Default::default(),
             barcode: None,
         },
         draft_from_tags: false,
@@ -319,9 +330,9 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
             seed_artist.clone().into(),
         )],
         album_year: seed.album.year,
-        pressing: crate::import::PressingEdit {
+        pressing: crate::pressing::Pressing {
             year: Some(1995),
-            ..crate::import::PressingEdit::blank()
+            ..crate::pressing::Pressing::blank()
         },
         tracks: vec![crate::import::TrackUserEdit {
             title: seed.tracks[0].title.clone(),
@@ -373,7 +384,7 @@ fn user_edit_renaming_album_artist_rebuilds_credits() {
         album_title: seed.album.title.clone(),
         album_artist_assignments: vec![crate::import::ArtistAssignment::named("Different Artist")],
         album_year: seed.album.year,
-        pressing: crate::import::PressingEdit::blank(),
+        pressing: crate::pressing::Pressing::blank(),
         tracks: vec![crate::import::TrackUserEdit {
             title: seed.tracks[0].title.clone(),
             side: seed.tracks[0].side,
@@ -513,7 +524,7 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
         album_title: "Album Title".into(),
         album_artist_assignments: vec![crate::import::ArtistAssignment::named("Artist Name")],
         album_year: None,
-        pressing: crate::import::PressingEdit::blank(),
+        pressing: crate::pressing::Pressing::blank(),
         tracks: vec![
             crate::import::TrackUserEdit {
                 title: "First Track".into(),

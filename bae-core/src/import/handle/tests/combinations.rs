@@ -75,8 +75,10 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     handle
         .set_candidate_edit_field(
             &key,
-            crate::import::CandidateEditField::AlbumTitle,
-            "Collected Volumes".into(),
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: "Collected Volumes".into(),
+            },
         )
         .await
         .unwrap();

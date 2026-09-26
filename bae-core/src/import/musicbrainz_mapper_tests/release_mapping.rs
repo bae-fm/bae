@@ -62,6 +62,8 @@ fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
         title: "Album Title A".to_string(),
         date: Some("2024".to_string()),
         country: None,
+        status: None,
+        packaging: None,
         barcode: None,
         artist_credit: vec![MbArtistCredit {
             name: "Artist Name A".to_string(),
@@ -255,8 +257,8 @@ fn numeric_vinyl_tracks_are_usable_without_side_boundaries() {
     assert_eq!(parsed.tracks.len(), 12);
     assert!(parsed.tracks.iter().all(|track| track.side.is_none()));
     assert_eq!(
-        parsed.release.pressing.format.as_deref(),
-        Some("12\" Vinyl")
+        parsed.release.pressing.facts.media,
+        crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1).media
     );
     assert_eq!(
         parsed
@@ -486,25 +488,39 @@ fn track_without_recording_or_track_title_returns_err() {
 }
 
 /// The one MB → pressing projection: the release's own year (not the release
-/// group's), the first medium's format, the first label's name and catalog
-/// number, the country and the barcode. The mapper, the picker detail, and a
-/// search result all read it.
+/// group's), the first label's name and catalog number, the barcode, and
+/// what it is — its country, every medium, its status and packaging. The
+/// mapper, the picker detail, and a search result all read it.
 #[test]
-fn pressing_reads_year_format_first_label_country_and_barcode() {
-    let mut response = make_response(vec![MbMedium {
-        discs: vec![],
-        format: Some("12\" Vinyl".to_string()),
-        tracks: vec![make_mb_track("A1", "Track A1")],
-    }]);
+fn pressing_reads_year_first_label_barcode_and_every_fact() {
+    let mut response = make_response(vec![
+        MbMedium {
+            discs: vec![],
+            format: Some("12\" Vinyl".to_string()),
+            tracks: vec![make_mb_track("A1", "Track A1")],
+        },
+        MbMedium {
+            discs: vec![],
+            format: Some("12\" Vinyl".to_string()),
+            tracks: vec![make_mb_track("C1", "Track C1")],
+        },
+        MbMedium {
+            discs: vec![],
+            format: Some("CD".to_string()),
+            tracks: vec![make_mb_track("1", "Track 1")],
+        },
+    ]);
     response.date = Some("1971-03-01".to_string());
     response.country = Some("GB".to_string());
+    response.status = Some("Official".to_string());
+    response.packaging = Some("Gatefold Cover".to_string());
     response.barcode = Some("012345678905".to_string());
     response.label_info = vec![
         crate::musicbrainz::MbLabelInfo {
             label: Some(crate::musicbrainz::MbLabel {
-                name: Some("Island".to_string()),
+                name: Some("Label".to_string()),
             }),
-            catalog_number: Some("ILPS 9145".to_string()),
+            catalog_number: Some("LBL 9145".to_string()),
         },
         crate::musicbrainz::MbLabelInfo {
             label: Some(crate::musicbrainz::MbLabel {
@@ -517,18 +533,40 @@ fn pressing_reads_year_format_first_label_country_and_barcode() {
     // year is the release's own date, and only the album year follows the group.
     response.release_group.as_mut().unwrap().first_release_date = Some("1969".to_string());
 
-    let pressing = pressing(&response);
+    let (pressing, media) = pressing(&response);
 
     assert_eq!(
         pressing,
         Pressing {
             year: Some(1971),
-            format: Some("12\" Vinyl".to_string()),
-            label: Some("Island".to_string()),
-            catalog_number: Some("ILPS 9145".to_string()),
-            country: Some("GB".to_string()),
+            label: Some("Label".to_string()),
+            catalog_number: Some("LBL 9145".to_string()),
             barcode: Some("012345678905".to_string()),
+            facts: crate::pressing::PressingFacts {
+                area: Some(crate::pressing::area("GB")),
+                media: vec![
+                    crate::pressing::MediaCount {
+                        medium: Medium::Vinyl,
+                        count: 2,
+                    },
+                    crate::pressing::MediaCount {
+                        medium: Medium::Cd,
+                        count: 1,
+                    },
+                ],
+                status: Some(crate::pressing::ReleaseStatus::Official),
+                packaging: Some(crate::pressing::Packaging::GatefoldCover),
+                discogs_details: Vec::new(),
+            },
         }
+    );
+    assert_eq!(
+        media,
+        crate::pressing::StatedMedia::PerMedium(vec![
+            Some(Medium::Vinyl),
+            Some(Medium::Vinyl),
+            Some(Medium::Cd)
+        ])
     );
 
     // What the mapper commits is what the projection says.

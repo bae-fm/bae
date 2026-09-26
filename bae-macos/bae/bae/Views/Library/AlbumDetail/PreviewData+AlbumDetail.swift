@@ -226,12 +226,14 @@
             let bridge = BridgeRelease(
                 id: "rel-storage-preview",
                 albumId: "a-storage-preview",
-                displayName: "2019 \u{00B7} CD",
+                name: .described(year: 2019, media: PreviewData.media(.cd)),
                 year: 2019,
-                format: "CD",
                 label: "Some Label",
                 catalogNumber: "CAT-0001",
-                country: "US",
+                facts: PreviewData.pressingFacts(
+                    country: "US",
+                    media: PreviewData.media(.cd)
+                ),
                 storageState: storageState,
                 pinned: pinned,
                 storageActions: storageActions,

@@ -41,10 +41,12 @@ mod edit_shaping_tests {
             album_year: "1987".to_string(),
             pressing: RawPressingEdit {
                 year: "1999".to_string(),
-                format: "2×LP".to_string(),
                 label: "Label Name".to_string(),
                 catalog_number: "CAT-123".to_string(),
-                country: "US".to_string(),
+                facts: crate::pressing::PressingFacts {
+                    area: Some(crate::pressing::area("US")),
+                    ..crate::pressing::made_of(crate::pressing::Medium::Vinyl, 2)
+                },
                 barcode: "0123456789".to_string(),
             },
             tracks: vec![RawTrackEdit {
@@ -72,7 +74,10 @@ mod edit_shaping_tests {
         );
         assert_eq!(shaped.album_year, Some(1987));
         assert_eq!(shaped.pressing.year, Some(1999));
-        assert_eq!(shaped.pressing.format.as_deref(), Some("2×LP"));
+        assert_eq!(
+            shaped.pressing.facts.media,
+            crate::pressing::made_of(crate::pressing::Medium::Vinyl, 2).media
+        );
         assert_eq!(shaped.tracks.len(), 1);
         assert_eq!(shaped.tracks[0].title, "Track Title");
         assert_eq!(
@@ -164,24 +169,31 @@ mod edit_shaping_tests {
         let mut form = valid_form();
         form.pressing = RawPressingEdit {
             year: "".to_string(),
-            format: "  ".to_string(),
             label: "".to_string(),
             catalog_number: "".to_string(),
-            country: "".to_string(),
+            facts: Default::default(),
             barcode: "".to_string(),
         };
         let pressing = form.shape().expect("shapes").pressing;
-        assert_eq!(pressing, PressingEdit::blank());
+        assert_eq!(pressing, crate::pressing::Pressing::blank());
     }
 
     #[test]
     fn parses_year_and_trims_pressing_fields() {
         let mut form = valid_form();
         form.pressing.year = "  2001  ".to_string();
-        form.pressing.country = "  JP  ".to_string();
+        form.pressing.label = "  Label  ".to_string();
         let pressing = form.shape().expect("shapes").pressing;
         assert_eq!(pressing.year, Some(2001));
-        assert_eq!(pressing.country.as_deref(), Some("JP"));
+        assert_eq!(pressing.label.as_deref(), Some("Label"));
+    }
+
+    /// What the pressing is was chosen, not typed, and shapes as chosen.
+    #[test]
+    fn chosen_pressing_facts_shape_unchanged() {
+        let form = valid_form();
+        let pressing = form.shape().expect("shapes").pressing;
+        assert_eq!(pressing.facts, form.pressing.facts);
     }
 
     #[test]
@@ -223,12 +235,11 @@ mod edit_shaping_tests {
                 ArtistAssignment::named("Artist Two"),
             ],
             album_year: Some(1987),
-            pressing: PressingEdit {
+            pressing: crate::pressing::Pressing {
                 year: Some(1999),
-                format: Some("2×LP".to_string()),
                 label: None,
                 catalog_number: Some("CAT-123".to_string()),
-                country: None,
+                facts: Default::default(),
                 barcode: None,
             },
             tracks: vec![

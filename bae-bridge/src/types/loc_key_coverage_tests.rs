@@ -82,6 +82,11 @@ const DIRECT_KEYS: &[&str] = &[
     // The side/disc pause alert's body: one sentence for every medium, so the
     // prompt carries only its title key and the UI names this one directly.
     "core.playback.pause.message",
+    // A `BridgeFactTerm::Counted` part: the UI words the count and the
+    // medium's label through it.
+    "core.pressing.media_count",
+    // `BridgeReleaseName::Numbered`: the UI words the number through it.
+    "core.release.numbered",
 ];
 
 /// A stand-in cover choice for walking the file roles that carry one. The
@@ -473,6 +478,38 @@ fn produced_keys() -> Vec<String> {
         ]
         .into_iter()
         .map(str::to_string),
+    );
+
+    // The pressing vocabularies — every region, status and packaging carries
+    // a key; a medium or a Discogs detail carries one where it is a word, and
+    // is printed as its term where it is a name, a size or a file type.
+    keys.extend(bridge_regions().into_iter().map(bridge_region_key));
+    keys.extend(
+        bridge_release_statuses()
+            .into_iter()
+            .map(bridge_release_status_key),
+    );
+    keys.extend(bridge_packagings().into_iter().map(bridge_packaging_key));
+    for label in bridge_media().into_iter().map(bridge_medium_label).chain(
+        bridge_discogs_details()
+            .into_iter()
+            .map(bridge_discogs_detail_label),
+    ) {
+        if let BridgeTermLabel::Localized { key } = label {
+            keys.push(key);
+        }
+    }
+    assert_eq!(
+        bridge_medium_label(BridgeMedium::Cd),
+        BridgeTermLabel::Verbatim {
+            text: "CD".to_string()
+        }
+    );
+    assert_eq!(
+        bridge_discogs_detail_label(BridgeDiscogsDetail::Size12In),
+        BridgeTermLabel::Verbatim {
+            text: "12\"".to_string()
+        }
     );
 
     keys

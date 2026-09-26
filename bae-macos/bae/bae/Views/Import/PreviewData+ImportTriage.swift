@@ -15,7 +15,7 @@
             title: String,
             artist: String? = "Artist Name",
             year: Int32? = 1997,
-            format: String? = "CD",
+            media: [BridgeMediaCount] = PreviewData.media(.cd),
             trackCount: UInt32 = 12,
             source: BridgeCatalog = .musicBrainz,
             signal: BridgeMatchedSignal? = .discId
@@ -26,7 +26,7 @@
                 artist: artist,
                 pressing: BridgeMatchedPressing(
                     year: year,
-                    format: format,
+                    media: media,
                     trackCount: trackCount
                 ),
                 // In fixtures the "URL" is a path to generated placeholder
@@ -387,7 +387,7 @@
                 title: releaseDetailBridge.title,
                 artist: releaseDetailBridge.artist,
                 year: releaseDetailBridge.year,
-                format: releaseDetailBridge.format,
+                media: releaseDetailBridge.facts.media,
                 trackCount: releaseDetailBridge.trackCount
             ),
             metadataSummary: nil,
@@ -610,7 +610,7 @@
                     title: releaseDetailBridge.title,
                     artist: releaseDetailBridge.artist,
                     year: releaseDetailBridge.year,
-                    format: releaseDetailBridge.format,
+                    media: releaseDetailBridge.facts.media,
                     trackCount: releaseDetailBridge.trackCount
                 ),
                 metadataSummary: nil,

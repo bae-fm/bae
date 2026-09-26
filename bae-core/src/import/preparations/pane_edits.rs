@@ -64,15 +64,31 @@ impl CandidatePreparations {
         field: crate::import::CandidateEditField,
         value: &str,
     ) -> Result<u64, LibraryError> {
-        let value = value.to_string();
+        self.set_field_edit(
+            content_hash,
+            crate::import::DraftFieldEdit::Text {
+                field,
+                value: value.to_string(),
+            },
+        )
+        .await
+    }
+
+    /// Record one album-level field the user typed or chose.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn set_field_edit(
+        &self,
+        content_hash: &str,
+        edit: crate::import::DraftFieldEdit,
+    ) -> Result<u64, LibraryError> {
         self.edit_candidate(None, content_hash, None, None, move |prep| {
-            field.set(&mut prep.metadata.draft, &value);
+            edit.apply(&mut prep.metadata.draft);
             Ok(())
         })
         .await
     }
 
-    /// A typed album field, which stands on its own: it carries no prepared
+    /// An album field, typed or chosen, which stands on its own: it carries no prepared
     /// answers and does not read the rest of the draft, so it pins the file
     /// shape it was typed over and nothing else. That is why it takes the
     /// hash and the file revision rather than a whole
@@ -83,17 +99,15 @@ impl CandidatePreparations {
         candidate_path: &str,
         content_hash: &str,
         expected_file_edit_revision: u64,
-        field: crate::import::CandidateEditField,
-        value: &str,
+        edit: crate::import::DraftFieldEdit,
     ) -> Result<u64, LibraryError> {
-        let value = value.to_string();
         self.edit_candidate(
             Some(scanned_key(watched_folder_path, candidate_path)),
             content_hash,
             Some(expected_file_edit_revision),
             None,
             move |prep| {
-                field.set(&mut prep.metadata.draft, &value);
+                edit.apply(&mut prep.metadata.draft);
                 Ok(())
             },
         )

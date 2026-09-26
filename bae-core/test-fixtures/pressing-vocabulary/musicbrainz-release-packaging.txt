@@ -1,0 +1,25 @@
+# Source: https://github.com/metabrainz/musicbrainz-server/blob/master/po/attributes.pot, the release_packaging name rows (generated from the release_packaging table), captured 2026-09-25. One name per line, in the table's id order.
+Jewel Case
+Slim Jewel Case
+Digipak
+Cardboard/Paper Sleeve
+Other
+Keep Case
+None
+Cassette Case
+Book
+Fatbox
+Snap Case
+Gatefold Cover
+Discbox Slider
+Super Jewel Box
+Digibook
+Plastic Sleeve
+Box
+Slidepack
+SnapPack
+Metal Tin
+Longbox
+Clamshell Case
+Digifile
+Slipcase

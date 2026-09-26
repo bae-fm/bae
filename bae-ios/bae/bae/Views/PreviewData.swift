@@ -99,12 +99,20 @@ enum PreviewData {
         return BridgeRelease(
             id: "rel-\(albumId)",
             albumId: albumId,
-            displayName: "2018 CD",
+            name: .described(
+                year: 2018,
+                media: [BridgeMediaCount(medium: .cd, count: 1)]
+            ),
             year: 2018,
-            format: "CD",
             label: "Label Name",
             catalogNumber: "CAT-001",
-            country: "US",
+            facts: BridgePressingFacts(
+                area: .country(code: "US"),
+                media: [BridgeMediaCount(medium: .cd, count: 1)],
+                status: nil,
+                packaging: nil,
+                discogsDetails: []
+            ),
             storageState: .local,
             pinned: false,
             storageActions: [],

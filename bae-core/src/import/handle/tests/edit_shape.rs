@@ -111,6 +111,8 @@ fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
         title: "Album Title".to_string(),
         date: Some("1969".to_string()),
         country: Some("US".to_string()),
+        status: None,
+        packaging: None,
         barcode: None,
         artist_credit: vec![mb_credit("mb-artist-1", "Artist Name")],
         release_group: Some(crate::musicbrainz::MbReleaseGroupRef {

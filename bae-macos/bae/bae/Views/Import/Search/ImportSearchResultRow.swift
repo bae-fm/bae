@@ -3,8 +3,9 @@ import BaeKit
 import SwiftUI
 
 /// One pressing row beneath a release-group card: the year, the label, the
-/// catalogue number, where and in what format it was pressed, which signals
-/// named it, and every source that lists it.
+/// catalogue number, where it was released and what it is made of, what sets
+/// it apart (its status, packaging and Discogs details), which signals named
+/// it, and every source that lists it.
 ///
 /// The row is picked whole: it commits the pressing's lead release and carries
 /// every other source's record of the same pressing along with it. That opens
@@ -150,22 +151,23 @@ struct ImportSearchResultRow: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
-            if !pressed.isEmpty {
-                Text(pressed)
+            let summary = pressing.summaryText
+            if !summary.isEmpty {
+                Text(summary)
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
+            let details = pressing.detailsText
+            if !details.isEmpty {
+                Text(details)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.quaternary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
         }
-    }
-
-    /// Where it was pressed and in what form — "US · CD" — joined only where
-    /// the source states both.
-    private var pressed: String {
-        [pressing.lead.country, pressing.lead.format]
-            .compactMap { $0 }
-            .joined(separator: " \u{00b7} ")
     }
 
     // MARK: - Agreement badges

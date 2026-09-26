@@ -39,7 +39,7 @@ use crate::config::CloudProvider;
 use crate::config::ConfigHandle;
 use crate::db::{
     Database, DbAlbum, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile,
-    DbLibraryImage, DbRelease, DbTrack, LibraryImageType, Pressing,
+    DbLibraryImage, DbRelease, DbTrack, LibraryImageType,
 };
 use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

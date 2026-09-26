@@ -16,7 +16,7 @@ use support::tracing_init;
 
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::db::{
-    DbAlbum, DbFile, DbRelease, Pressing, SortDirection, StorageFilter, StorageSortCriterion,
+    DbAlbum, DbFile, DbRelease, SortDirection, StorageFilter, StorageSortCriterion,
     StorageSortField,
 };
 use bae_core::library::{
@@ -152,7 +152,7 @@ async fn create_local_release(
         id: Uuid::new_v4().to_string(),
         album_id: album.id.clone(),
         release_name: None,
-        pressing: Pressing::blank(),
+        pressing: bae_core::pressing::Pressing::blank(),
         draft_from_tags: true,
         remote: false,
         source_folder_name: None,

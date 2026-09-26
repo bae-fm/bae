@@ -84,6 +84,8 @@ private struct ImportOperations: Sendable {
     let setCandidateEditField:
         @Sendable (String, BridgeCandidateEditField, String) async throws ->
             Void
+    let setCandidatePressingFact:
+        @Sendable (String, BridgePressingFactEdit) async throws -> Void
     let setCandidateAlbumArtists:
         @Sendable (String, [BridgeArtistAssignment]) async throws -> Void
     let setCandidateTrackEdit:
@@ -238,6 +240,12 @@ extension ImportOperations {
                     candidateKey: $0,
                     field: $1,
                     value: $2
+                )
+            },
+            setCandidatePressingFact: {
+                try await handle.setCandidatePressingFact(
+                    candidateKey: $0,
+                    fact: $1
                 )
             },
             setCandidateAlbumArtists: {
@@ -423,6 +431,9 @@ final class Importer: Sendable, Observable {
         setCandidateEditField:
             @escaping @Sendable (String, BridgeCandidateEditField, String)
             async throws -> Void = { _, _, _ in },
+        setCandidatePressingFact:
+            @escaping @Sendable (String, BridgePressingFactEdit) async throws
+            -> Void = { _, _ in },
         setCandidateAlbumArtists:
             @escaping @Sendable (String, [BridgeArtistAssignment]) async throws
             -> Void = { _, _ in },
@@ -497,6 +508,7 @@ final class Importer: Sendable, Observable {
             setCandidatePaneError: setCandidatePaneError,
             setCandidateCover: setCandidateCover,
             setCandidateEditField: setCandidateEditField,
+            setCandidatePressingFact: setCandidatePressingFact,
             setCandidateAlbumArtists: setCandidateAlbumArtists,
             setCandidateTrackEdit: setCandidateTrackEdit,
             addCandidateTrack: addCandidateTrack,
@@ -709,6 +721,14 @@ extension Importer {
         _ value: String
     ) async throws {
         try await operations.setCandidateEditField(candidateKey, field, value)
+    }
+
+    /// Record one choice of what this candidate's pressing is.
+    func setCandidatePressingFact(
+        _ candidateKey: String,
+        _ fact: BridgePressingFactEdit
+    ) async throws {
+        try await operations.setCandidatePressingFact(candidateKey, fact)
     }
 
     /// Replace the ordered album artists this candidate commits with.

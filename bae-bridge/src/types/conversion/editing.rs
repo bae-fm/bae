@@ -98,7 +98,7 @@ mirror_struct! {
     BridgeRawPressingEdit = bae_core::import::RawPressingEdit,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    fields: { year, format, label, catalog_number, country, barcode },
+    fields: { year, label, catalog_number, barcode, facts: (BridgePressingFacts) },
 }
 
 mirror_struct! {

@@ -192,11 +192,25 @@ CREATE TABLE IF NOT EXISTS releases (
     album_id TEXT NOT NULL,
     release_name TEXT,
     year INTEGER,
-    format TEXT,
     label TEXT,
     catalog_number TEXT,
-    country TEXT,
     barcode TEXT,
+    -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or
+    -- one of the regions no current code names (`crate::pressing::Region`'s
+    -- keys). Never both.
+    country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
+    region             TEXT CHECK (region IS NULL OR region <> ''),
+    -- What the pressing is made of: a JSON array of {"medium", "count"}
+    -- objects, one per carrier in the order the record lists them; empty
+    -- where nothing is stated.
+    media              TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(media) AND json_type(media) = 'array'),
+    status             TEXT CHECK (status IS NULL OR status IN ('official', 'promotion', 'bootleg', 'pseudo_release', 'withdrawn', 'expunged', 'cancelled')),
+    packaging          TEXT CHECK (packaging IS NULL OR packaging IN ('jewel_case', 'slim_jewel_case', 'digipak', 'cardboard_sleeve', 'other', 'keep_case', 'unpackaged', 'cassette_case', 'book', 'fatbox', 'snap_case', 'gatefold_cover', 'discbox_slider', 'super_jewel_box', 'digibook', 'plastic_sleeve', 'box', 'slidepack', 'snap_pack', 'metal_tin', 'longbox', 'clamshell_case', 'digifile', 'slipcase')),
+    -- What Discogs says about the pressing that no column holds: a JSON array
+    -- of `crate::pressing::DiscogsDetail` keys, each once, in its order.
+    discogs_details    TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(discogs_details) AND json_type(discogs_details) = 'array'),
     -- Shared, synced fact (the coven gate column): is this release's audio in
     -- the cloud home (remote) or local to one device (local). A local release's
     -- in-place files are tracked by coven as external blob refs
@@ -227,6 +241,7 @@ CREATE TABLE IF NOT EXISTS releases (
     -- read from, or NULL. One value per release, so two devices choosing
     -- different records while apart merge to one of them.
     draft_catalog TEXT,
+    CHECK (country IS NULL OR region IS NULL),
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE
 ) STRICT;
 
@@ -962,11 +977,25 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit (
     album_title    TEXT NOT NULL,
     album_year     TEXT NOT NULL,
     year           TEXT NOT NULL,
-    format         TEXT NOT NULL,
     label          TEXT NOT NULL,
     catalog_number TEXT NOT NULL,
-    country        TEXT NOT NULL,
     barcode        TEXT NOT NULL,
+    -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or
+    -- one of the regions no current code names (`crate::pressing::Region`'s
+    -- keys). Never both.
+    country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
+    region             TEXT CHECK (region IS NULL OR region <> ''),
+    -- What the pressing is made of: a JSON array of {"medium", "count"}
+    -- objects, one per carrier in the order the record lists them; empty
+    -- where nothing is stated.
+    media              TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(media) AND json_type(media) = 'array'),
+    status             TEXT CHECK (status IS NULL OR status IN ('official', 'promotion', 'bootleg', 'pseudo_release', 'withdrawn', 'expunged', 'cancelled')),
+    packaging          TEXT CHECK (packaging IS NULL OR packaging IN ('jewel_case', 'slim_jewel_case', 'digipak', 'cardboard_sleeve', 'other', 'keep_case', 'unpackaged', 'cassette_case', 'book', 'fatbox', 'snap_case', 'gatefold_cover', 'discbox_slider', 'super_jewel_box', 'digibook', 'plastic_sleeve', 'box', 'slidepack', 'snap_pack', 'metal_tin', 'longbox', 'clamshell_case', 'digifile', 'slipcase')),
+    -- What Discogs says about the pressing that no column holds: a JSON array
+    -- of `crate::pressing::DiscogsDetail` keys, each once, in its order.
+    discogs_details    TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(discogs_details) AND json_type(discogs_details) = 'array'),
     -- Who wrote the draft: nobody (the blank one discovery creates), discovery
     -- seeding it from the folder's tags, an identification run applying its
     -- pick, or a person. Which provenance each may carry is checked where the
@@ -978,6 +1007,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit (
     -- whole: whether it is blank, and whether it is a complete, valid edit.
     draft_blank    INTEGER NOT NULL CHECK (draft_blank IN (0, 1)),
     draft_valid    INTEGER NOT NULL CHECK (draft_valid IN (0, 1)),
+    CHECK (country IS NULL OR region IS NULL),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
 ) STRICT;
 
@@ -1398,18 +1428,26 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     title               TEXT NOT NULL,
     artist              TEXT,
     year                INTEGER,
-    format              TEXT,
     label               TEXT,
     catalog_number      TEXT,
-    country             TEXT,
+    -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or
+    -- one of the regions no current code names (`crate::pressing::Region`'s
+    -- keys). Never both.
+    country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
+    region             TEXT CHECK (region IS NULL OR region <> ''),
+    status             TEXT CHECK (status IS NULL OR status IN ('official', 'promotion', 'bootleg', 'pseudo_release', 'withdrawn', 'expunged', 'cancelled')),
+    packaging          TEXT CHECK (packaging IS NULL OR packaging IN ('jewel_case', 'slim_jewel_case', 'digipak', 'cardboard_sleeve', 'other', 'keep_case', 'unpackaged', 'cassette_case', 'book', 'fatbox', 'snap_case', 'gatefold_cover', 'discbox_slider', 'super_jewel_box', 'digibook', 'plastic_sleeve', 'box', 'slidepack', 'snap_pack', 'metal_tin', 'longbox', 'clamshell_case', 'digifile', 'slipcase')),
+    -- What Discogs says about the pressing that no column holds: a JSON array
+    -- of `crate::pressing::DiscogsDetail` keys, each once, in its order.
+    discogs_details    TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(discogs_details) AND json_type(discogs_details) = 'array'),
     -- What the record said the pressing is made of. 'undescribed': the
     -- response described no media, and there are no medium rows.
-    -- 'per_medium': one medium row per medium the record listed, its format
-    -- NULL where the record stated none. 'descriptors': one medium row per
-    -- format name or qualifier, each stating its text; which medium each
-    -- describes is not said.
+    -- 'per_medium': one medium row per medium the record listed, its medium
+    -- NULL where the record named no carrier bae knows. 'formats': one medium
+    -- row per format entry that is a medium, with its quantity.
     media_kind          TEXT NOT NULL
-        CHECK (media_kind IN ('undescribed', 'per_medium', 'descriptors')),
+        CHECK (media_kind IN ('undescribed', 'per_medium', 'formats')),
     -- The lead cover's original; its downscaled copies are
     -- import_candidate_match_cover_copy rows.
     cover_url           TEXT,
@@ -1456,7 +1494,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
     CHECK ((named_by_catalog IS NULL) = (named_by_key IS NULL)),
     CHECK (named_by_catalog IS NULL
-           OR (by_disc_id = 0 AND by_barcode = 0 AND by_catalog = 0 AND by_search = 0))
+           OR (by_disc_id = 0 AND by_barcode = 0 AND by_catalog = 0 AND by_search = 0)),
+    CHECK (country IS NULL OR region IS NULL)
 ) STRICT;
 
 -- Every barcode a matched record states.
@@ -1524,18 +1563,21 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_album_link (
 ) STRICT;
 
 -- What a matched record said its media are, one row per medium or per format
--- descriptor, per the match's media kind.
+-- entry, per the match's media kind: the carrier it names (a
+-- `crate::pressing::Medium` key, NULL where it names none bae knows) and how
+-- many of it — always one for a medium of a 'per_medium' record.
 CREATE TABLE IF NOT EXISTS import_candidate_match_medium (
     content_hash TEXT NOT NULL,
     position     INTEGER NOT NULL,
-    media_kind   TEXT NOT NULL CHECK (media_kind IN ('per_medium', 'descriptors')),
+    media_kind   TEXT NOT NULL CHECK (media_kind IN ('per_medium', 'formats')),
     ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
-    format       TEXT CHECK (format IS NULL OR format <> ''),
+    medium       TEXT CHECK (medium IS NULL OR medium <> ''),
+    quantity     INTEGER NOT NULL CHECK (quantity >= 1),
     PRIMARY KEY (content_hash, position, ordinal),
     FOREIGN KEY (content_hash, position, media_kind)
         REFERENCES import_candidate_match (content_hash, position, media_kind)
         ON DELETE CASCADE,
-    CHECK (media_kind = 'per_medium' OR format IS NOT NULL)
+    CHECK (media_kind = 'formats' OR quantity = 1)
 ) STRICT;
 
 -- ── Catalog releases ──────────────────────────────────────────────────────────
@@ -1556,11 +1598,25 @@ CREATE TABLE IF NOT EXISTS source_release (
     album_year         INTEGER,
     -- The pressing's facts, resolved the same way.
     year               INTEGER,
-    format             TEXT,
     label              TEXT,
     catalog_number     TEXT,
-    country            TEXT,
     barcode            TEXT,
+    -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or
+    -- one of the regions no current code names (`crate::pressing::Region`'s
+    -- keys). Never both.
+    country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
+    region             TEXT CHECK (region IS NULL OR region <> ''),
+    -- What the pressing is made of: a JSON array of {"medium", "count"}
+    -- objects, one per carrier in the order the record lists them; empty
+    -- where nothing is stated.
+    media              TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(media) AND json_type(media) = 'array'),
+    status             TEXT CHECK (status IS NULL OR status IN ('official', 'promotion', 'bootleg', 'pseudo_release', 'withdrawn', 'expunged', 'cancelled')),
+    packaging          TEXT CHECK (packaging IS NULL OR packaging IN ('jewel_case', 'slim_jewel_case', 'digipak', 'cardboard_sleeve', 'other', 'keep_case', 'unpackaged', 'cassette_case', 'book', 'fatbox', 'snap_case', 'gatefold_cover', 'discbox_slider', 'super_jewel_box', 'digibook', 'plastic_sleeve', 'box', 'slidepack', 'snap_pack', 'metal_tin', 'longbox', 'clamshell_case', 'digifile', 'slipcase')),
+    -- What Discogs says about the pressing that no column holds: a JSON array
+    -- of `crate::pressing::DiscogsDetail` keys, each once, in its order.
+    discogs_details    TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(discogs_details) AND json_type(discogs_details) = 'array'),
     -- The MusicBrainz release whose Cover Art Archive gallery the picker
     -- opens: this release, or the one a Discogs release is cross-referenced
     -- to, with its release group.
@@ -1568,7 +1624,8 @@ CREATE TABLE IF NOT EXISTS source_release (
     archive_group_id   TEXT,
     fetched_at         TEXT NOT NULL,
     PRIMARY KEY (catalog, release_id),
-    CHECK (archive_release_id IS NOT NULL OR archive_group_id IS NULL)
+    CHECK (archive_release_id IS NOT NULL OR archive_group_id IS NULL),
+    CHECK (country IS NULL OR region IS NULL)
 ) STRICT;
 
 -- The album's artists, in credit order.
@@ -1598,13 +1655,15 @@ CREATE TABLE IF NOT EXISTS source_release_link (
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
 ) STRICT;
 
--- A Discogs release's format names and qualifiers: one flat list that does
--- not say which medium each describes.
+-- A Discogs release's format entries that are media, in its order: the
+-- carrier each names (a `crate::pressing::Medium` key, NULL where it names
+-- none bae knows) and the quantity it states.
 CREATE TABLE IF NOT EXISTS source_release_format (
     catalog    TEXT NOT NULL CHECK (catalog = 'discogs'),
     release_id TEXT NOT NULL,
     position   INTEGER NOT NULL CHECK (position >= 0),
-    descriptor TEXT NOT NULL,
+    medium     TEXT CHECK (medium IS NULL OR medium <> ''),
+    quantity   INTEGER NOT NULL CHECK (quantity >= 1),
     PRIMARY KEY (catalog, release_id, position),
     FOREIGN KEY (catalog, release_id)
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
@@ -1714,13 +1773,14 @@ CREATE TABLE IF NOT EXISTS source_release_role (
 ) STRICT;
 
 -- Every medium of the release, in order. Only MusicBrainz states a medium's
--- format; a Discogs release's mediums are the runs of rows its positions
+-- carrier (a `crate::pressing::Medium` key, NULL where its format names none
+-- bae knows); a Discogs release's mediums are the runs of rows its positions
 -- number as one disc.
 CREATE TABLE IF NOT EXISTS source_release_medium (
     catalog    TEXT NOT NULL,
     release_id TEXT NOT NULL,
     position   INTEGER NOT NULL CHECK (position >= 0),
-    format     TEXT,
+    medium     TEXT CHECK (medium IS NULL OR medium <> ''),
     PRIMARY KEY (catalog, release_id, position),
     FOREIGN KEY (catalog, release_id)
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE

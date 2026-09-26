@@ -460,7 +460,7 @@ pub(super) fn work_release_rows(
             a.title AS album_title,
             r.release_name,
             r.year AS release_year,
-            r.format AS release_format,
+            r.media AS release_media,
             (
                 SELECT COUNT(*)
                 FROM releases indexed_release
@@ -494,7 +494,7 @@ pub(super) fn row_to_work_release_summary(
         album_title: row.get("album_title")?,
         release_name: row.get("release_name")?,
         year: row.get("release_year")?,
-        format: row.get("release_format")?,
+        media: super::pressing_columns::read_media(row, "release_media")?,
         release_index: row.get("release_index")?,
     })
 }
@@ -503,7 +503,7 @@ pub(super) fn row_to_release_summary(row: &Row<'_>) -> coven::rusqlite::Result<D
     Ok(DbReleaseSummary {
         id: row.get("release_id")?,
         album_id: row.get("album_id")?,
-        format: row.get("release_format")?,
+        media: super::pressing_columns::read_media(row, "release_media")?,
         remote: row.get("remote")?,
         any_file_id: row.get("any_file_id")?,
         file_count: row.get("file_count")?,
@@ -654,8 +654,9 @@ pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> (String, bool) {
         ),
         StorageSortField::Media => (
             format!(
-                "CASE WHEN r.format IS NULL THEN 1 ELSE 0 END {dir}, \
-                 r.format COLLATE NOCASE {dir}, \
+                "CASE WHEN json_array_length(r.media) = 0 THEN 1 ELSE 0 END, \
+                 json_extract(r.media, '$[0].medium') {dir}, \
+                 json_extract(r.media, '$[0].count') {dir}, \
                  a.title COLLATE NOCASE, r.created_at, r.id"
             ),
             false,
@@ -697,7 +698,7 @@ pub(super) fn storage_page_query(
         "{queue_cte}SELECT \
             r.id AS release_id, \
             r.album_id, \
-            r.format AS release_format, \
+            r.media AS release_media, \
             r.remote, \
             (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
             COALESCE(( \

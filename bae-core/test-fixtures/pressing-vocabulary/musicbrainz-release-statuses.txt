@@ -1,0 +1,8 @@
+# Source: https://github.com/metabrainz/musicbrainz-server/blob/master/po/attributes.pot, the release_status name rows (generated from the release_status table), captured 2026-09-25. One name per line, in the table's id order.
+Official
+Promotion
+Bootleg
+Pseudo-Release
+Withdrawn
+Cancelled
+Expunged

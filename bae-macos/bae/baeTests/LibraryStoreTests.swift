@@ -30,7 +30,7 @@ private func makeBridgeRelease(
     id: String = "release-1",
     albumId: String = "album-1",
     displayName: String = "Release One",
-    format: String? = "CD",
+    media: [BridgeMediaCount] = PreviewData.media(.cd),
     storageState: BridgeReleaseStorageState = .remote,
     pinned: Bool = false,
     storageActions: [BridgeReleaseStorageAction] = [],
@@ -46,12 +46,11 @@ private func makeBridgeRelease(
     BridgeRelease(
         id: id,
         albumId: albumId,
-        displayName: displayName,
+        name: .named(name: displayName),
         year: 2024,
-        format: format,
         label: nil,
         catalogNumber: nil,
-        country: nil,
+        facts: PreviewData.pressingFacts(media: media),
         storageState: storageState,
         pinned: pinned,
         storageActions: storageActions,
@@ -74,7 +73,7 @@ private func makeBridgeRelease(
 private func makeBridgeReleaseSummary(
     id: String = "release-1",
     albumId: String = "album-1",
-    format: String? = "FLAC",
+    media: [BridgeMediaCount] = PreviewData.media(.digital),
     storageState: BridgeReleaseStorageState = .remote,
     pinned: Bool = false,
     storageActions: [BridgeReleaseStorageAction] = [],
@@ -85,7 +84,7 @@ private func makeBridgeReleaseSummary(
     BridgeReleaseSummary(
         id: id,
         albumId: albumId,
-        format: format,
+        media: media,
         storageState: storageState,
         pinned: pinned,
         storageActions: storageActions,
@@ -391,7 +390,7 @@ struct InternReleaseSummaryTests {
     func internFromBridgeRelease() {
         let store = LibraryStore()
         let bridge = makeBridgeRelease(
-            format: "12\" Vinyl",
+            media: PreviewData.media(.vinyl, 2),
             storageState: .remote,
             pinned: true,
             fileCount: 12,
@@ -407,7 +406,7 @@ struct InternReleaseSummaryTests {
 
         #expect(summary.id == "release-1")
         #expect(summary.albumId == "album-1")
-        #expect(summary.format == "12\" Vinyl")
+        #expect(summary.media == PreviewData.media(.vinyl, 2))
         #expect(summary.storageState == .remote)
         #expect(summary.pinned)
         #expect(summary.fileCount == 12)
@@ -559,7 +558,7 @@ struct InternReleaseDetailTests {
         #expect(detail.totalDuration == .hoursAndMinutes(hours: 1, minutes: 45))
         // Interning a detail also interns its wrapped summary; the slim fields
         // (here the release media) carry through from the same `BridgeRelease`.
-        #expect(detail.summary.format == "CD")
+        #expect(detail.summary.media == PreviewData.media(.cd))
     }
 
     @MainActor

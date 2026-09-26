@@ -61,12 +61,14 @@ fn sample_match() -> MetadataResult {
         title: "Album".to_string(),
         artist: Some("Artist".to_string()),
         year: Some(1999),
-        format: Some("CD".to_string()),
         label: Some("Label".to_string()),
         catalog_number: Some("CAT-1".to_string()),
-        country: Some("US".to_string()),
+        area: Some(crate::pressing::area("US")),
+        status: None,
+        packaging: None,
+        discogs_details: Vec::new(),
         barcodes: Vec::new(),
-        media: crate::import::search::StatedMedia::Undescribed,
+        media: crate::pressing::StatedMedia::PerMedium(vec![Some(crate::pressing::Medium::Cd)]),
         links: Vec::new(),
         cover_art: None,
         source_group_id: Some("group-1".to_string()),
@@ -185,8 +187,11 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
 #[tokio::test]
 async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
-    use crate::import::search::StatedMedia;
     use crate::import::{Catalog, MetadataRef};
+    use crate::pressing::{
+        DiscogsDetail, Medium, Packaging, Region, ReleaseArea, ReleaseStatus, StatedFormat,
+        StatedMedia,
+    };
 
     let (db, _tmp) = empty_db().await;
     let candidate =
@@ -194,7 +199,9 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     let hash = candidate.content_hash();
     let mut musicbrainz = sample_match();
     musicbrainz.barcodes = vec!["012345678905".to_string()];
-    musicbrainz.media = StatedMedia::PerMedium(vec![Some("CD".to_string()), None]);
+    musicbrainz.media = StatedMedia::PerMedium(vec![Some(Medium::Cd), None]);
+    musicbrainz.status = Some(ReleaseStatus::Official);
+    musicbrainz.packaging = Some(Packaging::JewelCase);
     musicbrainz.links = vec![
         MetadataRef::new(Catalog::Discogs, "42"),
         MetadataRef::new(Catalog::Discogs, "43"),
@@ -224,7 +231,19 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     discogs.release_id = "42".to_string();
     discogs.source_group_id = Some("7".to_string());
     discogs.barcodes = vec!["0 12345 67890 5".to_string(), "5051961234567".to_string()];
-    discogs.media = StatedMedia::Descriptors(vec!["CD".to_string(), "Album".to_string()]);
+    discogs.media = StatedMedia::Formats(vec![
+        StatedFormat {
+            medium: Some(Medium::Cd),
+            quantity: 2,
+        },
+        StatedFormat {
+            medium: None,
+            quantity: 1,
+        },
+    ]);
+    discogs.area = Some(ReleaseArea::Region(Region::UkAndEurope));
+    discogs.status = Some(ReleaseStatus::Promotion);
+    discogs.discogs_details = vec![DiscogsDetail::Reissue, DiscogsDetail::Size12In];
     // A cover with every copy the archive serves, one with Discogs's one
     // thumbnail, and one served at its one size.
     musicbrainz.cover_art = Some(crate::import::cover_art::RemoteCover::musicbrainz_release(

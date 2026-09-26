@@ -249,36 +249,6 @@ impl LibraryStatus {
     }
 }
 
-/// A release's pressing-level editorial metadata. A substruct so "no pressing
-/// claim" is one `Pressing::blank()` rather than nilling six fields at every
-/// caller — see `many-fields-none-together-means-a-missing-type`.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Pressing {
-    /// Release-specific year (may differ from album year)
-    pub year: Option<i32>,
-    /// e.g. "CD", "Vinyl", "Digital"
-    pub format: Option<String>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
-    pub country: Option<String>,
-    pub barcode: Option<String>,
-}
-
-impl Pressing {
-    /// All fields `None` — "user claimed an album, not a specific
-    /// pressing." Used when import identity is Approximate.
-    pub fn blank() -> Self {
-        Self {
-            year: None,
-            format: None,
-            label: None,
-            catalog_number: None,
-            country: None,
-            barcode: None,
-        }
-    }
-}
-
 /// A specific physical or digital version of a logical album ("1973 Original
 /// Pressing", "2016 Remaster", "180g Vinyl", …). Files and tracks hang off
 /// releases rather than albums: users import a specific release, each has its own
@@ -291,9 +261,8 @@ pub struct DbRelease {
     /// when the user never named a version.
     pub release_name: Option<String>,
     /// Pressing-level editorial metadata. `Pressing::blank()` means "user claimed
-    /// an album, not a specific pressing" (Approximate imports). The DB columns
-    /// stay flat (`year`, `format`, `label`, …) — this grouping is Rust-side only.
-    pub pressing: Pressing,
+    /// an album, not a specific pressing" (Approximate imports).
+    pub pressing: crate::pressing::Pressing,
     /// Whether the draft's facts were read off the files' own tags. The other
     /// two answers are records: the one carrying `reads_draft` names the
     /// document a draft was read from, and a release with neither started
@@ -722,7 +691,7 @@ impl DbRelease {
             id: release_id.to_string(),
             album_id: album_id.to_string(),
             release_name: None,
-            pressing: Pressing::blank(),
+            pressing: crate::pressing::Pressing::blank(),
             draft_from_tags: false,
             remote: false,
             source_folder_name: None,

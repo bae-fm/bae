@@ -9,14 +9,15 @@ pub struct AutomationReleaseUserEdit {
     pub tracks: Vec<AutomationTrackUserEdit>,
 }
 
+/// Mirrors `bae_core::pressing::Pressing`.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationPressingEdit {
     pub year: Option<i32>,
-    pub format: Option<String>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
-    pub country: Option<String>,
     pub barcode: Option<String>,
+    #[schemars(schema_with = "pressing_facts_schema")]
+    pub facts: bae_core::pressing::PressingFacts,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

@@ -1,5 +1,5 @@
 #![cfg(feature = "test-utils")]
-use bae_core::db::{DbAlbum, DbRelease, DbTrack, Pressing};
+use bae_core::db::{DbAlbum, DbRelease, DbTrack};
 use bae_test_support as support;
 use chrono::Utc;
 use uuid::Uuid;
@@ -32,12 +32,11 @@ fn create_test_release(album_id: &str) -> DbRelease {
         id: Uuid::new_v4().to_string(),
         album_id: album_id.to_string(),
         release_name: None,
-        pressing: Pressing {
+        pressing: bae_core::pressing::Pressing {
             year: Some(2024),
-            format: None,
             label: None,
             catalog_number: None,
-            country: None,
+            facts: Default::default(),
             barcode: None,
         },
         draft_from_tags: true,

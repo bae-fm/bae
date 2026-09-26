@@ -11,10 +11,12 @@ async fn an_edit_prepared_before_a_claim_cannot_land_after_the_claim() {
         async move {
             handle
                 .set_candidate_edit_field(
-                    &key,
-                    crate::import::CandidateEditField::AlbumTitle,
-                    "Racing edit".to_string(),
-                )
+            &key,
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: "Racing edit".to_string(),
+            },
+        )
                 .await
         }
     });

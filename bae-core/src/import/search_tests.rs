@@ -1,5 +1,6 @@
 use super::*;
 use crate::discogs::client::DiscogsSearchResult;
+use crate::pressing::{MediaCount, Medium, StatedMedia};
 use crate::import::discogs_mapper::parse_duration_to_ms;
 use crate::musicbrainz::{
     MbArtistCredit, MbMedium, MbRecording, MbReleaseGroupRef, MbReleaseResponse, MbTrack,
@@ -67,6 +68,8 @@ fn response_with_media(media: Vec<MbMedium>) -> MbReleaseResponse {
         title: "Album Title".to_string(),
         date: None,
         country: None,
+        status: None,
+        packaging: None,
         barcode: None,
         artist_credit: vec![MbArtistCredit {
             name: "Artist Name".to_string(),
@@ -92,7 +95,7 @@ fn result_with_title(title: &str) -> DiscogsSearchResult {
         id: 1,
         title: title.to_string(),
         year: None,
-        format: None,
+        formats: Vec::new(),
         country: None,
         label: None,
         catno: None,
@@ -196,10 +199,7 @@ fn discid_metadata_links_the_releases_its_document_names() {
             crate::import::MetadataRef::new(Catalog::Discogs, "43"),
         ]
     );
-    assert_eq!(
-        metadata.media,
-        StatedMedia::PerMedium(vec![Some("CD".to_string())])
-    );
+    assert_eq!(metadata.media, StatedMedia::PerMedium(vec![Some(Medium::Cd)]));
 }
 
 /// A disc ID names one medium of a release that has several. The matching
@@ -236,23 +236,45 @@ fn discid_metadata_carries_every_medium_into_pairing() {
         { "format": "12\" Vinyl", "discs": [], "tracks": [{ "number": "A1", "length": 180000, "title": "Vinyl Track" }, { "number": "A2", "length": 180000, "title": "Vinyl Track" }] }
     ]));
     for release in [&vinyl_then_cd, &cd_then_vinyl] {
-        assert_eq!(release.format.as_deref(), Some("CD"));
+        let mut media = release.facts().media;
+        media.sort_by_key(|counted| counted.medium);
+        assert_eq!(
+            media,
+            vec![
+                MediaCount {
+                    medium: Medium::Cd,
+                    count: 1
+                },
+                MediaCount {
+                    medium: Medium::Vinyl,
+                    count: 1
+                },
+            ],
+            "the pressing is every medium the release lists, not the one the disc is"
+        );
         assert_eq!(
             release.source_tracks,
             Some(SourceTracks::Listed { count: 1 })
         );
     }
 
-    let discogs_of = |format: &[&str]| -> MetadataResult {
+    let discogs_of = |formats: &[(&str, &[&str])]| -> MetadataResult {
         let mut result = result_with_title("Artist Name - Album Title");
         result.year = Some("1992".to_string());
         result.master_id = Some(7);
         result.barcode = vec![barcode.to_string()];
-        result.format = Some(format.iter().map(|f| f.to_string()).collect());
+        result.formats = formats
+            .iter()
+            .map(|(name, descriptions)| crate::discogs::DiscogsFormat {
+                name: name.to_string(),
+                qty: "1".to_string(),
+                descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
+            })
+            .collect();
         discogs_search_result_to_metadata(result)
     };
-    let cassette = discogs_of(&["Cassette", "Album"]);
-    let both = discogs_of(&["Vinyl", "LP", "CD", "Album"]);
+    let cassette = discogs_of(&[("Cassette", &["Album"])]);
+    let both = discogs_of(&[("Vinyl", &["LP"]), ("CD", &["Album"])]);
 
     for musicbrainz in [vinyl_then_cd, cd_then_vinyl] {
         assert_eq!(
@@ -408,7 +430,6 @@ fn discid_metadata_uses_the_medium_that_contains_the_disc() {
     let metadata = mb_discid_release_to_metadata("disc-1", response)
         .expect("the release contains the queried disc");
 
-    assert_eq!(metadata.format.as_deref(), Some("CD"));
     assert_eq!(
         metadata.source_tracks,
         Some(SourceTracks::Listed { count: 1 })
@@ -452,7 +473,10 @@ fn discid_metadata_skips_only_releases_without_one_matching_medium() {
 
     assert_eq!(metadata.len(), 1);
     assert_eq!(metadata[0].release_id, "mb-release-2");
-    assert_eq!(metadata[0].format.as_deref(), Some("CD"));
+    assert_eq!(
+        metadata[0].media,
+        StatedMedia::PerMedium(vec![Some(Medium::Cd)])
+    );
 }
 
 /// A release whose document says the archive holds its front image offers
@@ -553,12 +577,14 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
     }]);
     response.date = Some("1996-05-04".to_string());
     response.country = Some("JP".to_string());
-    response.barcode = Some("4988006757486".to_string());
+    response.status = Some("Promotion".to_string());
+    response.packaging = Some("Digipak".to_string());
+    response.barcode = Some("4900000000011".to_string());
     response.label_info = vec![crate::musicbrainz::MbLabelInfo {
         label: Some(crate::musicbrainz::MbLabel {
-            name: Some("Toshiba EMI".to_string()),
+            name: Some("Label".to_string()),
         }),
-        catalog_number: Some("TOCP-8556".to_string()),
+        catalog_number: Some("CAT-8556".to_string()),
     }];
 
     let detail = mb_detail(&response).unwrap();
@@ -572,11 +598,11 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
     let committed = parsed.release.pressing;
 
     assert_eq!(detail.year, committed.year);
-    assert_eq!(detail.format, committed.format);
     assert_eq!(detail.label, committed.label);
     assert_eq!(detail.catalog_number, committed.catalog_number);
-    assert_eq!(detail.country, committed.country);
+    assert_eq!(detail.facts, committed.facts);
     assert_eq!(detail.barcode, committed.barcode);
+    assert_eq!(detail.facts.status, Some(crate::pressing::ReleaseStatus::Promotion));
 }
 
 /// The picker's track titles resolve exactly as the commit mapper's do —
@@ -803,8 +829,9 @@ fn nested_index_durations_align_after_preceding_tracks() {
     );
 }
 
-/// A MusicBrainz search response states each medium's format, and the result
-/// carries it: the row shows the format, and pairing reads the medium.
+/// A MusicBrainz search response states each medium's format, its country,
+/// status and packaging, and the result carries them typed: the row shows
+/// the counted media, and pairing reads each medium.
 #[test]
 fn a_musicbrainz_search_result_states_its_media() {
     let release: crate::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
@@ -812,6 +839,8 @@ fn a_musicbrainz_search_result_states_its_media() {
         "title": "Album Title",
         "date": "1970",
         "country": "JM",
+        "status": "Official",
+        "packaging": "Cardboard/Paper Sleeve",
         "label-info": [],
         "media": [
             { "format": "Vinyl", "disc-count": 0, "track-count": 12 },
@@ -820,9 +849,57 @@ fn a_musicbrainz_search_result_states_its_media() {
     }))
     .expect("search release parses");
     let result = search_release_to_metadata(release, None);
-    assert_eq!(result.format.as_deref(), Some("Vinyl"));
+    assert_eq!(
+        result.facts(),
+        crate::pressing::PressingFacts {
+            area: Some(crate::pressing::area("JM")),
+            media: vec![MediaCount {
+                medium: Medium::Vinyl,
+                count: 1
+            }],
+            status: Some(crate::pressing::ReleaseStatus::Official),
+            packaging: Some(crate::pressing::Packaging::CardboardSleeve),
+            discogs_details: Vec::new(),
+        }
+    );
     assert_eq!(
         result.media,
-        StatedMedia::PerMedium(vec![Some("Vinyl".to_string()), None])
+        StatedMedia::PerMedium(vec![Some(Medium::Vinyl), None])
+    );
+}
+
+/// A Discogs search result carries its structured format entries: the
+/// row reads the country as an area and each entry as a counted medium, a
+/// "Promo" as the status, and the details it has no field for.
+#[test]
+fn a_discogs_search_result_reads_its_format_entries() {
+    let mut result = result_with_title("Artist - Album");
+    result.country = Some("Japan".to_string());
+    result.formats = vec![crate::discogs::DiscogsFormat {
+        name: "CD".to_string(),
+        qty: "2".to_string(),
+        descriptions: vec![
+            "Album".to_string(),
+            "Reissue".to_string(),
+            "Promo".to_string(),
+            "Stereo".to_string(),
+        ],
+    }];
+    let result = discogs_search_result_to_metadata(result);
+    assert_eq!(
+        result.facts(),
+        crate::pressing::PressingFacts {
+            area: Some(crate::pressing::area("JP")),
+            media: vec![MediaCount {
+                medium: Medium::Cd,
+                count: 2
+            }],
+            status: Some(crate::pressing::ReleaseStatus::Promotion),
+            packaging: None,
+            discogs_details: vec![
+                crate::pressing::DiscogsDetail::Reissue,
+                crate::pressing::DiscogsDetail::Stereo,
+            ],
+        }
     );
 }

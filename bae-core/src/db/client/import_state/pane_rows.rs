@@ -19,8 +19,8 @@ use crate::import::{
     ExistingArtist, MetadataAuthor, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
 };
 
-const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, format, \
-     label, catalog_number, country, barcode";
+const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
+     label, catalog_number, barcode, country, region, media, status, packaging, discogs_details";
 
 const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
      artist_assignment_kind, side, track_number, source_index, \
@@ -77,21 +77,26 @@ pub(crate) fn insert_draft(
     author: MetadataAuthor,
 ) -> Result<(), DbError> {
     let release_edit = draft.release_edit();
+    let facts = super::super::pressing_columns::FactColumns::of(&draft.pressing.facts);
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_edit ({EDIT_COLUMNS}, author, draft_blank, draft_valid) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
             draft.album_title,
             draft.album_year,
             draft.pressing.year,
-            draft.pressing.format,
             draft.pressing.label,
             draft.pressing.catalog_number,
-            draft.pressing.country,
             draft.pressing.barcode,
+            facts.country,
+            facts.region,
+            facts.media,
+            facts.status,
+            facts.packaging,
+            facts.discogs_details,
             author_column(author),
             release_edit.is_blank(),
             release_edit.shape().is_ok(),
@@ -344,11 +349,10 @@ pub(crate) fn load_drafts_on(
                 album_title: row.get("album_title")?,
                 album_year: row.get("album_year")?,
                 year: row.get("year")?,
-                format: row.get("format")?,
                 label: row.get("label")?,
                 catalog_number: row.get("catalog_number")?,
-                country: row.get("country")?,
                 barcode: row.get("barcode")?,
+                facts: super::super::pressing_columns::read_facts(row, "")?,
             })
         },
     )?;
@@ -365,11 +369,10 @@ pub(crate) fn load_drafts_on(
                 album_year: row.album_year,
                 pressing: RawPressingEdit {
                     year: row.year,
-                    format: row.format,
                     label: row.label,
                     catalog_number: row.catalog_number,
-                    country: row.country,
                     barcode: row.barcode,
+                    facts: row.facts,
                 },
                 tracks: tracks.remove(&row.content_hash).unwrap_or_default(),
             },
@@ -384,11 +387,10 @@ struct StoredDraftRow {
     album_title: String,
     album_year: String,
     year: String,
-    format: String,
     label: String,
     catalog_number: String,
-    country: String,
     barcode: String,
+    facts: crate::pressing::PressingFacts,
 }
 
 /// One `import_candidate_track` row as SQLite hands it over.

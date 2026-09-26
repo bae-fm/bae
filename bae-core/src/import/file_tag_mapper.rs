@@ -10,7 +10,7 @@
 //! DiscID, and barcode are not part of this path.
 //!
 //! Year comes from any tag carrying a date. Source codecs are physical audio
-//! facts, not release media, so the pressing format stays blank.
+//! facts, not release media, so the pressing's media stay unstated.
 
 use super::assemble::{
     assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, TrackEvent, TrackIr,
@@ -20,7 +20,7 @@ use super::file_tag_snapshot::{
 };
 use super::ParsedAlbum;
 use crate::cue_flac::CueSheet;
-use crate::db::Pressing;
+use crate::pressing::Pressing;
 use crate::import::folder_scanner::{CategorizedFiles, ScannedFile};
 use crate::import::ImportError;
 #[cfg(test)]
@@ -211,11 +211,7 @@ fn file_tag_release_ir(
         is_compilation: false,
         pressing: Pressing {
             year,
-            format: None,
-            label: None,
-            catalog_number: None,
-            country: None,
-            barcode: None,
+            ..Pressing::blank()
         },
         metadata_provenance: Some(crate::import::MetadataProvenance::FileMetadata),
         album_artist_scope: AlbumArtistScope::FullPool,

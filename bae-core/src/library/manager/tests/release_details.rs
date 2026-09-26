@@ -267,7 +267,7 @@ async fn find_release_detail_returns_some_for_known_id() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.year = None;
-    release.pressing.format = None;
+    release.pressing.facts = Default::default();
     release.release_name = None;
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
@@ -279,8 +279,8 @@ async fn find_release_detail_returns_some_for_known_id() {
         .expect("detail present for known release");
     assert_eq!(detail.summary.id, release.id);
     assert_eq!(detail.summary.album_id, album.id);
-    // Only release in album, no year/format/release_name → "Release 1".
-    assert_eq!(detail.display_name, "Release 1");
+    // Only release in album, no year/media/release_name → the first release.
+    assert_eq!(detail.name, crate::album_detail::ReleaseName::Numbered(1));
     assert!(detail.tracks.is_empty());
     assert!(detail.files.is_empty());
 }
@@ -916,12 +916,12 @@ async fn resolve_to_track_ids_rejects_unknown_id() {
 }
 
 #[tokio::test]
-async fn find_release_detail_display_name_uses_year_format_fallback() {
+async fn find_release_detail_name_uses_year_and_media() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.year = Some(2024);
-    release.pressing.format = Some("CD".to_string());
+    release.pressing.facts = crate::pressing::made_of(crate::pressing::Medium::Cd, 2);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
@@ -930,17 +930,23 @@ async fn find_release_detail_display_name_uses_year_format_fallback() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(detail.display_name, "2024 CD");
+    assert_eq!(
+        detail.name,
+        crate::album_detail::ReleaseName::Described {
+            year: Some(2024),
+            media: crate::pressing::made_of(crate::pressing::Medium::Cd, 2).media,
+        }
+    );
 }
 
 #[tokio::test]
-async fn find_release_detail_display_name_prefers_release_name() {
+async fn find_release_detail_name_prefers_release_name() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.release_name = Some("Deluxe Edition".to_string());
     release.pressing.year = Some(2024);
-    release.pressing.format = Some("CD".to_string());
+    release.pressing.facts = crate::pressing::made_of(crate::pressing::Medium::Cd, 1);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
@@ -949,7 +955,10 @@ async fn find_release_detail_display_name_prefers_release_name() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(detail.display_name, "Deluxe Edition");
+    assert_eq!(
+        detail.name,
+        crate::album_detail::ReleaseName::Named("Deluxe Edition".to_string())
+    );
 }
 
 #[tokio::test]
@@ -958,10 +967,10 @@ async fn find_release_detail_uses_position_for_second_release() {
     let album = create_test_album();
     let mut release1 = create_test_release(&album.id);
     release1.pressing.year = None;
-    release1.pressing.format = None;
+    release1.pressing.facts = Default::default();
     let mut release2 = create_test_release(&album.id);
     release2.pressing.year = None;
-    release2.pressing.format = None;
+    release2.pressing.facts = Default::default();
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release1).await;
     insert_release(&manager, &release2).await;
@@ -971,7 +980,7 @@ async fn find_release_detail_uses_position_for_second_release() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(detail2.display_name, "Release 2");
+    assert_eq!(detail2.name, crate::album_detail::ReleaseName::Numbered(2));
 }
 
 #[tokio::test]

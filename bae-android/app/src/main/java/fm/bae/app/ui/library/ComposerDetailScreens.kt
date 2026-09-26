@@ -35,13 +35,13 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.metadataText
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.playback.NowPlayingBar
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeWorkDetail
-import uniffi.bae_bridge.BridgeWorkReleaseSummary
 import uniffi.bae_bridge.BridgeWorkSummary
 
 @Composable
@@ -222,6 +222,7 @@ private fun WorkDetailContent(
     onSelectWork: (String) -> Unit,
     onSelectAlbum: (String, String) -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item { WorkSummaryRow(work = detail.work, onClick = null) }
         if (detail.childWorks.isNotEmpty()) {
@@ -252,7 +253,7 @@ private fun WorkDetailContent(
                         contentDescription = release.albumTitle,
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    TwoLineText(title = release.albumTitle, subtitle = workReleaseMetadata(release))
+                    TwoLineText(title = release.albumTitle, subtitle = release.metadataText(context))
                 }
             }
         }
@@ -264,16 +265,6 @@ private fun WorkDetailContent(
         }
     }
 }
-
-private fun workReleaseMetadata(release: BridgeWorkReleaseSummary): String =
-    if (release.format.isNullOrEmpty()) {
-        check(release.displayName.isNotEmpty()) {
-            "work release display name is empty for ${release.releaseId}"
-        }
-        release.displayName
-    } else {
-        "${release.displayName} · ${release.format}"
-    }
 
 @Composable
 private fun WorkSummaryRow(

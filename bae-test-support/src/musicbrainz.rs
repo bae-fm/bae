@@ -51,6 +51,8 @@ pub fn mb_release(
         title: title.to_string(),
         date: Some("1996".to_string()),
         country: Some("US".to_string()),
+        status: Some("Official".to_string()),
+        packaging: None,
         barcode: None,
         artist_credit: vec![bae_core::musicbrainz::MbArtistCredit {
             name: "Artist Name".to_string(),

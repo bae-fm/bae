@@ -229,7 +229,29 @@ impl Automation {
     ) -> Result<EmptyResponse, AutomationError> {
         let candidate = self.get_candidate(candidate_key).await?;
         self.services
-            .import_set_candidate_edit_field(candidate.key(), field.into_core(), value)
+            .import_set_candidate_edit_field(
+                candidate.key(),
+                bae_core::import::DraftFieldEdit::Text {
+                    field: field.into_core(),
+                    value,
+                },
+            )
+            .await?;
+        Ok(EmptyResponse {})
+    }
+
+    /// Choose one of what the candidate's pressing is.
+    pub async fn set_candidate_pressing_fact(
+        &self,
+        candidate_key: String,
+        fact: AutomationPressingFactEdit,
+    ) -> Result<EmptyResponse, AutomationError> {
+        let candidate = self.get_candidate(candidate_key).await?;
+        self.services
+            .import_set_candidate_edit_field(
+                candidate.key(),
+                bae_core::import::DraftFieldEdit::PressingFact(fact.into_core()),
+            )
             .await?;
         Ok(EmptyResponse {})
     }
@@ -489,6 +511,13 @@ impl Automation {
                 let input: CandidateEditFieldInput = from_value(args)?;
                 to_value(
                     self.set_candidate_edit_field(input.candidate_key, input.field, input.value)
+                        .await?,
+                )
+            }
+            AutomationTool::ImportCandidatePressingFactSet => {
+                let input: CandidatePressingFactInput = from_value(args)?;
+                to_value(
+                    self.set_candidate_pressing_fact(input.candidate_key, input.fact)
                         .await?,
                 )
             }

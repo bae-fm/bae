@@ -16,8 +16,10 @@ async fn reset_setup_restores_removed_audio_and_initial_metadata() {
     handle
         .set_candidate_edit_field(
             &key,
-            crate::import::CandidateEditField::AlbumTitle,
-            "Edited Album".into(),
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: "Edited Album".into(),
+            },
         )
         .await
         .unwrap();
@@ -198,10 +200,12 @@ async fn reset_setup_preserves_combination_members_and_disc_layout() {
             .unwrap();
         handle
             .set_candidate_edit_field(
-                &key,
-                crate::import::CandidateEditField::AlbumTitle,
-                "Edited collection".into(),
-            )
+            &key,
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: "Edited collection".into(),
+            },
+        )
             .await
             .unwrap();
         manager.set_prefill_with_file_metadata(prefill).await.unwrap();
@@ -346,8 +350,10 @@ async fn reset_setup_prepared_before_an_edit_cannot_replace_it_or_its_snapshot()
         std::time::Duration::from_secs(2),
         handle.set_candidate_edit_field(
             &key,
-            crate::import::CandidateEditField::AlbumTitle,
-            "Newer edit".into(),
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: "Newer edit".into(),
+            },
         ),
     )
     .await;

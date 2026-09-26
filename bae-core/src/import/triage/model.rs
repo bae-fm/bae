@@ -140,15 +140,17 @@ pub struct MatchEvidence {
 /// verdict named one match. With several in play the row is *asking* which
 /// pressing, so none of these is known, and absent-together is then a state
 /// rather than a convention three separate `Option`s would leave a consumer to
-/// honour. See `many-fields-none-together-means-a-missing-type`; `db::Pressing`
+/// honour. See `many-fields-none-together-means-a-missing-type`; `pressing::Pressing`
 /// is the same shape for the same reason.
 ///
 /// The fields stay optional inside it: a settled pressing may well state a year
-/// and no format.
+/// and no media.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatchedPressing {
     pub year: Option<i32>,
-    pub format: Option<String>,
+    /// What the source says the release is made of, each carrier with its
+    /// count; empty where it says nothing.
+    pub media: Vec<crate::pressing::MediaCount>,
     /// What the source says this release holds, once something asked. `None`
     /// when nobody has, or when the source answered and listed nothing.
     pub track_count: Option<u32>,
@@ -237,7 +239,7 @@ impl MatchedRelease {
     /// artist and cover. Those are not group-level truths — a release group
     /// spans remasters and reissues that differ in all three — they are the
     /// lead pressing's, standing in for the album until someone picks. What is
-    /// *not* shown is `pressing`: year, format and track count are the question
+    /// *not* shown is `pressing`: year, media and track count are the question
     /// being asked, and answering it from the first candidate would be the app
     /// pre-empting the user.
     pub fn of_summary(summary: &VerdictSummary) -> Option<Self> {
@@ -252,7 +254,7 @@ impl MatchedRelease {
             artist: lead.artist.clone(),
             pressing: settled.then(|| MatchedPressing {
                 year: lead.year,
-                format: lead.format.clone(),
+                media: lead.media.clone(),
                 track_count: source_track_count(&lead.source_tracks),
             }),
             cover: lead.cover.clone(),
@@ -279,7 +281,7 @@ impl MatchedRelease {
             artist: detail.artist.clone(),
             pressing: Some(MatchedPressing {
                 year: detail.year,
-                format: detail.format.clone(),
+                media: detail.facts.media.clone(),
                 track_count: Some(detail.track_count),
             }),
             cover: detail.default_cover().map(|cover| cover.image.clone()),

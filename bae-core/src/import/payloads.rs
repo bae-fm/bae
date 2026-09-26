@@ -233,7 +233,7 @@ impl ReleasePayloads {
                     anchor.master_id.clone(),
                     crate::import::discogs_mapper::mediums(&anchor),
                     CatalogFacts::Discogs {
-                        formats: anchor.format.clone(),
+                        media: crate::import::discogs_mapper::pressing(&anchor).1,
                         release_roles: crate::import::discogs_mapper::release_roles(&anchor),
                     },
                 )

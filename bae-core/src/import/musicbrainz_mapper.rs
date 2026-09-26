@@ -13,7 +13,8 @@ use super::assemble::{
     TrackIr, WorkEvent, WorkGraphRef, WorkNode,
 };
 use super::ParsedAlbum;
-use crate::db::{is_various_artists, Pressing};
+use crate::db::is_various_artists;
+use crate::pressing::{Medium, Pressing, StatedMedia};
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::{Catalog, ImportError, MetadataRef};
 use crate::import::search::ReleaseTrack;
@@ -159,22 +160,30 @@ fn work_ref(work: &SourceWork, converted: &mut HashSet<String>) -> WorkGraphRef 
     })
 }
 
-/// The pressing a MusicBrainz release describes: its own release date's year, its
-/// first medium's format, its first label's name and catalog number, its country
-/// and barcode.
+/// The pressing a MusicBrainz release describes — its own release date's
+/// year, its first label's name and catalog number, its barcode, and what it
+/// is: its country, every medium, its status and packaging — and its media
+/// in the document's own shape.
 ///
 /// The one MB → pressing projection. The committed release, the picker's detail,
 /// and a search result all read it, so a pressing shown is the pressing stored.
-pub(crate) fn pressing(response: &MbReleaseResponse) -> Pressing {
+pub(crate) fn pressing(response: &MbReleaseResponse) -> (Pressing, StatedMedia) {
     let (label, catalog_number) = label_and_catno(&response.label_info);
-    Pressing {
+    let (facts, media) = crate::pressing::musicbrainz::read(crate::pressing::musicbrainz::Stated {
+        release_id: &response.id,
+        country: response.country.as_deref(),
+        status: response.status.as_deref(),
+        packaging: response.packaging.as_deref(),
+        media: response.media.iter().map(|medium| medium.format.as_deref()),
+    });
+    let pressing = Pressing {
         year: super::parse_year(response.date.as_deref()),
-        format: response.media.first().and_then(|m| m.format.clone()),
         label,
         catalog_number,
-        country: response.country.clone(),
         barcode: response.barcode.clone(),
-    }
+        facts,
+    };
+    (pressing, media)
 }
 
 /// A track's title: the recording's, else the track's own override. What a
@@ -218,7 +227,7 @@ pub(crate) struct MediumSides {
 
 /// Assign each track of a medium to a vinyl/cassette side.
 ///
-/// Multi-side media (format contains "Vinyl" or "Cassette") derive the side
+/// Media played side by side (a record, a cassette) derive the side
 /// from the leading letter of the track number ("A1" -> offset 0, "B2" ->
 /// offset 1), relative to the medium's lowest side letter — so a second medium
 /// lettered C/D yields offsets 0/1, not 2/3. Single-side media put every track
@@ -240,10 +249,7 @@ pub(crate) fn medium_sides(
         });
     }
 
-    let is_multi_side = medium
-        .format
-        .as_deref()
-        .is_some_and(|f| f.contains("Vinyl") || f.contains("Cassette"));
+    let is_multi_side = medium.medium.is_some_and(Medium::is_sided);
 
     if !is_multi_side {
         return Ok(MediumSides {
@@ -335,12 +341,12 @@ pub(crate) fn metadata(
             artists: release_refs,
             year: album_year,
         },
-        pressing: pressing(response),
+        pressing: pressing(response).0,
     })
 }
 
-/// A MusicBrainz release's mediums as bae keeps them: every medium with its
-/// format and every track with its position, title, length, display credits,
+/// A MusicBrainz release's mediums as bae keeps them: every medium with the
+/// carrier its format names and every track with its position, title, length, display credits,
 /// composer credits and performed works.
 pub(crate) fn mediums(response: &MbReleaseResponse) -> Vec<SourceMedium> {
     let mut reported = HashSet::new();
@@ -348,7 +354,7 @@ pub(crate) fn mediums(response: &MbReleaseResponse) -> Vec<SourceMedium> {
         .media
         .iter()
         .map(|medium| SourceMedium {
-            format: medium.format.clone(),
+            medium: crate::pressing::musicbrainz::medium(&response.id, medium.format.as_deref()),
             entries: medium
                 .tracks
                 .iter()
