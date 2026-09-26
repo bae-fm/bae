@@ -60,6 +60,7 @@ bae-bridge/swift-bindings/
 bae-bridge/swift-bindings-macos/
 # Localization String Catalog (loc-gen emit) and scratch emit directories
 bae-macos/bae/bae/Core.xcstrings
+BaeKit/Sources/BaeKit/Resources/Core.xcstrings
 bae-bridge/loc/generated/
 # Android localization resources (loc-gen emit; copied into res/ by build-android.sh)
 bae-android/app/src/main/res/values/core_strings.xml
