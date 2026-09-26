@@ -31,10 +31,10 @@ struct ImportConfirmationBanners: View {
             if libStatus.releaseInLibrary {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(NoticeTone.warning.tint)
                     Text("This release is already in your library")
                         .font(.callout)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(NoticeTone.warning.tint)
                     Spacer()
                     if let albumId = libStatus.albumId {
                         Button("View in Library") {
@@ -44,13 +44,12 @@ struct ImportConfirmationBanners: View {
                     }
                 }
                 .padding(10)
-                .background(Color.orange.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .noticeBackground(.warning)
             }
             else if libStatus.albumInLibrary {
                 HStack(spacing: 8) {
                     Image(systemName: "info.circle.fill")
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(NoticeTone.info.tint)
                     Text(
                         "Another release of this album is in your library"
                     )
@@ -64,8 +63,7 @@ struct ImportConfirmationBanners: View {
                     }
                 }
                 .padding(10)
-                .background(Color.blue.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .noticeBackground(.info)
             }
         }
 
@@ -74,14 +72,13 @@ struct ImportConfirmationBanners: View {
         if let error {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(NoticeTone.error.tint)
                 Text(error)
                     .font(.callout)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(NoticeTone.error.tint)
             }
             .padding(10)
-            .background(Color.red.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .noticeBackground(.error)
         }
     }
 
@@ -100,8 +97,7 @@ struct ImportConfirmationBanners: View {
         {
             ErrorDetailDisclosure(error: displayed)
                 .padding(10)
-                .background(Color.red.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .noticeBackground(.error)
         }
     }
 
@@ -114,8 +110,7 @@ struct ImportConfirmationBanners: View {
                 .disabled(!canEdit)
         }
         .padding(10)
-        .background(Color.red.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .noticeBackground(.error)
     }
 
     private func artistIdentityConflict(
@@ -125,7 +120,7 @@ struct ImportConfirmationBanners: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Image(systemName: "person.2.badge.gearshape.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(NoticeTone.warning.tint)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(conflict.incomingArtistName)
                         .fontWeight(.semibold)
@@ -136,7 +131,7 @@ struct ImportConfirmationBanners: View {
                     )
                 }
                 .font(.callout)
-                .foregroundStyle(.orange)
+                .foregroundStyle(NoticeTone.warning.tint)
             }
             HStack(spacing: 8) {
                 artistChoiceButton(
@@ -154,13 +149,12 @@ struct ImportConfirmationBanners: View {
             .disabled(!canEdit)
             ErrorDetailDisclosure(
                 error: error,
-                tint: .orange,
+                tint: NoticeTone.warning.tint,
                 showIcon: false
             )
         }
         .padding(10)
-        .background(Color.orange.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .noticeBackground(.warning)
     }
 
     private func artistChoiceButton(

@@ -21,18 +21,20 @@ struct FindOnlineDiscogsBar: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "info.circle")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .padding(.top, 1)
-            VStack(alignment: .leading, spacing: 3) {
-                Text("\(discogs) not configured")
-                    .font(.system(size: 12, weight: .semibold))
-                Text("Add a \(discogs) token to look up its releases too.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(NoticeTone.info.tint)
+                    .padding(.top, 1)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("\(discogs) not configured")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("Add a \(discogs) token to look up its releases too.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer(minLength: 12)
             Button("Open Settings", action: onOpenSettings)
@@ -48,9 +50,9 @@ struct FindOnlineDiscogsBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Dismiss"))
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Theme.surface)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+        .background(NoticeTone.info.fill)
     }
 }
 

@@ -495,7 +495,7 @@ private struct WelcomeLoadErrorCallout: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
+                .foregroundStyle(NoticeTone.error.tint)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
@@ -510,11 +510,10 @@ private struct WelcomeLoadErrorCallout: View {
         }
         .padding(12)
         .frame(maxWidth: WelcomeLayout.columnWidth, alignment: .leading)
-        .background(Color.red.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .noticeBackground(.error, cornerRadius: 8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(Color.red.opacity(0.3))
+                .strokeBorder(NoticeTone.error.tint.opacity(0.3))
         )
     }
 }
