@@ -21,7 +21,7 @@ pub fn check_period_minutes() -> u32 {
 
 /// Where a watched folder's files actually are.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum VolumeKind {
+pub enum VolumeKind {
     /// A disk attached to this machine. Its filesystem watch reports every
     /// change to it, so the watch is the change source.
     Local,
@@ -29,6 +29,26 @@ pub(crate) enum VolumeKind {
     /// this machine does to it, so the folder is checked on a schedule instead
     /// — cheaply, by asking each directory whether it has been touched.
     Network,
+}
+
+impl VolumeKind {
+    /// The spelling a scan root's row stores.
+    pub(crate) fn as_column(self) -> &'static str {
+        match self {
+            Self::Local => "local",
+            Self::Network => "network",
+        }
+    }
+
+    /// The kind a scan root's row stores, or `None` for a spelling no writer
+    /// here produces.
+    pub(crate) fn from_column(column: &str) -> Option<Self> {
+        match column {
+            "local" => Some(Self::Local),
+            "network" => Some(Self::Network),
+            _ => None,
+        }
+    }
 }
 
 /// The volume `path` lives on, or `Local` where this platform will not say.
@@ -44,16 +64,10 @@ pub(crate) enum VolumeKind {
 /// thread.
 pub(crate) async fn volume_kind(path: &Path) -> VolumeKind {
     let path = path.to_path_buf();
-    match tokio::task::spawn_blocking(move || volume_kind_blocking(&path)).await {
+    match tokio::task::spawn_blocking(move || platform::volume_kind(&path)).await {
         Ok(kind) => kind,
         Err(error) => std::panic::resume_unwind(error.into_panic()),
     }
-}
-
-/// [`volume_kind`] for a caller already on a thread that may block: the
-/// library's live-query processors, which run on their own workers.
-pub(crate) fn volume_kind_blocking(path: &Path) -> VolumeKind {
-    platform::volume_kind(path)
 }
 
 /// When this directory was last touched, in nanoseconds since the epoch, or
@@ -234,19 +248,19 @@ mod tests {
     /// but it holds the one answer a wrong `statfs` call would break: the
     /// ordinary case must not read as network, or every local folder would
     /// quietly lose its watch.
-    #[test]
-    fn a_folder_on_this_machine_is_local() {
+    #[tokio::test]
+    async fn a_folder_on_this_machine_is_local() {
         let temp = tempfile::tempdir().unwrap();
-        assert_eq!(volume_kind_blocking(temp.path()), VolumeKind::Local);
+        assert_eq!(volume_kind(temp.path()).await, VolumeKind::Local);
     }
 
     /// A path nothing is mounted at answers `Local`, so a root that has gone
     /// away is watched exactly as it was rather than changing behaviour on its
     /// way out.
-    #[test]
-    fn a_path_that_is_not_there_is_local() {
+    #[tokio::test]
+    async fn a_path_that_is_not_there_is_local() {
         assert_eq!(
-            volume_kind_blocking(std::path::Path::new("/nowhere-at-all-1a2b3c")),
+            volume_kind(std::path::Path::new("/nowhere-at-all-1a2b3c")).await,
             VolumeKind::Local
         );
     }

@@ -27,7 +27,7 @@ async fn a_cleared_binding_survives_a_relaunch() {
     );
     let root = folder.path().to_string_lossy().into_owned();
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     let candidate = crate::import::folder_scanner::FolderCandidate {
         path: folder.path().to_path_buf(),
         file_root: folder.path().to_path_buf(),

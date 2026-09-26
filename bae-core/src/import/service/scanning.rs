@@ -290,8 +290,8 @@ impl ImportService {
         let services = &scan.services;
         let event_tx = &services.event_tx;
         let root_key = root.to_string_lossy().into_owned();
-        let generation = match Self::begin_scan(root, &root_key, services).await {
-            Ok(generation) => generation,
+        let (generation, volume) = match Self::begin_scan(root, &root_key, services).await {
+            Ok(begun) => begun,
             Err(error) => {
                 error!("folder scan of {} could not start: {error}", root.display());
                 Self::announce_scan_failure(root, error.to_string(), event_tx).await;
@@ -299,7 +299,8 @@ impl ImportService {
             }
         };
         let outcome =
-            Self::walk_and_reconcile(root, &root_key, generation, scan, cancellation).await;
+            Self::walk_and_reconcile(root, &root_key, generation, volume, scan, cancellation)
+                .await;
         let Err(error) = outcome else {
             return Ok(());
         };
@@ -328,16 +329,21 @@ impl ImportService {
         Err(error)
     }
 
-    /// Open a durable scan generation for `root` and say the walk has started.
+    /// Open a durable scan generation for `root` and say the walk has started,
+    /// returning the generation and the volume the root was found on.
     async fn begin_scan(
         root: &Path,
         root_key: &str,
         services: &crate::import::ImportServices,
-    ) -> Result<u64, crate::import::ImportError> {
+    ) -> Result<(u64, VolumeKind), crate::import::ImportError> {
         let event_tx = &services.event_tx;
-        let on_network_volume = volume_kind(root).await == VolumeKind::Network;
+        let volume = volume_kind(root).await;
+        let on_network_volume = volume == VolumeKind::Network;
         let _commit = services.folder_state_commit.lock("begin a scan").await;
-        let generation = services.library_manager.begin_folder_scan(root_key).await?;
+        let generation = services
+            .library_manager
+            .begin_folder_scan_on(root_key, volume)
+            .await?;
         let watched_folder =
             crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
         event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
@@ -349,7 +355,7 @@ impl ImportService {
                 },
             }),
         );
-        Ok(generation)
+        Ok((generation, volume))
     }
 
     /// The walk itself, under an open generation. Every error it returns is
@@ -359,13 +365,14 @@ impl ImportService {
         root: &Path,
         root_key: &str,
         generation: u64,
+        volume: VolumeKind,
         scan: &ScanServices,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
     ) -> Result<(), crate::import::ImportError> {
         let services = &scan.services;
         let event_tx = &services.event_tx;
         let library_manager = &services.library_manager;
-        let on_network_volume = volume_kind(root).await == VolumeKind::Network;
+        let on_network_volume = volume == VolumeKind::Network;
         // What the user has decided about each candidate's files — which audio
         // each sheet describes, and which files are the release's tracks — read
         // once for the whole walk. A folder's roles are only what its filenames

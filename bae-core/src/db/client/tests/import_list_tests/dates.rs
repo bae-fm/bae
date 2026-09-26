@@ -13,7 +13,10 @@ async fn dates(db: &Database) -> Vec<(String, i64, Option<i64>, Option<String>)>
 async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
     let (db, _tmp, root) = watched_root().await;
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     for (name, date) in [
         ("A", Some(FolderDate::Created(100))),
         ("B", Some(FolderDate::AddedToDirectory(200))),
@@ -66,7 +69,10 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
         db.inner.handle.clone(),
         Arc::new(FixedClock(fixed_now() + chrono::Duration::days(1))),
     );
-    let generation = later.begin_folder_scan(&root).await.unwrap();
+    let generation = later
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     for name in ["A", "B", "C"] {
         let original = candidate(&root, name);
         // Both the no-op/discovered path and a file-shape replacement retain
@@ -115,7 +121,10 @@ async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
     })
     .await
     .unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item_with_seed(
         &root,
         generation,

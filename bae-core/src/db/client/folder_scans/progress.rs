@@ -10,11 +10,12 @@ use crate::import::list::FolderScanProgress;
 use crate::import::watched_folder::WatchedFolder;
 use crate::import::{FolderScanStatus, WatchedFolderScanStatus};
 
-/// One scanned root as stored, before its volume is looked at.
+/// One scanned root as stored.
 struct StoredScanStatus {
     watched_folder_path: String,
     watched_folder_name: String,
     status: FolderScanStatus,
+    volume: crate::import::VolumeKind,
 }
 
 fn load_folder_scan_progress_on(
@@ -30,23 +31,30 @@ fn load_folder_scan_progress_on(
         .map(WatchedFolder::from_path)
         .collect();
     let mut statuses = Vec::new();
-    for (watched_folder_path, status, error, found_count) in sql.query(
-        "SELECT roots.watched_folder_path, roots.status, roots.error, COUNT(candidate.path) \
+    for (watched_folder_path, status, error, volume, found_count) in sql.query(
+        "SELECT roots.watched_folder_path, roots.status, roots.error, roots.volume, \
+                COUNT(candidate.path) \
          FROM folder_scan_roots AS roots \
          LEFT JOIN scan_candidate AS candidate \
            ON candidate.watched_folder_path = roots.watched_folder_path \
           AND candidate.generation = roots.generation AND candidate.source_kind = 'folder' \
-         GROUP BY roots.watched_folder_path, roots.status, roots.error",
+         GROUP BY roots.watched_folder_path, roots.status, roots.error, roots.volume",
         [],
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<String>>(2)?,
-                row.get::<_, i64>(3)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, i64>(4)?,
             ))
         },
     )? {
+        let volume = crate::import::VolumeKind::from_column(&volume).ok_or_else(|| {
+            DbError::Message(format!(
+                "folder scan root {watched_folder_path} has invalid volume {volume:?}"
+            ))
+        })?;
         let position = watched_folders
             .iter()
             .position(|folder| folder.path == watched_folder_path)
@@ -74,6 +82,7 @@ fn load_folder_scan_progress_on(
                 watched_folder_name: watched_folders[position].name.clone(),
                 watched_folder_path,
                 status,
+                volume,
             },
         ));
     }
@@ -83,9 +92,7 @@ fn load_folder_scan_progress_on(
             statuses
                 .into_iter()
                 .map(|(_, stored)| WatchedFolderScanStatus {
-                    on_network_volume: crate::import::volume::volume_kind_blocking(Path::new(
-                        &stored.watched_folder_path,
-                    )) == crate::import::volume::VolumeKind::Network,
+                    on_network_volume: stored.volume == crate::import::VolumeKind::Network,
                     watched_folder_path: stored.watched_folder_path,
                     watched_folder_name: stored.watched_folder_name,
                     status: stored.status,

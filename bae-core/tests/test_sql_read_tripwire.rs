@@ -71,7 +71,10 @@ async fn pure_reads_use_the_read_connection() {
     db.set_import_candidate_skipped(root, "Never Skipped", false)
         .await
         .unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, bae_core::import::VolumeKind::Local)
+        .await
+        .unwrap();
     assert!(db
         .finish_folder_scan(root, generation - 1, None)
         .await

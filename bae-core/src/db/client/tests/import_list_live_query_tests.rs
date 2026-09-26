@@ -51,7 +51,10 @@ async fn import_list_moves_a_row_to_done_when_its_content_hash_is_imported() {
     };
     let content_hash = candidate.files.content_hash();
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(root, generation, &item)
         .await
         .unwrap();
@@ -109,7 +112,10 @@ async fn import_list_done_row_reads_the_library_release() {
     };
     let content_hash = candidate.files.content_hash();
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(root, generation, &item)
         .await
         .unwrap();
@@ -209,7 +215,10 @@ async fn import_list_filter_finds_a_done_row_by_its_library_title() {
     };
     let content_hash = candidate.files.content_hash();
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(root, generation, &item)
         .await
         .unwrap();
@@ -267,7 +276,10 @@ async fn the_pane_of_an_imported_candidate_is_placed_done() {
     let key = candidate.path.to_string_lossy().into_owned();
     let content_hash = candidate.files.content_hash();
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(root, generation, &item)
         .await
         .unwrap();
@@ -305,7 +317,10 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     for name in ["first", "second"] {
         db.save_folder_scan_item(root, generation, &scan_candidate(root, name))
             .await
@@ -350,7 +365,10 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     for name in ["first", "second"] {
         db.save_folder_scan_item(root, generation, &scan_candidate(root, name))
             .await
@@ -388,7 +406,10 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     let mut keys = Vec::new();
     for name in ["first", "second"] {
         let item = scan_candidate(root, name);

@@ -37,11 +37,11 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
     let second = scanned_candidate(root, "Second");
     db.add_watched_import_folder(root).await.unwrap();
 
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     assert!(db.save_folder_scan_item(root, generation, &first).await.unwrap().is_some());
     assert!(db.finish_folder_scan(root, generation, Some("share disconnected")).await.unwrap().is_some());
 
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     assert!(db.save_folder_scan_item(root, generation, &second).await.unwrap().is_some());
     assert!(db.finish_folder_scan(root, generation, Some("directory unreadable")).await.unwrap().is_some());
     let failed = db.load_folder_scan_snapshots().await.unwrap();
@@ -53,7 +53,7 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
             if error == "directory unreadable"
     ));
 
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     assert!(db.save_folder_scan_item(root, generation, &second).await.unwrap().is_some());
     assert!(db.finish_folder_scan(root, generation, None).await.unwrap().is_some());
     let complete = db.load_folder_scan_snapshots().await.unwrap();
@@ -74,7 +74,7 @@ async fn folder_scan_item_rejects_a_mismatched_embedded_root_without_changing_th
     let (db, _tmp) = empty_db().await;
     let root = &host_root("/mounted/library");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     let existing = scanned_candidate(root, "Existing");
     db.save_folder_scan_item(root, generation, &existing)
         .await
@@ -162,7 +162,7 @@ async fn commit_reading_under(
 /// `Other`, returning the generation that scan stamped.
 async fn scanned_box_and_sibling(db: &Database, root: &str) -> u64 {
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     for name in ["Box/CD1", "Box/CD2", "Other"] {
         db.save_folder_scan_item(root, generation, &scanned_candidate(root, name))
             .await
@@ -303,7 +303,7 @@ async fn a_folder_reading_taken_before_the_root_moved_stores_nothing() {
     let root = &host_root("/mounted/library");
     scanned_box_and_sibling(&db, root).await;
     let stamp = db.begin_folder_reading(root).await.unwrap();
-    let moved = db.begin_folder_scan(root).await.unwrap();
+    let moved = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
 
     let error = commit_reading_under(
         &db,
@@ -369,11 +369,11 @@ async fn removed_and_readded_root_rejects_items_from_its_old_registration() {
     let (db, _tmp) = empty_db().await;
     let root = &host_root("/mounted/library");
     db.add_watched_import_folder(root).await.unwrap();
-    let old_generation = db.begin_folder_scan(root).await.unwrap();
+    let old_generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
 
     db.remove_watched_import_folder(root).await.unwrap();
     db.add_watched_import_folder(root).await.unwrap();
-    let new_generation = db.begin_folder_scan(root).await.unwrap();
+    let new_generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     assert!(new_generation > old_generation);
 
     assert!(db.save_folder_scan_item(root, old_generation, &scanned_candidate(root, "Old")).await.unwrap().is_none());
@@ -400,7 +400,7 @@ async fn removing_watched_root_cascades_all_local_folder_state() {
     )
     .await
     .unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     let candidate = scanned_candidate(root, "Release");
     let crate::import::folder_scanner::ScanItem::Valid(candidate_files) = &candidate else {
         panic!("the fixture must produce a valid candidate");
@@ -425,7 +425,7 @@ async fn removing_watched_root_cascades_all_local_folder_state() {
     db.finish_folder_scan(root, generation, None)
         .await
         .unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     db.finish_folder_scan(root, generation, None)
         .await
         .unwrap();
@@ -466,7 +466,7 @@ async fn shared_candidate_state_leaves_with_its_last_watched_root() {
     let second_candidate = scanned_candidate(&second, "Release");
     let first_candidate = scanned_candidate(&first, "Release");
     for (root, candidate) in [(&second, &second_candidate), (&first, &first_candidate)] {
-        let generation = db.begin_folder_scan(root).await.unwrap();
+        let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
         db.save_folder_scan_item(root, generation, candidate)
             .await
             .unwrap();
@@ -486,7 +486,7 @@ async fn shared_candidate_state_leaves_with_its_last_watched_root() {
         .unwrap()
         .is_some());
 
-    let generation = db.begin_folder_scan(&second).await.unwrap();
+    let generation = db.begin_folder_scan(&second, crate::import::VolumeKind::Local).await.unwrap();
     db.finish_folder_scan(&second, generation, None)
         .await
         .unwrap();
@@ -508,7 +508,7 @@ async fn a_late_import_failure_cannot_recreate_state_after_root_removal() {
     };
     let content_hash = folder.files.content_hash();
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(&root, generation, &candidate)
         .await
         .unwrap();
@@ -699,7 +699,7 @@ async fn a_scan_entry_from_a_generation_the_root_never_reached_fails_when_loaded
     let (db, _tmp) = empty_db().await;
     let root = &host_root("/mounted/library");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Release"))
         .await
         .unwrap();
@@ -738,7 +738,7 @@ async fn a_disc_assignment_survives_a_relaunch() {
     .unwrap();
     let root = folder.path().to_string_lossy().into_owned();
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     let candidate = crate::import::folder_scanner::FolderCandidate {
         path: folder.path().to_path_buf(),
         file_root: folder.path().to_path_buf(),
@@ -882,8 +882,8 @@ async fn a_scan_generation_is_allocated_without_a_seeded_counter_row() {
     .await
     .unwrap();
 
-    let first = db.begin_folder_scan(root).await.unwrap();
-    let second = db.begin_folder_scan(root).await.unwrap();
+    let first = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+    let second = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     assert_eq!(first, 1);
     assert_eq!(second, 2);
 }
@@ -907,7 +907,7 @@ async fn a_rescan_never_takes_a_settled_row_back_to_tentative() {
     let tentative = ScanItem::Discovered(candidate);
     db.add_watched_import_folder(root).await.unwrap();
 
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(root, generation, &settled)
         .await
         .unwrap()
@@ -918,7 +918,7 @@ async fn a_rescan_never_takes_a_settled_row_back_to_tentative() {
         .expect("the first scan completes");
 
     // The re-walk reaches the same folder again and reports it tentative first.
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(root, generation, &tentative)
         .await
         .unwrap()
@@ -960,13 +960,13 @@ async fn a_row_kept_through_a_rescan_survives_the_completion_prune() {
     let tentative = ScanItem::Discovered(candidate);
     db.add_watched_import_folder(root).await.unwrap();
 
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(root, generation, &settled).await.unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
 
     // A re-walk that only ever reports it tentative — the valid write never
     // arrives, because the scan ended first.
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(root, generation, &tentative).await.unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
 

@@ -29,6 +29,7 @@ desktop_only! {
     pub(crate) mod volume;
     pub mod watched_folder;
     pub use volume::check_period_minutes;
+    pub use volume::VolumeKind;
     // The import pipeline (scanning, transcoding, identify orchestration) is
     // desktop-only; mobile is a sync/playback client. Only the shared domain
     // types below (re-exported from `types`) compile on mobile.

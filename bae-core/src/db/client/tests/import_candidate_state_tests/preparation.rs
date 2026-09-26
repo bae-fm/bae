@@ -66,7 +66,7 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
         unreachable!("the fixture creates a valid candidate");
     };
     candidate.files.files[0].file.size += 1;
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(&root, generation, &replacement)
         .await
         .unwrap()
@@ -107,7 +107,7 @@ async fn cover_write_refuses_a_candidate_key_that_now_names_other_files() {
         unreachable!("the fixture creates a valid candidate");
     };
     candidate.files.files[0].file.size += 1;
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(&root, generation, &replacement)
         .await
         .unwrap()

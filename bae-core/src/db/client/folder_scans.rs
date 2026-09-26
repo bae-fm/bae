@@ -263,17 +263,25 @@ impl Database {
     }
 
     /// Start a durable scan generation for one watched root.
-    pub async fn begin_folder_scan(&self, watched_folder_path: &str) -> Result<u64, DbError> {
+    /// Open a new scan generation for `watched_folder_path`, recording the
+    /// volume the folder is on as this scan found it.
+    pub async fn begin_folder_scan(
+        &self,
+        watched_folder_path: &str,
+        volume: crate::import::VolumeKind,
+    ) -> Result<u64, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
+        let volume = volume.as_column();
         self.call(move |sql| {
             let generation = next_folder_scan_generation(sql)?;
             sql.execute(
                 "INSERT INTO folder_scan_roots \
-                     (watched_folder_path, generation, status, error) \
-                 VALUES (?, ?, 'scanning', NULL) \
+                     (watched_folder_path, generation, status, error, volume) \
+                 VALUES (?, ?, 'scanning', NULL, ?) \
                  ON CONFLICT(watched_folder_path) DO UPDATE SET \
-                     generation = excluded.generation, status = 'scanning', error = NULL",
-                params![watched_folder_path, generation],
+                     generation = excluded.generation, status = 'scanning', error = NULL, \
+                     volume = excluded.volume",
+                params![watched_folder_path, generation, volume],
             )?;
             u64::try_from(generation)
                 .map_err(|_| DbError::Message("folder scan generation is negative".to_string()))

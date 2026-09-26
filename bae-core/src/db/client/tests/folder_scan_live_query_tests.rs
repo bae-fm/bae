@@ -11,7 +11,10 @@ async fn import_list_wakes_on_a_scan_item() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(root, generation, &scan_candidate(root, "first"))
         .await
         .unwrap();
@@ -43,7 +46,10 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(root, generation, &scan_candidate(root, "first"))
         .await
         .unwrap();
@@ -82,6 +88,26 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
     ));
 }
 
+/// Whether a watched folder is on a network volume is what its scan recorded
+/// when it began — not something reading the progress asks the filesystem,
+/// which for a share that stopped answering would wait as long as the mount.
+/// A folder on this machine's disk recorded as network reads as network.
+#[tokio::test]
+async fn folder_scan_progress_reads_the_volume_its_scan_recorded() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::watched_folder::host_root("/music");
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Network)
+        .await
+        .unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+
+    let progress = db.subscribe_folder_scan_progress().next().await.unwrap();
+
+    assert!(progress.statuses[0].on_network_volume);
+}
+
 /// A rescan retains the previous generation until the new walk succeeds, but
 /// progress counts only the entries encountered by the generation in flight.
 #[tokio::test]
@@ -89,7 +115,10 @@ async fn folder_scan_progress_excludes_retained_previous_generation_rows() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let old_generation = db.begin_folder_scan(root).await.unwrap();
+    let old_generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     for name in ["retained", "encountered"] {
         db.save_folder_scan_item(root, old_generation, &scan_candidate(root, name))
             .await
@@ -99,7 +128,10 @@ async fn folder_scan_progress_excludes_retained_previous_generation_rows() {
         .await
         .unwrap();
 
-    let current_generation = db.begin_folder_scan(root).await.unwrap();
+    let current_generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(
         root,
         current_generation,
@@ -129,14 +161,20 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     for name in ["first", "second"] {
         db.save_folder_scan_item(root, generation, &scan_candidate(root, name))
             .await
             .unwrap();
     }
     db.finish_folder_scan(root, generation, None).await.unwrap();
-    let rescan = db.begin_folder_scan(root).await.unwrap();
+    let rescan = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
@@ -167,14 +205,20 @@ async fn import_list_subscription_delivers_scan_progress_beside_its_last_read() 
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     for name in ["first", "second"] {
         db.save_folder_scan_item(root, generation, &scan_candidate(root, name))
             .await
             .unwrap();
     }
     db.finish_folder_scan(root, generation, None).await.unwrap();
-    let rescan = db.begin_folder_scan(root).await.unwrap();
+    let rescan = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
 
     let request = list_request(crate::import::TriageTab::Pending, [(0, 50)]);
     let (_outbox, outbox) = tokio::sync::watch::channel(None);

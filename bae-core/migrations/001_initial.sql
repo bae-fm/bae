@@ -611,6 +611,10 @@ CREATE TABLE IF NOT EXISTS folder_scan_roots (
     generation          INTEGER NOT NULL CHECK (generation >= 0),
     status              TEXT NOT NULL CHECK (status IN ('scanning', 'complete', 'failed')),
     error               TEXT,
+    -- The volume the folder was on when this scan began: 'local' or 'network'.
+    -- Asked of the system once per scan, so reading where scans stand never
+    -- waits on a mount.
+    volume              TEXT NOT NULL CHECK (volume IN ('local', 'network')),
     CHECK (
         (status = 'failed' AND error IS NOT NULL)
         OR

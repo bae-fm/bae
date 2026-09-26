@@ -115,7 +115,7 @@ async fn stored_pane_candidate(db: &Database) -> (CategorizedFiles, String) {
     let files = candidate.files.clone();
     let hash = files.content_hash();
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(&root, generation, &item)
         .await
         .unwrap()
@@ -147,7 +147,7 @@ async fn store_candidate_state(
     ));
     let hash = files.content_hash();
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(&root, generation, &item)
         .await
         .unwrap()

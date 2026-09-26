@@ -201,7 +201,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     );
     let content_hash = candidate.files.content_hash();
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(
         &root,
         generation,

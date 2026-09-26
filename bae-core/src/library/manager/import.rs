@@ -246,8 +246,25 @@ impl LibraryManager {
             .await?)
     }
 
+    /// Open a new scan generation for `watched_folder_path`, recording the
+    /// volume it is on as the scan finds it now.
     pub async fn begin_folder_scan(&self, watched_folder_path: &str) -> Result<u64, LibraryError> {
-        Ok(self.database.begin_folder_scan(watched_folder_path).await?)
+        let volume =
+            crate::import::volume::volume_kind(std::path::Path::new(watched_folder_path)).await;
+        self.begin_folder_scan_on(watched_folder_path, volume).await
+    }
+
+    /// [`Self::begin_folder_scan`] for a scan that has already asked which
+    /// volume the folder is on.
+    pub(crate) async fn begin_folder_scan_on(
+        &self,
+        watched_folder_path: &str,
+        volume: crate::import::VolumeKind,
+    ) -> Result<u64, LibraryError> {
+        Ok(self
+            .database
+            .begin_folder_scan(watched_folder_path, volume)
+            .await?)
     }
 
     pub async fn record_folder_scan_directories(

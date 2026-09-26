@@ -44,7 +44,10 @@ fn candidate(root: &str) -> FolderCandidate {
 
 async fn scanned_candidate(db: &Database, root: &str) -> (FolderCandidate, u64) {
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     let candidate = candidate(root);
     db.save_folder_scan_item(root, generation, &ScanItem::Valid(candidate.clone()))
         .await
@@ -196,7 +199,10 @@ async fn a_rescan_carries_the_reading_forward_and_refuses_an_older_stamp() {
         .await
         .unwrap();
 
-    let current_generation = db.begin_folder_scan(&root).await.unwrap();
+    let current_generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(&root, current_generation, &ScanItem::Valid(candidate))
         .await
         .unwrap();
@@ -333,7 +339,10 @@ async fn a_candidate_that_turns_invalid_drops_the_reading_it_carried() {
         .unwrap();
     assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
 
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(
         &root,
         generation,
@@ -373,7 +382,10 @@ async fn a_rescan_that_finds_other_audio_drops_the_reading_it_carried() {
 
     let mut without_second_file = candidate.clone();
     without_second_file.files.files.pop();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(&root, generation, &ScanItem::Valid(without_second_file))
         .await
         .unwrap();

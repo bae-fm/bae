@@ -23,7 +23,10 @@ mod identity;
 /// One scanned candidate under a fresh watched root.
 async fn scanned(db: &Database, root: &str, name: &str) -> FolderCandidate {
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     let candidate = candidate(root, name);
     db.save_folder_scan_item(root, generation, &ScanItem::Valid(candidate.clone()))
         .await
@@ -472,7 +475,10 @@ async fn a_verdict_from_another_revision_does_not_resume() {
 async fn the_list_projects_the_applied_draft_and_cover() {
     let (db, _tmp, root) = watched_root().await;
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     let mut candidate = candidate(&root, "Album");
     candidate.files.files.push(CandidateFile {
         proposed_audio: false,
@@ -551,7 +557,10 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         )
         .await
         .unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
         .await
         .unwrap();
@@ -580,7 +589,10 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         )
         .await
         .unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate))
         .await
         .unwrap();
@@ -607,7 +619,10 @@ async fn the_list_projects_the_applied_draft_and_cover() {
 async fn the_scan_stores_the_folders_own_cover() {
     let (db, _tmp, root) = watched_root().await;
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     let mut candidate = candidate(&root, "Album");
     candidate.files.files.push(CandidateFile {
         proposed_audio: false,

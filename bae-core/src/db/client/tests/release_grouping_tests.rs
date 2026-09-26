@@ -16,7 +16,10 @@ async fn scanned(
     let (db, temp) = empty_db().await;
     let root = host_root("/music");
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     let mut candidates = Vec::new();
     for name in names {
         let mut folder = candidate(&root, name);
@@ -56,7 +59,10 @@ async fn a_changed_release_rebuilds_the_grouping_in_the_same_write() {
 
     let mut changed = members[1].clone();
     changed.files.files[0].file.size += 1;
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     let write = db
         .save_folder_scan_item(&root, generation, &ScanItem::Valid(changed.clone()))
         .await
@@ -85,7 +91,10 @@ async fn a_grouping_missing_one_of_its_releases_says_so_and_can_be_undone() {
         .await
         .unwrap();
 
-    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(&root, generation, &ScanItem::Valid(members[0].clone()))
         .await
         .unwrap();
