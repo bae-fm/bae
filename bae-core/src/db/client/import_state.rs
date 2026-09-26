@@ -23,7 +23,7 @@ pub(super) use pane_rows::{
     author_of, insert_draft, load_album_artist_assignments_on, load_covers_on, load_pane_rows_on,
 };
 pub(crate) use preparation_rows::{
-    CandidateLookupUpdate, CandidatePaneWrite, CandidateSaveExpectation,
+    CandidatePaneWrite, CandidateSaveExpectation,
     CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
 };
 pub(super) use rows::{

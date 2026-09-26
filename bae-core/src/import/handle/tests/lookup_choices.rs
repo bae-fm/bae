@@ -85,10 +85,10 @@ async fn only_a_change_to_what_a_run_looks_up_asks_for_another_run() {
     shut_down(handle).await;
 }
 
-/// A number in both lists is the person contradicting themselves, and the
-/// write settles it the one way it can go: struck out is not chosen.
+/// Striking a number out and choosing it are separate choices: a number in
+/// both lists is written as both, however each list spells it.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_struck_out_number_is_written_as_not_chosen() {
+async fn a_struck_out_number_is_written_as_still_chosen() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
         .set_candidate_lookup_choices(
@@ -103,82 +103,91 @@ async fn a_struck_out_number_is_written_as_not_chosen() {
         .unwrap();
     let stored = pane(&handle, &key).await.lookup_choices;
     shut_down(handle).await;
-    assert_eq!(stored.chosen_catalogs, vec!["WPCR-80001".to_string()]);
+    assert_eq!(
+        stored.chosen_catalogs,
+        vec!["WPCR-80001".to_string(), "NJ 8255".to_string()]
+    );
     assert_eq!(stored.discounted_catalogs, vec!["NJ-8255".to_string()]);
 }
 
-/// The folder prints `NJ-8255` and the picked record carries `NJ 8255`: the
-/// agreement the person sees kept is the number, and keeping it chooses it —
-/// in the folder's own spelling, which is what the marks fold sightings by.
+/// Striking a chosen number out, and counting it again, change only how the
+/// answers in hand rank: the number stays looked up, and neither write asks
+/// for another run.
 #[tokio::test(flavor = "multi_thread")]
-async fn picking_a_record_the_folder_prints_the_number_of_chooses_it() {
+async fn striking_a_chosen_number_out_and_back_asks_for_no_run() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let chosen = LookupChoices {
+        chosen_catalogs: vec!["NJ-8255".to_string()],
+        ..LookupChoices::default()
+    };
+    handle
+        .set_candidate_lookup_choices(&key, chosen.clone())
+        .await
+        .unwrap();
+    let struck = LookupChoices {
+        discounted_catalogs: vec!["NJ-8255".to_string()],
+        ..chosen.clone()
+    };
+    assert_eq!(
+        handle
+            .set_candidate_lookup_choices(&key, struck.clone())
+            .await
+            .unwrap(),
+        ChoiceChange::Ranking
+    );
+    assert_eq!(pane(&handle, &key).await.lookup_choices, struck);
+    assert_eq!(
+        handle
+            .set_candidate_lookup_choices(&key, chosen.clone())
+            .await
+            .unwrap(),
+        ChoiceChange::Ranking
+    );
+    let stored = pane(&handle, &key).await.lookup_choices;
+    shut_down(handle).await;
+    assert_eq!(stored, chosen);
+}
+
+/// A pick is an answer, not a question: picking a record whose number the
+/// folder prints writes nothing into what the next run looks up, so running
+/// again asks the same lookups and finds the same list.
+#[tokio::test(flavor = "multi_thread")]
+async fn picking_a_record_the_folder_prints_the_number_of_chooses_nothing() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
     seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-1", "NJ 8255");
 
     pick(&handle, &key, "chosen-mb-rel-1").await;
 
-    let chosen = pane(&handle, &key).await.lookup_choices.chosen_catalogs;
+    let stored = pane(&handle, &key).await.lookup_choices;
     shut_down(handle).await;
-    assert_eq!(chosen, vec!["NJ-8255".to_string()]);
+    assert_eq!(stored, LookupChoices::default());
 }
 
-/// A number the folder does not print is nothing the person saw kept, so the
-/// pick chooses nothing.
+/// The person's own choices come through a pick exactly as they left them —
+/// a struck-out number stays struck out and is not chosen, and what they did
+/// choose stays chosen.
 #[tokio::test(flavor = "multi_thread")]
-async fn picking_a_record_whose_number_the_folder_does_not_print_chooses_nothing() {
+async fn a_pick_leaves_the_person_s_choices_as_they_were() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
-    seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-2", "ZZ 9999");
+    let choices = LookupChoices {
+        excluded_barcodes: vec!["0123456789012".to_string()],
+        chosen_catalogs: vec!["WPCR-80001".to_string()],
+        discounted_catalogs: vec!["NJ-8255".to_string()],
+        ..LookupChoices::default()
+    };
+    handle
+        .set_candidate_lookup_choices(&key, choices.clone())
+        .await
+        .unwrap();
+    seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-2", "NJ 8255");
 
     pick(&handle, &key, "chosen-mb-rel-2").await;
 
-    let chosen = pane(&handle, &key).await.lookup_choices.chosen_catalogs;
-    shut_down(handle).await;
-    assert!(chosen.is_empty(), "nothing was confirmed: {chosen:?}");
-}
-
-/// A number the person struck out stays struck out through the pick: it was
-/// not kept, so it is not chosen.
-#[tokio::test(flavor = "multi_thread")]
-async fn picking_a_record_whose_number_is_struck_out_chooses_nothing() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
-    store_settled_text(&handle, &hash, "NJ-8255").await;
-    handle
-        .set_candidate_lookup_choices(
-            &key,
-            LookupChoices {
-                discounted_catalogs: vec!["NJ-8255".to_string()],
-                ..LookupChoices::default()
-            },
-        )
-        .await
-        .unwrap();
-    seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-3", "NJ 8255");
-
-    pick(&handle, &key, "chosen-mb-rel-3").await;
-
     let stored = pane(&handle, &key).await.lookup_choices;
     shut_down(handle).await;
-    assert!(stored.chosen_catalogs.is_empty(), "{stored:?}");
-    assert_eq!(stored.discounted_catalogs, vec!["NJ-8255".to_string()]);
-}
-
-/// A second record with the same number confirms what is already chosen:
-/// the number is chosen once.
-#[tokio::test(flavor = "multi_thread")]
-async fn a_second_pick_with_the_same_number_chooses_it_once() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
-    store_settled_text(&handle, &hash, "NJ-8255").await;
-    seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-4", "NJ 8255");
-    seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-5", "NJ-8255");
-
-    pick(&handle, &key, "chosen-mb-rel-4").await;
-    pick(&handle, &key, "chosen-mb-rel-5").await;
-
-    let chosen = pane(&handle, &key).await.lookup_choices.chosen_catalogs;
-    shut_down(handle).await;
-    assert_eq!(chosen, vec!["NJ-8255".to_string()]);
+    assert_eq!(stored, choices);
 }
 
 /// Store the signals a run settled on for the fixture's candidate: its own

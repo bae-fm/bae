@@ -49,9 +49,7 @@ impl CandidatePreparations {
         let extras = CandidateSaveExtras {
             file_tag_snapshot: snapshot,
             reshaped_files: Some(settled_folders),
-            lookup_update: CandidateLookupUpdate::Reset {
-                expected: lookup_choices,
-            },
+            reset_lookup_choices_from: Some(lookup_choices),
             pane: CandidatePaneWrite::Keep,
             owes_import: false,
         };

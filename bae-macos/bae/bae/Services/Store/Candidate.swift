@@ -308,27 +308,18 @@ extension BridgeLookupChoices {
     /// state, or counted again when it already was struck out. A set, so it
     /// goes back sorted and each value appears once.
     ///
-    /// A struck-out number is never a chosen one, so striking it out takes it
-    /// out of the numbers the run looks up. Counting it again puts it back
-    /// only when it is the picked record's own number — `pickedNumber` —
-    /// since keeping that agreement is what chose it in the first place.
-    func discounting(
-        _ catalog: String,
-        pickedNumber: String?
-    ) -> BridgeLookupChoices {
+    /// Striking a number out only changes how the answers in hand rank, so
+    /// it leaves the numbers the run looks up exactly as they were: the
+    /// write asks for no run, and counting the number again chooses nothing.
+    func discounting(_ catalog: String) -> BridgeLookupChoices {
         var discounted = Set(discountedCatalogs)
-        var chosen = chosenCatalogs
         if discounted.remove(catalog) == nil {
             discounted.insert(catalog)
-            chosen.removeAll { $0 == catalog }
-        }
-        else if pickedNumber == catalog, !chosen.contains(catalog) {
-            chosen.append(catalog)
         }
         return BridgeLookupChoices(
             discIdExcluded: discIdExcluded,
             excludedBarcodes: excludedBarcodes,
-            chosenCatalogs: chosen,
+            chosenCatalogs: chosenCatalogs,
             searchWords: searchWords,
             discountedCatalogs: discounted.sorted()
         )

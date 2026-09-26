@@ -675,11 +675,12 @@ async fn two_distinct_pressings_do_not_settle() {
     );
 }
 
-/// The sweep's settle is a pick like any other: a disc-ID lead whose release
-/// carries a number the folder prints lands with that number chosen, in the
-/// folder's spelling, with nobody touching the toolbar.
+/// A settle writes the result, never what the next run asks: a disc-ID lead
+/// whose release carries a number the folder prints lands with the lookup
+/// choices exactly as they were, so running again asks the same lookups and
+/// finds the same list.
 #[tokio::test(flavor = "multi_thread")]
-async fn settling_a_lead_chooses_the_number_the_folder_prints() {
+async fn settling_a_lead_leaves_the_lookup_choices_alone() {
     let fixture = Fixture::new("settle-chooses-catalog").await;
     let dir = fixture.disc_id_candidate("NJ-8255");
     let probed = fixture.probed_total_ms(&dir);
@@ -713,9 +714,9 @@ async fn settling_a_lead_chooses_the_number_the_folder_prints() {
         })
     );
     assert_eq!(
-        pane.lookup_choices.chosen_catalogs,
-        vec!["NJ-8255".to_string()],
-        "the number the record carries, as the folder prints it"
+        pane.lookup_choices,
+        crate::import::LookupChoices::default(),
+        "the number the record carries and the folder prints is not chosen"
     );
 }
 

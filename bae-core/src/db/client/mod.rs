@@ -74,7 +74,7 @@ desktop_only! {
         ScanCandidateListRow,
     };
     pub(crate) use import_state::{
-        CandidateLookupUpdate, CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
+        CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
     };
     mod source_releases;
     mod album_link_rows;

@@ -168,10 +168,7 @@ extension ImportSearchFlow {
         input: SearchPaneInput
     ) {
         writeLookupChoices(
-            input.candidate.lookupChoices.discounting(
-                value,
-                pickedNumber: input.candidate.release?.catalogNumber
-            ),
+            input.candidate.lookupChoices.discounting(value),
             services: services,
             input: input,
             failure: { line in

@@ -58,9 +58,10 @@ pub struct LookupChoices {
     /// A set, each value once: nothing dispatches on their order, and a value
     /// is struck out or it is not. Nothing here reaches a provider — striking
     /// a number out changes how the answers in hand are ranked, not what was
-    /// asked for them. A struck-out number is never a chosen one: striking it
-    /// out takes it out of `chosen_catalogs`, and [`Self::normalized`] is
-    /// what every write goes through to keep the two apart.
+    /// asked for them. So it is a choice apart from `chosen_catalogs`: a
+    /// number can be looked up and struck out at once, striking one out
+    /// leaves the lookups as they were, and counting it again chooses
+    /// nothing.
     pub discounted_catalogs: Vec<String>,
 }
 
@@ -77,23 +78,18 @@ impl SearchWords {
 }
 
 impl LookupChoices {
-    /// This value with its one rule enforced: a number the person struck out
-    /// is not one the run looks up, and a number is chosen once however it is
-    /// spelled. Numbers are compared as the text is searched, with case and
-    /// punctuation dropped, so `NJ-8255` struck out takes `NJ 8255` out of
-    /// the chosen ones. The first spelling of a chosen number stands, in the
-    /// order it was chosen.
+    /// This value as it is stored: the typed words trimmed, and each chosen
+    /// number chosen once however it is spelled. Numbers are compared as the
+    /// text is searched, with case and punctuation dropped, so `NJ 8255`
+    /// after `NJ-8255` is the same number again. The first spelling of a
+    /// chosen number stands, in the order it was chosen. The struck-out
+    /// numbers are left as they are, and so is every chosen one they name.
     pub fn normalized(mut self) -> Self {
         self.search_words = self.search_words.take().and_then(SearchWords::trimmed);
-        let struck_out: Vec<String> = self
-            .discounted_catalogs
-            .iter()
-            .map(|value| crate::util::text::squash(value))
-            .collect();
         let mut kept: Vec<String> = Vec::new();
         self.chosen_catalogs.retain(|value| {
             let key = crate::util::text::squash(value);
-            if struck_out.contains(&key) || kept.contains(&key) {
+            if kept.contains(&key) {
                 return false;
             }
             kept.push(key);
@@ -136,11 +132,10 @@ mod tests {
         values.iter().map(|value| value.to_string()).collect()
     }
 
-    /// A number in both lists is struck out, not chosen, whichever way the
-    /// two lists spell it; the chosen numbers that are not struck out keep
-    /// their order.
+    /// Striking a number out and choosing it are separate choices: a number
+    /// in both lists stays in both, whichever way the two lists spell it.
     #[test]
-    fn a_struck_out_number_is_not_a_chosen_one() {
+    fn a_struck_out_number_stays_chosen() {
         let normalized = LookupChoices {
             disc_id_excluded: false,
             excluded_barcodes: Vec::new(),
@@ -151,7 +146,7 @@ mod tests {
         .normalized();
         assert_eq!(
             normalized.chosen_catalogs,
-            strings(&["WPCR-80001", "COCQ 84487"])
+            strings(&["WPCR-80001", "NJ 8255", "COCQ 84487"])
         );
         assert_eq!(normalized.discounted_catalogs, strings(&["nj-8255"]));
     }

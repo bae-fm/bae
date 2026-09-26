@@ -73,7 +73,7 @@ impl CandidateScanExpectation {
 
 /// Rows a candidate save carries in its transaction beside the candidate's
 /// own: the scan-side rows that describe the same file shape the save is
-/// checked against, and the choices a pick in the save confirms.
+/// checked against, and — for a reset — the lookup choices it clears.
 #[derive(Debug, Clone)]
 pub(crate) struct CandidateSaveExtras {
     /// The file metadata reading the draft was projected from, stored under the
@@ -83,7 +83,14 @@ pub(crate) struct CandidateSaveExtras {
     /// the saved file decisions. Their scan rows are rewritten to this shape
     /// and stamped with the saved file revision.
     pub reshaped_files: Option<Vec<(String, CategorizedFiles)>>,
-    pub lookup_update: CandidateLookupUpdate,
+    /// For a reset of the whole setup: the lookup choices the reset was
+    /// prepared against. The stored choices return to their initial value in
+    /// this transaction, and the save is refused when they are no longer
+    /// these, so a choice made while the reset was being prepared survives
+    /// and the reset fails. `None` leaves the choices alone — no other save
+    /// writes them: only the person's own choices change what identification
+    /// looks up.
+    pub reset_lookup_choices_from: Option<crate::import::LookupChoices>,
     pub pane: CandidatePaneWrite,
     /// Whether the verdict this save stores owes an import: an automatic run
     /// settled on it while "Import automatically when identified" was on. Owed
@@ -104,24 +111,12 @@ pub(crate) enum CandidatePaneWrite {
     OpenOnDraftIfReady,
 }
 
-/// How this save affects the candidate's identification choices.
-#[derive(Debug, Clone)]
-pub(crate) enum CandidateLookupUpdate {
-    Keep,
-    /// Confirm a catalog number shared by the selected record and source text.
-    ConfirmPick,
-    /// Return every lookup choice to its initial value with the setup reset.
-    Reset {
-        expected: crate::import::LookupChoices,
-    },
-}
-
 impl Default for CandidateSaveExtras {
     fn default() -> Self {
         Self {
             file_tag_snapshot: None,
             reshaped_files: None,
-            lookup_update: CandidateLookupUpdate::Keep,
+            reset_lookup_choices_from: None,
             pane: CandidatePaneWrite::Keep,
             owes_import: false,
         }
@@ -263,33 +258,21 @@ pub(super) fn save_preparation_on(
     )?;
     delete_file_edits(sql, content_hash)?;
     insert_file_edits(sql, content_hash, &prep.file_edits)?;
-    match &extras.lookup_update {
-        CandidateLookupUpdate::Keep => {}
-        CandidateLookupUpdate::ConfirmPick => {
-            let current = lookup_choice_rows::load_lookup_choice_rows_on(sql, Some(content_hash))?
-                .assemble()
-                .remove(content_hash)
-                .unwrap_or_default();
-            if let Some(confirmed) = prep.choices_confirming_pick(&current) {
-                lookup_choice_rows::replace_lookup_choices_on(sql, content_hash, &confirmed)?;
-            }
+    if let Some(expected) = &extras.reset_lookup_choices_from {
+        let current = lookup_choice_rows::load_lookup_choice_rows_on(sql, Some(content_hash))?
+            .assemble()
+            .remove(content_hash)
+            .unwrap_or_default();
+        if &current != expected {
+            return Err(DbError::Message(
+                "candidate lookup choices changed before its setup was reset".into(),
+            ));
         }
-        CandidateLookupUpdate::Reset { expected } => {
-            let current = lookup_choice_rows::load_lookup_choice_rows_on(sql, Some(content_hash))?
-                .assemble()
-                .remove(content_hash)
-                .unwrap_or_default();
-            if &current != expected {
-                return Err(DbError::Message(
-                    "candidate lookup choices changed before its setup was reset".into(),
-                ));
-            }
-            lookup_choice_rows::replace_lookup_choices_on(
-                sql,
-                content_hash,
-                &crate::import::LookupChoices::default(),
-            )?;
-        }
+        lookup_choice_rows::replace_lookup_choices_on(
+            sql,
+            content_hash,
+            &crate::import::LookupChoices::default(),
+        )?;
     }
 
     match extras.pane {

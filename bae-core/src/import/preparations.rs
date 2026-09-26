@@ -11,7 +11,7 @@ mod pane_edits;
 mod reset;
 
 use crate::db::{
-    CandidateLookupUpdate, CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras,
+    CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras,
     CandidateSaved, CandidateScanExpectation, Database, DbCandidateIdentifyResult,
     NewImportCandidateVerdict, ScannedCandidateKey,
 };
@@ -93,10 +93,7 @@ impl CandidatePreparations {
         } else {
             CandidatePaneWrite::Keep
         };
-        // A run that settled on a release is a pick, and confirms the number
-        // that release carries the same way a person's pick does.
         let extras = CandidateSaveExtras {
-            lookup_update: CandidateLookupUpdate::ConfirmPick,
             pane,
             owes_import: verdict.owes_import,
             ..CandidateSaveExtras::default()
@@ -192,12 +189,10 @@ impl CandidatePreparations {
             .filter(|asset| required.contains(asset.discogs_artist_id()))
             .cloned()
             .collect();
-        // A file decision lands no pick, so there is no number to confirm;
-        // the choices stand as the person left them.
         let extras = CandidateSaveExtras {
             file_tag_snapshot: None,
             reshaped_files: Some(settled_candidates.to_vec()),
-            lookup_update: CandidateLookupUpdate::Keep,
+            reset_lookup_choices_from: None,
             pane: CandidatePaneWrite::Keep,
             owes_import: false,
         };
@@ -391,7 +386,7 @@ impl CandidatePreparations {
         let extras = CandidateSaveExtras {
             file_tag_snapshot,
             reshaped_files: None,
-            lookup_update: CandidateLookupUpdate::ConfirmPick,
+            reset_lookup_choices_from: None,
             pane: CandidatePaneWrite::Keep,
             owes_import: false,
         };
