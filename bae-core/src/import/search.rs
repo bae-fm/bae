@@ -2,7 +2,7 @@
 //! Discogs for release metadata, checking Cover Art Archive for thumbnails, and
 //! fetching full release details for the import confirmation step.
 
-use crate::barcode::written_digits;
+use crate::barcode::{written_digits, Barcode};
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::import::cover_art::RemoteCover;
 use crate::import::parse_year;
@@ -568,12 +568,18 @@ impl SearchQuery {
     }
 }
 
-/// The barcode a `Barcode` query asks for, as the providers index it: a code
-/// written with its print spacing (`5 012345 678900`) is asked for by its
-/// digits, since MusicBrainz reads a space as the end of the value. Anything
-/// not written as a code is asked for as written.
+/// The barcode a `Barcode` query asks for. A code is asked for in the one
+/// spelling [`Barcode`] gives it — the spelling identify's own lookups use —
+/// so a code typed with its print spacing, or as a twelve-digit UPC-A, is the
+/// same question as the one the run asks. A value that fails its check digit
+/// is still asked for, by its digits: a person may be looking for a record
+/// that states it that way. Anything not written as a code is asked for as
+/// written.
 fn barcode_query(barcode: &str) -> String {
-    written_digits(barcode).unwrap_or_else(|| barcode.to_string())
+    Barcode::stated(barcode)
+        .map(Barcode::into_string)
+        .or_else(|| written_digits(barcode))
+        .unwrap_or_else(|| barcode.to_string())
 }
 
 /// Ask one provider a typed query, in the provider's own error type — for a

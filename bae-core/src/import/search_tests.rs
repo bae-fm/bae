@@ -301,30 +301,31 @@ fn catalog_and_barcode_queries_fill_their_own_provider_fields() {
     );
     assert_eq!(catalog.discogs_params().catno.as_deref(), Some("CAT-7"));
 
-    let barcode = SearchQuery::Barcode {
-        barcode: "012345678905".to_string(),
-    };
-    assert_eq!(
-        barcode.musicbrainz_params().barcode.as_deref(),
-        Some("012345678905")
-    );
-    assert_eq!(
-        barcode.discogs_params().barcode.as_deref(),
-        Some("012345678905")
-    );
+    // A code is asked for in its one spelling: a UPC-A as its EAN-13,
+    // however it was typed.
+    for typed in ["012345678905", " 0 12345 67890 5 ", "0012345678905"] {
+        let barcode = SearchQuery::Barcode {
+            barcode: typed.to_string(),
+        };
+        assert_eq!(
+            barcode.musicbrainz_params().barcode.as_deref(),
+            Some("0012345678905"),
+            "{typed}"
+        );
+        assert_eq!(
+            barcode.discogs_params().barcode.as_deref(),
+            Some("0012345678905"),
+            "{typed}"
+        );
+    }
 
-    // Typed with its print spacing, a code is asked for by its digits: a
-    // space would end the value in MusicBrainz's query.
-    let spaced = SearchQuery::Barcode {
-        barcode: " 0 12345 67890 5 ".to_string(),
+    // A value whose check digit fails is still asked for, by its digits.
+    let mistyped = SearchQuery::Barcode {
+        barcode: "0 12345 67890 6".to_string(),
     };
     assert_eq!(
-        spaced.musicbrainz_params().barcode.as_deref(),
-        Some("012345678905")
-    );
-    assert_eq!(
-        spaced.discogs_params().barcode.as_deref(),
-        Some("012345678905")
+        mistyped.musicbrainz_params().barcode.as_deref(),
+        Some("012345678906")
     );
 }
 
