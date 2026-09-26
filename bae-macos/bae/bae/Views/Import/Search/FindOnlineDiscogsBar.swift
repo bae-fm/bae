@@ -28,12 +28,14 @@ struct FindOnlineDiscogsBar: View {
                     .foregroundStyle(NoticeTone.info.tint)
                     .padding(.top, 1)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("\(discogs) not configured")
+                    Text("Add \(discogs) to find more pressings")
                         .font(.system(size: 12, weight: .semibold))
-                    Text("Add a \(discogs) token to look up its releases too.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Text(
+                        "Many regional releases, reissues and vinyl pressings are only on \(discogs). Tokens are free: create one in your \(discogs) account settings."
+                    )
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
             }
             Spacer(minLength: 12)

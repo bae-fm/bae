@@ -102394,175 +102394,175 @@
         }
       }
     },
-    "%@ not configured" : {
-      "comment" : "Find online: title of the bar saying a metadata source has no API key; %@ is the source name",
+    "Add %@ to find more pressings" : {
+      "comment" : "Find online: title of the bar offering to add a metadata source that has no API key; %@ is the source name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ غير مُهيأ"
+            "value" : "أضف %@ للعثور على المزيد من الإصدارات"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ не е конфигуриран"
+            "value" : "Добавете %@, за да намирате повече издания"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ není nastaven"
+            "value" : "Přidejte %@ a najděte více vydání"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ er ikke konfigureret"
+            "value" : "Tilføj %@ for at finde flere udgaver"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ not configured"
+            "value" : "Add %@ to find more pressings"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ nicht eingerichtet"
+            "value" : "%@ hinzufügen, um mehr Pressungen zu finden"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Το %@ δεν έχει διαμορφωθεί"
+            "value" : "Προσθέστε το %@ για να βρίσκετε περισσότερες εκδόσεις"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ no está configurado"
+            "value" : "Añade %@ para encontrar más ediciones"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ ei ole määritetty"
+            "value" : "Lisää %@, niin löydät useampia painoksia"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ n'est pas configuré"
+            "value" : "Ajoutez %@ pour trouver plus de pressages"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ לא מוגדר"
+            "value" : "הוסף את %@ כדי למצוא עוד הוצאות"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ nije konfiguriran"
+            "value" : "Dodajte %@ za pronalaženje više izdanja"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ nincs beállítva"
+            "value" : "Több kiadásért add hozzá a(z) %@ szolgáltatást"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ non è configurato"
+            "value" : "Aggiungi %@ per trovare più stampe"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ が未設定"
+            "value" : "%@ を追加して、より多くのプレスを見つける"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ 설정되지 않음"
+            "value" : "더 많은 발매반을 찾으려면 %@을(를) 추가하세요"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ er ikke satt opp"
+            "value" : "Legg til %@ for å finne flere utgaver"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ niet ingesteld"
+            "value" : "Voeg %@ toe om meer persingen te vinden"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ nie jest skonfigurowany"
+            "value" : "Dodaj %@, aby znaleźć więcej wydań"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ não configurado"
+            "value" : "Adicione o %@ para encontrar mais edições"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ não está configurado"
+            "value" : "Adicione o %@ para encontrar mais edições"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ nu este configurat"
+            "value" : "Adaugă %@ pentru a găsi mai multe ediții"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ nie je nastavený"
+            "value" : "Pridaj %@ a nájdi viac vydaní"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ är inte konfigurerad"
+            "value" : "Lägg till %@ för att hitta fler utgåvor"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ yapılandırılmadı"
+            "value" : "Daha fazla baskı bulmak için %@ ekleyin"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ не налаштовано"
+            "value" : "Додайте %@, щоб знаходити більше видань"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未配置 %@"
+            "value" : "添加 %@ 以查找更多版本"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未設定 %@"
+            "value" : "新增 %@ 以尋找更多版本"
           }
         }
       }
@@ -106716,175 +106716,175 @@
         }
       }
     },
-    "Add a %@ token to look up its releases too." : {
-      "comment" : "Find online: the Discogs-not-configured bar's explanation; %@ is the source that has no token",
+    "Many regional releases, reissues and vinyl pressings are only on %@. Tokens are free: create one in your %@ account settings." : {
+      "comment" : "Find online: the Discogs-not-configured bar's explanation of what adding it finds and that its token is free; both %@ are the source name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "أضف رمز %@ للبحث في إصداراته أيضًا."
+            "value" : "كثير من الإصدارات الإقليمية وإعادات الإصدار وأسطوانات الفينيل موجودة على %@ فقط. الرموز مجانية: أنشئ واحدًا من إعدادات حسابك على %@."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Добавете токен за %@, за да се търсят и неговите издания."
+            "value" : "Много регионални издания, преиздания и винилови плочи ги има само в %@. Токените са безплатни: създайте такъв в настройките на профила си в %@."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Přidejte token %@, aby se hledalo i mezi jeho vydáními."
+            "value" : "Mnoho regionálních vydání, reedic a vinylových lisování je jen na %@. Tokeny jsou zdarma: vytvořte si ho v nastavení svého účtu %@."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tilføj en %@-token for også at slå dens udgivelser op."
+            "value" : "Mange regionale udgaver, genudgivelser og vinylpresninger findes kun på %@. Tokens er gratis: opret en i dine kontoindstillinger på %@."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add a %@ token to look up its releases too."
+            "value" : "Many regional releases, reissues and vinyl pressings are only on %@. Tokens are free: create one in your %@ account settings."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Füge ein %@-Token hinzu, um auch dessen Veröffentlichungen zu finden."
+            "value" : "Viele regionale Ausgaben, Neuauflagen und Vinylpressungen gibt es nur bei %@. Tokens sind kostenlos: Erstelle eins in deinen %@-Kontoeinstellungen."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Προσθέστε ένα διακριτικό %@ για να αναζητούνται και οι δικές του κυκλοφορίες."
+            "value" : "Πολλές τοπικές εκδόσεις, επανεκδόσεις και κοπές βινυλίου υπάρχουν μόνο στο %@. Τα διακριτικά είναι δωρεάν: δημιουργήστε ένα στις ρυθμίσεις του λογαριασμού σας στο %@."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Añade un token de %@ para buscar también sus ediciones."
+            "value" : "Muchas ediciones regionales, reediciones y prensajes en vinilo solo están en %@. Los tokens son gratuitos: crea uno en los ajustes de tu cuenta de %@."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lisää %@-valtuutus, niin haetaan myös sen julkaisut."
+            "value" : "Monet alueelliset julkaisut, uusintapainokset ja vinyylipainokset löytyvät vain %@-palvelusta. Valtuutukset ovat ilmaisia: luo sellainen %@-tilisi asetuksissa."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajoutez un jeton %@ pour rechercher aussi ses éditions."
+            "value" : "De nombreuses éditions régionales, rééditions et pressages vinyle ne figurent que sur %@. Les jetons sont gratuits : créez-en un dans les paramètres de votre compte %@."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הוסף אסימון %@ כדי לחפש גם בגרסאות שלו."
+            "value" : "הרבה הוצאות אזוריות, הוצאות מחודשות והדפסות ויניל נמצאות רק ב-%@. אסימונים הם בחינם: צור אחד בהגדרות החשבון שלך ב-%@."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dodajte token %@ da se pretraže i njegova izdanja."
+            "value" : "Mnoga regionalna izdanja, reizdanja i vinilna prešanja postoje samo na %@. Tokeni su besplatni: izradite ga u postavkama svog računa na %@."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adj hozzá egy %@ tokent, hogy annak kiadásaiban is keressünk."
+            "value" : "Sok regionális kiadás, újrakiadás és bakelitpréselés csak a(z) %@ oldalon található meg. A tokenek ingyenesek: hozz létre egyet a(z) %@ fiókod beállításaiban."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aggiungi un token %@ per cercare anche le sue edizioni."
+            "value" : "Molte edizioni regionali, ristampe e stampe in vinile sono solo su %@. I token sono gratuiti: creane uno nelle impostazioni del tuo account %@."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ のリリースも検索するにはトークンを追加してください。"
+            "value" : "地域盤、再発盤、アナログ盤の多くは %@ にしか登録されていません。トークンは無料です。%@ のアカウント設定で作成できます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@의 릴리스도 검색하려면 토큰을 추가하세요."
+            "value" : "많은 지역반, 재발매반, 바이닐 프레스는 %@에만 있습니다. 토큰은 무료입니다. %@ 계정 설정에서 만들 수 있습니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Legg til et %@-token for å slå opp utgivelsene der også."
+            "value" : "Mange regionale utgaver, nyutgivelser og vinylpressinger finnes bare på %@. Tokens er gratis: opprett et i kontoinnstillingene dine på %@."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voeg een %@-token toe om ook daar uitgaven op te zoeken."
+            "value" : "Veel regionale uitgaven, heruitgaven en vinylpersingen staan alleen op %@. Tokens zijn gratis: maak er een aan in je %@-accountinstellingen."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dodaj token %@, aby przeszukiwać także jego wydania."
+            "value" : "Wiele wydań regionalnych, wznowień i tłoczeń winylowych jest tylko w %@. Tokeny są bezpłatne: utwórz go w ustawieniach konta %@."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicione um token do %@ para buscar também as edições dele."
+            "value" : "Muitas edições regionais, reedições e prensagens em vinil só existem no %@. Os tokens são gratuitos: crie um nas configurações da sua conta do %@."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicione um token de %@ para procurar também nas edições desse serviço."
+            "value" : "Muitas edições regionais, reedições e prensagens em vinil só existem no %@. Os tokens são gratuitos: crie um nas definições da sua conta %@."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adaugă un token %@ pentru a căuta și în edițiile sale."
+            "value" : "Multe ediții regionale, reeditări și presări pe vinil există doar pe %@. Tokenurile sunt gratuite: creează unul în setările contului tău %@."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pridaj token %@, aby sa vyhľadávali aj jeho vydania."
+            "value" : "Mnohé regionálne vydania, reedície a vinylové lisovania sú len na %@. Tokeny sú zadarmo: vytvor si ho v nastaveniach svojho účtu %@."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lägg till en %@-token för att slå upp dess utgåvor också."
+            "value" : "Många regionala utgåvor, nyutgåvor och vinylpressningar finns bara på %@. Tokens är gratis: skapa en i dina kontoinställningar på %@."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sürümlerini de aramak için bir %@ belirteci ekleyin."
+            "value" : "Birçok bölgesel sürüm, yeniden baskı ve plak baskısı yalnızca %@ üzerinde bulunur. Belirteçler ücretsizdir: %@ hesap ayarlarınızdan bir tane oluşturun."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Додайте токен %@, щоб шукати й серед його видань."
+            "value" : "Багато регіональних видань, перевидань і вінілових пресувань є лише на %@. Токени безкоштовні: створіть його в налаштуваннях свого облікового запису %@."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "添加 %@ 令牌即可一并搜索其发行版本。"
+            "value" : "许多地区版、再版和黑胶压片只收录在 %@ 上。令牌是免费的：可在你的 %@ 账户设置中创建。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新增 %@ 權杖即可一併搜尋其發行版本。"
+            "value" : "許多地區版、再版和黑膠壓片只收錄在 %@ 上。權杖是免費的：可在你的 %@ 帳號設定中建立。"
           }
         }
       }
