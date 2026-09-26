@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import uniffi.bae_bridge.BridgeBlockedSyncOperation
 import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
-import uniffi.bae_bridge.bridgeSyncIndicator
 
 data class SyncFailure(
     val message: String,
@@ -15,9 +14,7 @@ data class SyncFailure(
 )
 
 /** Runtime sync state. The sync-status value stream is its only writer. */
-class SyncStatusStore(
-    private val indicatorFor: (BridgeSyncStatusSnapshot) -> BridgeSyncIndicator = ::bridgeSyncIndicator,
-) {
+class SyncStatusStore {
     private val _snapshot = MutableStateFlow<BridgeSyncStatusSnapshot?>(null)
     val snapshot: StateFlow<BridgeSyncStatusSnapshot?> = _snapshot.asStateFlow()
 
@@ -41,7 +38,7 @@ class SyncStatusStore(
     ) {
         _snapshot.value = status
         _error.value = status.error?.let(errors::line)?.let { SyncFailure(it, status.canReconnect) }
-        _indicator.value = indicatorFor(status)
+        _indicator.value = status.indicator
         _blocked.value = status.blocked
     }
 }

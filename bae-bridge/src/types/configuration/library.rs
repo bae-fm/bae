@@ -97,7 +97,8 @@ pub struct BridgeWorkReleaseSummary {
     pub album_id: String,
     pub album_title: String,
     pub name: BridgeReleaseName,
-    pub media: Vec<BridgeMediaCount>,
+    /// What the release is made of, worded: "2×CD", "Vinyl".
+    pub media: Vec<crate::types::BridgeFactTerm>,
     pub cover: Option<BridgeImageRef>,
 }
 
@@ -318,6 +319,9 @@ pub struct BridgeSyncStatusSnapshot {
     pub last_sync_time: Option<i64>,
     pub syncing: bool,
     pub sync_ready: bool,
+    /// The one badge state the fields above come to, by bae-core's
+    /// precedence. Carried so a surface draws it without asking the bridge.
+    pub indicator: BridgeSyncIndicator,
 }
 
 /// One durable sync operation that stopped on a fault running it again cannot
@@ -450,24 +454,11 @@ pub enum BridgeSyncIndicator {
 
 mirror_enum! {
     BridgeSyncIndicator = bae_core::library::SyncIndicator,
-    from_core: fn,
+    from_core: pub(crate) fn,
     variants: {
         Error,
         Syncing,
         Synced { last_sync_time },
         Idle,
     },
-}
-
-/// The sync indicator for a status snapshot — the precedence decided in bae-core.
-/// The UI holds the snapshot already; this turns it into the one badge state.
-#[uniffi::export]
-pub fn bridge_sync_indicator(snapshot: &BridgeSyncStatusSnapshot) -> BridgeSyncIndicator {
-    BridgeSyncIndicator::from_core(bae_core::library::SyncIndicator::resolve(
-        snapshot.error.is_some(),
-        !snapshot.blocked.is_empty(),
-        snapshot.syncing,
-        snapshot.sync_ready,
-        snapshot.last_sync_time,
-    ))
 }

@@ -10,6 +10,15 @@ struct PressingTextTests {
         QueueSummary.message("core.audio.list_separator")
     }
 
+    /// A pressing's lines, as core words them onto its record.
+    private func summary(_ facts: BridgePressingFacts) -> String {
+        PressingText.line(bridgePressingSummary(facts: facts))
+    }
+
+    private func details(_ facts: BridgePressingFacts) -> String {
+        PressingText.line(bridgePressingDetails(facts: facts))
+    }
+
     @Test("a MusicBrainz and a Discogs record of one pressing read alike")
     func bothCatalogsReadTheSameShape() {
         let musicBrainz = PreviewData.pressingFacts(
@@ -26,20 +35,20 @@ struct PressingTextTests {
         )
 
         #expect(
-            PressingText.summary(musicBrainz) == PressingText.summary(discogs)
+            summary(musicBrainz) == summary(discogs)
         )
         #expect(
-            PressingText.summary(discogs)
+            summary(discogs)
                 == [PressingText.countryName("JP"), "CD"]
                 .joined(separator: separator)
         )
         #expect(
-            PressingText.details(musicBrainz)
+            details(musicBrainz)
                 == QueueSummary.message("core.pressing.packaging.jewel_case"),
             "an official release is not set apart by being official"
         )
         #expect(
-            PressingText.details(discogs)
+            details(discogs)
                 == [
                     QueueSummary.message("core.pressing.status.promotion"),
                     QueueSummary.message("core.pressing.discogs.reissue"),
@@ -61,11 +70,11 @@ struct PressingTextTests {
     func regionName() {
         let facts = PreviewData.pressingFacts(region: .ukAndEurope)
         #expect(
-            PressingText.summary(facts)
+            summary(facts)
                 == QueueSummary.message("core.pressing.region.uk_and_europe")
         )
         #expect(
-            PressingText.summary(facts) != "core.pressing.region.uk_and_europe"
+            summary(facts) != "core.pressing.region.uk_and_europe"
         )
     }
 }

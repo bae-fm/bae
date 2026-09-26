@@ -1,23 +1,13 @@
 import Foundation
 
 /// What a pressing is, worded for the current locale. Core decides which
-/// parts a line has and in what order (`bridge_pressing_summary`,
-/// `bridge_pressing_details`, `bridge_media_terms`); this words each part and
-/// joins them, so a MusicBrainz row and a Discogs row read the same shape:
-/// "Japan · 2×CD" over "Promo · Reissue".
+/// parts a line has and in what order, and a record carries them as terms;
+/// this words each part and joins them, so a MusicBrainz row and a Discogs
+/// row read the same shape: "Japan · 2×CD" over "Promo · Reissue".
 public enum PressingText {
-    /// Where the pressing was released and what it is made of.
-    public static func summary(_ facts: BridgePressingFacts) -> String {
-        line(bridgePressingSummary(facts: facts))
-    }
-
-    /// Its status where that sets it apart, its packaging, and the details
-    /// Discogs states.
-    public static func details(_ facts: BridgePressingFacts) -> String {
-        line(bridgePressingDetails(facts: facts))
-    }
-
-    /// Media alone, each carrier with its count: "2×CD · DVD".
+    /// Media the person is editing, each carrier with its count: "2×CD ·
+    /// DVD". A draft's values are the form's own, not a record core words,
+    /// so the terms are asked for here.
     public static func media(_ media: [BridgeMediaCount]) -> String {
         line(bridgeMediaTerms(media: media))
     }
@@ -85,7 +75,7 @@ extension BridgeReleaseName {
         case .named(let name):
             name
         case .described(let year, let media):
-            ([year.map { String($0) }] + [PressingText.media(media)])
+            ([year.map { String($0) }] + [PressingText.line(media)])
                 .compactMap { $0 }
                 .filter { !$0.isEmpty }
                 .joined(separator: " ")
@@ -107,7 +97,7 @@ extension BridgeWorkReleaseSummary {
         case .described:
             name.text
         case .named, .numbered:
-            ([name.text] + (media.isEmpty ? [] : [PressingText.media(media)]))
+            ([name.text] + (media.isEmpty ? [] : [PressingText.line(media)]))
                 .joined(
                     separator: QueueSummary.message("core.audio.list_separator")
                 )

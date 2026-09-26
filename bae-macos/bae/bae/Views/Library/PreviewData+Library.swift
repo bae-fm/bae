@@ -142,7 +142,9 @@
                         albumId: "album-\(index)",
                         albumTitle: "Album Title \(index + 1)",
                         name: .named(name: "Album Title \(index + 1)"),
-                        media: PreviewData.media(.vinyl, 2),
+                        media: bridgeMediaTerms(
+                            media: PreviewData.media(.vinyl, 2)
+                        ),
                         cover: nil,
                     )
                 },

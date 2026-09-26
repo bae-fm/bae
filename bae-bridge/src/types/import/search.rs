@@ -124,9 +124,14 @@ pub struct BridgeReleaseGroupSource {
 pub struct BridgePressing {
     pub releases: Vec<BridgeMetadataResult>,
     pub pick: crate::types::BridgeMetadataProvenance,
-    /// What the pressing is, as its records together state it: the lead's
-    /// facts, filled in where the lead is silent from the other records.
-    pub facts: BridgePressingFacts,
+    /// Where the pressing was released and what it is made of, as its
+    /// records together state it — the lead's facts, filled in where the lead
+    /// is silent from the other records — worded as
+    /// `bridge_pressing_summary` words them.
+    pub summary: Vec<crate::types::BridgeFactTerm>,
+    /// What sets it apart beyond that, worded as `bridge_pressing_details`
+    /// words it.
+    pub details: Vec<crate::types::BridgeFactTerm>,
 }
 
 /// One provider's part of a candidate's manual search. Mirrors

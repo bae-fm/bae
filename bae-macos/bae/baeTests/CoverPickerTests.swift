@@ -92,6 +92,7 @@ struct CoverPickerTests {
             catalogNumber: nil,
             facts: facts,
             pressingSummary: bridgePressingSummary(facts: facts),
+            mediaTerms: bridgeMediaTerms(media: facts.media),
             pressingDetails: bridgePressingDetails(facts: facts),
             storageState: .remote,
             pinned: false,

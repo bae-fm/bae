@@ -12,18 +12,10 @@ struct Pressing: Equatable, Identifiable {
     let releases: [BridgeMetadataResult]
     /// What picking this row claims, as core settled it.
     let provenance: BridgeMetadataProvenance
-    /// What the pressing is, as its records together state it.
-    let facts: BridgePressingFacts
-
     /// Where it was released and what it is made of: "Japan · 2×CD".
-    var summaryText: String {
-        PressingText.summary(facts)
-    }
-
+    let summaryText: String
     /// What sets it apart beyond that: "Promo · Reissue".
-    var detailsText: String {
-        PressingText.details(facts)
-    }
+    let detailsText: String
 
     /// Row identity is the lead release's id — stable across a re-search of
     /// the same pressing, so SwiftUI keeps the row rather than tearing it down.
@@ -63,6 +55,7 @@ struct Pressing: Equatable, Identifiable {
         self.lead = lead
         releases = bridge.releases
         provenance = bridge.pick
-        facts = bridge.facts
+        summaryText = PressingText.line(bridge.summary)
+        detailsText = PressingText.line(bridge.details)
     }
 }

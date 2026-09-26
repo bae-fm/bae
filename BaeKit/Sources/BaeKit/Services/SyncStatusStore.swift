@@ -18,8 +18,7 @@ public final class SyncStatusStore {
     }
 
     public var indicator: BridgeSyncIndicator {
-        guard let snapshot else { return .idle }
-        return bridgeSyncIndicator(snapshot: snapshot)
+        snapshot?.indicator ?? .idle
     }
 
     public var error: DisplayError? {

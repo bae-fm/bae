@@ -465,6 +465,7 @@ impl crate::types::BridgeSyncStatusSnapshot {
             .error
             .as_ref()
             .is_some_and(bae_core::ui::UiError::can_reconnect_sync);
+        let indicator = crate::types::BridgeSyncIndicator::from_core(snapshot.indicator());
         let bae_core::library::SyncStatusSnapshot {
             error,
             blocked,
@@ -473,6 +474,7 @@ impl crate::types::BridgeSyncStatusSnapshot {
             sync_ready,
         } = snapshot;
         crate::types::BridgeSyncStatusSnapshot {
+            indicator,
             error: error.map(crate::types::BridgeError::from_core),
             can_reconnect,
             blocked: blocked

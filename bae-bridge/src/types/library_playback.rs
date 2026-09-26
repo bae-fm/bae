@@ -273,6 +273,9 @@ pub struct BridgeReleaseSummary {
     pub album_id: String,
     /// What the release is made of, each carrier with its count.
     pub media: Vec<BridgeMediaCount>,
+    /// The same media worded, as [`crate::types::bridge_media_terms`] words
+    /// them, so a surface draws them with no call into the bridge.
+    pub media_terms: Vec<crate::types::BridgeFactTerm>,
     /// The release's storage state — Local (local) or Remote (cloud).
     pub storage_state: BridgeReleaseStorageState,
     /// Whether coven keeps this release's blobs pinned (kept offline) on this
@@ -311,6 +314,9 @@ pub struct BridgeRelease {
     /// asked for, so a surface draws the release with no call into the
     /// bridge, as Android's preview renderer has to.
     pub pressing_summary: Vec<crate::types::BridgeFactTerm>,
+    /// The facts' media alone, worded, as the release's summary carries
+    /// them.
+    pub media_terms: Vec<crate::types::BridgeFactTerm>,
     /// The facts' details line, as [`crate::types::bridge_pressing_details`]
     /// words it. Carried for the same reason.
     pub pressing_details: Vec<crate::types::BridgeFactTerm>,

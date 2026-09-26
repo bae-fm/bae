@@ -174,12 +174,16 @@
                 id: id,
                 albumId: album.id,
                 name: fixture.name.map { .named(name: $0) }
-                    ?? .described(year: year, media: fixture.media),
+                    ?? .described(
+                        year: year,
+                        media: bridgeMediaTerms(media: fixture.media)
+                    ),
                 year: year,
                 label: fixture.identifiers?.label,
                 catalogNumber: fixture.identifiers?.catalogNumber,
                 facts: facts,
                 pressingSummary: bridgePressingSummary(facts: facts),
+                mediaTerms: bridgeMediaTerms(media: facts.media),
                 pressingDetails: bridgePressingDetails(facts: facts),
                 storageState: .local,
                 pinned: false,

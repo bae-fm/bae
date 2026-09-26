@@ -166,7 +166,8 @@ private struct BlockedSyncOperationRow: View {
                     blocked: [],
                     lastSyncTime: nil,
                     syncing: false,
-                    syncReady: false
+                    syncReady: false,
+                    indicator: .error
                 )
             )
         )
@@ -203,7 +204,8 @@ private struct BlockedSyncOperationRow: View {
                     ],
                     lastSyncTime: 1_700_000_000_000,
                     syncing: false,
-                    syncReady: true
+                    syncReady: true,
+                    indicator: .error
                 )
             )
         )

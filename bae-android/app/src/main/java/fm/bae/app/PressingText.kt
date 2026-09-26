@@ -2,28 +2,16 @@ package fm.bae.app
 
 import android.content.Context
 import uniffi.bae_bridge.BridgeFactTerm
-import uniffi.bae_bridge.BridgeMediaCount
-import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeTermLabel
 import uniffi.bae_bridge.BridgeWorkReleaseSummary
-import uniffi.bae_bridge.bridgeMediaTerms
-import uniffi.bae_bridge.bridgePressingDetails
-import uniffi.bae_bridge.bridgePressingSummary
 import java.util.Locale
 
 // What a pressing is, worded for the current locale. Core decides which parts
-// a line has and in what order; this words each part and joins them, so every
-// catalog's row reads the same shape: "Japan · 2×CD" over "Promo · Reissue".
-
-/** Where the pressing was released and what it is made of. */
-fun BridgePressingFacts.summaryText(context: Context): String = factLine(context, bridgePressingSummary(this))
-
-/** Its status where that sets it apart, its packaging, and Discogs's details. */
-fun BridgePressingFacts.detailsText(context: Context): String = factLine(context, bridgePressingDetails(this))
-
-/** Media alone, each carrier with its count: "2×CD · DVD". */
-fun List<BridgeMediaCount>.mediaText(context: Context): String = factLine(context, bridgeMediaTerms(this))
+// a line has and in what order, and the record carries them as terms; this
+// words each part and joins them, so every catalog's row reads the same shape:
+// "Japan · 2×CD" over "Promo · Reissue". Nothing here calls into the bridge,
+// so the preview renderer draws it too.
 
 /** The parts, worded and joined with the catalog's list separator. */
 fun factLine(
@@ -75,7 +63,7 @@ fun BridgeReleaseName.text(context: Context): String =
         }
 
         is BridgeReleaseName.Described -> {
-            listOfNotNull(year?.toString(), media.mediaText(context).ifEmpty { null })
+            listOfNotNull(year?.toString(), factLine(context, media).ifEmpty { null })
                 .joinToString(" ")
         }
 
@@ -95,7 +83,7 @@ fun BridgeWorkReleaseSummary.metadataText(context: Context): String =
         }
 
         else -> {
-            listOfNotNull(name.text(context), media.mediaText(context).ifEmpty { null })
+            listOfNotNull(name.text(context), factLine(context, media).ifEmpty { null })
                 .joinToString(context.coreString("core.audio.list_separator"))
         }
     }

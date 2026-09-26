@@ -230,12 +230,16 @@
             let bridge = BridgeRelease(
                 id: "rel-storage-preview",
                 albumId: "a-storage-preview",
-                name: .described(year: 2019, media: PreviewData.media(.cd)),
+                name: .described(
+                    year: 2019,
+                    media: bridgeMediaTerms(media: PreviewData.media(.cd))
+                ),
                 year: 2019,
                 label: "Some Label",
                 catalogNumber: "CAT-0001",
                 facts: facts,
                 pressingSummary: bridgePressingSummary(facts: facts),
+                mediaTerms: bridgeMediaTerms(media: facts.media),
                 pressingDetails: bridgePressingDetails(facts: facts),
                 storageState: storageState,
                 pinned: pinned,

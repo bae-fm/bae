@@ -65,4 +65,13 @@ class PressingTextTest {
         assertEquals("Release 3", BridgeReleaseName.Numbered(3).text(context))
         assertEquals("Deluxe", BridgeReleaseName.Named("Deluxe").text(context))
     }
+
+    /** A release with no name reads as its year and the media core worded. */
+    @Test
+    fun aDescribedReleaseReadsAsItsYearAndMedia() {
+        assertEquals(
+            "2016 2×CD",
+            BridgeReleaseName.Described(2016, listOf(BridgeFactTerm.Counted(2u, BridgeTermLabel.Verbatim("CD")))).text(context),
+        )
+    }
 }

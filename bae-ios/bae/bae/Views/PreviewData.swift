@@ -108,13 +108,14 @@ enum PreviewData {
             albumId: albumId,
             name: .described(
                 year: 2018,
-                media: [BridgeMediaCount(medium: .cd, count: 1)]
+                media: bridgeMediaTerms(media: facts.media)
             ),
             year: 2018,
             label: "Label Name",
             catalogNumber: "CAT-001",
             facts: facts,
             pressingSummary: bridgePressingSummary(facts: facts),
+            mediaTerms: bridgeMediaTerms(media: facts.media),
             pressingDetails: bridgePressingDetails(facts: facts),
             storageState: .local,
             pinned: false,

@@ -101,6 +101,7 @@ impl BridgeRelease {
             id,
             album_id,
             media: _,
+            media_terms,
             storage_state,
             pinned,
             storage_actions,
@@ -119,6 +120,7 @@ impl BridgeRelease {
             year,
             label,
             catalog_number,
+            media_terms,
             pressing_summary: crate::types::bridge_pressing_summary(facts.clone()),
             pressing_details: crate::types::bridge_pressing_details(facts.clone()),
             facts,
@@ -208,21 +210,44 @@ mirror_struct! {
     },
 }
 
-mirror_struct! {
-    BridgeReleaseSummary = bae_core::album_detail::ReleaseSummary,
-    from_core: pub(super) fn,
-    fields: {
-        id,
-        album_id,
-        media: (each crate::types::BridgeMediaCount),
-        storage_state: (crate::types::BridgeReleaseStorageState),
-        pinned,
-        storage_actions: (each crate::types::BridgeReleaseStorageAction),
-        transfer_action: (opt crate::types::BridgeReleaseStorageAction),
-        file_count,
-        total_size,
-        cover: (opt crate::types::BridgeImageRef),
-    },
+/// Not a `mirror_struct`: the media cross worded as well as typed, so a
+/// surface draws them without asking the bridge.
+impl BridgeReleaseSummary {
+    pub(super) fn from_core(summary: bae_core::album_detail::ReleaseSummary) -> Self {
+        let bae_core::album_detail::ReleaseSummary {
+            id,
+            album_id,
+            media,
+            storage_state,
+            pinned,
+            storage_actions,
+            transfer_action,
+            file_count,
+            total_size,
+            cover,
+        } = summary;
+        let media: Vec<crate::types::BridgeMediaCount> = media
+            .into_iter()
+            .map(crate::types::BridgeMediaCount::from_core)
+            .collect();
+        BridgeReleaseSummary {
+            id,
+            album_id,
+            media_terms: crate::types::bridge_media_terms(media.clone()),
+            media,
+            storage_state: crate::types::BridgeReleaseStorageState::from_core(storage_state),
+            pinned,
+            storage_actions: storage_actions
+                .into_iter()
+                .map(crate::types::BridgeReleaseStorageAction::from_core)
+                .collect(),
+            transfer_action: transfer_action
+                .map(crate::types::BridgeReleaseStorageAction::from_core),
+            file_count,
+            total_size,
+            cover: cover.map(crate::types::BridgeImageRef::from_core),
+        }
+    }
 }
 
 impl BridgeAlbumDetail {
@@ -509,17 +534,32 @@ impl BridgeWorkTrackSummary {
     }
 }
 
-mirror_struct! {
-    BridgeWorkReleaseSummary = bae_core::album_detail::WorkReleaseSummary,
-    from_core: pub(super) fn,
-    fields: {
-        release_id,
-        album_id,
-        album_title,
-        name: (crate::types::BridgeReleaseName),
-        media: (each crate::types::BridgeMediaCount),
-        cover: (opt crate::types::BridgeImageRef),
-    },
+/// Not a `mirror_struct`: the media cross worded, which is all a surface
+/// does with them.
+impl BridgeWorkReleaseSummary {
+    pub(super) fn from_core(summary: bae_core::album_detail::WorkReleaseSummary) -> Self {
+        let bae_core::album_detail::WorkReleaseSummary {
+            release_id,
+            album_id,
+            album_title,
+            name,
+            media,
+            cover,
+        } = summary;
+        BridgeWorkReleaseSummary {
+            release_id,
+            album_id,
+            album_title,
+            name: crate::types::BridgeReleaseName::from_core(name),
+            media: crate::types::bridge_media_terms(
+                media
+                    .into_iter()
+                    .map(crate::types::BridgeMediaCount::from_core)
+                    .collect(),
+            ),
+            cover: cover.map(crate::types::BridgeImageRef::from_core),
+        }
+    }
 }
 
 mirror_struct! {

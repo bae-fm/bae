@@ -21,7 +21,7 @@ class SyncStatusStoreTest {
     @Test
     fun configValuesCannotOverwriteSyncReadinessTransitions() {
         val config = ConfigStore(BridgeFixtures.config())
-        val sync = SyncStatusStore { BridgeSyncIndicator.Idle }
+        val sync = SyncStatusStore()
 
         sync.apply(status(syncReady = true), errors)
         config.setConfig(BridgeFixtures.config())
@@ -39,5 +39,6 @@ class SyncStatusStoreTest {
             lastSyncTime = null,
             syncing = false,
             syncReady = syncReady,
+            indicator = if (syncReady) BridgeSyncIndicator.Synced(null) else BridgeSyncIndicator.Idle,
         )
 }

@@ -39,10 +39,12 @@
         /// A fixture's pressing row, stating what its lead record states —
         /// what core's own rows state where the other records add nothing.
         init(releases: [BridgeMetadataResult], pick: BridgeMetadataProvenance) {
+            let facts = releases.first?.facts ?? PreviewData.pressingFacts()
             self.init(
                 releases: releases,
                 pick: pick,
-                facts: releases.first?.facts ?? PreviewData.pressingFacts()
+                summary: bridgePressingSummary(facts: facts),
+                details: bridgePressingDetails(facts: facts)
             )
         }
     }

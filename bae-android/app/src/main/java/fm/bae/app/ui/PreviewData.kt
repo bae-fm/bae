@@ -142,6 +142,7 @@ object PreviewData {
                     BridgeFactTerm.Country("US"),
                     BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.medium.vinyl")),
                 ),
+            mediaTerms = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.medium.vinyl"))),
             pressingDetails = emptyList(),
             storageState = BridgeReleaseStorageState.LOCAL,
             pinned = false,

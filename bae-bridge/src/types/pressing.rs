@@ -718,11 +718,11 @@ pub fn bridge_discogs_details() -> Vec<BridgeDiscogsDetail> {
 pub enum BridgeReleaseName {
     /// The name the person gave it.
     Named { name: String },
-    /// No name: its year and media, whichever it states. The surface joins
-    /// the year and `bridge_media_terms(media)`.
+    /// No name: its year and media, whichever it states. The media arrive
+    /// worded, and the surface joins them after the year.
     Described {
         year: Option<i32>,
-        media: Vec<BridgeMediaCount>,
+        media: Vec<BridgeFactTerm>,
     },
     /// No name and nothing to describe it by: its place among the album's
     /// releases, counted from one, worded with `core.release.numbered`.
@@ -735,7 +735,9 @@ impl BridgeReleaseName {
             bae_core::album_detail::ReleaseName::Named(name) => Self::Named { name },
             bae_core::album_detail::ReleaseName::Described { year, media } => Self::Described {
                 year,
-                media: media.into_iter().map(BridgeMediaCount::from_core).collect(),
+                media: bridge_media_terms(
+                    media.into_iter().map(BridgeMediaCount::from_core).collect(),
+                ),
             },
             bae_core::album_detail::ReleaseName::Numbered(number) => Self::Numbered { number },
         }

@@ -32,6 +32,8 @@ public final class ReleaseSummary: Identifiable {
     public let albumId: String
     /// What the release is made of, each carrier with its count.
     public var media: [BridgeMediaCount]
+    /// The same media as core words them: "2×CD", "Vinyl".
+    public var mediaTerms: [BridgeFactTerm]
     public var storageState: BridgeReleaseStorageState
     /// Whether coven keeps this release's blobs pinned locally on this device
     /// — the orthogonal coven-cache property, meaningful only when
@@ -57,7 +59,7 @@ public final class ReleaseSummary: Identifiable {
 
     /// The media in the current locale's words: "2×CD", "Vinyl".
     public var mediaText: String {
-        PressingText.media(media)
+        PressingText.line(mediaTerms)
     }
 
     /// Total release size formatted for the current locale, e.g. "350 MB".
@@ -70,6 +72,7 @@ public final class ReleaseSummary: Identifiable {
         id = bridge.id
         albumId = bridge.albumId
         media = bridge.media
+        mediaTerms = bridge.mediaTerms
         storageState = bridge.storageState
         pinned = bridge.pinned
         storageActions = bridge.storageActions
@@ -85,6 +88,7 @@ public final class ReleaseSummary: Identifiable {
         id = bridge.id
         albumId = bridge.albumId
         media = bridge.facts.media
+        mediaTerms = bridge.mediaTerms
         storageState = bridge.storageState
         pinned = bridge.pinned
         storageActions = bridge.storageActions
@@ -99,6 +103,9 @@ public final class ReleaseSummary: Identifiable {
     public func update(from bridge: BridgeReleaseSummary) {
         if media != bridge.media {
             media = bridge.media
+        }
+        if mediaTerms != bridge.mediaTerms {
+            mediaTerms = bridge.mediaTerms
         }
         if storageState != bridge.storageState {
             storageState = bridge.storageState
@@ -127,6 +134,9 @@ public final class ReleaseSummary: Identifiable {
     public func update(from bridge: BridgeRelease) {
         if media != bridge.facts.media {
             media = bridge.facts.media
+        }
+        if mediaTerms != bridge.mediaTerms {
+            mediaTerms = bridge.mediaTerms
         }
         if storageState != bridge.storageState {
             storageState = bridge.storageState

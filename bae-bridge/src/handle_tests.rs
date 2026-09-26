@@ -698,9 +698,12 @@ fn work_detail_conversion_preserves_work_release_rows() {
     assert_eq!(release.release_id, "release-a");
     assert_eq!(release.album_id, "album-a");
     assert_eq!(release.album_title, "Album Title A");
-    let two_cds = vec![crate::types::BridgeMediaCount {
-        medium: crate::types::BridgeMedium::Cd,
+    // Two CDs, worded: the count and the medium's printed name.
+    let two_cds = vec![crate::types::BridgeFactTerm::Counted {
         count: 2,
+        label: crate::types::BridgeTermLabel::Verbatim {
+            text: "CD".to_string(),
+        },
     }];
     assert_eq!(
         release.name,
@@ -730,6 +733,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
+    assert_eq!(bridge.indicator, crate::types::BridgeSyncIndicator::Error);
     let Some(crate::types::BridgeError::Diagnostic { category, detail }) = bridge.error else {
         panic!("a recorded sync failure crosses as a diagnostic");
     };
@@ -755,6 +759,12 @@ fn a_healthy_sync_status_crosses_without_an_error() {
 
     assert!(bridge.error.is_none());
     assert!(bridge.sync_ready);
+    assert_eq!(
+        bridge.indicator,
+        crate::types::BridgeSyncIndicator::Synced {
+            last_sync_time: Some(1_700_000_000_000)
+        }
+    );
 }
 
 /// The runtime stream, end to end through the bridge: a claim crosses as one

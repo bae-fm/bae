@@ -381,7 +381,9 @@ private struct RecoveryCodeSection: View {
                         blocked: [],
                         lastSyncTime: nil,
                         syncing: false,
-                        syncReady: syncReady
+                        syncReady: syncReady,
+                        indicator: syncReady
+                            ? .synced(lastSyncTime: nil) : .idle
                     )
                 )
             )

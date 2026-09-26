@@ -35,7 +35,8 @@ struct SyncStatusStoreTests {
                 blocked: [],
                 lastSyncTime: nil,
                 syncing: false,
-                syncReady: false
+                syncReady: false,
+                indicator: .error
             )
         )
 
@@ -49,8 +50,9 @@ struct SyncStatusStoreTests {
     }
 
     /// A cycle that completed but left an operation waiting on a person is not
-    /// "Synced" — core decides that, so no surface re-derives it — and the
-    /// operation reaches the settings row that offers to retry it.
+    /// "Synced" — core decides that and says so on the snapshot, so no surface
+    /// re-derives it — and the operation reaches the settings row that offers
+    /// to retry it.
     @MainActor
     @Test("a blocked operation reads as the error state and reaches the UI")
     func blockedOperationReadsAsError() throws {
@@ -70,7 +72,8 @@ struct SyncStatusStoreTests {
                 ],
                 lastSyncTime: 1_700_000_000_000,
                 syncing: false,
-                syncReady: true
+                syncReady: true,
+                indicator: .error
             )
         )
 
@@ -102,7 +105,8 @@ struct SyncStatusStoreTests {
                 blocked: [],
                 lastSyncTime: nil,
                 syncing: false,
-                syncReady: true
+                syncReady: true,
+                indicator: .error
             )
         )
         #expect(
@@ -120,7 +124,8 @@ struct SyncStatusStoreTests {
             blocked: [],
             lastSyncTime: nil,
             syncing: false,
-            syncReady: syncReady
+            syncReady: syncReady,
+            indicator: syncReady ? .synced(lastSyncTime: nil) : .idle
         )
     }
 

@@ -382,9 +382,11 @@ mirror_struct! {
 
 impl BridgePressing {
     fn from_core(pressing: bae_core::import::release_group::Pressing) -> Self {
+        let facts = BridgePressingFacts::from_core(pressing.facts());
         BridgePressing {
             pick: crate::types::BridgeMetadataProvenance::from_core(pressing.pick()),
-            facts: BridgePressingFacts::from_core(pressing.facts()),
+            summary: crate::types::bridge_pressing_summary(facts.clone()),
+            details: crate::types::bridge_pressing_details(facts),
             releases: pressing
                 .releases
                 .into_iter()
