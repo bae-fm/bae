@@ -445,7 +445,7 @@ pub struct ReleaseUserEdit {
     pub album_artist_assignments: Vec<ArtistAssignment>,
     pub album_year: Option<i32>,
     /// The pressing the edit claims: either the whole of a picked release's,
-    /// or [`Pressing::blank()`] filled in with what the person knows (file
+    /// or [`crate::pressing::Pressing::blank()`] filled in with what the person knows (file
     /// metadata or direct entry).
     pub pressing: crate::pressing::Pressing,
     pub tracks: Vec<TrackUserEdit>,
