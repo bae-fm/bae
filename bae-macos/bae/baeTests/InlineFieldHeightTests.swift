@@ -38,7 +38,7 @@ struct InlineFieldHeightTests {
         )
 
         let measured = Measured()
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             Text(verbatim: Self.title)
                 .font(Self.titleFont)
                 .onGeometryChange(for: CGFloat.self) {
@@ -52,15 +52,12 @@ struct InlineFieldHeightTests {
                     alignment: .topLeading
                 ),
             size: Self.size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let textHeight = try #require(measured.textHeight)
+            #expect(first.fieldHeight == textHeight)
+            #expect(second.fieldHeight == textHeight)
         }
-        try await SnapshotTestSupport.settle(host)
-        let textHeight = try #require(measured.textHeight)
-        #expect(first.fieldHeight == textHeight)
-        #expect(second.fieldHeight == textHeight)
     }
 
     /// Every field in the header is exactly as tall as AppKit measures a
@@ -70,20 +67,19 @@ struct InlineFieldHeightTests {
     @Test("every field is as tall as its own font, hosting after hosting")
     func everyFieldIsAsTallAsItsOwnFont() async throws {
         for _ in 0..<40 {
-            let (window, host) = hostHeader()
-            try await SnapshotTestSupport.settle(host)
-            let fields = SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSTextField }
-                .filter(\.isEditable)
-            #expect(fields.count == 8)
-            for field in fields {
-                #expect(
-                    field.frame.height == field.intrinsicContentSize.height,
-                    "\(field.font?.pointSize ?? 0)-point field is \(field.frame.height) tall"
-                )
+            try await withHostedHeader { _, host in
+                try await SnapshotTestSupport.settle(host)
+                let fields = SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? NSTextField }
+                    .filter(\.isEditable)
+                #expect(fields.count == 8)
+                for field in fields {
+                    #expect(
+                        field.frame.height == field.intrinsicContentSize.height,
+                        "\(field.font?.pointSize ?? 0)-point field is \(field.frame.height) tall"
+                    )
+                }
             }
-            window.contentView = nil
-            window.orderOut(nil)
         }
     }
 
@@ -92,26 +88,25 @@ struct InlineFieldHeightTests {
     private func hostedHeader() async throws -> (
         pixels: Data, fieldHeight: CGFloat
     ) {
-        let (window, host) = hostHeader()
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        return try await withHostedHeader { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let pixels = try await SnapshotTestSupport.capturePNG(
+                host,
+                size: Self.size
+            )
+            let titleField = try #require(
+                SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? NSTextField }
+                    .first { $0.stringValue == Self.title }
+            )
+            return (pixels, titleField.frame.height)
         }
-        try await SnapshotTestSupport.settle(host)
-        let pixels = try await SnapshotTestSupport.capturePNG(
-            host,
-            size: Self.size
-        )
-        let titleField = try #require(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSTextField }
-                .first { $0.stringValue == Self.title }
-        )
-        return (pixels, titleField.frame.height)
     }
 
     /// The release header over a two-track seed titled `title`, hosted.
-    private func hostHeader() -> (window: NSWindow, host: NSView) {
+    private func withHostedHeader<Value>(
+        _ body: (NSWindow, NSView) async throws -> Value
+    ) async throws -> Value {
         var seed = PreviewData.releaseEditSeed(trackCount: 2)
         seed.edit.albumTitle = Self.title
         let reset = seed.edit
@@ -121,7 +116,7 @@ struct InlineFieldHeightTests {
             save: { _, _ in },
             reset: { _ in reset }
         )
-        return SnapshotTestSupport.hostInWindow(
+        return try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
                 values: session.form,
                 writer: session.fieldWriter,
@@ -135,6 +130,8 @@ struct InlineFieldHeightTests {
             .background(.white)
             .frame(width: Self.size.width, height: Self.size.height),
             size: Self.size
-        )
+        ) {
+            try await body($0, $1)
+        }
     }
 }

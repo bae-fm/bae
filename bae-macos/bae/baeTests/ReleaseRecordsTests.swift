@@ -98,7 +98,7 @@ struct ReleaseRecordsTests {
         in summary: AlbumSummary,
         _ store: LibraryStore
     ) async throws -> Data {
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        return try await SnapshotTestSupport.withHostedWindow(
             PreviewData.albumExpansionContent(
                 summary: summary,
                 selectedRelease: release,
@@ -116,11 +116,11 @@ struct ReleaseRecordsTests {
             .environment(store)
             .environment(ImageStore.stub()),
             size: Self.cardSize
-        )
-        defer { withExtendedLifetime(window) {} }
-        return try await SnapshotTestSupport.capturePNG(
-            host,
-            size: Self.cardSize
-        )
+        ) { _, host in
+            return try await SnapshotTestSupport.capturePNG(
+                host,
+                size: Self.cardSize
+            )
+        }
     }
 }

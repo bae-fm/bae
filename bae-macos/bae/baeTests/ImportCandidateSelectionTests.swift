@@ -10,9 +10,9 @@ import XCTest
 struct ImportCandidateSelectionTests {
     @MainActor
     @Test("folder scan activity renders an indeterminate progress control")
-    func folderScanActivityRendersIndeterminateProgress() throws {
+    func folderScanActivityRendersIndeterminateProgress() async throws {
         let size = NSSize(width: 180, height: 40)
-        let (_, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             FolderScanProgressIndicator(
                 activity: BridgeFolderScanActivity(
                     foundCount: 179,
@@ -27,22 +27,23 @@ struct ImportCandidateSelectionTests {
             )
             .frame(width: size.width, height: size.height),
             size: size
-        )
+        ) { _, host in
 
-        host.layoutSubtreeIfNeeded()
-        let progress = try #require(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSProgressIndicator }
-                .first
-        )
-        #expect(progress.isIndeterminate)
+            host.layoutSubtreeIfNeeded()
+            let progress = try #require(
+                SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? NSProgressIndicator }
+                    .first
+            )
+            #expect(progress.isIndeterminate)
+        }
     }
 
     @MainActor
     @Test("a row renders without resolving the outbox environment")
-    func rowRendersFromSuppliedUploadPresentation() {
+    func rowRendersFromSuppliedUploadPresentation() async throws {
         let size = NSSize(width: 400, height: 80)
-        let (_, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             TriageRowView(
                 row: PreviewData.triageRowDoneImported,
                 coverContent: nil,
@@ -53,10 +54,11 @@ struct ImportCandidateSelectionTests {
             .environment(ImageStore.stub())
             .frame(width: size.width, height: size.height),
             size: size
-        )
+        ) { _, host in
 
-        host.layoutSubtreeIfNeeded()
-        #expect(host.fittingSize.height > 0)
+            host.layoutSubtreeIfNeeded()
+            #expect(host.fittingSize.height > 0)
+        }
     }
 
     /// What is running for a candidate reaches its row through the row's own
@@ -82,7 +84,7 @@ struct ImportCandidateSelectionTests {
         )
         func spinners(_ importer: Importer) async throws -> Int {
             let size = NSSize(width: 400, height: 80)
-            let (_, host) = SnapshotTestSupport.hostInWindow(
+            return try await SnapshotTestSupport.withHostedWindow(
                 TriageRowView(
                     row: row,
                     coverContent: nil,
@@ -94,11 +96,12 @@ struct ImportCandidateSelectionTests {
                 .environment(ImageStore.stub())
                 .frame(width: size.width, height: size.height),
                 size: size
-            )
-            try await SnapshotTestSupport.settle(host)
-            return SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSProgressIndicator }
-                .count
+            ) { _, host in
+                try await SnapshotTestSupport.settle(host)
+                return SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? NSProgressIndicator }
+                    .count
+            }
         }
 
         #expect(try await spinners(Importer()) == 0)
@@ -139,7 +142,7 @@ struct ImportCandidateSelectionTests {
             ]
         )
         let size = NSSize(width: 400, height: 320)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ImportCandidateListContent(
                 importStore: store,
                 listSlot: slot,
@@ -160,29 +163,26 @@ struct ImportCandidateSelectionTests {
             .environment(ImageStore.stub())
             .frame(width: size.width, height: size.height),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+
+            // Exercise the native list selection, not a second checkbox state.
+            let tableView = try #require(
+                SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? NSTableView }
+                    .first
+            )
+            tableView.selectRowIndexes(
+                IndexSet(integer: 0),
+                byExtendingSelection: false
+            )
+            try await SnapshotTestSupport.settle(host)
+
+            #expect(
+                uiStore.selectedFolderCandidates
+                    == [PreviewData.triageRowReady.candidateKey]
+            )
         }
-        try await SnapshotTestSupport.settle(host)
-
-        // Exercise the native list selection, not a second checkbox state.
-        let tableView = try #require(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSTableView }
-                .first
-        )
-        tableView.selectRowIndexes(
-            IndexSet(integer: 0),
-            byExtendingSelection: false
-        )
-        try await SnapshotTestSupport.settle(host)
-
-        #expect(
-            uiStore.selectedFolderCandidates
-                == [PreviewData.triageRowReady.candidateKey]
-        )
     }
 
 }
@@ -191,43 +191,43 @@ final class PopoverAnimationTests: XCTestCase {
     @MainActor
     func testPopoverBehaviorDisablesEnclosingPopoverAnimation() async throws {
         let size = NSSize(width: 80, height: 40)
-        let (window, anchor) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             Color.clear.frame(width: size.width, height: size.height),
             size: size
-        )
-        let popover = NSPopover()
-        popover.animates = true
-        let contentViewController = NSHostingController(
-            rootView: PopoverBehavior()
-                .frame(width: 120, height: 80)
-        )
-        popover.contentViewController = contentViewController
-        // A popover is placed on a display whatever its anchor's window
-        // is, so the one this test opens is shown transparent to the eye
-        // and to the pointer; the test reads the popover, not its pixels.
-        let observer = NotificationCenter.default.addObserver(
-            forName: NSPopover.willShowNotification,
-            object: popover,
-            queue: nil
-        ) { _ in
-            MainActor.assumeIsolated {
-                let window = contentViewController.view.window
-                window?.alphaValue = 0
-                window?.ignoresMouseEvents = true
+        ) { window, anchor in
+            let popover = NSPopover()
+            popover.animates = true
+            let contentViewController = NSHostingController(
+                rootView: PopoverBehavior()
+                    .frame(width: 120, height: 80)
+            )
+            popover.contentViewController = contentViewController
+            // A popover is placed on a display whatever its anchor's window
+            // is, so the one this test opens is shown transparent to the eye
+            // and to the pointer; the test reads the popover, not its pixels.
+            let observer = NotificationCenter.default.addObserver(
+                forName: NSPopover.willShowNotification,
+                object: popover,
+                queue: nil
+            ) { _ in
+                MainActor.assumeIsolated {
+                    let window = contentViewController.view.window
+                    window?.alphaValue = 0
+                    window?.ignoresMouseEvents = true
+                }
             }
+            defer { NotificationCenter.default.removeObserver(observer) }
+            popover.show(
+                relativeTo: anchor.bounds,
+                of: anchor,
+                preferredEdge: .maxY
+            )
+
+            try await SnapshotTestSupport.settle(contentViewController.view)
+
+            XCTAssertFalse(popover.animates)
+            popover.performClose(nil)
         }
-        defer { NotificationCenter.default.removeObserver(observer) }
-        popover.show(
-            relativeTo: anchor.bounds,
-            of: anchor,
-            preferredEdge: .maxY
-        )
-
-        try await SnapshotTestSupport.settle(contentViewController.view)
-
-        XCTAssertFalse(popover.animates)
-        popover.performClose(nil)
-        withExtendedLifetime(window) {}
     }
 }
 

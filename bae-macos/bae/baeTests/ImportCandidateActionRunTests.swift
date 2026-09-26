@@ -166,7 +166,7 @@ struct ImportCandidateActionRunTests {
         #expect(selection.candidates(for: .skip).count == 2)
         #expect(selection.candidates(for: .restore).isEmpty)
         let size = NSSize(width: 720, height: 580)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ImportCandidateBulkSelectionPane(
                 storageCloud: .constant(true),
                 storagePinned: .constant(true),
@@ -179,12 +179,9 @@ struct ImportCandidateActionRunTests {
             .background(Theme.background)
             .frame(width: size.width, height: size.height),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { _, host in
+            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+            #expect(!png.isEmpty)
         }
-        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        #expect(!png.isEmpty)
     }
 }

@@ -21,46 +21,22 @@ final class MoveToCloudConfirmSheetTests: XCTestCase {
         }
 
         let size = NSSize(width: 420, height: 220)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             MoveToCloudConfirmSheet(onConfirm: { _ in }, onCancel: {})
                 .frame(width: size.width, height: size.height),
             size: size
-        )
+        ) { _, host in
 
-        try await SnapshotTestSupport.settle(host)
-
-        let controlFrames = host.subviews
-            .filter { $0.nextKeyView != nil || $0.previousKeyView != nil }
-            .map { $0.convert($0.bounds, to: host) }
-        for frame in controlFrames where !defaults.bool(forKey: key) {
-            try click(at: frame.center, in: host, window: window)
             try await SnapshotTestSupport.settle(host)
-        }
-        XCTAssertTrue(defaults.bool(forKey: key))
-        withExtendedLifetime(window) {}
-    }
 
-    private func click(
-        at point: NSPoint,
-        in host: NSView,
-        window: NSWindow
-    ) throws {
-        let windowPoint = host.convert(point, to: nil)
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            let event = try XCTUnwrap(
-                NSEvent.mouseEvent(
-                    with: type,
-                    location: windowPoint,
-                    modifierFlags: [],
-                    timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: window.windowNumber,
-                    context: nil,
-                    eventNumber: 0,
-                    clickCount: 1,
-                    pressure: type == .leftMouseDown ? 1 : 0
-                )
-            )
-            window.sendEvent(event)
+            let controlFrames = host.subviews
+                .filter { $0.nextKeyView != nil || $0.previousKeyView != nil }
+                .map { $0.convert($0.bounds, to: host) }
+            for frame in controlFrames where !defaults.bool(forKey: key) {
+                try HostedInput.click(at: frame.center, in: host)
+                try await SnapshotTestSupport.settle(host)
+            }
+            XCTAssertTrue(defaults.bool(forKey: key))
         }
     }
 }

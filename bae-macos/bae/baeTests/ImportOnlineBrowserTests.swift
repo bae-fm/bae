@@ -47,21 +47,21 @@ struct ImportOnlineBrowserTests {
         .environment(store)
         .environment(Importer.stub())
         .importPreviewEnvironment()
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             view,
             size: NSSize(width: 800, height: 500)
-        )
-        defer { window.close() }
-        try await SnapshotTestSupport.settle(host)
-        store.applyCandidateDetail(
-            key: key,
-            detail: MappingFixtures.detail(
-                mapping: nil,
-                presentation: .findOnline
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            store.applyCandidateDetail(
+                key: key,
+                detail: MappingFixtures.detail(
+                    mapping: nil,
+                    presentation: .findOnline
+                )
             )
-        )
-        try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settle(host)
 
-        #expect(presentations.isEmpty)
+            #expect(presentations.isEmpty)
+        }
     }
 }

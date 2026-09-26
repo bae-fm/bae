@@ -29,34 +29,31 @@ struct PlaybackPreferenceMenuItemTests {
     func aClickWritesTheOppositeOfWhatTheItemShows() async throws {
         for isOn in [true, false] {
             let recorder = PreferenceWriteRecorder()
-            let (window, host) = SnapshotTestSupport.hostInWindow(
+            try await SnapshotTestSupport.withHostedWindow(
                 item(isOn: isOn) { recorder.writes.append($0) },
                 size: Self.size
-            )
-            defer {
-                window.contentView = nil
-                window.orderOut(nil)
+            ) { _, host in
+                try await SnapshotTestSupport.settle(host)
+
+                try HostedInput.click(at: host.bounds.center, in: host)
+                try await SnapshotTestSupport.settle(host)
+
+                #expect(recorder.writes == [!isOn])
             }
-            try await SnapshotTestSupport.settle(host)
-
-            try click(at: host.bounds.center, in: host, window: window)
-            try await SnapshotTestSupport.settle(host)
-
-            #expect(recorder.writes == [!isOn])
         }
     }
 
     private func pixels(isOn: Bool) async throws -> Data {
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        return try await SnapshotTestSupport.withHostedWindow(
             item(isOn: isOn) { _ in },
             size: Self.size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            return try await SnapshotTestSupport.capturePNG(
+                host,
+                size: Self.size
+            )
         }
-        try await SnapshotTestSupport.settle(host)
-        return try await SnapshotTestSupport.capturePNG(host, size: Self.size)
     }
 
     private func item(
@@ -69,30 +66,6 @@ struct PlaybackPreferenceMenuItemTests {
             setEnabled: setEnabled
         )
         .frame(width: Self.size.width, height: Self.size.height)
-    }
-
-    private func click(
-        at point: NSPoint,
-        in host: NSView,
-        window: NSWindow
-    ) throws {
-        let windowPoint = host.convert(point, to: nil)
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            let event = try #require(
-                NSEvent.mouseEvent(
-                    with: type,
-                    location: windowPoint,
-                    modifierFlags: [],
-                    timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: window.windowNumber,
-                    context: nil,
-                    eventNumber: 0,
-                    clickCount: 1,
-                    pressure: type == .leftMouseDown ? 1 : 0
-                )
-            )
-            window.sendEvent(event)
-        }
     }
 }
 

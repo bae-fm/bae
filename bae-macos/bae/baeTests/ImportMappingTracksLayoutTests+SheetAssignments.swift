@@ -18,54 +18,57 @@ extension ImportMappingTracksLayoutTests {
     func cueReferenceCommands(referenceIndex: Int) async throws {
         let recorder = MappingTrackActionRecorder()
         let size = NSSize(width: 900, height: 180)
-        let (window, host) = hostSheet(
+        try await withHostedSheet(
             assignmentSheet(secondAssigned: true),
             recorder: recorder,
             size: size
-        )
-        defer { withExtendedLifetime(window) {} }
-        try await SnapshotTestSupport.settle(host)
-        let buttons = SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSPopUpButton }
-        try #require(buttons.count == 1, "the summary is the one menu")
-        let button = buttons[0]
-        #expect(button.isEnabled)
-        let reference = referenceIndex == 0 ? "First.wav" : "Second.wav"
-        let audio = referenceIndex == 0 ? "Replacement.flac" : "Second.flac"
-        SnapshotTestSupport.populateMenu(button)
-        let summary = try #require(button.menu)
-        let references = summary.items.filter { $0.submenu != nil }
-        try #require(references.count == 2, "one submenu per bound reference")
-        #expect(references[0].title.hasPrefix("First.wav"))
-        #expect(references[1].title.hasPrefix("Second.wav"))
-        let menu = try #require(references[referenceIndex].submenu)
-        if referenceIndex == 0 { try checkRefusedAudioChoices(menu) }
-        let replacement = try #require(
-            menu.items.first { $0.title == audio }
-        )
-        menu.performActionForItem(at: menu.index(of: replacement))
-        try await Wait.until { recorder.sheetBindings.count == 1 }
-        var expected = [
-            SheetAssignmentChange(
-                sheet: "Collection.cue",
-                reference: reference,
-                audio: audio
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let buttons = SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSPopUpButton }
+            try #require(buttons.count == 1, "the summary is the one menu")
+            let button = buttons[0]
+            #expect(button.isEnabled)
+            let reference = referenceIndex == 0 ? "First.wav" : "Second.wav"
+            let audio = referenceIndex == 0 ? "Replacement.flac" : "Second.flac"
+            SnapshotTestSupport.populateMenu(button)
+            let summary = try #require(button.menu)
+            let references = summary.items.filter { $0.submenu != nil }
+            try #require(
+                references.count == 2,
+                "one submenu per bound reference"
             )
-        ]
-        #expect(recorder.sheetBindings == expected)
-        try await clearBinding(
-            referenceIndex,
-            through: button,
-            recorder: recorder
-        )
-        expected.append(
-            SheetAssignmentChange(
-                sheet: "Collection.cue",
-                reference: reference,
-                audio: nil
+            #expect(references[0].title.hasPrefix("First.wav"))
+            #expect(references[1].title.hasPrefix("Second.wav"))
+            let menu = try #require(references[referenceIndex].submenu)
+            if referenceIndex == 0 { try checkRefusedAudioChoices(menu) }
+            let replacement = try #require(
+                menu.items.first { $0.title == audio }
             )
-        )
-        #expect(recorder.sheetBindings == expected)
+            menu.performActionForItem(at: menu.index(of: replacement))
+            try await Wait.until { recorder.sheetBindings.count == 1 }
+            var expected = [
+                SheetAssignmentChange(
+                    sheet: "Collection.cue",
+                    reference: reference,
+                    audio: audio
+                )
+            ]
+            #expect(recorder.sheetBindings == expected)
+            try await clearBinding(
+                referenceIndex,
+                through: button,
+                recorder: recorder
+            )
+            expected.append(
+                SheetAssignmentChange(
+                    sheet: "Collection.cue",
+                    reference: reference,
+                    audio: nil
+                )
+            )
+            #expect(recorder.sheetBindings == expected)
+        }
     }
 
     /// Reopen the summary and clear one bound reference through its submenu.
@@ -95,37 +98,37 @@ extension ImportMappingTracksLayoutTests {
     @Test("a partial CUE lists only its missing reference")
     func partialCueAssignments() async throws {
         let size = NSSize(width: 900, height: 180)
-        let (window, host) = hostSheet(
+        try await withHostedSheet(
             assignmentSheet(secondAssigned: false),
             recorder: MappingTrackActionRecorder(),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
-        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        let text = try await SnapshotTestSupport.recognizedText(in: png)
-            .map { $0.text.replacingOccurrences(of: " ", with: "") }
-        #expect(text.carrying("Second.wav"))
-        #expect(!text.carrying("First.wav"))
-        #expect(!text.carrying("First.flac"))
-        #expect(!text.carrying("Second.flac"))
-        let menus = SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSPopUpButton }
-        try #require(menus.count == 2, "the summary, then the missing row")
-        SnapshotTestSupport.populateMenu(menus[0])
-        let summary = try #require(menus[0].menu)
-        #expect(summary.items.allSatisfy { $0.submenu == nil })
-        #expect(
-            summary.items.contains {
-                $0.title == "Replacement.flac" && $0.isEnabled
-            }
-        )
-        try checkRefusedAudioChoices(summary)
-        SnapshotTestSupport.populateMenu(menus[1])
-        let row = try #require(menus[1].menu)
-        #expect(
-            row.items.contains { $0.title == "Second.flac" && $0.isEnabled }
-        )
-        withExtendedLifetime(window) {}
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+            let text = try await SnapshotTestSupport.recognizedText(in: png)
+                .map { $0.text.replacingOccurrences(of: " ", with: "") }
+            #expect(text.carrying("Second.wav"))
+            #expect(!text.carrying("First.wav"))
+            #expect(!text.carrying("First.flac"))
+            #expect(!text.carrying("Second.flac"))
+            let menus = SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSPopUpButton }
+            try #require(menus.count == 2, "the summary, then the missing row")
+            SnapshotTestSupport.populateMenu(menus[0])
+            let summary = try #require(menus[0].menu)
+            #expect(summary.items.allSatisfy { $0.submenu == nil })
+            #expect(
+                summary.items.contains {
+                    $0.title == "Replacement.flac" && $0.isEnabled
+                }
+            )
+            try checkRefusedAudioChoices(summary)
+            SnapshotTestSupport.populateMenu(menus[1])
+            let row = try #require(menus[1].menu)
+            #expect(
+                row.items.contains { $0.title == "Second.flac" && $0.isEnabled }
+            )
+        }
     }
 
     private func assignmentSheet(secondAssigned: Bool) -> BridgeSheetGroup {
@@ -213,36 +216,37 @@ extension ImportMappingTracksLayoutTests {
             discOptions: [1]
         )
         let size = NSSize(width: 900, height: 180)
-        let (window, host) = hostSheet(
+        try await withHostedSheet(
             group,
             recorder: MappingTrackActionRecorder(),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
-        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        let text = try await SnapshotTestSupport.recognizedText(in: png)
-            .map { $0.text.replacingOccurrences(of: " ", with: "") }
-        #expect(text.carrying("Collection.cue"))
-        #expect(!text.carrying("First.wav"))
-        #expect(!text.carrying("First.flac"))
-        #expect(!text.carrying("Second.wav"))
-        #expect(!text.carrying("Second.flac"))
-        let menus = SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSPopUpButton }
-        try #require(menus.count == 1, "the summary is the one menu")
-        #expect(menus[0].isEnabled)
-        withExtendedLifetime(window) {}
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+            let text = try await SnapshotTestSupport.recognizedText(in: png)
+                .map { $0.text.replacingOccurrences(of: " ", with: "") }
+            #expect(text.carrying("Collection.cue"))
+            #expect(!text.carrying("First.wav"))
+            #expect(!text.carrying("First.flac"))
+            #expect(!text.carrying("Second.wav"))
+            #expect(!text.carrying("Second.flac"))
+            let menus = SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSPopUpButton }
+            try #require(menus.count == 1, "the summary is the one menu")
+            #expect(menus[0].isEnabled)
+        }
     }
 }
 
 extension ImportMappingTracksLayoutTests {
     @MainActor
-    private func hostSheet(
+    private func withHostedSheet<Value>(
         _ sheet: BridgeSheetGroup,
         recorder: MappingTrackActionRecorder,
-        size: NSSize
-    ) -> (NSWindow, NSView) {
-        SnapshotTestSupport.hostInWindow(
+        size: NSSize,
+        _ body: (NSWindow, NSView) async throws -> Value
+    ) async throws -> Value {
+        try await SnapshotTestSupport.withHostedWindow(
             ImportSheetCaptionRow(
                 sheet: sheet,
                 evidence: [],
@@ -256,7 +260,9 @@ extension ImportMappingTracksLayoutTests {
                 alignment: .topLeading
             ),
             size: size
-        )
+        ) {
+            try await body($0, $1)
+        }
     }
 }
 

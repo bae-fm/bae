@@ -5,65 +5,6 @@ import Vision
 
 /// Shared AppKit hosting + snapshot helpers for the view tests.
 enum SnapshotTestSupport {
-    /// Host `view` (sized to `size`) in a borderless window past the edge of
-    /// every display. The caller keeps the returned window alive for the
-    /// test's duration and uses the host to capture pixels or send events
-    /// through the window.
-    ///
-    /// The window never becomes key. Whether a window is key follows whether
-    /// the test host is the active app, which is whatever the person at the
-    /// machine last clicked: a prominent button drew its accent in one
-    /// capture and grey in the next, and two captures a test compared pixel
-    /// for pixel differed there. A window that is never key draws the same
-    /// controls every time. First responders and sent events do not need a
-    /// key window.
-    ///
-    /// The tree's layers are set to draw at `captureScale` as soon as they
-    /// exist, so the redraw that a display at another scale needs happens
-    /// while the caller settles the view, not between two captures a test
-    /// compares pixel for pixel.
-    @MainActor
-    static func hostInWindow<V: View>(
-        _ view: V,
-        size: NSSize
-    ) -> (window: NSWindow, host: NSHostingView<V>) {
-        let bounds = NSRect(origin: .zero, size: size)
-        let host = NSHostingView(rootView: view)
-        host.frame = bounds
-        let window = SnapshotTestWindow(
-            contentRect: bounds,
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-        // Tests close these windows as well as dropping them; a window that
-        // released itself on close was released a second time by ARC.
-        window.isReleasedWhenClosed = false
-        // Ordering a window in plays its zoom-in on a thread of its own,
-        // paced by the display the window is on. Past every display there
-        // is none, so the animation never ends and its thread is never
-        // given back: a full run held more than a hundred of them, and a
-        // later dispatch waited for a thread that never came.
-        window.animationBehavior = .none
-        window.setFrameOrigin(offscreenOrigin)
-        window.contentView = host
-        window.orderFront(nil)
-        host.layoutSubtreeIfNeeded()
-        if let layer = host.layer {
-            rescale(layer)
-        }
-        return (window, host)
-    }
-
-    /// A window origin past the right edge of every display, so a hosted
-    /// view is never on the screen of the person running the suite: nothing
-    /// flashes while it runs, and their pointer never hovers a captured row.
-    @MainActor
-    private static var offscreenOrigin: NSPoint {
-        let right = NSScreen.screens.map(\.frame.maxX).max() ?? 0
-        return NSPoint(x: right + 1_000, y: 0)
-    }
-
     /// `host`'s pixels once they hold still, as PNG bytes over its window's
     /// background: the way a person sees it.
     ///
@@ -168,16 +109,18 @@ enum SnapshotTestSupport {
     @MainActor
     static func bitmap(of host: NSView, size: NSSize) throws -> NSBitmapImageRep
     {
-        let bounds = NSRect(origin: .zero, size: size)
-        let layer = try #require(host.layer)
-        rescale(layer)
-        host.displayIfNeeded()
-        let matched = try #require(
-            host.bitmapImageRepForCachingDisplay(in: bounds)
-        )
-        let bitmap = try bitmap(size: size, in: matched.colorSpace)
-        host.cacheDisplay(in: bounds, to: bitmap)
-        return bitmap
+        try autoreleasepool {
+            let bounds = NSRect(origin: .zero, size: size)
+            let layer = try #require(host.layer)
+            rescale(layer)
+            host.displayIfNeeded()
+            let matched = try #require(
+                host.bitmapImageRepForCachingDisplay(in: bounds)
+            )
+            let bitmap = try bitmap(size: size, in: matched.colorSpace)
+            host.cacheDisplay(in: bounds, to: bitmap)
+            return bitmap
+        }
     }
 
     /// Have every layer below `layer` that draws itself draw at
@@ -188,7 +131,7 @@ enum SnapshotTestSupport {
     /// replaced. A layer handed an image keeps it: asking it to display
     /// again replaces the image with an empty backing store, and a glyph
     /// the row had drawn was gone from the capture.
-    private static func rescale(_ layer: CALayer) {
+    static func rescale(_ layer: CALayer) {
         if !holdsImage(layer), layer.contentsScale != CGFloat(captureScale) {
             layer.contentsScale = CGFloat(captureScale)
             layer.setNeedsDisplay()
@@ -263,8 +206,10 @@ enum SnapshotTestSupport {
         line: UInt = #line
     ) async throws {
         try await Wait.untilSteady(file: file, line: line) {
-            host.layoutSubtreeIfNeeded()
-            return descendants(of: host).map(\.frame)
+            autoreleasepool {
+                host.layoutSubtreeIfNeeded()
+                return descendants(of: host).map(\.frame)
+            }
         }
     }
 
@@ -358,26 +303,4 @@ extension Collection<String> {
     func carrying(_ text: String) -> Bool {
         contains { $0.contains(text) }
     }
-}
-
-private final class SnapshotTestWindow: NSWindow {
-    /// A sheet — a confirmation dialog, an alert — brings the window it is
-    /// on onto a display, sliding it in from past the edge, and shows
-    /// itself there. Both stay transparent to the eye and to the pointer:
-    /// the test presses the sheet's buttons itself, and a capture draws the
-    /// views, not the window.
-    override func beginSheet(
-        _ sheetWindow: NSWindow,
-        completionHandler handler: ((NSApplication.ModalResponse) -> Void)? =
-            nil
-    ) {
-        for window in [self, sheetWindow] {
-            window.alphaValue = 0
-            window.ignoresMouseEvents = true
-        }
-        super.beginSheet(sheetWindow, completionHandler: handler)
-    }
-
-    override var canBecomeKey: Bool { false }
-    override var canBecomeMain: Bool { false }
 }

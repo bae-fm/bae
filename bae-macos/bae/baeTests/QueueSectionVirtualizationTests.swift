@@ -17,7 +17,7 @@ struct QueueSectionVirtualizationTests {
     func loadsOnlyNearTheViewport() async throws {
         let recorder = LoadRecorder()
         let size = NSSize(width: 420, height: 565)
-        let hosted = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ScrollView {
                 QueueSection(
                     title: nil,
@@ -43,16 +43,18 @@ struct QueueSectionVirtualizationTests {
             .coordinateSpace(name: "queuePane")
             .environment(ImageStore.stub()),
             size: size
-        )
-        defer { hosted.window.close() }
-        try await SnapshotTestSupport.settle(hosted.host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
 
-        // 565pt of 62pt rows is about nine visible rows, each fetching the
-        // 100-row page around itself, and the lazy stack prepares a modest
-        // buffer past the viewport. 600 leaves room for that buffer while
-        // still failing a mount of the whole lane.
-        #expect(!recorder.requests.isEmpty)
-        #expect(recorder.requests.allSatisfy { $0.offset + $0.limit <= 600 })
+            // 565pt of 62pt rows is about nine visible rows, each fetching the
+            // 100-row page around itself, and the lazy stack prepares a modest
+            // buffer past the viewport. 600 leaves room for that buffer while
+            // still failing a mount of the whole lane.
+            #expect(!recorder.requests.isEmpty)
+            #expect(
+                recorder.requests.allSatisfy { $0.offset + $0.limit <= 600 }
+            )
+        }
     }
 
     /// Every range the hosted section asked the store for.

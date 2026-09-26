@@ -14,19 +14,19 @@ final class FindOnlinePaneTests: XCTestCase {
     /// up yet offers the Identify button and the collapsed search alone.
     func testAPaneWithNothingToOfferHasNoResultsScroller() async throws {
         let size = NSSize(width: 900, height: 600)
-        let (window, host) = FindOnlineRendering.host(
+        try await FindOnlineRendering.withHosted(
             ImportSearchPane.preview(state: PreviewData.searchStateIdle)
                 .importPreviewEnvironment(),
             size: size
-        )
+        ) { _, host in
 
-        try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settle(host)
 
-        XCTAssertFalse(
-            SnapshotTestSupport.descendants(of: host)
-                .contains { $0 is NSScrollView }
-        )
-        withExtendedLifetime(window) {}
+            XCTAssertFalse(
+                SnapshotTestSupport.descendants(of: host)
+                    .contains { $0 is NSScrollView }
+            )
+        }
     }
 
     /// A failure with no band to hang a capsule's Retry off — a folder that
@@ -435,33 +435,35 @@ struct FindOnlineFormFocusTests {
     @Test("each new focus request moves the cursor into the first field")
     func eachRequestMovesTheCursor() async throws {
         let size = NSSize(width: 660, height: 60)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             form(focusRequest: 1).frame(width: size.width, height: size.height),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
 
-        let artist = try #require(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSTextField }
-                .first { $0.placeholderString == String(localized: "Artist") }
-        )
-        #expect(artist.currentEditor() === window.firstResponder)
+            let artist = try #require(
+                SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? NSTextField }
+                    .first {
+                        $0.placeholderString == String(localized: "Artist")
+                    }
+            )
+            #expect(artist.currentEditor() === window.firstResponder)
 
-        _ = window.makeFirstResponder(nil)
-        try await SnapshotTestSupport.settle(host)
-        #expect(artist.currentEditor() == nil)
+            HostedInput.focus(nil, in: window)
+            try await SnapshotTestSupport.settle(host)
+            #expect(artist.currentEditor() == nil)
 
-        host.rootView = form(focusRequest: 1)
-            .frame(width: size.width, height: size.height)
-        try await SnapshotTestSupport.settle(host)
-        #expect(artist.currentEditor() == nil)
+            host.rootView = form(focusRequest: 1)
+                .frame(width: size.width, height: size.height)
+            try await SnapshotTestSupport.settle(host)
+            #expect(artist.currentEditor() == nil)
 
-        host.rootView = form(focusRequest: 2)
-            .frame(width: size.width, height: size.height)
-        try await SnapshotTestSupport.settle(host)
-        #expect(artist.currentEditor() === window.firstResponder)
-        withExtendedLifetime(window) {}
+            host.rootView = form(focusRequest: 2)
+                .frame(width: size.width, height: size.height)
+            try await SnapshotTestSupport.settle(host)
+            #expect(artist.currentEditor() === window.firstResponder)
+        }
     }
 
     private func form(focusRequest: Int) -> ImportSearchFormView {
@@ -646,19 +648,19 @@ struct IdentifierBandTests {
     @Test("the matches landed so far list under the band")
     func landedMatchesListUnderTheBand() async throws {
         let size = NSSize(width: 900, height: 600)
-        let (window, host) = FindOnlineRendering.host(
+        try await FindOnlineRendering.withHosted(
             ImportSearchPane.preview(
                 state: PreviewData.searchStateTriangulating
             )
             .importPreviewEnvironment(),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
-        #expect(
-            SnapshotTestSupport.descendants(of: host)
-                .contains { $0 is NSScrollView }
-        )
-        withExtendedLifetime(window) {}
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            #expect(
+                SnapshotTestSupport.descendants(of: host)
+                    .contains { $0 is NSScrollView }
+            )
+        }
     }
 
     /// A catalog number is drawn where it stands: filled, with a capsule per
@@ -899,21 +901,14 @@ enum FindOnlineRendering {
             width: size.width * scale,
             height: size.height * scale
         )
-        let (window, host) = host(
+        let png = try await withHosted(
             view.windowBackground()
                 .frame(width: size.width, height: size.height)
                 .scaleEffect(scale),
             size: captureSize
-        )
-        defer {
-            window.contentView = nil
-            window.close()
+        ) { _, host in
+            try await SnapshotTestSupport.capturePNG(host, size: captureSize)
         }
-        try await SnapshotTestSupport.settle(host)
-        let png = try await SnapshotTestSupport.capturePNG(
-            host,
-            size: captureSize
-        )
         return try await SnapshotTestSupport.recognizedText(in: png).map(\.text)
     }
 
@@ -921,21 +916,22 @@ enum FindOnlineRendering {
         _ view: some View,
         size: NSSize = NSSize(width: 380, height: 220)
     ) async throws -> Data {
-        let (window, host) = host(view.windowBackground(), size: size)
-        defer {
-            window.contentView = nil
-            window.close()
+        try await withHosted(view.windowBackground(), size: size) { _, host in
+            try await SnapshotTestSupport.capturePNG(host, size: size)
         }
-        return try await SnapshotTestSupport.capturePNG(host, size: size)
     }
 
-    static func host<V: View>(
-        _ view: V,
-        size: NSSize
-    ) -> (window: NSWindow, host: NSHostingView<some View>) {
-        SnapshotTestSupport.hostInWindow(
+    /// `view` framed to `size` and hosted for the length of `body`.
+    static func withHosted<Value>(
+        _ view: some View,
+        size: NSSize,
+        _ body: (NSWindow, NSView) async throws -> Value
+    ) async throws -> Value {
+        try await SnapshotTestSupport.withHostedWindow(
             view.frame(width: size.width, height: size.height),
             size: size
-        )
+        ) {
+            try await body($0, $1)
+        }
     }
 }

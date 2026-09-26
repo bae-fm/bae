@@ -59,35 +59,42 @@ struct ImportedRowViewTests {
         undescribed.release.records = []
         #expect(try await pixels(of: described) != pixels(of: undescribed))
         #expect(
-            hostedRow(described).fittingSize
-                == hostedRow(undescribed).fittingSize,
+            try await fittingSize(of: described)
+                == fittingSize(of: undescribed),
             "a hidden arrow still holds its place"
         )
     }
 
     private static let rowSize = NSSize(width: 340, height: 80)
 
+    /// `row` hosted for the length of `body`.
     @MainActor
-    private func hostedRow(_ row: BridgeImportedRow) -> NSView {
-        SnapshotTestSupport.hostInWindow(
+    private func withHostedRow<Value>(
+        _ row: BridgeImportedRow,
+        _ body: (NSView) async throws -> Value
+    ) async throws -> Value {
+        try await SnapshotTestSupport.withHostedWindow(
             ImportedRowView(row: row, uploadObservation: nil, onReveal: {})
                 .environment(ImageStore.stub())
                 .preferredColorScheme(.light)
                 .background(.white)
                 .frame(width: Self.rowSize.width),
             size: Self.rowSize
-        )
-        .host
+        ) { _, host in
+            try await body(host)
+        }
+    }
+
+    @MainActor
+    private func fittingSize(of row: BridgeImportedRow) async throws -> NSSize {
+        try await withHostedRow(row) { $0.fittingSize }
     }
 
     @MainActor
     private func pixels(of row: BridgeImportedRow) async throws -> Data {
-        let host = hostedRow(row)
-        try await SnapshotTestSupport.settle(host)
-        return try await SnapshotTestSupport.capturePNG(
-            host,
-            size: Self.rowSize
-        )
+        try await withHostedRow(row) { host in
+            try await SnapshotTestSupport.capturePNG(host, size: Self.rowSize)
+        }
     }
 
     @MainActor

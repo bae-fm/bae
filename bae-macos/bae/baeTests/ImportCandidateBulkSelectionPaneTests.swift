@@ -16,29 +16,34 @@ struct ImportCandidateBulkSelectionPaneTests {
     /// axes, so a pane far wider than the card doesn't strand it in a corner.
     @Test("the card is centered in the pane at its own width")
     func theCardIsCenteredInThePane() async throws {
-        let card = try await Self.hostCard()
-        defer { Self.dismiss(card.window) }
-        let pane = Self.hostPane(
-            configStore: PreviewData.connectedConfigStore()
-        )
-        defer { Self.dismiss(pane.window) }
-        try await SnapshotTestSupport.settle(pane.host)
-
-        #expect(card.size.width == ImportCandidateBulkSelectionCard.width)
         // A storage checkbox is a real AppKit button, so where one lands in the
         // pane, less where it sits inside the card, is the card's own origin.
-        let inCard = try #require(Self.leadingCheckbox(in: card.host))
-        let inPane = try #require(Self.leadingCheckbox(in: pane.host))
+        let cardSize = Self.cardSize(showsStorageChoices: true)
+        let inCard = try await SnapshotTestSupport.withHostedWindow(
+            Self.card(showsStorageChoices: true),
+            size: cardSize
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            return try #require(Self.leadingCheckbox(in: host))
+        }
+        let inPane = try await Self.withHostedPane(
+            configStore: PreviewData.connectedConfigStore()
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            return try #require(Self.leadingCheckbox(in: host))
+        }
+
+        #expect(cardSize.width == ImportCandidateBulkSelectionCard.width)
         let origin = CGPoint(
             x: inPane.minX - inCard.minX,
             y: inPane.minY - inCard.minY
         )
         #expect(
-            abs(origin.x - (Self.paneSize.width - card.size.width) / 2) <= 1,
+            abs(origin.x - (Self.paneSize.width - cardSize.width) / 2) <= 1,
             "the card's leading edge is at \(origin.x)"
         )
         #expect(
-            abs(origin.y - (Self.paneSize.height - card.size.height) / 2) <= 1,
+            abs(origin.y - (Self.paneSize.height - cardSize.height) / 2) <= 1,
             "the card's top edge is at \(origin.y)"
         )
     }
@@ -114,18 +119,20 @@ struct ImportCandidateBulkSelectionPaneTests {
     /// lined up with the rows' names.
     @Test("the storage choices are drawn only for a library with a cloud home")
     func theStorageChoicesFollowTheCloudHome() async throws {
-        let local = Self.hostPane(configStore: PreviewData.configStore())
-        defer { Self.dismiss(local.window) }
-        try await SnapshotTestSupport.settle(local.host)
-        #expect(Self.checkboxes(in: local.host).isEmpty)
+        try await Self.withHostedPane(
+            configStore: PreviewData.configStore()
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            #expect(Self.checkboxes(in: host).isEmpty)
+        }
 
-        let cloud = Self.hostPane(
+        let leading = try await Self.withHostedPane(
             configStore: PreviewData.connectedConfigStore()
-        )
-        defer { Self.dismiss(cloud.window) }
-        try await SnapshotTestSupport.settle(cloud.host)
-        #expect(Self.checkboxes(in: cloud.host).count == 2)
-        let leading = try #require(Self.leadingCheckbox(in: cloud.host))
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            #expect(Self.checkboxes(in: host).count == 2)
+            return try #require(Self.leadingCheckbox(in: host))
+        }
         let name =
             (Self.paneSize.width - ImportCandidateBulkSelectionCard.width) / 2
             + ImportCandidateBulkSelectionCard.padding
@@ -196,12 +203,13 @@ struct ImportCandidateBulkSelectionPaneTests {
 
     /// The pane over the two selected folders, at a size far larger than the
     /// card — which is what its centering has to answer for.
-    private static func hostPane(
-        configStore: ConfigStore
-    ) -> (window: NSWindow, host: NSHostingView<AnyView>) {
+    private static func withHostedPane<Value>(
+        configStore: ConfigStore,
+        _ body: (NSWindow, NSHostingView<AnyView>) async throws -> Value
+    ) async throws -> Value {
         let uiStore = UiStore()
         uiStore.setFolderCandidateSelection(selectedKeys)
-        return SnapshotTestSupport.hostInWindow(
+        return try await SnapshotTestSupport.withHostedWindow(
             AnyView(
                 ImportCandidateBulkSelectionPane(
                     storageCloud: .constant(true),
@@ -216,29 +224,9 @@ struct ImportCandidateBulkSelectionPaneTests {
                 .frame(width: paneSize.width, height: paneSize.height)
             ),
             size: paneSize
-        )
-    }
-
-    /// The card hosted on its own: exactly the size it asks for, so where a
-    /// control lands in that host is where it sits inside the card.
-    private struct HostedCard {
-        let window: NSWindow
-        let host: NSView
-        let size: NSSize
-    }
-
-    private static func hostCard() async throws -> HostedCard {
-        let size = cardSize(showsStorageChoices: true)
-        let hosted = SnapshotTestSupport.hostInWindow(
-            card(showsStorageChoices: true),
-            size: size
-        )
-        try await SnapshotTestSupport.settle(hosted.host)
-        return HostedCard(
-            window: hosted.window,
-            host: hosted.host,
-            size: size
-        )
+        ) {
+            try await body($0, $1)
+        }
     }
 
     private static func cardSize(showsStorageChoices: Bool) -> NSSize {
@@ -259,8 +247,4 @@ struct ImportCandidateBulkSelectionPaneTests {
             .min { $0.minX < $1.minX }
     }
 
-    private static func dismiss(_ window: NSWindow) {
-        window.contentView = nil
-        window.orderOut(nil)
-    }
 }

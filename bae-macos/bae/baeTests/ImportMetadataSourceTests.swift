@@ -435,47 +435,46 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     {
         NSApplication.shared.finishLaunching()
         let recorder = MetadataCardActionRecorder()
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             metadataHeader(
                 provenance: nil,
                 draftIsBlank: true,
                 recorder: recorder
             ),
             size: NSSize(width: 900, height: 900)
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
 
-        let fields = SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSTextField }
-            .filter(\.isEditable)
-        let cover = try coverFrame(in: host)
-        XCTAssertEqual(fields.count, 8)
-        for placeholder in [
-            String(localized: "Album title"), String(localized: "Year"),
-        ] {
-            let field = try XCTUnwrap(
-                fields.first { $0.placeholderString == placeholder }
-            )
-            let frame = field.convert(field.bounds, to: host)
-            XCTAssertGreaterThanOrEqual(frame.minX, cover.maxX)
-            XCTAssertLessThan(frame.minY, cover.maxY)
-            XCTAssertGreaterThan(frame.maxY, cover.minY)
+            let fields = SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTextField }
+                .filter(\.isEditable)
+            let cover = try coverFrame(in: host)
+            XCTAssertEqual(fields.count, 8)
+            for placeholder in [
+                String(localized: "Album title"), String(localized: "Year"),
+            ] {
+                let field = try XCTUnwrap(
+                    fields.first { $0.placeholderString == placeholder }
+                )
+                let frame = field.convert(field.bounds, to: host)
+                XCTAssertGreaterThanOrEqual(frame.minX, cover.maxX)
+                XCTAssertLessThan(frame.minY, cover.maxY)
+                XCTAssertGreaterThan(frame.maxY, cover.minY)
+            }
+            // The empty mark is an attributed placeholder: it carries its own
+            // colour and the field's plain font.
+            let releaseFields = fields.filter {
+                $0.placeholderAttributedString?.string == "\u{2014}"
+            }
+            XCTAssertEqual(releaseFields.count, 6)
+            for field in releaseFields {
+                let frame = field.convert(field.bounds, to: host)
+                XCTAssertTrue(
+                    host.isFlipped
+                        ? frame.minY >= cover.maxY : frame.maxY <= cover.minY
+                )
+            }
         }
-        // The empty mark is an attributed placeholder: it carries its own
-        // colour and the field's plain font.
-        let releaseFields = fields.filter {
-            $0.placeholderAttributedString?.string == "\u{2014}"
-        }
-        XCTAssertEqual(releaseFields.count, 6)
-        for field in releaseFields {
-            let frame = field.convert(field.bounds, to: host)
-            XCTAssertTrue(
-                host.isFlipped
-                    ? frame.minY >= cover.maxY : frame.maxY <= cover.minY
-            )
-        }
-        window.contentView = nil
-        window.orderOut(nil)
     }
 
     /// The pressing fields are part of the card in every state — there is no
@@ -483,26 +482,25 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     func testReleaseFieldsStayInViewWithTheAlbumIdentity() async throws {
         NSApplication.shared.finishLaunching()
         let recorder = MetadataCardActionRecorder()
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             metadataHeader(
                 provenance: nil,
                 draftIsBlank: false,
                 recorder: recorder
             ),
             size: NSSize(width: 900, height: 620)
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
 
-        let text = editableTextValues(in: host)
-        let values = PreviewData.confirmEditValues
-        XCTAssertTrue(text.contains(values.albumTitle))
-        XCTAssertTrue(text.contains(values.albumYear))
-        XCTAssertTrue(text.contains(values.pressing.year))
-        XCTAssertTrue(text.contains(values.pressing.label))
-        XCTAssertTrue(text.contains(values.pressing.catalogNumber))
+            let text = editableTextValues(in: host)
+            let values = PreviewData.confirmEditValues
+            XCTAssertTrue(text.contains(values.albumTitle))
+            XCTAssertTrue(text.contains(values.albumYear))
+            XCTAssertTrue(text.contains(values.pressing.year))
+            XCTAssertTrue(text.contains(values.pressing.label))
+            XCTAssertTrue(text.contains(values.pressing.catalogNumber))
 
-        window.contentView = nil
-        window.orderOut(nil)
+        }
     }
 
     private func assertCardLayout(
@@ -510,40 +508,39 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     ) async throws {
         let recorder = MetadataCardActionRecorder()
         let size = NSSize(width: 900, height: 520)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             metadataHeader(
                 provenance: provenance,
                 draftIsBlank: false,
                 recorder: recorder
             ),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
-        let (identify, search) = try releaseEntryFrames(in: host)
-        let menu = try menuFrame(in: host)
-        let cover = try coverFrame(in: host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let (identify, search) = try releaseEntryFrames(in: host)
+            let menu = try menuFrame(in: host)
+            let cover = try coverFrame(in: host)
 
-        // The card's actions have its first row to themselves: none shares a
-        // band with the cover, and they read left to right — the entry that
-        // asks for a run, the entry that asks for nothing, then the menu of
-        // what rewrites the draft.
-        XCTAssertFalse(identify.intersects(cover))
-        XCTAssertFalse(search.intersects(cover))
-        XCTAssertFalse(menu.intersects(cover))
-        XCTAssertTrue(
-            identify.maxY <= cover.minY || identify.minY >= cover.maxY
-        )
-        XCTAssertLessThan(identify.maxX, search.minX)
-        XCTAssertLessThan(search.maxX, menu.minX)
-        try click(at: identify.center, in: host, window: window)
-        XCTAssertEqual(recorder.identifyCount, 1)
-        XCTAssertEqual(recorder.searchCount, 0)
-        try click(at: search.center, in: host, window: window)
-        XCTAssertEqual(recorder.identifyCount, 1)
-        XCTAssertEqual(recorder.searchCount, 1)
+            // The card's actions have its first row to themselves: none shares a
+            // band with the cover, and they read left to right — the entry that
+            // asks for a run, the entry that asks for nothing, then the menu of
+            // what rewrites the draft.
+            XCTAssertFalse(identify.intersects(cover))
+            XCTAssertFalse(search.intersects(cover))
+            XCTAssertFalse(menu.intersects(cover))
+            XCTAssertTrue(
+                identify.maxY <= cover.minY || identify.minY >= cover.maxY
+            )
+            XCTAssertLessThan(identify.maxX, search.minX)
+            XCTAssertLessThan(search.maxX, menu.minX)
+            try HostedInput.click(at: identify.center, in: host)
+            XCTAssertEqual(recorder.identifyCount, 1)
+            XCTAssertEqual(recorder.searchCount, 0)
+            try HostedInput.click(at: search.center, in: host)
+            XCTAssertEqual(recorder.identifyCount, 1)
+            XCTAssertEqual(recorder.searchCount, 1)
 
-        window.contentView = nil
-        window.orderOut(nil)
+        }
     }
 
     private func metadataHeader(
@@ -643,97 +640,67 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             $0.nextKeyView != nil || $0.previousKeyView != nil
         }
     }
-
-    private func click(
-        at point: NSPoint,
-        in host: NSView,
-        window: NSWindow
-    ) throws {
-        let windowPoint = host.convert(point, to: nil)
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            let event = try XCTUnwrap(
-                NSEvent.mouseEvent(
-                    with: type,
-                    location: windowPoint,
-                    modifierFlags: [],
-                    timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: window.windowNumber,
-                    context: nil,
-                    eventNumber: 0,
-                    clickCount: 1,
-                    pressure: type == .leftMouseDown ? 1 : 0
-                )
-            )
-            NSApplication.shared.sendEvent(event)
-        }
-    }
 }
 
 extension ImportMetadataCardLayoutTests {
     func testResetConfirmationAndCancellation() async throws {
         let recorder = MetadataCardActionRecorder()
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             metadataHeader(
                 provenance: nil,
                 draftIsBlank: false,
                 recorder: recorder
             ),
             size: NSSize(width: 900, height: 620)
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
-        }
-        try await SnapshotTestSupport.settle(host)
-        let menu = try sourceMenu(in: host)
-        let resetIndex = menu.indexOfItem(withTitle: "Reset")
-        XCTAssertGreaterThanOrEqual(resetIndex, 0)
-        guard resetIndex >= 0 else { return }
-        for confirmation in ["Cancel", "Reset"] {
-            menu.performActionForItem(at: resetIndex)
+        ) { window, host in
             try await SnapshotTestSupport.settle(host)
-            XCTAssertEqual(recorder.resetCount, 0)
-            let buttons = NSApplication.shared.windows
-                .filter(\.isVisible)
-                .flatMap { window in
-                    window.contentView.map {
-                        SnapshotTestSupport.descendants(of: $0)
-                            .compactMap { $0 as? NSButton }
-                    } ?? []
-                }
-            let button = try XCTUnwrap(
-                buttons.first { $0.title == confirmation },
-                "Confirmation buttons: \(buttons.map(\.title))"
-            )
-            button.performClick(nil)
-            try await SnapshotTestSupport.settle(host)
+            let menu = try sourceMenu(in: host)
+            let resetIndex = menu.indexOfItem(withTitle: "Reset")
+            XCTAssertGreaterThanOrEqual(resetIndex, 0)
+            guard resetIndex >= 0 else { return }
+            for confirmation in ["Cancel", "Reset"] {
+                menu.performActionForItem(at: resetIndex)
+                try await SnapshotTestSupport.settle(host)
+                XCTAssertEqual(recorder.resetCount, 0)
+                let buttons = NSApplication.shared.windows
+                    .filter(\.isVisible)
+                    .flatMap { window in
+                        window.contentView.map {
+                            SnapshotTestSupport.descendants(of: $0)
+                                .compactMap { $0 as? NSButton }
+                        } ?? []
+                    }
+                let button = try XCTUnwrap(
+                    buttons.first { $0.title == confirmation },
+                    "Confirmation buttons: \(buttons.map(\.title))"
+                )
+                HostedInput.press(button)
+                try await SnapshotTestSupport.settle(host)
+            }
+            XCTAssertEqual(recorder.resetCount, 1)
+            XCTAssertEqual(recorder.tagsCount, 0)
+            XCTAssertEqual(recorder.clearCount, 0)
         }
-        XCTAssertEqual(recorder.resetCount, 1)
-        XCTAssertEqual(recorder.tagsCount, 0)
-        XCTAssertEqual(recorder.clearCount, 0)
     }
 
     func testMenuOffersFullResetAlongsideMetadataCommands() async throws {
         let recorder = MetadataCardActionRecorder()
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             metadataHeader(
                 provenance: nil,
                 draftIsBlank: false,
                 recorder: recorder
             ),
             size: NSSize(width: 900, height: 620)
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
-        }
-        try await SnapshotTestSupport.settle(host)
-        let menu = try sourceMenu(in: host)
-        for title in ["Reset", "Reset to file metadata", "Clear metadata"] {
-            XCTAssertNotNil(
-                menu.item(withTitle: title),
-                "Missing \(title); menu contains \(menu.items.map(\.title))"
-            )
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let menu = try sourceMenu(in: host)
+            for title in ["Reset", "Reset to file metadata", "Clear metadata"] {
+                XCTAssertNotNil(
+                    menu.item(withTitle: title),
+                    "Missing \(title); menu contains \(menu.items.map(\.title))"
+                )
+            }
         }
     }
 
@@ -752,53 +719,51 @@ extension ImportMetadataCardLayoutTests {
             PreviewData.mappingCandidate.files.sourceAudio
         )
         let size = NSSize(width: 240, height: 40)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
                 .frame(width: size.width, height: size.height)
                 .importPreviewEnvironment(),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
 
-        XCTAssertTrue(focusFrames(in: host).isEmpty)
+            XCTAssertTrue(focusFrames(in: host).isEmpty)
 
-        window.contentView = nil
-        window.orderOut(nil)
+        }
     }
 
     func testAlbumIdentityTitleOutsizesItsYear() async throws {
         NSApplication.shared.finishLaunching()
         let recorder = MetadataCardActionRecorder()
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             metadataHeader(
                 provenance: nil,
                 draftIsBlank: false,
                 recorder: recorder
             ),
             size: NSSize(width: 900, height: 620)
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
 
-        let textFields = SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSTextField }
-        let title = try XCTUnwrap(
-            textFields.first {
-                $0.stringValue == PreviewData.confirmEditValues.albumTitle
-            }
-        )
-        let year = try XCTUnwrap(
-            textFields.first {
-                $0.stringValue == PreviewData.confirmEditValues.albumYear
-            }
-        )
+            let textFields = SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTextField }
+            let title = try XCTUnwrap(
+                textFields.first {
+                    $0.stringValue == PreviewData.confirmEditValues.albumTitle
+                }
+            )
+            let year = try XCTUnwrap(
+                textFields.first {
+                    $0.stringValue == PreviewData.confirmEditValues.albumYear
+                }
+            )
 
-        XCTAssertGreaterThan(
-            try XCTUnwrap(title.font).pointSize,
-            try XCTUnwrap(year.font).pointSize
-        )
+            XCTAssertGreaterThan(
+                try XCTUnwrap(title.font).pointSize,
+                try XCTUnwrap(year.font).pointSize
+            )
 
-        window.contentView = nil
-        window.orderOut(nil)
+        }
     }
 
     /// A draft already read from a release keeps both ways back to Find
@@ -806,7 +771,7 @@ extension ImportMetadataCardLayoutTests {
     /// and searching by name is how they go looking for a different one.
     func testMatchedReleaseKeepsTheCardActions() async throws {
         let recorder = MetadataCardActionRecorder()
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             metadataHeader(
                 provenance: .externalRelease(
                     record: BridgeMetadataRef(
@@ -819,16 +784,15 @@ extension ImportMetadataCardLayoutTests {
                 recorder: recorder
             ),
             size: NSSize(width: 900, height: 520)
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
 
-        XCTAssertEqual(
-            focusFrames(in: host).filter { $0.height >= 20 }.count,
-            2
-        )
-        XCTAssertNoThrow(try menuFrame(in: host))
-        window.contentView = nil
-        window.orderOut(nil)
+            XCTAssertEqual(
+                focusFrames(in: host).filter { $0.height >= 20 }.count,
+                2
+            )
+            XCTAssertNoThrow(try menuFrame(in: host))
+        }
     }
 
     func testSeveralSourceAudioProfilesReadAsVarious() {

@@ -95,7 +95,7 @@ struct ReleaseSelectionFailureTests {
         var selected: Pressing?
         let size = NSSize(width: 900, height: 620)
         // Render the production result list and invoke the failed row's Retry.
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ReleaseGroupListView(
                 groups: state.identifiedGroups,
                 isImporting: false,
@@ -110,22 +110,24 @@ struct ReleaseSelectionFailureTests {
             .background(Theme.background)
             .frame(width: size.width, height: size.height),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { window, host in
+            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+            let observations = try await SnapshotTestSupport.recognizedText(
+                in: png
+            )
+            try verifyFailure(
+                observations,
+                message: message,
+                pressing: pressing
+            )
+            try clickControl(
+                String(localized: "Retry"),
+                observations: observations,
+                window: window,
+                size: size
+            )
+            #expect(selected?.provenance == pressing.provenance)
         }
-        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        let observations = try await SnapshotTestSupport.recognizedText(in: png)
-        try verifyFailure(observations, message: message, pressing: pressing)
-        try clickControl(
-            String(localized: "Retry"),
-            observations: observations,
-            window: window,
-            host: host,
-            size: size
-        )
-        #expect(selected?.provenance == pressing.provenance)
     }
 
     @Test(
@@ -148,25 +150,8 @@ struct ReleaseSelectionFailureTests {
             pressing: pressing,
             error: .Diagnostic(category: .internal, detail: diagnostic)
         )
-        let clipboard = NSPasteboard.general
-        let previous = (clipboard.pasteboardItems ?? [])
-            .map { item in
-                item.types.compactMap {
-                    type -> (NSPasteboard.PasteboardType, Data)? in
-                    item.data(forType: type).map { (type, $0) }
-                }
-            }
-        defer {
-            clipboard.clearContents()
-            let items = previous.map { values in
-                let item = NSPasteboardItem()
-                for (type, data) in values { item.setData(data, forType: type) }
-                return item
-            }
-            if !items.isEmpty { #expect(clipboard.writeObjects(items)) }
-        }
         let size = NSSize(width: 1100, height: 680)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ReleaseGroupListView(
                 groups: state.identifiedGroups,
                 isImporting: false,
@@ -181,25 +166,29 @@ struct ReleaseSelectionFailureTests {
             .background(Theme.background)
             .frame(width: size.width, height: size.height),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+            let observations = try await SnapshotTestSupport.recognizedText(
+                in: png
+            )
+            #expect(
+                observations.map(\.text).carrying("Unsupported artwork input")
+            )
+            #expect(
+                observations.map(\.text).carrying(String(localized: "Retry"))
+            )
+            #expect(observations.map(\.text).carrying(failure.error.line))
+            try preservingClipboard { clipboard in
+                try clickControl(
+                    String(localized: "Copy details"),
+                    observations: observations,
+                    window: window,
+                    size: size
+                )
+                #expect(clipboard.string(forType: .string) == diagnostic)
+            }
         }
-        try await SnapshotTestSupport.settle(host)
-        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        let observations = try await SnapshotTestSupport.recognizedText(in: png)
-        #expect(observations.map(\.text).carrying("Unsupported artwork input"))
-        #expect(observations.map(\.text).carrying(String(localized: "Retry")))
-        #expect(observations.map(\.text).carrying(failure.error.line))
-        try clickControl(
-            String(localized: "Copy details"),
-            observations: observations,
-            window: window,
-            host: host,
-            size: size
-        )
-        #expect(clipboard.string(forType: .string) == diagnostic)
     }
 
     @Test("expected release failures show Retry without diagnostic controls")
@@ -217,7 +206,7 @@ struct ReleaseSelectionFailureTests {
         )
         #expect(failure.error.detail == nil)
         let size = NSSize(width: 1100, height: 680)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ReleaseGroupListView(
                 groups: state.identifiedGroups,
                 isImporting: false,
@@ -232,17 +221,14 @@ struct ReleaseSelectionFailureTests {
             .background(Theme.background)
             .frame(width: size.width, height: size.height),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { _, host in
+            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+            let lines = try await SnapshotTestSupport.recognizedText(in: png)
+                .map(\.text)
+            #expect(lines.carrying(String(localized: "Retry")))
+            #expect(!lines.carrying(String(localized: "Copy details")))
+            #expect(!lines.carrying("Provider returned 404"))
         }
-        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        let lines = try await SnapshotTestSupport.recognizedText(in: png)
-            .map(\.text)
-        #expect(lines.carrying(String(localized: "Retry")))
-        #expect(!lines.carrying(String(localized: "Copy details")))
-        #expect(!lines.carrying("Provider returned 404"))
     }
 
 }
@@ -296,7 +282,6 @@ extension ReleaseSelectionFailureTests {
         _ label: String,
         observations: [SnapshotTestSupport.RecognizedLine],
         window: NSWindow,
-        host: NSView,
         size: NSSize
     ) throws {
         let retry = try #require(
@@ -308,32 +293,31 @@ extension ReleaseSelectionFailureTests {
             x: retry.boundingBox.midX * size.width,
             y: retry.boundingBox.midY * size.height
         )
-        if let control = SnapshotTestSupport.descendants(of: host)
-            .compactMap({ $0 as? NSControl })
-            .first(where: {
-                $0.isEnabled && $0.convert($0.bounds, to: nil).contains(point)
-            })
-        {
-            control.performClick(nil)
-        }
-        else {
-            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-                window.sendEvent(
-                    try #require(
-                        NSEvent.mouseEvent(
-                            with: type,
-                            location: point,
-                            modifierFlags: [],
-                            timestamp: ProcessInfo.processInfo.systemUptime,
-                            windowNumber: window.windowNumber,
-                            context: nil,
-                            eventNumber: 0,
-                            clickCount: 1,
-                            pressure: type == .leftMouseDown ? 1 : 0
-                        )
-                    )
-                )
+        try HostedInput.press(at: point, in: window)
+    }
+
+    /// Run `body` against the general pasteboard, and put back what the
+    /// person running the suite had on it.
+    private func preservingClipboard(
+        _ body: (NSPasteboard) throws -> Void
+    ) throws {
+        let clipboard = NSPasteboard.general
+        let previous = (clipboard.pasteboardItems ?? [])
+            .map { item in
+                item.types.compactMap {
+                    type -> (NSPasteboard.PasteboardType, Data)? in
+                    item.data(forType: type).map { (type, $0) }
+                }
             }
+        defer {
+            clipboard.clearContents()
+            let items = previous.map { values in
+                let item = NSPasteboardItem()
+                for (type, data) in values { item.setData(data, forType: type) }
+                return item
+            }
+            if !items.isEmpty { #expect(clipboard.writeObjects(items)) }
         }
+        try body(clipboard)
     }
 }

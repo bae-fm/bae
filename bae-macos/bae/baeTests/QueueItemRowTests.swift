@@ -25,7 +25,7 @@ struct QueueItemRowTests {
             )
         )
         let size = NSSize(width: 420, height: 90)
-        let hosted = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             QueueItemRow(
                 item: item,
                 isHovered: false,
@@ -38,21 +38,21 @@ struct QueueItemRowTests {
             .padding(8)
             .background(.white),
             size: size
-        )
-        defer { hosted.window.close() }
-        try await SnapshotTestSupport.settle(hosted.host)
-        let png = try await SnapshotTestSupport.capturePNG(
-            hosted.host,
-            size: size
-        )
-        let lines =
-            try await SnapshotTestSupport.recognizedText(
-                in: png,
-                languages: ["en-US"]
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let png = try await SnapshotTestSupport.capturePNG(
+                host,
+                size: size
             )
-            .map(\.text)
-        #expect(lines.contains("Track Title"))
-        #expect(lines.contains("Track Artist"))
-        #expect(lines.contains("Compilation Album"))
+            let lines =
+                try await SnapshotTestSupport.recognizedText(
+                    in: png,
+                    languages: ["en-US"]
+                )
+                .map(\.text)
+            #expect(lines.contains("Track Title"))
+            #expect(lines.contains("Track Artist"))
+            #expect(lines.contains("Compilation Album"))
+        }
     }
 }

@@ -27,26 +27,26 @@ struct ComposerDetailPaneVirtualizationTests {
         )
         let detail = PreviewData.largeComposerDetail(workCount: 5_000)
         let size = NSSize(width: 620, height: 720)
-        let hosted = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ComposerDetailPane(paneDetail: .composer(detail, work: nil))
                 .environment(backing.session)
                 .environment(uiStore)
                 .environment(imageStore),
             size: size
-        )
-        defer { hosted.window.close() }
-        try await SnapshotTestSupport.settle(hosted.host)
-        // The mounted rows start their cover loads in tasks of their own.
-        // Wait for the first to reach the store, then let the tree settle so
-        // the rest of the mounted rows' loads land before they are counted.
-        try await Wait.until { !recorder.requested.isEmpty }
-        try await SnapshotTestSupport.settle(hosted.host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            // The mounted rows start their cover loads in tasks of their own.
+            // Wait for the first to reach the store, then let the tree settle so
+            // the rest of the mounted rows' loads land before they are counted.
+            try await Wait.until { !recorder.requested.isEmpty }
+            try await SnapshotTestSupport.settle(host)
 
-        // 720pt of ~56pt rows is about thirteen visible rows, and the lazy
-        // stack prepares a modest buffer past the viewport. 100 leaves room
-        // for that buffer while still failing a mount of the whole works list.
-        #expect(!recorder.requested.isEmpty)
-        #expect(recorder.requested.count < 100)
+            // 720pt of ~56pt rows is about thirteen visible rows, and the lazy
+            // stack prepares a modest buffer past the viewport. 100 leaves room
+            // for that buffer while still failing a mount of the whole works list.
+            #expect(!recorder.requested.isEmpty)
+            #expect(recorder.requested.count < 100)
+        }
     }
 
     /// Every library image the hosted pane's rows asked the store to load.

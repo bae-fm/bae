@@ -33,7 +33,7 @@ struct CoverPickerTests {
             return png
         })
         let size = NSSize(width: 960, height: 700)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             CoverSheetView(
                 releaseId: release.id,
                 fetchRemoteCovers: { .unlinked },
@@ -44,39 +44,25 @@ struct CoverPickerTests {
             .environment(images)
             .frame(width: size.width, height: size.height),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
-        }
-        try await Wait.until {
-            try await SnapshotTestSupport.settle(host)
-            return !(await recorder.reads).isEmpty
-        }
-        #expect(await recorder.reads.contains("release-test/library-image-id"))
-        try await SnapshotTestSupport.settle(host)
-        #expect(
-            !(await recorder.reads).contains("release-test/bitmap-image-id")
-        )
-        let enter = try #require(
-            NSEvent.keyEvent(
-                with: .keyDown,
-                location: .zero,
-                modifierFlags: [],
-                timestamp: 0,
-                windowNumber: window.windowNumber,
-                context: nil,
-                characters: "\r",
-                charactersIgnoringModifiers: "\r",
-                isARepeat: false,
-                keyCode: 36
+        ) { _, host in
+            try await Wait.until {
+                try await SnapshotTestSupport.settle(host)
+                return !(await recorder.reads).isEmpty
+            }
+            #expect(
+                await recorder.reads.contains("release-test/library-image-id")
             )
-        )
-        _ = host.performKeyEquivalent(with: enter)
-        try await Wait.until { await recorder.selected != nil }
-        #expect(
-            await recorder.selected == .releaseImage(fileId: "library-image-id")
-        )
+            try await SnapshotTestSupport.settle(host)
+            #expect(
+                !(await recorder.reads).contains("release-test/bitmap-image-id")
+            )
+            try HostedInput.keyEquivalent(.return, in: host)
+            try await Wait.until { await recorder.selected != nil }
+            #expect(
+                await recorder.selected
+                    == .releaseImage(fileId: "library-image-id")
+            )
+        }
     }
 
     private func persistedRelease() -> BridgeRelease {
@@ -150,7 +136,7 @@ struct CoverPickerTests {
     @Test("Import cover picker labels external sources and release files")
     func sourceSections() async throws {
         let size = NSSize(width: 960, height: 700)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             CoverPickerView(
                 remoteCoverArts: PreviewData.remoteCovers,
                 localArtwork: PreviewData.bridgeCandidateFiles.coverFiles,
@@ -165,17 +151,14 @@ struct CoverPickerTests {
             .environment(ImageStore.stub())
             .frame(width: size.width, height: size.height),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+            let labels = try await SnapshotTestSupport.recognizedText(in: png)
+                .map(\.text)
+            #expect(labels.carrying(String(localized: "Remote Sources")))
+            #expect(labels.carrying(String(localized: "Release Files")))
+            #expect(labels.carrying(bridgeCatalogName(catalog: .musicBrainz)))
         }
-        try await SnapshotTestSupport.settle(host)
-        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        let labels = try await SnapshotTestSupport.recognizedText(in: png)
-            .map(\.text)
-        #expect(labels.carrying(String(localized: "Remote Sources")))
-        #expect(labels.carrying(String(localized: "Release Files")))
-        #expect(labels.carrying(bridgeCatalogName(catalog: .musicBrainz)))
     }
 }

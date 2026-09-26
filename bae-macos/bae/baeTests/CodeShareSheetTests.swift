@@ -17,21 +17,24 @@ struct CodeShareSheetTests {
     func sheetUpdatesWhenResultBindingResolves() async throws {
         let holder = CodeShareResultHolder()
         let size = NSSize(width: 400, height: 420)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             CodeShareHarness(holder: holder),
             size: size
-        )
-        _ = window
+        ) { _, host in
 
-        // Loading state (binding is nil).
-        let loading = try await SnapshotTestSupport.capturePNG(host, size: size)
+            // Loading state (binding is nil).
+            let loading = try await SnapshotTestSupport.capturePNG(
+                host,
+                size: size
+            )
 
-        // The presenter's off-main write lands: the binding resolves to a
-        // code, and the sheet draws something else.
-        holder.result = .success("PAIR-1234-5678")
-        try await Wait.until {
-            try await SnapshotTestSupport.capturePNG(host, size: size)
-                != loading
+            // The presenter's off-main write lands: the binding resolves to a
+            // code, and the sheet draws something else.
+            holder.result = .success("PAIR-1234-5678")
+            try await Wait.until {
+                try await SnapshotTestSupport.capturePNG(host, size: size)
+                    != loading
+            }
         }
     }
 }

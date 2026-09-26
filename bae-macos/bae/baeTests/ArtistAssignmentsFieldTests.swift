@@ -55,39 +55,38 @@ struct ArtistAssignmentsFieldTests {
     func manyArtistsStayInsideTheHeader() async throws {
         let size = NSSize(width: 900, height: 360)
         let draft = PreviewData.manyAlbumArtistsDraft()
-        let (window, host) = hostHeader(values: draft, size: size)
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
-        }
+        try await withHostedHeader(values: draft, size: size) { _, host in
 
-        try await SnapshotTestSupport.settle(host)
-        let frames = SnapshotTestSupport.descendants(of: host)
-            .map { $0.convert($0.bounds, to: host) }
-        let pane = host.bounds.insetBy(dx: -0.5, dy: -0.5)
-        for frame in frames {
-            #expect(pane.contains(frame), "\(frame) leaves \(host.bounds)")
-        }
+            try await SnapshotTestSupport.settle(host)
+            let frames = SnapshotTestSupport.descendants(of: host)
+                .map { $0.convert($0.bounds, to: host) }
+            let pane = host.bounds.insetBy(dx: -0.5, dy: -0.5)
+            for frame in frames {
+                #expect(pane.contains(frame), "\(frame) leaves \(host.bounds)")
+            }
 
-        let yearFrame = try #require(
-            frame(ofFieldShowing: draft.albumYear, in: host)
-        )
-        let artistField = try #require(
-            frames
-                .filter { $0.midY > yearFrame.minY && $0.midY < yearFrame.maxY }
-                .max { $0.width < $1.width }
-        )
-        #expect(artistField.width > yearFrame.width)
-        #expect(artistField.maxX <= yearFrame.minX)
-        withExtendedLifetime(window) {}
+            let yearFrame = try #require(
+                frame(ofFieldShowing: draft.albumYear, in: host)
+            )
+            let artistField = try #require(
+                frames
+                    .filter {
+                        $0.midY > yearFrame.minY && $0.midY < yearFrame.maxY
+                    }
+                    .max { $0.width < $1.width }
+            )
+            #expect(artistField.width > yearFrame.width)
+            #expect(artistField.maxX <= yearFrame.minX)
+        }
     }
 
     @MainActor
-    private func hostHeader(
+    private func withHostedHeader<Value>(
         values: BridgeRawReleaseEdit,
-        size: NSSize
-    ) -> (window: NSWindow, host: NSView) {
-        SnapshotTestSupport.hostInWindow(
+        size: NSSize,
+        _ body: (NSWindow, NSView) async throws -> Value
+    ) async throws -> Value {
+        try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
                 values: values,
                 writer: ReleaseFieldWriter(setField: { _, _ in }),
@@ -100,7 +99,9 @@ struct ArtistAssignmentsFieldTests {
             .environment(Library.stub())
             .environment(UiStore()),
             size: size
-        )
+        ) {
+            try await body($0, $1)
+        }
     }
 
     /// Where the field showing `value` sits in `host`.
@@ -121,7 +122,7 @@ struct ArtistAssignmentsFieldTests {
         resolutions: [BridgeResolvedCredit]
     ) async throws -> Data {
         let size = NSSize(width: 280, height: 40)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        return try await SnapshotTestSupport.withHostedWindow(
             ArtistAssignmentsField(
                 assignments: assignments,
                 placeholder: "Artist",
@@ -132,12 +133,9 @@ struct ArtistAssignmentsFieldTests {
             .environment(Library.stub())
             .environment(UiStore()),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { _, host in
+            return try await SnapshotTestSupport.capturePNG(host, size: size)
         }
-        return try await SnapshotTestSupport.capturePNG(host, size: size)
     }
 
     @MainActor
@@ -145,15 +143,12 @@ struct ArtistAssignmentsFieldTests {
         _ artist: BridgeExistingArtist
     ) async throws -> Data {
         let size = NSSize(width: 280, height: 48)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        return try await SnapshotTestSupport.withHostedWindow(
             ArtistSearchResultLabel(artist: artist)
                 .frame(width: size.width, height: size.height),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { _, host in
+            return try await SnapshotTestSupport.capturePNG(host, size: size)
         }
-        return try await SnapshotTestSupport.capturePNG(host, size: size)
     }
 }

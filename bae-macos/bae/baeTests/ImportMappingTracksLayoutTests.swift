@@ -20,7 +20,7 @@ struct ImportMappingTracksLayoutTests {
             tableWidth: tableWidth
         )
         let size = NSSize(width: tableWidth, height: 40)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ImportMappingTrackRow(
                 mapping: pairedMapping,
                 columns: columns,
@@ -35,30 +35,31 @@ struct ImportMappingTracksLayoutTests {
             .environment(Library.stub())
             .environment(UiStore()),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
-        let field = try #require(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSTextField }
-                .first { $0.stringValue == "Track Title" }
-        )
-        let frame = field.convert(
-            field.alignmentRect(forFrame: field.bounds),
-            to: host
-        )
-        let leading =
-            ImportMappingColumns.rowPadding + columns.source
-            + ReleaseMetadataTrackColumns.track + 2
-            * ImportMappingColumns.spacing
-            + FieldChrome.inlineHorizontalPadding
-        #expect(abs(frame.minX - leading) < 1)
-        #expect(
-            abs(
-                frame.width
-                    - (columns.title - 2 * FieldChrome.inlineHorizontalPadding)
-            ) < 1
-        )
-        withExtendedLifetime(window) {}
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let field = try #require(
+                SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? NSTextField }
+                    .first { $0.stringValue == "Track Title" }
+            )
+            let frame = field.convert(
+                field.alignmentRect(forFrame: field.bounds),
+                to: host
+            )
+            let leading =
+                ImportMappingColumns.rowPadding + columns.source
+                + ReleaseMetadataTrackColumns.track + 2
+                * ImportMappingColumns.spacing
+                + FieldChrome.inlineHorizontalPadding
+            #expect(abs(frame.minX - leading) < 1)
+            #expect(
+                abs(
+                    frame.width
+                        - (columns.title - 2
+                            * FieldChrome.inlineHorizontalPadding)
+                ) < 1
+            )
+        }
     }
 
     @MainActor
@@ -76,7 +77,7 @@ struct ImportMappingTracksLayoutTests {
         )
         let recorder = MappingTrackActionRecorder()
         let size = NSSize(width: tableWidth, height: 40)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ImportMappingTrackRow(
                 mapping: pairedMapping,
                 columns: columns,
@@ -91,23 +92,23 @@ struct ImportMappingTracksLayoutTests {
             .environment(Library.stub())
             .environment(UiStore()),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
 
-        // The point is inside the leading Source cell and the outer edge of
-        // the 24-point audition target. A smaller target or a Source cell
-        // placed later in the row both leave this click unanswered.
-        try click(
-            at: NSPoint(
-                x: ImportMappingColumns.rowPadding + 22,
-                y: size.height / 2
-            ),
-            in: window
-        )
-        try await Wait.until { !recorder.previewed.isEmpty }
+            // The point is inside the leading Source cell and the outer edge of
+            // the 24-point audition target. A smaller target or a Source cell
+            // placed later in the row both leave this click unanswered.
+            try HostedInput.click(
+                at: NSPoint(
+                    x: ImportMappingColumns.rowPadding + 22,
+                    y: size.height / 2
+                ),
+                in: window
+            )
+            try await Wait.until { !recorder.previewed.isEmpty }
 
-        #expect(recorder.previewed == [previewTarget])
-        withExtendedLifetime(window) {}
+            #expect(recorder.previewed == [previewTarget])
+        }
     }
 
     @MainActor
@@ -183,7 +184,7 @@ struct ImportMappingTracksLayoutTests {
             width: ReleaseMetadataTrackColumns.idealTableWidth,
             height: 40
         )
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ImportMappingTrackRow(
                 mapping: mapping,
                 columns: columns,
@@ -197,11 +198,11 @@ struct ImportMappingTracksLayoutTests {
             .environment(Library.stub())
             .environment(UiStore()),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
 
-        #expect(mapping.displayedDuration == "3:00")
-        withExtendedLifetime(window) {}
+            #expect(mapping.displayedDuration == "3:00")
+        }
     }
 
     @Test("Length shows source and metadata when they disagree")
@@ -235,7 +236,7 @@ struct ImportMappingTracksLayoutTests {
             becomes: .awaitingPick,
             durationMs: 180_000
         )
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ImportMappingTrackRow(
                 mapping: mapping,
                 columns: columns,
@@ -250,21 +251,21 @@ struct ImportMappingTracksLayoutTests {
             .environment(Library.stub())
             .environment(UiStore()),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
 
-        try click(
-            at: NSPoint(
-                x: ImportMappingColumns.rowPadding + 22,
-                y: size.height / 2
-            ),
-            in: window
-        )
-        try await Wait.until { !recorder.previewed.isEmpty }
+            try HostedInput.click(
+                at: NSPoint(
+                    x: ImportMappingColumns.rowPadding + 22,
+                    y: size.height / 2
+                ),
+                in: window
+            )
+            try await Wait.until { !recorder.previewed.isEmpty }
 
-        #expect(recorder.previewed == [previewTarget])
-        #expect(mapping.displayedDuration == "3:00")
-        withExtendedLifetime(window) {}
+            #expect(recorder.previewed == [previewTarget])
+            #expect(mapping.displayedDuration == "3:00")
+        }
     }
 }
 
@@ -295,51 +296,52 @@ extension ImportMappingTracksLayoutTests {
         let recorder = MappingTrackActionRecorder()
         let width = ReleaseMetadataTrackColumns.idealTableWidth
         let size = NSSize(width: width, height: 40)
-        let (window, host) = hostUnusedSource(
+        try await withHostedUnusedSource(
             mapping,
             recorder: recorder,
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
-        let height = host.fittingSize.height
-        #expect(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSTextField }
-                .allSatisfy { !$0.isEditable }
-        )
-        try click(
-            at: NSPoint(
-                x: width - ImportMappingColumns.rowPadding
-                    - ImportMappingColumns.action / 2,
-                y: size.height / 2
-            ),
-            in: window
-        )
-        try await Wait.until { !recorder.addedAudio.isEmpty }
-        #expect(recorder.addedAudio == [audio])
-        #expect(recorder.addedCandidates == [candidate])
-        #expect(recorder.edits == 0)
-        #expect(recorder.drops == 0)
-        try click(
-            at: NSPoint(
-                x: ImportMappingColumns.rowPadding + 22,
-                y: size.height / 2
-            ),
-            in: window
-        )
-        try await Wait.until { !recorder.previewed.isEmpty }
-        #expect(recorder.previewed == [target])
-        #expect(host.fittingSize.height == height)
-        withExtendedLifetime(window) {}
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            let height = host.fittingSize.height
+            #expect(
+                SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? NSTextField }
+                    .allSatisfy { !$0.isEditable }
+            )
+            try HostedInput.click(
+                at: NSPoint(
+                    x: width - ImportMappingColumns.rowPadding
+                        - ImportMappingColumns.action / 2,
+                    y: size.height / 2
+                ),
+                in: window
+            )
+            try await Wait.until { !recorder.addedAudio.isEmpty }
+            #expect(recorder.addedAudio == [audio])
+            #expect(recorder.addedCandidates == [candidate])
+            #expect(recorder.edits == 0)
+            #expect(recorder.drops == 0)
+            try HostedInput.click(
+                at: NSPoint(
+                    x: ImportMappingColumns.rowPadding + 22,
+                    y: size.height / 2
+                ),
+                in: window
+            )
+            try await Wait.until { !recorder.previewed.isEmpty }
+            #expect(recorder.previewed == [target])
+            #expect(host.fittingSize.height == height)
+        }
     }
 
     @MainActor
-    private func hostUnusedSource(
+    private func withHostedUnusedSource<Value>(
         _ mapping: BridgeTrackMapping,
         recorder: MappingTrackActionRecorder,
-        size: NSSize
-    ) -> (NSWindow, NSView) {
-        SnapshotTestSupport.hostInWindow(
+        size: NSSize,
+        _ body: (NSWindow, NSView) async throws -> Value
+    ) async throws -> Value {
+        try await SnapshotTestSupport.withHostedWindow(
             ImportMappingTrackRow(
                 mapping: mapping,
                 columns: .resolved(tableWidth: size.width),
@@ -354,7 +356,9 @@ extension ImportMappingTracksLayoutTests {
             .environment(Library.stub())
             .environment(UiStore()),
             size: size
-        )
+        ) {
+            try await body($0, $1)
+        }
     }
 }
 
@@ -378,7 +382,7 @@ extension ImportMappingTracksLayoutTests {
         associated: Bool
     ) async throws {
         let size = NSSize(width: tableWidth, height: 90)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ImportSheetCaptionRow(
                 sheet: sheet(associated: associated),
                 evidence: [],
@@ -388,25 +392,26 @@ extension ImportMappingTracksLayoutTests {
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
 
-        let controls = buttons(in: host)
-            .sorted {
-                $0.convert($0.bounds, to: host).minX
-                    < $1.convert($1.bounds, to: host).minX
-            }
-        try #require(controls.count == 2)
-        let discFrame = controls[0].convert(controls[0].bounds, to: host)
-        let bindingFrame = controls[1].convert(controls[1].bounds, to: host)
+            let controls = buttons(in: host)
+                .sorted {
+                    $0.convert($0.bounds, to: host).minX
+                        < $1.convert($1.bounds, to: host).minX
+                }
+            try #require(controls.count == 2)
+            let discFrame = controls[0].convert(controls[0].bounds, to: host)
+            let bindingFrame = controls[1].convert(controls[1].bounds, to: host)
 
-        #expect(discFrame.minX <= ImportMappingColumns.rowPadding + 1)
-        #expect(discFrame.maxX < bindingFrame.minX)
-        #expect(bindingFrame.width >= 24)
-        #expect(
-            bindingFrame.maxX <= tableWidth - ImportMappingColumns.rowPadding
-        )
-        withExtendedLifetime(window) {}
+            #expect(discFrame.minX <= ImportMappingColumns.rowPadding + 1)
+            #expect(discFrame.maxX < bindingFrame.minX)
+            #expect(bindingFrame.width >= 24)
+            #expect(
+                bindingFrame.maxX <= tableWidth
+                    - ImportMappingColumns.rowPadding
+            )
+        }
     }
 
     /// One sheet is one disc, so the pill would only restate it.
@@ -417,7 +422,7 @@ extension ImportMappingTracksLayoutTests {
             width: ReleaseMetadataTrackColumns.idealTableWidth,
             height: 90
         )
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ImportSheetCaptionRow(
                 sheet: sheet(associated: true),
                 evidence: [],
@@ -426,11 +431,11 @@ extension ImportMappingTracksLayoutTests {
             )
             .frame(width: size.width, height: size.height, alignment: .leading),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
 
-        #expect(buttons(in: host).count == 1)
-        withExtendedLifetime(window) {}
+            #expect(buttons(in: host).count == 1)
+        }
     }
 }
 
@@ -620,7 +625,7 @@ extension ImportMappingTracksLayoutTests {
         )
         let size = NSSize(width: tableWidth, height: 40)
         let recorder = MappingTrackActionRecorder()
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        return try await SnapshotTestSupport.withHostedWindow(
             ImportMappingTrackRow(
                 mapping: pairedMapping,
                 columns: columns,
@@ -635,21 +640,21 @@ extension ImportMappingTracksLayoutTests {
             .environment(Library.stub())
             .environment(UiStore()),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
-        try click(
-            at: NSPoint(
-                x: ImportMappingColumns.rowPadding + 22,
-                y: size.height / 2
-            ),
-            in: window
-        )
-        try await Wait.until {
-            !recorder.previewed.isEmpty || recorder.stops > 0
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            try HostedInput.click(
+                at: NSPoint(
+                    x: ImportMappingColumns.rowPadding + 22,
+                    y: size.height / 2
+                ),
+                in: window
+            )
+            try await Wait.until {
+                !recorder.previewed.isEmpty || recorder.stops > 0
+            }
+            let result = (height: host.fittingSize.height, recorder: recorder)
+            return result
         }
-        let result = (height: host.fittingSize.height, recorder: recorder)
-        withExtendedLifetime(window) {}
-        return result
     }
 
     @MainActor
@@ -716,26 +721,6 @@ extension ImportMappingTracksLayoutTests {
                 MainActor.assumeIsolated { recorder.drops += 1 }
             },
         )
-    }
-
-    @MainActor
-    private func click(at point: NSPoint, in window: NSWindow) throws {
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            let event = try #require(
-                NSEvent.mouseEvent(
-                    with: type,
-                    location: point,
-                    modifierFlags: [],
-                    timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: window.windowNumber,
-                    context: nil,
-                    eventNumber: 0,
-                    clickCount: 1,
-                    pressure: type == .leftMouseDown ? 1 : 0
-                )
-            )
-            window.sendEvent(event)
-        }
     }
 }
 

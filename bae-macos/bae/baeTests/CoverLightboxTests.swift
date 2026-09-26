@@ -25,7 +25,7 @@ struct CoverLightboxTests {
         var selected: CoverItem?
         var dismissed = false
         let size = NSSize(width: 960, height: 700)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
                 remoteItems: .linked([front, booklet]),
                 releaseItems: [file],
@@ -36,43 +36,48 @@ struct CoverLightboxTests {
             .environment(images)
             .frame(width: size.width, height: size.height),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
-        }
-        // The covers load after the first layout; the click is aimed at
-        // them, so it waits until they are drawn.
-        _ = try await SnapshotTestSupport.steadyBitmap(of: host, size: size)
-        switch opening {
-        case .preview:
-            try click(window, at: NSPoint(x: 720, y: 420), count: 1)
-        case .thumbnail:
-            try click(window, at: NSPoint(x: 240, y: 480), count: 1)
-            try click(window, at: NSPoint(x: 240, y: 480), count: 2)
-        case .space:
-            _ = host.performKeyEquivalent(with: try key(window, " ", code: 49))
-        }
-        // The keys below are for the lightbox, so they wait until it is drawn.
-        _ = try await SnapshotTestSupport.steadyBitmap(of: host, size: size)
-        // Return cannot save through the lightbox into the underlying picker.
-        _ = host.performKeyEquivalent(with: try key(window, "\r", code: 36))
-        #expect(selected == nil)
-        window.sendEvent(
-            try key(
-                window,
-                String(try #require(UnicodeScalar(NSRightArrowFunctionKey))),
-                code: 124
+        ) { window, host in
+            // The covers load after the first layout; the click is aimed at
+            // them, so it waits until they are drawn.
+            _ = try await SnapshotTestSupport.steadyBitmap(of: host, size: size)
+            switch opening {
+            case .preview:
+                try HostedInput.click(
+                    at: NSPoint(x: 720, y: 420),
+                    in: window,
+                    count: 1
+                )
+            case .thumbnail:
+                try HostedInput.click(
+                    at: NSPoint(x: 240, y: 480),
+                    in: window,
+                    count: 1
+                )
+                try HostedInput.click(
+                    at: NSPoint(x: 240, y: 480),
+                    in: window,
+                    count: 2
+                )
+            case .space:
+                try HostedInput.keyEquivalent(.space, in: host)
+            }
+            // The keys below are for the lightbox, so they wait until it is drawn.
+            _ = try await SnapshotTestSupport.steadyBitmap(of: host, size: size)
+            // Return cannot save through the lightbox into the underlying picker.
+            try HostedInput.keyEquivalent(.return, in: host)
+            #expect(selected == nil)
+            try HostedInput.keyDown(.rightArrow, in: window)
+            try await SnapshotTestSupport.settle(host)
+            try HostedInput.keyDown(.escape, in: window)
+            try await SnapshotTestSupport.settle(host)
+            #expect(!dismissed)
+            #expect(selected == nil)
+            try HostedInput.keyEquivalent(.return, in: host)
+            try await SnapshotTestSupport.settle(host)
+            #expect(
+                selected?.id == (opening == .thumbnail ? file.id : booklet.id)
             )
-        )
-        try await SnapshotTestSupport.settle(host)
-        window.sendEvent(try key(window, "\u{1b}", code: 53))
-        try await SnapshotTestSupport.settle(host)
-        #expect(!dismissed)
-        #expect(selected == nil)
-        _ = host.performKeyEquivalent(with: try key(window, "\r", code: 36))
-        try await SnapshotTestSupport.settle(host)
-        #expect(selected?.id == (opening == .thumbnail ? file.id : booklet.id))
+        }
     }
 
     @Test(
@@ -92,25 +97,24 @@ struct CoverLightboxTests {
         })
         let cursor = try #require(Cursor(items: [item, remote("Back")]))
         let size = NSSize(width: 800, height: 600)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             LightboxView(cursor: cursor, onUpdate: { _ in }, onDismiss: {})
                 .environment(images)
                 .frame(width: size.width, height: size.height),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { _, host in
+            for _ in 0..<100 {
+                try await SnapshotTestSupport.settle(host)
+                if await recorder.urls.count >= 3 { break }
+            }
+            let urls = await recorder.urls
+            #expect(
+                urls.contains("https://images.example/Booklet-original.png")
+            )
+            #expect(urls.contains("https://images.example/Booklet-thumb.png"))
+            #expect(urls.contains("https://images.example/Back-thumb.png"))
+            #expect(!urls.contains("https://images.example/Back-original.png"))
         }
-        for _ in 0..<100 {
-            try await SnapshotTestSupport.settle(host)
-            if await recorder.urls.count >= 3 { break }
-        }
-        let urls = await recorder.urls
-        #expect(urls.contains("https://images.example/Booklet-original.png"))
-        #expect(urls.contains("https://images.example/Booklet-thumb.png"))
-        #expect(urls.contains("https://images.example/Back-thumb.png"))
-        #expect(!urls.contains("https://images.example/Back-original.png"))
     }
 
     private actor Reads {
@@ -146,45 +150,5 @@ struct CoverLightboxTests {
             ),
             label: name
         )
-    }
-
-    private func key(_ window: NSWindow, _ characters: String, code: UInt16)
-        throws -> NSEvent
-    {
-        try #require(
-            NSEvent.keyEvent(
-                with: .keyDown,
-                location: .zero,
-                modifierFlags: [],
-                timestamp: ProcessInfo.processInfo.systemUptime,
-                windowNumber: window.windowNumber,
-                context: nil,
-                characters: characters,
-                charactersIgnoringModifiers: characters,
-                isARepeat: false,
-                keyCode: code
-            )
-        )
-    }
-
-    private func click(_ window: NSWindow, at point: NSPoint, count: Int) throws
-    {
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            window.sendEvent(
-                try #require(
-                    NSEvent.mouseEvent(
-                        with: type,
-                        location: point,
-                        modifierFlags: [],
-                        timestamp: ProcessInfo.processInfo.systemUptime,
-                        windowNumber: window.windowNumber,
-                        context: nil,
-                        eventNumber: 0,
-                        clickCount: count,
-                        pressure: type == .leftMouseDown ? 1 : 0
-                    )
-                )
-            )
-        }
     }
 }

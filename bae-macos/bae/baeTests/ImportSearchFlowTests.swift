@@ -24,7 +24,7 @@ final class SettingsNavigationTests: XCTestCase {
 
     func testDiscogsKeyFieldTakesFocusWhenItAppears() async throws {
         let size = NSSize(width: 500, height: 320)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             Form {
                 Section {
                     DiscogsSettingsContent(
@@ -42,16 +42,18 @@ final class SettingsNavigationTests: XCTestCase {
             .formStyle(.grouped)
             .frame(width: size.width, height: size.height),
             size: size
-        )
+        ) { window, host in
 
-        try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settle(host)
 
-        let textFields = SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSTextField }
-        XCTAssertTrue(
-            textFields.contains { $0.currentEditor() === window.firstResponder }
-        )
-        withExtendedLifetime(window) {}
+            let textFields = SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTextField }
+            XCTAssertTrue(
+                textFields.contains {
+                    $0.currentEditor() === window.firstResponder
+                }
+            )
+        }
     }
 }
 
@@ -395,7 +397,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
         let model = MetadataApplicationEditingModel()
         let editingCommands = EditingCommitCommands()
         let size = NSSize(width: 700, height: 560)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
                 values: model.edit,
                 writer: ReleaseFieldWriter(
@@ -411,49 +413,48 @@ final class MetadataApplicationEditingTests: XCTestCase {
             .environment(UiStore())
             .frame(width: size.width, height: size.height),
             size: size
-        )
-        host.layoutSubtreeIfNeeded()
-        try await SnapshotTestSupport.settle(host)
-        host.layoutSubtreeIfNeeded()
+        ) { window, host in
+            host.layoutSubtreeIfNeeded()
+            try await SnapshotTestSupport.settle(host)
+            host.layoutSubtreeIfNeeded()
 
-        let titleField = try XCTUnwrap(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSTextField }
-                .first { $0.stringValue == model.originalTitle }
-        )
-        XCTAssertTrue(window.makeFirstResponder(titleField))
-        titleField.stringValue = model.staleTitle
-        titleField.delegate?.controlTextDidChange?(
-            Notification(
-                name: NSControl.textDidChangeNotification,
-                object: titleField
+            let titleField = try XCTUnwrap(
+                SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? NSTextField }
+                    .first { $0.stringValue == model.originalTitle }
             )
-        )
-        try await SnapshotTestSupport.settle(host)
+            XCTAssertTrue(HostedInput.focus(titleField, in: window))
+            titleField.stringValue = model.staleTitle
+            titleField.delegate?.controlTextDidChange?(
+                Notification(
+                    name: NSControl.textDidChangeNotification,
+                    object: titleField
+                )
+            )
+            try await SnapshotTestSupport.settle(host)
 
-        let store = MappingFixtures.store(mapping: nil)
-        ImportSearchFlow.applyMetadata(
-            importer: model.importer,
-            importStore: store,
-            endEditing: {
-                await editingCommands.commitActiveEdits()
-                window.makeFirstResponder(nil)
-            },
-            key: MappingFixtures.candidateKey,
-            provenance: provenance
-        )
-        try await Wait.until { model.applicationCount == 1 }
+            let store = MappingFixtures.store(mapping: nil)
+            ImportSearchFlow.applyMetadata(
+                importer: model.importer,
+                importStore: store,
+                endEditing: {
+                    await editingCommands.commitActiveEdits()
+                    HostedInput.focus(nil, in: window)
+                },
+                key: MappingFixtures.candidateKey,
+                provenance: provenance
+            )
+            try await Wait.until { model.applicationCount == 1 }
 
-        _ = window.makeFirstResponder(nil)
-        try await SnapshotTestSupport.settle(host)
+            HostedInput.focus(nil, in: window)
+            try await SnapshotTestSupport.settle(host)
 
-        XCTAssertEqual(model.edit.albumTitle, model.appliedTitle)
-        XCTAssertEqual(
-            model.events,
-            [.commit(model.staleTitle), .application]
-        )
-        window.contentView = nil
-        window.orderOut(nil)
+            XCTAssertEqual(model.edit.albumTitle, model.appliedTitle)
+            XCTAssertEqual(
+                model.events,
+                [.commit(model.staleTitle), .application]
+            )
+        }
     }
 
 }

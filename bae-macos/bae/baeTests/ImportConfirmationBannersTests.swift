@@ -58,7 +58,7 @@ struct ImportConfirmationBannersTests {
     private func focusControlCount(
         failure: BridgeImportFailure
     ) async throws -> Int {
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        return try await SnapshotTestSupport.withHostedWindow(
             ImportConfirmationBanners(
                 libraryStatus: nil,
                 importStatus: .error(
@@ -75,14 +75,14 @@ struct ImportConfirmationBannersTests {
                 onViewInLibrary: { _ in }
             ),
             size: NSSize(width: 640, height: 240)
-        )
-        try await SnapshotTestSupport.settle(host)
-        let count = host.subviews
-            .filter {
-                $0.nextKeyView != nil || $0.previousKeyView != nil
-            }
-            .count
-        withExtendedLifetime(window) {}
-        return count
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let count = host.subviews
+                .filter {
+                    $0.nextKeyView != nil || $0.previousKeyView != nil
+                }
+                .count
+            return count
+        }
     }
 }

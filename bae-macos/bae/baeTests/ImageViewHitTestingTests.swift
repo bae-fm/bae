@@ -25,7 +25,7 @@ struct ImageViewHitTestingTests {
         let side: CGFloat = 120
         let tapBox = TapBox()
         let size = NSSize(width: side, height: side)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             Button(action: { tapBox.tapped = true }) {
                 ImageView(imageRef: nil, pointSize: side)
                     .frame(width: side, height: side)
@@ -34,32 +34,15 @@ struct ImageViewHitTestingTests {
             .environment(ImageStore.stub())
             .environment(\.colorScheme, .dark),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
 
-        let bounds = NSRect(origin: .zero, size: size)
-        let center = NSPoint(x: bounds.midX, y: bounds.midY)
+            let bounds = NSRect(origin: .zero, size: size)
+            let center = NSPoint(x: bounds.midX, y: bounds.midY)
 
-        func click(at point: NSPoint) throws {
-            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-                let event = try #require(
-                    NSEvent.mouseEvent(
-                        with: type,
-                        location: point,
-                        modifierFlags: [],
-                        timestamp: ProcessInfo.processInfo.systemUptime,
-                        windowNumber: window.windowNumber,
-                        context: nil,
-                        eventNumber: 0,
-                        clickCount: 1,
-                        pressure: type == .leftMouseDown ? 1 : 0
-                    )
-                )
-                window.sendEvent(event)
-            }
+            try HostedInput.click(at: center, in: window)
+            try await Wait.until { tapBox.tapped }
         }
-        try click(at: center)
-        try await Wait.until { tapBox.tapped }
     }
 }
 

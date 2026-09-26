@@ -139,7 +139,7 @@ private func captureMappingPane(
     runtime: BridgeCandidateRuntimeSnapshot?
 ) async throws -> Data {
     let size = NSSize(width: 1200, height: 760)
-    let (window, host) = SnapshotTestSupport.hostInWindow(
+    return try await SnapshotTestSupport.withHostedWindow(
         ImportMappingPreview.make(
             candidate: candidate,
             storageCloud: .constant(false),
@@ -150,11 +150,11 @@ private func captureMappingPane(
         .importPreviewEnvironment()
         .candidateReaderPreviewEnvironment(),
         size: size
-    )
-    try await SnapshotTestSupport.settle(host)
-    let capture = try await SnapshotTestSupport.capturePNG(host, size: size)
-    withExtendedLifetime(window) {}
-    return capture
+    ) { _, host in
+        try await SnapshotTestSupport.settle(host)
+        let capture = try await SnapshotTestSupport.capturePNG(host, size: size)
+        return capture
+    }
 }
 
 private func runtime(
@@ -182,7 +182,7 @@ struct ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         let size = NSSize(width: 1_000, height: 760)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ImportMappingPreview.make(
                 candidate: candidate,
                 storageCloud: .constant(false),
@@ -191,15 +191,15 @@ struct ImportMappingPaneTests {
             .frame(width: size.width, height: size.height)
             .importPreviewEnvironment(),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
 
-        let scrollViews = SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSScrollView }
-        // The pane itself scrolls vertically; the mapping table adds its own
-        // horizontal scroller for the candidate's source-to-track rows.
-        #expect(scrollViews.count >= 2)
-        withExtendedLifetime(window) {}
+            let scrollViews = SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSScrollView }
+            // The pane itself scrolls vertically; the mapping table adds its own
+            // horizontal scroller for the candidate's source-to-track rows.
+            #expect(scrollViews.count >= 2)
+        }
     }
 
     @MainActor

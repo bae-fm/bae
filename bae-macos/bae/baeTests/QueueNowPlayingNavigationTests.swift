@@ -31,7 +31,7 @@ struct QueueNowPlayingNavigationTests {
                 durationMs: 180_000
             )
         )
-        let hosted = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             QueuePanel(onClose: {}, onInsertTracks: { _, _ in })
                 .environment(Playback.stub())
                 .environment(store)
@@ -40,37 +40,22 @@ struct QueueNowPlayingNavigationTests {
                 .environment(LibraryStore())
                 .environment(ui),
             size: NSSize(width: 420, height: 720)
-        )
-        defer { hosted.window.close() }
-        try await SnapshotTestSupport.settle(hosted.host)
-        let localPoint = CGPoint(
-            x: point.x,
-            y: hosted.host.isFlipped
-                ? point.y : hosted.host.bounds.height - point.y
-        )
-        let windowPoint = hosted.host.convert(localPoint, to: nil)
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            let event = try #require(
-                NSEvent.mouseEvent(
-                    with: type,
-                    location: windowPoint,
-                    modifierFlags: [],
-                    timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: hosted.window.windowNumber,
-                    context: nil,
-                    eventNumber: 0,
-                    clickCount: 1,
-                    pressure: type == .leftMouseDown ? 1 : 0
-                )
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            let localPoint = CGPoint(
+                x: point.x,
+                y: host.isFlipped
+                    ? point.y : host.bounds.height - point.y
             )
-            hosted.window.sendEvent(event)
+            let windowPoint = host.convert(localPoint, to: nil)
+            try HostedInput.click(at: windowPoint, in: window)
+            try await SnapshotTestSupport.settle(host)
+            #expect(ui.activeSection == .library)
+            #expect(ui.libraryBrowserMode == .albums)
+            #expect(ui.selectedAlbumId == "playing-album")
+            #expect(ui.pendingAlbumReveal?.albumId == "playing-album")
+            #expect(ui.pendingTrackFlash?.trackId == "playing-track")
+            #expect(ui.showQueue)
         }
-        try await SnapshotTestSupport.settle(hosted.host)
-        #expect(ui.activeSection == .library)
-        #expect(ui.libraryBrowserMode == .albums)
-        #expect(ui.selectedAlbumId == "playing-album")
-        #expect(ui.pendingAlbumReveal?.albumId == "playing-album")
-        #expect(ui.pendingTrackFlash?.trackId == "playing-track")
-        #expect(ui.showQueue)
     }
 }

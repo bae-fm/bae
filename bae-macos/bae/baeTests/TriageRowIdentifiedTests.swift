@@ -17,14 +17,14 @@ struct TriageRowIdentifiedTests {
         #expect(lines.carrying("Release Folder Eleven"))
         #expect(!lines.carrying("Album Title"))
 
-        let unidentified = hostedRow(PreviewData.triageRowUnidentified)
-        let prefilled = hostedRow(PreviewData.triageRowPrefilledFromTags)
-        #expect(
-            unidentified.fittingSize.height >= TriageRowView.coverPointSize
+        let unidentified = try await fittingSize(
+            of: PreviewData.triageRowUnidentified
         )
-        #expect(
-            unidentified.fittingSize.height == prefilled.fittingSize.height
+        let prefilled = try await fittingSize(
+            of: PreviewData.triageRowPrefilledFromTags
         )
+        #expect(unidentified.height >= TriageRowView.coverPointSize)
+        #expect(unidentified.height == prefilled.height)
     }
 
     @MainActor
@@ -58,7 +58,7 @@ struct TriageRowIdentifiedTests {
         let notRead = PreviewData.triageRowNotReadFromRecord
         #expect(try await pixels(of: read) != pixels(of: notRead))
         #expect(
-            hostedRow(read).fittingSize == hostedRow(notRead).fittingSize,
+            try await fittingSize(of: read) == fittingSize(of: notRead),
             "a hidden arrow still holds its place"
         )
     }
@@ -117,26 +117,27 @@ struct TriageRowIdentifiedTests {
     @MainActor
     @Test("the card names every catalog that describes the release")
     func theCardNamesEveryCatalog() async throws {
-        let hosted = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ReleaseRecordsCard(records: PreviewData.identifiedFromBothCatalogs)
                 .preferredColorScheme(.light)
                 .background(.white),
             size: Self.cardSize
-        )
-        try await SnapshotTestSupport.settle(hosted.host)
-        let png = try await SnapshotTestSupport.capturePNG(
-            hosted.host,
-            size: Self.cardSize
-        )
-        let lines =
-            try await SnapshotTestSupport.recognizedText(
-                in: png,
-                languages: ["en-US"]
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let png = try await SnapshotTestSupport.capturePNG(
+                host,
+                size: Self.cardSize
             )
-            .map(\.text)
+            let lines =
+                try await SnapshotTestSupport.recognizedText(
+                    in: png,
+                    languages: ["en-US"]
+                )
+                .map(\.text)
 
-        #expect(lines.carrying("MusicBrainz"))
-        #expect(lines.carrying("Discogs"))
+            #expect(lines.carrying("MusicBrainz"))
+            #expect(lines.carrying("Discogs"))
+        }
     }
 
     private static let rowSize = NSSize(width: 340, height: 80)
@@ -145,12 +146,14 @@ struct TriageRowIdentifiedTests {
         height: 96
     )
 
+    /// `row` hosted for the length of `body`.
     @MainActor
-    private func hostedRow(
+    private func withHostedRow<Value>(
         _ row: BridgeTriageRow,
-        prominence: BackgroundProminence = .standard
-    ) -> NSView {
-        SnapshotTestSupport.hostInWindow(
+        prominence: BackgroundProminence = .standard,
+        _ body: (NSView) async throws -> Value
+    ) async throws -> Value {
+        try await SnapshotTestSupport.withHostedWindow(
             TriageRowView(
                 row: row,
                 coverContent: nil,
@@ -164,8 +167,14 @@ struct TriageRowIdentifiedTests {
             .background(.white)
             .frame(width: Self.rowSize.width),
             size: Self.rowSize
-        )
-        .host
+        ) { _, host in
+            try await body(host)
+        }
+    }
+
+    @MainActor
+    private func fittingSize(of row: BridgeTriageRow) async throws -> NSSize {
+        try await withHostedRow(row) { $0.fittingSize }
     }
 
     @MainActor
@@ -173,12 +182,9 @@ struct TriageRowIdentifiedTests {
         of row: BridgeTriageRow,
         prominence: BackgroundProminence = .standard
     ) async throws -> Data {
-        let host = hostedRow(row, prominence: prominence)
-        try await SnapshotTestSupport.settle(host)
-        return try await SnapshotTestSupport.capturePNG(
-            host,
-            size: Self.rowSize
-        )
+        try await withHostedRow(row, prominence: prominence) { host in
+            try await SnapshotTestSupport.capturePNG(host, size: Self.rowSize)
+        }
     }
 
     @MainActor

@@ -89,7 +89,7 @@ struct EditMetadataSheetTests {
             reset: { _ in reset }
         )
         let size = NSSize(width: 900, height: 500)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
                 values: session.form,
                 writer: session.fieldWriter,
@@ -101,33 +101,32 @@ struct EditMetadataSheetTests {
             .environment(UiStore())
             .frame(width: size.width, height: size.height),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
 
-        let titleField = try #require(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSTextField }
-                .first { $0.stringValue == "Original title" }
-        )
-        #expect(window.makeFirstResponder(titleField))
-        titleField.stringValue = "Focused title"
-        titleField.delegate?.controlTextDidChange?(
-            Notification(
-                name: NSControl.textDidChangeNotification,
-                object: titleField
+            let titleField = try #require(
+                SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? NSTextField }
+                    .first { $0.stringValue == "Original title" }
             )
-        )
-        // The field's focus state follows the responder change a turn later;
-        // the save must see the field as focused, as a person's would.
-        try await SnapshotTestSupport.settle(host)
+            #expect(HostedInput.focus(titleField, in: window))
+            titleField.stringValue = "Focused title"
+            titleField.delegate?.controlTextDidChange?(
+                Notification(
+                    name: NSControl.textDidChangeNotification,
+                    object: titleField
+                )
+            )
+            // The field's focus state follows the responder change a turn later;
+            // the save must see the field as focused, as a person's would.
+            try await SnapshotTestSupport.settle(host)
 
-        await withCheckedContinuation { continuation in
-            session.save { continuation.resume() }
+            await withCheckedContinuation { continuation in
+                session.save { continuation.resume() }
+            }
+
+            #expect(await recorder.recorded().1?.albumTitle == "Focused title")
         }
-
-        #expect(await recorder.recorded().1?.albumTitle == "Focused title")
-        window.contentView = nil
-        window.orderOut(nil)
     }
 
     @MainActor
@@ -209,7 +208,7 @@ struct EditMetadataSheetTests {
             reset: { _ in reset }
         )
         let size = NSSize(width: width, height: 700)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        return try await SnapshotTestSupport.withHostedWindow(
             ScrollView {
                 ReleaseMetadataEditorContent(
                     session: session,
@@ -223,19 +222,16 @@ struct EditMetadataSheetTests {
             .preferredColorScheme(.dark)
             .frame(width: width, height: size.height, alignment: .topLeading),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
-        }
-        try await SnapshotTestSupport.settle(host)
-        let fields = SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSTextField }
-        return try seed.edit.tracks.map { track in
-            let field = try #require(
-                fields.first { $0.stringValue == track.title }
-            )
-            return field.convert(field.bounds, to: host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let fields = SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTextField }
+            return try seed.edit.tracks.map { track in
+                let field = try #require(
+                    fields.first { $0.stringValue == track.title }
+                )
+                return field.convert(field.bounds, to: host)
+            }
         }
     }
 

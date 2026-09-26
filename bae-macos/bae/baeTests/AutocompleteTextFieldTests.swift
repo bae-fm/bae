@@ -8,32 +8,32 @@ import Testing
 struct AutocompleteTextFieldTests {
     @MainActor
     @Test("ASCII completion selects the appended suffix")
-    func asciiCompletionSelectsSuffix() throws {
+    func asciiCompletionSelectsSuffix() async throws {
         let harness = AutocompleteHarness(
             suggestions: ["abcd"]
         )
-        let field = try makeField(harness)
+        try await withField(harness) { field in
+            complete("ab", in: field)
 
-        complete("ab", in: field)
-
-        #expect(field.stringValue == "abcd")
-        #expect(
-            field.currentEditor()?.selectedRange
-                == NSRange(location: 2, length: 2)
-        )
+            #expect(field.stringValue == "abcd")
+            #expect(
+                field.currentEditor()?.selectedRange
+                    == NSRange(location: 2, length: 2)
+            )
+        }
     }
 
     @MainActor
     @Test("UTF-16-shorter completion inserts without crashing")
-    func utf16ShorterCompletionDoesNotCrash() throws {
+    func utf16ShorterCompletionDoesNotCrash() async throws {
         let harness = AutocompleteHarness(
             suggestions: ["\u{1EAD}x"]
         )
-        let field = try makeField(harness)
+        try await withField(harness) { field in
+            complete("a\u{0323}\u{0302}", in: field)
 
-        complete("a\u{0323}\u{0302}", in: field)
-
-        #expect(field.stringValue == "\u{1EAD}x")
+            #expect(field.stringValue == "\u{1EAD}x")
+        }
     }
 
     @MainActor
@@ -47,11 +47,13 @@ struct AutocompleteTextFieldTests {
         #expect(range == NSRange(location: 2, length: 0))
     }
 
+    /// The field hosted and being edited, for the length of `body`.
     @MainActor
-    private func makeField(
-        _ harness: AutocompleteHarness
-    ) throws -> NSTextField {
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+    private func withField(
+        _ harness: AutocompleteHarness,
+        _ body: (NSTextField) throws -> Void
+    ) async throws {
+        try await SnapshotTestSupport.withHostedWindow(
             AutocompleteTextField(
                 text: harness.textBinding,
                 placeholder: "Album Title",
@@ -59,12 +61,15 @@ struct AutocompleteTextFieldTests {
                 isLoading: false
             ),
             size: NSSize(width: 280, height: 32)
-        )
-        host.layoutSubtreeIfNeeded()
-        let field = try #require(host.firstDescendant(ofType: NSTextField.self))
-        _ = window.makeFirstResponder(field)
-        _ = try #require(field.currentEditor())
-        return field
+        ) { window, host in
+            host.layoutSubtreeIfNeeded()
+            let field = try #require(
+                host.firstDescendant(ofType: NSTextField.self)
+            )
+            HostedInput.focus(field, in: window)
+            _ = try #require(field.currentEditor())
+            try body(field)
+        }
     }
 
     @MainActor

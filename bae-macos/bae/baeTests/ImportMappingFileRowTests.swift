@@ -13,7 +13,7 @@ struct ImportMappingFileRowTests {
         let choice = RoleChoiceRecorder()
         let tableWidth: CGFloat = 520
         let size = NSSize(width: tableWidth, height: 60)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             ImportMappingFileRow(
                 file: excludedAudioFile,
                 previewingTarget: nil,
@@ -22,21 +22,21 @@ struct ImportMappingFileRowTests {
             )
             .frame(width: tableWidth, height: size.height),
             size: size
-        )
-        try await SnapshotTestSupport.settle(host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
 
-        let buttons = SnapshotTestSupport.descendants(of: host)
-            .compactMap {
-                $0 as? NSButton
-            }
-        try #require(buttons.count == 1)
-        let button = try #require(buttons.first)
-        button.performClick(nil)
-        try await Wait.until { choice.fileId != nil }
+            let buttons = SnapshotTestSupport.descendants(of: host)
+                .compactMap {
+                    $0 as? NSButton
+                }
+            try #require(buttons.count == 1)
+            let button = try #require(buttons.first)
+            HostedInput.press(button)
+            try await Wait.until { choice.fileId != nil }
 
-        #expect(choice.fileId == "excluded.flac")
-        #expect(choice.choice == .audio)
-        withExtendedLifetime(window) {}
+            #expect(choice.fileId == "excluded.flac")
+            #expect(choice.choice == .audio)
+        }
     }
 
     private var excludedAudioFile: BridgeMappingFile {

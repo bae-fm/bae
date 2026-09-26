@@ -17,62 +17,58 @@ struct LibraryArtworkBrowserTests {
         var saved: BridgeCoverSelection?
         var dismissed = false
         let size = NSSize(width: 960, height: 700)
-        let (window, host) = try hostLibraryBrowser(
+        try await withLibraryBrowser(
             size: size,
             fetch: {
                 lookups += 1
                 return .linked(covers: [art])
             },
             onSelect: { saved = $0 },
-            onDone: { dismissed = true }
+            onDone: { dismissed = true },
+            body: { window, host in
+                var observations = try await text(in: host, size: size)
+                #expect(
+                    labels(observations)
+                        .carrying(String(localized: "Current Cover"))
+                )
+                #expect(
+                    !labels(observations)
+                        .carrying(String(localized: "Use This Cover"))
+                )
+                try click(
+                    "Browse all images",
+                    observations: observations,
+                    window: window,
+                    size: size
+                )
+                observations = try await text(in: host, size: size)
+                #expect(
+                    labels(observations).carrying(String(localized: "Images"))
+                )
+                #expect(saved == nil)
+                // Advance the shared cursor to the provider booklet in grid mode.
+                try HostedInput.keyDown(.rightArrow, in: window)
+                try await SnapshotTestSupport.settle(host)
+                try HostedInput.keyEquivalent(.space, in: host)
+                observations = try await text(in: host, size: size)
+                #expect(labels(observations).carrying("Discogs"))
+                try HostedInput.keyEquivalent(.return, in: host)
+                #expect(saved == nil)
+                try click(
+                    "Browse all images",
+                    observations: observations,
+                    window: window,
+                    size: size
+                )
+                _ = try await text(in: host, size: size)
+                #expect(lookups == 1)
+                #expect(!dismissed)
+                try HostedInput.keyEquivalent(.return, in: host)
+                _ = try await text(in: host, size: size)
+                #expect(saved == art.coverChoice.selection)
+                #expect(dismissed)
+            }
         )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
-        }
-        var observations = try await text(in: host, size: size)
-        #expect(
-            labels(observations).carrying(String(localized: "Current Cover"))
-        )
-        #expect(
-            !labels(observations).carrying(String(localized: "Use This Cover"))
-        )
-        try click(
-            "Browse all images",
-            observations: observations,
-            window: window,
-            size: size
-        )
-        observations = try await text(in: host, size: size)
-        #expect(labels(observations).carrying(String(localized: "Images")))
-        #expect(saved == nil)
-        // Advance the shared cursor to the provider booklet in grid mode.
-        window.sendEvent(
-            try key(
-                window,
-                String(try #require(UnicodeScalar(NSRightArrowFunctionKey))),
-                code: 124
-            )
-        )
-        try await SnapshotTestSupport.settle(host)
-        _ = host.performKeyEquivalent(with: try key(window, " ", code: 49))
-        observations = try await text(in: host, size: size)
-        #expect(labels(observations).carrying("Discogs"))
-        _ = host.performKeyEquivalent(with: try key(window, "\r", code: 36))
-        #expect(saved == nil)
-        try click(
-            "Browse all images",
-            observations: observations,
-            window: window,
-            size: size
-        )
-        _ = try await text(in: host, size: size)
-        #expect(lookups == 1)
-        #expect(!dismissed)
-        _ = host.performKeyEquivalent(with: try key(window, "\r", code: 36))
-        _ = try await text(in: host, size: size)
-        #expect(saved == art.coverChoice.selection)
-        #expect(dismissed)
     }
 
     @Test(
@@ -133,7 +129,7 @@ struct LibraryArtworkBrowserTests {
         var identified = false
         var dismissed = false
         let size = NSSize(width: 800, height: 520)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
                 remoteItems: .unlinked,
                 releaseItems: [],
@@ -147,25 +143,22 @@ struct LibraryArtworkBrowserTests {
             .environment(ImageStore.stub())
             .frame(width: size.width, height: size.height),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { window, host in
+            let observations = try await text(in: host, size: size)
+            #expect(
+                labels(observations)
+                    .carrying(String(localized: "No linked release"))
+            )
+            try click(
+                "Find release…",
+                observations: observations,
+                window: window,
+                size: size
+            )
+            #expect(identified)
+            try HostedInput.keyEquivalent(.escape, in: host)
+            #expect(dismissed)
         }
-        let observations = try await text(in: host, size: size)
-        #expect(
-            labels(observations)
-                .carrying(String(localized: "No linked release"))
-        )
-        try click(
-            "Find release…",
-            observations: observations,
-            window: window,
-            size: size
-        )
-        #expect(identified)
-        _ = host.performKeyEquivalent(with: try key(window, "\u{1b}", code: 53))
-        #expect(dismissed)
     }
 
     @Test("An updated library cover reloads in the open lightbox")
@@ -200,18 +193,15 @@ struct LibraryArtworkBrowserTests {
             )
             .environment(images).frame(width: size.width, height: size.height)
         }
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             try view("v1"),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { _, host in
+            _ = try await text(in: host, size: size)
+            host.rootView = try view("v2")
+            _ = try await text(in: host, size: size)
+            #expect(await reads.versions == ["v1", "v2"])
         }
-        _ = try await text(in: host, size: size)
-        host.rootView = try view("v2")
-        _ = try await text(in: host, size: size)
-        #expect(await reads.versions == ["v1", "v2"])
     }
 
 }
@@ -260,7 +250,7 @@ extension LibraryArtworkBrowserTests {
     )
     func lookupStateInLightbox(_ remoteItems: RemoteCoverItems) async throws {
         let size = NSSize(width: 800, height: 520)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
                 remoteItems: remoteItems,
                 releaseItems: [],
@@ -272,41 +262,39 @@ extension LibraryArtworkBrowserTests {
             .environment(ImageStore.stub())
             .frame(width: size.width, height: size.height),
             size: size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
-        }
-        let visible = labels(try await text(in: host, size: size))
-        #expect(
-            visible.carrying(String(localized: "No remote covers found"))
-                == (remoteItems == .linked([]))
-        )
-        #expect(
-            visible.carrying(String(localized: "No linked release"))
-                == (remoteItems == .unlinked)
-        )
-        #expect(
-            visible.carrying(String(localized: "Fetching covers..."))
-                == remoteItems.isLoading
-        )
-        #expect(
-            visible.carrying(String(localized: "No cover art available"))
-                == !remoteItems.isLoading
-        )
-        if case .failed = remoteItems {
-            #expect(visible.carrying("Lookup failed"))
+        ) { _, host in
+            let visible = labels(try await text(in: host, size: size))
+            #expect(
+                visible.carrying(String(localized: "No remote covers found"))
+                    == (remoteItems == .linked([]))
+            )
+            #expect(
+                visible.carrying(String(localized: "No linked release"))
+                    == (remoteItems == .unlinked)
+            )
+            #expect(
+                visible.carrying(String(localized: "Fetching covers..."))
+                    == remoteItems.isLoading
+            )
+            #expect(
+                visible.carrying(String(localized: "No cover art available"))
+                    == !remoteItems.isLoading
+            )
+            if case .failed = remoteItems {
+                #expect(visible.carrying("Lookup failed"))
+            }
         }
     }
 }
 
 extension LibraryArtworkBrowserTests {
-    private func hostLibraryBrowser(
+    private func withLibraryBrowser<Value>(
         size: NSSize,
         fetch: @escaping () async throws -> BridgeRemoteCoverGallery,
         onSelect: @escaping (BridgeCoverSelection) async throws -> Void,
-        onDone: @escaping () -> Void
-    ) throws -> (NSWindow, NSHostingView<AnyView>) {
+        onDone: @escaping () -> Void,
+        body: (NSWindow, NSHostingView<AnyView>) async throws -> Value
+    ) async throws -> Value {
         let release = PreviewData.releaseDetail(albumId: "a-01")
         release.summary.cover = BridgeImageRef(
             id: release.id,
@@ -334,7 +322,7 @@ extension LibraryArtworkBrowserTests {
                 cancel: {}
             )
         })
-        return SnapshotTestSupport.hostInWindow(
+        return try await SnapshotTestSupport.withHostedWindow(
             AnyView(
                 CoverSheetView(
                     releaseId: release.id,
@@ -348,7 +336,9 @@ extension LibraryArtworkBrowserTests {
                 .frame(width: size.width, height: size.height)
             ),
             size: size
-        )
+        ) {
+            try await body($0, $1)
+        }
     }
 
     private actor CoverReads {
@@ -415,55 +405,6 @@ extension LibraryArtworkBrowserTests {
             x: observation.boundingBox.midX * size.width,
             y: observation.boundingBox.midY * size.height
         )
-        let content = try #require(window.contentView)
-        let control =
-            SnapshotTestSupport.descendants(of: content)
-            .compactMap { $0 as? NSControl }
-            .first {
-                $0.isEnabled && $0.convert($0.bounds, to: nil).contains(point)
-            }
-        // SwiftUI's native buttons are NSControl subclasses, not NSButton.
-        // Exercise their action without a synthetic mouse-tracking loop.
-        if let control {
-            control.performClick(nil)
-        }
-        else {
-            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-                window.sendEvent(
-                    try #require(
-                        NSEvent.mouseEvent(
-                            with: type,
-                            location: point,
-                            modifierFlags: [],
-                            timestamp: ProcessInfo.processInfo.systemUptime,
-                            windowNumber: window.windowNumber,
-                            context: nil,
-                            eventNumber: 0,
-                            clickCount: 1,
-                            pressure: type == .leftMouseDown ? 1 : 0
-                        )
-                    )
-                )
-            }
-        }
-    }
-
-    private func key(_ window: NSWindow, _ characters: String, code: UInt16)
-        throws -> NSEvent
-    {
-        try #require(
-            NSEvent.keyEvent(
-                with: .keyDown,
-                location: .zero,
-                modifierFlags: [],
-                timestamp: ProcessInfo.processInfo.systemUptime,
-                windowNumber: window.windowNumber,
-                context: nil,
-                characters: characters,
-                charactersIgnoringModifiers: characters,
-                isARepeat: false,
-                keyCode: code
-            )
-        )
+        try HostedInput.press(at: point, in: window)
     }
 }

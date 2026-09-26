@@ -20,55 +20,55 @@ struct AlbumTrackListLayoutTests {
         #expect(release.trackGroups.map(\.tracks.count) == [9, 8])
 
         let size = NSSize(width: 800, height: 900)
-        let (window, host) = hostTrackList(release: release, size: size)
-        window.appearance = NSAppearance(named: .darkAqua)
-        defer {
-            window.contentView = nil
-            window.close()
+        try await withHostedTrackList(release: release, size: size) {
+            window,
+            host in
+            window.appearance = NSAppearance(named: .darkAqua)
+            try await SnapshotTestSupport.settle(host)
+
+            // Nine tracks split five over four; the eight-track side stays whole.
+            // Both of the first column's runs share one x, ordered down the pane.
+            let bands = try rowBands(in: host, height: size.height)
+            let columnX = try #require(bands.map(\.x).min())
+            let secondColumnX = try #require(bands.map(\.x).max())
+            #expect(secondColumnX - columnX > 100)
+            let firstColumn = bands.filter { $0.x < columnX + 20 }
+                .sorted { $0.top < $1.top }
+            let secondColumn = bands.filter { $0.x > columnX + 20 }
+                .sorted { $0.top < $1.top }
+            #expect(firstColumn.count == 13)
+            #expect(secondColumn.count == 4)
+
+            let pane = try await Pane.capture(
+                host,
+                size: size,
+                secondColumn: secondColumn,
+                secondColumnX: secondColumnX
+            )
+            let splitSideEnd = try pane.columnEnd(of: firstColumn.prefix(5))
+            let shortSideEnd = try pane.columnEnd(of: firstColumn.dropFirst(5))
+            #expect(
+                abs(shortSideEnd - splitSideEnd) < 2,
+                "short side ends at \(shortSideEnd), split side at \(splitSideEnd)"
+            )
+            // The pin on the two-column case: its second column still runs to the
+            // pane's trailing edge, so nothing passes by narrowing every row.
+            let secondColumnEnd = try pane.columnEnd(of: secondColumn)
+            #expect(
+                secondColumnEnd > size.width - 20,
+                "second column ends at \(secondColumnEnd)"
+            )
         }
-        try await SnapshotTestSupport.settle(host)
-
-        // Nine tracks split five over four; the eight-track side stays whole.
-        // Both of the first column's runs share one x, ordered down the pane.
-        let bands = try rowBands(in: host, height: size.height)
-        let columnX = try #require(bands.map(\.x).min())
-        let secondColumnX = try #require(bands.map(\.x).max())
-        #expect(secondColumnX - columnX > 100)
-        let firstColumn = bands.filter { $0.x < columnX + 20 }
-            .sorted { $0.top < $1.top }
-        let secondColumn = bands.filter { $0.x > columnX + 20 }
-            .sorted { $0.top < $1.top }
-        #expect(firstColumn.count == 13)
-        #expect(secondColumn.count == 4)
-
-        let pane = try await Pane.capture(
-            host,
-            size: size,
-            secondColumn: secondColumn,
-            secondColumnX: secondColumnX
-        )
-        let splitSideEnd = try pane.columnEnd(of: firstColumn.prefix(5))
-        let shortSideEnd = try pane.columnEnd(of: firstColumn.dropFirst(5))
-        #expect(
-            abs(shortSideEnd - splitSideEnd) < 2,
-            "short side ends at \(shortSideEnd), split side at \(splitSideEnd)"
-        )
-        // The pin on the two-column case: its second column still runs to the
-        // pane's trailing edge, so nothing passes by narrowing every row.
-        let secondColumnEnd = try pane.columnEnd(of: secondColumn)
-        #expect(
-            secondColumnEnd > size.width - 20,
-            "second column ends at \(secondColumnEnd)"
-        )
     }
 
     /// The track list over the pane's background, with nothing playing and
     /// nothing loading, in a window the capture can read pixels back from.
-    private func hostTrackList(
+    private func withHostedTrackList<Value>(
         release: ReleaseDetail,
-        size: NSSize
-    ) -> (window: NSWindow, host: NSView) {
-        SnapshotTestSupport.hostInWindow(
+        size: NSSize,
+        _ body: (NSWindow, NSView) async throws -> Value
+    ) async throws -> Value {
+        try await SnapshotTestSupport.withHostedWindow(
             AlbumTrackListView(
                 release: release,
                 isCompilation: false,
@@ -85,7 +85,9 @@ struct AlbumTrackListLayoutTests {
             .background(Theme.background)
             .environment(UiStore()),
             size: size
-        )
+        ) {
+            try await body($0, $1)
+        }
     }
 
     /// A band per row. Every row keeps its loading spinner in the layout tree,

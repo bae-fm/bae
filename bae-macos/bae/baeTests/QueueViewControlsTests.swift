@@ -11,61 +11,59 @@ struct QueueViewControlsTests {
     @Test("the pane exposes a Close control")
     func paneExposesCloseControl() async throws {
         let recorder = Recorder()
-        let hosted = try await host(nowPlaying: .stopped, recorder: recorder)
-
-        try click(
-            atTopOrigin: closeControlPoint,
-            in: hosted.view,
-            window: hosted.window
-        )
-        try await SnapshotTestSupport.settle(hosted.view)
+        try await withHostedPane(nowPlaying: .stopped, recorder: recorder) {
+            hosted in
+            try click(
+                atTopOrigin: closeControlPoint,
+                in: hosted.view,
+                window: hosted.window
+            )
+            try await SnapshotTestSupport.settle(hosted.view)
+        }
 
         #expect(recorder.closeCount == 1)
-        withExtendedLifetime(hosted.window) {}
     }
 
     @MainActor
     @Test("the playing card exposes Pause")
     func playingCardExposesPause() async throws {
         let recorder = Recorder()
-        let hosted = try await host(
+        try await withHostedPane(
             nowPlaying: .playing(track),
             recorder: recorder
-        )
-
-        try clickPlayPause(in: hosted)
-        try await SnapshotTestSupport.settle(hosted.view)
+        ) { hosted in
+            try clickPlayPause(in: hosted)
+            try await SnapshotTestSupport.settle(hosted.view)
+        }
 
         #expect(recorder.playPauseCount == 1)
         #expect(recorder.navigateCount == 0)
-        withExtendedLifetime(hosted.window) {}
     }
 
     @MainActor
     @Test("the paused card exposes Play")
     func pausedCardExposesPlay() async throws {
         let recorder = Recorder()
-        let hosted = try await host(
+        try await withHostedPane(
             nowPlaying: .paused(track, reason: .manual),
             recorder: recorder
-        )
-
-        try clickPlayPause(in: hosted)
-        try await SnapshotTestSupport.settle(hosted.view)
+        ) { hosted in
+            try clickPlayPause(in: hosted)
+            try await SnapshotTestSupport.settle(hosted.view)
+        }
 
         #expect(recorder.playPauseCount == 1)
         #expect(recorder.navigateCount == 0)
-        withExtendedLifetime(hosted.window) {}
     }
 
+    /// The queue pane in `nowPlaying`, hosted and settled for the length of
+    /// `body`.
     @MainActor
-    private func host(
+    private func withHostedPane(
         nowPlaying: NowPlaying,
-        recorder: Recorder
-    ) async throws -> (
-        window: NSWindow,
-        view: NSView
-    ) {
+        recorder: Recorder,
+        _ body: ((window: NSWindow, view: NSView)) async throws -> Void
+    ) async throws {
         let store = PreviewData.queueStore(manualCount: 0, context: nil)
         switch nowPlaying {
         case .playing(let track):
@@ -77,7 +75,7 @@ struct QueueViewControlsTests {
         case .loading:
             Issue.record("the control fixture does not use a loading state")
         }
-        let hosted = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             QueueView(
                 isActive: store.nowPlaying.isActive,
                 nowPlayingTitle: store.nowPlaying.track?.trackTitle,
@@ -100,9 +98,10 @@ struct QueueViewControlsTests {
             .environment(Queue.stub())
             .environment(ImageStore.stub()),
             size: paneSize
-        )
-        try await SnapshotTestSupport.settle(hosted.host)
-        return (hosted.window, hosted.host)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            try await body((window: window, view: host))
+        }
     }
 
     @MainActor
@@ -122,23 +121,10 @@ struct QueueViewControlsTests {
         in host: NSView,
         window: NSWindow
     ) throws {
-        let windowPoint = pointInWindow(atTopOrigin: point, in: host)
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            let event = try #require(
-                NSEvent.mouseEvent(
-                    with: type,
-                    location: windowPoint,
-                    modifierFlags: [],
-                    timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: window.windowNumber,
-                    context: nil,
-                    eventNumber: 0,
-                    clickCount: 1,
-                    pressure: type == .leftMouseDown ? 1 : 0
-                )
-            )
-            window.sendEvent(event)
-        }
+        try HostedInput.click(
+            at: pointInWindow(atTopOrigin: point, in: host),
+            in: window
+        )
     }
 
     @MainActor

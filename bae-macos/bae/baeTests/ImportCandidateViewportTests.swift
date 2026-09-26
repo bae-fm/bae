@@ -126,50 +126,51 @@ final class ImportCandidateViewportTests: XCTestCase {
             .onPreferenceChange(ImportCandidateListGeometryKey.self) {
                 geometry.value = $0
             }
-        let (window, hosting) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             root,
             size: NSSize(width: 460, height: 600)
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { _, hosting in
+            try await settleFirstLayout(geometry, slot)
+
+            let table = try XCTUnwrap(
+                descendants(of: hosting).compactMap { $0 as? NSTableView }.first
+            )
+            let scrollView = try XCTUnwrap(table.enclosingScrollView)
+            let anchorIndex = 30
+            let unscrolled = geometry.value
+            scrollView.contentView.scroll(
+                to: table.rect(ofRow: anchorIndex).origin
+            )
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+            try await settleViewportLayout(
+                geometry,
+                slot,
+                changedFrom: unscrolled
+            )
+            let anchorKey = "candidate:\(viewportCandidateKey(anchorIndex))"
+            let anchor = try XCTUnwrap(
+                geometry.value.rows.first { $0.stableKey == anchorKey }
+            )
+            let viewport = try XCTUnwrap(geometry.value.viewport)
+            XCTAssertEqual(anchor.bounds.minY, viewport.minY, accuracy: 1)
+
+            uiStore.setFolderCandidateSelection([viewportCandidateKey(35)])
+            let changed = (0..<80)
+                .map { index in
+                    index < 20 ? groupHeaderItem(index) : candidateItem(index)
+                }
+            await source.replaceItems(changed)
+            try await settleViewportLayout(geometry, slot)
+
+            let retained = try XCTUnwrap(
+                geometry.value.rows.first { $0.stableKey == anchorKey }
+            )
+            XCTAssertEqual(
+                retained.bounds.minY,
+                anchor.bounds.minY,
+                accuracy: 1
+            )
         }
-        try await settleFirstLayout(geometry, slot)
-
-        let table = try XCTUnwrap(
-            descendants(of: hosting).compactMap { $0 as? NSTableView }.first
-        )
-        let scrollView = try XCTUnwrap(table.enclosingScrollView)
-        let anchorIndex = 30
-        let unscrolled = geometry.value
-        scrollView.contentView.scroll(
-            to: table.rect(ofRow: anchorIndex).origin
-        )
-        scrollView.reflectScrolledClipView(scrollView.contentView)
-        try await settleViewportLayout(
-            geometry,
-            slot,
-            changedFrom: unscrolled
-        )
-        let anchorKey = "candidate:\(viewportCandidateKey(anchorIndex))"
-        let anchor = try XCTUnwrap(
-            geometry.value.rows.first { $0.stableKey == anchorKey }
-        )
-        let viewport = try XCTUnwrap(geometry.value.viewport)
-        XCTAssertEqual(anchor.bounds.minY, viewport.minY, accuracy: 1)
-
-        uiStore.setFolderCandidateSelection([viewportCandidateKey(35)])
-        let changed = (0..<80)
-            .map { index in
-                index < 20 ? groupHeaderItem(index) : candidateItem(index)
-            }
-        await source.replaceItems(changed)
-        try await settleViewportLayout(geometry, slot)
-
-        let retained = try XCTUnwrap(
-            geometry.value.rows.first { $0.stableKey == anchorKey }
-        )
-        XCTAssertEqual(retained.bounds.minY, anchor.bounds.minY, accuracy: 1)
     }
 
     func testRowsBehindTheHeaderCannotBecomeTheRetainedAnchor() {

@@ -17,43 +17,37 @@ struct TransfersSettingsTabTests {
     @Test("the tab draws one picker per direction")
     func theTabDrawsOnePickerPerDirection() async throws {
         let recorder = TransferConcurrencyRecorder()
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             tab(recorder: recorder),
             size: Self.size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
-        }
-        try await SnapshotTestSupport.settle(host)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
 
-        #expect(pickers(in: host).count == 2)
+            #expect(pickers(in: host).count == 2)
+        }
     }
 
     @Test("each picker writes its own direction")
     func eachPickerWritesItsOwnDirection() async throws {
         let recorder = TransferConcurrencyRecorder()
-        let (window, host) = SnapshotTestSupport.hostInWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             tab(recorder: recorder),
             size: Self.size
-        )
-        defer {
-            window.contentView = nil
-            window.orderOut(nil)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+
+            // Uploads first, downloads second, in the order the tab lists them.
+            // Segment n stands for n + 1 simultaneous transfers.
+            let controls = pickers(in: host)
+            try #require(controls.count == 2)
+            select(segment: 4, in: controls[0])
+            try await SnapshotTestSupport.settle(host)
+            select(segment: 0, in: controls[1])
+            try await SnapshotTestSupport.settle(host)
+
+            #expect(recorder.uploadWrites == [5])
+            #expect(recorder.downloadWrites == [1])
         }
-        try await SnapshotTestSupport.settle(host)
-
-        // Uploads first, downloads second, in the order the tab lists them.
-        // Segment n stands for n + 1 simultaneous transfers.
-        let controls = pickers(in: host)
-        try #require(controls.count == 2)
-        select(segment: 4, in: controls[0])
-        try await SnapshotTestSupport.settle(host)
-        select(segment: 0, in: controls[1])
-        try await SnapshotTestSupport.settle(host)
-
-        #expect(recorder.uploadWrites == [5])
-        #expect(recorder.downloadWrites == [1])
     }
 
     private func tab(recorder: TransferConcurrencyRecorder) -> some View {
