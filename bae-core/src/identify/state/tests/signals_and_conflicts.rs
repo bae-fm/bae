@@ -214,25 +214,6 @@ fn disc_and_codes(disc_id: &str, codes: &[&str]) -> Signals {
     )
 }
 
-/// The barcode pipe's per-provider walks, for asserting where each is.
-fn barcode_walks(state: &IdentifyState) -> &[ProviderBarcodeLookup] {
-    match state {
-        IdentifyState::Triangulating {
-            barcode: BarcodeProgress::Lookups { providers, .. },
-            ..
-        } => providers,
-        other => panic!("expected barcode walks in flight, got {other:?}"),
-    }
-}
-
-fn walk_of(state: &IdentifyState, source: Catalog) -> &BarcodeLookupState {
-    &barcode_walks(state)
-        .iter()
-        .find(|p| p.source == source)
-        .expect("provider in the run")
-        .state
-}
-
 #[test]
 fn started_enters_triangulating_awaiting_signals() {
     match started_with(vec![MB, DG]) {
@@ -438,10 +419,15 @@ fn barcode_walks_start_only_from_settled() {
             &[],
         ),
     );
-    // Every provider is asked about the first code, and nothing else yet.
+    // Every provider is asked about every code at once.
     assert_eq!(
         effects,
-        vec![lookup_barcode(MB, "A"), lookup_barcode(DG, "A")]
+        vec![
+            lookup_barcode(MB, "A"),
+            lookup_barcode(DG, "A"),
+            lookup_barcode(MB, "B"),
+            lookup_barcode(DG, "B"),
+        ]
     );
 }
 
@@ -557,52 +543,11 @@ fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
     }
 }
 
-/// A provider walks the codes in order and stops at its first match.
+/// Every code is asked of every provider at once: a match on one code stops
+/// nothing, since a folder carrying two codes may be two releases combined,
+/// and each code names its own.
 #[test]
-fn a_provider_s_walk_stops_at_its_first_match() {
-    let (state, effects) = update(
-        started(),
-        signals(
-            DiscIdSignal::Absent { track_count: 0 },
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["A", "B", "C"]),
-            },
-            &[],
-        ),
-    );
-    assert_eq!(effects, vec![lookup_barcode(MB, "A")]);
-    let (state, effects) = step(state, barcode_missed(MB, "A"));
-    assert_eq!(effects, vec![lookup_barcode(MB, "B")]);
-    let (state, effects) = step(
-        state,
-        barcode_matched(
-            MB,
-            "B",
-            vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
-        ),
-    );
-    assert!(
-        effects.is_empty(),
-        "a match ends the walk; C is never asked"
-    );
-    match state {
-        IdentifyState::Found {
-            context,
-            findings: Findings { provenance, .. },
-            ..
-        } => {
-            assert!(provenance[0].by_barcode && !provenance[0].by_disc_id);
-            assert_eq!(context.barcode.matched.as_deref(), Some("B"));
-        }
-        other => panic!("expected Found, got {other:?}"),
-    }
-}
-
-/// Each provider walks the codes on its own: Discogs matching the first code
-/// does not stop MusicBrainz trying the second, and MusicBrainz still being
-/// out does not hold Discogs's answer back from the state.
-#[test]
-fn each_provider_walks_the_codes_on_its_own() {
+fn every_code_is_asked_of_every_provider() {
     let (state, effects) = update(
         started_with(vec![MB, DG]),
         signals(
@@ -615,80 +560,28 @@ fn each_provider_walks_the_codes_on_its_own() {
     );
     assert_eq!(
         effects,
-        vec![lookup_barcode(MB, "A"), lookup_barcode(DG, "A")]
+        vec![
+            lookup_barcode(MB, "A"),
+            lookup_barcode(DG, "A"),
+            lookup_barcode(MB, "B"),
+            lookup_barcode(DG, "B"),
+        ]
     );
 
-    // Discogs answers first, with a match. Its answer lands at once; the run
-    // stays open for MusicBrainz.
+    // A match lands at once and asks nothing more; the run stays open for
+    // the answers still out.
     let (state, effects) = step(
         state,
-        barcode_matched(DG, "A", vec![discogs_pair("dg-1", Some("g-x"))]),
+        barcode_matched(DG, "A", vec![discogs_pair("dg-a", Some("g-x"))]),
     );
     assert!(effects.is_empty());
-    assert!(matches!(
-        walk_of(&state, DG),
-        BarcodeLookupState::Matched { code, .. } if code == "A"
-    ));
-    assert!(matches!(
-        walk_of(&state, MB),
-        BarcodeLookupState::Trying { index: 0 }
-    ));
-
-    // MusicBrainz misses A and moves on to B, on its own.
-    let (state, effects) = step(state, barcode_missed(MB, "A"));
-    assert_eq!(effects, vec![lookup_barcode(MB, "B")]);
-    assert!(matches!(
-        walk_of(&state, MB),
-        BarcodeLookupState::Trying { index: 1 }
-    ));
-
-    // MusicBrainz misses B too: its walk is exhausted, and the pipe settles on
-    // what Discogs found.
-    let (state, effects) = step(state, barcode_missed(MB, "B"));
-    assert!(effects.is_empty());
-    match state {
-        IdentifyState::Found {
-            context,
-            findings:
-                Findings {
-                    matches,
-                    provenance,
-                    ..
-                },
-            ..
-        } => {
-            assert_eq!(matches.len(), 1);
-            assert_eq!(matches[0].source, DG);
-            assert!(provenance[0].by_barcode);
-            assert_eq!(context.barcode.matched.as_deref(), Some("A"));
-            assert!(context.barcode.failures.is_empty());
-        }
-        other => panic!("expected Found, got {other:?}"),
-    }
-}
-
-/// The matched code is the earliest in the list any provider matched, even
-/// when the providers matched different codes.
-#[test]
-fn the_matched_code_is_the_earliest_any_provider_matched() {
-    let (state, _) = update(
-        started_with(vec![MB, DG]),
-        signals(
-            DiscIdSignal::Absent { track_count: 0 },
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["A", "B"]),
-            },
-            &[],
-        ),
-    );
+    assert!(matches!(state, IdentifyState::Triangulating { .. }));
     let (state, _) = step(state, barcode_missed(MB, "A"));
+    let (state, _) = step(state, barcode_missed(DG, "B"));
+    // The last answer settles the run, which reads the albums it found.
     let (state, _) = step(
         state,
         barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]),
-    );
-    let (state, _) = step(
-        state,
-        barcode_matched(DG, "A", vec![discogs_pair("dg-a", Some("g-x"))]),
     );
     let (state, _) = step(
         state,
@@ -704,20 +597,20 @@ fn the_matched_code_is_the_earliest_any_provider_matched() {
     else {
         panic!("expected Found");
     };
-    // MusicBrainz's results come first, whichever provider answered first.
-    assert_eq!(
-        matches.iter().map(|m| m.source).collect::<Vec<_>>(),
-        vec![MB, DG]
-    );
+    // Both codes' answers compete in the one ranking.
+    let mut found: Vec<&str> = matches.iter().map(|m| m.release_id.as_str()).collect();
+    found.sort_unstable();
+    assert_eq!(found, vec!["dg-a", "mb-b"]);
+    // The badge names the earliest code anything was found for.
     assert_eq!(context.barcode.matched.as_deref(), Some("A"));
 }
 
-/// An answer for a code the provider's walk has already moved past is stale
-/// and dropped; the other provider's walk is never touched by it.
+/// An answer lands on its own code's lookup, once: a second answer from the
+/// same provider about the same code changes nothing.
 #[test]
-fn stale_barcode_response_is_ignored() {
+fn a_repeated_barcode_answer_is_ignored() {
     let (state, _) = update(
-        started_with(vec![MB, DG]),
+        started(),
         signals(
             DiscIdSignal::Absent { track_count: 0 },
             BarcodeSignal::Settled {
@@ -727,8 +620,6 @@ fn stale_barcode_response_is_ignored() {
         ),
     );
     let (state, _) = step(state, barcode_missed(MB, "A"));
-    // A late failed "A" from MusicBrainz arrives; its walk is on "B", so it's
-    // dropped.
     let (state, effects) = step(
         state,
         barcode_failed(
@@ -740,22 +631,22 @@ fn stale_barcode_response_is_ignored() {
         ),
     );
     assert!(effects.is_empty());
-    assert!(matches!(
-        walk_of(&state, MB),
-        BarcodeLookupState::Trying { index: 1 }
-    ));
-    assert!(matches!(
-        walk_of(&state, DG),
-        BarcodeLookupState::Trying { index: 0 }
-    ));
+    match &state {
+        IdentifyState::Triangulating { barcode, .. } => {
+            assert!(barcode.failures().is_empty(), "the late answer is dropped");
+            assert!(!barcode.is_settled(), "B is still out");
+        }
+        other => panic!("expected the run still looking up, got {other:?}"),
+    }
 }
 
-/// A provider failing settles its own walk as failed; the pipe as a whole
-/// settles on that when it is the only provider.
+/// A provider failing one code leaves its answers about the others standing,
+/// and the run settles once every code is answered.
 #[test]
 fn barcode_lookup_failure_settles_failed() {
     let (state, effects) = update(started(), disc_and_codes("d", &["A", "B"]));
     assert!(effects.contains(&lookup_barcode(MB, "A")));
+    assert!(effects.contains(&lookup_barcode(MB, "B")));
 
     let failure = LookupFailure::Diagnostic {
         detail: "provider lookup failed".to_string(),
@@ -765,7 +656,8 @@ fn barcode_lookup_failure_settles_failed() {
         failure: failure.clone(),
     };
     let (state, effects) = step(state, barcode_failed(MB, "A", failure));
-    assert!(effects.is_empty(), "a failed walk does not move on to B");
+    assert!(effects.is_empty());
+    let (state, _) = step(state, barcode_missed(MB, "B"));
     match &state {
         IdentifyState::Triangulating { barcode, .. } => {
             assert!(barcode.is_settled());
@@ -776,10 +668,10 @@ fn barcode_lookup_failure_settles_failed() {
     }
 }
 
-/// One provider failing does not stop the other's walk, and what the other
-/// finds is offered beside the failure rather than hidden by it.
+/// One provider failing does not hide what the other finds: it is offered
+/// beside the failure.
 #[test]
-fn a_failed_provider_does_not_stop_the_other_s_walk() {
+fn a_failed_provider_does_not_hide_the_other_s_answer() {
     let (state, _) = update(
         started_with(vec![MB, DG]),
         signals(
@@ -790,15 +682,18 @@ fn a_failed_provider_does_not_stop_the_other_s_walk() {
             &[],
         ),
     );
-    let (state, effects) = step(state, barcode_failed(DG, "A", LookupFailure::Timeout));
-    assert!(effects.is_empty());
-    assert!(matches!(state, IdentifyState::Triangulating { .. }));
-
-    let (state, effects) = step(state, barcode_missed(MB, "A"));
-    assert_eq!(effects, vec![lookup_barcode(MB, "B")]);
+    let (state, _) = step(state, barcode_failed(DG, "A", LookupFailure::Timeout));
+    let (state, _) = step(state, barcode_missed(DG, "B"));
+    let (state, _) = step(state, barcode_missed(MB, "A"));
     let (state, _) = step(
         state,
         barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]),
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::AlbumLinksRead {
+            read: vec![GroupReading::of_links("g-y", AlbumLinks::Read(Vec::new()))],
+        },
     );
     match state {
         IdentifyState::Failed {

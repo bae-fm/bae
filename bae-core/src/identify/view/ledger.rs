@@ -12,8 +12,7 @@ pub(super) fn identifiers_found_something(
     catalog: &CatalogProgress,
 ) -> bool {
     let disc = matches!(discid, DiscidProgress::Done { results, .. } if !results.is_empty());
-    let code = matches!(barcode, BarcodeProgress::Lookups { providers, .. }
-        if providers.iter().any(|provider| matches!(provider.state, BarcodeLookupState::Matched { .. })));
+    let code = !barcode.results().is_empty();
     let number = matches!(catalog, CatalogProgress::Lookups { values }
     if values.iter().flat_map(|lookup| &lookup.providers).any(|provider| {
         matches!(&provider.state, LookupState::Done { results } if !results.is_empty())
@@ -168,7 +167,7 @@ pub(super) fn barcode_step(
         cells,
     };
     match progress {
-        // The walks start once the codes settle: every code read so far is a
+        // The codes are asked once they settle: every code read so far is a
         // row whose cells wait, and more rows may still come.
         BarcodeProgress::Scanning => BarcodeStepView::Rows {
             scanning: true,
@@ -222,24 +221,18 @@ pub(super) fn barcode_step(
                 .collect(),
         },
         // Every code the candidate carries is a row. The ones the run asks
-        // about take their cells from where each walk has got to, at the code's
-        // index among the asked ones; the rest were never asked, and the
-        // person's own choices say which of them they left out.
-        BarcodeProgress::Lookups { codes, providers } => BarcodeStepView::Rows {
+        // about take their cells from their own lookup, each provider's count
+        // its own; the rest were never asked, and the person's own choices say
+        // which of them they left out.
+        BarcodeProgress::Lookups { codes } => BarcodeStepView::Rows {
             scanning,
             rows: context
                 .barcode
                 .code_values()
                 .into_iter()
                 .map(|code| {
-                    let cells = match codes.iter().position(|asked| *asked == code) {
-                        Some(index) => providers
-                            .iter()
-                            .map(|provider| ProviderCell {
-                                source: provider.source,
-                                lookup: barcode_cell(&provider.state, index, codes),
-                            })
-                            .collect(),
+                    let cells = match codes.iter().find(|asked| asked.value == code) {
+                        Some(lookup) => lookup_cells(lookup),
                         None => uniform_cells(context, LookupView::NotAsked),
                     };
                     let excluded = context.barcode.excluded.contains(&code);
@@ -261,40 +254,6 @@ fn uniform_cells(context: &SignalsContext, lookup: LookupView) -> Vec<ProviderCe
             lookup: lookup.clone(),
         })
         .collect()
-}
-
-/// One provider's cell for the code at `index`, from where its walk is. A
-/// walk asks the codes in order and stops at the first match or failure, so
-/// where it is says what it did with every code: the ones before it missed,
-/// the one it is on it is asking about, and the ones after wait — or, once it
-/// has stopped, were never needed.
-fn barcode_cell(walk: &BarcodeLookupState, index: usize, codes: &[String]) -> LookupView {
-    match walk {
-        BarcodeLookupState::Trying { index: at } => match index.cmp(at) {
-            std::cmp::Ordering::Less => LookupView::NoMatch,
-            std::cmp::Ordering::Equal => LookupView::LookingUp,
-            std::cmp::Ordering::Greater => LookupView::Queued,
-        },
-        BarcodeLookupState::Matched { code, results } => {
-            let at = codes
-                .iter()
-                .position(|c| c == code)
-                .expect("a walk matches one of the codes it asks");
-            match index.cmp(&at) {
-                std::cmp::Ordering::Less => LookupView::NoMatch,
-                std::cmp::Ordering::Equal => found_or_no_match(results),
-                std::cmp::Ordering::Greater => LookupView::NotAsked,
-            }
-        }
-        BarcodeLookupState::Exhausted => LookupView::NoMatch,
-        BarcodeLookupState::Failed { failure, index: at } => match index.cmp(at) {
-            std::cmp::Ordering::Less => LookupView::NoMatch,
-            std::cmp::Ordering::Equal => LookupView::Failed {
-                failure: failure.clone(),
-            },
-            std::cmp::Ordering::Greater => LookupView::NotAsked,
-        },
-    }
 }
 
 pub(super) fn catalog_step(
@@ -330,27 +289,33 @@ pub(super) fn catalog_step(
     }
 }
 
-fn catalog_row(lookup: &CatalogLookup, context: &SignalsContext) -> SignalValueRow {
+/// One cell per provider asked about a value, each saying how its own part of
+/// the lookup went.
+fn lookup_cells(lookup: &ValueLookup) -> Vec<ProviderCell> {
+    lookup
+        .providers
+        .iter()
+        .map(|provider| ProviderCell {
+            source: provider.source,
+            lookup: match &provider.state {
+                LookupState::LookingUp => LookupView::LookingUp,
+                LookupState::Done { results } => found_or_no_match(results),
+                LookupState::Failed { failure } => LookupView::Failed {
+                    failure: failure.clone(),
+                },
+            },
+        })
+        .collect()
+}
+
+fn catalog_row(lookup: &ValueLookup, context: &SignalsContext) -> SignalValueRow {
     SignalValueRow {
         value: lookup.value.clone(),
         sources: sources_of(&context.catalog.numbers, &lookup.value),
         // A catalog row exists only for a number the run looks up: taking one
         // out drops its row and leaves the number offered as a candidate.
         excluded: false,
-        cells: lookup
-            .providers
-            .iter()
-            .map(|provider| ProviderCell {
-                source: provider.source,
-                lookup: match &provider.state {
-                    LookupState::LookingUp => LookupView::LookingUp,
-                    LookupState::Done { results } => found_or_no_match(results),
-                    LookupState::Failed { failure } => LookupView::Failed {
-                        failure: failure.clone(),
-                    },
-                },
-            })
-            .collect(),
+        cells: lookup_cells(lookup),
     }
 }
 

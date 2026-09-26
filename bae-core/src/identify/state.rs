@@ -327,7 +327,8 @@ pub enum IdentifyEvent {
     },
 
     /// One provider answered about one barcode: matches, none, or why not.
-    /// The reducer moves that provider's walk on and leaves the others alone.
+    /// The answer lands on that provider's part of that code's lookup and
+    /// leaves the others alone.
     BarcodeLookupAnswered {
         source: Catalog,
         for_barcode: String,
@@ -483,17 +484,12 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
         }),
 
         // ── One provider's barcode answer ──────────────────────────────
-        // The provider's own walk moves on; the others are untouched. An
-        // answer for a code the walk has already moved past is stale and
-        // dropped.
+        // The answer lands on the lookup of the code it was asked about; the
+        // other codes, and the other providers, are untouched.
         (
             IdentifyState::Triangulating {
                 discid,
-                barcode:
-                    BarcodeProgress::Lookups {
-                        codes,
-                        mut providers,
-                    },
+                barcode: BarcodeProgress::Lookups { mut codes },
                 catalog,
                 search,
                 context,
@@ -504,27 +500,16 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 outcome,
             },
         ) => {
-            let mut effects = Vec::new();
-            if let Some(provider) = providers.iter_mut().find(|p| p.source == source) {
-                if let BarcodeLookupState::Trying { index } = provider.state {
-                    if codes.get(index) == Some(&for_barcode) {
-                        provider.state =
-                            advance_barcode_walk(source, index, &codes, outcome, &mut effects);
-                    }
-                }
+            if let Some(lookup) = codes.iter_mut().find(|lookup| lookup.value == for_barcode) {
+                lookup.answer(source, outcome);
             }
-            let next = IdentifyState::Triangulating {
+            settle_if_ready(IdentifyState::Triangulating {
                 discid,
-                barcode: BarcodeProgress::Lookups { codes, providers },
+                barcode: BarcodeProgress::Lookups { codes },
                 catalog,
                 search,
                 context,
-            };
-            if effects.is_empty() {
-                settle_if_ready(next)
-            } else {
-                (next, effects)
-            }
+            })
         }
 
         // ── One provider's catalog answer ──────────────────────────────
@@ -545,20 +530,8 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 outcome,
             },
         ) => {
-            let asked = values
-                .iter_mut()
-                .find(|lookup| lookup.value == for_catalog)
-                .and_then(|lookup| {
-                    lookup
-                        .providers
-                        .iter_mut()
-                        .find(|l| l.source == source && l.state == LookupState::LookingUp)
-                });
-            if let Some(lookup) = asked {
-                lookup.state = match outcome {
-                    Ok(results) => LookupState::Done { results },
-                    Err(failure) => LookupState::Failed { failure },
-                };
+            if let Some(lookup) = values.iter_mut().find(|lookup| lookup.value == for_catalog) {
+                lookup.answer(source, outcome);
             }
             settle_if_ready(IdentifyState::Triangulating {
                 discid,
@@ -628,41 +601,12 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
     }
 }
 
-/// Where one provider's walk goes after answering about `codes[index]`: a
-/// match ends it, a miss asks about the next code (or ends it exhausted), a
-/// failure leaves it failed.
-fn advance_barcode_walk(
-    source: Catalog,
-    index: usize,
-    codes: &[String],
-    outcome: LookupOutcome,
-    effects: &mut Vec<Effect>,
-) -> BarcodeLookupState {
-    match outcome {
-        Ok(results) if !results.is_empty() => BarcodeLookupState::Matched {
-            code: codes[index].clone(),
-            results,
-        },
-        Ok(_) => match codes.get(index + 1) {
-            Some(next) => {
-                effects.push(Effect::LookupBarcode {
-                    source,
-                    barcode: next.clone(),
-                });
-                BarcodeLookupState::Trying { index: index + 1 }
-            }
-            None => BarcodeLookupState::Exhausted,
-        },
-        Err(failure) => BarcodeLookupState::Failed { failure, index },
-    }
-}
-
 /// Fold the latest snapshot into the two signals.
 ///
 /// Idempotent under streaming, because each signal's own progress guards it: the
 /// disc ID dispatches `LookupDiscid` only while still `Computing`, and the barcode
-/// walks are started only while still `Scanning` *and* once the codes have
-/// `Settled` — so every provider walks a complete, stable list. The catalog
+/// lookups are started only while still `Scanning` *and* once the codes have
+/// `Settled` — so every provider is asked a complete, stable list. The catalog
 /// filter refreshes from every snapshot.
 #[allow(clippy::too_many_arguments)]
 fn apply_signals(
@@ -941,8 +885,8 @@ use progress::{
     start_catalog_progress, start_discid_progress, start_search_progress,
 };
 pub use progress::{
-    BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
-    LookupResults, LookupState, ProviderBarcodeLookup, ProviderLookup, SearchProgress,
+    BarcodeProgress, CatalogProgress, DiscidProgress, LookupResults, LookupState, ProviderLookup,
+    SearchProgress, ValueLookup,
 };
 
 // ── Tests ───────────────────────────────────────────────────────────────────

@@ -248,7 +248,7 @@ impl TerminalVerdict {
     /// Nothing here is re-derived: the matches are the ones the run settled
     /// on, and the ledger beside them is the one the run recorded, so the pane
     /// after the save draws what it drew on the last live frame — every
-    /// provider that was asked, every code each walked, and what each of them
+    /// provider that was asked, every code it was asked about, and what each of them
     /// found, including results the agreement then narrowed out.
     ///
     /// The state carries no run context, because there is no run: this one

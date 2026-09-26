@@ -619,8 +619,8 @@ mod tests {
     use super::*;
     use bae_core::identify::state::{BarcodeEvidence, DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
-        BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState,
-        ProviderBarcodeLookup,
+        BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState,
+        ProviderLookup, ValueLookup,
     };
     use bae_core::import::Catalog;
     use bae_core::signals::{DiscIdSignal, LookupFailure, SourcedValue, TextOrigin};
@@ -673,25 +673,26 @@ mod tests {
     #[test]
     fn a_code_crosses_as_a_row_with_one_cell_per_provider() {
         let step = barcode_step(in_flight(BarcodeProgress::Lookups {
-            codes: vec!["0123456789012".to_string()],
-            providers: vec![
-                ProviderBarcodeLookup {
-                    source: Catalog::MusicBrainz,
-                    state: BarcodeLookupState::Trying { index: 0 },
-                },
-                ProviderBarcodeLookup {
-                    source: Catalog::Discogs,
-                    state: BarcodeLookupState::Failed {
-                        failure: LookupFailure::Diagnostic {
-                            detail: "provider lookup failed".to_string(),
-                        },
-                        index: 0,
+            codes: vec![ValueLookup {
+                value: "0123456789012".to_string(),
+                providers: vec![
+                    ProviderLookup {
+                        source: Catalog::MusicBrainz,
+                        state: LookupState::LookingUp,
                     },
-                },
-            ],
+                    ProviderLookup {
+                        source: Catalog::Discogs,
+                        state: LookupState::Failed {
+                            failure: LookupFailure::Diagnostic {
+                                detail: "provider lookup failed".to_string(),
+                            },
+                        },
+                    },
+                ],
+            }],
         }));
         let BridgeBarcodeStep::Rows { scanning, rows } = step else {
-            panic!("a walk in flight crosses as rows, got {step:?}");
+            panic!("a lookup in flight crosses as rows, got {step:?}");
         };
         assert!(!scanning);
         assert_eq!(rows.len(), 1);

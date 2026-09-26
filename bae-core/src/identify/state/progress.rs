@@ -10,7 +10,7 @@
 //! pipe holds one entry per provider, and settles only once every one of them
 //! has.
 
-use super::{Effect, SignalState, SignalsContext};
+use super::{Effect, LookupOutcome, SignalState, SignalsContext};
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::Catalog;
@@ -94,40 +94,6 @@ impl LookupState {
     }
 }
 
-/// One provider trying the candidate's barcodes in order, on its own: a code
-/// that matches ends its walk, a miss moves it to the next code, and a failure
-/// leaves it failed where it was.
-#[derive(Clone, Debug, PartialEq)]
-pub struct ProviderBarcodeLookup {
-    pub source: Catalog,
-    pub state: BarcodeLookupState,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum BarcodeLookupState {
-    /// Asking about the code at `index` in the pipe's list.
-    Trying { index: usize },
-    /// The walk stopped at `code`, which matched.
-    Matched {
-        code: String,
-        results: LookupResults,
-    },
-    /// Every code tried, none matched.
-    Exhausted,
-    /// The walk stopped at the code at `index`, which the provider could not
-    /// answer about.
-    Failed {
-        failure: LookupFailure,
-        index: usize,
-    },
-}
-
-impl BarcodeLookupState {
-    fn is_settled(&self) -> bool {
-        !matches!(self, BarcodeLookupState::Trying { .. })
-    }
-}
-
 /// The barcode signal's progress.
 #[derive(Clone, Debug, PartialEq)]
 pub enum BarcodeProgress {
@@ -136,13 +102,13 @@ pub enum BarcodeProgress {
     /// There was a barcode source and it held no code: a no-match with
     /// nothing to ask.
     NoCodes,
-    /// The codes to try — the ones the run asks about, in the order the walks
-    /// ask them — and every provider's walk through them. Settled once every
-    /// provider is.
-    Lookups {
-        codes: Vec<String>,
-        providers: Vec<ProviderBarcodeLookup>,
-    },
+    /// One lookup per code the run asks about, in the order they were first
+    /// seen, each asked of every provider at once. Every code is asked
+    /// whatever the others answer: a folder that carries two codes may be two
+    /// releases combined, and a code that matched nothing on one provider may
+    /// name the release on another. Settled once every provider's part of
+    /// every code is.
+    Lookups { codes: Vec<ValueLookup> },
     /// The candidate has barcodes and the person left every one of them out of
     /// the run, so no provider was asked about any of them. Settled: nothing is
     /// in flight and nothing was found, which is different from having asked
@@ -163,9 +129,7 @@ impl BarcodeProgress {
     pub fn is_settled(&self) -> bool {
         match self {
             BarcodeProgress::Scanning => false,
-            BarcodeProgress::Lookups { providers, .. } => {
-                providers.iter().all(|p| p.state.is_settled())
-            }
+            BarcodeProgress::Lookups { codes } => codes.iter().all(ValueLookup::is_settled),
             BarcodeProgress::NoCodes
             | BarcodeProgress::NotAsked { .. }
             | BarcodeProgress::Off { .. }
@@ -174,35 +138,35 @@ impl BarcodeProgress {
         }
     }
 
-    /// What every provider that matched found, in provider order.
+    /// What every code's lookup found, in code order and provider order
+    /// within it.
     pub fn results(&self) -> LookupResults {
-        match self {
-            BarcodeProgress::Lookups { providers, .. } => providers
-                .iter()
-                .filter_map(|p| match &p.state {
-                    BarcodeLookupState::Matched { results, .. } => Some(results.clone()),
-                    _ => None,
-                })
-                .flatten()
-                .collect(),
-            _ => Vec::new(),
-        }
+        self.lookups()
+            .iter()
+            .flat_map(ValueLookup::results)
+            .collect()
     }
 
-    /// The providers that failed, whether or not the others answered.
+    /// Every provider that failed any code's lookup, whether or not the others
+    /// answered.
     pub fn failures(&self) -> Vec<SourceFailure> {
+        self.lookups()
+            .iter()
+            .flat_map(ValueLookup::failures)
+            .collect()
+    }
+
+    /// The codes' lookups, in the order the codes were first seen; none
+    /// before any is asked.
+    pub fn lookups(&self) -> &[ValueLookup] {
         match self {
-            BarcodeProgress::Lookups { providers, .. } => providers
-                .iter()
-                .filter_map(|p| match &p.state {
-                    BarcodeLookupState::Failed { failure, .. } => Some(SourceFailure {
-                        source: p.source,
-                        failure: failure.clone(),
-                    }),
-                    _ => None,
-                })
-                .collect(),
-            _ => Vec::new(),
+            BarcodeProgress::Lookups { codes } => codes,
+            BarcodeProgress::Scanning
+            | BarcodeProgress::NoCodes
+            | BarcodeProgress::NotAsked { .. }
+            | BarcodeProgress::Off { .. }
+            | BarcodeProgress::ScanFailed { .. }
+            | BarcodeProgress::Skipped => &[],
         }
     }
 
@@ -214,20 +178,13 @@ impl BarcodeProgress {
         }
     }
 
-    /// Which code found the release: the earliest in the list that any
-    /// provider matched.
+    /// The code the badge names: the earliest in the list any provider
+    /// found something for.
     pub fn matched_barcode(&self) -> Option<String> {
-        let BarcodeProgress::Lookups { codes, providers } = self else {
-            return None;
-        };
-        providers
+        self.lookups()
             .iter()
-            .filter_map(|provider| match &provider.state {
-                BarcodeLookupState::Matched { code, .. } => Some(code.as_str()),
-                _ => None,
-            })
-            .min_by_key(|code| codes.iter().position(|c| c == code))
-            .map(str::to_string)
+            .find(|lookup| !lookup.results().is_empty())
+            .map(|lookup| lookup.value.clone())
     }
 }
 
@@ -302,14 +259,51 @@ impl SearchProgress {
     }
 }
 
-/// One chosen catalog number's lookup: every provider's part of it.
+/// One value's lookup — a chosen catalog number, or one of the candidate's
+/// barcodes: every provider's part of it.
 #[derive(Clone, Debug, PartialEq)]
-pub struct CatalogLookup {
+pub struct ValueLookup {
     pub value: String,
     pub providers: Vec<ProviderLookup>,
 }
 
-impl CatalogLookup {
+impl ValueLookup {
+    /// Ask every provider about `value`, each through the effect `ask` makes.
+    fn started(
+        value: &str,
+        providers: &[Catalog],
+        ask: impl Fn(Catalog, String) -> Effect,
+        effects: &mut Vec<Effect>,
+    ) -> Self {
+        Self {
+            value: value.to_string(),
+            providers: providers
+                .iter()
+                .map(|&source| {
+                    effects.push(ask(source, value.to_string()));
+                    ProviderLookup {
+                        source,
+                        state: LookupState::LookingUp,
+                    }
+                })
+                .collect(),
+        }
+    }
+
+    /// Land `source`'s answer, where it is still being waited for.
+    pub(super) fn answer(&mut self, source: Catalog, outcome: LookupOutcome) {
+        if let Some(lookup) = self
+            .providers
+            .iter_mut()
+            .find(|l| l.source == source && l.state == LookupState::LookingUp)
+        {
+            lookup.state = match outcome {
+                Ok(results) => LookupState::Done { results },
+                Err(failure) => LookupState::Failed { failure },
+            };
+        }
+    }
+
     fn is_settled(&self) -> bool {
         self.providers.iter().all(|l| l.state.is_settled())
     }
@@ -348,14 +342,14 @@ pub enum CatalogProgress {
     Skipped,
     /// One lookup per chosen number, in the order they were chosen. Settled
     /// once every provider's part of every one is.
-    Lookups { values: Vec<CatalogLookup> },
+    Lookups { values: Vec<ValueLookup> },
 }
 
 impl CatalogProgress {
     pub fn is_settled(&self) -> bool {
         match self {
             CatalogProgress::Skipped => true,
-            CatalogProgress::Lookups { values } => values.iter().all(CatalogLookup::is_settled),
+            CatalogProgress::Lookups { values } => values.iter().all(ValueLookup::is_settled),
         }
     }
 
@@ -363,7 +357,7 @@ impl CatalogProgress {
     pub fn results(&self) -> LookupResults {
         match self {
             CatalogProgress::Lookups { values } => {
-                values.iter().flat_map(CatalogLookup::results).collect()
+                values.iter().flat_map(ValueLookup::results).collect()
             }
             CatalogProgress::Skipped => Vec::new(),
         }
@@ -374,13 +368,13 @@ impl CatalogProgress {
     pub fn failures(&self) -> Vec<SourceFailure> {
         match self {
             CatalogProgress::Lookups { values } => {
-                values.iter().flat_map(CatalogLookup::failures).collect()
+                values.iter().flat_map(ValueLookup::failures).collect()
             }
             CatalogProgress::Skipped => Vec::new(),
         }
     }
 
-    fn lookup_of(&self, value: &str) -> Option<&CatalogLookup> {
+    fn lookup_of(&self, value: &str) -> Option<&ValueLookup> {
         match self {
             CatalogProgress::Lookups { values } => values.iter().find(|l| l.value == value),
             CatalogProgress::Skipped => None,
@@ -390,19 +384,19 @@ impl CatalogProgress {
     /// One chosen number's results.
     pub fn results_for(&self, value: &str) -> LookupResults {
         self.lookup_of(value)
-            .map(CatalogLookup::results)
+            .map(ValueLookup::results)
             .unwrap_or_default()
     }
 
     /// The providers that failed one chosen number's lookup.
     pub fn failures_for(&self, value: &str) -> Vec<SourceFailure> {
         self.lookup_of(value)
-            .map(CatalogLookup::failures)
+            .map(ValueLookup::failures)
             .unwrap_or_default()
     }
 
     /// The chosen numbers' lookups, in chosen order; none when nothing is chosen.
-    pub fn lookups(&self) -> &[CatalogLookup] {
+    pub fn lookups(&self) -> &[ValueLookup] {
         match self {
             CatalogProgress::Lookups { values } => values,
             CatalogProgress::Skipped => &[],
@@ -411,7 +405,7 @@ impl CatalogProgress {
 
     /// This progress with only the lookups `keep` admits. Nothing left to look
     /// up is the resting state.
-    pub(super) fn keeping(self, keep: impl Fn(&CatalogLookup) -> bool) -> Self {
+    pub(super) fn keeping(self, keep: impl Fn(&ValueLookup) -> bool) -> Self {
         match self {
             CatalogProgress::Lookups { mut values } => {
                 values.retain(|lookup| keep(lookup));
@@ -613,14 +607,14 @@ pub(super) fn start_discid_progress(
     }
 }
 
-/// Start every provider's walk through the codes the run asks about. A scan
-/// that failed has no codes to walk and never gets a lookup, so it settles as
+/// Ask every provider about every code the run asks about. A scan that
+/// failed has no codes to ask about and never gets a lookup, so it settles as
 /// the failure it is rather than as the no-match an empty list would otherwise
 /// read as.
 ///
 /// `codes` is every code the candidate carries, each once, in the order they
-/// were first seen; `excluded` is the values the person left out. The walks ask
-/// the rest, in that same order.
+/// were first seen; `excluded` is the values the person left out. Every other
+/// code is asked of every provider at once.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn start_barcode_progress(
     codes: Vec<String>,
@@ -662,22 +656,18 @@ pub(super) fn start_barcode_progress(
         // with nothing run against them.
         return BarcodeProgress::NotAsked { codes };
     }
-    let providers = providers
-        .iter()
-        .map(|&source| {
-            effects.push(Effect::LookupBarcode {
-                source,
-                barcode: asked[0].clone(),
-            });
-            ProviderBarcodeLookup {
-                source,
-                state: BarcodeLookupState::Trying { index: 0 },
-            }
-        })
-        .collect();
     BarcodeProgress::Lookups {
-        codes: asked,
-        providers,
+        codes: asked
+            .iter()
+            .map(|code| {
+                ValueLookup::started(
+                    code,
+                    providers,
+                    |source, barcode| Effect::LookupBarcode { source, barcode },
+                    effects,
+                )
+            })
+            .collect(),
     }
 }
 
@@ -686,23 +676,13 @@ pub(super) fn start_catalog_lookup(
     catalog: &str,
     providers: &[Catalog],
     effects: &mut Vec<Effect>,
-) -> CatalogLookup {
-    CatalogLookup {
-        value: catalog.to_string(),
-        providers: providers
-            .iter()
-            .map(|&source| {
-                effects.push(Effect::LookupCatalog {
-                    source,
-                    catalog: catalog.to_string(),
-                });
-                ProviderLookup {
-                    source,
-                    state: LookupState::LookingUp,
-                }
-            })
-            .collect(),
-    }
+) -> ValueLookup {
+    ValueLookup::started(
+        catalog,
+        providers,
+        |source, catalog| Effect::LookupCatalog { source, catalog },
+        effects,
+    )
 }
 
 /// Ask every provider about every chosen catalog number.

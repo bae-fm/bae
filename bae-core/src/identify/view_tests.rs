@@ -1,8 +1,8 @@
 use super::*;
 use crate::db::LibraryStatus;
 use crate::identify::state::{
-    step, BarcodeEvidence, BarcodeLookupState, ChosenCatalog, DiscIdEvidence, IdentifyEvent,
-    ProviderBarcodeLookup, ProviderLookup, SearchProgress,
+    step, BarcodeEvidence, ChosenCatalog, DiscIdEvidence, IdentifyEvent, LookupState,
+    ProviderLookup, SearchProgress, ValueLookup,
 };
 use crate::identify::{Findings, IdentifyFailure, LookupProvenance, NarrowedOut, TerminalVerdict};
 use crate::import::release_group::unranked;
@@ -39,24 +39,32 @@ fn context() -> SignalsContext {
     }
 }
 
+/// One code's lookup, each provider's part of it as given.
+fn code(value: &str, providers: Vec<(Catalog, LookupState)>) -> ValueLookup {
+    ValueLookup {
+        value: value.to_string(),
+        providers: providers
+            .into_iter()
+            .map(|(source, state)| ProviderLookup { source, state })
+            .collect(),
+    }
+}
+
+fn found(results: Vec<(MetadataResult, LibraryStatus)>) -> LookupState {
+    LookupState::Done { results }
+}
+
 fn in_flight(context: SignalsContext) -> IdentifyState {
     IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped { track_count: 9 },
         barcode: BarcodeProgress::Lookups {
-            codes: vec!["A".to_string()],
-            providers: vec![
-                ProviderBarcodeLookup {
-                    source: MB,
-                    state: BarcodeLookupState::Trying { index: 0 },
-                },
-                ProviderBarcodeLookup {
-                    source: DG,
-                    state: BarcodeLookupState::Matched {
-                        code: "A".to_string(),
-                        results: vec![result(DG, "dg-1")],
-                    },
-                },
-            ],
+            codes: vec![code(
+                "A",
+                vec![
+                    (MB, LookupState::LookingUp),
+                    (DG, found(vec![result(DG, "dg-1")])),
+                ],
+            )],
         },
         catalog: CatalogProgress::Skipped,
         search: SearchProgress::Pending,
@@ -121,14 +129,7 @@ fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
     let state = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped { track_count: 9 },
         barcode: BarcodeProgress::Lookups {
-            codes: vec!["DISC".to_string()],
-            providers: vec![ProviderBarcodeLookup {
-                source: MB,
-                state: BarcodeLookupState::Matched {
-                    code: "DISC".to_string(),
-                    results: vec![result(MB, "mb-1")],
-                },
-            }],
+            codes: vec![code("DISC", vec![(MB, found(vec![result(MB, "mb-1")]))])],
         },
         catalog: CatalogProgress::Skipped,
         search: SearchProgress::Pending,
@@ -222,8 +223,11 @@ fn a_left_out_disc_id_reads_apart_from_one_no_provider_answers() {
 /// where the walk is: the codes it passed missed, the one it is on is being
 /// asked, the ones ahead wait; a walk that matched names its count on the
 /// code that matched and never needed the rest.
+/// Every code is its own lookup, so each row's cells say how each provider
+/// answered about that code alone: a count where it found something, however
+/// many other codes found something too.
 #[test]
-fn a_provider_s_walk_fills_one_cell_per_code() {
+fn each_code_fills_its_own_cells() {
     let mut context = context();
     context.barcode.codes = vec![
         SourcedValue::new("A".to_string(), TextOrigin::Artwork),
@@ -233,19 +237,33 @@ fn a_provider_s_walk_fills_one_cell_per_code() {
     let state = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped { track_count: 9 },
         barcode: BarcodeProgress::Lookups {
-            codes: vec!["A".to_string(), "B".to_string(), "C".to_string()],
-            providers: vec![
-                ProviderBarcodeLookup {
-                    source: MB,
-                    state: BarcodeLookupState::Trying { index: 1 },
-                },
-                ProviderBarcodeLookup {
-                    source: DG,
-                    state: BarcodeLookupState::Matched {
-                        code: "B".to_string(),
-                        results: vec![result(DG, "dg-1"), result(DG, "dg-2")],
-                    },
-                },
+            codes: vec![
+                code(
+                    "A",
+                    vec![
+                        (MB, found(vec![result(MB, "mb-1")])),
+                        (DG, found(Vec::new())),
+                    ],
+                ),
+                code(
+                    "B",
+                    vec![
+                        (MB, LookupState::LookingUp),
+                        (DG, found(vec![result(DG, "dg-1"), result(DG, "dg-2")])),
+                    ],
+                ),
+                code(
+                    "C",
+                    vec![
+                        (
+                            MB,
+                            LookupState::Failed {
+                                failure: LookupFailure::Timeout,
+                            },
+                        ),
+                        (DG, found(Vec::new())),
+                    ],
+                ),
             ],
         },
         catalog: CatalogProgress::Skipped,
@@ -260,52 +278,22 @@ fn a_provider_s_walk_fills_one_cell_per_code() {
             .collect::<Vec<_>>(),
         vec!["A", "B", "C"]
     );
-    assert_eq!(
-        cells(&rows[0]),
-        vec![&LookupView::NoMatch, &LookupView::NoMatch]
-    );
+    assert!(matches!(
+        cells(&rows[0]).as_slice(),
+        [LookupView::Found { count: 1, .. }, LookupView::NoMatch]
+    ));
     assert!(matches!(
         cells(&rows[1]).as_slice(),
         [LookupView::LookingUp, LookupView::Found { count: 2, .. }]
     ));
     assert_eq!(
         cells(&rows[2]),
-        vec![&LookupView::Queued, &LookupView::NotAsked]
-    );
-}
-
-/// A walk that failed names its failure on the code it failed at.
-#[test]
-fn a_failed_walk_warns_on_the_code_it_failed_at() {
-    let mut context = context();
-    context.barcode.codes = vec![
-        SourcedValue::new("A".to_string(), TextOrigin::Artwork),
-        SourcedValue::new("B".to_string(), TextOrigin::Artwork),
-    ];
-    let state = IdentifyState::Triangulating {
-        discid: DiscidProgress::Skipped { track_count: 9 },
-        barcode: BarcodeProgress::Lookups {
-            codes: vec!["A".to_string(), "B".to_string()],
-            providers: vec![ProviderBarcodeLookup {
-                source: MB,
-                state: BarcodeLookupState::Failed {
-                    failure: LookupFailure::Timeout,
-                    index: 1,
-                },
-            }],
-        },
-        catalog: CatalogProgress::Skipped,
-        search: SearchProgress::Pending,
-        context,
-    };
-    let run = run_of(state);
-    let rows = barcode_rows(&run);
-    assert_eq!(cells(&rows[0]), vec![&LookupView::NoMatch]);
-    assert_eq!(
-        cells(&rows[1]),
-        vec![&LookupView::Failed {
-            failure: LookupFailure::Timeout
-        }]
+        vec![
+            &LookupView::Failed {
+                failure: LookupFailure::Timeout
+            },
+            &LookupView::NoMatch
+        ]
     );
 }
 
@@ -404,7 +392,7 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
         discid: DiscidProgress::Skipped { track_count: 9 },
         barcode: BarcodeProgress::NoCodes,
         catalog: CatalogProgress::Lookups {
-            values: vec![CatalogLookup {
+            values: vec![ValueLookup {
                 value: "LBL-2".to_string(),
                 providers: vec![
                     ProviderLookup {
@@ -462,19 +450,23 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
     let in_flight = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped { track_count: 9 },
         barcode: BarcodeProgress::Lookups {
-            codes: vec!["A".to_string(), "B".to_string()],
-            providers: vec![
-                ProviderBarcodeLookup {
-                    source: MB,
-                    state: BarcodeLookupState::Trying { index: 1 },
-                },
-                ProviderBarcodeLookup {
-                    source: DG,
-                    state: BarcodeLookupState::Failed {
-                        failure: LookupFailure::Network,
-                        index: 0,
-                    },
-                },
+            codes: vec![
+                code(
+                    "A",
+                    vec![
+                        (MB, found(Vec::new())),
+                        (
+                            DG,
+                            LookupState::Failed {
+                                failure: LookupFailure::Network,
+                            },
+                        ),
+                    ],
+                ),
+                code(
+                    "B",
+                    vec![(MB, LookupState::LookingUp), (DG, found(Vec::new()))],
+                ),
             ],
         },
         catalog: CatalogProgress::Skipped,
@@ -500,11 +492,11 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
     assert_eq!(cells(&after[0]), cells(&before[0]));
     assert!(matches!(
         cells(&before[1]).as_slice(),
-        [LookupView::LookingUp, LookupView::NotAsked]
+        [LookupView::LookingUp, LookupView::NoMatch]
     ));
     assert!(matches!(
         cells(&after[1]).as_slice(),
-        [LookupView::Found { count: 1, .. }, LookupView::NotAsked]
+        [LookupView::Found { count: 1, .. }, LookupView::NoMatch]
     ));
 }
 

@@ -122,13 +122,17 @@ fn an_excluded_disc_id_cannot_fail_the_barcode_answer() {
 fn an_answer_from_a_source_the_run_never_asked_lands_nowhere() {
     let (state, effects) = update(started_with(vec![DG]), disc_and_codes("d", &["BAR"]));
     assert_eq!(effects, vec![lookup_barcode(DG, "BAR")]);
+    let IdentifyState::Triangulating { barcode, .. } = &state else {
+        panic!("expected the run looking up, got {state:?}");
+    };
     assert_eq!(
-        barcode_walks(&state)
+        barcode.lookups()[0]
+            .providers
             .iter()
-            .map(|walk| walk.source)
+            .map(|lookup| lookup.source)
             .collect::<Vec<_>>(),
         vec![DG],
-        "only the sources the run asks have a walk"
+        "only the sources the run asks have a lookup"
     );
 
     let (after, effects) = step(

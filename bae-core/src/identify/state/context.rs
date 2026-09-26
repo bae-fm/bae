@@ -100,13 +100,13 @@ impl DiscIdEvidence {
 }
 
 /// The candidate's barcodes and what asking about them produced. Every
-/// configured provider walks the codes on its own, so failures are per
-/// provider — and reading the codes off the artwork can itself fail, before any
+/// configured provider is asked about every code on its own, so failures are
+/// per provider — and reading the codes off the artwork can itself fail, before any
 /// provider is asked.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct BarcodeEvidence {
     /// Every sighting of a barcode in the candidate's files, with its origin.
-    /// One code read off two images is two entries; the walks ask each code
+    /// One code read off two images is two entries; each code is asked about
     /// once.
     pub codes: Vec<SourcedValue>,
     /// Whether there was a barcode source at all. Empty `codes` is ambiguous on
@@ -163,7 +163,7 @@ impl BarcodeEvidence {
         unique_values(&self.codes)
     }
 
-    /// The codes the walks ask: `code_values` less the ones the person left
+    /// The codes the run asks about: `code_values` less the ones the person left
     /// out, in the same order.
     pub fn asked_code_values(&self) -> Vec<String> {
         self.code_values()

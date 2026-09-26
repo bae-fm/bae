@@ -51,9 +51,8 @@ pub use ready::{
 };
 pub use service::{IdentifyRunId, IdentifyServiceHandle};
 pub use state::{
-    BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
-    IdentifyEvent, IdentifyState, LookupOutcome, LookupResults, LookupState, ProviderBarcodeLookup,
-    ProviderLookup, SearchProgress, TitleSearch,
+    BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyEvent, IdentifyState, LookupOutcome,
+    LookupResults, LookupState, ProviderLookup, SearchProgress, TitleSearch, ValueLookup,
 };
 pub use toolbar::{
     SignalKind, SignalOption, SignalState, ToolbarOrigin, ToolbarSignal, ToolbarValue,

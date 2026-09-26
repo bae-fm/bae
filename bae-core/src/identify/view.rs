@@ -27,8 +27,8 @@
 use super::agreements::{judged_results, Agreements, CandidateText};
 use super::combine::{combine_results, Findings, LibraryStatuses};
 use super::state::{
-    BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
-    IdentifyState, LookupResults, LookupState, SearchProgress, SignalsContext,
+    BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupResults, LookupState,
+    SearchProgress, SignalsContext, ValueLookup,
 };
 use crate::db::LibraryStatus;
 use crate::import::release_group::{group_formed_rows, group_results, Judgements, ReleaseGroup};
@@ -44,11 +44,10 @@ use std::collections::HashSet;
 /// [`super::TerminalVerdict`] persists it.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum LookupView {
-    /// Not asked yet: the provider's walk through the codes has not reached
-    /// this one.
+    /// Not asked yet: the codes are still being read off the artwork, and
+    /// every code is asked once they all are.
     Queued,
-    /// Never asked: the provider's walk ended at an earlier code, matched or
-    /// failed, so this one was not needed.
+    /// Never asked: the person left the value out, or the step is off.
     NotAsked,
     LookingUp,
     /// The lookup named releases: how many pressings, and the album cards
@@ -171,7 +170,7 @@ pub enum BarcodeStepView {
     /// seen, each with every provider's lookup of it — a row the person left
     /// out says so and its cells were never asked. While the artwork is still
     /// being read, `scanning` says more rows may come and every cell is queued:
-    /// the walks start once the codes have settled.
+    /// the codes are asked once they have settled.
     Rows {
         scanning: bool,
         rows: Vec<SignalValueRow>,

@@ -278,8 +278,9 @@ mod identify_mirrors {
     use bae_core::identify::combine::LookupProvenance;
     use bae_core::identify::state::{DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
-        BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState,
-        ProviderBarcodeLookup, SignalKind, SignalState, ToolbarOrigin, ToolbarSignal, ToolbarValue,
+        BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState,
+        ProviderLookup, SignalKind, SignalState, ToolbarOrigin, ToolbarSignal, ToolbarValue,
+        ValueLookup,
     };
     use bae_core::import::search::MetadataResult;
     use bae_core::import::Catalog;
@@ -457,28 +458,48 @@ mod identify_mirrors {
     }
 
     /// A run in flight crosses as its ledger: one row per code, each with one
-    /// cell per provider — MusicBrainz still trying the second code while
-    /// Discogs has already matched the first.
+    /// cell per provider — MusicBrainz still asking about the second code while
+    /// Discogs has already matched the first and found nothing for the second.
     #[test]
     fn triangulating_lists_each_code_with_one_cell_per_provider() {
         let state = IdentifyState::Triangulating {
             discid: DiscidProgress::LookingUp,
             barcode: BarcodeProgress::Lookups {
-                codes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
-                providers: vec![
-                    ProviderBarcodeLookup {
-                        source: Catalog::MusicBrainz,
-                        state: BarcodeLookupState::Trying { index: 1 },
+                codes: vec![
+                    ValueLookup {
+                        value: "0123456789012".to_string(),
+                        providers: vec![
+                            ProviderLookup {
+                                source: Catalog::MusicBrainz,
+                                state: LookupState::Done {
+                                    results: Vec::new(),
+                                },
+                            },
+                            ProviderLookup {
+                                source: Catalog::Discogs,
+                                state: LookupState::Done {
+                                    results: vec![(
+                                        metadata_result("rel-dg", "group-1"),
+                                        LibraryStatus::absent("rel-dg"),
+                                    )],
+                                },
+                            },
+                        ],
                     },
-                    ProviderBarcodeLookup {
-                        source: Catalog::Discogs,
-                        state: BarcodeLookupState::Matched {
-                            code: "0123456789012".to_string(),
-                            results: vec![(
-                                metadata_result("rel-dg", "group-1"),
-                                LibraryStatus::absent("rel-dg"),
-                            )],
-                        },
+                    ValueLookup {
+                        value: "9999999999999".to_string(),
+                        providers: vec![
+                            ProviderLookup {
+                                source: Catalog::MusicBrainz,
+                                state: LookupState::LookingUp,
+                            },
+                            ProviderLookup {
+                                source: Catalog::Discogs,
+                                state: LookupState::Done {
+                                    results: Vec::new(),
+                                },
+                            },
+                        ],
                     },
                 ],
             },
@@ -545,7 +566,7 @@ mod identify_mirrors {
         );
         assert_eq!(rows[1]["value"], "9999999999999");
         assert_eq!(rows[1]["cells"][0]["lookup"]["kind"], "looking_up");
-        assert_eq!(rows[1]["cells"][1]["lookup"]["kind"], "not_asked");
+        assert_eq!(rows[1]["cells"][1]["lookup"]["kind"], "no_match");
         assert_eq!(run["catalog"]["kind"], "none_found");
         // Discogs's match is already on the list while MusicBrainz is out.
         let groups = json["groups"].as_array().unwrap();

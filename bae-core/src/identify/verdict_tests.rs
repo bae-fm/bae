@@ -4,8 +4,9 @@ use crate::identify::state::{
     step, BarcodeEvidence, BarcodeProgress, DiscIdEvidence, DiscidProgress, IdentifyEvent,
     SearchProgress,
 };
+use crate::identify::state::{LookupState, ProviderLookup, ValueLookup};
 use crate::identify::view::{BarcodeStepView, IdentifyStateView, LookupView};
-use crate::identify::{CatalogProgress, ProviderBarcodeLookup};
+use crate::identify::CatalogProgress;
 use crate::import::Catalog;
 
 fn mk_result(release_id: &str) -> MetadataResult {
@@ -107,10 +108,12 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
         IdentifyState::Triangulating {
             discid: DiscidProgress::Skipped { track_count: 9 },
             barcode: BarcodeProgress::Lookups {
-                codes: vec!["012345".to_string()],
-                providers: vec![ProviderBarcodeLookup {
-                    source: Catalog::MusicBrainz,
-                    state: crate::identify::BarcodeLookupState::Trying { index: 0 },
+                codes: vec![ValueLookup {
+                    value: "012345".to_string(),
+                    providers: vec![ProviderLookup {
+                        source: Catalog::MusicBrainz,
+                        state: LookupState::LookingUp,
+                    }],
                 }],
             },
             catalog: CatalogProgress::Skipped,
