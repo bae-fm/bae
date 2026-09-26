@@ -87,12 +87,6 @@ impl crate::types::BridgeCandidateRuntimeSnapshot {
         } = runtime;
         let identify = running.or(saving);
         crate::types::BridgeCandidateRuntimeSnapshot {
-            signals_toolbar: crate::types::BridgeSignalsToolbar::from_core(
-                identify
-                    .as_ref()
-                    .map(bae_core::identify::IdentifyState::toolbar)
-                    .unwrap_or_default(),
-            ),
             identify_state: crate::types::BridgeIdentifyState::from_core(
                 identify.unwrap_or(bae_core::identify::IdentifyState::Idle),
             ),

@@ -123,9 +123,6 @@ pub struct BridgeCandidateRuntimeSnapshot {
     /// The live driver's state. `Idle` when no driver is running for the key
     /// and nothing terminal is being held.
     pub identify_state: BridgeIdentifyState,
-    /// The badge row projected from `identify_state`, so both come from one
-    /// value. Empty when `identify_state` is `Idle`.
-    pub signals_toolbar: BridgeSignalsToolbar,
     /// The running import, or absent when none is.
     pub import: Option<BridgeImportInFlight>,
     /// The typed search submitted for this candidate, as its sources land.

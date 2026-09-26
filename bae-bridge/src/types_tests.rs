@@ -25,48 +25,10 @@ fn pairing_cancellation_crosses_the_bridge_as_cancellation() {
 mod triage_tests {
     use super::*;
 
-    /// The badge row is a projection of the identify state, so the two cross
-    /// as one value rather than side by side: a state with signals carries its
-    /// badges, and `Idle` carries none.
+    /// A candidate with no identify driver and an import running crosses as
+    /// `Idle` with its import's progress.
     #[test]
-    fn the_toolbar_is_derived_from_the_state_it_crosses_with() {
-        use bae_core::identify::IdentifyState;
-
-        let context = bae_core::identify::state::SignalsContext {
-            providers: Vec::new(),
-            artwork: bae_core::signals::ArtworkScan::Absent,
-            disc: bae_core::identify::state::DiscIdEvidence {
-                signal: bae_core::signals::DiscIdSignal::Absent { track_count: 9 },
-                ..Default::default()
-            },
-            barcode: Default::default(),
-            catalog: Default::default(),
-            search: Default::default(),
-            text: Default::default(),
-            text_settled: true,
-            track_count: 9,
-            album_links: bae_core::identify::state::AlbumLinkReading::Pending,
-        };
-        let live = IdentifyState::ManualOnly {
-            track_count: 9,
-            ledger: None,
-            context,
-        };
-        let expected = live.toolbar().len();
-        assert!(expected > 0, "the sample state has badges to project");
-
-        let crossed =
-            BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
-                queued: None,
-                running: Some(live),
-                saving: None,
-                save_failed: None,
-                import: None,
-                search: None,
-            });
-        assert_eq!(crossed.signals_toolbar.signals.len(), expected);
-        assert!(crossed.import.is_none());
-
+    fn an_idle_candidate_crosses_with_its_running_import() {
         let idle =
             BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
                 queued: None,
@@ -80,7 +42,6 @@ mod triage_tests {
                 search: None,
             });
         assert!(matches!(idle.identify_state, BridgeIdentifyState::Idle));
-        assert!(idle.signals_toolbar.signals.is_empty());
         assert_eq!(
             idle.import.map(|import| import.progress_percent),
             Some(Some(40))

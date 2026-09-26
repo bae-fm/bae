@@ -843,7 +843,6 @@
                     guard key == importingKey else { return nil }
                     return BridgeCandidateRuntimeSnapshot(
                         identifyState: .idle,
-                        signalsToolbar: BridgeSignalsToolbar(signals: []),
                         import: inFlight,
                         search: nil
                     )

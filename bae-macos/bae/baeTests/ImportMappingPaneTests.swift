@@ -162,7 +162,6 @@ private func runtime(
 ) -> BridgeCandidateRuntimeSnapshot {
     BridgeCandidateRuntimeSnapshot(
         identifyState: identifyState,
-        signalsToolbar: BridgeSignalsToolbar(signals: []),
         import: nil,
         search: nil
     )

@@ -13,7 +13,6 @@ struct ShownIdentifyStateTests {
     ) -> BridgeCandidateRuntimeSnapshot {
         BridgeCandidateRuntimeSnapshot(
             identifyState: state,
-            signalsToolbar: BridgeSignalsToolbar(signals: []),
             import: nil,
             search: nil
         )

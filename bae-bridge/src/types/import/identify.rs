@@ -103,8 +103,9 @@ mirror_struct! {
     fields: { x, y, width, height },
 }
 
-/// Which kind of signal a toolbar badge represents. Mirrors
-/// `bae_core::identify::SignalKind`.
+/// The three identifying signals — disc ID, barcode, catalog number — as
+/// the apps name them in a failure line or an evidence chip. Nothing crosses
+/// into it from core; it is the vocabulary those surfaces share.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSignalKind {
     DiscId,
@@ -192,136 +193,6 @@ pub fn bridge_lookup_failure_brief_key(failure: BridgeLookupFailure) -> String {
         BridgeLookupFailure::Diagnostic { .. } => "core.lookup.failure.brief.diagnostic",
     }
     .to_string()
-}
-
-/// The live lookup state of one toolbar badge. Mirrors
-/// `bae_core::identify::SignalState`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSignalState {
-    LookingUp,
-    Found { count: u32 },
-    NoMatch,
-    Skipped,
-    Failed { failure: BridgeLookupFailure },
-}
-
-/// One of the values a signal could take, for the signals that offer a choice.
-/// Mirrors `bae_core::identify::SignalOption`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeSignalOption {
-    pub value: String,
-    pub origin: BridgeSignalOrigin,
-    /// Whether the identify run asks about this one. Several options of a
-    /// signal can be chosen at once.
-    pub chosen: bool,
-}
-
-/// The value a badge shows, and where it was read. Mirrors
-/// `bae_core::identify::ToolbarValue`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeToolbarValue {
-    pub value: String,
-    pub origin: BridgeToolbarOrigin,
-}
-
-/// Where a badge's value was read. Mirrors
-/// `bae_core::identify::ToolbarOrigin`.
-#[derive(Debug, Clone, Copy, uniffi::Enum)]
-pub enum BridgeToolbarOrigin {
-    /// The disc's table of contents (LOG/CUE).
-    DiscToc,
-    Value {
-        origin: BridgeSignalOrigin,
-    },
-}
-
-/// One badge in the signals toolbar — a pre-shaped row the UI renders without
-/// deriving anything. Mirrors `bae_core::identify::ToolbarSignal`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeToolbarSignal {
-    pub kind: BridgeSignalKind,
-    /// The value the badge shows and where it was read; `None` when the
-    /// signal has nothing to show.
-    pub shown: Option<BridgeToolbarValue>,
-    pub state: BridgeSignalState,
-    pub excluded: bool,
-    /// The values this signal offers, each marked when the run asks about it.
-    /// Empty for the disc ID, which has one value the badge itself stands for,
-    /// and for a signal the candidate carries no value of.
-    pub options: Vec<BridgeSignalOption>,
-}
-
-/// The candidate's full signals toolbar — the ordered badge list. Mirrors a
-/// `Vec<bae_core::identify::ToolbarSignal>`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeSignalsToolbar {
-    pub signals: Vec<BridgeToolbarSignal>,
-}
-
-mirror_enum! {
-    #[cfg(feature = "desktop")]
-    BridgeSignalState = bae_core::identify::SignalState,
-    from_core: fn,
-    variants: {
-        LookingUp,
-        Found { count },
-        NoMatch,
-        Skipped,
-        Failed { failure: (BridgeLookupFailure) },
-    },
-}
-
-mirror_struct! {
-    #[cfg(feature = "desktop")]
-    BridgeSignalOption = bae_core::identify::SignalOption,
-    from_core: fn,
-    fields: { value, origin: (BridgeSignalOrigin), chosen },
-}
-
-mirror_enum! {
-    #[cfg(feature = "desktop")]
-    BridgeSignalKind = bae_core::identify::SignalKind,
-    from_core: fn,
-    variants: { DiscId, Barcode, Catalog },
-}
-
-mirror_struct! {
-    #[cfg(feature = "desktop")]
-    BridgeToolbarValue = bae_core::identify::ToolbarValue,
-    from_core: fn,
-    fields: { value, origin: (BridgeToolbarOrigin) },
-}
-
-mirror_enum! {
-    #[cfg(feature = "desktop")]
-    BridgeToolbarOrigin = bae_core::identify::ToolbarOrigin,
-    from_core: fn,
-    variants: { DiscToc, Value(origin: (BridgeSignalOrigin)) },
-}
-
-mirror_struct! {
-    #[cfg(feature = "desktop")]
-    BridgeToolbarSignal = bae_core::identify::ToolbarSignal,
-    from_core: fn,
-    fields: {
-        kind: (BridgeSignalKind),
-        shown: (opt BridgeToolbarValue),
-        state: (BridgeSignalState),
-        excluded,
-        options: (each BridgeSignalOption),
-    },
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeSignalsToolbar {
-    pub(crate) fn from_core(toolbar: Vec<bae_core::identify::ToolbarSignal>) -> Self {
-        BridgeSignalsToolbar {
-            signals: toolbar
-                .into_iter()
-                .map(BridgeToolbarSignal::from_core)
-                .collect(),
-        }
-    }
 }
 
 /// How one provider's lookup of one value is going — one cell of the run's
