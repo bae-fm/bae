@@ -29,6 +29,11 @@ struct CandidateListMenu: View, Equatable {
     let hasGroups: Bool
     let sortOrder: BridgeImportListOrder
     let onSetSortOrder: (BridgeImportListOrder) -> Void
+    /// Which of Pending's rows the list shows, by where core places them.
+    let placementFilter: BridgePlacementFilter
+    /// Whether the tab on show has placements to filter by: only Pending does.
+    let placementFilterApplies: Bool
+    let onSetPlacementFilter: (BridgePlacementFilter) -> Void
     let onAddFolder: () -> Void
     /// Fold every folder group in the queue open (`true`) or shut (`false`).
     let onSetAllGroupsExpanded: (_ expanded: Bool) -> Void
@@ -49,6 +54,8 @@ struct CandidateListMenu: View, Equatable {
             && lhs.networkFolders == rhs.networkFolders
             && lhs.hasGroups == rhs.hasGroups
             && lhs.sortOrder == rhs.sortOrder
+            && lhs.placementFilter == rhs.placementFilter
+            && lhs.placementFilterApplies == rhs.placementFilterApplies
             && hasFailedScan(in: lhs.scanStatuses)
                 == hasFailedScan(in: rhs.scanStatuses)
             && lhs.watchedFolders.allSatisfy { folder in
@@ -106,6 +113,11 @@ struct CandidateListMenu: View, Equatable {
                     .tag(BridgeImportListOrder.pathDescending)
             }
             .pickerStyle(.inline)
+            PlacementFilterPicker(
+                selection: placementFilter,
+                onSelect: onSetPlacementFilter
+            )
+            .disabled(!placementFilterApplies)
             Section("Folders") {
                 Button {
                     onAddFolder()
@@ -134,6 +146,14 @@ struct CandidateListMenu: View, Equatable {
             Image(systemName: "ellipsis.circle")
                 .font(.system(size: ImportFilterBarLayout.glyphSize))
                 .overlay(alignment: .topTrailing) {
+                    // A filter hiding Pending rows marks the trigger, so a
+                    // short list never reads as a short queue.
+                    if placementFilter != .any && !hasFailedScan {
+                        Circle()
+                            .fill(Color.accentColor)
+                            .frame(width: 6, height: 6)
+                            .offset(x: 2, y: -2)
+                    }
                     if hasFailedScan {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 8))
@@ -145,7 +165,7 @@ struct CandidateListMenu: View, Equatable {
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
-        .help("Sorting and Watched Folders")
+        .help("Sorting, Filtering and Watched Folders")
     }
 
     /// One root's entry. Its scan, when it is saying anything, rides the
@@ -246,6 +266,9 @@ struct CandidateListMenu: View, Equatable {
             hasGroups: true,
             sortOrder: .newestFirst,
             onSetSortOrder: { _ in },
+            placementFilter: .ready,
+            placementFilterApplies: true,
+            onSetPlacementFilter: { _ in },
             onAddFolder: {},
             onSetAllGroupsExpanded: { _ in },
             onRefreshFolder: { _ in },

@@ -23,7 +23,8 @@ final class CandidateListMenuTests: XCTestCase {
     @MainActor
     private func menu(
         status: BridgeFolderScanStatus,
-        sortOrder: BridgeImportListOrder = .newestFirst
+        sortOrder: BridgeImportListOrder = .newestFirst,
+        placementFilter: BridgePlacementFilter = .any
     ) -> CandidateListMenu {
         CandidateListMenu(
             watchedFolders: [
@@ -35,6 +36,9 @@ final class CandidateListMenuTests: XCTestCase {
             hasGroups: false,
             sortOrder: sortOrder,
             onSetSortOrder: { _ in },
+            placementFilter: placementFilter,
+            placementFilterApplies: true,
+            onSetPlacementFilter: { _ in },
             onAddFolder: {},
             onSetAllGroupsExpanded: { _ in },
             onRefreshFolder: { _ in },
@@ -47,6 +51,21 @@ final class CandidateListMenuTests: XCTestCase {
         XCTAssertNotEqual(
             menu(status: .complete),
             menu(status: .complete, sortOrder: .oldestFirst)
+        )
+    }
+
+    @MainActor
+    func testChangedPlacementFilterReplacesTheMenuCheckmark() {
+        XCTAssertNotEqual(
+            menu(status: .complete),
+            menu(status: .complete, placementFilter: .ready)
+        )
+        XCTAssertNotEqual(
+            menu(status: .complete, placementFilter: .needsYou(kind: nil)),
+            menu(
+                status: .complete,
+                placementFilter: .needsYou(kind: .noMatch)
+            )
         )
     }
 }

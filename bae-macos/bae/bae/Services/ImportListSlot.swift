@@ -96,6 +96,7 @@ final class ImportListSlot {
         view = BridgeImportListView(
             tab: uiStore.importCandidateTab,
             filterText: uiStore.importCandidateFilterText,
+            placement: uiStore.importCandidatePlacementFilter,
             collapsedGroups: uiStore.collapsedReleaseGroupKeys,
             order: initialOrder
         )
@@ -119,6 +120,12 @@ final class ImportListSlot {
     func setFilterText(_ text: String) {
         uiStore.setImportCandidateFilterText(text)
         updateView { $0.filterText = text }
+    }
+
+    /// Show only the Pending rows the tables place this way.
+    func setPlacementFilter(_ filter: BridgePlacementFilter) {
+        uiStore.setImportCandidatePlacementFilter(filter)
+        updateView { $0.placement = filter }
     }
 
     func setSortOrder(_ order: BridgeImportListOrder) {
@@ -147,6 +154,7 @@ final class ImportListSlot {
         }
         uiStore.setImportCandidateTab(location.tab)
         uiStore.setImportCandidateFilterText("")
+        uiStore.setImportCandidatePlacementFilter(.any)
         if let groupKey = location.groupKey {
             uiStore.setReleaseGroupExpanded(
                 releaseGroupDisclosureID(groupKey),
@@ -156,6 +164,7 @@ final class ImportListSlot {
         var next = view
         next.tab = location.tab
         next.filterText = ""
+        next.placement = .any
         next.collapsedGroups = uiStore.collapsedReleaseGroupKeys
         view = next
         guard let pages, let list else { return nil }

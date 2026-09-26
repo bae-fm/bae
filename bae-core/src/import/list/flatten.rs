@@ -153,7 +153,8 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
                 let triage_row = place_row(rows, row)?;
                 let tab = triage_row.placement.tab();
                 counts.bump(tab);
-                let matches_filter = filter.keeps(|| shown_text(rows, &triage_row))?;
+                let matches_filter = view.placement.keeps(&triage_row.placement)
+                    && filter.keeps(|| shown_text(rows, &triage_row))?;
                 ordered.push(OrderedEntry {
                     watched_folder_path: row.watched_folder_path.clone(),
                     display_path: row.display_path.clone(),
@@ -341,11 +342,12 @@ pub(crate) fn locate_candidate(
     }))
 }
 
-/// `request` with its filter cleared: the request a queue read without the
-/// filter's text answers.
+/// `request` with its filters cleared: the request a queue read without the
+/// filter's text answers, placing every row whatever it is.
 fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
     let mut request = request.clone();
     request.view.filter_text.clear();
+    request.view.placement = super::PlacementFilter::Any;
     request
 }
 

@@ -29,7 +29,7 @@ use super::search::ImportSearchReleaseDetail;
 use super::triage::{
     import_status_of, place, CandidateActionBasis, CandidateLiveState, ImportedRow,
     TriageGroup, TriageImportStatus, TriageMetadataSummary, TriageRow,
-    TriageRuntimeFacts, TriageTabCounts,
+    TriagePlacement, TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{MetadataProvenance, RawReleaseEdit};
 use super::watched_folder::WatchedFolder;
@@ -55,7 +55,7 @@ pub use subscription::{ImportListSubscription, ImportListSubscriptionError};
 
 pub use super::triage::TriageTab;
 
-/// What the list is currently showing: which tab, which filter, which groups
+/// What the list is currently showing: which tab, which filters, which groups
 /// are folded shut, and in which direction.
 ///
 /// The collapsed set is part of the request rather than a rendering decision:
@@ -65,6 +65,10 @@ pub use super::triage::TriageTab;
 pub struct ImportListView {
     pub tab: TriageTab,
     pub filter_text: String,
+    /// Which of Pending's rows the list shows, by where the tables place
+    /// them. Done and Skipped have no placements within them, so it leaves
+    /// their rows alone.
+    pub placement: PlacementFilter,
     pub collapsed_groups: BTreeSet<FolderReleaseDecisionKey>,
     pub order: ImportListOrder,
 }
@@ -82,8 +86,53 @@ impl Default for ImportListView {
         Self {
             tab: TriageTab::Pending,
             filter_text: String::new(),
+            placement: PlacementFilter::Any,
             collapsed_groups: BTreeSet::new(),
             order: ImportListOrder::NewestFirst,
+        }
+    }
+}
+
+/// Which of Pending's rows a list shows, by the placement the tables give each
+/// one — the same placement its section, its commands and the Ready set are
+/// read from, so a filter never disagrees with what a row says it is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PlacementFilter {
+    /// Every row.
+    #[default]
+    Any,
+    /// Ready to import.
+    Ready,
+    /// Asking a question — any of them, or only the one named.
+    NeedsYou(Option<crate::identify::NeedsYouKind>),
+    /// Whose last import failed.
+    Failed,
+    /// With nothing to import and nothing to ask yet: not identified, or
+    /// identified over a draft that would not import.
+    Unanswered,
+}
+
+impl PlacementFilter {
+    /// Whether a row placed `placement` stays in the list.
+    pub(crate) fn keeps(self, placement: &TriagePlacement) -> bool {
+        match (self, placement) {
+            (Self::Any, _) => true,
+            // Only Pending holds placements to choose between.
+            (_, TriagePlacement::Done | TriagePlacement::Skipped) => true,
+            (Self::Ready, TriagePlacement::Ready) => true,
+            (Self::NeedsYou(None), TriagePlacement::NeedsYou { .. }) => true,
+            (Self::NeedsYou(Some(kind)), TriagePlacement::NeedsYou { reason }) => {
+                reason.kind() == kind
+            }
+            (Self::Failed, TriagePlacement::Failed) => true,
+            (Self::Unanswered, TriagePlacement::Pending) => true,
+            (
+                Self::Ready | Self::NeedsYou(_) | Self::Failed | Self::Unanswered,
+                TriagePlacement::Pending
+                | TriagePlacement::Ready
+                | TriagePlacement::NeedsYou { .. }
+                | TriagePlacement::Failed,
+            ) => false,
         }
     }
 }

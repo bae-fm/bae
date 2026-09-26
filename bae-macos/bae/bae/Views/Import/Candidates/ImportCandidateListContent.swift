@@ -365,6 +365,14 @@ struct ImportCandidateListContent: View {
                                 cancelReveal()
                                 listSlot.setSortOrder(order)
                             },
+                            placementFilter: uiStore
+                                .importCandidatePlacementFilter,
+                            placementFilterApplies: uiStore.importCandidateTab
+                                == .pending,
+                            onSetPlacementFilter: { filter in
+                                cancelReveal()
+                                listSlot.setPlacementFilter(filter)
+                            },
                             onAddFolder: onAddFolder,
                             onSetAllGroupsExpanded: { expanded in
                                 cancelReveal()

@@ -22,10 +22,40 @@ pub enum BridgeImportListOrder {
 pub struct BridgeImportListView {
     pub tab: BridgeTriageTab,
     pub filter_text: String,
+    /// Which of Pending's rows the list shows, by where the tables place them.
+    pub placement: BridgePlacementFilter,
     /// The groups folded shut. Their entries are not in the list at all, which
     /// is why this is part of the request rather than a rendering decision.
     pub collapsed_groups: Vec<BridgeFolderReleaseDecisionKey>,
     pub order: BridgeImportListOrder,
+}
+
+/// Which of Pending's rows a list shows, by the placement the tables give each
+/// one. Mirrors `bae_core::import::PlacementFilter`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgePlacementFilter {
+    /// Every row.
+    Any,
+    /// Ready to import.
+    Ready,
+    /// Asking a question — any of them, or only the one named.
+    NeedsYou { kind: Option<BridgeNeedsYouKind> },
+    /// Whose last import failed.
+    Failed,
+    /// With nothing to import and nothing to ask yet.
+    Unanswered,
+}
+
+/// Which question a Needs-you row asks, without its operands. Mirrors
+/// `bae_core::identify::NeedsYouKind`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeNeedsYouKind {
+    SeveralMatches,
+    NoMatch,
+    NothingToLookUp,
+    LookupFailed,
+    TrackCountDisagrees,
+    SourceTracksUnknown,
 }
 
 /// One item at one offset. `stable_key` identifies it across reruns — the id a

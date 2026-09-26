@@ -387,12 +387,41 @@ mirror_enum! {
     variants: { NewestFirst, OldestFirst, PathAscending, PathDescending },
 }
 
+mirror_enum! {
+    crate::types::BridgeNeedsYouKind = bae_core::identify::NeedsYouKind,
+    into_core: fn,
+    variants: {
+        SeveralMatches,
+        NoMatch,
+        NothingToLookUp,
+        LookupFailed,
+        TrackCountDisagrees,
+        SourceTracksUnknown,
+    },
+}
+
+impl crate::types::BridgePlacementFilter {
+    fn into_core(self) -> bae_core::import::PlacementFilter {
+        use bae_core::import::PlacementFilter;
+        match self {
+            Self::Any => PlacementFilter::Any,
+            Self::Ready => PlacementFilter::Ready,
+            Self::NeedsYou { kind } => {
+                PlacementFilter::NeedsYou(kind.map(crate::types::BridgeNeedsYouKind::into_core))
+            }
+            Self::Failed => PlacementFilter::Failed,
+            Self::Unanswered => PlacementFilter::Unanswered,
+        }
+    }
+}
+
 mirror_struct! {
     crate::types::BridgeImportListView = bae_core::import::ImportListView,
     into_core: pub(super) fn,
     fields: {
         tab: (crate::types::BridgeTriageTab),
         filter_text,
+        placement: (crate::types::BridgePlacementFilter),
         collapsed_groups: (each crate::types::BridgeFolderReleaseDecisionKey),
         order: (crate::types::BridgeImportListOrder),
     },

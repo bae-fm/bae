@@ -49,6 +49,31 @@ pub enum NeedsYou {
     SourceTracksUnknown,
 }
 
+/// Which question a [`NeedsYou`] asks, without what it carries to state it:
+/// what a list is filtered by, where the row's operands do not matter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NeedsYouKind {
+    SeveralMatches,
+    NoMatch,
+    NothingToLookUp,
+    LookupFailed,
+    TrackCountDisagrees,
+    SourceTracksUnknown,
+}
+
+impl NeedsYou {
+    pub fn kind(&self) -> NeedsYouKind {
+        match self {
+            NeedsYou::SeveralMatches { .. } => NeedsYouKind::SeveralMatches,
+            NeedsYou::NoMatch => NeedsYouKind::NoMatch,
+            NeedsYou::NothingToLookUp => NeedsYouKind::NothingToLookUp,
+            NeedsYou::LookupFailed => NeedsYouKind::LookupFailed,
+            NeedsYou::TrackCountDisagrees { .. } => NeedsYouKind::TrackCountDisagrees,
+            NeedsYou::SourceTracksUnknown => NeedsYouKind::SourceTracksUnknown,
+        }
+    }
+}
+
 /// Which shape a stored verdict has. The first three mirror the normal verdict
 /// column; `Failed` is the attached failed-verdict row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

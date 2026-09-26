@@ -143,12 +143,14 @@ class UiStore: @unchecked Sendable {
     private(set) var pendingImportCandidateReveal: PendingImportCandidateReveal?
     private var importCandidateRevealSeq = 0
 
-    /// The candidate list sidebar's active tab and filter text. UI-originated
+    /// The candidate list sidebar's active tab and filters. UI-originated
     /// session state, alongside `selectedFolderCandidates` — surviving a
     /// remount so the sidebar doesn't reset to its defaults on every
-    /// import-tab switch.
+    /// import-tab switch, and gone at relaunch, where a filter still hiding
+    /// rows would read as rows gone missing.
     var importCandidateTab: BridgeTriageTab = .pending
     var importCandidateFilterText: String = ""
+    var importCandidatePlacementFilter: BridgePlacementFilter = .any
 
     let candidateActionRun = ImportCandidateActionRun()
     private var releaseGroupDisclosureState: [ReleaseGroupDisclosureID: Bool] =
@@ -350,6 +352,10 @@ class UiStore: @unchecked Sendable {
 
     func setImportCandidateFilterText(_ text: String) {
         importCandidateFilterText = text
+    }
+
+    func setImportCandidatePlacementFilter(_ filter: BridgePlacementFilter) {
+        importCandidatePlacementFilter = filter
     }
 
     /// The groups folded shut, as the list request names them. A group with no
