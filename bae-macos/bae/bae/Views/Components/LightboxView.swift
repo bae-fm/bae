@@ -479,6 +479,7 @@ private struct LiveTextOverlay: NSViewRepresentable {
     }
 #endif
 
+// periphery:ignore - a `.task(id:)` identity: compared, never read.
 /// One load of the lightbox's image: which image, and which time of asking.
 private struct LightboxLoad: Equatable {
     let image: ImageContent
