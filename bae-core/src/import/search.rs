@@ -2,6 +2,7 @@
 //! Discogs for release metadata, checking Cover Art Archive for thumbnails, and
 //! fetching full release details for the import confirmation step.
 
+use crate::util::text::catalog_key;
 use crate::barcode::{written_digits, Barcode};
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::import::cover_art::RemoteCover;
@@ -535,6 +536,28 @@ pub enum SearchQuery {
 }
 
 impl SearchQuery {
+    /// Keep only what answers the query. A catalog number is one number: both
+    /// catalogs search by it loosely — Discogs's `catno` matches it inside
+    /// longer numbers, so asking for `CL 719` returns `CL 1719` and
+    /// `WPCL-719` — and a release under another number is not an answer to
+    /// it. The two numbers are compared as [`catalog_key`] compares them,
+    /// however either is spaced, cased or hyphenated.
+    fn keep_answers(&self, results: &mut Vec<MetadataResult>) {
+        let SearchQuery::CatalogNumber { catalog_number } = self else {
+            return;
+        };
+        let Some(asked) = catalog_key(catalog_number) else {
+            return;
+        };
+        results.retain(|result| {
+            result
+                .catalog_number
+                .as_deref()
+                .and_then(catalog_key)
+                .is_some_and(|stated| stated == asked)
+        });
+    }
+
     pub fn musicbrainz_params(&self) -> ReleaseSearchParams {
         match self {
             SearchQuery::General { artist, album } => ReleaseSearchParams {
@@ -594,19 +617,21 @@ pub async fn search_provider(
     query: &SearchQuery,
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, ImportError> {
-    match source {
+    let mut results = match source {
         Catalog::MusicBrainz => {
             library_manager
                 .search_musicbrainz(query.musicbrainz_params(), priority)
-                .await
+                .await?
         }
         Catalog::Discogs => {
             library_manager
                 .search_discogs(query.discogs_params(), priority)
-                .await
+                .await?
         }
         other => unreachable!("{} answers no searches", other.as_str()),
-    }
+    };
+    query.keep_answers(&mut results);
+    Ok(results)
 }
 
 /// Ask one provider a typed query, in the typed failure a surface renders —

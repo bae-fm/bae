@@ -772,3 +772,67 @@ async fn two_transports_keep_their_own_answers() {
     assert_eq!(first_requests.load(Ordering::SeqCst), 1);
     assert_eq!(second_requests.load(Ordering::SeqCst), 1);
 }
+
+/// A 200 response carrying `body`, leaked into the `'static` the test server
+/// hands out.
+fn ok_json(body: String) -> &'static str {
+    Box::leak(
+        format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}",
+            body.len()
+        )
+        .into_boxed_str(),
+    )
+}
+
+/// One page of catalog-number results, of `pages` in all.
+fn catalog_page(pages: u32, releases: &[(u64, &str)]) -> &'static str {
+    let results: Vec<serde_json::Value> = releases
+        .iter()
+        .map(|(id, catno)| {
+            serde_json::json!({
+                "id": id, "type": "release", "title": "Artist One - Album One",
+                "catno": catno, "year": "1955"
+            })
+        })
+        .collect();
+    ok_json(
+        serde_json::json!({
+            "pagination": { "page": 1, "pages": pages, "per_page": 100, "items": results.len() },
+            "results": results
+        })
+        .to_string(),
+    )
+}
+
+/// Discogs orders a catalog-number search by relevance, so a release under
+/// exactly the number asked can sit past the first page: every page is read.
+#[tokio::test]
+async fn a_catalog_number_search_reads_every_page() {
+    let (url, request_count) = discogs_response_server(vec![
+        catalog_page(2, &[(1, "LBL 1719"), (2, "XLBL 719")]),
+        catalog_page(2, &[(3, "LBL 719")]),
+    ])
+    .await;
+    let client = DiscogsClient::new(served_by(&url), "token".to_string());
+
+    let releases = client
+        .search_with_params(
+            &DiscogsSearchParams {
+                catno: Some("LBL 719".to_string()),
+                ..Default::default()
+            },
+            CallPriority::Interactive,
+        )
+        .await
+        .expect("both pages answer");
+
+    assert_eq!(
+        releases
+            .iter()
+            .map(|release| release.id)
+            .collect::<Vec<_>>(),
+        vec![1, 2, 3]
+    );
+    assert_eq!(request_count.load(Ordering::SeqCst), 2);
+}

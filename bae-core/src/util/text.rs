@@ -17,6 +17,14 @@ pub(crate) fn squash(text: &str) -> String {
         .collect()
 }
 
+/// A catalog number as two of them are compared: squashed, and only when
+/// that leaves a number. `[none]` on MusicBrainz and `none` on Discogs state
+/// that a release has no catalog number, which is no number to compare.
+pub(crate) fn catalog_key(stated: &str) -> Option<String> {
+    let key = squash(stated);
+    (!key.is_empty() && key != "none").then_some(key)
+}
+
 /// Text as two spellings of one name compare: NFD decomposed, combining marks
 /// dropped (so diacritics go), lowercased, whitespace runs collapsed to one
 /// space, and leading and trailing non-alphanumerics stripped. Never displayed.

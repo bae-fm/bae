@@ -15,7 +15,7 @@ use crate::identify::label::stated;
 use crate::import::search::MetadataResult;
 use crate::import::types::{Catalog, MetadataRef};
 use crate::pressing::{Medium, ReleaseArea, StatedMedia};
-use crate::util::text::squash;
+use crate::util::text::catalog_key;
 use tracing::debug;
 
 /// What two records say about one pressing fact.
@@ -78,14 +78,6 @@ fn barcode_key(source: Catalog, release_id: &str, stated: &str) -> Option<String
             )
         })
         .ok()
-}
-
-/// A catalog number as it is compared: squashed, and only when that leaves a
-/// number. `[none]` on MusicBrainz and `none` on Discogs state that the
-/// release has no catalog number, which is no number to compare.
-fn catalog_key(stated: &str) -> Option<String> {
-    let key = squash(stated);
-    (!key.is_empty() && key != "none").then_some(key)
 }
 
 /// The carriers a record names, and whether they are all of them.

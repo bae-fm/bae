@@ -213,7 +213,24 @@ fn repeat_discogs(error: &DiscogsError) -> Repeat {
 #[derive(Debug, Deserialize)]
 struct SearchResponse {
     results: Vec<DiscogsSearchResult>,
+    #[serde(default)]
+    pagination: Option<SearchPagination>,
 }
+
+/// Where a page of search results sits among all of them.
+#[derive(Debug, Deserialize)]
+struct SearchPagination {
+    pages: u32,
+}
+
+/// The most pages of a catalog-number search read. Discogs matches a number
+/// inside longer ones, so a short number's search runs to many pages, and
+/// every page is a request under the rate limit; the ones asked about here
+/// fit in a few — `CL 719` returns 227 releases, three pages of 100.
+const CATALOG_SEARCH_PAGES: u32 = 10;
+
+/// Results per page of a catalog-number search: the most Discogs serves.
+const CATALOG_SEARCH_PER_PAGE: &str = "100";
 #[derive(Debug, Clone, Default)]
 pub struct DiscogsSearchParams {
     /// Words matched anywhere on a release, sent as Discogs's `q`. An artist
@@ -708,24 +725,62 @@ impl DiscogsClient {
         if let Some(ref barcode) = params.barcode {
             query_params.push(("barcode", barcode));
         }
+        // A catalog-number search is read to its end: Discogs orders by
+        // relevance, not by the number asked, so a release under exactly that
+        // number can sit past the first page behind longer numbers holding it.
+        let every_page = params.catno.is_some();
+        if every_page {
+            query_params.push(("per_page", CATALOG_SEARCH_PER_PAGE));
+        }
         debug!("Discogs API: GET {} with params: {:?}", url, params);
-        let search_response: SearchResponse = discogs_retry("Discogs search", || async {
-            let body = self
-                .get_cached(self.get(&url).query(&query_params), priority)
+        let page_of = |page: u32| {
+            let query_params = &query_params;
+            let url = &url;
+            async move {
+                let page = page.to_string();
+                let mut query: Vec<(&str, &str)> = query_params.clone();
+                if every_page {
+                    query.push(("page", &page));
+                }
+                discogs_retry("Discogs search", || async {
+                    let body = self
+                        .get_cached(self.get(url).query(&query), priority)
+                        .await
+                        .inspect_err(|error| match error {
+                            DiscogsError::RateLimit { .. } => {
+                                warn!("Discogs rate limit exceeded")
+                            }
+                            DiscogsError::InvalidApiKey => warn!("Discogs invalid API key"),
+                            DiscogsError::NotFound => warn!("Discogs API returned not found"),
+                            DiscogsError::Transport(_) => warn!("Discogs API request failed"),
+                            DiscogsError::Provider { status, .. } => {
+                                warn!("Discogs API error response (status {status})")
+                            }
+                            DiscogsError::Serialization(_) => {}
+                        })?;
+                    serde_json::from_str::<SearchResponse>(&body)
+                        .map_err(DiscogsError::Serialization)
+                })
                 .await
-                .inspect_err(|error| match error {
-                    DiscogsError::RateLimit { .. } => warn!("Discogs rate limit exceeded"),
-                    DiscogsError::InvalidApiKey => warn!("Discogs invalid API key"),
-                    DiscogsError::NotFound => warn!("Discogs API returned not found"),
-                    DiscogsError::Transport(_) => warn!("Discogs API request failed"),
-                    DiscogsError::Provider { status, .. } => {
-                        warn!("Discogs API error response (status {status})")
-                    }
-                    DiscogsError::Serialization(_) => {}
-                })?;
-            serde_json::from_str(&body).map_err(DiscogsError::Serialization)
-        })
-        .await?;
+            }
+        };
+        let mut search_response = page_of(1).await?;
+        if every_page {
+            let pages = search_response
+                .pagination
+                .as_ref()
+                .map_or(1, |pagination| pagination.pages);
+            if pages > CATALOG_SEARCH_PAGES {
+                warn!(
+                    "Discogs catalog search for {:?} runs to {pages} pages; reading the first \
+                     {CATALOG_SEARCH_PAGES}",
+                    params.catno
+                );
+            }
+            for page in 2..=pages.min(CATALOG_SEARCH_PAGES) {
+                search_response.results.extend(page_of(page).await?.results);
+            }
+        }
         debug!(
             "Discogs search returned {} total result(s)",
             search_response.results.len()
