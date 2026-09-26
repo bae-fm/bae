@@ -72,6 +72,9 @@ pub enum CoverStanding {
     Unstated,
 }
 
+/// How a standing is stored. Only the desktop's candidate and source-release
+/// tables store covers.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl CoverStanding {
     /// The stored column value.
     pub(crate) fn as_str(self) -> &'static str {
