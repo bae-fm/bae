@@ -5,8 +5,8 @@ import SwiftUI
 /// bae's vocabulary has — countries by their ISO code, named in the reader's
 /// language; regions, media, statuses, packagings and Discogs details by
 /// their catalog words — so the form can hold nothing a catalog does not
-/// state. A choice is handed to the writer whole; core keeps a medium only
-/// while its count is above zero and a detail once.
+/// state. A choice is handed to the writer whole; core keeps each medium
+/// with a count, and each detail, once.
 enum PressingFactPickers {
     /// The face of every picker, matching the form's text fields.
     static let controlFont: Font = .system(size: 12.5)
@@ -59,31 +59,20 @@ struct ReleaseAreaPicker: View {
     }
 }
 
-/// What the pressing is made of: each carrier with a stepper for its count,
-/// and a menu adding one more carrier.
+/// What the pressing is made of: each carrier by name with its count shown
+/// and stepped, a control removing it, and a menu adding one more carrier.
 struct MediaCountsEditor: View {
     let media: [BridgeMediaCount]
     let write: @MainActor (BridgePressingFactEdit) async -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             ForEach(media, id: \.medium) { counted in
-                Stepper(
-                    value: Binding(
-                        get: { Int(counted.count) },
-                        set: { count in
-                            replace(
-                                counted.medium,
-                                count: UInt32(max(count, 0))
-                            )
-                        }
-                    ),
-                    in: 0...99
-                ) {
-                    Text(PressingText.media([counted]))
-                        .font(PressingFactPickers.controlFont)
-                }
-                .fixedSize()
+                MediumCountRow(
+                    counted: counted,
+                    setCount: { replace(counted.medium, count: $0) },
+                    remove: { remove(counted.medium) }
+                )
             }
             Menu {
                 ForEach(
@@ -110,7 +99,6 @@ struct MediaCountsEditor: View {
         }
     }
 
-    /// A count of zero drops the carrier; core leaves it out.
     private func replace(_ medium: BridgeMedium, count: UInt32) {
         commit(
             media.map {
@@ -120,8 +108,55 @@ struct MediaCountsEditor: View {
         )
     }
 
+    private func remove(_ medium: BridgeMedium) {
+        commit(media.filter { $0.medium != medium })
+    }
+
     private func commit(_ media: [BridgeMediaCount]) {
         Task { await write(.media(media: media)) }
+    }
+}
+
+/// One carrier of the pressing: its name, how many of it — shown whatever
+/// the count, one included — with a stepper, and a button taking it out.
+/// Removing is its own control rather than stepping to zero, which nobody
+/// looks for.
+private struct MediumCountRow: View {
+    let counted: BridgeMediaCount
+    let setCount: (UInt32) -> Void
+    let remove: () -> Void
+
+    private var name: String {
+        bridgeMediumLabel(medium: counted.medium).text
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(name)
+            Text(verbatim: "\u{00D7}\(counted.count)")
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+            Stepper(
+                value: Binding(
+                    get: { Int(counted.count) },
+                    set: { setCount(UInt32($0)) }
+                ),
+                in: 1...99
+            ) {
+                EmptyView()
+            }
+            .labelsHidden()
+            .accessibilityLabel(String(localized: "Number of \(name)"))
+            Button(action: remove) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.tertiary)
+            }
+            .buttonStyle(.plain)
+            .help(String(localized: "Remove \(name)"))
+            .accessibilityLabel(String(localized: "Remove \(name)"))
+        }
+        .font(PressingFactPickers.controlFont)
+        .fixedSize()
     }
 }
 
