@@ -86,6 +86,8 @@ object BridgeFixtures {
                     packaging = null,
                     discogsDetails = emptyList(),
                 ),
+            pressingSummary = emptyList(),
+            pressingDetails = emptyList(),
             storageState = BridgeReleaseStorageState.LOCAL,
             pinned = false,
             storageActions = emptyList(),

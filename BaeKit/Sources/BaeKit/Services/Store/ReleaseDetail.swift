@@ -46,8 +46,8 @@ public struct ReleaseDetail: Identifiable {
     public init(summary: ReleaseSummary, bridge: BridgeRelease) {
         self.summary = summary
         displayName = bridge.name.text
-        pressingSummary = PressingText.summary(bridge.facts)
-        pressingDetails = PressingText.details(bridge.facts)
+        pressingSummary = PressingText.line(bridge.pressingSummary)
+        pressingDetails = PressingText.line(bridge.pressingDetails)
         // The play time ends the line, in the words core chose for it
         // ("39 min" / "1 hr, 18 min"); absent when no track reports a length.
         compactMetadata = [

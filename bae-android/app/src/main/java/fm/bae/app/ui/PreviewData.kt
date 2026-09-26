@@ -13,6 +13,7 @@ import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
@@ -32,6 +33,7 @@ import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSidePausePrompt
 import uniffi.bae_bridge.BridgeSyncConfig
 import uniffi.bae_bridge.BridgeSyncProvider
+import uniffi.bae_bridge.BridgeTermLabel
 import uniffi.bae_bridge.BridgeTrack
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
@@ -133,6 +135,14 @@ object PreviewData {
                     packaging = null,
                     discogsDetails = emptyList(),
                 ),
+            // The lines core words from the facts above, written out: a
+            // preview renders with no call into the bridge.
+            pressingSummary =
+                listOf(
+                    BridgeFactTerm.Country("US"),
+                    BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.medium.vinyl")),
+                ),
+            pressingDetails = emptyList(),
             storageState = BridgeReleaseStorageState.LOCAL,
             pinned = false,
             storageActions = emptyList(),

@@ -96,6 +96,13 @@ enum PreviewData {
 
     static func release(albumId: String) -> BridgeRelease {
         let songs = tracks(count: 8)
+        let facts = BridgePressingFacts(
+            area: .country(code: "US"),
+            media: [BridgeMediaCount(medium: .cd, count: 1)],
+            status: nil,
+            packaging: nil,
+            discogsDetails: []
+        )
         return BridgeRelease(
             id: "rel-\(albumId)",
             albumId: albumId,
@@ -106,13 +113,9 @@ enum PreviewData {
             year: 2018,
             label: "Label Name",
             catalogNumber: "CAT-001",
-            facts: BridgePressingFacts(
-                area: .country(code: "US"),
-                media: [BridgeMediaCount(medium: .cd, count: 1)],
-                status: nil,
-                packaging: nil,
-                discogsDetails: []
-            ),
+            facts: facts,
+            pressingSummary: bridgePressingSummary(facts: facts),
+            pressingDetails: bridgePressingDetails(facts: facts),
             storageState: .local,
             pinned: false,
             storageActions: [],

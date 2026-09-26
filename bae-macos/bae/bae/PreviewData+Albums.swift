@@ -122,26 +122,27 @@
             }
         }
 
-        private static func makeRelease(
+        /// The fixture's tracks, and the sides or discs they are grouped by.
+        private static func makeTrackLayout(
             album: AlbumFixture,
-            id: String,
             fixture: ReleaseFixture,
-        ) -> BridgeRelease {
-            let tracks: [BridgeTrack]
-            let groups: [BridgeTrackGroup]
+        ) -> (tracks: [BridgeTrack], groups: [BridgeTrackGroup]) {
             switch fixture.tracks {
             case .flat(let names):
-                tracks = makeTracks(names, artist: album.artist)
-                groups = [
-                    BridgeTrackGroup(
-                        side: .flat,
-                        headerKey: nil,
-                        tracks: tracks,
-                        totalDuration: groupDuration(tracks)
-                    )
-                ]
+                let tracks = makeTracks(names, artist: album.artist)
+                return (
+                    tracks,
+                    [
+                        BridgeTrackGroup(
+                            side: .flat,
+                            headerKey: nil,
+                            tracks: tracks,
+                            totalDuration: groupDuration(tracks)
+                        )
+                    ]
+                )
             case .twoPart(let first, let second):
-                let sides = twoSide(
+                return twoSide(
                     artist: album.artist,
                     isVinyl: fixture.media.contains {
                         $0.medium == .vinyl || $0.medium == .cassette
@@ -149,10 +150,26 @@
                     disc1: first,
                     disc2: second,
                 )
-                tracks = sides.tracks
-                groups = sides.groups
             }
+        }
+
+        private static func makeRelease(
+            album: AlbumFixture,
+            id: String,
+            fixture: ReleaseFixture,
+        ) -> BridgeRelease {
+            let (tracks, groups) = makeTrackLayout(
+                album: album,
+                fixture: fixture
+            )
             let year = fixture.year ?? album.year
+            let facts = BridgePressingFacts(
+                area: fixture.identifiers?.area,
+                media: fixture.media,
+                status: nil,
+                packaging: nil,
+                discogsDetails: []
+            )
             return BridgeRelease(
                 id: id,
                 albumId: album.id,
@@ -161,13 +178,9 @@
                 year: year,
                 label: fixture.identifiers?.label,
                 catalogNumber: fixture.identifiers?.catalogNumber,
-                facts: BridgePressingFacts(
-                    area: fixture.identifiers?.area,
-                    media: fixture.media,
-                    status: nil,
-                    packaging: nil,
-                    discogsDetails: []
-                ),
+                facts: facts,
+                pressingSummary: bridgePressingSummary(facts: facts),
+                pressingDetails: bridgePressingDetails(facts: facts),
                 storageState: .local,
                 pinned: false,
                 storageActions: [],
@@ -184,9 +197,6 @@
                 // linked all the way out reads like; the rest are the ordinary
                 // case of a library nobody has identified.
                 records: album.id == "a-01" ? releaseRecordsEveryCatalog : [],
-                // The same album's first pressing states every name a folder
-                // can carry, so the expansion preview shows a full popover.
-                // popover preview states its match count too.
                 totalDuration: groupDuration(tracks),
                 fileCount: 0,
                 totalSize: 0,

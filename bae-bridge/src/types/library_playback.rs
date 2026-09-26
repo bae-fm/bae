@@ -306,6 +306,14 @@ pub struct BridgeRelease {
     /// What the pressing is: where it was released, its media, status,
     /// packaging and Discogs details.
     pub facts: BridgePressingFacts,
+    /// The facts' summary line — where, and on what — as
+    /// [`crate::types::bridge_pressing_summary`] words it. Carried rather than
+    /// asked for, so a surface draws the release with no call into the
+    /// bridge, as Android's preview renderer has to.
+    pub pressing_summary: Vec<crate::types::BridgeFactTerm>,
+    /// The facts' details line, as [`crate::types::bridge_pressing_details`]
+    /// words it. Carried for the same reason.
+    pub pressing_details: Vec<crate::types::BridgeFactTerm>,
     /// The release's storage state — Local (local) or Remote (cloud).
     pub storage_state: BridgeReleaseStorageState,
     /// Whether coven keeps this release's blobs pinned (kept offline) on this

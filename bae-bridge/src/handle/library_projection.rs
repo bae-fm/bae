@@ -111,6 +111,7 @@ impl BridgeRelease {
         } = BridgeReleaseSummary::from_core(summary);
         // The summary's media are the facts' media, which the release carries
         // whole.
+        let facts = crate::types::BridgePressingFacts::from_core(facts);
         BridgeRelease {
             id,
             album_id,
@@ -118,7 +119,9 @@ impl BridgeRelease {
             year,
             label,
             catalog_number,
-            facts: crate::types::BridgePressingFacts::from_core(facts),
+            pressing_summary: crate::types::bridge_pressing_summary(facts.clone()),
+            pressing_details: crate::types::bridge_pressing_details(facts.clone()),
+            facts,
             storage_state,
             pinned,
             storage_actions,

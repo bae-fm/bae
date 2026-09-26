@@ -223,6 +223,10 @@
             storageActions: [BridgeReleaseStorageAction]
         ) -> ReleaseDetail {
             let files = previewReleaseFiles
+            let facts = PreviewData.pressingFacts(
+                country: "US",
+                media: PreviewData.media(.cd)
+            )
             let bridge = BridgeRelease(
                 id: "rel-storage-preview",
                 albumId: "a-storage-preview",
@@ -230,10 +234,9 @@
                 year: 2019,
                 label: "Some Label",
                 catalogNumber: "CAT-0001",
-                facts: PreviewData.pressingFacts(
-                    country: "US",
-                    media: PreviewData.media(.cd)
-                ),
+                facts: facts,
+                pressingSummary: bridgePressingSummary(facts: facts),
+                pressingDetails: bridgePressingDetails(facts: facts),
                 storageState: storageState,
                 pinned: pinned,
                 storageActions: storageActions,

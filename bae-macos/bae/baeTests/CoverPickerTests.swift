@@ -82,6 +82,7 @@ struct CoverPickerTests {
             isImage: true,
             audioFormat: nil
         )
+        let facts = PreviewData.pressingFacts()
         return BridgeRelease(
             id: "release-test",
             albumId: "album-test",
@@ -89,7 +90,9 @@ struct CoverPickerTests {
             year: nil,
             label: nil,
             catalogNumber: nil,
-            facts: PreviewData.pressingFacts(),
+            facts: facts,
+            pressingSummary: bridgePressingSummary(facts: facts),
+            pressingDetails: bridgePressingDetails(facts: facts),
             storageState: .remote,
             pinned: false,
             storageActions: [],

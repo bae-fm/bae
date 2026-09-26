@@ -581,6 +581,7 @@
                 audioFormat: nil
             )
             let files = [audioFile, imageFile]
+            let facts = PreviewData.pressingFacts(media: row.release.media)
             return BridgeRelease(
                 id: row.release.id,
                 albumId: row.release.albumId,
@@ -588,7 +589,9 @@
                 year: row.album.year,
                 label: nil,
                 catalogNumber: nil,
-                facts: PreviewData.pressingFacts(media: row.release.media),
+                facts: facts,
+                pressingSummary: bridgePressingSummary(facts: facts),
+                pressingDetails: bridgePressingDetails(facts: facts),
                 storageState: row.release.storageState,
                 pinned: row.release.pinned,
                 storageActions: row.release.storageActions,
