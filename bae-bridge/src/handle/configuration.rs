@@ -42,8 +42,8 @@ forward! { async this => {
     }
 
     /// Import what an automatic run settles on as needing nothing, or stop.
-    /// On, only runs that settle from now on import; off, nothing owed and not
-    /// yet started is imported.
+    /// On, only runs that settle from now on import; off, an import already
+    /// started runs to its end.
     fn set_import_when_identified(enabled: bool) -> () {
         Ok(this.services.set_import_when_identified(enabled).await?)
     }

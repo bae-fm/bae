@@ -49,6 +49,9 @@ enum ImportRequest {
     Person,
     /// A bulk import of the Ready set, reaching this row.
     ReadySet,
+    /// Automatic identification, the moment its run settled on the candidate
+    /// as Ready while "Import automatically when identified" is on.
+    Identified,
 }
 
 impl ImportServiceHandle {
@@ -208,6 +211,73 @@ impl ImportServiceHandle {
         .await
     }
 
+    /// Import a candidate an automatic run has just settled on as Ready, while
+    /// "Import automatically when identified" is on: the same start as a
+    /// person's Import press, going where the caller read the stored storage
+    /// choice to say.
+    ///
+    /// Nobody is looking at the candidate to be told a refused start, so a
+    /// refusal is also recorded as its failed import — on its row and pane,
+    /// with Retry, where an import that failed while running shows — unless
+    /// the refusal is that another import already owns the candidate.
+    pub(crate) async fn import_identified(
+        &self,
+        candidate_key: &str,
+        storage_mode: StorageMode,
+        pin: bool,
+    ) -> Result<String, crate::import::ImportError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        self.committed(async move {
+            let started = this
+                .start_import_write(&candidate_key, storage_mode, pin, ImportRequest::Identified)
+                .await;
+            match &started {
+                Ok(_) => {}
+                // Another import owns the candidate, or already made it a
+                // release: nothing failed, and that import says how it went.
+                Err(
+                    crate::import::ImportError::CandidateImportInProgress
+                    | crate::import::ImportError::CandidateAlreadyImported,
+                ) => {}
+                Err(error) => this.record_failed_start(&candidate_key, error).await,
+            }
+            started
+        })
+        .await
+    }
+
+    /// Record a refused start as `candidate_key`'s failed import. A candidate
+    /// the scan no longer lists has no row to show it on.
+    async fn record_failed_start(&self, candidate_key: &str, error: &crate::import::ImportError) {
+        let candidate = match self.get_release_candidate(candidate_key).await {
+            Ok(Some(candidate)) => candidate,
+            Ok(None) => {
+                warn!("{candidate_key} is gone; its refused import has no row to show on");
+                return;
+            }
+            Err(read) => {
+                tracing::error!("could not read {candidate_key} to record its refused import: {read}");
+                return;
+            }
+        };
+        let failure = crate::import::service::ImportService::terminal_failure(
+            error,
+            self.library_manager.now(),
+        );
+        if let Err(write) = self
+            .library_manager
+            .save_import_candidate_failure(
+                &candidate.files.content_hash(),
+                candidate.file_edit_revision,
+                &failure,
+            )
+            .await
+        {
+            tracing::error!("could not record the refused import of {candidate_key}: {write}");
+        }
+    }
+
     async fn start_import_write(
         &self,
         candidate_key: &str,
@@ -220,34 +290,21 @@ impl ImportServiceHandle {
             // A person importing the candidate they are looking at is
             // answering it themselves; the claim ends whatever run it had.
             ImportRequest::Person => {}
+            // Its run has just ended, and the queue starts no other for it
+            // until this returns.
+            ImportRequest::Identified => {}
             ImportRequest::ReadySet => {
-                if self.runtime_facts(candidate_key).identifying() {
+                let facts = self
+                    .runtime
+                    .get(candidate_key)
+                    .as_ref()
+                    .map(crate::import::triage::TriageRuntimeFacts::of)
+                    .unwrap_or_default();
+                if facts.identifying() {
                     return Err(crate::import::ImportError::CandidateBeingIdentified);
                 }
             }
         }
-        self.claim_import(commit, candidate_key, storage_mode, pin)
-            .await
-    }
-
-    /// What is running for `candidate_key` right now, as a row reads it.
-    pub(super) fn runtime_facts(&self, candidate_key: &str) -> crate::import::triage::TriageRuntimeFacts {
-        self.runtime
-            .get(candidate_key)
-            .as_ref()
-            .map(crate::import::triage::TriageRuntimeFacts::of)
-            .unwrap_or_default()
-    }
-
-    /// Claim the candidate for an import and hand the worker its command,
-    /// under `commit` — the lock whoever asked checked the candidate under.
-    pub(super) async fn claim_import(
-        &self,
-        commit: crate::import::FolderStateCommitGuard,
-        candidate_key: &str,
-        storage_mode: StorageMode,
-        pin: bool,
-    ) -> Result<String, crate::import::ImportError> {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
@@ -743,19 +800,6 @@ impl ImportServiceHandle {
         for (candidate_key, import_id) in self.import_cancels.cancel_all() {
             self.announce_cancelled_import(&candidate_key, import_id);
         }
-    }
-
-    /// Hold every import that starts running from now on before it does any
-    /// work, until [`Self::release_import_runs`]: a test's window to act on
-    /// an import while it runs.
-    #[cfg(test)]
-    pub(crate) fn hold_import_runs(&self) {
-        self.import_cancels.hold_runs();
-    }
-
-    #[cfg(test)]
-    pub(crate) fn release_import_runs(&self) {
-        self.import_cancels.release_runs();
     }
 
     /// Say an import that never reached the worker ended: the worker skips it

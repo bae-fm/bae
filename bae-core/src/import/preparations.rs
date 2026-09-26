@@ -95,7 +95,6 @@ impl CandidatePreparations {
         };
         let extras = CandidateSaveExtras {
             pane,
-            owes_import: verdict.owes_import,
             ..CandidateSaveExtras::default()
         };
         Ok(matches!(
@@ -194,7 +193,6 @@ impl CandidatePreparations {
             reshaped_files: Some(settled_candidates.to_vec()),
             reset_lookup_choices_from: None,
             pane: CandidatePaneWrite::Keep,
-            owes_import: false,
         };
         match self
             .database
@@ -388,7 +386,6 @@ impl CandidatePreparations {
             reshaped_files: None,
             reset_lookup_choices_from: None,
             pane: CandidatePaneWrite::Keep,
-            owes_import: false,
         };
         match self
             .database

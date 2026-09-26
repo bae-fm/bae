@@ -234,7 +234,6 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
                 mono_audio: false,
             },
             metadata: None,
-            owes_import: false,
         })
         .await
         .unwrap();

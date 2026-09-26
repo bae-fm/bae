@@ -51,7 +51,6 @@ impl CandidatePreparations {
             reshaped_files: Some(settled_folders),
             reset_lookup_choices_from: Some(lookup_choices),
             pane: CandidatePaneWrite::Keep,
-            owes_import: false,
         };
         match self
             .database

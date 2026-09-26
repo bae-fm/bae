@@ -71,7 +71,6 @@ async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
             verdict: sample_verdict(),
             signals,
             metadata: None,
-            owes_import: false,
         })
         .await
         .unwrap()
@@ -433,7 +432,6 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 verdict: sample_verdict(),
                 signals: scanning,
                 metadata: None,
-                owes_import: false,
             })
             .await
             .expect_err("a scanning signal is not storable");

@@ -10,8 +10,11 @@ use super::*;
 /// What became of one run's answer.
 #[derive(Debug)]
 pub(super) enum Settled {
-    /// The write ran and the row landed.
-    Stored,
+    /// The write ran and the row landed, saying what the Ready rule makes of
+    /// the verdict it stored.
+    Stored {
+        classification: crate::identify::QueueClassification,
+    },
     /// The write ran and refused the answer: the candidate has moved on from
     /// the shape the answer describes.
     Refused,
@@ -63,7 +66,6 @@ pub(super) async fn settle_answer(
     expected_metadata_revision: u64,
     state: IdentifyState,
     priority: CallPriority,
-    owes_import: bool,
     token: CancellationToken,
 ) -> Finished {
     let representative_key = candidate.key();
@@ -74,13 +76,12 @@ pub(super) async fn settle_answer(
         expected_metadata_revision,
         state,
         priority,
-        owes_import,
         &token,
     )
     .await;
     match &settled {
         // The write ran, and what it left in the runtime is its own to end.
-        Settled::Stored | Settled::Refused | Settled::WriteFailed { .. } => {}
+        Settled::Stored { .. } | Settled::Refused | Settled::WriteFailed { .. } => {}
         Settled::Abandoned => context
             .import
             .end_identification_answer(&representative_key, run),
@@ -108,7 +109,6 @@ async fn settle_verdict(
     expected_metadata_revision: u64,
     state: IdentifyState,
     priority: CallPriority,
-    owes_import: bool,
     token: &CancellationToken,
 ) -> Settled {
     let text = state.candidate_text();
@@ -167,7 +167,6 @@ async fn settle_verdict(
         &verdict,
         signals,
         metadata,
-        owes_import,
     )
     .await
 }
@@ -246,7 +245,6 @@ pub(super) async fn save(
     verdict: &TerminalVerdict,
     signals: crate::signals::Signals,
     metadata: Option<crate::import::CandidateMetadataDraft>,
-    owes_import: bool,
 ) -> Settled {
     if token.is_cancelled() {
         return Settled::Abandoned;
@@ -257,7 +255,6 @@ pub(super) async fn save(
         verdict: verdict.clone(),
         signals,
         metadata,
-        owes_import,
     };
     let wrote = match context
         .import
@@ -280,7 +277,9 @@ pub(super) async fn save(
         );
         return Settled::Refused;
     }
-    Settled::Stored
+    Settled::Stored {
+        classification: crate::identify::classify(verdict),
+    }
 }
 
 /// The one pressing a verdict's matches describe, or `None` when they describe

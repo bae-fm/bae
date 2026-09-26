@@ -874,7 +874,6 @@ impl Fixture {
                             assets: crate::import::CandidatePreparedAssets::default(),
                         }
                     }),
-                    owes_import: false,
                 },
             )
             .await

@@ -108,7 +108,6 @@ async fn save_verdict_with_ledger(
                 mono_audio: false,
             },
             metadata: None,
-            owes_import: false,
         })
         .await
         .unwrap());
@@ -359,7 +358,6 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_question() {
                 mono_audio: false,
             },
             metadata: None,
-            owes_import: false,
         })
         .await
         .unwrap());

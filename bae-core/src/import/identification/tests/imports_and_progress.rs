@@ -549,7 +549,6 @@ async fn a_cancelled_candidate_writes_no_row() {
                 mono_audio: false,
             },
             None,
-            false,
         )
         .await,
         Settled::Abandoned

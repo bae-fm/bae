@@ -45,10 +45,11 @@
 //! person's pre-fill, edits and pick are none of its business.
 //!
 //! **An automatic run can end in an import.** While "Import automatically
-//! when identified" is on, a verdict the automatic admission's run settles on
-//! as needing nothing owes an import, stored with it; the queue pays what is
-//! owed from the stored row (see `owed`), so a launch finds what the last
-//! session left owed and nothing is imported twice.
+//! when identified" is on, the queue starts the import of a candidate the
+//! automatic admission's run has just stored a Ready verdict for — the same
+//! start a person's Import press makes — right as the verdict lands. Nothing
+//! records that it will: a candidate the app quit before importing stays
+//! Ready, for a person to import.
 //!
 //! **Provider failures are answers.** They are stored as failed verdicts and
 //! the automatic admission leaves them alone; only a request replaces one.
@@ -72,12 +73,10 @@ use tracing::{debug, info, warn};
 
 mod admission;
 mod handle;
-mod owed;
 mod queue;
 mod settle;
 
 use admission::*;
-use owed::{pay_owed_import, pay_owed_imports};
 pub use handle::IdentificationHandle;
 use queue::{admit, Queue};
 use settle::*;

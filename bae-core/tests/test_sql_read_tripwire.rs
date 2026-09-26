@@ -120,7 +120,6 @@ async fn pure_reads_use_the_read_connection() {
                 cover: None,
                 assets: bae_core::import::CandidatePreparedAssets::default(),
             }),
-            owes_import: false,
         })
         .await
         .unwrap());

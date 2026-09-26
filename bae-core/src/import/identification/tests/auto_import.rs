@@ -1,8 +1,8 @@
 // ── Importing when identified ───────────────────────────────────────────────
 //
-// An automatic run that settles on a verdict needing nothing, while "Import
-// automatically when identified" is on, owes an import; the queue pays it
-// once, from the stored row, and nothing else owes one.
+// An automatic run that stores a Ready verdict, while "Import automatically
+// when identified" is on, starts its candidate's import right then — the same
+// start a person's Import press makes. Nothing else imports on its own.
 
 /// Every import the worker reports on for `key` until one ends: the ids it
 /// reported under, and the error the ending one failed with, if it failed.
@@ -101,30 +101,8 @@ impl Fixture {
             .unwrap();
     }
 
-    async fn owed_import(&self, dir: &Path) -> Option<u64> {
-        self.manager
-            .load_owed_import(&self.content_hash(dir))
-            .await
-            .unwrap()
-    }
-
-    /// Record that `dir`'s stored verdict owes its import, for the draft it
-    /// holds now — the state the app leaves when it closes between storing a
-    /// verdict and starting its import.
-    async fn owe_import(&self, dir: &Path) {
-        let hash = self.content_hash(dir);
-        let revision = self
-            .manager
-            .load_import_candidate_state(&hash)
-            .await
-            .unwrap()
-            .expect("the candidate has a state row")
-            .metadata_revision;
-        self.manager.owe_import_for_test(&hash, revision).await.unwrap();
-    }
-
     /// An automatic run's Ready verdict for `dir`, stored while importing when
-    /// identified was off, so it owes nothing yet.
+    /// identified is off.
     async fn identify_ready(&self, dir: &Path, release_id: &str, group_id: &str) {
         self.route_disc_id_match(dir, release_id, group_id, 2);
         self.scan(1).await;
@@ -133,7 +111,15 @@ impl Fixture {
             self.classification_for(dir).await,
             QueueClassification::Ready
         );
-        assert!(self.owed_import(dir).await.is_none());
+    }
+
+    /// The failed import `dir`'s pane shows, if any.
+    async fn import_failure(&self, dir: &Path) -> Option<crate::import::ImportFailure> {
+        self.manager
+            .load_import_candidate_pane_rows(&self.content_hash(dir))
+            .await
+            .unwrap()
+            .failure
     }
 }
 
@@ -156,17 +142,32 @@ async fn an_automatic_run_that_settles_ready_imports_its_candidate_once() {
     let (imports, failure) = await_import_ending(&mut events, &key).await;
     assert_eq!(imports.len(), 1, "one import of the candidate: {imports:?}");
     assert_eq!(failure, None, "the import completes");
-    assert!(
-        fixture.owed_import(&dir).await.is_none(),
-        "the import that ran answered what was owed"
-    );
 
     fixture.rescan().await;
     fixture.sweep_once().await;
     assert_no_import(&mut events, &key, "the queue read everything again").await;
 }
 
-/// Two pressings are a question for the person, so the verdict owes nothing.
+/// With the setting off, a Ready verdict waits for a person.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_automatic_run_that_settles_ready_with_the_setting_off_imports_nothing() {
+    let fixture = Fixture::new("auto-import-setting-off").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.route_disc_id_match(&dir, "mb-setting-off", "rg-setting-off", 2);
+    fixture.scan(1).await;
+    let mut events = fixture.import.subscribe_events();
+
+    fixture.sweep_once().await;
+
+    assert_eq!(
+        fixture.classification_for(&dir).await,
+        QueueClassification::Ready
+    );
+    assert_no_import(&mut events, &key, "the run settled with the setting off").await;
+}
+
+/// Two pressings are a question for the person, so nothing is imported.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
     let fixture = Fixture::new("auto-import-needs-you").await;
@@ -194,10 +195,6 @@ async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
     assert_eq!(
         fixture.classification_for(&dir).await,
         QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
-    );
-    assert!(
-        fixture.owed_import(&dir).await.is_none(),
-        "a verdict that asks something owes nothing"
     );
     assert_no_import(&mut events, &key, "the run settled needing a person").await;
 }
@@ -238,7 +235,6 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
         "the release the folder rules out was not applied to the draft"
     );
     assert_eq!(fixture.count_release_lookups("mb-vinyl"), 0);
-    assert!(fixture.owed_import(&dir).await.is_none());
     assert_no_import(&mut events, &key, "the folder ruled the release out").await;
 }
 
@@ -249,24 +245,17 @@ async fn a_candidate_ready_before_the_setting_was_on_is_not_imported() {
     let fixture = Fixture::new("auto-import-earlier").await;
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
-    fixture.route_disc_id_match(&dir, "mb-earlier", "rg-earlier", 2);
-    fixture.scan(1).await;
-    fixture.sweep_once().await;
-    assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::Ready
-    );
+    fixture.identify_ready(&dir, "mb-earlier", "rg-earlier").await;
     let mut events = fixture.import.subscribe_events();
 
     fixture.manager.set_import_when_identified(true).await.unwrap();
     fixture.rescan().await;
+    fixture.sweep_once().await;
 
-    assert!(fixture.owed_import(&dir).await.is_none());
     assert_no_import(&mut events, &key, "the setting was turned on").await;
 }
 
-/// A run a person asked for is theirs to act on: its verdict owes nothing,
-/// whatever the setting says.
+/// A run a person asked for is theirs to act on, whatever the setting says.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_a_person_asked_for_imports_nothing() {
     let fixture = Fixture::new("auto-import-requested").await;
@@ -286,143 +275,66 @@ async fn a_run_a_person_asked_for_imports_nothing() {
         fixture.classification_for(&dir).await,
         QueueClassification::Ready
     );
-    assert!(fixture.owed_import(&dir).await.is_none());
     assert_no_import(&mut events, &key, "the person's run settled").await;
 }
 
-/// The app closed after the verdict was stored and before its import started:
-/// the next launch finds what was owed and imports it, once.
+/// An automatic start the import path refuses is the candidate's failed
+/// import, shown where one that failed while running is, with nothing claimed.
 #[tokio::test(flavor = "multi_thread")]
-async fn an_import_owed_when_the_app_closed_is_imported_at_the_next_launch() {
-    let fixture = Fixture::importing("auto-import-restart").await;
+async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import() {
+    let fixture = Fixture::new("auto-import-refused").await;
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
-    fixture.identify_ready(&dir, "mb-restart", "rg-restart").await;
-    fixture.manager.set_import_when_identified(true).await.unwrap();
-    fixture.owe_import(&dir).await;
-    let mut events = fixture.import.subscribe_events();
-
-    // What the launch does: the first scan finishes, and the queue reads
-    // everything afresh.
-    fixture.rescan().await;
-
-    let (imports, failure) = await_import_ending(&mut events, &key).await;
-    assert_eq!(imports.len(), 1, "one import of the candidate: {imports:?}");
-    assert_eq!(failure, None, "the import completes");
-    assert!(fixture.owed_import(&dir).await.is_none());
-
-    fixture.rescan().await;
-    assert_no_import(&mut events, &key, "the owed import was paid").await;
-}
-
-/// A person cancelling the import a verdict owed is their answer to it: what
-/// was owed is withdrawn, and reading the queue again starts nothing.
-#[tokio::test(flavor = "multi_thread")]
-async fn a_cancelled_owed_import_is_withdrawn() {
-    let fixture = Fixture::importing("auto-import-cancelled").await;
-    let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
-    fixture.identify_ready(&dir, "mb-cancelled", "rg-cancelled").await;
-    fixture.manager.set_import_when_identified(true).await.unwrap();
-    fixture.owe_import(&dir).await;
-    fixture.import.hold_import_runs();
-    let mut events = fixture.import.subscribe_events();
-
-    fixture.rescan().await;
-    // The queue starts the owed import on its own time; until it has, a
-    // cancel finds nothing importing and changes nothing.
-    let cancelled = tokio::time::timeout(Duration::from_secs(10), async {
-        loop {
-            fixture.import.cancel_import(&key).unwrap();
-            match tokio::time::timeout(Duration::from_millis(20), events.recv()).await {
-                Ok(Ok(ImportEvent::ImportProgress {
-                    candidate_key,
-                    progress: crate::import::ImportProgress::Cancelled { .. },
-                })) if candidate_key == key => return,
-                Ok(Ok(ImportEvent::ImportProgress {
-                    candidate_key,
-                    progress,
-                })) if candidate_key == key => {
-                    panic!("the held import of {key} did not progress, got {progress:?}")
-                }
-                Ok(Err(tokio::sync::broadcast::error::RecvError::Closed)) => {
-                    panic!("the import event bus closed")
-                }
-                _ => {}
-            }
-        }
-    })
-    .await;
-    fixture.import.release_import_runs();
-    cancelled.expect("the owed import starts and is cancelled");
-
-    tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture.owed_import(&dir).await.is_some() {
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-    })
-    .await
-    .expect("the cancelled import's owed row is withdrawn");
-    assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::Ready,
-        "the candidate stands as it did before the import"
-    );
-
-    fixture.rescan().await;
-    assert_no_import(&mut events, &key, "the person cancelled it").await;
-}
-
-/// What was owed goes with the setting: found while it is off, it is
-/// withdrawn, and turning the setting on later does not bring it back.
-#[tokio::test(flavor = "multi_thread")]
-async fn an_import_owed_while_the_setting_is_off_is_withdrawn() {
-    let fixture = Fixture::new("auto-import-off").await;
-    let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
-    fixture.identify_ready(&dir, "mb-off", "rg-off").await;
-    fixture.owe_import(&dir).await;
-    let mut events = fixture.import.subscribe_events();
-
-    fixture.rescan().await;
-    tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture.owed_import(&dir).await.is_some() {
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-    })
-    .await
-    .expect("the owed import is withdrawn while the setting is off");
-
-    fixture.manager.set_import_when_identified(true).await.unwrap();
-    fixture.rescan().await;
-    assert_no_import(&mut events, &key, "the setting came back on").await;
-}
-
-/// A person's edit after the verdict is theirs: the draft the import was owed
-/// for is gone, and so is what was owed.
-#[tokio::test(flavor = "multi_thread")]
-async fn an_edit_after_the_verdict_leaves_nothing_owed() {
-    let fixture = Fixture::new("auto-import-edited").await;
-    let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
-    fixture.identify_ready(&dir, "mb-edited", "rg-edited").await;
-    fixture.owe_import(&dir).await;
-    let mut events = fixture.import.subscribe_events();
-
+    fixture.identify_ready(&dir, "mb-refused", "rg-refused").await;
+    // A draft whose assets are not prepared is one no import starts from.
     fixture
-        .import
-        .set_candidate_edit_field(
-            &key,
-            crate::import::DraftFieldEdit::Text {
-                field: crate::import::CandidateEditField::AlbumTitle,
-                value: "Album (Edited)".into(),
-            },
+        .preparations
+        .set_album_artists(
+            &fixture.content_hash(&dir),
+            &[crate::import::ArtistAssignment::named("Changed Artist")],
         )
         .await
         .unwrap();
-    assert!(fixture.owed_import(&dir).await.is_none());
 
-    fixture.manager.set_import_when_identified(true).await.unwrap();
-    fixture.rescan().await;
-    assert_no_import(&mut events, &key, "the person edited the draft").await;
+    let error = fixture
+        .import
+        .import_identified(&key, crate::import::StorageMode::Local, false)
+        .await
+        .expect_err("an unprepared draft does not start an import");
+
+    let failure = fixture
+        .import_failure(&dir)
+        .await
+        .expect("the refused start is the candidate's failed import");
+    assert_eq!(failure.error, error.to_string());
+    assert!(
+        fixture
+            .import
+            .candidate_runtime(&key)
+            .is_none_or(|runtime| runtime.import.is_none()),
+        "nothing claims the candidate"
+    );
+}
+
+/// An import that already owns the candidate is not a failure of the
+/// automatic one: it says how it goes itself.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_automatic_import_behind_another_import_records_no_failure() {
+    let fixture = Fixture::new("auto-import-behind").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.identify_ready(&dir, "mb-behind", "rg-behind").await;
+    fixture.import.claim_candidate_for_import(&key).await;
+
+    let error = fixture
+        .import
+        .import_identified(&key, crate::import::StorageMode::Local, false)
+        .await
+        .expect_err("a candidate an import owns is not imported again");
+
+    assert!(
+        matches!(error, crate::import::ImportError::CandidateImportInProgress),
+        "{error}"
+    );
+    assert_eq!(fixture.import_failure(&dir).await, None);
 }
