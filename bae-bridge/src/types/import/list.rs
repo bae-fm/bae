@@ -56,6 +56,7 @@ pub enum BridgeNeedsYouKind {
     LookupFailed,
     TrackCountDisagrees,
     SourceTracksUnknown,
+    MediumDisagrees,
 }
 
 /// One item at one offset. `stable_key` identifies it across reruns — the id a

@@ -11,7 +11,7 @@ struct PlacementFilterPicker: View {
     /// The questions a Needs-you row can ask, in the order a list reads them.
     private static let questions: [BridgeNeedsYouKind] = [
         .severalMatches, .noMatch, .nothingToLookUp, .lookupFailed,
-        .trackCountDisagrees, .sourceTracksUnknown,
+        .trackCountDisagrees, .sourceTracksUnknown, .mediumDisagrees,
     ]
 
     var body: some View {
@@ -43,6 +43,7 @@ extension BridgeNeedsYouKind {
         case .lookupFailed: String(localized: "Lookup Failed")
         case .trackCountDisagrees: String(localized: "Track Count Differs")
         case .sourceTracksUnknown: String(localized: "No Tracklist")
+        case .mediumDisagrees: String(localized: "Medium Differs")
         }
     }
 }

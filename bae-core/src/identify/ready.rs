@@ -65,6 +65,7 @@ pub enum NeedsYouKind {
     LookupFailed,
     TrackCountDisagrees,
     SourceTracksUnknown,
+    MediumDisagrees,
 }
 
 impl NeedsYou {
@@ -76,6 +77,7 @@ impl NeedsYou {
             NeedsYou::LookupFailed => NeedsYouKind::LookupFailed,
             NeedsYou::TrackCountDisagrees { .. } => NeedsYouKind::TrackCountDisagrees,
             NeedsYou::SourceTracksUnknown => NeedsYouKind::SourceTracksUnknown,
+            NeedsYou::MediumDisagrees { .. } => NeedsYouKind::MediumDisagrees,
         }
     }
 }

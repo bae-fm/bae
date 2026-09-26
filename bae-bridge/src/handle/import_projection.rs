@@ -408,6 +408,7 @@ mirror_enum! {
         LookupFailed,
         TrackCountDisagrees,
         SourceTracksUnknown,
+        MediumDisagrees,
     },
 }
 
