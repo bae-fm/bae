@@ -404,31 +404,47 @@ impl ImportServiceHandle {
         let expected_metadata_revision = current.metadata_revision;
         let durations = crate::import::probe::source_durations(&candidate.files)?;
         match &provenance {
-            crate::import::MetadataProvenance::FileMetadata => {
-                // The snapshot is read under the lock the write holds: a scan
-                // that lands between the two restamps the candidate's
-                // generation, and the write refuses a snapshot stamped with
-                // the old one.
-                let _commit = self
+            crate::import::MetadataProvenance::FileMetadata => loop {
+                // The folder's tags are read before the commit lock: off a
+                // network share that takes as long as the share does, and
+                // every pane control waits on this lock.
+                let read = self
+                    .read_file_tag_snapshot(&candidate_key, self.file_tags.clone())
+                    .await?;
+                let seed = crate::import::file_metadata_seed::FileMetadataSeed::project(
+                    &read.candidate,
+                    read.snapshot,
+                    &durations,
+                    Some(&current.draft.tracks),
+                    self.clock.as_ref(),
+                    self.ids.as_ref(),
+                )?;
+                let commit = self
                     .commit_lock_for_revision(
                         &candidate_key,
                         &content_hash,
                         current.file_edit_revision,
                     )
                     .await?;
-                let (snapshot_candidate, snapshot) = self.file_tag_snapshot(&candidate_key).await?;
-                let seed = crate::import::file_metadata_seed::FileMetadataSeed::project(
-                    &snapshot_candidate,
-                    snapshot,
-                    &durations,
-                    Some(&current.draft.tracks),
-                    self.clock.as_ref(),
-                    self.ids.as_ref(),
-                )?;
+                // A scan that stored the candidate again while its tags were
+                // read stamped it with a newer generation, and the write takes
+                // only a reading of the generation it lands on: read again.
+                let stored_generation = self
+                    .library_manager
+                    .load_candidate_file_tag_snapshot(
+                        &read.candidate.watched_folder_path,
+                        &candidate_key,
+                    )
+                    .await?
+                    .map(|stored| stored.scan_generation);
+                if stored_generation != Some(seed.snapshot.scan_generation) {
+                    drop(commit);
+                    continue;
+                }
                 return Ok(self
                     .preparations
                     .apply_file_metadata(
-                        &snapshot_candidate.watched_folder_path,
+                        &read.candidate.watched_folder_path,
                         &candidate_key,
                         &crate::import::CandidateAsRead {
                             content_hash: content_hash.clone(),
@@ -440,7 +456,7 @@ impl ImportServiceHandle {
                         seed.cover.as_ref(),
                     )
                     .await?);
-            }
+            },
             crate::import::MetadataProvenance::ExternalRelease { record, partners } => {
                 let primary = record.clone();
                 let release = self

@@ -158,3 +158,72 @@ async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
     shut_down(handle).await;
     landed.expect("the edit lands without waiting for the scan's tag reads");
 }
+
+/// Two candidates, each under a watched root of its own, served by a handle
+/// whose tag reads the returned reader can hold — and the keys of both, with
+/// the folder of the first. The second is read as its own tags already; the
+/// first has had its tags read by nobody.
+async fn two_candidates() -> (
+    ImportServiceHandle,
+    Arc<HeldTagReader>,
+    tokio::sync::mpsc::UnboundedReceiver<PathBuf>,
+    (String, PathBuf),
+    String,
+    [TempDir; 2],
+) {
+    let (manager, tmp) = setup_test_manager().await;
+    let other = TempDir::new().unwrap();
+    let (held_candidate, held_key, _) = picked_candidate(&manager, &tmp, "Held Album").await;
+    let (_, edited_key, _) = picked_candidate(&manager, &other, "Edited Album").await;
+    let (reader, entered) = HeldTagReader::new();
+    let handle = manager
+        .start_import_service_reading_tags_with(tokio::runtime::Handle::current(), reader.clone());
+    handle
+        .select_candidate_metadata_provenance(
+            edited_key.clone(),
+            crate::import::MetadataProvenance::FileMetadata,
+        )
+        .await
+        .unwrap();
+    (
+        handle,
+        reader,
+        entered,
+        (held_key, held_candidate.path),
+        edited_key,
+        [tmp, other],
+    )
+}
+
+/// Picking a folder's own tags reads them when nothing has read them yet.
+/// While that read waits on the volume, an edit in another candidate's pane
+/// lands.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pane_edit_lands_while_a_pick_reads_another_folders_tags() {
+    let (handle, reader, mut entered, (held_key, held_folder), edited_key, _tmp) =
+        two_candidates().await;
+    let _opens = OpensOnDrop(reader.clone());
+    reader.hold(&held_folder);
+    let pick = tokio::spawn({
+        let handle = handle.clone();
+        async move {
+            handle
+                .select_candidate_metadata_provenance(
+                    held_key,
+                    crate::import::MetadataProvenance::FileMetadata,
+                )
+                .await
+        }
+    });
+    tokio::time::timeout(Duration::from_secs(10), entered.recv())
+        .await
+        .expect("the pick reads the folder's tags")
+        .expect("the reader reports its reads");
+
+    let landed = tokio::time::timeout(Duration::from_secs(5), retitle(&handle, &edited_key)).await;
+    reader.open();
+    let picked = pick.await.unwrap();
+    shut_down(handle).await;
+    landed.expect("the edit lands without waiting for the pick's tag reads");
+    picked.expect("the pick lands once its read finishes");
+}

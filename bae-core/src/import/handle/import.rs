@@ -31,6 +31,16 @@ fn file_tag_snapshot_match(
     }
 }
 
+/// A candidate's file tags as [`ImportServiceHandle::read_file_tag_snapshot`]
+/// found them, not yet stored.
+pub(super) struct FileTagSnapshotRead {
+    /// The candidate as stored when its reading was looked up.
+    pub(super) candidate: crate::import::folder_scanner::FolderCandidate,
+    pub(super) snapshot: crate::import::file_tag_snapshot::FileTagSnapshot,
+    /// Whether the files were read, rather than the stored reading kept.
+    pub(super) extracted: bool,
+}
+
 /// Who asked for an import, which decides what running work refuses it.
 #[derive(Clone, Copy)]
 enum ImportRequest {
@@ -66,6 +76,35 @@ impl ImportServiceHandle {
         ),
         crate::import::ImportError,
     > {
+        let read = self.read_file_tag_snapshot(candidate_key, reader).await?;
+        if read.extracted
+            && !self
+                .library_manager
+                .replace_candidate_file_tag_snapshot(
+                    &read.candidate.watched_folder_path,
+                    candidate_key,
+                    &read.snapshot,
+                )
+                .await?
+        {
+            return Err(crate::import::ImportError::FileTags {
+                detail: format!(
+                    "{candidate_key} changed while its file tags were being read; open it again"
+                ),
+            });
+        }
+        Ok((read.candidate, read.snapshot))
+    }
+
+    /// The candidate's file tags as its files hold them now: the stored
+    /// reading when every audio file is still the one it was read from, a new
+    /// reading otherwise. Nothing is stored — the caller decides whether and
+    /// under which check the reading lands.
+    pub(super) async fn read_file_tag_snapshot(
+        &self,
+        candidate_key: &str,
+        reader: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
+    ) -> Result<FileTagSnapshotRead, crate::import::ImportError> {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
@@ -114,20 +153,11 @@ impl ImportServiceHandle {
         .map_err(|error| crate::import::ImportError::Internal {
             detail: format!("file-tag snapshot task failed: {error}"),
         })??;
-
-        if extracted
-            && !self
-                .library_manager
-                .replace_candidate_file_tag_snapshot(&watched_folder_path, candidate_key, &snapshot)
-                .await?
-        {
-            return Err(crate::import::ImportError::FileTags {
-                detail: format!(
-                    "{candidate_key} changed while its file tags were being read; open it again"
-                ),
-            });
-        }
-        Ok((candidate, snapshot))
+        Ok(FileTagSnapshotRead {
+            candidate,
+            snapshot,
+            extracted,
+        })
     }
 
     /// Build an import command from what the candidate stores and enqueue it.
