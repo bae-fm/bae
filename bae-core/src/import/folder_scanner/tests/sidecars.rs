@@ -75,33 +75,96 @@ fn a_folder_whose_files_a_release_owns_has_no_sidecar() {
     assert!(sidecars(&root, FolderReleaseDecisions::default()).is_empty());
 }
 
-/// A folder read as one release takes in the sidecar files of every folder
-/// below it, so none of theirs is said on its own.
+/// A folder read as one release reads files by the rule releases picked
+/// together follow: an album folder combined over its discs reads its own
+/// cover, while an artist folder combined over releases at different depths —
+/// the album's discs kept apart, beside another album — reads neither its own
+/// files nor the album folder's, which stay those folders' sidecars.
 #[test]
-fn a_folder_read_as_one_release_takes_the_sidecars_below_it() {
-    let (_temp, root, _album) = album_of_discs(&["Disc 1", "Disc 2"]);
-    let separate_album = |artist: FolderReleaseDecision| {
+fn a_folder_read_as_one_release_reads_files_by_the_grouping_rule() {
+    let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
+    let combined_album = scan_for_candidates_with_decisions_collect(
+        root.clone(),
+        FolderReleaseDecisions::default(),
+    );
+    let album_release = combined_album
+        .iter()
+        .find_map(|item| match item {
+            ScanItem::Valid(candidate) if candidate.path == album => Some(candidate),
+            _ => None,
+        })
+        .expect("the album folder reads as one release");
+    assert!(album_release
+        .files
+        .files
+        .iter()
+        .any(|entry| entry.file.relative_path == "cover.jpg"));
+
+    let artist = root.join("Artist");
+    let other = artist.join("Other");
+    std::fs::create_dir_all(&other).unwrap();
+    std::fs::write(other.join("track.flac"), fake_flac()).unwrap();
+    std::fs::write(artist.join("artist.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    let items = scan_for_candidates_with_decisions_collect(
+        root,
         readings(&[
             (
                 "Artist/Album",
                 FolderReleaseDecision::KeepAsSeparateReleases,
                 FolderReleaseDecisionAuthor::User,
             ),
-            ("Artist", artist, FolderReleaseDecisionAuthor::User),
-        ])
-    };
-    let other = root.join("Artist").join("Other");
-    std::fs::create_dir_all(&other).unwrap();
-    std::fs::write(other.join("track.flac"), fake_flac()).unwrap();
-    assert_eq!(
-        sidecars(
-            &root,
-            separate_album(FolderReleaseDecision::KeepAsSeparateReleases)
-        )
-        .len(),
-        1
+            (
+                "Artist",
+                FolderReleaseDecision::CombineAsOneRelease,
+                FolderReleaseDecisionAuthor::User,
+            ),
+        ]),
     );
-    assert!(sidecars(&root, separate_album(FolderReleaseDecision::CombineAsOneRelease)).is_empty());
+    let artist_release = items
+        .iter()
+        .find_map(|item| match item {
+            ScanItem::Valid(candidate) if candidate.path == artist => Some(candidate),
+            _ => None,
+        })
+        .expect("the artist folder reads as one release");
+    assert_eq!(
+        artist_release
+            .files
+            .files
+            .iter()
+            .map(|entry| entry.file.relative_path.as_str())
+            .collect::<Vec<_>>(),
+        ["Album/Disc 1/track.flac", "Album/Disc 2/track.flac", "Other/track.flac"]
+    );
+    let mut folders: Vec<&Path> = items
+        .iter()
+        .filter_map(|item| match item {
+            ScanItem::Sidecar(sidecar) => Some(sidecar.folder.as_path()),
+            _ => None,
+        })
+        .collect();
+    folders.sort();
+    assert_eq!(folders, [artist.as_path(), album.as_path()]);
+}
+
+/// A download still running into a folder is said as such, not as a folder
+/// with no files of its own.
+#[test]
+fn a_folder_still_downloading_says_so() {
+    let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
+    std::fs::write(album.join("booklet.pdf.part"), b"partial").unwrap();
+    let found = sidecars(
+        &root,
+        readings(&[(
+            "Artist/Album",
+            FolderReleaseDecision::KeepAsSeparateReleases,
+            FolderReleaseDecisionAuthor::User,
+        )]),
+    );
+    assert_eq!(
+        found.iter().map(|sidecar| &sidecar.files).collect::<Vec<_>>(),
+        [&SidecarFiles::Downloading]
+    );
 }
 
 /// A broken image among a folder's files is said as the defect it is, the

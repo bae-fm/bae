@@ -550,21 +550,29 @@ CREATE TABLE IF NOT EXISTS release_grouping (
     -- keeps what it was last built from until that is fixed or the grouping
     -- is undone.
     error                TEXT,
-    -- For a grouping with no anchor: the folder its release reads the sidecar
-    -- files of (scan_sidecar), because every release it takes in sits
-    -- directly in that folder. One grouping at most reads a folder's files,
-    -- so they never go with two releases; a second grouping that would read
-    -- them is refused, or blocked with an error when a rebuild comes to
-    -- read them.
-    parent_folder        TEXT UNIQUE,
+    -- For a grouping with no anchor: the folder every release it takes in
+    -- sits directly in, whose sidecar files (scan_sidecar) are the release's
+    -- own; and whether its release reads them. A folder's files go with one
+    -- release at most: while several groupings sit in a folder that has
+    -- files, a new one is refused, and on a rebuild each one but the reader
+    -- is blocked with an error.
+    parent_folder        TEXT,
+    reads_parent_files   INTEGER NOT NULL DEFAULT 0 CHECK (reads_parent_files IN (0, 1)),
     UNIQUE (watched_folder_path, anchor_relative_path),
     CHECK (anchor_relative_path IS NOT NULL OR (combined = 1 AND author = 'user')),
     CHECK (anchor_relative_path IS NULL OR error IS NULL),
     CHECK (anchor_relative_path IS NULL OR parent_folder IS NULL),
+    CHECK (reads_parent_files = 0 OR parent_folder IS NOT NULL),
     FOREIGN KEY (watched_folder_path)
         REFERENCES watched_import_folders (path)
         ON DELETE CASCADE
 ) STRICT;
+
+-- The groupings sitting in a folder, and the one that reads its files.
+CREATE INDEX IF NOT EXISTS release_grouping_by_parent ON release_grouping (parent_folder);
+
+CREATE UNIQUE INDEX IF NOT EXISTS release_grouping_parent_reader
+    ON release_grouping (parent_folder) WHERE reads_parent_files = 1;
 
 -- The releases a grouping with no anchor takes in, in play order.
 CREATE TABLE IF NOT EXISTS release_grouping_member (
@@ -732,6 +740,11 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     )
 ) STRICT;
 
+-- Which release holds a file on disk: what a sidecar holding the same file
+-- replaces.
+CREATE INDEX IF NOT EXISTS idx_scan_candidate_file_absolute
+    ON scan_candidate_file (absolute_path);
+
 -- What a candidate's files were probed at, and the cover its tags carried.
 CREATE TABLE IF NOT EXISTS scan_candidate_tag_snapshot (
     watched_folder_path                 TEXT NOT NULL,
@@ -789,37 +802,38 @@ CREATE TABLE IF NOT EXISTS scan_candidate_part (
 
 -- The files under a folder that no release the scan read there owns: a cover
 -- or a booklet beside disc folders kept as releases of their own. Stored by
--- the scan like its candidates, pruned with them, and replaced by any
--- candidate that reads the folder's files itself.
+-- the scan like its candidates and pruned with them. A folder's files are
+-- stored once: a sidecar and a scanned release holding the same file replace
+-- one another, whichever is written later. Watched roots never overlap, so
+-- the folder alone names it.
 CREATE TABLE IF NOT EXISTS scan_sidecar (
+    folder              TEXT PRIMARY KEY,
     watched_folder_path TEXT NOT NULL,
-    folder              TEXT NOT NULL,
     generation          INTEGER NOT NULL CHECK (generation >= 0),
-    -- Why a release taking these files in could not be imported: one of them
-    -- is broken. An invalid sidecar stores no files.
+    -- 'valid' with its files; 'invalid' when one of them is broken, so a
+    -- release taking them in cannot be imported; 'downloading' while a
+    -- download into the folder runs, so what it holds is not known yet.
+    state               TEXT NOT NULL CHECK (state IN ('valid', 'invalid', 'downloading')),
     invalid_reason      TEXT CHECK (invalid_reason IS NULL OR invalid_reason IN ('corrupt_audio', 'corrupt_image')),
     invalid_reason_path TEXT,
-    PRIMARY KEY (watched_folder_path, folder),
     FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE,
+    CHECK ((state = 'invalid') = (invalid_reason IS NOT NULL)),
     CHECK ((invalid_reason IS NULL) = (invalid_reason_path IS NULL))
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS idx_scan_sidecar_folder ON scan_sidecar (folder);
+CREATE INDEX IF NOT EXISTS idx_scan_sidecar_root ON scan_sidecar (watched_folder_path);
 
--- One sidecar file, in release file order, with the role the scan gave it.
+-- One file of a valid sidecar, in release file order, with its role.
 CREATE TABLE IF NOT EXISTS scan_sidecar_file (
-    watched_folder_path TEXT NOT NULL,
-    folder              TEXT NOT NULL,
+    folder              TEXT NOT NULL REFERENCES scan_sidecar (folder) ON DELETE CASCADE,
     position            INTEGER NOT NULL CHECK (position >= 0),
     relative_path       TEXT NOT NULL,
-    absolute_path       TEXT NOT NULL,
+    absolute_path       TEXT NOT NULL UNIQUE,
     size                INTEGER NOT NULL CHECK (size >= 0),
     modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
     role                TEXT NOT NULL CHECK (role IN ('artwork', 'document', 'other')),
-    PRIMARY KEY (watched_folder_path, folder, position),
-    UNIQUE (watched_folder_path, folder, relative_path),
-    FOREIGN KEY (watched_folder_path, folder)
-        REFERENCES scan_sidecar (watched_folder_path, folder) ON DELETE CASCADE
+    PRIMARY KEY (folder, position),
+    UNIQUE (folder, relative_path)
 ) STRICT;
 
 -- A CUE sheet found beside a candidate's audio, as parsed.

@@ -81,10 +81,12 @@ pub enum ScanItem {
 /// releases of their own. The folder holds no audio of its own and is not read
 /// as one release, so no release below it takes them; a grouping whose
 /// releases all sit directly in the folder does (see
-/// [`crate::import::grouping::shared_parent`]).
+/// `crate::import::grouping::shared_parent`).
 ///
 /// Only a folder below the watched root has one: the root is never a release,
-/// so nothing is ever read as its own.
+/// so nothing is ever read as its own. Which folder's files a grouping reads
+/// is one rule for every grouping (see `shared_parent`): a folder read as one
+/// release by the scan and releases picked together read the same files.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FolderSidecar {
     pub watched_folder_path: String,
@@ -103,6 +105,10 @@ pub enum SidecarFiles {
     /// A file among them is broken — an unreadable image — so a release that
     /// takes them in cannot be imported.
     Invalid(InvalidReason),
+    /// A download into the folder is still running, so what it will hold is
+    /// not known yet; a release that takes them in waits for it, as a
+    /// release with a download running in it is not offered at all.
+    Downloading,
 }
 
 /// Only the durable folder-scan tables key items this way, and those are
@@ -134,8 +140,9 @@ impl ScanItem {
                 folder: candidate.path.clone(),
                 whole_subtree: candidate.grouping.is_some(),
             }),
-            // The folder's own files, which is what any release reading them
-            // would cover too.
+            // The folder whose files it holds: what a reading of one folder
+            // checks it stays inside. Which release holds a file is settled
+            // file by file, not by coverage (see the store's sidecar writes).
             Self::Sidecar(sidecar) => Some(Coverage {
                 folder: sidecar.folder.clone(),
                 whole_subtree: false,

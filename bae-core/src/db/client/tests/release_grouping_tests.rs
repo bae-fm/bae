@@ -401,3 +401,64 @@ async fn a_grouping_that_comes_to_read_taken_files_waits_for_them() {
         .await
         .contains(&"cover.jpg".to_string()));
 }
+
+/// Groupings sitting in a folder with no files of its own contend for
+/// nothing, so any number may. Once the folder has files, none of them reads
+/// them while several sit there — each is blocked, saying so — and separating
+/// one lets the other read them.
+#[tokio::test]
+async fn groupings_contend_only_for_files_that_are_there() {
+    let (db, _temp, members) = scanned(&["Box/CD1", "Box/CD2", "Box/CD3", "Box/CD4"]).await;
+    db.combine_releases("grouping:first".into(), members[..2].to_vec())
+        .await
+        .unwrap();
+    db.combine_releases("grouping:second".into(), members[2..].to_vec())
+        .await
+        .unwrap();
+
+    let write = scan_in(&db, ScanItem::Sidecar(sidecar_of("Box", &["cover.jpg"]))).await;
+    assert!(write.regrouped().unwrap().written.is_empty());
+    for key in ["grouping:first", "grouping:second"] {
+        let error = db
+            .load_release_candidate(key)
+            .await
+            .expect_err("the box's files would go with two releases");
+        assert!(error.to_string().contains("more than one"), "{error}");
+    }
+
+    let (_, regrouped) = db.separate_picked_grouping("grouping:first").await.unwrap();
+    assert_eq!(regrouped.written.len(), 1);
+    assert_eq!(
+        release_files(&db, "grouping:second").await,
+        ["cover.jpg", "CD3/01.flac", "CD4/01.flac"]
+    );
+}
+
+/// Files still downloading into the folder hold the grouping back, as a
+/// download holds back a release, until the download ends.
+#[tokio::test]
+async fn a_grouping_waits_for_its_folders_files_to_finish_downloading() {
+    let (db, _temp, members) = scanned(&["Album/Disc 1", "Album/Disc 2"]).await;
+    db.combine_releases("grouping:discs".into(), members.clone())
+        .await
+        .unwrap();
+    scan_in(
+        &db,
+        ScanItem::Sidecar(FolderSidecar {
+            files: SidecarFiles::Downloading,
+            ..sidecar_of("Album", &[])
+        }),
+    )
+    .await;
+    let error = db
+        .load_release_candidate("grouping:discs")
+        .await
+        .expect_err("the album's files are not known yet");
+    assert!(error.to_string().contains("still downloading"), "{error}");
+
+    scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
+    assert_eq!(
+        release_files(&db, "grouping:discs").await,
+        ["cover.jpg", "Disc 1/01.flac", "Disc 2/01.flac"]
+    );
+}

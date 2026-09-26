@@ -39,7 +39,7 @@ pub enum GroupingAction {
 /// run of discs the release gives that folder. Decisions the release stores
 /// later go over them.
 ///
-/// When every member sits directly in one folder ([`shared_parent`]), the
+/// When every member sits directly in one folder (`shared_parent`), the
 /// release is that folder's: `parent_files` are the folder's sidecar files —
 /// the cover or booklet beside the disc folders — and they keep their paths
 /// below it. Otherwise there is no such folder and `parent_files` is empty;
@@ -191,6 +191,14 @@ pub fn compose(
 
 /// The folder a grouping's releases all sit directly in, whose sidecar files
 /// the grouping reads as its own — or `None` when they sit in no one folder.
+///
+/// This is the one rule for every grouping. Releases picked together follow
+/// it, and so does a folder the scan reads as one release: its releases are
+/// the ones it would be read as apart, and it reads its own files only when
+/// they all sit directly in it. Releases nested at different depths — a disc
+/// folder beside an album folder of discs — sit in no one folder, so neither
+/// kind reads the files of the folder above them nor of any folder between;
+/// those stay each folder's sidecar.
 ///
 /// Each release is given as its watched folder and the folder its files are
 /// read from. They sit in one folder when every one of those is directly in

@@ -514,22 +514,16 @@ impl Database {
 /// A tentative candidate replaces nothing: it is seen before the folders
 /// around it are understood, and the reading that settles them is what
 /// replaces whatever it contradicts.
-///
-/// A folder's sidecar replaces every entry that reads the folder's own files:
-/// the scan found that no release read there owns them.
 fn superseded_keys(stored: &[StoredEntry], item: &ScanItem) -> Vec<String> {
-    let (ScanItem::Valid(_) | ScanItem::Invalid(_) | ScanItem::Sidecar(_)) = item else {
+    let (ScanItem::Valid(_) | ScanItem::Invalid(_)) = item else {
         return Vec::new();
     };
-    let Some(coverage) = item.coverage() else {
+    let (Some(own_key), Some(coverage)) = (item.persisted_key(), item.coverage()) else {
         return Vec::new();
     };
-    let own_key = item.persisted_key();
     stored
         .iter()
-        .filter(|entry| {
-            Some(&entry.key) != own_key.as_ref() && entry.coverage.overlaps(&coverage)
-        })
+        .filter(|entry| entry.key != own_key && entry.coverage.overlaps(&coverage))
         .map(|entry| entry.key.clone())
         .collect()
 }
@@ -582,15 +576,10 @@ fn write_scan_item(
     let Some(superseded_keys) = written else {
         return Ok(ScanItemWrite::Unchanged);
     };
-    // A settled entry reads its files itself, so no sidecar of the same files
-    // stands beside it. A tentative one settles nothing (see
+    // A settled release holds its files itself, so no sidecar holding one of
+    // them stands beside it. A tentative one settles nothing (see
     // `superseded_keys`).
-    let uncovered = match (&to_write.item, to_write.item.coverage()) {
-        (ScanItem::Valid(_) | ScanItem::Invalid(_), Some(coverage)) => {
-            sidecar::delete_covered_sidecars(sql, watched_folder_path, &coverage)?
-        }
-        _ => Vec::new(),
-    };
+    let uncovered = sidecar::delete_sidecars_holding(sql, &to_write.item)?;
     let touched: Vec<String> = std::iter::once(entry_key)
         .chain(superseded_keys.iter().cloned())
         .collect();

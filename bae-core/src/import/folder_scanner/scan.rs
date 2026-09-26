@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::HashSet;
 
 // ── Progressive directory walker ───────────────────────────────────────────
 
@@ -153,10 +154,20 @@ pub(super) struct ScannedDirectory {
     audio_folders: Vec<PathBuf>,
     nodes: Vec<ProjectedScanNode>,
     nodes_emitted: bool,
-    /// The sidecar files of every folder in this subtree whose files no
-    /// release owns, waiting on the folders above: one that reads its whole
-    /// subtree as a release takes them after all.
-    sidecars: Vec<FolderSidecar>,
+    /// Every folder in this subtree whose own files no release owns, waiting
+    /// on the folders above: a wrapper that lends its one release its whole
+    /// subtree takes them after all.
+    loose: Vec<LooseFolder>,
+}
+
+/// A folder whose own files — directly in it, and in the folders below it
+/// that hold no audio — no release read there owns: its sidecar, before it
+/// is read.
+#[derive(Debug)]
+struct LooseFolder {
+    /// Root-relative.
+    folder: PathBuf,
+    files: Vec<FileEntry>,
 }
 
 /// The folder one scan pass reads, and what it reads it against: the watched
@@ -432,7 +443,7 @@ where
     if direct_audio {
         audio_folders.push(relative.to_path_buf());
     }
-    let mut sidecars = Vec::new();
+    let mut loose = Vec::new();
     let relative_string = relative_path_string(relative);
     // How this folder is read. A stored reading — the user's, or the one an
     // earlier scan settled on — stands. With nothing stored, the scan decides
@@ -491,7 +502,7 @@ where
         }
         all_files.extend(child_scan.all_files);
         audio_folders.extend(child_scan.audio_folders);
-        sidecars.extend(child_scan.sidecars);
+        loose.extend(child_scan.loose);
         if !wrapper_has_files && can_stream_collection {
             let nodes = child_scan.nodes;
             if !child_scan.nodes_emitted {
@@ -520,9 +531,43 @@ where
     let owns_wrapper_files = !direct_audio && !direct_scope_files.is_empty();
 
     if let Some(grouping) = combined_as.filter(|_| contains_audio) {
+        // The folder read as one release is a grouping of the releases it
+        // would be read as apart — its own tracks, and what each folder in it
+        // yields — and it reads the files those releases read. A folder's own
+        // files come with it by the rule every grouping follows (see
+        // `shared_parent`): this folder's when they all sit directly in it,
+        // and never those of a folder deeper down, which stay that folder's
+        // sidecar as they would beside releases picked together.
+        let folder = root.join(relative);
+        let mut members: Vec<PathBuf> = child_nodes.iter().map(node_file_root).collect();
+        if direct_audio {
+            members.push(folder.clone());
+        }
+        let reads_own_files = crate::import::grouping::shared_parent(
+            members
+                .iter()
+                .map(|member| (watched_folder_path, member.as_path())),
+        )
+        .as_ref()
+            == Some(&folder);
+        if owns_wrapper_files && !reads_own_files {
+            loose.push(LooseFolder {
+                folder: relative.to_path_buf(),
+                files: direct_scope_files,
+            });
+        }
+        let unread: HashSet<&Path> = loose
+            .iter()
+            .flat_map(|folder| folder.files.iter().map(|file| file.path.as_path()))
+            .collect();
+        let read: Vec<FileEntry> = all_files
+            .iter()
+            .filter(|file| !unread.contains(file.path.as_path()))
+            .cloned()
+            .collect();
         let node = candidate_from_files(
             scan,
-            all_files.clone(),
+            read,
             relative,
             relative,
             ReleaseFileScope::Recursive,
@@ -530,15 +575,13 @@ where
             &audio_folders,
         )?;
         let nodes = node.into_iter().collect();
-        // The release reads every file below the folder, the sidecar files of
-        // the folders under it included.
         return Ok(ScannedDirectory {
             all_files,
             contains_audio,
             audio_folders,
             nodes,
             nodes_emitted: false,
-            sidecars: Vec::new(),
+            loose,
         });
     }
 
@@ -603,11 +646,14 @@ where
         }
     }
     if collapsed {
-        // The release reads every file below the folder, the sidecar files of
-        // the folders under it included.
-        sidecars.clear();
+        // The release reads every file below the folder, the files of the
+        // folders under it included.
+        loose.clear();
     } else if owns_wrapper_files && contains_audio {
-        sidecars.extend(sidecar_of(scan, direct_scope_files, relative)?);
+        loose.push(LooseFolder {
+            folder: relative.to_path_buf(),
+            files: direct_scope_files,
+        });
     }
 
     // Children below this folder have already gone out, so the parent will
@@ -623,29 +669,34 @@ where
         audio_folders,
         nodes,
         nodes_emitted: child_nodes_emitted,
-        sidecars,
+        loose,
     })
 }
 
-/// The sidecar of the folder at `relative`, read from `files` — its own files
-/// and those of the folders below it that hold no audio — when no release
-/// read there owns them. `None` while a download into it is still running,
-/// the same as a release would be.
-fn sidecar_of(
-    scan: &ScanRoot<'_>,
-    files: Vec<FileEntry>,
-    relative: &Path,
-) -> Result<Option<FolderSidecar>, FolderScanError> {
-    if files.iter().any(|file| is_partial_marker_file(&file.path)) {
-        info!("Skipping sidecar files of {relative:?}: partial-download marker present");
-        return Ok(None);
+/// The folder a projected release reads its files from.
+fn node_file_root(node: &ProjectedScanNode) -> PathBuf {
+    match node {
+        ProjectedScanNode::Candidate(candidate) => candidate.file_root.clone(),
+        ProjectedScanNode::Invalid(candidate) => candidate.path.clone(),
     }
-    let tree = CandidateFileIndex::new(files);
-    Ok(Some(FolderSidecar {
+}
+
+/// The sidecar of `loose`, its files read the way a release's are. While a
+/// download into the folder is running, what it holds is not known yet.
+fn sidecar_of(scan: &ScanRoot<'_>, loose: LooseFolder) -> Result<FolderSidecar, FolderScanError> {
+    let LooseFolder { folder, files } = loose;
+    let files = if files.iter().any(|file| is_partial_marker_file(&file.path)) {
+        info!("Sidecar files of {folder:?} are still downloading: partial-download marker present");
+        SidecarFiles::Downloading
+    } else {
+        let tree = CandidateFileIndex::new(files);
+        categorize_sidecar(&tree, &folder, scan.root, scan.cancellation)?
+    };
+    Ok(FolderSidecar {
         watched_folder_path: scan.watched_folder_path.to_string(),
-        folder: scan.root.join(relative),
-        files: categorize_sidecar(&tree, relative, scan.root, scan.cancellation)?,
-    }))
+        folder: scan.root.join(&folder),
+        files,
+    })
 }
 
 pub(super) fn emit_projected_nodes<F>(nodes: Vec<ProjectedScanNode>, on_item: &mut F)
@@ -752,8 +803,8 @@ where
     }
     // Every folder above one of these has been read and none took its files,
     // so they are the folder's to say.
-    for sidecar in std::mem::take(&mut scanned.sidecars) {
-        on_item(ScanItem::Sidecar(sidecar));
+    for loose in std::mem::take(&mut scanned.loose) {
+        on_item(ScanItem::Sidecar(sidecar_of(&walk.scan, loose)?));
     }
     Ok(scanned)
 }
