@@ -123,7 +123,7 @@ struct TriageRowIdentifiedTests {
                 .background(.white),
             size: Self.cardSize
         )
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         let png = try await SnapshotTestSupport.capturePNG(
             hosted.host,
             size: Self.cardSize
@@ -174,7 +174,7 @@ struct TriageRowIdentifiedTests {
         prominence: BackgroundProminence = .standard
     ) async throws -> Data {
         let host = hostedRow(row, prominence: prominence)
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         return try await SnapshotTestSupport.capturePNG(
             host,
             size: Self.rowSize

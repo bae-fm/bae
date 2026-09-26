@@ -37,11 +37,11 @@ struct ImportConfirmationBannersTests {
 
     @MainActor
     @Test("artist identity repair remains visible beside the failed row status")
-    func artistIdentityRepairRemainsVisibleBesideFailedStatus() async {
-        let conflictControlCount = await focusControlCount(
+    func artistIdentityRepairRemainsVisibleBesideFailedStatus() async throws {
+        let conflictControlCount = try await focusControlCount(
             failure: conflictFailure()
         )
-        let retryControlCount = await focusControlCount(
+        let retryControlCount = try await focusControlCount(
             failure: BridgeImportFailure(
                 error: .Diagnostic(
                     category: .import,
@@ -57,7 +57,7 @@ struct ImportConfirmationBannersTests {
     @MainActor
     private func focusControlCount(
         failure: BridgeImportFailure
-    ) async -> Int {
+    ) async throws -> Int {
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportConfirmationBanners(
                 libraryStatus: nil,
@@ -76,7 +76,7 @@ struct ImportConfirmationBannersTests {
             ),
             size: NSSize(width: 640, height: 240)
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let count = host.subviews
             .filter {
                 $0.nextKeyView != nil || $0.previousKeyView != nil

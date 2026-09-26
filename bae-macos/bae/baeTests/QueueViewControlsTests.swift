@@ -18,7 +18,7 @@ struct QueueViewControlsTests {
             in: hosted.view,
             window: hosted.window
         )
-        await SnapshotTestSupport.settle(hosted.view)
+        try await SnapshotTestSupport.settle(hosted.view)
 
         #expect(recorder.closeCount == 1)
         withExtendedLifetime(hosted.window) {}
@@ -34,7 +34,7 @@ struct QueueViewControlsTests {
         )
 
         try clickPlayPause(in: hosted)
-        await SnapshotTestSupport.settle(hosted.view)
+        try await SnapshotTestSupport.settle(hosted.view)
 
         #expect(recorder.playPauseCount == 1)
         #expect(recorder.navigateCount == 0)
@@ -51,7 +51,7 @@ struct QueueViewControlsTests {
         )
 
         try clickPlayPause(in: hosted)
-        await SnapshotTestSupport.settle(hosted.view)
+        try await SnapshotTestSupport.settle(hosted.view)
 
         #expect(recorder.playPauseCount == 1)
         #expect(recorder.navigateCount == 0)
@@ -101,7 +101,7 @@ struct QueueViewControlsTests {
             .environment(ImageStore.stub()),
             size: paneSize
         )
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         return (hosted.window, hosted.host)
     }
 

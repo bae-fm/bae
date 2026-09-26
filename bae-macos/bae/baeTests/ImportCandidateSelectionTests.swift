@@ -80,7 +80,7 @@ struct ImportCandidateSelectionTests {
                 return asked
             }
         )
-        func spinners(_ importer: Importer) async -> Int {
+        func spinners(_ importer: Importer) async throws -> Int {
             let size = NSSize(width: 400, height: 80)
             let (_, host) = SnapshotTestSupport.hostInWindow(
                 TriageRowView(
@@ -95,17 +95,14 @@ struct ImportCandidateSelectionTests {
                 .frame(width: size.width, height: size.height),
                 size: size
             )
-            for _ in 0..<50 {
-                await Task.yield()
-                host.layoutSubtreeIfNeeded()
-            }
+            try await SnapshotTestSupport.settle(host)
             return SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSProgressIndicator }
                 .count
         }
 
-        #expect(await spinners(Importer()) == 0)
-        #expect(await spinners(running) == 1)
+        #expect(try await spinners(Importer()) == 0)
+        #expect(try await spinners(running) == 1)
         #expect(asked.keys == [row.candidateKey])
         #expect(asked.bases == [row.actionBasis])
     }
@@ -168,7 +165,7 @@ struct ImportCandidateSelectionTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         // Exercise the native list selection, not a second checkbox state.
         let tableView = try #require(
@@ -180,7 +177,7 @@ struct ImportCandidateSelectionTests {
             IndexSet(integer: 0),
             byExtendingSelection: false
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         #expect(
             uiStore.selectedFolderCandidates
@@ -192,7 +189,7 @@ struct ImportCandidateSelectionTests {
 
 final class PopoverAnimationTests: XCTestCase {
     @MainActor
-    func testPopoverBehaviorDisablesEnclosingPopoverAnimation() async {
+    func testPopoverBehaviorDisablesEnclosingPopoverAnimation() async throws {
         let size = NSSize(width: 80, height: 40)
         let (window, anchor) = SnapshotTestSupport.hostInWindow(
             Color.clear.frame(width: size.width, height: size.height),
@@ -226,7 +223,7 @@ final class PopoverAnimationTests: XCTestCase {
             preferredEdge: .maxY
         )
 
-        await SnapshotTestSupport.settle(contentViewController.view)
+        try await SnapshotTestSupport.settle(contentViewController.view)
 
         XCTAssertFalse(popover.animates)
         popover.performClose(nil)

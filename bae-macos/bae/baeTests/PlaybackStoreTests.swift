@@ -64,11 +64,16 @@ private final class UpcomingFeed: @unchecked Sendable {
     private var opened = 0
     private var requests: [[BridgeLibraryPageWindow]] = []
     private var pending: [BridgeQueueUpcomingSnapshot] = []
+    private var askedCount = 0
     private var waiter:
         CheckedContinuation<BridgeQueueUpcomingSnapshot, any Error>?
 
     var openedCount: Int { lock.withLock { opened } }
     var requested: [[BridgeLibraryPageWindow]] { lock.withLock { requests } }
+    /// How many times the store has asked for a value. It takes one value at
+    /// a time and applies it before asking again, so an ask past a delivered
+    /// value means that value has been handled, shown or not.
+    var asks: Int { lock.withLock { askedCount } }
 
     func query() -> QueueUpcomingQuery {
         lock.withLock { opened += 1 }
@@ -79,6 +84,7 @@ private final class UpcomingFeed: @unchecked Sendable {
             next: { [self] in
                 try await withCheckedThrowingContinuation { continuation in
                     let ready: BridgeQueueUpcomingSnapshot? = lock.withLock {
+                        askedCount += 1
                         if pending.isEmpty {
                             waiter = continuation
                             return nil
@@ -146,14 +152,6 @@ private func contextSnapshot(revision: UInt64) -> BridgeQueueSnapshot {
     )
 }
 
-@MainActor
-private func waitUntil(_ predicate: @MainActor () -> Bool) async {
-    for _ in 0..<500 {
-        if predicate() { return }
-        await Task.yield()
-    }
-}
-
 @Suite("PlaybackStore upcoming windows")
 struct PlaybackStoreUpcomingWindowTests {
     @MainActor
@@ -193,7 +191,7 @@ struct PlaybackStoreUpcomingWindowTests {
     @Test(
         "an upcoming value shows only at the queue revision it was sliced from"
     )
-    func upcomingFollowsQueueRevision() async {
+    func upcomingFollowsQueueRevision() async throws {
         let feed = UpcomingFeed()
         let queue = Queue(subscribeUpcoming: { feed.query() })
         let store = PlaybackStore()
@@ -201,12 +199,14 @@ struct PlaybackStoreUpcomingWindowTests {
         await store.loadUpcomingRange(offset: 100, limit: 60, queue: queue)
 
         feed.deliver(revision: 1, offset: 100, entryId: "first")
-        await waitUntil { store.upcomingItem(at: 100) != nil }
+        try await Wait.until { store.upcomingItem(at: 100) != nil }
         #expect(store.upcomingItem(at: 100)?.entryId == "first")
 
         // The value for the next revision lands before the queue value does.
+        // One ask on opening, one past the first value; the third comes
+        // only after the store has handled this one.
         feed.deliver(revision: 2, offset: 100, entryId: "second")
-        await waitUntil { store.upcomingItem(at: 100)?.entryId != "first" }
+        try await Wait.until { feed.asks >= 3 }
         #expect(
             store.upcomingItem(at: 100)?.entryId == "first",
             "a value ahead of the queue on screen waits for it"

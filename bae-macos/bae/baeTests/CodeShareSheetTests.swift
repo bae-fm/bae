@@ -23,22 +23,16 @@ struct CodeShareSheetTests {
         )
         _ = window
 
-        func render() async throws -> Data {
-            try await SnapshotTestSupport.capturePNG(
-                host,
-                size: size,
-                waitNanoseconds: 50_000_000
-            )
-        }
-
         // Loading state (binding is nil).
-        let loading = try await render()
+        let loading = try await SnapshotTestSupport.capturePNG(host, size: size)
 
-        // The presenter's off-main write lands: the binding resolves to a code.
+        // The presenter's off-main write lands: the binding resolves to a
+        // code, and the sheet draws something else.
         holder.result = .success("PAIR-1234-5678")
-        let loaded = try await render()
-
-        #expect(loading != loaded)
+        try await Wait.until {
+            try await SnapshotTestSupport.capturePNG(host, size: size)
+                != loading
+        }
     }
 }
 

@@ -34,13 +34,13 @@ struct ComposerDetailPaneVirtualizationTests {
                 .environment(imageStore),
             size: size
         )
-        hosted.window.isReleasedWhenClosed = false
         defer { hosted.window.close() }
-        await SnapshotTestSupport.settle(hosted.host)
-        // The mounted rows start their cover loads in tasks of their own; give
-        // those a turn to reach the store before counting what it was asked
-        // for.
-        try await Task.sleep(for: .milliseconds(250))
+        try await SnapshotTestSupport.settle(hosted.host)
+        // The mounted rows start their cover loads in tasks of their own.
+        // Wait for the first to reach the store, then let the tree settle so
+        // the rest of the mounted rows' loads land before they are counted.
+        try await Wait.until { !recorder.requested.isEmpty }
+        try await SnapshotTestSupport.settle(hosted.host)
 
         // 720pt of ~56pt rows is about thirteen visible rows, and the lazy
         // stack prepares a modest buffer past the viewport. 100 leaves room

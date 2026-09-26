@@ -151,7 +151,7 @@ private func captureMappingPane(
         .candidateReaderPreviewEnvironment(),
         size: size
     )
-    await SnapshotTestSupport.settle(host)
+    try await SnapshotTestSupport.settle(host)
     let capture = try await SnapshotTestSupport.capturePNG(host, size: size)
     withExtendedLifetime(window) {}
     return capture
@@ -192,9 +192,7 @@ struct ImportMappingPaneTests {
             .importPreviewEnvironment(),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        try await SnapshotTestSupport.settle(host)
 
         let scrollViews = SnapshotTestSupport.descendants(of: host)
             .compactMap { $0 as? NSScrollView }
@@ -465,7 +463,7 @@ extension ImportMappingPaneTests {
     //    and not the pane's edit.
     @MainActor
     @Test("excluding a file writes only its role")
-    func excludingAFileWritesOnlyItsRole() async {
+    func excludingAFileWritesOnlyItsRole() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
@@ -476,7 +474,7 @@ extension ImportMappingPaneTests {
         )
 
         actions.setRole("13.flac", .notATrack)
-        try? await Task.sleep(for: .milliseconds(50))
+        try await Wait.until { !recorder.roleCalls.isEmpty }
 
         #expect(recorder.roleCalls.count == 1)
         #expect(recorder.roleCalls.first?.fileId == "13.flac")
@@ -539,7 +537,10 @@ extension ImportMappingPaneTests {
                 partners: []
             )
         )
-        try await Task.sleep(for: .milliseconds(50))
+        try await Wait.until {
+            store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
+                != nil
+        }
 
         let candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
@@ -584,7 +585,7 @@ extension ImportMappingPaneTests {
 
         await writer.setField(.albumYear, "1987")
         await writer.setField(.pressingYear, "2011")
-        try await Task.sleep(for: .milliseconds(50))
+        try await Wait.until { recorder.editFields.count == 2 }
 
         #expect(recorder.editFields.count == 2)
         #expect(
@@ -721,7 +722,7 @@ extension ImportMappingPaneTests {
             key: MappingFixtures.candidateKey,
             provenance: .fileMetadata
         )
-        try await Task.sleep(for: .milliseconds(50))
+        try await Wait.until { recorder.fileTagsApplications == 1 }
         #expect(recorder.fileTagsApplications == 1)
 
         store.applyCandidateDetail(
@@ -746,7 +747,7 @@ extension ImportMappingPaneTests {
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance
         )
-        try await Task.sleep(for: .milliseconds(50))
+        try await Wait.until { !recorder.externalMetadata.isEmpty }
         #expect(recorder.externalMetadata == [MappingFixtures.provenance])
 
         store.applyCandidateDetail(

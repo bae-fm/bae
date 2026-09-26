@@ -21,7 +21,6 @@ struct AppearanceRenderingTests {
                 .appAppearance().defaultAppStorage(defaults),
             size: size
         )
-        window.isReleasedWhenClosed = false
         defer {
             window.contentView = nil
             window.close()
@@ -30,19 +29,25 @@ struct AppearanceRenderingTests {
             defaults.set(mode, forKey: "appearance.mode")
             for tone in SurfaceTone.allCases {
                 defaults.set(tone.rawValue, forKey: "appearance.tone")
-                let image = try await bitmap(host, size: size)
-                let actual = try #require(image.colorAt(x: 50, y: 50))
                 var environment = EnvironmentValues()
                 environment.colorScheme = mode == "dark" ? .dark : .light
                 environment.surfaceTone = tone
-                let expected = try #require(
-                    NSColor(Theme.background.resolve(in: environment))
-                        .usingColorSpace(image.colorSpace)
+                let expected = NSColor(
+                    Theme.background.resolve(in: environment)
                 )
-                #expect(
-                    distance(actual, expected) < 0.02,
-                    "\(mode) \(tone): \(actual) expected \(expected)"
-                )
+                // The stored tone reaches the view on a later pass; the
+                // repaint is what is waited for.
+                try await Wait.until {
+                    let image = try SnapshotTestSupport.bitmap(
+                        of: host,
+                        size: size
+                    )
+                    let actual = try #require(image.colorAt(x: 50, y: 50))
+                    let wanted = try #require(
+                        expected.usingColorSpace(image.colorSpace)
+                    )
+                    return distance(actual, wanted) < 0.02
+                }
             }
         }
     }
@@ -72,12 +77,11 @@ struct AppearanceRenderingTests {
                 .defaultAppStorage(defaults),
             size: size
         )
-        window.isReleasedWhenClosed = false
         defer {
             window.contentView = nil
             window.close()
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let picker = try #require(
             SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSSegmentedControl }
@@ -105,12 +109,14 @@ struct AppearanceRenderingTests {
                 .appearance(mode: .dark, accent: .teal, tone: .slate),
             size: size
         )
-        window.isReleasedWhenClosed = false
         defer {
             window.contentView = nil
             window.close()
         }
-        let image = try await bitmap(host, size: size)
+        let image = try await SnapshotTestSupport.steadyBitmap(
+            of: host,
+            size: size
+        )
         let actual = try #require(
             image.colorAt(x: image.pixelsWide / 4, y: image.pixelsHigh / 2)
         )
@@ -119,14 +125,6 @@ struct AppearanceRenderingTests {
                 .usingColorSpace(image.colorSpace)
         )
         #expect(distance(actual, expected) < 0.03)
-    }
-
-    private func bitmap(_ host: NSView, size: NSSize) async throws
-        -> NSBitmapImageRep
-    {
-        await SnapshotTestSupport.settle(host)
-        try await Task.sleep(for: .milliseconds(250))
-        return try SnapshotTestSupport.bitmap(of: host, size: size)
     }
 
     /// How far apart two colours' components are. Both must be in the

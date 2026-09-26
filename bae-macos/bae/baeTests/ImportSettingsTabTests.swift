@@ -28,7 +28,7 @@ struct ImportSettingsTabTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         // The two settings, plus the sources core reports — which are core's
         // list, not a constant this tab repeats.
@@ -48,13 +48,13 @@ struct ImportSettingsTabTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         // Every switch starts on, so clicking each one writes `false` for the
         // setting it names and says nothing about any other.
         for control in switches(in: host) {
             control.performClick(nil)
-            await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settle(host)
         }
 
         #expect(recorder.prefillWrites == [false])
@@ -111,7 +111,7 @@ struct ImportSettingsTabTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         #expect(keyField(in: host) != nil)
         // Core lists the sources in its own order and Discogs is the last of
@@ -141,7 +141,7 @@ struct ImportSettingsTabTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         #expect(keyField(in: host) == nil)
         #expect(switches(in: host).last?.isEnabled == true)
@@ -170,7 +170,7 @@ struct ImportSettingsTabTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         #expect(
             SnapshotTestSupport.descendants(of: host)

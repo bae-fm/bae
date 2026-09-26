@@ -12,7 +12,7 @@ import XCTest
 final class FindOnlinePaneTests: XCTestCase {
     /// Nothing to list means nothing to scroll: a folder nobody has looked
     /// up yet offers the Identify button and the collapsed search alone.
-    func testAPaneWithNothingToOfferHasNoResultsScroller() async {
+    func testAPaneWithNothingToOfferHasNoResultsScroller() async throws {
         let size = NSSize(width: 900, height: 600)
         let (window, host) = FindOnlineRendering.host(
             ImportSearchPane.preview(state: PreviewData.searchStateIdle)
@@ -20,8 +20,7 @@ final class FindOnlinePaneTests: XCTestCase {
             size: size
         )
 
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        try await SnapshotTestSupport.settle(host)
 
         XCTAssertFalse(
             SnapshotTestSupport.descendants(of: host)
@@ -440,7 +439,7 @@ struct FindOnlineFormFocusTests {
             form(focusRequest: 1).frame(width: size.width, height: size.height),
             size: size
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         let artist = try #require(
             SnapshotTestSupport.descendants(of: host)
@@ -450,17 +449,17 @@ struct FindOnlineFormFocusTests {
         #expect(artist.currentEditor() === window.firstResponder)
 
         _ = window.makeFirstResponder(nil)
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         #expect(artist.currentEditor() == nil)
 
         host.rootView = form(focusRequest: 1)
             .frame(width: size.width, height: size.height)
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         #expect(artist.currentEditor() == nil)
 
         host.rootView = form(focusRequest: 2)
             .frame(width: size.width, height: size.height)
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         #expect(artist.currentEditor() === window.firstResponder)
         withExtendedLifetime(window) {}
     }
@@ -645,7 +644,7 @@ struct IdentifierBandTests {
     /// A run in flight lists what has landed under its band, so the area
     /// scrolls.
     @Test("the matches landed so far list under the band")
-    func landedMatchesListUnderTheBand() async {
+    func landedMatchesListUnderTheBand() async throws {
         let size = NSSize(width: 900, height: 600)
         let (window, host) = FindOnlineRendering.host(
             ImportSearchPane.preview(
@@ -654,8 +653,7 @@ struct IdentifierBandTests {
             .importPreviewEnvironment(),
             size: size
         )
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        try await SnapshotTestSupport.settle(host)
         #expect(
             SnapshotTestSupport.descendants(of: host)
                 .contains { $0 is NSScrollView }
@@ -911,7 +909,7 @@ enum FindOnlineRendering {
             window.contentView = nil
             window.close()
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let png = try await SnapshotTestSupport.capturePNG(
             host,
             size: captureSize
@@ -935,19 +933,9 @@ enum FindOnlineRendering {
         _ view: V,
         size: NSSize
     ) -> (window: NSWindow, host: NSHostingView<some View>) {
-        let bounds = NSRect(origin: .zero, size: size)
-        let host = NSHostingView(
-            rootView: view.frame(width: size.width, height: size.height)
+        SnapshotTestSupport.hostInWindow(
+            view.frame(width: size.width, height: size.height),
+            size: size
         )
-        host.frame = bounds
-        let window = NSWindow(
-            contentRect: bounds,
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-        window.isReleasedWhenClosed = false
-        window.contentView = host
-        return (window, host)
     }
 }

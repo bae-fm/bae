@@ -74,25 +74,19 @@ struct CoverPickerStateTests {
     }
 
     @Test("An unsuccessful cover save does not dismiss the picker")
-    func failedSave() async {
+    func failedSave() async throws {
         let state = CoverPickerState()
         var dismissed = false
         state.save(
             { throw StubError.notImplemented },
             onSaved: { dismissed = true }
         )
-        for _ in 0..<100 {
-            await Task.yield()
-            if !state.isSaving { break }
-        }
+        try await Wait.until { !state.isSaving }
         #expect(!state.isSaving)
         #expect(!dismissed)
         #expect(state.errorMessage != nil)
         state.save({}, onSaved: { dismissed = true })
-        for _ in 0..<100 {
-            await Task.yield()
-            if !state.isSaving { break }
-        }
+        try await Wait.until { !state.isSaving }
         #expect(dismissed)
         #expect(state.errorMessage == nil)
     }

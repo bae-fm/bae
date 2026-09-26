@@ -36,7 +36,7 @@ struct ImportMappingTracksLayoutTests {
             .environment(UiStore()),
             size: size
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let field = try #require(
             SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSTextField }
@@ -92,9 +92,7 @@ struct ImportMappingTracksLayoutTests {
             .environment(UiStore()),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        try await SnapshotTestSupport.settle(host)
 
         // The point is inside the leading Source cell and the outer edge of
         // the 24-point audition target. A smaller target or a Source cell
@@ -106,7 +104,7 @@ struct ImportMappingTracksLayoutTests {
             ),
             in: window
         )
-        await Task.yield()
+        try await Wait.until { !recorder.previewed.isEmpty }
 
         #expect(recorder.previewed == [previewTarget])
         withExtendedLifetime(window) {}
@@ -200,9 +198,7 @@ struct ImportMappingTracksLayoutTests {
             .environment(UiStore()),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        try await SnapshotTestSupport.settle(host)
 
         #expect(mapping.displayedDuration == "3:00")
         withExtendedLifetime(window) {}
@@ -255,9 +251,7 @@ struct ImportMappingTracksLayoutTests {
             .environment(UiStore()),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        try await SnapshotTestSupport.settle(host)
 
         try click(
             at: NSPoint(
@@ -266,7 +260,7 @@ struct ImportMappingTracksLayoutTests {
             ),
             in: window
         )
-        await Task.yield()
+        try await Wait.until { !recorder.previewed.isEmpty }
 
         #expect(recorder.previewed == [previewTarget])
         #expect(mapping.displayedDuration == "3:00")
@@ -306,7 +300,7 @@ extension ImportMappingTracksLayoutTests {
             recorder: recorder,
             size: size
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let height = host.fittingSize.height
         #expect(
             SnapshotTestSupport.descendants(of: host)
@@ -321,7 +315,7 @@ extension ImportMappingTracksLayoutTests {
             ),
             in: window
         )
-        await Task.yield()
+        try await Wait.until { !recorder.addedAudio.isEmpty }
         #expect(recorder.addedAudio == [audio])
         #expect(recorder.addedCandidates == [candidate])
         #expect(recorder.edits == 0)
@@ -333,7 +327,7 @@ extension ImportMappingTracksLayoutTests {
             ),
             in: window
         )
-        await Task.yield()
+        try await Wait.until { !recorder.previewed.isEmpty }
         #expect(recorder.previewed == [target])
         #expect(host.fittingSize.height == height)
         withExtendedLifetime(window) {}
@@ -395,9 +389,7 @@ extension ImportMappingTracksLayoutTests {
             .frame(width: tableWidth, height: size.height, alignment: .leading),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        try await SnapshotTestSupport.settle(host)
 
         let controls = buttons(in: host)
             .sorted {
@@ -435,9 +427,7 @@ extension ImportMappingTracksLayoutTests {
             .frame(width: size.width, height: size.height, alignment: .leading),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        try await SnapshotTestSupport.settle(host)
 
         #expect(buttons(in: host).count == 1)
         withExtendedLifetime(window) {}
@@ -646,9 +636,7 @@ extension ImportMappingTracksLayoutTests {
             .environment(UiStore()),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        try await SnapshotTestSupport.settle(host)
         try click(
             at: NSPoint(
                 x: ImportMappingColumns.rowPadding + 22,
@@ -656,7 +644,9 @@ extension ImportMappingTracksLayoutTests {
             ),
             in: window
         )
-        await Task.yield()
+        try await Wait.until {
+            !recorder.previewed.isEmpty || recorder.stops > 0
+        }
         let result = (height: host.fittingSize.height, recorder: recorder)
         withExtendedLifetime(window) {}
         return result

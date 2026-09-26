@@ -120,30 +120,37 @@ final class ImportCandidateViewportTests: XCTestCase {
             firstIdentifyingCandidate: { _ in nil }
         )
         slot.startLoad()
-        await viewportSettle { slot.list?.idAt(30) != nil }
+        try await Wait.until { slot.list?.idAt(30) != nil }
         let geometry = GeometryObservation()
         let root = candidateList(store: store, uiStore: uiStore, slot: slot)
             .onPreferenceChange(ImportCandidateListGeometryKey.self) {
                 geometry.value = $0
             }
-        let hosting = NSHostingView(rootView: root)
-        let window = makeWindow(hosting: hosting)
+        let (window, hosting) = SnapshotTestSupport.hostInWindow(
+            root,
+            size: NSSize(width: 460, height: 600)
+        )
         defer {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await settleViewportLayout(geometry)
+        try await settleFirstLayout(geometry, slot)
 
         let table = try XCTUnwrap(
             descendants(of: hosting).compactMap { $0 as? NSTableView }.first
         )
         let scrollView = try XCTUnwrap(table.enclosingScrollView)
         let anchorIndex = 30
+        let unscrolled = geometry.value
         scrollView.contentView.scroll(
             to: table.rect(ofRow: anchorIndex).origin
         )
         scrollView.reflectScrolledClipView(scrollView.contentView)
-        await settleViewportLayout(geometry)
+        try await settleViewportLayout(
+            geometry,
+            slot,
+            changedFrom: unscrolled
+        )
         let anchorKey = "candidate:\(viewportCandidateKey(anchorIndex))"
         let anchor = try XCTUnwrap(
             geometry.value.rows.first { $0.stableKey == anchorKey }
@@ -157,7 +164,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                 index < 20 ? groupHeaderItem(index) : candidateItem(index)
             }
         await source.replaceItems(changed)
-        await settleViewportLayout(geometry)
+        try await settleViewportLayout(geometry, slot)
 
         let retained = try XCTUnwrap(
             geometry.value.rows.first { $0.stableKey == anchorKey }
@@ -390,28 +397,6 @@ extension ImportCandidateViewportTests {
         .frame(width: 460, height: 600)
     }
 
-    private func makeWindow<Content: View>(
-        hosting: NSHostingView<Content>
-    ) -> NSWindow {
-        let window = NSWindow(
-            contentRect: NSRect(
-                x: -10_000,
-                y: -10_000,
-                width: 460,
-                height: 600
-            ),
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-        // Past every display the zoom-in ordering plays has no display to
-        // pace it, so it never ends and keeps its thread.
-        window.animationBehavior = .none
-        window.contentView = hosting
-        window.orderBack(nil)
-        return window
-    }
-
     private func candidateItem(_ index: Int) -> BridgeImportListItem {
         PreviewData.candidateItem(
             BridgeTriageRow(
@@ -474,29 +459,59 @@ extension ImportCandidateViewportTests {
         [view] + view.subviews.flatMap { descendants(of: $0) }
     }
 
-    /// Run the list until it stops moving: SwiftUI lays out on the run loop
-    /// and the scroll a restore asks for runs as main-actor work between those
-    /// passes, so each needs its turn. Settled means the list moved and then
-    /// held still — a fixed number of turns would assert on a list still on
-    /// its way.
-    private func settleViewportLayout(
-        _ geometry: GeometryObservation
-    ) async {
-        var last = geometry.value
-        var moved = false
-        var held = 0
-        for _ in 0..<400 {
+    /// Lay the newly hosted list out until it reports rows, then until it
+    /// and its content come to rest.
+    private func settleFirstLayout(
+        _ geometry: GeometryObservation,
+        _ slot: ImportListSlot
+    ) async throws {
+        try await Wait.until {
             layOutOnce()
-            await Task.yield()
-            if geometry.value != last {
-                last = geometry.value
-                moved = true
-                held = 0
-                continue
-            }
-            guard moved else { continue }
-            held += 1
-            if held == 5 { return }
+            return !geometry.value.rows.isEmpty
+        }
+        try await settleViewportLayout(geometry, slot)
+    }
+
+    /// Where the list stands: the rows it laid out, and which delivery of
+    /// its pages it laid them out from.
+    private struct ViewportState: Equatable {
+        let geometry: ImportCandidateListGeometry
+        let contentRevision: UInt64?
+    }
+
+    /// Run the list until it stops moving and stops loading: SwiftUI lays out
+    /// on the run loop, rows it lays out ask for their pages, and each page
+    /// that lands has the list restore its anchor with a scroll of its own on
+    /// a later turn. A scroll made while pages are still landing is undone
+    /// by the next restore, so the list's content has to come to rest as
+    /// well as its rows.
+    ///
+    /// After a step that must move the list — a scroll — settled means it
+    /// moved off `before` and then held still, since a list not yet on its
+    /// way also holds still. After a step that may leave it where it is — a
+    /// page delivery the anchor absorbs — holding still is the whole of it.
+    private func settleViewportLayout(
+        _ geometry: GeometryObservation,
+        _ slot: ImportListSlot,
+        changedFrom before: ImportCandidateListGeometry? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        try await Wait.untilSteady(
+            changedFrom: before.map {
+                ViewportState(
+                    geometry: $0,
+                    contentRevision: slot.list?.contentRevision
+                )
+            },
+            file: file,
+            line: line
+        ) {
+            layOutOnce()
+            return ViewportState(
+                geometry: geometry.value,
+                contentRevision: slot.list?.contentRevision
+            )
         }
     }
 
@@ -506,12 +521,4 @@ extension ImportCandidateViewportTests {
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.005))
     }
 
-    private func viewportSettle(
-        _ predicate: @MainActor () -> Bool
-    ) async {
-        for _ in 0..<500 {
-            if predicate() { return }
-            await Task.yield()
-        }
-    }
 }

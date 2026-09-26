@@ -24,9 +24,8 @@ struct PlaybackProgressViewTests {
             ),
             size: NSSize(width: 460, height: 40)
         )
-        hosted.window.isReleasedWhenClosed = false
         defer { hosted.window.close() }
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         await drainPositionUpdates()
 
         events.send(
@@ -63,9 +62,8 @@ struct PlaybackProgressViewTests {
             ),
             size: NSSize(width: 460, height: 40)
         )
-        hosted.window.isReleasedWhenClosed = false
         defer { hosted.window.close() }
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         await drainPositionUpdates()
         let labels = SnapshotTestSupport.descendants(of: hosted.host)
             .compactMap { $0 as? NSTextField }
@@ -106,9 +104,8 @@ struct PlaybackProgressViewTests {
             content(showRemaining: false),
             size: NSSize(width: 460, height: 40)
         )
-        hosted.window.isReleasedWhenClosed = false
         defer { hosted.window.close() }
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         await drainPositionUpdates()
         let descendants = SnapshotTestSupport.descendants(of: hosted.host)
         let bar = try #require(
@@ -118,7 +115,7 @@ struct PlaybackProgressViewTests {
         #expect(labels.map(\.stringValue) == ["0:45", "3:00"])
 
         hosted.host.rootView = content(showRemaining: true)
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         #expect(labels.map(\.stringValue) == ["-2:15", "3:00"])
         #expect(
             SnapshotTestSupport.descendants(of: hosted.host)
@@ -128,7 +125,7 @@ struct PlaybackProgressViewTests {
         events.send(.reset)
         await drainPositionUpdates()
         hosted.host.rootView = content(showRemaining: false)
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         #expect(labels.map(\.stringValue) == ["", ""])
 
         events.send(
@@ -173,9 +170,8 @@ struct PlaybackProgressViewTests {
             ),
             size: NSSize(width: 460, height: 40)
         )
-        hosted.window.isReleasedWhenClosed = false
         defer { hosted.window.close() }
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         await drainPositionUpdates()
         let descendants = SnapshotTestSupport.descendants(of: hosted.host)
         let slider = try #require(
@@ -206,9 +202,8 @@ struct PlaybackProgressViewTests {
                 ),
             size: NSSize(width: 460, height: 40)
         )
-        hosted.window.isReleasedWhenClosed = false
         defer { hosted.window.close() }
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         await drainPositionUpdates()
 
         handler.apply(

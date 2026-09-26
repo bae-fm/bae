@@ -83,7 +83,7 @@ struct ImportedRowViewTests {
     @MainActor
     private func pixels(of row: BridgeImportedRow) async throws -> Data {
         let host = hostedRow(row)
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         return try await SnapshotTestSupport.capturePNG(
             host,
             size: Self.rowSize

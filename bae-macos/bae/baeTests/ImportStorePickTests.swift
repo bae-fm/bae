@@ -46,7 +46,7 @@ struct ImportStorePickTests {
 
         store.metadataApplicationSucceeded(key: Self.key, session: session)
 
-        await waitUntil {
+        try await Wait.until {
             writes.presentations(forKey: Self.key) == [.draft]
         }
         #expect(store.metadataApplicationSession(forKey: Self.key) == nil)
@@ -121,10 +121,4 @@ struct ImportStorePickTests {
         MappingFixtures.detail(mapping: nil, audioIdentity: audio)
     }
 
-    private func waitUntil(_ predicate: () -> Bool) async {
-        for _ in 0..<100 where !predicate() {
-            await Task.yield()
-        }
-        #expect(predicate())
-    }
 }

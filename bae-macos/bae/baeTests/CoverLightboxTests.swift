@@ -41,8 +41,9 @@ struct CoverLightboxTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
-        try await Task.sleep(for: .milliseconds(100))
+        // The covers load after the first layout; the click is aimed at
+        // them, so it waits until they are drawn.
+        _ = try await SnapshotTestSupport.steadyBitmap(of: host, size: size)
         switch opening {
         case .preview:
             try click(window, at: NSPoint(x: 720, y: 420), count: 1)
@@ -52,8 +53,8 @@ struct CoverLightboxTests {
         case .space:
             _ = host.performKeyEquivalent(with: try key(window, " ", code: 49))
         }
-        try await Task.sleep(for: .milliseconds(100))
-        await SnapshotTestSupport.settle(host)
+        // The keys below are for the lightbox, so they wait until it is drawn.
+        _ = try await SnapshotTestSupport.steadyBitmap(of: host, size: size)
         // Return cannot save through the lightbox into the underlying picker.
         _ = host.performKeyEquivalent(with: try key(window, "\r", code: 36))
         #expect(selected == nil)
@@ -64,13 +65,13 @@ struct CoverLightboxTests {
                 code: 124
             )
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         window.sendEvent(try key(window, "\u{1b}", code: 53))
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         #expect(!dismissed)
         #expect(selected == nil)
         _ = host.performKeyEquivalent(with: try key(window, "\r", code: 36))
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         #expect(selected?.id == (opening == .thumbnail ? file.id : booklet.id))
     }
 
@@ -102,7 +103,7 @@ struct CoverLightboxTests {
             window.orderOut(nil)
         }
         for _ in 0..<100 {
-            await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settle(host)
             if await recorder.urls.count >= 3 { break }
         }
         let urls = await recorder.urls

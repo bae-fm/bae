@@ -41,9 +41,8 @@ struct QueueNowPlayingNavigationTests {
                 .environment(ui),
             size: NSSize(width: 420, height: 720)
         )
-        hosted.window.isReleasedWhenClosed = false
         defer { hosted.window.close() }
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         let localPoint = CGPoint(
             x: point.x,
             y: hosted.host.isFlipped
@@ -66,7 +65,7 @@ struct QueueNowPlayingNavigationTests {
             )
             hosted.window.sendEvent(event)
         }
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         #expect(ui.activeSection == .library)
         #expect(ui.libraryBrowserMode == .albums)
         #expect(ui.selectedAlbumId == "playing-album")

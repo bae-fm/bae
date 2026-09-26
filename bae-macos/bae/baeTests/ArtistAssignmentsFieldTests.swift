@@ -61,7 +61,7 @@ struct ArtistAssignmentsFieldTests {
             window.orderOut(nil)
         }
 
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let frames = SnapshotTestSupport.descendants(of: host)
             .map { $0.convert($0.bounds, to: host) }
         let pane = host.bounds.insetBy(dx: -0.5, dy: -0.5)

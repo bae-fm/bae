@@ -44,9 +44,8 @@ struct QueueSectionVirtualizationTests {
             .environment(ImageStore.stub()),
             size: size
         )
-        hosted.window.isReleasedWhenClosed = false
         defer { hosted.window.close() }
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
 
         // 565pt of 62pt rows is about nine visible rows, each fetching the
         // 100-row page around itself, and the lazy stack prepares a modest

@@ -23,9 +23,7 @@ struct ImportMappingFileRowTests {
             .frame(width: tableWidth, height: size.height),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        try await SnapshotTestSupport.settle(host)
 
         let buttons = SnapshotTestSupport.descendants(of: host)
             .compactMap {
@@ -34,7 +32,7 @@ struct ImportMappingFileRowTests {
         try #require(buttons.count == 1)
         let button = try #require(buttons.first)
         button.performClick(nil)
-        await Task.yield()
+        try await Wait.until { choice.fileId != nil }
 
         #expect(choice.fileId == "excluded.flac")
         #expect(choice.choice == .audio)

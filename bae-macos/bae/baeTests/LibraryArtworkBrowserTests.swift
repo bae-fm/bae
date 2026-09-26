@@ -54,7 +54,7 @@ struct LibraryArtworkBrowserTests {
                 code: 124
             )
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         _ = host.performKeyEquivalent(with: try key(window, " ", code: 49))
         observations = try await text(in: host, size: size)
         #expect(labels(observations).carrying("Discogs"))
@@ -384,11 +384,7 @@ extension LibraryArtworkBrowserTests {
     private func text(in host: NSView, size: NSSize) async throws
         -> [SnapshotTestSupport.RecognizedLine]
     {
-        let png = try await SnapshotTestSupport.capturePNG(
-            host,
-            size: size,
-            waitNanoseconds: 200_000_000
-        )
+        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
         return try await SnapshotTestSupport.recognizedText(in: png)
     }
 

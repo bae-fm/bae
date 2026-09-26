@@ -118,14 +118,9 @@ struct ReleaseRecordsTests {
             size: Self.cardSize
         )
         defer { withExtendedLifetime(window) {} }
-        await SnapshotTestSupport.settle(host)
         return try await SnapshotTestSupport.capturePNG(
             host,
-            size: Self.cardSize,
-            // The card's art loads off the main actor, and a capture taken
-            // before it lands reads differently from one taken after — a
-            // difference about the image, not about the records.
-            waitNanoseconds: 200_000_000
+            size: Self.cardSize
         )
     }
 }

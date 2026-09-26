@@ -70,6 +70,7 @@ private final class SearchProbe: @unchecked Sendable {
     private let lock = NSLock()
     private var queries: [String] = []
     private var opened = 0
+    private var askedCount = 0
     private var pending: [Result<BridgeLibrarySearchSnapshot, BridgeError>] = []
     private var waiter:
         CheckedContinuation<BridgeLibrarySearchSnapshot, any Error>?
@@ -87,6 +88,10 @@ private final class SearchProbe: @unchecked Sendable {
 
     var openCount: Int { lock.withLock { opened } }
     var lastQuery: String? { lock.withLock { queries.last } }
+    /// How many times the search has been asked for a value. The store takes
+    /// one value at a time and applies it before asking again, so an ask past
+    /// a delivered value means that value has been handled, applied or not.
+    var asks: Int { lock.withLock { askedCount } }
 
     func emitValue(query: String) {
         deliver(
@@ -127,6 +132,7 @@ private final class SearchProbe: @unchecked Sendable {
     private func nextValue() async throws -> BridgeLibrarySearchSnapshot {
         try await withCheckedThrowingContinuation { continuation in
             let ready = lock.withLock {
+                askedCount += 1
                 if pending.isEmpty {
                     waiter = continuation
                     return nil
@@ -141,17 +147,6 @@ private final class SearchProbe: @unchecked Sendable {
     }
 }
 
-private func waitForSearchQuery(
-    _ expected: String,
-    probe: SearchProbe
-) async throws -> Bool {
-    for _ in 0..<100 {
-        if probe.lastQuery == expected { return true }
-        try await Task.sleep(for: .milliseconds(10))
-    }
-    return false
-}
-
 @Suite("LibraryProjectionStore search")
 struct LibraryProjectionStoreSearchTests {
     @MainActor
@@ -163,9 +158,9 @@ struct LibraryProjectionStoreSearchTests {
         )
 
         store.activateSearch("query-a")
-        try #require(await waitForSearchQuery("query-a", probe: probe))
+        try await Wait.until { probe.lastQuery == "query-a" }
         probe.emitValue(query: "query-a")
-        await waitForStoreUpdate { store.search.value?.query == "query-a" }
+        try await Wait.until { store.search.value?.query == "query-a" }
         #expect(store.search.delivered)
 
         store.activateSearch("query-b")
@@ -174,16 +169,18 @@ struct LibraryProjectionStoreSearchTests {
         #expect(!store.search.delivered)
         #expect(store.search.error == nil)
 
-        try #require(await waitForSearchQuery("query-b", probe: probe))
+        try await Wait.until { probe.lastQuery == "query-b" }
+        // The search asked once on opening and once past the first answer;
+        // its third ask comes only after it has handled this stale one.
         probe.emitValue(query: "query-a")
-        await Task.yield()
+        try await Wait.until { probe.asks >= 3 }
         #expect(
             store.search.value == nil,
             "an answer to the old query is not shown"
         )
 
         probe.emitError()
-        await waitForStoreUpdate { store.search.error != nil }
+        try await Wait.until { store.search.error != nil }
 
         #expect(store.search.value == nil)
         #expect(!store.search.delivered)
@@ -201,7 +198,7 @@ struct LibraryProjectionStoreDetailTests {
     @Test(
         "moving the composer pane moves its one read, and clearing it reads nothing"
     )
-    func composerPaneMovesOneRead() async {
+    func composerPaneMovesOneRead() async throws {
         let feed = DetailFeed<BridgeComposerDetail>()
         let store = LibraryProjectionStore(
             library: Library(composerDetail: { feed.query() })
@@ -211,7 +208,7 @@ struct LibraryProjectionStoreDetailTests {
         store.activateComposer("composer-2")
         feed.emit(id: "composer-1", value: nil)
         feed.emit(id: "composer-2", value: nil)
-        await waitForStoreUpdate { store.composer.delivered }
+        try await Wait.until { store.composer.delivered }
 
         #expect(feed.opened == 1)
         #expect(feed.requested == ["composer-1", "composer-2"])
@@ -238,7 +235,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
     @Test(
         "the app-owned album list updates count while no library view is mounted"
     )
-    func unmountedListUpdatesAlbumTotal() async {
+    func unmountedListUpdatesAlbumTotal() async throws {
         let probe = AlbumBrowseProbe()
         let store = LibraryStore()
         let session = LibraryBrowseSession(
@@ -250,16 +247,16 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         )
 
         session.start()
-        await waitForStoreUpdate { probe.isSubscribed }
+        try await Wait.until { probe.isSubscribed }
         probe.emit(rows: [makeBridgeAlbum()], total: 1)
-        await waitForStoreUpdate { store.albumTotal == 1 }
+        try await Wait.until { store.albumTotal == 1 }
 
         #expect(store.albumTotal == 1)
     }
 
     @MainActor
     @Test("page eviction does not clear a selected album")
-    func pageEvictionKeepsSelection() async {
+    func pageEvictionKeepsSelection() async throws {
         let pageProbe = AlbumBrowseProbe()
         let selectionProbe = AlbumSelectionProbe()
         let session = LibraryBrowseSession(
@@ -272,7 +269,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         )
 
         session.start()
-        await waitForStoreUpdate { pageProbe.isSubscribed }
+        try await Wait.until { pageProbe.isSubscribed }
         pageProbe.emit(
             rows: [
                 makeBridgeAlbum(id: "album-a"),
@@ -280,14 +277,14 @@ struct LibraryBrowseSessionAlbumProjectionTests {
             ],
             total: 2
         )
-        await waitForStoreUpdate {
+        try await Wait.until {
             session.albums.list?.totalCount == 2
         }
         session.albumSelection.toggle("album-a")
         #expect(selectionProbe.requested.last == ["album-a"])
 
         pageProbe.emit(rows: [makeBridgeAlbum(id: "album-c")], total: 3)
-        await waitForStoreUpdate {
+        try await Wait.until {
             session.albums.list?.totalCount == 3
         }
 
@@ -296,7 +293,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
 
     @MainActor
     @Test("a remote deletion clears the selected album")
-    func remoteDeletionClearsSelection() async {
+    func remoteDeletionClearsSelection() async throws {
         let selectionProbe = AlbumSelectionProbe()
         let session = LibraryBrowseSession(
             library: Library(albumSelection: { selectionProbe.query() }),
@@ -310,7 +307,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
             requested: ["album-a", "album-b"],
             albums: [makeBridgeAlbum(id: "album-b")]
         )
-        await waitForStoreUpdate {
+        try await Wait.until {
             !session.albumSelection.contains("album-a")
         }
 
@@ -342,7 +339,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
 
     @MainActor
     @Test("ending the browse session cancels the selection read")
-    func sessionEndCancelsObservation() async {
+    func sessionEndCancelsObservation() async throws {
         let selectionProbe = AlbumSelectionProbe()
         var session: LibraryBrowseSession? = LibraryBrowseSession(
             library: Library(albumSelection: { selectionProbe.query() }),
@@ -353,7 +350,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
 
         session?.albumSelection.toggle("album-a")
         session = nil
-        await waitForStoreUpdate { selectionProbe.cancelled }
+        try await Wait.until { selectionProbe.cancelled }
 
         #expect(weakSession == nil)
         #expect(selectionProbe.cancelled)
@@ -422,7 +419,7 @@ private final class AlbumSelectionProbe: @unchecked Sendable {
 struct LibraryStoreAlbumDetailOwnershipTests {
     @MainActor
     @Test("retry replaces the failed read and rejects its late value")
-    func retryRejectsOldRead() async {
+    func retryRejectsOldRead() async throws {
         let feed = DetailFeed<BridgeAlbumDetail>()
         let store = LibraryStore()
         let reader = store.albumDetailReader(
@@ -431,19 +428,19 @@ struct LibraryStoreAlbumDetailOwnershipTests {
 
         reader.show("album-1")
         feed.emitError()
-        await waitForStoreUpdate {
+        try await Wait.until {
             store.albumDetailErrors["album-1"] != nil
         }
 
         reader.retry()
-        await waitForStoreUpdate { feed.isCancelled(read: 0) }
+        try await Wait.until { feed.isCancelled(read: 0) }
         #expect(feed.opened == 2)
         feed.emit(
             read: 1,
             id: "album-1",
             value: makeBridgeAlbumDetail(title: "Replacement Title")
         )
-        await waitForStoreUpdate {
+        try await Wait.until {
             store.albumSummaries["album-1"]?.title == "Replacement Title"
         }
         feed.emit(
@@ -451,12 +448,13 @@ struct LibraryStoreAlbumDetailOwnershipTests {
             id: "album-1",
             value: makeBridgeAlbumDetail(title: "Old Title")
         )
-        await Task.yield()
+        // Read 0 was cancelled above and its loop has ended, so nothing will
+        // ever take this value: the check below is final, not early.
 
         #expect(store.albumSummaries["album-1"]?.title == "Replacement Title")
 
         reader.close()
-        await waitForStoreUpdate { feed.isCancelled(read: 1) }
+        try await Wait.until { feed.isCancelled(read: 1) }
         #expect(feed.isCancelled(read: 1))
     }
 }

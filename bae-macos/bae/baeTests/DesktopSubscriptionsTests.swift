@@ -7,7 +7,7 @@ import Testing
 @Suite("Import candidate selection")
 struct DesktopSubscriptionsTests {
     @Test("moving the selection moves its reads, and only growth opens more")
-    func selectionMovesItsReads() async {
+    func selectionMovesItsReads() async throws {
         let feed = DetailFeed<BridgeImportCandidateDetail>()
         let observations = ImportSelectionObservations(
             open: { feed.query() },
@@ -24,7 +24,7 @@ struct DesktopSubscriptionsTests {
         #expect(feed.opened == 2)
 
         observations.selectionChanged(["candidate-c"])
-        await waitForStoreUpdate { feed.isCancelled(read: 0) }
+        try await Wait.until { feed.isCancelled(read: 0) }
         #expect(
             feed.isCancelled(read: 0),
             "the read a smaller selection frees ends"
@@ -47,7 +47,7 @@ struct DesktopSubscriptionsTests {
 
         observations.selectionChanged([key])
         feed.emit(id: key, value: MappingFixtures.detail(mapping: nil))
-        await waitForStoreUpdate { !store.selectedCandidates.isEmpty }
+        try await Wait.until { !store.selectedCandidates.isEmpty }
         _ = try #require(
             store.beginMetadataApplication(
                 key: key,
@@ -56,7 +56,7 @@ struct DesktopSubscriptionsTests {
         )
 
         feed.emit(id: key, value: nil)
-        await waitForStoreUpdate {
+        try await Wait.until {
             store.metadataApplicationSession(forKey: key) == nil
         }
 

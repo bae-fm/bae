@@ -289,7 +289,7 @@ struct PaginatedListSegmentTests {
 
     @MainActor
     @Test("concurrent loadRange for the same range issues a single fetch")
-    func concurrentLoadRangeCoalesces() async {
+    func concurrentLoadRangeCoalesces() async throws {
         let store = LibraryStore()
         let source = GatedAlbumPageSource(
             albums: (0..<52).map { makeBridgeAlbum(id: "a\($0)") }
@@ -309,11 +309,19 @@ struct PaginatedListSegmentTests {
         // dedupes onto it instead of issuing its own query.
         await source.waitForPageEntry()
 
-        async let second: Void = list.loadRange(offset: 50, limit: 2)
-        await Task.yield()
+        // The second caller returns while the first is still held at the
+        // gate. One that fetched on its own instead would be held there too,
+        // so the wait also ends on a third page call, and the count below
+        // says what went wrong.
+        var secondReturned = false
+        let second = Task {
+            await list.loadRange(offset: 50, limit: 2)
+            secondReturned = true
+        }
+        try await Wait.until { secondReturned || source.pageCallCount > 2 }
         await source.openGate()
 
-        _ = await (first, second)
+        _ = await (first, second.value)
 
         #expect(source.pageCallCount == 2)
         #expect(list.idAt(50) == "a50")

@@ -70,7 +70,7 @@ struct UiEventDispatcherControlTests {
 @Suite("AppService media control", .serialized)
 struct AppServiceMediaControlTests {
     @Test("idle import preview does not clear library Now Playing")
-    func idlePreviewKeepsLibraryNowPlaying() async {
+    func idlePreviewKeepsLibraryNowPlaying() async throws {
         let infoCenter = MPNowPlayingInfoCenter.default()
         infoCenter.nowPlayingInfo = nil
         defer { infoCenter.nowPlayingInfo = nil }
@@ -126,7 +126,7 @@ struct AppServiceMediaControlTests {
             )
         )
 
-        await waitUntil {
+        try await Wait.until {
             infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String
                 == "Track Title"
         }
@@ -172,17 +172,6 @@ private let handledEvents: [BridgeUiEvent] = [
 ]
 
 // MARK: - Test doubles
-
-@MainActor
-private func waitUntil(_ predicate: @MainActor () -> Bool) async {
-    for _ in 0..<100 {
-        if predicate() {
-            return
-        }
-        await Task.yield()
-    }
-    #expect(predicate())
-}
 
 @MainActor
 private func makeAppService(handle: FakeAppHandle = FakeAppHandle())

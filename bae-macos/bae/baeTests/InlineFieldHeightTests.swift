@@ -57,7 +57,7 @@ struct InlineFieldHeightTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let textHeight = try #require(measured.textHeight)
         #expect(first.fieldHeight == textHeight)
         #expect(second.fieldHeight == textHeight)
@@ -71,7 +71,7 @@ struct InlineFieldHeightTests {
     func everyFieldIsAsTallAsItsOwnFont() async throws {
         for _ in 0..<40 {
             let (window, host) = hostHeader()
-            await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settle(host)
             let fields = SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSTextField }
                 .filter(\.isEditable)
@@ -97,7 +97,7 @@ struct InlineFieldHeightTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let pixels = try await SnapshotTestSupport.capturePNG(
             host,
             size: Self.size

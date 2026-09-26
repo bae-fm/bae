@@ -81,14 +81,6 @@ private final class AppliedViewResolver: @unchecked Sendable {
     }
 }
 
-@MainActor
-private func waitUntil(_ predicate: @MainActor () -> Bool) async {
-    for _ in 0..<500 {
-        if predicate() { return }
-        await Task.yield()
-    }
-}
-
 private func candidateItem(_ index: Int) -> BridgeImportListItem {
     let key = candidateKey(index)
     return .candidate(
@@ -162,7 +154,7 @@ struct ImportListSlotTests {
         let slot = makeSlot()
         #expect(slot.sortOrder == .newestFirst)
         slot.startLoad()
-        await waitUntil { slot.list != nil }
+        try await Wait.until { slot.list != nil }
         #expect(requests.last?.order == .newestFirst)
 
         for order: BridgeImportListOrder in [
@@ -174,13 +166,13 @@ struct ImportListSlotTests {
             let reopened = makeSlot()
             #expect(reopened.sortOrder == order)
             reopened.startLoad()
-            await waitUntil { reopened.list != nil }
+            try await Wait.until { reopened.list != nil }
             #expect(requests.last?.order == order)
         }
     }
 
     @Test("a failed first page becomes the slot's failure and an alert")
-    func aFailedFirstPageIsSurfaced() async {
+    func aFailedFirstPageIsSurfaced() async throws {
         let uiStore = UiStore()
         let slot = ImportListSlot(
             importStore: ImportStore(),
@@ -194,7 +186,7 @@ struct ImportListSlotTests {
         #expect(uiStore.lastError == nil)
 
         slot.startLoad()
-        await waitUntil { slot.loadFailure != nil }
+        try await Wait.until { slot.loadFailure != nil }
 
         #expect(slot.loadFailure != nil)
         // The same failure is raised as the global alert, the way every other
@@ -235,7 +227,7 @@ struct ImportListSlotTests {
             firstIdentifyingCandidate: { _ in target }
         )
         slot.startLoad()
-        await waitUntil { slot.list?.idAt(0) != nil }
+        try await Wait.until { slot.list?.idAt(0) != nil }
 
         let revealed = try await slot.revealFirstIdentifying()
 
@@ -265,7 +257,7 @@ struct ImportListSlotTests {
             firstIdentifyingCandidate: { _ in nil }
         )
         slot.startLoad()
-        await waitUntil { slot.list?.idAt(0) != nil }
+        try await Wait.until { slot.list?.idAt(0) != nil }
 
         #expect(try await slot.revealFirstIdentifying() == nil)
     }
@@ -305,12 +297,12 @@ final class CandidatePlacementNavigationTests: XCTestCase {
             firstIdentifyingCandidate: { _ in nil }
         )
         slot.startLoad()
-        await waitUntil { slot.list?.idAt(0) != nil }
+        try await Wait.until { slot.list?.idAt(0) != nil }
         let outcome = CandidateRevealOutcome()
         Task {
             outcome.position = try? await slot.revealCandidate(targetKey)
         }
-        await waitUntil { !delivery.requests.isEmpty }
+        try await Wait.until { !delivery.requests.isEmpty }
 
         XCTAssertEqual(uiStore.importCandidateTab, .done)
         XCTAssertTrue(uiStore.importCandidateFilterText.isEmpty)
@@ -320,7 +312,7 @@ final class CandidatePlacementNavigationTests: XCTestCase {
         XCTAssertEqual(delivery.requests.first?.filterText.isEmpty, true)
 
         delivery.resolve()
-        await waitUntil { outcome.position != nil }
+        try await Wait.until { outcome.position != nil }
 
         XCTAssertEqual(outcome.position, 61)
         XCTAssertEqual(

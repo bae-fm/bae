@@ -22,7 +22,7 @@ final class SettingsNavigationTests: XCTestCase {
         #expect(selectionAtPresentation == .importing)
     }
 
-    func testDiscogsKeyFieldTakesFocusWhenItAppears() async {
+    func testDiscogsKeyFieldTakesFocusWhenItAppears() async throws {
         let size = NSSize(width: 500, height: 320)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             Form {
@@ -44,7 +44,7 @@ final class SettingsNavigationTests: XCTestCase {
             size: size
         )
 
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         let textFields = SnapshotTestSupport.descendants(of: host)
             .compactMap { $0 as? NSTextField }
@@ -77,7 +77,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance
         )
-        await waitUntil {
+        try await Wait.until {
             writes.presentations(forKey: MappingFixtures.candidateKey)
                 == [.draft]
         }
@@ -110,7 +110,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance
         )
-        await waitUntil {
+        try await Wait.until {
             recorder.provenances == [MappingFixtures.provenance]
         }
 
@@ -120,7 +120,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         )
 
         releaseGate.finish()
-        await waitUntil {
+        try await Wait.until {
             store.loadingReleaseId(forKey: MappingFixtures.candidateKey) == nil
         }
     }
@@ -147,7 +147,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance
         )
-        await waitUntil {
+        try await Wait.until {
             recorder.provenances == [MappingFixtures.provenance]
         }
 
@@ -181,7 +181,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance
         )
-        await waitUntil {
+        try await Wait.until {
             store.releaseSelectionFailure(
                 forKey: MappingFixtures.candidateKey
             ) != nil
@@ -233,7 +233,7 @@ extension ImportSearchFlowMetadataApplicationTests {
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance
         )
-        await waitUntil {
+        try await Wait.until {
             store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
                 != nil
         }
@@ -263,7 +263,7 @@ extension ImportSearchFlowMetadataApplicationTests {
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance
         )
-        await waitUntil {
+        try await Wait.until {
             store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
                 != nil
         }
@@ -303,7 +303,7 @@ extension ImportSearchFlowMetadataApplicationTests {
                     partners: []
                 )
             )
-            await waitUntil {
+            try await Wait.until {
                 store.releaseSelectionFailure(
                     forKey: MappingFixtures.candidateKey
                 )?
@@ -332,7 +332,7 @@ extension ImportSearchFlowMetadataApplicationTests {
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance
         )
-        await waitUntil {
+        try await Wait.until {
             store.metadataApplicationSession(
                 forKey: MappingFixtures.candidateKey
             ) == nil
@@ -361,12 +361,6 @@ extension ImportSearchFlowMetadataApplicationTests {
         return store
     }
 
-    private func waitUntil(_ predicate: () -> Bool) async {
-        for _ in 0..<100 where !predicate() {
-            await Task.yield()
-        }
-        #expect(predicate())
-    }
 }
 
 @MainActor
@@ -419,7 +413,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
             size: size
         )
         host.layoutSubtreeIfNeeded()
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         host.layoutSubtreeIfNeeded()
 
         let titleField = try XCTUnwrap(
@@ -435,7 +429,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
                 object: titleField
             )
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         let store = MappingFixtures.store(mapping: nil)
         ImportSearchFlow.applyMetadata(
@@ -448,10 +442,10 @@ final class MetadataApplicationEditingTests: XCTestCase {
             key: MappingFixtures.candidateKey,
             provenance: provenance
         )
-        try await waitUntil { model.applicationCount == 1 }
+        try await Wait.until { model.applicationCount == 1 }
 
         _ = window.makeFirstResponder(nil)
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         XCTAssertEqual(model.edit.albumTitle, model.appliedTitle)
         XCTAssertEqual(
@@ -462,12 +456,6 @@ final class MetadataApplicationEditingTests: XCTestCase {
         window.orderOut(nil)
     }
 
-    private func waitUntil(_ predicate: () -> Bool) async throws {
-        for _ in 0..<100 where !predicate() {
-            await Task.yield()
-        }
-        _ = try XCTUnwrap(predicate() ? true : nil)
-    }
 }
 
 @MainActor
@@ -568,14 +556,14 @@ struct ImportSearchFlowLibraryStatusTests {
         #expect(feed.requested.last?.map(\.releaseId) == ["rel-live"])
 
         feed.deliver(revision: 1, status("album-live"))
-        await waitUntil {
+        try await Wait.until {
             store.candidate(forKey: candidate.key)?
                 .libraryStatuses["rel-live"]?
                 .albumId == "album-live"
         }
 
         store.selectedCandidates.removeValue(forKey: candidate.key)
-        await waitUntil { feed.cancelled }
+        try await Wait.until { feed.cancelled }
     }
 
     @Test(
@@ -600,15 +588,17 @@ struct ImportSearchFlowLibraryStatusTests {
         #expect(feed.opened == 1)
         #expect(feed.requested.count == 3)
 
+        // The reader asked once on opening; its next ask comes only after it
+        // has handled the stale value.
         feed.deliver(revision: 1, status("album-old"))
-        for _ in 0..<50 { await Task.yield() }
+        try await Wait.until { feed.asks >= 2 }
         #expect(
             store.candidate(forKey: candidate.key)?
                 .libraryStatuses["rel-live"] == nil
         )
 
         feed.deliver(revision: 3, status("album-new"))
-        await waitUntil {
+        try await Wait.until {
             store.candidate(forKey: candidate.key)?
                 .libraryStatuses["rel-live"]?
                 .albumId == "album-new"
@@ -690,12 +680,6 @@ struct ImportSearchFlowLibraryStatusTests {
         )
     }
 
-    private func waitUntil(_ predicate: () -> Bool) async {
-        for _ in 0..<100 where !predicate() {
-            await Task.yield()
-        }
-        #expect(predicate())
-    }
 }
 
 /// A library-status read the test drives: it records every check request,
@@ -709,10 +693,15 @@ private final class LibraryStatusFeed: @unchecked Sendable {
     private var waiter:
         CheckedContinuation<BridgeLibraryStatusSnapshot, any Error>?
     private var wasCancelled = false
+    private var askedCount = 0
 
     var opened: Int { lock.withLock { openedCount } }
     var requested: [[BridgeLibraryCheck]] { lock.withLock { requests } }
     var cancelled: Bool { lock.withLock { wasCancelled } }
+    /// How many times the reader has asked for a value. The reader takes one
+    /// value at a time and applies it before asking again, so an ask past a
+    /// delivered value means that value has been handled, applied or not.
+    var asks: Int { lock.withLock { askedCount } }
 
     func query() -> LibraryStatusQuery {
         lock.withLock { openedCount += 1 }
@@ -726,6 +715,7 @@ private final class LibraryStatusFeed: @unchecked Sendable {
             next: { [self] in
                 try await withCheckedThrowingContinuation { continuation in
                     let ready: BridgeLibraryStatusSnapshot? = lock.withLock {
+                        askedCount += 1
                         if pending.isEmpty {
                             waiter = continuation
                             return nil

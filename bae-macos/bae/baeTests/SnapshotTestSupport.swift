@@ -36,6 +36,9 @@ enum SnapshotTestSupport {
             backing: .buffered,
             defer: false
         )
+        // Tests close these windows as well as dropping them; a window that
+        // released itself on close was released a second time by ARC.
+        window.isReleasedWhenClosed = false
         // Ordering a window in plays its zoom-in on a thread of its own,
         // paced by the display the window is on. Past every display there
         // is none, so the animation never ends and its thread is never
@@ -61,11 +64,8 @@ enum SnapshotTestSupport {
         return NSPoint(x: right + 1_000, y: 0)
     }
 
-    /// Lay out `host` and capture it as PNG bytes for text recognition: the
-    /// view over its window's background, the way a person sees it. Yields
-    /// once so SwiftUI's async work settles, and sleeps `waitNanoseconds`
-    /// first when the view has async content (a cover load) that must
-    /// resolve before the capture.
+    /// `host`'s pixels once they hold still, as PNG bytes over its window's
+    /// background: the way a person sees it.
     ///
     /// The window's background is painted under the view because the view
     /// alone is transparent where it draws nothing, and text in a label
@@ -82,16 +82,9 @@ enum SnapshotTestSupport {
     @MainActor
     static func capturePNG(
         _ host: NSView,
-        size: NSSize,
-        waitNanoseconds: UInt64 = 0
+        size: NSSize
     ) async throws -> Data {
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        if waitNanoseconds > 0 {
-            try await Task.sleep(nanoseconds: waitNanoseconds)
-        }
-        host.layoutSubtreeIfNeeded()
-        let view = try bitmap(of: host, size: size)
+        let view = try await steadyBitmap(of: host, size: size)
         let viewImage = try #require(view.cgImage)
         let pixels = CGRect(
             x: 0,
@@ -121,6 +114,34 @@ enum SnapshotTestSupport {
         return try #require(
             composed.representation(using: .png, properties: [:])
         )
+    }
+
+    /// Settle `host`, then capture it until its pixels read the same for
+    /// `Wait.steadiness`.
+    ///
+    /// Settled frames are not settled pixels. Content a view loads on its own
+    /// — a cover, a placeholder once a load comes back empty — draws inside a
+    /// frame that never moves, so the capture is retaken until it holds.
+    @MainActor
+    static func steadyBitmap(
+        of host: NSView,
+        size: NSSize,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws -> NSBitmapImageRep {
+        try await settle(host, file: file, line: line)
+        var capture = try bitmap(of: host, size: size)
+        try await Wait.untilSteady(file: file, line: line) {
+            capture = try bitmap(of: host, size: size)
+            return try pixelBytes(of: capture)
+        }
+        return capture
+    }
+
+    /// A capture's raw pixels, for telling two captures apart.
+    private static func pixelBytes(of bitmap: NSBitmapImageRep) throws -> Data {
+        let bytes = try #require(bitmap.bitmapData)
+        return Data(bytes: bytes, count: bitmap.bytesPerPlane)
     }
 
     /// Pixels per point in every capture. Fixed rather than read from the
@@ -226,43 +247,25 @@ enum SnapshotTestSupport {
     }
 
     /// Let SwiftUI publish its renders before a hosted-view test inspects or
-    /// interacts with it: yield until a turn changes no frame in the hosted
-    /// tree.
+    /// interacts with it: lay the tree out until no frame in it has moved
+    /// for `Wait.steadiness`.
     ///
     /// SwiftUI lays a hosted tree out over several main-actor turns — a
     /// geometry reader publishes a width, the views under it re-measure, a
-    /// text wraps — and how many turns that takes depends on the machine. A
-    /// fixed number of yields measured a tree mid-layout on a slow runner and
-    /// gave frames a few points off. Convergence is what "settled" means, so
-    /// that is what is waited for, after the floor of turns every hosted
-    /// view needs to publish at all. A view that animates never converges;
-    /// `maxTurns` bounds the wait and leaves it as the last turn drew it.
+    /// text wraps — and work a view starts on a task lands a few turns later
+    /// and moves a row by a line. How many turns that takes depends on the
+    /// machine, so convergence is what is waited for. A tree that never
+    /// converges fails the wait rather than being inspected mid-layout.
     @MainActor
-    /// Lay the tree out until nothing in it has moved for `quietTurns`
-    /// consecutive turns, each a run-loop yield plus a few milliseconds.
-    /// One unchanged turn is not enough: work a view kicks off on a task
-    /// lands a few turns later and moves a row by a line, and a capture
-    /// taken before it reads a layout nobody will ever see.
     static func settle(
         _ host: NSView,
-        minimumTurns: Int = 3,
-        quietTurns: Int = 5,
-        maxTurns: Int = 240
-    ) async {
-        var previous: [CGRect]?
-        var quiet = 0
-        for turn in 0..<maxTurns {
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        try await Wait.untilSteady(file: file, line: line) {
             host.layoutSubtreeIfNeeded()
-            let frames = descendants(of: host).map(\.frame)
-            quiet = frames == previous ? quiet + 1 : 0
-            if turn >= minimumTurns, quiet >= quietTurns {
-                return
-            }
-            previous = frames
-            await Task.yield()
-            try? await Task.sleep(for: .milliseconds(8))
+            return descendants(of: host).map(\.frame)
         }
-        host.layoutSubtreeIfNeeded()
     }
 
     /// Every AppKit view below `view`, depth first. SwiftUI controls may be

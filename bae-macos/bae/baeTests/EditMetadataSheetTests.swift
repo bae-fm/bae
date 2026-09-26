@@ -41,7 +41,7 @@ struct EditMetadataSheetTests {
 
     @MainActor
     @Test("Done and Library save through one persisted release session")
-    func persistedReleaseSessionSavesAndAdvancesItsCancelPoint() async {
+    func persistedReleaseSessionSavesAndAdvancesItsCancelPoint() async throws {
         let recorder = SavedEditRecorder()
         let seed = PreviewData.releaseEditSeed(trackCount: 2)
         let session = ReleaseMetadataEditSession(
@@ -67,7 +67,7 @@ struct EditMetadataSheetTests {
 
         await session.fieldWriter.setField(.albumTitle, "Unsaved title")
         session.cancelChanges()
-        await waitForStoreUpdate { !session.isBusy }
+        try await Wait.until { !session.isBusy }
         #expect(!session.isBusy)
         #expect(session.form.albumTitle == "Saved title")
         #expect(!session.hasChanges)
@@ -102,7 +102,7 @@ struct EditMetadataSheetTests {
             .frame(width: size.width, height: size.height),
             size: size
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         let titleField = try #require(
             SnapshotTestSupport.descendants(of: host)
@@ -119,7 +119,7 @@ struct EditMetadataSheetTests {
         )
         // The field's focus state follows the responder change a turn later;
         // the save must see the field as focused, as a person's would.
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         await withCheckedContinuation { continuation in
             session.save { continuation.resume() }
@@ -228,7 +228,7 @@ struct EditMetadataSheetTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let fields = SnapshotTestSupport.descendants(of: host)
             .compactMap { $0 as? NSTextField }
         return try seed.edit.tracks.map { track in
@@ -259,7 +259,7 @@ struct EditMetadataSheetTests {
 extension EditMetadataSheetTests {
     @MainActor
     @Test("Reset replaces edited values and cancel restores the saved form")
-    func resetReplacesEditsAndCancelRestoresSavedForm() async {
+    func resetReplacesEditsAndCancelRestoresSavedForm() async throws {
         let seed = PreviewData.releaseEditSeed(trackCount: 2)
         var source = seed.edit
         source.albumTitle = "Source title"
@@ -275,14 +275,14 @@ extension EditMetadataSheetTests {
         await session.fieldWriter.setField(.country, "JP")
 
         session.resetToSource()
-        await waitForStoreUpdate { !session.isBusy }
+        try await Wait.until { !session.isBusy }
         #expect(!session.isBusy)
         #expect(session.form.albumTitle == "Source title")
         #expect(session.form.pressing.country.isEmpty)
         #expect(session.hasChanges)
 
         session.cancelChanges()
-        await waitForStoreUpdate { !session.isBusy }
+        try await Wait.until { !session.isBusy }
         #expect(!session.isBusy)
         #expect(session.form.albumTitle == seed.edit.albumTitle)
         #expect(session.form.pressing.country == seed.edit.pressing.country)

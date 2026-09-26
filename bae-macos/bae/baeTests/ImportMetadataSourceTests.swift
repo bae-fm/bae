@@ -80,14 +80,14 @@ struct ImportMetadataSourceTests {}
 
 extension ImportMetadataSourceTests {
     @Test("Reset finishes editing then resets the complete import setup")
-    func resetUsesTheCanonicalOperation() async {
+    func resetUsesTheCanonicalOperation() async throws {
         let store = MappingFixtures.store(mapping: nil)
         let recorder = MetadataSourceRecorder()
         ImportMappingFlow.reset(
             key: MappingFixtures.candidateKey,
             services: recorder.services(store)
         )
-        await waitUntil { !recorder.resetKeys.isEmpty }
+        try await Wait.until { !recorder.resetKeys.isEmpty }
 
         #expect(recorder.resetKeys == [MappingFixtures.candidateKey])
         #expect(recorder.events == ["end editing", "reset"])
@@ -97,7 +97,7 @@ extension ImportMetadataSourceTests {
     }
 
     @Test("Reset failures reach the existing error presentation")
-    func resetReportsFailure() async {
+    func resetReportsFailure() async throws {
         let recorder = MetadataSourceRecorder()
         recorder.resetError = NSError(
             domain: "ResetTest",
@@ -108,7 +108,7 @@ extension ImportMetadataSourceTests {
             key: MappingFixtures.candidateKey,
             services: recorder.services(MappingFixtures.store(mapping: nil))
         )
-        await waitUntil { !recorder.errors.isEmpty }
+        try await Wait.until { !recorder.errors.isEmpty }
 
         #expect(
             recorder.errors == ["Couldn't save that change: Source changed"]
@@ -136,7 +136,7 @@ extension ImportMetadataSourceTests {
             .findOnline,
             forKey: MappingFixtures.candidateKey
         )
-        await waitUntil {
+        try await Wait.until {
             !writes.presentations(forKey: MappingFixtures.candidateKey).isEmpty
         }
 
@@ -176,7 +176,7 @@ extension ImportMetadataSourceTests {
             key: MappingFixtures.candidateKey,
             services: recorder.services(store)
         )
-        await waitUntil {
+        try await Wait.until {
             recorder.fileTagApplications == [MappingFixtures.candidateKey]
         }
 
@@ -205,7 +205,7 @@ extension ImportMetadataSourceTests {
             key: key,
             provenance: MappingFixtures.provenance
         )
-        await waitUntil {
+        try await Wait.until {
             writes.presentations(forKey: key).last == .draft
         }
 
@@ -253,7 +253,7 @@ extension ImportMetadataSourceTests {
         ImportMappingFlow.identify(candidate, services: services)
         // The presentation write goes to core and comes back; the run request
         // is fire-and-forget and is already recorded.
-        await waitUntil {
+        try await Wait.until {
             writes.presentations(forKey: MappingFixtures.candidateKey).count
                 == 2
         }
@@ -289,7 +289,7 @@ extension ImportMetadataSourceTests {
             for: candidate,
             services: recorder.services(store)
         )
-        await waitUntil {
+        try await Wait.until {
             !writes.presentations(forKey: MappingFixtures.candidateKey).isEmpty
         }
 
@@ -301,7 +301,7 @@ extension ImportMetadataSourceTests {
     }
 
     @Test("clearing metadata dispatches the candidate command")
-    func clearMetadataDispatchesCommand() async {
+    func clearMetadataDispatchesCommand() async throws {
         let store = MappingFixtures.store(mapping: nil)
         let recorder = MetadataSourceRecorder()
 
@@ -309,18 +309,12 @@ extension ImportMetadataSourceTests {
             key: MappingFixtures.candidateKey,
             services: recorder.services(store)
         )
-        await waitUntil { !recorder.clearedKeys.isEmpty }
+        try await Wait.until { !recorder.clearedKeys.isEmpty }
 
         #expect(recorder.clearedKeys == [MappingFixtures.candidateKey])
         #expect(recorder.errors.isEmpty)
     }
 
-    private func waitUntil(_ predicate: () -> Bool) async {
-        for _ in 0..<100 where !predicate() {
-            await Task.yield()
-        }
-        #expect(predicate())
-    }
 }
 
 /// What the draft card offers as ways to a release.
@@ -395,7 +389,7 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
 
         for applications in 1...2 {
             ImportMappingFlow.resetToFileMetadata(key: key, services: services)
-            try await waitUntil {
+            try await Wait.until {
                 recorder.fileTagApplications.count == applications
             }
             store.applyCandidateDetail(
@@ -419,12 +413,6 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
         )
     }
 
-    private func waitUntil(_ predicate: () -> Bool) async throws {
-        for _ in 0..<100 where !predicate() {
-            await Task.yield()
-        }
-        _ = try XCTUnwrap(predicate() ? true : nil)
-    }
 }
 
 @MainActor
@@ -455,7 +443,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             ),
             size: NSSize(width: 900, height: 900)
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         let fields = SnapshotTestSupport.descendants(of: host)
             .compactMap { $0 as? NSTextField }
@@ -503,7 +491,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             ),
             size: NSSize(width: 900, height: 620)
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         let text = editableTextValues(in: host)
         let values = PreviewData.confirmEditValues
@@ -530,9 +518,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             ),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        try await SnapshotTestSupport.settle(host)
         let (identify, search) = try releaseEntryFrames(in: host)
         let menu = try menuFrame(in: host)
         let cover = try coverFrame(in: host)
@@ -698,14 +684,14 @@ extension ImportMetadataCardLayoutTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let menu = try sourceMenu(in: host)
         let resetIndex = menu.indexOfItem(withTitle: "Reset")
         XCTAssertGreaterThanOrEqual(resetIndex, 0)
         guard resetIndex >= 0 else { return }
         for confirmation in ["Cancel", "Reset"] {
             menu.performActionForItem(at: resetIndex)
-            await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settle(host)
             XCTAssertEqual(recorder.resetCount, 0)
             let buttons = NSApplication.shared.windows
                 .filter(\.isVisible)
@@ -720,7 +706,7 @@ extension ImportMetadataCardLayoutTests {
                 "Confirmation buttons: \(buttons.map(\.title))"
             )
             button.performClick(nil)
-            await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settle(host)
         }
         XCTAssertEqual(recorder.resetCount, 1)
         XCTAssertEqual(recorder.tagsCount, 0)
@@ -741,7 +727,7 @@ extension ImportMetadataCardLayoutTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let menu = try sourceMenu(in: host)
         for title in ["Reset", "Reset to file metadata", "Clear metadata"] {
             XCTAssertNotNil(
@@ -772,7 +758,7 @@ extension ImportMetadataCardLayoutTests {
                 .importPreviewEnvironment(),
             size: size
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         XCTAssertTrue(focusFrames(in: host).isEmpty)
 
@@ -791,7 +777,7 @@ extension ImportMetadataCardLayoutTests {
             ),
             size: NSSize(width: 900, height: 620)
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         let textFields = SnapshotTestSupport.descendants(of: host)
             .compactMap { $0 as? NSTextField }
@@ -818,7 +804,7 @@ extension ImportMetadataCardLayoutTests {
     /// A draft already read from a release keeps both ways back to Find
     /// online: identifying again is how a person disagrees with the match,
     /// and searching by name is how they go looking for a different one.
-    func testMatchedReleaseKeepsTheCardActions() async {
+    func testMatchedReleaseKeepsTheCardActions() async throws {
         let recorder = MetadataCardActionRecorder()
         let (window, host) = SnapshotTestSupport.hostInWindow(
             metadataHeader(
@@ -834,7 +820,7 @@ extension ImportMetadataCardLayoutTests {
             ),
             size: NSSize(width: 900, height: 520)
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         XCTAssertEqual(
             focusFrames(in: host).filter { $0.height >= 20 }.count,

@@ -35,33 +35,31 @@ struct ImageViewHitTestingTests {
             .environment(\.colorScheme, .dark),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        try await SnapshotTestSupport.settle(host)
 
         let bounds = NSRect(origin: .zero, size: size)
         let center = NSPoint(x: bounds.midX, y: bounds.midY)
 
-        func click(at point: NSPoint) {
+        func click(at point: NSPoint) throws {
             for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-                let event = NSEvent.mouseEvent(
-                    with: type,
-                    location: point,
-                    modifierFlags: [],
-                    timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: window.windowNumber,
-                    context: nil,
-                    eventNumber: 0,
-                    clickCount: 1,
-                    pressure: type == .leftMouseDown ? 1 : 0
-                )!
+                let event = try #require(
+                    NSEvent.mouseEvent(
+                        with: type,
+                        location: point,
+                        modifierFlags: [],
+                        timestamp: ProcessInfo.processInfo.systemUptime,
+                        windowNumber: window.windowNumber,
+                        context: nil,
+                        eventNumber: 0,
+                        clickCount: 1,
+                        pressure: type == .leftMouseDown ? 1 : 0
+                    )
+                )
                 window.sendEvent(event)
             }
         }
-        click(at: center)
-        try await Task.sleep(nanoseconds: 50_000_000)
-        await Task.yield()
-        #expect(tapBox.tapped)
+        try click(at: center)
+        try await Wait.until { tapBox.tapped }
     }
 }
 

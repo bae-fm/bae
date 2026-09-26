@@ -27,14 +27,14 @@ final class MoveToCloudConfirmSheetTests: XCTestCase {
             size: size
         )
 
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         let controlFrames = host.subviews
             .filter { $0.nextKeyView != nil || $0.previousKeyView != nil }
             .map { $0.convert($0.bounds, to: host) }
         for frame in controlFrames where !defaults.bool(forKey: key) {
             try click(at: frame.center, in: host, window: window)
-            await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settle(host)
         }
         XCTAssertTrue(defaults.bool(forKey: key))
         withExtendedLifetime(window) {}

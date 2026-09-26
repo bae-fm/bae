@@ -24,7 +24,7 @@ extension ImportMappingTracksLayoutTests {
             size: size
         )
         defer { withExtendedLifetime(window) {} }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let buttons = SnapshotTestSupport.descendants(of: host)
             .compactMap { $0 as? NSPopUpButton }
         try #require(buttons.count == 1, "the summary is the one menu")
@@ -44,7 +44,7 @@ extension ImportMappingTracksLayoutTests {
             menu.items.first { $0.title == audio }
         )
         menu.performActionForItem(at: menu.index(of: replacement))
-        await Task.yield()
+        try await Wait.until { recorder.sheetBindings.count == 1 }
         var expected = [
             SheetAssignmentChange(
                 sheet: "Collection.cue",
@@ -53,7 +53,11 @@ extension ImportMappingTracksLayoutTests {
             )
         ]
         #expect(recorder.sheetBindings == expected)
-        try await clearBinding(referenceIndex, through: button)
+        try await clearBinding(
+            referenceIndex,
+            through: button,
+            recorder: recorder
+        )
         expected.append(
             SheetAssignmentChange(
                 sheet: "Collection.cue",
@@ -68,7 +72,8 @@ extension ImportMappingTracksLayoutTests {
     @MainActor
     private func clearBinding(
         _ referenceIndex: Int,
-        through button: NSPopUpButton
+        through button: NSPopUpButton,
+        recorder: MappingTrackActionRecorder
     ) async throws {
         SnapshotTestSupport.populateMenu(button)
         let reopened = try #require(button.menu).items.compactMap(\.submenu)
@@ -80,7 +85,7 @@ extension ImportMappingTracksLayoutTests {
             }
         )
         menu.performActionForItem(at: menu.index(of: clear))
-        await Task.yield()
+        try await Wait.until { recorder.sheetBindings.count == 2 }
     }
 
     /// The one reference with nothing bound is the one thing left to do, so
@@ -95,7 +100,7 @@ extension ImportMappingTracksLayoutTests {
             recorder: MappingTrackActionRecorder(),
             size: size
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let png = try await SnapshotTestSupport.capturePNG(host, size: size)
         let text = try await SnapshotTestSupport.recognizedText(in: png)
             .map { $0.text.replacingOccurrences(of: " ", with: "") }
@@ -213,7 +218,7 @@ extension ImportMappingTracksLayoutTests {
             recorder: MappingTrackActionRecorder(),
             size: size
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let png = try await SnapshotTestSupport.capturePNG(host, size: size)
         let text = try await SnapshotTestSupport.recognizedText(in: png)
             .map { $0.text.replacingOccurrences(of: " ", with: "") }

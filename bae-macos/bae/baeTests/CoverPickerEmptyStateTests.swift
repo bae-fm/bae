@@ -112,7 +112,7 @@ struct CoverPickerEmptyStateTests {
                 )
             )
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         #expect(identified)
         #expect(!saved)
     }
@@ -120,7 +120,7 @@ struct CoverPickerEmptyStateTests {
     private func text(in host: NSView, size: NSSize) async throws
         -> [SnapshotTestSupport.RecognizedLine]
     {
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let png = try await SnapshotTestSupport.capturePNG(host, size: size)
         return try await SnapshotTestSupport.recognizedText(in: png)
     }

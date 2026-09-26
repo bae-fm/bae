@@ -21,13 +21,12 @@ struct AlbumTrackListLayoutTests {
 
         let size = NSSize(width: 800, height: 900)
         let (window, host) = hostTrackList(release: release, size: size)
-        window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: .darkAqua)
         defer {
             window.contentView = nil
             window.close()
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         // Nine tracks split five over four; the eight-track side stays whole.
         // Both of the first column's runs share one x, ordered down the pane.
@@ -135,7 +134,10 @@ struct AlbumTrackListLayoutTests {
             secondColumn: [RowBand],
             secondColumnX: CGFloat
         ) async throws -> Pane {
-            let image = try await bitmap(host, size: size)
+            let image = try await SnapshotTestSupport.steadyBitmap(
+                of: host,
+                size: size
+            )
             // Past the list's last row, so it carries the pane's own colour.
             let background = try #require(
                 image.colorAt(x: image.pixelsWide - 4, y: image.pixelsHigh - 4)
@@ -204,15 +206,6 @@ struct AlbumTrackListLayoutTests {
                 }
             }
             return CGFloat(try #require(rightmost)) / scale
-        }
-
-        @MainActor
-        private static func bitmap(_ host: NSView, size: NSSize) async throws
-            -> NSBitmapImageRep
-        {
-            await SnapshotTestSupport.settle(host)
-            try await Task.sleep(for: .milliseconds(250))
-            return try SnapshotTestSupport.bitmap(of: host, size: size)
         }
 
         private func distance(_ a: NSColor, _ b: NSColor) -> CGFloat {

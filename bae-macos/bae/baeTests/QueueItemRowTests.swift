@@ -39,9 +39,8 @@ struct QueueItemRowTests {
             .background(.white),
             size: size
         )
-        hosted.window.isReleasedWhenClosed = false
         defer { hosted.window.close() }
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         let png = try await SnapshotTestSupport.capturePNG(
             hosted.host,
             size: size

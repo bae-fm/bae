@@ -25,7 +25,7 @@ struct TransfersSettingsTabTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         #expect(pickers(in: host).count == 2)
     }
@@ -41,16 +41,16 @@ struct TransfersSettingsTabTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         // Uploads first, downloads second, in the order the tab lists them.
         // Segment n stands for n + 1 simultaneous transfers.
         let controls = pickers(in: host)
         try #require(controls.count == 2)
         select(segment: 4, in: controls[0])
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         select(segment: 0, in: controls[1])
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         #expect(recorder.uploadWrites == [5])
         #expect(recorder.downloadWrites == [1])

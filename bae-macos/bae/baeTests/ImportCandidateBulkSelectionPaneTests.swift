@@ -16,13 +16,13 @@ struct ImportCandidateBulkSelectionPaneTests {
     /// axes, so a pane far wider than the card doesn't strand it in a corner.
     @Test("the card is centered in the pane at its own width")
     func theCardIsCenteredInThePane() async throws {
-        let card = await Self.hostCard()
+        let card = try await Self.hostCard()
         defer { Self.dismiss(card.window) }
         let pane = Self.hostPane(
             configStore: PreviewData.connectedConfigStore()
         )
         defer { Self.dismiss(pane.window) }
-        await SnapshotTestSupport.settle(pane.host)
+        try await SnapshotTestSupport.settle(pane.host)
 
         #expect(card.size.width == ImportCandidateBulkSelectionCard.width)
         // A storage checkbox is a real AppKit button, so where one lands in the
@@ -116,14 +116,14 @@ struct ImportCandidateBulkSelectionPaneTests {
     func theStorageChoicesFollowTheCloudHome() async throws {
         let local = Self.hostPane(configStore: PreviewData.configStore())
         defer { Self.dismiss(local.window) }
-        await SnapshotTestSupport.settle(local.host)
+        try await SnapshotTestSupport.settle(local.host)
         #expect(Self.checkboxes(in: local.host).isEmpty)
 
         let cloud = Self.hostPane(
             configStore: PreviewData.connectedConfigStore()
         )
         defer { Self.dismiss(cloud.window) }
-        await SnapshotTestSupport.settle(cloud.host)
+        try await SnapshotTestSupport.settle(cloud.host)
         #expect(Self.checkboxes(in: cloud.host).count == 2)
         let leading = try #require(Self.leadingCheckbox(in: cloud.host))
         let name =
@@ -227,13 +227,13 @@ struct ImportCandidateBulkSelectionPaneTests {
         let size: NSSize
     }
 
-    private static func hostCard() async -> HostedCard {
+    private static func hostCard() async throws -> HostedCard {
         let size = cardSize(showsStorageChoices: true)
         let hosted = SnapshotTestSupport.hostInWindow(
             card(showsStorageChoices: true),
             size: size
         )
-        await SnapshotTestSupport.settle(hosted.host)
+        try await SnapshotTestSupport.settle(hosted.host)
         return HostedCard(
             window: hosted.window,
             host: hosted.host,

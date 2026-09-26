@@ -186,7 +186,7 @@ struct ReleaseSelectionFailureTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let png = try await SnapshotTestSupport.capturePNG(host, size: size)
         let observations = try await SnapshotTestSupport.recognizedText(in: png)
         #expect(observations.map(\.text).carrying("Unsupported artwork input"))
@@ -262,11 +262,9 @@ extension ReleaseSelectionFailureTests {
             key: MappingFixtures.candidateKey,
             provenance: pressing.provenance
         )
-        for _ in 0..<100
-        where store.releaseSelectionFailure(
-            forKey: MappingFixtures.candidateKey
-        ) == nil {
-            await Task.yield()
+        try await Wait.until {
+            store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
+                != nil
         }
         return try #require(
             store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)

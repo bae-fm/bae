@@ -81,21 +81,13 @@ private func snapshot(
     )
 }
 
-@MainActor
-private func waitUntil(_ predicate: @MainActor () -> Bool) async {
-    for _ in 0..<500 {
-        if predicate() { return }
-        await Task.yield()
-    }
-}
-
 @Suite("StorageBrowsePageSource")
 struct StorageBrowsePageSourceTests {
     @MainActor
     @Test(
         "a new sort moves the one query, and rows read under the old one are dropped"
     )
-    func resortMovesOneQuery() async {
+    func resortMovesOneQuery() async throws {
         let feed = StorageFeed()
         let rows = PreviewData.storageRows
         let totalSize = TotalSizeBox()
@@ -134,7 +126,7 @@ struct StorageBrowsePageSourceTests {
 
         feed.deliver(snapshot(sort: byTitle, rows: [rows[0]]))
         feed.deliver(snapshot(sort: bySize, rows: [rows[1]]))
-        await waitUntil { !delivered.ids.isEmpty }
+        try await Wait.until { !delivered.ids.isEmpty }
 
         #expect(delivered.ids == [[rows[1].id]])
         #expect(totalSize.value == 7)

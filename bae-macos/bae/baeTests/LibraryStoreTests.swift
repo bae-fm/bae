@@ -607,6 +607,7 @@ final class DetailFeed<Value: Sendable>: @unchecked Sendable {
         var pending: [Result<DetailDelivery<Value>, any Error>] = []
         var waiter: CheckedContinuation<DetailDelivery<Value>, any Error>?
         var cancelled = false
+        var asks = 0
     }
 
     private let lock = NSLock()
@@ -620,6 +621,14 @@ final class DetailFeed<Value: Sendable>: @unchecked Sendable {
         lock.withLock { reads[index].cancelled }
     }
 
+    /// How many times read `index` has been asked for a value. The reader
+    /// takes one value at a time and applies it before asking again, so an
+    /// ask past a delivered value means that value has been handled, applied
+    /// or not.
+    func asks(read index: Int = 0) -> Int {
+        lock.withLock { reads[index].asks }
+    }
+
     func query() -> DetailQuery<Value> {
         let read = Read()
         lock.withLock { reads.append(read) }
@@ -629,6 +638,7 @@ final class DetailFeed<Value: Sendable>: @unchecked Sendable {
                 try await withCheckedThrowingContinuation { continuation in
                     let ready: Result<DetailDelivery<Value>, any Error>? =
                         lock.withLock {
+                            read.asks += 1
                             if read.pending.isEmpty {
                                 read.waiter = continuation
                                 return nil
@@ -684,18 +694,11 @@ final class DetailFeed<Value: Sendable>: @unchecked Sendable {
     }
 }
 
-@MainActor
-func waitForStoreUpdate(_ condition: () -> Bool) async {
-    for _ in 0..<100 where !condition() {
-        await Task.yield()
-    }
-}
-
 @Suite("LibraryStore release detail reader")
 struct ReleaseDetailReaderTests {
     @MainActor
     @Test("a read failure surfaces as a per-release error")
-    func failureSurfacesError() async {
+    func failureSurfacesError() async throws {
         let feed = DetailFeed<BridgeRelease>()
         let store = LibraryStore()
         let reader = store.releaseDetailReader(
@@ -704,7 +707,7 @@ struct ReleaseDetailReaderTests {
 
         reader.show("release-1")
         feed.emitError()
-        await waitForStoreUpdate {
+        try await Wait.until {
             store.releaseDetailErrors["release-1"] != nil
         }
 
@@ -714,7 +717,7 @@ struct ReleaseDetailReaderTests {
 
     @MainActor
     @Test("a value after a read error is still delivered and clears the error")
-    func valueAfterErrorIsDelivered() async {
+    func valueAfterErrorIsDelivered() async throws {
         let feed = DetailFeed<BridgeRelease>()
         let store = LibraryStore()
         let reader = store.releaseDetailReader(
@@ -723,18 +726,18 @@ struct ReleaseDetailReaderTests {
 
         reader.show("release-1")
         feed.emitError()
-        await waitForStoreUpdate {
+        try await Wait.until {
             store.releaseDetailErrors["release-1"] != nil
         }
         feed.emit(id: "release-1", value: makeBridgeRelease())
-        await waitForStoreUpdate { store.releaseDetails["release-1"] != nil }
+        try await Wait.until { store.releaseDetails["release-1"] != nil }
 
         #expect(store.releaseDetailErrors["release-1"] == nil)
     }
 
     @MainActor
     @Test("an absent value removes the release without inventing an error")
-    func absenceRemovesRelease() async {
+    func absenceRemovesRelease() async throws {
         let feed = DetailFeed<BridgeRelease>()
         let store = LibraryStore()
         store.internReleaseDetail(makeBridgeRelease())
@@ -744,7 +747,7 @@ struct ReleaseDetailReaderTests {
 
         reader.show("release-1")
         feed.emit(id: "release-1", value: nil)
-        await waitForStoreUpdate { store.releaseDetails["release-1"] == nil }
+        try await Wait.until { store.releaseDetails["release-1"] == nil }
 
         #expect(store.releaseDetails["release-1"] == nil)
         #expect(store.releaseDetailErrors["release-1"] == nil)
@@ -752,7 +755,7 @@ struct ReleaseDetailReaderTests {
 
     @MainActor
     @Test("retry reads again on a fresh read and ends the failed one")
-    func retryOpensFreshRead() async {
+    func retryOpensFreshRead() async throws {
         let feed = DetailFeed<BridgeRelease>()
         let store = LibraryStore()
         let reader = store.releaseDetailReader(
@@ -761,13 +764,13 @@ struct ReleaseDetailReaderTests {
 
         reader.show("release-1")
         feed.emitError()
-        await waitForStoreUpdate {
+        try await Wait.until {
             store.releaseDetailErrors["release-1"] != nil
         }
         reader.retry()
-        await waitForStoreUpdate { feed.isCancelled(read: 0) }
+        try await Wait.until { feed.isCancelled(read: 0) }
         feed.emit(read: 1, id: "release-1", value: makeBridgeRelease())
-        await waitForStoreUpdate { store.releaseDetails["release-1"] != nil }
+        try await Wait.until { store.releaseDetails["release-1"] != nil }
 
         #expect(feed.opened == 2)
         #expect(store.releaseDetailErrors["release-1"] == nil)
@@ -775,7 +778,7 @@ struct ReleaseDetailReaderTests {
 
     @MainActor
     @Test("showing another release moves the one read")
-    func anotherReleaseMovesTheRead() async {
+    func anotherReleaseMovesTheRead() async throws {
         let feed = DetailFeed<BridgeRelease>()
         let store = LibraryStore()
         let reader = store.releaseDetailReader(
@@ -786,8 +789,8 @@ struct ReleaseDetailReaderTests {
         reader.show("release-2")
         feed.emit(id: "release-1", value: makeBridgeRelease())
         feed.emit(id: "release-2", value: nil)
-        await waitForStoreUpdate { feed.requested.count == 2 }
-        for _ in 0..<50 { await Task.yield() }
+        // One ask on opening, one past each of the two values.
+        try await Wait.until { feed.asks() >= 3 }
 
         #expect(feed.opened == 1)
         #expect(feed.requested == ["release-1", "release-2"])

@@ -33,7 +33,7 @@ struct TriageTabBarTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let tabs: [BridgeTriageTab] = [.pending, .done, .skipped]
         let segmentWidth = (width - 8) / 3
         for (index, tab) in tabs.enumerated() {
@@ -45,7 +45,7 @@ struct TriageTabBarTests {
                 NSPoint(x: segmentWidth / 2, y: 31),
             ] {
                 selection.tab = tab == .pending ? .done : .pending
-                await SnapshotTestSupport.settle(host)
+                try await SnapshotTestSupport.settle(host)
                 try click(
                     window,
                     at: NSPoint(
@@ -53,7 +53,7 @@ struct TriageTabBarTests {
                         y: point.y
                     )
                 )
-                await SnapshotTestSupport.settle(host)
+                try await SnapshotTestSupport.settle(host)
                 #expect(selection.tab == tab)
             }
         }

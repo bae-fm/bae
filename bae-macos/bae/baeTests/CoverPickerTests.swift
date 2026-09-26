@@ -49,12 +49,12 @@ struct CoverPickerTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        for _ in 0..<100 {
-            await SnapshotTestSupport.settle(host)
-            if !(await recorder.reads).isEmpty { break }
+        try await Wait.until {
+            try await SnapshotTestSupport.settle(host)
+            return !(await recorder.reads).isEmpty
         }
         #expect(await recorder.reads.contains("release-test/library-image-id"))
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         #expect(
             !(await recorder.reads).contains("release-test/bitmap-image-id")
         )
@@ -73,10 +73,7 @@ struct CoverPickerTests {
             )
         )
         _ = host.performKeyEquivalent(with: enter)
-        for _ in 0..<100 {
-            await Task.yield()
-            if await recorder.selected != nil { break }
-        }
+        try await Wait.until { await recorder.selected != nil }
         #expect(
             await recorder.selected == .releaseImage(fileId: "library-image-id")
         )
@@ -173,7 +170,7 @@ struct CoverPickerTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         let png = try await SnapshotTestSupport.capturePNG(host, size: size)
         let labels = try await SnapshotTestSupport.recognizedText(in: png)
             .map(\.text)

@@ -51,9 +51,8 @@ struct ImportOnlineBrowserTests {
             view,
             size: NSSize(width: 800, height: 500)
         )
-        window.isReleasedWhenClosed = false
         defer { window.close() }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         store.applyCandidateDetail(
             key: key,
             detail: MappingFixtures.detail(
@@ -61,7 +60,7 @@ struct ImportOnlineBrowserTests {
                 presentation: .findOnline
             )
         )
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
 
         #expect(presentations.isEmpty)
     }

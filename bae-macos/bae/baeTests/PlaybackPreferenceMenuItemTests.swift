@@ -37,10 +37,10 @@ struct PlaybackPreferenceMenuItemTests {
                 window.contentView = nil
                 window.orderOut(nil)
             }
-            await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settle(host)
 
             try click(at: host.bounds.center, in: host, window: window)
-            await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settle(host)
 
             #expect(recorder.writes == [!isOn])
         }
@@ -55,7 +55,7 @@ struct PlaybackPreferenceMenuItemTests {
             window.contentView = nil
             window.orderOut(nil)
         }
-        await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(host)
         return try await SnapshotTestSupport.capturePNG(host, size: Self.size)
     }
 
