@@ -194,66 +194,56 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    BridgeValueSource = bae_core::identify::ValueSource,
-    from_core: fn,
-    fields: {
-        origin: (BridgeSignalOrigin),
-        file,
-        region: (opt BridgeImageRegion),
-    },
-}
-
-mirror_struct! {
     BridgeProviderCell = bae_core::identify::ProviderCell,
     from_core: fn,
     fields: { source: (BridgeCatalog), lookup: (BridgeLookupState) },
 }
 
-mirror_struct! {
-    BridgeSignalValueRow = bae_core::identify::SignalValueRow,
-    from_core: fn,
-    fields: {
-        value,
-        sources: (each BridgeValueSource),
-        excluded,
-        cells: (each BridgeProviderCell),
-    },
+impl BridgeSignalValueRow {
+    fn from_core(row: bae_core::identify::SignalValueRow) -> Self {
+        let bae_core::identify::SignalValueRow {
+            value,
+            // Where the value was read is automation's to report; no surface
+            // shows it.
+            sources: _,
+            excluded,
+            cells,
+        } = row;
+        Self {
+            value,
+            excluded,
+            cells: cells
+                .into_iter()
+                .map(BridgeProviderCell::from_core)
+                .collect(),
+        }
+    }
 }
 
-mirror_enum! {
-    BridgeDiscIdFileKind = bae_core::identify::DiscIdFileKind,
-    from_core: fn,
-    variants: { Log, Cue },
-}
-
-mirror_struct! {
-    BridgeDiscIdFile = bae_core::identify::DiscIdFile,
-    from_core: fn,
-    fields: { kind: (BridgeDiscIdFileKind), file },
-}
-
-mirror_enum! {
-    BridgeDiscIdStep = bae_core::identify::DiscIdStepView,
-    from_core: fn,
-    variants: {
-        Reading,
-        Absent,
-        NotCdAudio { sample_rate_hz },
-        ReadFailed { failure: (BridgeLookupFailure) },
-        Read {
-            disc_id,
-            source: (opt BridgeDiscIdFile),
-            lookup: (BridgeLookupState),
-        },
-        ReadNotAsked {
-            disc_id,
-            source: (opt BridgeDiscIdFile),
-        },
-        LeftOut {
-            disc_id,
-            source: (opt BridgeDiscIdFile),
-        },
-    },
+impl BridgeDiscIdStep {
+    // The file a disc ID was read off is automation's to report; no surface
+    // shows it.
+    fn from_core(step: bae_core::identify::DiscIdStepView) -> Self {
+        use bae_core::identify::DiscIdStepView;
+        match step {
+            DiscIdStepView::Reading => Self::Reading,
+            DiscIdStepView::Absent => Self::Absent,
+            DiscIdStepView::NotCdAudio { sample_rate_hz } => Self::NotCdAudio { sample_rate_hz },
+            DiscIdStepView::ReadFailed { failure } => Self::ReadFailed {
+                failure: BridgeLookupFailure::from_core(failure),
+            },
+            DiscIdStepView::Read {
+                disc_id,
+                source: _,
+                lookup,
+            } => Self::Read {
+                disc_id,
+                lookup: BridgeLookupState::from_core(lookup),
+            },
+            DiscIdStepView::ReadNotAsked { disc_id, source: _ } => Self::ReadNotAsked { disc_id },
+            DiscIdStepView::LeftOut { disc_id, source: _ } => Self::LeftOut { disc_id },
+        }
+    }
 }
 
 mirror_enum! {
@@ -268,10 +258,16 @@ mirror_enum! {
     },
 }
 
-mirror_struct! {
-    BridgeCatalogCandidate = bae_core::identify::CatalogCandidateView,
-    from_core: fn,
-    fields: { value, sources: (each BridgeValueSource) },
+impl BridgeCatalogCandidate {
+    fn from_core(candidate: bae_core::identify::CatalogCandidateView) -> Self {
+        let bae_core::identify::CatalogCandidateView {
+            value,
+            // Where the number was read is automation's to report; no surface
+            // shows it.
+            sources: _,
+        } = candidate;
+        Self { value }
+    }
 }
 
 mirror_enum! {
@@ -700,16 +696,6 @@ mod tests {
         assert!(!scanning);
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].value, "0123456789012");
-        assert_eq!(
-            rows[0].sources,
-            vec![BridgeValueSource {
-                origin: BridgeSignalOrigin::Text {
-                    origin: BridgeTextOrigin::Artwork,
-                },
-                file: Some("back.jpg".to_string()),
-                region: None,
-            }]
-        );
         assert!(!rows[0].excluded);
         assert_eq!(rows[0].cells.len(), 2);
         assert_eq!(rows[0].cells[0].source, BridgeCatalog::MusicBrainz);

@@ -15,10 +15,6 @@
             providers: [.musicBrainz, .discogs],
             discId: .read(
                 discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                source: BridgeDiscIdFile(
-                    kind: .log,
-                    file: "Artist Name - Album Title One.log"
-                ),
                 lookup: .found(count: 1, groups: [searchGroupExactBridge])
             ),
             barcode: .rows(
@@ -26,19 +22,11 @@
                 rows: [
                     BridgeSignalValueRow(
                         value: "0123456789012",
-                        sources: [cueBarcodeSource, backCoverBarcodeSource],
                         excluded: false,
                         cells: cells(.lookingUp, foundExact)
                     ),
                     BridgeSignalValueRow(
                         value: "9999999999999",
-                        sources: [
-                            BridgeValueSource(
-                                origin: .text(origin: .artwork),
-                                file: "Scans/inlay.jpg",
-                                region: nil
-                            )
-                        ],
                         excluded: false,
                         cells: cells(.queued, .notAsked)
                     ),
@@ -61,7 +49,6 @@
             providers: [.musicBrainz, .discogs],
             discId: .read(
                 discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                source: BridgeDiscIdFile(kind: .cue, file: "Album Title.cue"),
                 lookup: .off
             ),
             barcode: .rows(
@@ -69,7 +56,6 @@
                 rows: [
                     BridgeSignalValueRow(
                         value: "0123456789012",
-                        sources: [cueBarcodeSource],
                         excluded: false,
                         cells: cells(.off, .off)
                     )
@@ -98,18 +84,13 @@
         static let identifyRunOneSource = BridgeIdentifyRun(
             providers: [.discogs],
             discId: .readNotAsked(
-                discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT=",
-                source: BridgeDiscIdFile(
-                    kind: .log,
-                    file: "Artist Name - Album Title One.log"
-                )
+                discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT="
             ),
             barcode: .rows(
                 scanning: false,
                 rows: [
                     BridgeSignalValueRow(
                         value: "5051961234567",
-                        sources: [backCoverBarcodeSource],
                         excluded: false,
                         cells: [
                             BridgeProviderCell(
@@ -131,11 +112,7 @@
         static let identifyRunDiscIdLeftOut = BridgeIdentifyRun(
             providers: identifyRunOneSource.providers,
             discId: .leftOut(
-                discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT=",
-                source: BridgeDiscIdFile(
-                    kind: .log,
-                    file: "Artist Name - Album Title One.log"
-                )
+                discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT="
             ),
             barcode: identifyRunOneSource.barcode,
             catalog: identifyRunOneSource.catalog,
@@ -154,19 +131,11 @@
                 rows: [
                     BridgeSignalValueRow(
                         value: "0123456789012",
-                        sources: [cueBarcodeSource, backCoverBarcodeSource],
                         excluded: false,
                         cells: cells(.lookingUp, foundExact)
                     ),
                     BridgeSignalValueRow(
                         value: "9999999999999",
-                        sources: [
-                            BridgeValueSource(
-                                origin: .text(origin: .artwork),
-                                file: "Scans/inlay.jpg",
-                                region: nil
-                            )
-                        ],
                         excluded: true,
                         cells: cells(.notAsked, .notAsked)
                     ),
@@ -187,19 +156,11 @@
                 rows: [
                     BridgeSignalValueRow(
                         value: "0123456789012",
-                        sources: [cueBarcodeSource, backCoverBarcodeSource],
                         excluded: false,
                         cells: cells(.lookingUp, foundExact)
                     ),
                     BridgeSignalValueRow(
                         value: "9999999999999",
-                        sources: [
-                            BridgeValueSource(
-                                origin: .text(origin: .artwork),
-                                file: "Scans/inlay.jpg",
-                                region: nil
-                            )
-                        ],
                         excluded: false,
                         cells: cells(.notAsked, .notAsked)
                     ),
@@ -221,13 +182,11 @@
                 rows: [
                     BridgeSignalValueRow(
                         value: "5051961234567",
-                        sources: [backCoverBarcodeSource],
                         excluded: false,
                         cells: cells(.noMatch, .failed(failure: .timeout))
                     ),
                     BridgeSignalValueRow(
                         value: "0123456789012",
-                        sources: [cueBarcodeSource],
                         excluded: false,
                         cells: cells(.lookingUp, .notAsked)
                     ),
@@ -238,7 +197,6 @@
                 rows: [
                     BridgeSignalValueRow(
                         value: "LC 6006",
-                        sources: catalogCandidates[0].sources,
                         excluded: false,
                         cells: cells(.lookingUp, .noMatch)
                     )
@@ -269,10 +227,6 @@
             providers: [.musicBrainz, .discogs],
             discId: .read(
                 discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                source: BridgeDiscIdFile(
-                    kind: .log,
-                    file: "Artist Name - Album Title One.log"
-                ),
                 lookup: .noMatch
             ),
             barcode: .rows(
@@ -280,7 +234,6 @@
                 rows: [
                     BridgeSignalValueRow(
                         value: "0123456789012",
-                        sources: [backCoverBarcodeSource],
                         excluded: false,
                         cells: cells(.noMatch, .noMatch)
                     )
@@ -306,10 +259,6 @@
             providers: [.musicBrainz, .discogs],
             discId: .read(
                 discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                source: BridgeDiscIdFile(
-                    kind: .log,
-                    file: "Artist Name - Album Title One.log"
-                ),
                 lookup: .found(count: 1, groups: [searchGroupExactBridge])
             ),
             barcode: .rows(
@@ -317,7 +266,6 @@
                 rows: [
                     BridgeSignalValueRow(
                         value: "0123456789012",
-                        sources: [cueBarcodeSource, backCoverBarcodeSource],
                         excluded: false,
                         cells: cells(foundExact, foundExact)
                     )

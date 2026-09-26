@@ -443,23 +443,6 @@
             )
         )
 
-        // MARK: - Where values were read
-
-        /// A barcode read off the back cover, at the box the detector drew
-        /// around it.
-        static let backCoverBarcodeSource = BridgeValueSource(
-            origin: .text(origin: .artwork),
-            file: "Scans/back.jpg",
-            region: BridgeImageRegion(x: 0.62, y: 0.78, width: 0.3, height: 0.1)
-        )
-
-        /// The same code as a CUE sheet states it.
-        static let cueBarcodeSource = BridgeValueSource(
-            origin: .text(origin: .cueSheet),
-            file: "Artist Name - Album Title One.cue",
-            region: nil
-        )
-
         /// The numbers one of the offered releases carries and the folder
         /// states: chips that rank the list, one of them struck out.
         static let catalogAgreements: [BridgeCatalogAgreement] = [
@@ -467,54 +450,12 @@
             BridgeCatalogAgreement(value: "7243 8 21152 2 3", discounted: true),
         ]
 
-        /// Catalog numbers extraction found and nobody has activated: one off
-        /// the folder name, the rest off the artwork.
+        /// Catalog numbers extraction found and nobody has activated.
         static let catalogCandidates: [BridgeCatalogCandidate] = [
-            BridgeCatalogCandidate(
-                value: "LC 6006",
-                sources: [
-                    BridgeValueSource(
-                        origin: .text(origin: .folderName),
-                        file: nil,
-                        region: nil
-                    )
-                ]
-            ),
-            BridgeCatalogCandidate(
-                value: "BN-4055",
-                sources: [
-                    BridgeValueSource(
-                        origin: .text(origin: .artwork),
-                        file: "Scans/back.jpg",
-                        region: BridgeImageRegion(
-                            x: 0.1,
-                            y: 0.9,
-                            width: 0.2,
-                            height: 0.04
-                        )
-                    )
-                ]
-            ),
-            BridgeCatalogCandidate(
-                value: "7243 8 29100",
-                sources: [
-                    BridgeValueSource(
-                        origin: .text(origin: .artwork),
-                        file: "Scans/inlay.jpg",
-                        region: nil
-                    )
-                ]
-            ),
-            BridgeCatalogCandidate(
-                value: "CDP 546",
-                sources: [
-                    BridgeValueSource(
-                        origin: .text(origin: .textFile),
-                        file: "info.txt",
-                        region: nil
-                    )
-                ]
-            ),
+            BridgeCatalogCandidate(value: "LC 6006"),
+            BridgeCatalogCandidate(value: "BN-4055"),
+            BridgeCatalogCandidate(value: "7243 8 29100"),
+            BridgeCatalogCandidate(value: "CDP 546"),
         ]
 
         /// Both providers' cells for one value, as the walks stand.
@@ -741,10 +682,6 @@
                     providers: [.musicBrainz, .discogs],
                     discId: .read(
                         discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                        source: BridgeDiscIdFile(
-                            kind: .log,
-                            file: "Artist Name - Album Title One.log"
-                        ),
                         lookup: .failed(failure: .network)
                     ),
                     barcode: .rows(
@@ -752,7 +689,6 @@
                         rows: [
                             BridgeSignalValueRow(
                                 value: "0123456789012",
-                                sources: [backCoverBarcodeSource],
                                 excluded: false,
                                 cells: cells(
                                     .noMatch,

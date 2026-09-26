@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A catalog number extraction found and the run is not looking up: where it
-/// was read, and the number, outlined and dimmed. Clicking it puts the number
+/// A catalog number extraction found and the run is not looking up: the
+/// number, outlined and dimmed. Clicking it puts the number
 /// into the run and every provider looks it up.
 struct CatalogCandidateChip: View {
     let candidate: BridgeCatalogCandidate
@@ -12,7 +12,6 @@ struct CatalogCandidateChip: View {
         Button(action: onActivate) {
             IdentifierChip(
                 label: String(localized: "Catalog #"),
-                tags: .sources(candidate.sources),
                 value: candidate.value,
                 style: .outlined
             )

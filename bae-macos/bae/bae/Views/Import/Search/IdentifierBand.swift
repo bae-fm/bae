@@ -2,8 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// The run as one wrapping band of chips: what identification has to go on,
-/// each identifier with where it was read and every provider's answer about
-/// it. The three signals come in order — Disc ID, Barcode, Catalog # — then
+/// each identifier with every provider's answer about it. The three signals come in order — Disc ID, Barcode, Catalog # — then
 /// the title the run searched by once they named nothing, then the catalog
 /// numbers that rank the answers rather than drive a lookup, then the ones
 /// waiting to be looked up, folded behind their count.
@@ -109,33 +108,19 @@ struct IdentifierBand: View {
                             "Couldn't read the disc layout: \(failure.briefLine)"
                     )
                 )
-        case .read(let discId, let source, let lookup):
-            discIdButton(
-                label: label,
-                discId: discId,
-                source: source,
-                lookup: lookup
-            )
+        case .read(let discId, let lookup):
+            discIdButton(label: label, discId: discId, lookup: lookup)
         // The person took the disc ID out, so the chip reads as off and the
         // way back is the chip itself.
-        case .leftOut(let discId, let source):
-            discIdButton(
-                label: label,
-                discId: discId,
-                source: source,
-                lookup: nil
-            )
+        case .leftOut(let discId):
+            discIdButton(label: label, discId: discId, lookup: nil)
         // The one source that answers disc IDs is not being asked, so the
         // value stands with a dash where a count would be — nothing looked,
         // which is not the same as looking and finding none. There is nothing
         // here for a person to switch: which sources a run asks is a Settings
         // switch, not this chip.
-        case .readNotAsked(let discId, let source):
-            IdentifierChip(
-                label: label,
-                tags: .discIdFile(source),
-                value: discId
-            ) {
+        case .readNotAsked(let discId):
+            IdentifierChip(label: label, value: discId) {
                 IdentifierDash()
             }
         }
@@ -147,7 +132,6 @@ struct IdentifierBand: View {
     private func discIdButton(
         label: String,
         discId: String,
-        source: BridgeDiscIdFile?,
         lookup: BridgeLookupState?
     ) -> some View {
         Button {
@@ -155,7 +139,6 @@ struct IdentifierBand: View {
         } label: {
             IdentifierChip(
                 label: label,
-                tags: .discIdFile(source),
                 value: discId,
                 style: lookup == nil ? .outlined : .filled
             ) {
@@ -213,7 +196,6 @@ struct IdentifierBand: View {
                 } label: {
                     IdentifierChip(
                         label: label,
-                        tags: .sources(row.sources),
                         value: row.value,
                         style: row.excluded ? .outlined : .filled
                     ) {
@@ -258,7 +240,6 @@ struct IdentifierBand: View {
                 } label: {
                     IdentifierChip(
                         label: label,
-                        tags: .sources(row.sources),
                         value: row.value
                     ) {
                         capsules(row.cells)

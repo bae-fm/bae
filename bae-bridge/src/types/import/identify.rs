@@ -220,16 +220,6 @@ pub enum BridgeLookupState {
     Off,
 }
 
-/// One place a value was read. Mirrors `bae_core::identify::ValueSource`.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct BridgeValueSource {
-    pub origin: BridgeSignalOrigin,
-    /// The candidate-relative path of the file, where the origin is a file.
-    pub file: Option<String>,
-    /// Where on that image the value was read, where the detector said.
-    pub region: Option<BridgeImageRegion>,
-}
-
 /// One provider's cell of a value's row. Mirrors
 /// `bae_core::identify::ProviderCell`.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -238,14 +228,12 @@ pub struct BridgeProviderCell {
     pub lookup: BridgeLookupState,
 }
 
-/// One value extraction found, as a row of the ledger: where it was found
-/// and every provider's lookup of it. Mirrors
-/// `bae_core::identify::SignalValueRow`.
+/// One value extraction found, as a row of the ledger: the value and every
+/// provider's lookup of it. Mirrors `bae_core::identify::SignalValueRow`,
+/// less where the value was read, which no surface shows.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSignalValueRow {
     pub value: String,
-    /// Every place the value was read, in the order it was read there.
-    pub sources: Vec<BridgeValueSource>,
     /// Whether the person left this value out of the run, so no provider was
     /// asked about it. Always false for a catalog number: a row exists only for
     /// a number the run looks up.
@@ -254,25 +242,10 @@ pub struct BridgeSignalValueRow {
     pub cells: Vec<BridgeProviderCell>,
 }
 
-/// Which kind of artifact a disc ID was read off. Mirrors
-/// `bae_core::identify::DiscIdFileKind`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeDiscIdFileKind {
-    Log,
-    Cue,
-}
-
-/// The file a disc ID was read off. Mirrors `bae_core::identify::DiscIdFile`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeDiscIdFile {
-    pub kind: BridgeDiscIdFileKind,
-    /// The candidate-relative path.
-    pub file: String,
-}
-
 /// The disc-ID step of a run: read off a LOG or CUE, then looked up on
 /// MusicBrainz — the one provider with a disc-ID endpoint, so one lookup and
-/// no cells. Mirrors `bae_core::identify::DiscIdStepView`.
+/// no cells. Mirrors `bae_core::identify::DiscIdStepView`, less the file a
+/// disc ID was read off, which no surface shows.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeDiscIdStep {
     /// Extraction has not reported yet.
@@ -286,24 +259,15 @@ pub enum BridgeDiscIdStep {
     ReadFailed { failure: BridgeLookupFailure },
     Read {
         disc_id: String,
-        /// The file it came from. `None` for a release re-identified from
-        /// its stored tracks.
-        source: Option<BridgeDiscIdFile>,
         lookup: BridgeLookupState,
     },
     /// A disc ID was read and the one source that answers disc IDs is not among
     /// the run's providers, so nothing looked it up. The value stands with no
     /// count, and there is nothing here for a person to switch.
-    ReadNotAsked {
-        disc_id: String,
-        source: Option<BridgeDiscIdFile>,
-    },
+    ReadNotAsked { disc_id: String },
     /// A disc ID was read and the person left it out of the run. The value
     /// stands with no count, and asking about it again is theirs to do.
-    LeftOut {
-        disc_id: String,
-        source: Option<BridgeDiscIdFile>,
-    },
+    LeftOut { disc_id: String },
 }
 
 /// The barcode step of a run: read off the artwork and the CUE sheets, then
@@ -329,11 +293,11 @@ pub enum BridgeBarcodeStep {
 }
 
 /// One catalog number extraction found and the run is not looking up: a
-/// tile to activate. Mirrors `bae_core::identify::CatalogCandidateView`.
+/// tile to activate. Mirrors `bae_core::identify::CatalogCandidateView`, less
+/// where the number was read, which no surface shows.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgeCatalogCandidate {
     pub value: String,
-    pub sources: Vec<BridgeValueSource>,
 }
 
 /// The catalog step of a run: the run looks up only the numbers the person

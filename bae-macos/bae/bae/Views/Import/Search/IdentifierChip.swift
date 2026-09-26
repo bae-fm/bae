@@ -5,16 +5,6 @@ import SwiftUI
 // answer inside it, and the marks a chip carries when there is no answer to
 // show.
 
-/// Where a chip's value was read, as tags between its label and the value.
-enum IdentifierTags {
-    /// Every place a barcode or catalog number was read, in the order it was
-    /// read there. Empty for a chip with no value yet.
-    case sources([BridgeValueSource])
-    /// The LOG or CUE a disc ID was read off. `nil` for a release
-    /// re-identified from its stored tracks, which has no file to name.
-    case discIdFile(BridgeDiscIdFile?)
-}
-
 /// How a chip reads: filled for an identifier the run has an answer about,
 /// outlined and dimmed for a number waiting to be looked up.
 enum IdentifierChipStyle {
@@ -27,11 +17,10 @@ enum IdentifierChipStyle {
 /// than as one long line.
 private let identifierValueWidth: CGFloat = 92
 
-/// One identifier in the band: what kind it is, where it was read, the value,
-/// and what the providers say about it.
+/// One identifier in the band: what kind it is, the value, and what the
+/// providers say about it.
 struct IdentifierChip<Trailing: View>: View {
     let label: String
-    var tags: IdentifierTags = .sources([])
     var value: String?
     var style: IdentifierChipStyle = .filled
     @ViewBuilder
@@ -43,7 +32,6 @@ struct IdentifierChip<Trailing: View>: View {
     var body: some View {
         HStack(spacing: 6) {
             IdentifierLabel(text: label)
-            tagChips
             if let value {
                 Text(value)
                     .font(.system(size: 10.5, design: .monospaced))
@@ -68,21 +56,6 @@ struct IdentifierChip<Trailing: View>: View {
         .onHover { isHovered = $0 }
     }
 
-    @ViewBuilder
-    private var tagChips: some View {
-        switch tags {
-        case .sources(let sources):
-            ForEach(Array(sources.enumerated()), id: \.offset) { _, source in
-                SignalSourceChip(source: source)
-                    .opacity(style == .outlined ? 0.5 : 1)
-            }
-        case .discIdFile(let file):
-            if let file {
-                DiscIdFileChip(source: file)
-            }
-        }
-    }
-
     private var valueStyle: AnyShapeStyle {
         style == .outlined
             ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.secondary)
@@ -105,11 +78,10 @@ extension IdentifierChip where Trailing == EmptyView {
     /// yet.
     init(
         label: String,
-        tags: IdentifierTags = .sources([]),
         value: String? = nil,
         style: IdentifierChipStyle = .filled
     ) {
-        self.init(label: label, tags: tags, value: value, style: style) {
+        self.init(label: label, value: value, style: style) {
             EmptyView()
         }
     }
