@@ -26,6 +26,8 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 mod active_roots;
+mod root_backend;
+mod root_scan_cause;
 mod cover_image;
 mod folder_reading;
 mod folder_watcher;
@@ -36,10 +38,9 @@ mod reconcile;
 mod scanning;
 mod watch_batches;
 
-use active_roots::{
-    ActiveRoots, AdoptionOutcome, FolderReadingRequest, RemovalOutcome, RootPass, RootRemovalBackend,
-    RootScanCause, ServiceRootRemovalBackend,
-};
+use active_roots::{ActiveRoots, AdoptionOutcome, FolderReadingRequest, RemovalOutcome, RootPass};
+use root_backend::{RootRemovalBackend, ServiceRootRemovalBackend};
+use root_scan_cause::RootScanCause;
 use folder_watcher::FolderWatchSnapshot;
 use watch_batches::WatchReport;
 mod coordinator;

@@ -829,45 +829,6 @@ pub(super) enum RemovalOutcome {
     },
 }
 
-/// Why a root scan was asked for.
-///
-/// Logged wherever one is requested, because "the scans never stop" is a
-/// question only the thing that keeps asking for them can answer — and until
-/// now nothing recorded that. A watched network share whose own reads come
-/// back as writes would look exactly like a folder somebody keeps editing.
-pub(super) enum RootScanCause {
-    /// The filesystem reported changes under the root: the events that passed
-    /// the change filter, kind and path, and how many were filtered out.
-    FsChange(String),
-    /// The watcher itself failed, so the root is re-read to catch up on
-    /// whatever it missed.
-    WatchError,
-    /// The filesystem watch said it lost track of changes — FSEvents dropping
-    /// events, inotify's queue overflowing — so what it could have missed is
-    /// read again: the folder it named, or the root when it named none.
-    EventsDropped,
-    /// The periodic check of a network folder found a directory that moved.
-    /// Such a folder has no watch worth the name, so this is the only thing
-    /// that notices a change made on the server or by another machine.
-    NetworkFolderMoved,
-    /// Something a person did — naming which.
-    Asked(&'static str),
-}
-
-impl std::fmt::Display for RootScanCause {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::FsChange(events) => write!(f, "filesystem change ({events})"),
-            Self::WatchError => write!(f, "the folder watcher reported an error"),
-            Self::EventsDropped => write!(f, "the folder watch lost track of changes"),
-            Self::NetworkFolderMoved => {
-                write!(f, "the periodic check found a directory that moved")
-            }
-            Self::Asked(what) => write!(f, "{what}"),
-        }
-    }
-}
-
 pub(super) struct RootRemovalCompletion {
     id: u64,
     path: PathBuf,
@@ -881,73 +842,4 @@ enum RootRemovalResult {
         removed_keys: Vec<String>,
     },
     Failed(String),
-}
-
-#[async_trait::async_trait]
-pub(super) trait RootRemovalBackend: Send + Sync {
-    async fn uninstall(&self, path: &Path) -> Result<FolderWatchSnapshot, String>;
-    async fn reinstall(&self, path: &Path, snapshot: &FolderWatchSnapshot) -> Result<(), String>;
-    /// Delete the root's rows and return the scan entry keys that went with
-    /// them.
-    async fn remove_durable_root(&self, path: &Path) -> Result<Vec<String>, String>;
-    /// Watch `parent` in place of the watched folders `inner` inside it, in
-    /// one write that keeps what was decided about their candidates.
-    async fn adopt_durable_roots(&self, parent: &Path, inner: &[PathBuf]) -> Result<(), String>;
-}
-
-pub(super) struct ServiceRootRemovalBackend {
-    folder_watcher: Arc<FolderWatcher>,
-    library_manager: LibraryManager,
-}
-
-impl ServiceRootRemovalBackend {
-    pub(super) fn new(folder_watcher: Arc<FolderWatcher>, library_manager: LibraryManager) -> Self {
-        Self {
-            folder_watcher,
-            library_manager,
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl RootRemovalBackend for ServiceRootRemovalBackend {
-    async fn uninstall(&self, path: &Path) -> Result<FolderWatchSnapshot, String> {
-        let watcher = self.folder_watcher.clone();
-        let path = path.to_path_buf();
-        tokio::task::spawn_blocking(move || watcher.uninstall(&path))
-            .await
-            .map_err(|error| format!("folder watch removal task panicked: {error}"))?
-            .map_err(|error| error.to_string())
-    }
-
-    async fn reinstall(&self, path: &Path, snapshot: &FolderWatchSnapshot) -> Result<(), String> {
-        let watcher = self.folder_watcher.clone();
-        let path = path.to_path_buf();
-        let snapshot = snapshot.clone();
-        tokio::task::spawn_blocking(move || watcher.reinstall(&path, &snapshot))
-            .await
-            .map_err(|error| format!("folder watch restore task panicked: {error}"))?
-            .map_err(|error| error.to_string())
-    }
-
-    async fn remove_durable_root(&self, path: &Path) -> Result<Vec<String>, String> {
-        self.library_manager
-            .remove_watched_import_folder(&path.to_string_lossy())
-            .await
-            .map_err(|error| error.to_string())?
-            .ok_or_else(|| format!("{} is not a watched folder", path.display()))
-    }
-
-    async fn adopt_durable_roots(&self, parent: &Path, inner: &[PathBuf]) -> Result<(), String> {
-        self.library_manager
-            .adopt_watched_import_folders(
-                &parent.to_string_lossy(),
-                inner
-                    .iter()
-                    .map(|root| root.to_string_lossy().into_owned())
-                    .collect(),
-            )
-            .await
-            .map_err(|error| error.to_string())
-    }
 }
