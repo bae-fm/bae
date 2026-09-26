@@ -126,6 +126,17 @@ desktop_only! {
     }
 
     impl Region {
+        /// The region a name Discogs gives one is `is`, by the first name
+        /// `is` accepts. Only Discogs's names, which are written out: a
+        /// MusicBrainz code is two letters, and text reading for a region
+        /// reads a name.
+        pub(crate) fn written_as(is: impl Fn(&str) -> bool) -> Option<Self> {
+            DISCOGS_COUNTRIES.iter().find_map(|(name, place)| match place {
+                Place::Region(region) if is(name) => Some(*region),
+                Place::Region(_) | Place::Code(_) => None,
+            })
+        }
+
         /// Every name a catalog writes this region as: its MusicBrainz code,
         /// and the country names Discogs gives it.
         pub(crate) fn written_names(self) -> impl Iterator<Item = &'static str> {

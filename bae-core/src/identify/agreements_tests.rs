@@ -280,9 +280,9 @@ fn states_country(code: &str, lines: &[TextLine]) -> bool {
 }
 
 /// A two-letter code is a country only where a person tagged the folder with
-/// it. Printed prose is full of two-letter words — "for all of us" in
-/// reprinted liner notes — so a sleeve, a CUE or a document states a country
-/// only by name.
+/// it, or where a sleeve says the product was made there. Printed prose is
+/// full of two-letter words — "for all of us" in reprinted liner notes — so
+/// elsewhere a sleeve, a CUE or a document states a country only by name.
 #[test]
 fn a_country_code_is_a_tag_in_a_name_and_a_word_everywhere_else() {
     for origin in [
@@ -290,7 +290,7 @@ fn a_country_code_is_a_tag_in_a_name_and_a_word_everywhere_else() {
         TextOrigin::TextFile,
         TextOrigin::CueSheet,
     ] {
-        for printed in ["the band played for all of us.", "MADE IN US"] {
+        for printed in ["the band played for all of us.", "ALL OF US"] {
             assert!(
                 !states_country("US", &[read_off(origin, printed)]),
                 "{origin:?}: {printed}"
@@ -299,6 +299,14 @@ fn a_country_code_is_a_tag_in_a_name_and_a_word_everywhere_else() {
         assert!(
             states_country("JP", &[read_off(origin, "Made in Japan")]),
             "{origin:?}"
+        );
+        assert!(
+            states_country("US", &[read_off(origin, "MADE IN US")]),
+            "{origin:?}: a statement of where it was made names its code"
+        );
+        assert!(
+            states_country("XE", &[read_off(origin, "Made in the E.U.")]),
+            "{origin:?}: and its abbreviation"
         );
     }
     assert!(states_country(

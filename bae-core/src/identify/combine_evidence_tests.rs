@@ -209,3 +209,55 @@ fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
     assert_eq!(offered(&outcome), vec!["rel-named"]);
     assert_eq!(set_aside(&outcome), vec!["rel-other"]);
 }
+
+/// Two pressings of one year the barcode names alike, one released in the US
+/// and one in Europe, and a sleeve that says where it was made — beside the label's
+/// address, which says nothing of it. The statement agrees with the European
+/// pressing's country, which leads; the other stays on the list, since a
+/// pressing released in one market is often made in another.
+#[test]
+fn a_sleeve_saying_where_it_was_made_puts_that_pressing_first() {
+    let line = |text: &str, origin| TextLine {
+        text: text.to_string(),
+        origin,
+        file: None,
+        region: None,
+    };
+    let text = CandidateText::of(
+        &[
+            line("2010. Artist One - Album One", TextOrigin::FolderName),
+            line(
+                "Placeholder Records, 100 Placeholder Drive, Beverly Hills, CA 90210.",
+                TextOrigin::Artwork,
+            ),
+            line(
+                "Unauthorised copying prohibited. Made in the EU. LC 00000. BIEM/SABAM.",
+                TextOrigin::Artwork,
+            ),
+        ],
+        &[],
+    );
+    let released_in = |release_id: &str, area: &str| {
+        let (result, status) = pressing(release_id, made_of(&[Medium::Cd]));
+        (
+            MetadataResult {
+                area: Some(crate::pressing::area(area)),
+                year: Some(2010),
+                catalog_number: None,
+                ..result
+            },
+            status,
+        )
+    };
+    let outcome = combine_results(
+        Vec::new(),
+        vec![released_in("rel-us", "US"), released_in("rel-europe", "XE")],
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        &text,
+        &RipEvidence::Unproven,
+    );
+    assert_eq!(offered(&outcome), vec!["rel-europe", "rel-us"]);
+    assert!(set_aside(&outcome).is_empty());
+}

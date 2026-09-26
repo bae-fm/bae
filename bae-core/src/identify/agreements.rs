@@ -17,7 +17,9 @@
 //! file's name. Anywhere else a two-letter code is far more often a word —
 //! "for all of us" in reprinted liner notes, "IT" on a sleeve — than a
 //! country, while a sleeve that means a country prints its name ("Made in
-//! Japan"). A label is the other: a folder writes
+//! Japan"). The exception is a sleeve's statement of where the product was
+//! made, where an abbreviation is no word of prose: "Made in the EU" states
+//! Europe (see [`super::made_in`]). A label is the other: a folder writes
 //! "Warner Bros." and a source writes "Warner Bros. Records", so the trade word
 //! a label's name trails is dropped from it first, through the label table.
 //!
@@ -178,6 +180,8 @@ pub fn judged_results(
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CandidateText {
     lines: Vec<NormalizedLine>,
+    /// The areas the text's manufacturing statements name, in reading order.
+    made_in: Vec<ReleaseArea>,
     /// Normalized, so the comparison is the one `states` makes.
     struck_out: HashSet<String>,
 }
@@ -191,6 +195,10 @@ impl CandidateText {
             lines: pool
                 .iter()
                 .filter_map(|line| NormalizedLine::of(&line.text, line.origin))
+                .collect(),
+            made_in: pool
+                .iter()
+                .flat_map(|line| super::made_in::stated_origins(&line.text))
                 .collect(),
             struck_out: struck_out
                 .iter()
@@ -233,8 +241,13 @@ impl CandidateText {
     /// stated by any of its names wherever the text prints it, and by its
     /// code where a name tags the folder with it — a folder called
     /// "Album (JP)" states Japan, and so does a sleeve saying "Made in
-    /// Japan" — and a region by any name a catalog writes it as.
+    /// Japan" — and a region by any name a catalog writes it as. A sleeve's
+    /// statement of where the product was made states its area however it
+    /// abbreviates it: "Made in the EU" states Europe.
     pub fn states_area(&self, area: ReleaseArea) -> bool {
+        if self.made_in.contains(&area) {
+            return true;
+        }
         match area {
             ReleaseArea::Country(country) => {
                 self.lines.iter().any(|line| line.tags_code(country.code()))
