@@ -280,11 +280,14 @@ pub struct ReleaseGroupResponse {
 /// One page of a release group's releases, each with the addresses its own
 /// document links and the group's own links beside it: what
 /// `ws/2/release?release-group=…&inc=url-rels+release-groups+release-group-level-rels`
-/// answers. The page holds at most a hundred releases.
+/// answers for one page. A page holds at most a hundred releases; `count` is
+/// how many the group has on every page together.
 #[derive(Debug, Clone, Deserialize)]
 pub struct GroupReleases {
     #[serde(default)]
     pub releases: Vec<GroupRelease>,
+    #[serde(rename = "release-count")]
+    pub count: usize,
 }
 
 /// One release of a browsed group: its id, its own url-rels, and its group

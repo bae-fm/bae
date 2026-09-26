@@ -22,8 +22,8 @@ struct Catalogs {
 }
 
 impl Catalogs {
-    /// Answers are keyed `browse:<group>` for a release group's browsed
-    /// releases, `wikidata:<item>` for an entity document, and
+    /// Answers are keyed `browse:<group>` for a release group's first page of
+    /// browsed releases and `browse:<group>@<offset>` for a later one, `wikidata:<item>` for an entity document, and
     /// `discogs:<release>` for a Discogs release. Anything else answers 599.
     async fn start(answers: HashMap<String, (u16, String)>) -> Self {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -39,13 +39,17 @@ impl Catalogs {
                 let path = request.split_whitespace().nth(1).unwrap();
                 let url = reqwest::Url::parse(&format!("http://fixture.example{path}")).unwrap();
                 let key = if url.path() == "/ws/2/release" {
-                    let group = url
-                        .query_pairs()
-                        .find(|(key, _)| key == "release-group")
-                        .unwrap()
-                        .1
-                        .into_owned();
-                    format!("browse:{group}")
+                    let query = |name: &str| {
+                        url.query_pairs()
+                            .find(|(key, _)| key == name)
+                            .unwrap()
+                            .1
+                            .into_owned()
+                    };
+                    match query("offset").as_str() {
+                        "0" => format!("browse:{}", query("release-group")),
+                        offset => format!("browse:{}@{offset}", query("release-group")),
+                    }
                 } else if let Some(item) = url.path().strip_prefix("/wiki/Special:EntityData/") {
                     format!("wikidata:{}", item.trim_end_matches(".json"))
                 } else if let Some(id) = url.path().strip_prefix("/releases/") {
@@ -97,13 +101,18 @@ impl Drop for Catalogs {
 /// A group's browsed releases: each release with the addresses it links,
 /// and the group's own addresses on every one of them.
 fn browsed(group_urls: &[&str], releases: &[(&str, &[&str])]) -> (u16, String) {
+    browsed_page(releases.len(), group_urls, releases)
+}
+
+/// One page of a group of `count` releases.
+fn browsed_page(count: usize, group_urls: &[&str], releases: &[(&str, &[&str])]) -> (u16, String) {
     let relations = |urls: &[&str]| {
         urls.iter()
             .map(|url| serde_json::json!({"type": "discogs", "url": {"resource": url}}))
             .collect::<Vec<_>>()
     };
     let body = serde_json::json!({
-        "release-count": releases.len(),
+        "release-count": count,
         "releases": releases.iter().map(|(id, urls)| serde_json::json!({
             "id": id,
             "relations": relations(urls),
@@ -488,6 +497,88 @@ async fn a_group_that_cannot_be_browsed_is_unread() {
     let catalogs = Catalogs::start(HashMap::from([(
         format!("browse:{GROUP}"),
         (404, "{}".to_string()),
+    )]))
+    .await;
+    let read = catalogs.read(&group(&[("mb-1", &[])])).await;
+    assert_eq!(read[0].links, AlbumLinks::Unread);
+}
+
+/// A release on the list past the browse's first page is still read: the
+/// pages are read until every release the list holds from the group has
+/// been, so its link is followed and its twin goes beside it.
+#[tokio::test]
+async fn a_listed_release_past_the_first_page_is_read_from_a_later_one() {
+    let catalogs = Catalogs::start(HashMap::from([
+        (
+            format!("browse:{GROUP}"),
+            browsed_page(101, &[], &[("mb-other", &[])]),
+        ),
+        (
+            format!("browse:{GROUP}@1"),
+            browsed_page(101, &[], &[("mb-1", &["https://www.discogs.com/release/700"])]),
+        ),
+        ("discogs:700".to_string(), discogs_release(700, Some(510009))),
+    ]))
+    .await;
+    let read = catalogs.read(&group(&[("mb-1", &[])])).await;
+    assert!(read[0].links.names(&discogs("510009")));
+    assert_eq!(
+        read[0].release_links,
+        vec![("mb-1".to_string(), vec![discogs("700")])]
+    );
+    assert!(read[0].twin.is_some(), "the twin goes beside mb-1");
+}
+
+/// Once every release the list holds has been read and the page names the
+/// master, no later page is asked for.
+#[tokio::test]
+async fn no_page_is_read_past_what_the_list_and_the_statement_need() {
+    let catalogs = Catalogs::start(HashMap::from([(
+        format!("browse:{GROUP}"),
+        browsed_page(
+            250,
+            &["https://www.discogs.com/master/510001"],
+            &[("mb-1", &[])],
+        ),
+    )]))
+    .await;
+    let read = catalogs.read(&group(&[("mb-1", &[])])).await;
+    assert!(read[0].links.names(&discogs("510001")));
+    assert_eq!(
+        catalogs.requests(),
+        HashMap::from([(format!("browse:{GROUP}"), 1)])
+    );
+}
+
+/// No release on the list links Discogs and the first page names none
+/// either: later pages are read until one of the group's releases does.
+#[tokio::test]
+async fn later_pages_are_read_for_a_release_that_links_discogs() {
+    let catalogs = Catalogs::start(HashMap::from([
+        (
+            format!("browse:{GROUP}"),
+            browsed_page(3, &[], &[("mb-1", &[])]),
+        ),
+        (
+            format!("browse:{GROUP}@1"),
+            browsed_page(3, &[], &[("mb-2", &["https://www.discogs.com/release/700"])]),
+        ),
+        ("discogs:700".to_string(), discogs_release(700, Some(510009))),
+    ]))
+    .await;
+    let read = catalogs.read(&group(&[("mb-1", &[])])).await;
+    assert!(read[0].links.names(&discogs("510009")));
+    assert_eq!(read[0].twin, None, "the release that names it is not on the list");
+    assert!(!catalogs.requests().contains_key(&format!("browse:{GROUP}@2")));
+}
+
+/// A later page that cannot be had leaves the releases past it unknown: with
+/// nothing else named, the album is unread rather than naming nothing.
+#[tokio::test]
+async fn a_later_page_that_cannot_be_had_leaves_the_album_unread() {
+    let catalogs = Catalogs::start(HashMap::from([(
+        format!("browse:{GROUP}"),
+        browsed_page(101, &[], &[("mb-other", &[])]),
     )]))
     .await;
     let read = catalogs.read(&group(&[("mb-1", &[])])).await;

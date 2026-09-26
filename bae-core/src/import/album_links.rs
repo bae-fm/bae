@@ -22,9 +22,11 @@
 //!
 //! One MusicBrainz request reads a group's own links and its releases' links
 //! together: its releases browsed, each carrying the group's relations beside
-//! its own. The browse answers a page of a hundred releases; a release past
-//! them is read from its own record on the list, which carries its links when
-//! the lookup that returned it asked for them.
+//! its own. The browse answers a hundred releases a page, and pages are read
+//! until every release of the group the list holds has been — and, where no
+//! listed release names a Discogs release, until one of the group's releases
+//! does — so a large group costs more requests rather than a statement going
+//! unread. A page that cannot be had leaves what lies past it unknown.
 //!
 //! MusicBrainz answers about one request a second, so a list reads these only
 //! when it holds both catalogs' releases — a link joins nothing otherwise.
@@ -387,44 +389,36 @@ async fn read_group(
         release_links: Vec::new(),
         twin: None,
     };
-    let browsed = match readers
-        .musicbrainz
-        .browse_group_releases(&group.group, priority)
-        .await
-    {
-        Ok(browsed) => browsed,
-        Err(error) => {
-            warn!(
-                musicbrainz_release_group_id = group.group,
-                %error,
-                "MusicBrainz release group unread; its album links are not known"
-            );
-            return unread();
-        }
+    let Some(mut browse) = Browse::first(readers.musicbrainz, &group.group, priority).await else {
+        return unread();
     };
     // Every browsed release carries its group's relations; the first one
     // that is this group's states them.
-    let Some(page) = browsed.releases.iter().find_map(|release| {
-        release
-            .release_group
-            .as_ref()
-            .filter(|embedded| embedded.id == group.group)
-            .and_then(|embedded| embedded.relations.as_ref())
-    }) else {
+    let Some(page) = browse.group_relations() else {
         warn!(
             musicbrainz_release_group_id = group.group,
             "MusicBrainz browsed no release stating its group's links; its album links are not known"
         );
         return unread();
     };
-    let pages: Vec<CatalogPage> = musicbrainz::relation_urls(page)
+    let pages: Vec<CatalogPage> = musicbrainz::relation_urls(&page)
         .filter_map(parse_catalog_url)
         .collect();
+    // Every release of the group the list holds, read from as many pages as
+    // that takes: its own links pair it, and may be the statement below.
+    browse
+        .read_until(|browsed| {
+            group
+                .releases
+                .iter()
+                .all(|(release, _)| browsed.iter().any(|browsed| browsed.id == *release))
+        })
+        .await;
     let release_links: Vec<(String, Vec<MetadataRef>)> = group
         .releases
         .iter()
         .filter_map(|(release, _)| {
-            browsed
+            browse
                 .releases
                 .iter()
                 .find(|browsed| browsed.id == *release)
@@ -438,7 +432,10 @@ async fn read_group(
         twin,
     };
 
-    let mut found = Found::default();
+    let mut found = Found {
+        unread: browse.unread,
+        ..Found::default()
+    };
     for page in &pages {
         if let CatalogPage::Group { catalog, key } = page {
             if names_other_album(*catalog) {
@@ -481,8 +478,23 @@ async fn read_group(
         return reading(found.settle(), None);
     }
 
-    let Some(through) = release_to_follow(group, &release_links, &browsed.releases, on_list)
-    else {
+    let through = match through_listed(group, &release_links, on_list) {
+        Some(through) => Some(through),
+        None => {
+            // No release on the list names one: any release of the group
+            // that does, read from as many pages as it takes to find one.
+            browse
+                .read_until(|browsed| {
+                    browsed
+                        .iter()
+                        .any(|release| !discogs_links(&release_links_of(&release.relations)).is_empty())
+                })
+                .await;
+            found.unread |= browse.unread;
+            through_browsed(&browse.releases, on_list)
+        }
+    };
+    let Some(through) = through else {
         return reading(found.settle(), None);
     };
     let stated = AlbumStatement::Release {
@@ -541,29 +553,116 @@ struct Through {
     listed_album: Option<Option<String>>,
 }
 
-/// Which of the group's releases' Discogs links to follow: a release on the
-/// list first, since what it names can go beside it — among those, one that
-/// names a release the list already holds, which costs no request — and
-/// then any release the browse lists.
-fn release_to_follow(
+/// A release group's releases as browsed so far — the pages read in order —
+/// and how many the group has.
+struct Browse<'a> {
+    musicbrainz: &'a MusicBrainz,
+    group: &'a str,
+    priority: CallPriority,
+    releases: Vec<musicbrainz::GroupRelease>,
+    count: usize,
+    /// A page after the first could not be had, so the releases past what
+    /// was read are not known.
+    unread: bool,
+}
+
+impl<'a> Browse<'a> {
+    /// The group's first page, or `None` when it could not be had — nothing
+    /// about the group is then known.
+    async fn first(
+        musicbrainz: &'a MusicBrainz,
+        group: &'a str,
+        priority: CallPriority,
+    ) -> Option<Self> {
+        match musicbrainz.browse_group_releases(group, 0, priority).await {
+            Ok(page) => Some(Self {
+                musicbrainz,
+                group,
+                priority,
+                releases: page.releases,
+                count: page.count,
+                unread: false,
+            }),
+            Err(error) => {
+                warn!(
+                    musicbrainz_release_group_id = group,
+                    %error,
+                    "MusicBrainz release group unread; its album links are not known"
+                );
+                None
+            }
+        }
+    }
+
+    /// The group's own relations, as the first of its releases read states
+    /// them.
+    fn group_relations(&self) -> Option<Vec<musicbrainz::MbRelation>> {
+        self.releases.iter().find_map(|release| {
+            release
+                .release_group
+                .as_ref()
+                .filter(|embedded| embedded.id == self.group)
+                .and_then(|embedded| embedded.relations.clone())
+        })
+    }
+
+    /// Read further pages until `done` holds of what has been read, every
+    /// release has been, or a page cannot be had.
+    async fn read_until(&mut self, done: impl Fn(&[musicbrainz::GroupRelease]) -> bool) {
+        while !done(&self.releases) && !self.unread && self.releases.len() < self.count {
+            let offset = self.releases.len();
+            match self
+                .musicbrainz
+                .browse_group_releases(self.group, offset, self.priority)
+                .await
+            {
+                // The group lost releases since the count was read: what was
+                // read is all of them.
+                Ok(page) if page.releases.is_empty() => self.count = offset,
+                Ok(page) => {
+                    self.count = page.count;
+                    self.releases.extend(page.releases);
+                }
+                Err(error) => {
+                    warn!(
+                        musicbrainz_release_group_id = self.group,
+                        offset,
+                        %error,
+                        "A page of a MusicBrainz release group's releases unread; its releases past it are not known"
+                    );
+                    self.unread = true;
+                }
+            }
+        }
+    }
+}
+
+/// The Discogs releases among `links`.
+fn discogs_links(links: &[MetadataRef]) -> Vec<MetadataRef> {
+    links
+        .iter()
+        .filter(|link| link.catalog == Catalog::Discogs)
+        .cloned()
+        .collect()
+}
+
+/// `on_list`'s record of `twin`, when the list holds it: the album its record
+/// files it under.
+fn listed_album(on_list: &[(MetadataRef, Option<String>)], twin: &MetadataRef) -> Option<Option<String>> {
+    on_list
+        .iter()
+        .find(|(listed, _)| listed == twin)
+        .map(|(_, album)| album.clone())
+}
+
+/// Which listed release's Discogs link to follow: what it names can go beside
+/// it, and among those one that names a release the list already holds
+/// costs no request.
+fn through_listed(
     group: &GroupToRead,
     read_links: &[(String, Vec<MetadataRef>)],
-    browsed: &[musicbrainz::GroupRelease],
     on_list: &[(MetadataRef, Option<String>)],
 ) -> Option<Through> {
-    let listed_album = |twin: &MetadataRef| {
-        on_list
-            .iter()
-            .find(|(listed, _)| listed == twin)
-            .map(|(_, album)| album.clone())
-    };
-    let discogs = |links: &[MetadataRef]| -> Vec<MetadataRef> {
-        links
-            .iter()
-            .filter(|link| link.catalog == Catalog::Discogs)
-            .cloned()
-            .collect()
-    };
     let listed: Vec<(&str, Vec<MetadataRef>)> = group
         .releases
         .iter()
@@ -572,35 +671,46 @@ fn release_to_follow(
                 .iter()
                 .find(|(read, _)| read == release)
                 .map_or(own.as_slice(), |(_, links)| links.as_slice());
-            (release.as_str(), discogs(links))
+            (release.as_str(), discogs_links(links))
         })
         .collect();
-    let through = |release: &str, twin: &MetadataRef, release_on_list: bool| Through {
+    let through = |release: &str, twin: &MetadataRef| Through {
         release: release.to_string(),
         twin: twin.clone(),
-        release_on_list,
-        listed_album: listed_album(twin),
+        release_on_list: true,
+        listed_album: listed_album(on_list, twin),
     };
     listed
         .iter()
         .find_map(|(release, links)| {
             links
                 .iter()
-                .find(|twin| listed_album(twin).is_some())
-                .map(|twin| through(release, twin, true))
+                .find(|twin| listed_album(on_list, twin).is_some())
+                .map(|twin| through(release, twin))
         })
         .or_else(|| {
-            listed.iter().find_map(|(release, links)| {
-                links.first().map(|twin| through(release, twin, true))
-            })
+            listed
+                .iter()
+                .find_map(|(release, links)| links.first().map(|twin| through(release, twin)))
         })
-        .or_else(|| {
-            browsed.iter().find_map(|release| {
-                discogs(&release_links_of(&release.relations))
-                    .first()
-                    .map(|twin| through(&release.id, twin, false))
+}
+
+/// The first browsed release's Discogs link, when no release on the list
+/// names one.
+fn through_browsed(
+    browsed: &[musicbrainz::GroupRelease],
+    on_list: &[(MetadataRef, Option<String>)],
+) -> Option<Through> {
+    browsed.iter().find_map(|release| {
+        discogs_links(&release_links_of(&release.relations))
+            .first()
+            .map(|twin| Through {
+                release: release.id.clone(),
+                twin: twin.clone(),
+                release_on_list: false,
+                listed_album: listed_album(on_list, twin),
             })
-        })
+    })
 }
 
 /// Whether a page of `catalog` names an album this reading joins: one of

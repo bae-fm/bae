@@ -511,7 +511,8 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     let group = "chain-mb-group";
     providers.musicbrainz().seed_group_releases(
         group,
-        serde_json::json!({"releases": [{
+        0,
+        serde_json::json!({"release-count": 1, "releases": [{
             "id": "chain-mb-release",
             "relations": [{"url": {"resource": "https://www.discogs.com/release/70000011"}}],
             "release-group": {"id": group, "relations": []},
