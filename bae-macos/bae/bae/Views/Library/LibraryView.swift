@@ -220,7 +220,10 @@ extension LibraryView {
                     }
                 }
                 else if composerList.totalCount == 0 {
-                    LibraryEmptyState(title: "No composers")
+                    LibraryEmptyState(
+                        title: "No composers",
+                        nothingCredited: "No composer credits in your library"
+                    )
                 }
                 else {
                     HSplitView {
@@ -249,7 +252,10 @@ extension LibraryView {
                     }
                 }
                 else if artistList.totalCount == 0 {
-                    LibraryEmptyState(title: "No artists")
+                    LibraryEmptyState(
+                        title: "No artists",
+                        nothingCredited: "No artist credits in your library"
+                    )
                 }
                 else {
                     HSplitView {
