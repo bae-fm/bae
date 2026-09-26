@@ -526,7 +526,10 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
         });
 
     assert!(detail.live.facts.importing);
-    assert!(detail.live.actions.is_empty());
+    assert_eq!(
+        detail.live.actions,
+        vec![crate::import::CandidateAction::CancelImport]
+    );
     assert!(detail.failure.is_none());
 }
 
