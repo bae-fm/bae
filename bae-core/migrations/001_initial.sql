@@ -1303,7 +1303,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
     list         TEXT NOT NULL CHECK (list IN ('barcode', 'catalog', 'free_text')),
     position     INTEGER NOT NULL CHECK (position >= 0),
     value        TEXT NOT NULL,
-    origin       TEXT CHECK (origin IS NULL OR origin IN ('disc_toc', 'cue_sheet', 'artwork', 'artwork_barcode', 'folder_name', 'filename', 'text_file')),
+    origin       TEXT CHECK (origin IS NULL OR origin IN ('cue_sheet', 'artwork', 'artwork_barcode', 'folder_name', 'filename', 'text_file')),
     -- The candidate-relative path of the file the value was read off, where the
     -- origin is a file: the image a barcode was read off, the sheet a field came
     -- from. NULL where the origin names no file (the folder's own name), and for
@@ -1328,7 +1328,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_text_line (
     position      INTEGER NOT NULL CHECK (position >= 0),
     text          TEXT NOT NULL,
     origin        TEXT NOT NULL
-        CHECK (origin IN ('disc_toc', 'cue_sheet', 'artwork', 'folder_name', 'filename', 'text_file')),
+        CHECK (origin IN ('cue_sheet', 'artwork', 'folder_name', 'filename', 'text_file')),
     -- The candidate-relative path of the file the line was read off. NULL for
     -- the folder's own name, and for a re-identify pass over a library release,
     -- whose images are stored blobs rather than files of a folder.

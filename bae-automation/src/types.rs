@@ -165,17 +165,31 @@ pub enum AutomationLookupFailure {
     Diagnostic { detail: String },
 }
 
-/// Mirrors bae-core's `signals::SignalOrigin`.
+/// Mirrors bae-core's `signals::TextOrigin`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum AutomationSignalOrigin {
-    DiscToc,
+pub enum AutomationTextOrigin {
     CueSheet,
     Artwork,
-    ArtworkBarcode,
     FolderName,
     Filename,
     TextFile,
+}
+
+/// Mirrors bae-core's `signals::SignalOrigin`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationSignalOrigin {
+    Text { origin: AutomationTextOrigin },
+    ArtworkBarcode,
+}
+
+/// Mirrors bae-core's `identify::ToolbarOrigin`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationToolbarOrigin {
+    DiscToc,
+    Value { origin: AutomationSignalOrigin },
 }
 
 /// Mirrors bae-core's `signals::ImageRegion`: where on its image a value was
@@ -294,7 +308,7 @@ pub struct AutomationSignalOption {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationToolbarValue {
     pub value: String,
-    pub origin: AutomationSignalOrigin,
+    pub origin: AutomationToolbarOrigin,
 }
 
 /// Mirrors bae-core's `identify::ToolbarSignal`.

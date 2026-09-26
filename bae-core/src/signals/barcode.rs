@@ -2,7 +2,7 @@
 //! from the bars or read from the digits printed under them — or in a CUE
 //! `CATALOG` field. What counts as a code is [`crate::barcode`]'s to say.
 
-use super::{ArtworkAnalysis, ImageRegion, LookupFailure, SignalOrigin, SourcedValue};
+use super::{ArtworkAnalysis, ImageRegion, LookupFailure, SignalOrigin, SourcedValue, TextOrigin};
 use crate::barcode::Barcode;
 
 /// The codes found in a candidate's files, deduped, in discovery order, each with
@@ -39,7 +39,7 @@ impl BarcodeSignal {
 
 /// One code read off an image: the code, where on the image it was read,
 /// and how — [`SignalOrigin::ArtworkBarcode`] for bars the detector decoded,
-/// [`SignalOrigin::Artwork`] for the digits the recognizer read under them.
+/// [`TextOrigin::Artwork`] for the digits the recognizer read under them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct CodeReading {
     pub(super) code: Barcode,
@@ -67,7 +67,7 @@ pub(super) fn codes_in(analysis: &ArtworkAnalysis) -> impl Iterator<Item = CodeR
         Some(CodeReading {
             code: Barcode::printed(&line.text)?,
             region: line.region,
-            origin: SignalOrigin::Artwork,
+            origin: TextOrigin::Artwork.into(),
         })
     });
     detected.chain(printed)

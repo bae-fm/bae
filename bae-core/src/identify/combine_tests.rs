@@ -254,7 +254,7 @@ fn folder(lines: &[&str]) -> CandidateText {
         .iter()
         .map(|text| crate::signals::TextLine {
             text: (*text).to_string(),
-            origin: crate::signals::SignalOrigin::FolderName,
+            origin: crate::signals::TextOrigin::FolderName,
             file: None,
             region: None,
         })

@@ -8,7 +8,7 @@ use crate::barcode::Barcode;
 use crate::import::discid::read_rip_artifacts;
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::probe::{source_durations, SourceDurations};
-use crate::signals::{DiscIdSignal, SignalOrigin, SourcedValue};
+use crate::signals::{DiscIdSignal, SourcedValue, TextOrigin};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::{debug, warn};
@@ -76,7 +76,7 @@ fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
             };
             Some(SourcedValue::in_file(
                 code.into_string(),
-                SignalOrigin::CueSheet,
+                TextOrigin::CueSheet,
                 sheet.file.relative_path.clone(),
             ))
         })

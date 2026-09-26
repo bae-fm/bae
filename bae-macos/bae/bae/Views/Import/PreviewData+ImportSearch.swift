@@ -448,14 +448,14 @@
         /// A barcode read off the back cover, at the box the detector drew
         /// around it.
         static let backCoverBarcodeSource = BridgeValueSource(
-            origin: .artwork,
+            origin: .text(origin: .artwork),
             file: "Scans/back.jpg",
             region: BridgeImageRegion(x: 0.62, y: 0.78, width: 0.3, height: 0.1)
         )
 
         /// The same code as a CUE sheet states it.
         static let cueBarcodeSource = BridgeValueSource(
-            origin: .cueSheet,
+            origin: .text(origin: .cueSheet),
             file: "Artist Name - Album Title One.cue",
             region: nil
         )
@@ -474,7 +474,7 @@
                 value: "LC 6006",
                 sources: [
                     BridgeValueSource(
-                        origin: .folderName,
+                        origin: .text(origin: .folderName),
                         file: nil,
                         region: nil
                     )
@@ -484,7 +484,7 @@
                 value: "BN-4055",
                 sources: [
                     BridgeValueSource(
-                        origin: .artwork,
+                        origin: .text(origin: .artwork),
                         file: "Scans/back.jpg",
                         region: BridgeImageRegion(
                             x: 0.1,
@@ -499,7 +499,7 @@
                 value: "7243 8 29100",
                 sources: [
                     BridgeValueSource(
-                        origin: .artwork,
+                        origin: .text(origin: .artwork),
                         file: "Scans/inlay.jpg",
                         region: nil
                     )
@@ -509,7 +509,7 @@
                 value: "CDP 546",
                 sources: [
                     BridgeValueSource(
-                        origin: .textFile,
+                        origin: .text(origin: .textFile),
                         file: "info.txt",
                         region: nil
                     )

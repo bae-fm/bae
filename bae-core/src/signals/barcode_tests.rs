@@ -1,5 +1,7 @@
 use super::codes_in;
-use crate::signals::{ArtworkAnalysis, DetectedBarcode, ImageRegion, RecognizedLine, SignalOrigin};
+use crate::signals::{
+    ArtworkAnalysis, DetectedBarcode, ImageRegion, RecognizedLine, SignalOrigin, TextOrigin,
+};
 
 fn region(y: f32) -> Option<ImageRegion> {
     ImageRegion::new(0.1, y, 0.5, 0.05)
@@ -38,7 +40,7 @@ fn the_digits_printed_under_the_bars_are_a_code_the_detector_missed() {
         vec![(
             "5012345678900".to_string(),
             region(0.8),
-            SignalOrigin::Artwork
+            TextOrigin::Artwork.into()
         )]
     );
 }
@@ -66,12 +68,12 @@ fn the_bars_and_their_printed_digits_spell_one_code() {
             (
                 "0012345678905".to_string(),
                 region(0.8),
-                SignalOrigin::Artwork
+                TextOrigin::Artwork.into()
             ),
             (
                 "5012345678900".to_string(),
                 region(0.9),
-                SignalOrigin::Artwork
+                TextOrigin::Artwork.into()
             ),
         ]
     );

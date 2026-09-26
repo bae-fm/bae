@@ -608,7 +608,7 @@ mod tests {
         ProviderBarcodeLookup,
     };
     use bae_core::import::Catalog;
-    use bae_core::signals::{DiscIdSignal, LookupFailure, SignalOrigin, SourcedValue};
+    use bae_core::signals::{DiscIdSignal, LookupFailure, SourcedValue, TextOrigin};
 
     fn in_flight(barcode: BarcodeProgress) -> IdentifyState {
         IdentifyState::Triangulating {
@@ -626,7 +626,7 @@ mod tests {
                 barcode: BarcodeEvidence {
                     codes: vec![SourcedValue::in_file(
                         "0123456789012".to_string(),
-                        SignalOrigin::Artwork,
+                        TextOrigin::Artwork,
                         "back.jpg".to_string(),
                     )],
                     had_source: true,
@@ -681,7 +681,9 @@ mod tests {
         assert_eq!(
             rows[0].sources,
             vec![BridgeValueSource {
-                origin: BridgeSignalOrigin::Artwork,
+                origin: BridgeSignalOrigin::Text {
+                    origin: BridgeTextOrigin::Artwork,
+                },
                 file: Some("back.jpg".to_string()),
                 region: None,
             }]

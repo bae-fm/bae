@@ -1,26 +1,25 @@
 //! Where a signal value came from — the provenance a signal badge labels
 //! itself with ("from Cover OCR", "from the folder name", …).
+//!
+//! Two origins, one inside the other. A line of text is read off one of the
+//! candidate's text surfaces ([`TextOrigin`]). A value — a barcode or a
+//! catalog number — is read out of such a line, or is a barcode the detector
+//! decoded from the bars ([`SignalOrigin`]). Each type admits only what can
+//! happen to what it describes: no line of text came from the bars.
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use super::candidate_text::Source;
 
-/// The surface a signal value was harvested from — a coarse, UI-facing projection of
-/// the internal `Source` (plus the inherent origins of the disc-ID and CUE-`CATALOG`
-/// signals), so a badge can say where its value came from without leaking file paths.
-///
-/// `Serialize`/`Deserialize`: carried on the ledger a run records, which
-/// `identify::TerminalVerdict` persists.
+/// The surface a line of text was read off — a coarse, UI-facing projection
+/// of the internal `Source`, so a badge can say where a value came from
+/// without leaking file paths.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub enum SignalOrigin {
-    /// The disc's table of contents (LOG/CUE).
-    DiscToc,
+pub enum TextOrigin {
     /// A CUE sheet field (`CATALOG`, `PERFORMER`/`TITLE`).
     CueSheet,
     /// Text recognized on a cover/artwork image (OCR) — a catalog number, or
     /// the digits printed under a barcode's bars.
     Artwork,
-    /// A barcode the detector decoded from the bars on a cover/artwork image.
-    ArtworkBarcode,
     /// The candidate's folder name — a path component or a bracketed tag.
     FolderName,
     /// A file's name.
@@ -29,26 +28,40 @@ pub enum SignalOrigin {
     TextFile,
 }
 
-impl SignalOrigin {
-    /// Every origin, for reading one back from the word it was stored as.
-    const ALL: [SignalOrigin; 7] = [
-        Self::DiscToc,
+/// Where a barcode or catalog number was read: out of a line of text, or —
+/// for a barcode — from the bars themselves.
+///
+/// `Serialize`/`Deserialize`: carried on the ledger a run records, which
+/// `identify::TerminalVerdict` persists.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum SignalOrigin {
+    /// Read out of a line of text on this surface.
+    Text(TextOrigin),
+    /// A barcode the detector decoded from the bars on a cover/artwork image.
+    ArtworkBarcode,
+}
+
+impl From<TextOrigin> for SignalOrigin {
+    fn from(origin: TextOrigin) -> Self {
+        Self::Text(origin)
+    }
+}
+
+impl TextOrigin {
+    const ALL: [TextOrigin; 5] = [
         Self::CueSheet,
         Self::Artwork,
-        Self::ArtworkBarcode,
         Self::FolderName,
         Self::Filename,
         Self::TextFile,
     ];
 
-    /// The stored `origin` column value — the same word on a candidate's
-    /// signal rows and on a release's mark rows.
+    /// The stored `origin` column value of a text line — and of a value read
+    /// out of one.
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::DiscToc => "disc_toc",
             Self::CueSheet => "cue_sheet",
             Self::Artwork => "artwork",
-            Self::ArtworkBarcode => "artwork_barcode",
             Self::FolderName => "folder_name",
             Self::Filename => "filename",
             Self::TextFile => "text_file",
@@ -56,32 +69,55 @@ impl SignalOrigin {
     }
 }
 
-impl std::str::FromStr for SignalOrigin {
+impl SignalOrigin {
+    /// The stored `origin` column value of a barcode or catalog number.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Text(origin) => origin.as_str(),
+            Self::ArtworkBarcode => "artwork_barcode",
+        }
+    }
+}
+
+impl std::str::FromStr for TextOrigin {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::ALL
             .into_iter()
             .find(|origin| origin.as_str() == s)
-            .ok_or_else(|| format!("unknown signal origin: {s}"))
+            .ok_or_else(|| format!("unknown text origin: {s}"))
+    }
+}
+
+impl std::str::FromStr for SignalOrigin {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == Self::ArtworkBarcode.as_str() {
+            return Ok(Self::ArtworkBarcode);
+        }
+        s.parse::<TextOrigin>()
+            .map(Self::Text)
+            .map_err(|_| format!("unknown signal origin: {s}"))
     }
 }
 
 /// Reading a text source's origin belongs to the extraction pass, which is
 /// desktop-only; the origins themselves travel everywhere.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl SignalOrigin {
+impl TextOrigin {
     /// The path payloads on `Artwork` / `FilenameGeneric` / `TextFile` are dropped
     /// here: a badge names the kind of surface, not the file. A value that has to
     /// point at the file it was read off carries it separately, on
     /// [`SourcedValue::origin_path`].
-    pub fn from_text_source(source: &Source) -> Self {
+    pub fn of_source(source: &Source) -> Self {
         match source {
-            Source::Artwork { .. } => SignalOrigin::Artwork,
-            Source::PathComponent => SignalOrigin::FolderName,
-            Source::FilenameGeneric { .. } => SignalOrigin::Filename,
-            Source::CueField { .. } => SignalOrigin::CueSheet,
-            Source::TextFile { .. } => SignalOrigin::TextFile,
+            Source::Artwork { .. } => Self::Artwork,
+            Source::PathComponent => Self::FolderName,
+            Source::FilenameGeneric { .. } => Self::Filename,
+            Source::CueField { .. } => Self::CueSheet,
+            Source::TextFile { .. } => Self::TextFile,
         }
     }
 }
@@ -177,10 +213,10 @@ pub struct SourcedValue {
 
 impl SourcedValue {
     /// A value whose origin names no file to point at.
-    pub fn new(value: String, origin: SignalOrigin) -> Self {
+    pub fn new(value: String, origin: impl Into<SignalOrigin>) -> Self {
         Self {
             value,
-            origin,
+            origin: origin.into(),
             origin_path: None,
             region: None,
         }
@@ -188,10 +224,10 @@ impl SourcedValue {
 
     /// A value read off one of the candidate's files, addressed the way every
     /// other surface addresses it.
-    pub fn in_file(value: String, origin: SignalOrigin, file_id: String) -> Self {
+    pub fn in_file(value: String, origin: impl Into<SignalOrigin>, file_id: String) -> Self {
         Self {
             value,
-            origin,
+            origin: origin.into(),
             origin_path: Some(file_id),
             region: None,
         }

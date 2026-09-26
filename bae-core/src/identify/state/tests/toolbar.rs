@@ -60,7 +60,7 @@ fn toolbar_while_triangulating_shows_spinners() {
         disc.shown,
         Some(ToolbarValue {
             value: "disc-hash".to_string(),
-            origin: SignalOrigin::DiscToc,
+            origin: ToolbarOrigin::DiscToc,
         })
     );
     assert_eq!(disc.state, SignalState::LookingUp);
@@ -100,8 +100,8 @@ fn every_extracted_catalog_number_is_an_option_on_the_one_badge() {
             disc("disc-hash", 5),
             BarcodeSignal::Absent,
             vec![
-                SourcedValue::new("LBL 001".to_string(), SignalOrigin::FolderName),
-                SourcedValue::new("LBL 999".to_string(), SignalOrigin::Artwork),
+                SourcedValue::new("LBL 001".to_string(), TextOrigin::FolderName),
+                SourcedValue::new("LBL 999".to_string(), TextOrigin::Artwork),
             ],
         ),
     );
@@ -118,8 +118,8 @@ fn every_extracted_catalog_number_is_an_option_on_the_one_badge() {
             .map(|o| (o.value.as_str(), o.origin))
             .collect::<Vec<_>>(),
         vec![
-            ("LBL 001", SignalOrigin::FolderName),
-            ("LBL 999", SignalOrigin::Artwork),
+            ("LBL 001", TextOrigin::FolderName.into()),
+            ("LBL 999", TextOrigin::Artwork.into()),
         ]
     );
 }

@@ -29,15 +29,15 @@
 //! effects for the service to run. No I/O, no async, nothing outside itself.
 
 use super::combine::{combine_results, Findings, LibraryStatuses};
-use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal, ToolbarValue};
+use super::toolbar::{
+    SignalKind, SignalOption, SignalState, ToolbarOrigin, ToolbarSignal, ToolbarValue,
+};
 use super::view::{run_view, IdentifyRunView};
 use crate::db::LibraryStatus;
 use crate::import::album_links::{self, GroupReading, ToRead};
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::{Catalog, LookupChoices};
-use crate::signals::{
-    ArtworkScan, BarcodeSignal, LookupFailure, SignalOrigin, Signals, SourcedValue,
-};
+use crate::signals::{ArtworkScan, BarcodeSignal, LookupFailure, Signals, SourcedValue};
 
 /// One candidate's identify state.
 ///
@@ -181,7 +181,7 @@ impl IdentifyState {
                 .discid_value()
                 .map(|value| ToolbarValue {
                     value,
-                    origin: SignalOrigin::DiscToc,
+                    origin: ToolbarOrigin::DiscToc,
                 }),
             state,
             excluded: context.disc.excluded,
@@ -248,7 +248,7 @@ impl IdentifyState {
 fn shown_value(sighting: &SourcedValue) -> ToolbarValue {
     ToolbarValue {
         value: sighting.value.clone(),
-        origin: sighting.origin,
+        origin: ToolbarOrigin::Value(sighting.origin),
     }
 }
 

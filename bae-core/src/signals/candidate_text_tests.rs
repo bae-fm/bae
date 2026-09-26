@@ -138,10 +138,10 @@ fn sourced_catalogs_attribute_origin_per_line() {
     assert_eq!(
         out,
         vec![
-            SourcedValue::new("WPCR-80001".to_string(), SignalOrigin::FolderName),
+            SourcedValue::new("WPCR-80001".to_string(), TextOrigin::FolderName),
             SourcedValue::in_file(
                 "COCQ 84487".to_string(),
-                SignalOrigin::Artwork,
+                TextOrigin::Artwork,
                 "cover.jpg".to_string()
             )
             .at(region),

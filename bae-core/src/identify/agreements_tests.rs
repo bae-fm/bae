@@ -1,11 +1,11 @@
 use super::*;
 use crate::import::Catalog;
-use crate::signals::SignalOrigin;
+use crate::signals::TextOrigin;
 
 fn line(text: &str) -> TextLine {
     TextLine {
         text: text.to_string(),
-        origin: SignalOrigin::FolderName,
+        origin: TextOrigin::FolderName,
         file: None,
         region: None,
     }
@@ -260,7 +260,7 @@ fn an_area_agrees_whichever_way_the_folder_spells_it() {
     }
 }
 
-fn read_off(origin: SignalOrigin, text: &str) -> TextLine {
+fn read_off(origin: TextOrigin, text: &str) -> TextLine {
     TextLine {
         origin,
         ..line(text)
@@ -286,9 +286,9 @@ fn states_country(code: &str, lines: &[TextLine]) -> bool {
 #[test]
 fn a_country_code_is_a_tag_in_a_name_and_a_word_everywhere_else() {
     for origin in [
-        SignalOrigin::Artwork,
-        SignalOrigin::TextFile,
-        SignalOrigin::CueSheet,
+        TextOrigin::Artwork,
+        TextOrigin::TextFile,
+        TextOrigin::CueSheet,
     ] {
         for printed in ["the band played for all of us.", "MADE IN US"] {
             assert!(
@@ -303,7 +303,7 @@ fn a_country_code_is_a_tag_in_a_name_and_a_word_everywhere_else() {
     }
     assert!(states_country(
         "US",
-        &[read_off(SignalOrigin::Filename, "01 - Song (US).flac")]
+        &[read_off(TextOrigin::Filename, "01 - Song (US).flac")]
     ));
 }
 

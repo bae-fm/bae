@@ -2,7 +2,7 @@
 //! from a candidate's surfaces (artwork OCR, folder name, filenames, CUE,
 //! text files) and classified by the `candidate_text` module.
 
-use super::{ImageRegion, LookupFailure, SignalOrigin, SourcedValue};
+use super::{ImageRegion, LookupFailure, SourcedValue, TextOrigin};
 
 /// Two classified pools. `catalogs` are the catalog-number candidates: a run
 /// looks up the ones the person chose, those same chosen ones are the catalog
@@ -60,7 +60,7 @@ impl TextSignal {
 pub struct TextLine {
     /// The line as it was read, verbatim.
     pub text: String,
-    pub origin: SignalOrigin,
+    pub origin: TextOrigin,
     /// The candidate-relative path of the file the line was read off, where
     /// the origin is a file. `None` for the folder's own name, and for a
     /// re-identify pass over a library release, whose images are stored blobs.

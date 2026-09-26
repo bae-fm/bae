@@ -96,7 +96,7 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
     context.barcode.had_source = true;
     context.barcode.codes = vec![crate::signals::SourcedValue::new(
         "012345".to_string(),
-        crate::signals::SignalOrigin::Artwork,
+        crate::signals::TextOrigin::Artwork,
     )];
     context.providers = vec![Catalog::MusicBrainz];
     let (settled, _) = step(

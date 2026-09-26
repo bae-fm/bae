@@ -30,7 +30,7 @@ pub use failure::LookupFailure;
 // and a release's marks carry it to every surface, mobile included — so it
 // stays out of the desktop-only extraction block below.
 pub mod origin;
-pub use origin::{ImageRegion, SignalOrigin, SourcedValue};
+pub use origin::{ImageRegion, SignalOrigin, SourcedValue, TextOrigin};
 
 desktop_only! {
     mod analyzer;

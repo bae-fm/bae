@@ -46,11 +46,20 @@ pub struct SignalOption {
     pub chosen: bool,
 }
 
+/// Where the value a badge shows was read: the disc's table of contents for
+/// the disc ID, or wherever a barcode or catalog number was read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToolbarOrigin {
+    /// The disc's table of contents (LOG/CUE).
+    DiscToc,
+    Value(SignalOrigin),
+}
+
 /// The value a badge shows, and where it was read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolbarValue {
     pub value: String,
-    pub origin: SignalOrigin,
+    pub origin: ToolbarOrigin,
 }
 
 /// One badge in the signals toolbar. An unchecked badge still appears (struck

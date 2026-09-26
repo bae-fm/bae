@@ -71,10 +71,16 @@ enum SignalBadgeStyle {
     /// no file to name.
     static func originLabel(for origin: BridgeSignalOrigin) -> String {
         switch origin {
-        case .discToc: String(localized: "Disc TOC")
+        case .text(let surface): originLabel(for: surface)
+        case .artworkBarcode: String(localized: "Cover barcode")
+        }
+    }
+
+    /// The surface a line of text was read off.
+    static func originLabel(for surface: BridgeTextOrigin) -> String {
+        switch surface {
         case .cueSheet: String(localized: "CUE sheet")
         case .artwork: String(localized: "Cover OCR")
-        case .artworkBarcode: String(localized: "Cover barcode")
         case .folderName: String(localized: "folder name")
         case .filename: String(localized: "file name")
         case .textFile: String(localized: "Text file")

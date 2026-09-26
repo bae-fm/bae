@@ -103,7 +103,10 @@ fn failure_of(
     }))
 }
 
-fn origin_of(stored: &str) -> Result<SignalOrigin, DbError> {
+/// A stored origin word read back as the origin type its row admits: a
+/// barcode's or catalog number's [`SignalOrigin`], or a text line's
+/// [`TextOrigin`].
+fn origin_of<O: std::str::FromStr<Err = String>>(stored: &str) -> Result<O, DbError> {
     stored.parse().map_err(DbError::Message)
 }
 
@@ -482,7 +485,7 @@ fn sourced_value(
 ) -> Result<SourcedValue, DbError> {
     let origin = origin
         .ok_or_else(|| DbError::Message(format!("the stored value {value:?} states no origin")))?;
-    let origin = origin_of(&origin)?;
+    let origin: SignalOrigin = origin_of(&origin)?;
     let region = stored_region(&value, region)?;
     Ok(match origin_path {
         Some(file_id) => SourcedValue::in_file(value, origin, file_id),

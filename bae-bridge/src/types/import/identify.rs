@@ -221,7 +221,18 @@ pub struct BridgeSignalOption {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeToolbarValue {
     pub value: String,
-    pub origin: BridgeSignalOrigin,
+    pub origin: BridgeToolbarOrigin,
+}
+
+/// Where a badge's value was read. Mirrors
+/// `bae_core::identify::ToolbarOrigin`.
+#[derive(Debug, Clone, Copy, uniffi::Enum)]
+pub enum BridgeToolbarOrigin {
+    /// The disc's table of contents (LOG/CUE).
+    DiscToc,
+    Value {
+        origin: BridgeSignalOrigin,
+    },
 }
 
 /// One badge in the signals toolbar — a pre-shaped row the UI renders without
@@ -278,7 +289,14 @@ mirror_struct! {
     #[cfg(feature = "desktop")]
     BridgeToolbarValue = bae_core::identify::ToolbarValue,
     from_core: fn,
-    fields: { value, origin: (BridgeSignalOrigin) },
+    fields: { value, origin: (BridgeToolbarOrigin) },
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeToolbarOrigin = bae_core::identify::ToolbarOrigin,
+    from_core: fn,
+    variants: { DiscToc, Value(origin: (BridgeSignalOrigin)) },
 }
 
 mirror_struct! {

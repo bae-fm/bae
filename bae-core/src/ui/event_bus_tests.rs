@@ -56,7 +56,7 @@ fn extracted(catalog: &str) -> crate::signals::Signals {
         text: crate::signals::TextSignal::Settled {
             catalogs: vec![crate::signals::SourcedValue::new(
                 catalog.to_string(),
-                crate::signals::SignalOrigin::Artwork,
+                crate::signals::TextOrigin::Artwork,
             )],
             free_text: Vec::new(),
         },

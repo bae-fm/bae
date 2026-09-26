@@ -1,5 +1,5 @@
 use super::*;
-use crate::signals::{ArtworkScan, SignalOrigin};
+use crate::signals::{ArtworkScan, SignalOrigin, TextOrigin};
 use crate::signals::{
     ArtworkAnalysis, ArtworkAnalyzer, DetectedBarcode, ImageRegion, RecognizedLine,
 };
@@ -546,12 +546,12 @@ FILE \"audio.flac\" WAVE\n  \
         [
             SourcedValue::in_file(
                 "0012345678905".to_string(),
-                SignalOrigin::CueSheet,
+                TextOrigin::CueSheet,
                 "Album.cue".to_string(),
             ),
             SourcedValue::in_file(
                 "0012345678905".to_string(),
-                SignalOrigin::Artwork,
+                TextOrigin::Artwork,
                 "Back.jpg".to_string(),
             ),
         ]
@@ -784,12 +784,12 @@ FILE "01 - Track.flac" WAVE
 
     let folder_line = found("Artist Alpha - Album Title [16033-2]")
         .unwrap_or_else(|| panic!("the folder's own name, as written; got {pool:?}"));
-    assert_eq!(folder_line.origin, SignalOrigin::FolderName);
+    assert_eq!(folder_line.origin, TextOrigin::FolderName);
     assert_eq!(folder_line.file, None);
 
     let filename_line = found("Artist Alpha - Back Cover")
         .unwrap_or_else(|| panic!("the image's file name; got {pool:?}"));
-    assert_eq!(filename_line.origin, SignalOrigin::Filename);
+    assert_eq!(filename_line.origin, TextOrigin::Filename);
     assert_eq!(
         filename_line.file.as_deref(),
         Some("Artist Alpha - Back Cover.jpg")
@@ -797,17 +797,17 @@ FILE "01 - Track.flac" WAVE
 
     let cue_line =
         found("Artist Alpha").unwrap_or_else(|| panic!("the CUE PERFORMER; got {pool:?}"));
-    assert_eq!(cue_line.origin, SignalOrigin::CueSheet);
+    assert_eq!(cue_line.origin, TextOrigin::CueSheet);
     assert_eq!(cue_line.file.as_deref(), Some("Album.cue"));
 
     let text_file_line =
         found("Atlantic Records, Inc.").unwrap_or_else(|| panic!("the .txt line; got {pool:?}"));
-    assert_eq!(text_file_line.origin, SignalOrigin::TextFile);
+    assert_eq!(text_file_line.origin, TextOrigin::TextFile);
     assert_eq!(text_file_line.file.as_deref(), Some("info.txt"));
 
     let ocr_line =
         found("Made in US · 1976").unwrap_or_else(|| panic!("the OCR line; got {pool:?}"));
-    assert_eq!(ocr_line.origin, SignalOrigin::Artwork);
+    assert_eq!(ocr_line.origin, TextOrigin::Artwork);
     assert_eq!(
         ocr_line.file.as_deref(),
         Some("Artist Alpha - Back Cover.jpg")

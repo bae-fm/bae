@@ -21,7 +21,7 @@
 //!   trailing bracketed tails from a path segment.
 //! * `parse_filename_stem` — file stem, minus extension and leading track number.
 
-use crate::signals::{ImageRegion, SignalOrigin, SourcedValue};
+use crate::signals::{ImageRegion, SourcedValue, TextOrigin};
 use regex::Regex;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -48,9 +48,9 @@ use crate::util::text::normalize;
 /// a number's sightings together and shows each place beside it.
 pub(crate) fn catalog_numbers_sourced(lines: &[SourcedLine]) -> Vec<SourcedValue> {
     let mut out: Vec<SourcedValue> = Vec::new();
-    let mut seen: HashSet<(String, SignalOrigin, Option<String>)> = HashSet::new();
+    let mut seen: HashSet<(String, TextOrigin, Option<String>)> = HashSet::new();
     for line in lines {
-        let origin = SignalOrigin::from_text_source(&line.source);
+        let origin = TextOrigin::of_source(&line.source);
         let file_id = line.source.file_id();
         for s in find_catalogs_in_line(&line.text) {
             if seen.insert((s.clone(), origin, file_id.clone())) {

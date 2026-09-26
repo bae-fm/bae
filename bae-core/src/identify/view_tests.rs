@@ -8,7 +8,7 @@ use crate::identify::{Findings, IdentifyFailure, LookupProvenance, NarrowedOut, 
 use crate::import::release_group::unranked;
 use crate::import::search::MetadataResult;
 use crate::import::Catalog;
-use crate::signals::{SignalOrigin, SourcedValue};
+use crate::signals::{SourcedValue, TextOrigin};
 
 pub(super) const MB: Catalog = Catalog::MusicBrainz;
 const DG: Catalog = Catalog::Discogs;
@@ -29,7 +29,7 @@ fn context() -> SignalsContext {
             ..Default::default()
         },
         barcode: BarcodeEvidence {
-            codes: vec![SourcedValue::new("A".to_string(), SignalOrigin::Artwork)],
+            codes: vec![SourcedValue::new("A".to_string(), TextOrigin::Artwork)],
             had_source: true,
             ..Default::default()
         },
@@ -113,8 +113,8 @@ fn a_landed_provider_s_matches_show_before_the_other_answers() {
 fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
     let mut context = context();
     context.barcode.codes = vec![
-        SourcedValue::new("BOXSET".to_string(), SignalOrigin::Artwork),
-        SourcedValue::new("DISC".to_string(), SignalOrigin::CueSheet),
+        SourcedValue::new("BOXSET".to_string(), TextOrigin::Artwork),
+        SourcedValue::new("DISC".to_string(), TextOrigin::CueSheet),
     ];
     context.barcode.excluded = vec!["BOXSET".to_string()];
     context.providers = vec![MB];
@@ -155,8 +155,8 @@ fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
 fn every_code_left_out_lists_them_all_unasked() {
     let mut context = context();
     context.barcode.codes = vec![
-        SourcedValue::new("BOXSET".to_string(), SignalOrigin::Artwork),
-        SourcedValue::new("DISC".to_string(), SignalOrigin::CueSheet),
+        SourcedValue::new("BOXSET".to_string(), TextOrigin::Artwork),
+        SourcedValue::new("DISC".to_string(), TextOrigin::CueSheet),
     ];
     context.barcode.excluded = vec!["BOXSET".to_string(), "DISC".to_string()];
     let state = IdentifyState::Triangulating {
@@ -226,9 +226,9 @@ fn a_left_out_disc_id_reads_apart_from_one_no_provider_answers() {
 fn a_provider_s_walk_fills_one_cell_per_code() {
     let mut context = context();
     context.barcode.codes = vec![
-        SourcedValue::new("A".to_string(), SignalOrigin::Artwork),
-        SourcedValue::new("B".to_string(), SignalOrigin::Artwork),
-        SourcedValue::new("C".to_string(), SignalOrigin::Artwork),
+        SourcedValue::new("A".to_string(), TextOrigin::Artwork),
+        SourcedValue::new("B".to_string(), TextOrigin::Artwork),
+        SourcedValue::new("C".to_string(), TextOrigin::Artwork),
     ];
     let state = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped { track_count: 9 },
@@ -279,8 +279,8 @@ fn a_provider_s_walk_fills_one_cell_per_code() {
 fn a_failed_walk_warns_on_the_code_it_failed_at() {
     let mut context = context();
     context.barcode.codes = vec![
-        SourcedValue::new("A".to_string(), SignalOrigin::Artwork),
-        SourcedValue::new("B".to_string(), SignalOrigin::Artwork),
+        SourcedValue::new("A".to_string(), TextOrigin::Artwork),
+        SourcedValue::new("B".to_string(), TextOrigin::Artwork),
     ];
     let state = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped { track_count: 9 },
@@ -317,15 +317,11 @@ fn a_code_seen_in_two_places_is_one_row_with_two_sources() {
     context.barcode.codes = vec![
         SourcedValue::in_file(
             "A".to_string(),
-            SignalOrigin::CueSheet,
+            TextOrigin::CueSheet,
             "disc.cue".to_string(),
         ),
-        SourcedValue::in_file(
-            "A".to_string(),
-            SignalOrigin::Artwork,
-            "back.jpg".to_string(),
-        )
-        .at(region),
+        SourcedValue::in_file("A".to_string(), TextOrigin::Artwork, "back.jpg".to_string())
+            .at(region),
     ];
     let run = run_of(in_flight(context));
     let rows = barcode_rows(&run);
@@ -334,12 +330,12 @@ fn a_code_seen_in_two_places_is_one_row_with_two_sources() {
         rows[0].sources,
         vec![
             ValueSource {
-                origin: SignalOrigin::CueSheet,
+                origin: TextOrigin::CueSheet.into(),
                 file: Some("disc.cue".to_string()),
                 region: None,
             },
             ValueSource {
-                origin: SignalOrigin::Artwork,
+                origin: TextOrigin::Artwork.into(),
                 file: Some("back.jpg".to_string()),
                 region,
             },
@@ -386,18 +382,18 @@ fn codes_read_so_far_wait_while_the_artwork_is_still_being_read() {
 fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
     let mut context = context();
     context.catalog.numbers = vec![
-        SourcedValue::new("LBL-1".to_string(), SignalOrigin::FolderName),
+        SourcedValue::new("LBL-1".to_string(), TextOrigin::FolderName),
         SourcedValue::in_file(
             "LBL-2".to_string(),
-            SignalOrigin::Artwork,
+            TextOrigin::Artwork,
             "back.jpg".to_string(),
         ),
         SourcedValue::in_file(
             "LBL-2".to_string(),
-            SignalOrigin::TextFile,
+            TextOrigin::TextFile,
             "info.txt".to_string(),
         ),
-        SourcedValue::new("LBL-3".to_string(), SignalOrigin::Filename),
+        SourcedValue::new("LBL-3".to_string(), TextOrigin::Filename),
     ];
     context.catalog.chosen = vec![ChosenCatalog {
         value: "LBL-2".to_string(),
@@ -460,8 +456,8 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
 fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
     let mut context = context();
     context.barcode.codes = vec![
-        SourcedValue::new("A".to_string(), SignalOrigin::Artwork),
-        SourcedValue::new("B".to_string(), SignalOrigin::Artwork),
+        SourcedValue::new("A".to_string(), TextOrigin::Artwork),
+        SourcedValue::new("B".to_string(), TextOrigin::Artwork),
     ];
     let in_flight = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped { track_count: 9 },
@@ -545,7 +541,7 @@ fn a_manual_only_folder_with_catalog_numbers_offers_them() {
     };
     context.catalog.numbers = vec![SourcedValue::new(
         "LBL-1".to_string(),
-        SignalOrigin::FolderName,
+        TextOrigin::FolderName,
     )];
     let settled = crate::identify::state::settle_for_tests(
         DiscidProgress::Skipped { track_count: 9 },
@@ -634,7 +630,7 @@ fn recorded_ledger() -> IdentifyRunView {
             rows: vec![SignalValueRow {
                 value: "0123456789012".to_string(),
                 sources: vec![ValueSource {
-                    origin: SignalOrigin::Artwork,
+                    origin: TextOrigin::Artwork.into(),
                     file: Some("back.jpg".to_string()),
                     region: None,
                 }],

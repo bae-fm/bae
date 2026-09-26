@@ -11,7 +11,7 @@ use crate::import::{
     TrackArtistAssignments,
 };
 use crate::signals::{
-    BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
+    BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextOrigin, TextSignal,
 };
 
 #[path = "pane_rows/artist_identity_conflicts.rs"]
@@ -246,16 +246,16 @@ async fn every_settled_signal_shape_round_trips() {
                     // put the barcode on that image.
                     SourcedValue::in_file(
                         "0123456789012".to_string(),
-                        SignalOrigin::Artwork,
+                        TextOrigin::Artwork,
                         "Scans/back.jpg".to_string(),
                     ),
-                    SourcedValue::new("9876543210987".to_string(), SignalOrigin::CueSheet),
+                    SourcedValue::new("9876543210987".to_string(), TextOrigin::CueSheet),
                 ],
             },
             TextSignal::Settled {
                 catalogs: vec![SourcedValue::new(
                     "CAT-1".to_string(),
-                    SignalOrigin::FolderName,
+                    TextOrigin::FolderName,
                 )],
                 free_text: vec!["Album Title".to_string(), "Artist Name".to_string()],
             },
@@ -279,14 +279,14 @@ async fn every_settled_signal_shape_round_trips() {
                 failure: LookupFailure::Provider { status: Some(503) },
                 codes: vec![SourcedValue::new(
                     "0123456789012".to_string(),
-                    SignalOrigin::Filename,
+                    TextOrigin::Filename,
                 )],
             },
             TextSignal::Failed {
                 failure: LookupFailure::Timeout,
                 catalogs: vec![SourcedValue::new(
                     "CAT-2".to_string(),
-                    SignalOrigin::TextFile,
+                    TextOrigin::TextFile,
                 )],
                 free_text: vec!["Some Line".to_string()],
             },

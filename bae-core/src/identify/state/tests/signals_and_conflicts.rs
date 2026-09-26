@@ -146,7 +146,7 @@ fn lookup_barcode(source: Catalog, barcode: &str) -> Effect {
 fn artwork_codes(values: &[&str]) -> Vec<SourcedValue> {
     values
         .iter()
-        .map(|v| SourcedValue::new(v.to_string(), SignalOrigin::Artwork))
+        .map(|v| SourcedValue::new(v.to_string(), TextOrigin::Artwork))
         .collect()
 }
 
@@ -156,7 +156,7 @@ fn signals(disc_id: DiscIdSignal, barcode: BarcodeSignal, catalogs: &[&str]) -> 
         barcode,
         catalogs
             .iter()
-            .map(|s| SourcedValue::new(s.to_string(), SignalOrigin::FolderName))
+            .map(|s| SourcedValue::new(s.to_string(), TextOrigin::FolderName))
             .collect(),
     )
 }

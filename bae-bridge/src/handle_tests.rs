@@ -384,7 +384,7 @@ fn extracted_signals_cross_the_bus_with_their_key() {
         text: bae_core::signals::TextSignal::Settled {
             catalogs: vec![bae_core::signals::SourcedValue::new(
                 "CAT-1".to_string(),
-                bae_core::signals::SignalOrigin::Artwork,
+                bae_core::signals::TextOrigin::Artwork,
             )],
             free_text: vec!["Album Title".to_string()],
         },

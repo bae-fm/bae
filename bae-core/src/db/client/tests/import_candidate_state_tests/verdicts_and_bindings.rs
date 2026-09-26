@@ -358,13 +358,13 @@ async fn the_candidate_s_text_round_trips_line_by_line() {
     let pool = vec![
         crate::signals::TextLine {
             text: "AC-DC - Dirty Deeds Done Dirt Cheap [16033-2]".to_string(),
-            origin: crate::signals::SignalOrigin::FolderName,
+            origin: crate::signals::TextOrigin::FolderName,
             file: None,
             region: None,
         },
         crate::signals::TextLine {
             text: "Atlantic Records, Inc.".to_string(),
-            origin: crate::signals::SignalOrigin::Artwork,
+            origin: crate::signals::TextOrigin::Artwork,
             file: Some("back.jpg".to_string()),
             region: crate::signals::ImageRegion::new(0.1, 0.2, 0.3, 0.4),
         },

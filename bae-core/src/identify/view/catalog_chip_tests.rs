@@ -7,13 +7,14 @@ use super::*;
 use crate::identify::{Findings, LookupProvenance, NarrowedOut, TerminalVerdict};
 use crate::import::search::MetadataResult;
 use crate::signals::TextLine;
+use crate::signals::TextOrigin;
 
 fn folder(lines: &[&str], struck_out: &[&str]) -> CandidateText {
     let pool: Vec<TextLine> = lines
         .iter()
         .map(|text| TextLine {
             text: (*text).to_string(),
-            origin: SignalOrigin::FolderName,
+            origin: TextOrigin::FolderName,
             file: None,
             region: None,
         })

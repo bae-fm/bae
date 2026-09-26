@@ -279,12 +279,12 @@ mod identify_mirrors {
     use bae_core::identify::state::{DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
         BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState,
-        ProviderBarcodeLookup, SignalKind, SignalState, ToolbarSignal, ToolbarValue,
+        ProviderBarcodeLookup, SignalKind, SignalState, ToolbarOrigin, ToolbarSignal, ToolbarValue,
     };
     use bae_core::import::search::MetadataResult;
     use bae_core::import::Catalog;
     use bae_core::signals::{
-        BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
+        BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextOrigin, TextSignal,
     };
     /// The mirrors render every populated field, so this fills the ones the
     /// placeholder leaves empty. `source_tracks` stays unasked: these fixtures
@@ -493,12 +493,12 @@ mod identify_mirrors {
                     codes: vec![
                         SourcedValue::in_file(
                             "0123456789012".to_string(),
-                            SignalOrigin::Artwork,
+                            TextOrigin::Artwork,
                             "back.jpg".to_string(),
                         ),
                         SourcedValue::in_file(
                             "9999999999999".to_string(),
-                            SignalOrigin::Artwork,
+                            TextOrigin::Artwork,
                             "inlay.jpg".to_string(),
                         ),
                     ],
@@ -525,7 +525,8 @@ mod identify_mirrors {
         assert_eq!(run["barcode"]["scanning"], false);
         let rows = run["barcode"]["rows"].as_array().unwrap();
         assert_eq!(rows[0]["value"], "0123456789012");
-        assert_eq!(rows[0]["sources"][0]["origin"], "artwork");
+        assert_eq!(rows[0]["sources"][0]["origin"]["kind"], "text");
+        assert_eq!(rows[0]["sources"][0]["origin"]["origin"], "artwork");
         assert_eq!(rows[0]["sources"][0]["file"], "back.jpg");
         assert_eq!(rows[0]["cells"][0]["source"], "music_brainz");
         assert_eq!(rows[0]["cells"][0]["lookup"]["kind"], "no_match");
@@ -558,7 +559,7 @@ mod identify_mirrors {
             kind: SignalKind::DiscId,
             shown: Some(ToolbarValue {
                 value: "disc-hash".to_string(),
-                origin: SignalOrigin::DiscToc,
+                origin: ToolbarOrigin::DiscToc,
             }),
             state: SignalState::Failed {
                 failure: LookupFailure::Provider { status: Some(503) },
@@ -570,7 +571,7 @@ mod identify_mirrors {
         let json = serde_json::to_value(AutomationToolbarSignal::from_core(signal)).unwrap();
         assert_eq!(json["kind"], "disc_id");
         assert_eq!(json["shown"]["value"], "disc-hash");
-        assert_eq!(json["shown"]["origin"], "disc_toc");
+        assert_eq!(json["shown"]["origin"]["kind"], "disc_toc");
         assert_eq!(json["state"]["kind"], "failed");
         assert_eq!(json["state"]["failure"]["kind"], "provider");
         assert_eq!(json["state"]["failure"]["status"], 503);
@@ -587,14 +588,11 @@ mod identify_mirrors {
             barcode: BarcodeSignal::Settled {
                 codes: vec![SourcedValue::new(
                     "0123456789012".to_string(),
-                    SignalOrigin::Artwork,
+                    TextOrigin::Artwork,
                 )],
             },
             text: TextSignal::Settled {
-                catalogs: vec![SourcedValue::new(
-                    "CAT-1".to_string(),
-                    SignalOrigin::CueSheet,
-                )],
+                catalogs: vec![SourcedValue::new("CAT-1".to_string(), TextOrigin::CueSheet)],
                 free_text: vec!["Album Title".to_string()],
             },
             // A plausible total for the ten tracks above. Not zero, which
@@ -609,10 +607,10 @@ mod identify_mirrors {
         assert_eq!(json["disc_id"]["track_count"], 10);
         assert_eq!(json["barcode"]["kind"], "settled");
         assert_eq!(json["barcode"]["codes"][0]["value"], "0123456789012");
-        assert_eq!(json["barcode"]["codes"][0]["origin"], "artwork");
+        assert_eq!(json["barcode"]["codes"][0]["origin"]["origin"], "artwork");
         assert_eq!(json["text"]["kind"], "settled");
         assert_eq!(json["text"]["catalogs"][0]["value"], "CAT-1");
-        assert_eq!(json["text"]["catalogs"][0]["origin"], "cue_sheet");
+        assert_eq!(json["text"]["catalogs"][0]["origin"]["origin"], "cue_sheet");
         assert_eq!(json["text"]["free_text"][0], "Album Title");
     }
 }

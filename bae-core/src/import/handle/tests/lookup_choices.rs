@@ -210,13 +210,13 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
                 text: crate::signals::TextSignal::Settled {
                     catalogs: vec![crate::signals::SourcedValue::new(
                         printed.to_string(),
-                        crate::signals::SignalOrigin::FolderName,
+                        crate::signals::TextOrigin::FolderName,
                     )],
                     free_text: Vec::new(),
                 },
                 text_pool: vec![crate::signals::TextLine {
                     text: printed.to_string(),
-                    origin: crate::signals::SignalOrigin::FolderName,
+                    origin: crate::signals::TextOrigin::FolderName,
                     file: None,
                     region: None,
                 }],

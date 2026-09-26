@@ -30,7 +30,7 @@
 use super::combine::LookupProvenance;
 use crate::import::search::MetadataResult;
 use crate::pressing::ReleaseArea;
-use crate::signals::{SignalOrigin, TextLine};
+use crate::signals::{TextLine, TextOrigin};
 use crate::util::text::squash;
 use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
@@ -270,7 +270,7 @@ struct NormalizedLine {
 }
 
 impl NormalizedLine {
-    fn of(text: &str, origin: SignalOrigin) -> Option<Self> {
+    fn of(text: &str, origin: TextOrigin) -> Option<Self> {
         let mut run = String::new();
         let mut starts = Vec::new();
         let mut ends = Vec::new();
@@ -280,16 +280,12 @@ impl NormalizedLine {
             ends.push(run.len());
         }
         let tags = match origin {
-            SignalOrigin::FolderName | SignalOrigin::Filename => text
+            TextOrigin::FolderName | TextOrigin::Filename => text
                 .split(|c: char| !c.is_alphanumeric())
                 .filter(|word| !word.is_empty() && word.chars().all(|c| c.is_uppercase()))
                 .map(str::to_string)
                 .collect(),
-            SignalOrigin::DiscToc
-            | SignalOrigin::CueSheet
-            | SignalOrigin::Artwork
-            | SignalOrigin::ArtworkBarcode
-            | SignalOrigin::TextFile => Vec::new(),
+            TextOrigin::CueSheet | TextOrigin::Artwork | TextOrigin::TextFile => Vec::new(),
         };
         (!run.is_empty()).then_some(Self {
             run,

@@ -11,7 +11,7 @@ use super::candidate_text::{
     self, apply_free_text_cutoff, catalog_numbers_sourced, cluster_lines_incremental,
     rank_clusters_in_place, strip_path_component, Cluster, Source, SourcedLine,
 };
-use crate::signals::{SignalOrigin, SourcedValue, TextLine};
+use crate::signals::{SourcedValue, TextLine, TextOrigin};
 use std::collections::HashSet;
 
 /// `lines` is the source-tagged text that gets filtered / clustered / ranked.
@@ -64,7 +64,7 @@ impl Pool {
         let mut seen_catalog: HashSet<String> = catalogs.iter().map(|c| c.value.clone()).collect();
         for extra in &self.bracket_catalogs {
             if seen_catalog.insert(extra.clone()) {
-                catalogs.push(SourcedValue::new(extra.clone(), SignalOrigin::FolderName));
+                catalogs.push(SourcedValue::new(extra.clone(), TextOrigin::FolderName));
             }
         }
 
@@ -100,7 +100,7 @@ impl Pool {
             .iter()
             .map(|line| TextLine {
                 text: line.text.clone(),
-                origin: SignalOrigin::from_text_source(&line.source),
+                origin: TextOrigin::of_source(&line.source),
                 file: line.source.file_id(),
                 region: line.region,
             })

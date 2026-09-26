@@ -15,23 +15,20 @@ struct SignalSourceChip: View {
         switch source.origin {
         // The cover scan the value was read off is not shown, so there is
         // nothing for a chip to name.
-        case .artwork, .artworkBarcode:
+        case .text(origin: .artwork), .artworkBarcode:
             EmptyView()
-        case .cueSheet:
+        case .text(origin: .cueSheet):
             SignalTextChip(text: "CUE")
                 .help(fileName ?? SignalBadgeStyle.originLabel(for: .cueSheet))
-        case .textFile:
+        case .text(origin: .textFile):
             SignalTextChip(text: "TXT")
                 .help(fileName ?? SignalBadgeStyle.originLabel(for: .textFile))
-        case .folderName:
+        case .text(origin: .folderName):
             SignalTextChip(text: String(localized: "Folder"))
                 .help(SignalBadgeStyle.originLabel(for: .folderName))
-        case .filename:
+        case .text(origin: .filename):
             SignalTextChip(text: String(localized: "File"))
                 .help(fileName ?? SignalBadgeStyle.originLabel(for: .filename))
-        case .discToc:
-            SignalTextChip(text: "LOG")
-                .help(fileName ?? SignalBadgeStyle.originLabel(for: .discToc))
         }
     }
 }
@@ -85,21 +82,21 @@ func lastPathComponent(_ path: String) -> String {
             )
             SignalSourceChip(
                 source: BridgeValueSource(
-                    origin: .cueSheet,
+                    origin: .text(origin: .cueSheet),
                     file: "Album.cue",
                     region: nil
                 )
             )
             SignalSourceChip(
                 source: BridgeValueSource(
-                    origin: .folderName,
+                    origin: .text(origin: .folderName),
                     file: nil,
                     region: nil
                 )
             )
             SignalSourceChip(
                 source: BridgeValueSource(
-                    origin: .textFile,
+                    origin: .text(origin: .textFile),
                     file: "info.txt",
                     region: nil
                 )

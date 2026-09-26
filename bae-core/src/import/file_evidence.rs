@@ -61,7 +61,7 @@ pub fn file_evidence(signals: &Signals) -> Vec<FileEvidence> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::signals::{BarcodeSignal, SignalOrigin, SourcedValue, TextSignal};
+    use crate::signals::{BarcodeSignal, SourcedValue, TextOrigin, TextSignal};
 
     fn signals() -> Signals {
         Signals {
@@ -74,17 +74,17 @@ mod tests {
                 codes: vec![
                     SourcedValue::in_file(
                         "5099969394522".to_string(),
-                        SignalOrigin::Artwork,
+                        TextOrigin::Artwork,
                         "Back.jpg".to_string(),
                     ),
                     SourcedValue::in_file(
                         "5099969394539".to_string(),
-                        SignalOrigin::Artwork,
+                        TextOrigin::Artwork,
                         "Back.jpg".to_string(),
                     ),
                     SourcedValue::in_file(
                         "0602527336459".to_string(),
-                        SignalOrigin::Artwork,
+                        TextOrigin::Artwork,
                         "Inlay.jpg".to_string(),
                     ),
                 ],
@@ -138,7 +138,7 @@ mod tests {
         fileless.barcode = BarcodeSignal::Settled {
             codes: vec![SourcedValue::new(
                 "5099969394522".to_string(),
-                SignalOrigin::FolderName,
+                TextOrigin::FolderName,
             )],
         };
 

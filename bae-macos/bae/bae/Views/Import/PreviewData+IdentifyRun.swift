@@ -34,7 +34,7 @@
                         value: "9999999999999",
                         sources: [
                             BridgeValueSource(
-                                origin: .artwork,
+                                origin: .text(origin: .artwork),
                                 file: "Scans/inlay.jpg",
                                 region: nil
                             )
@@ -131,7 +131,7 @@
                         value: "9999999999999",
                         sources: [
                             BridgeValueSource(
-                                origin: .artwork,
+                                origin: .text(origin: .artwork),
                                 file: "Scans/inlay.jpg",
                                 region: nil
                             )
@@ -163,7 +163,7 @@
                         value: "9999999999999",
                         sources: [
                             BridgeValueSource(
-                                origin: .artwork,
+                                origin: .text(origin: .artwork),
                                 file: "Scans/inlay.jpg",
                                 region: nil
                             )

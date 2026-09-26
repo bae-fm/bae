@@ -564,9 +564,23 @@ mirror_enum! {
 
 mirror_enum! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationTextOrigin = bae_core::signals::TextOrigin,
+    from_core: pub(crate) fn,
+    variants: { CueSheet, Artwork, FolderName, Filename, TextFile },
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationSignalOrigin = bae_core::signals::SignalOrigin,
     from_core: pub(crate) fn,
-    variants: { DiscToc, CueSheet, Artwork, ArtworkBarcode, FolderName, Filename, TextFile },
+    variants: { Text(origin: (AutomationTextOrigin)), ArtworkBarcode },
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationToolbarOrigin = bae_core::identify::ToolbarOrigin,
+    from_core: pub(crate) fn,
+    variants: { DiscToc, Value(origin: (AutomationSignalOrigin)) },
 }
 
 mirror_struct! {
@@ -689,7 +703,7 @@ mirror_struct! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationToolbarValue = bae_core::identify::ToolbarValue,
     from_core: pub(crate) fn,
-    fields: { value, origin: (AutomationSignalOrigin) },
+    fields: { value, origin: (AutomationToolbarOrigin) },
 }
 
 mirror_struct! {
