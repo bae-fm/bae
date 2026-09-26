@@ -227,3 +227,48 @@ async fn a_pane_edit_lands_while_a_pick_reads_another_folders_tags() {
     landed.expect("the edit lands without waiting for the pick's tag reads");
     picked.expect("the pick lands once its read finishes");
 }
+
+/// Taking a track out of a folder redraws its draft from the tags of the
+/// tracks left. While that read waits on the volume, an edit in another
+/// candidate's pane lands.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pane_edit_lands_while_a_file_decision_reads_another_folders_tags() {
+    let (handle, reader, mut entered, (held_key, held_folder), edited_key, _tmp) =
+        two_candidates().await;
+    let _opens = OpensOnDrop(reader.clone());
+    handle
+        .select_candidate_metadata_provenance(
+            held_key.clone(),
+            crate::import::MetadataProvenance::FileMetadata,
+        )
+        .await
+        .unwrap();
+    handle
+        .library_manager
+        .set_prefill_with_file_metadata(true)
+        .unwrap();
+    reader.hold(&held_folder);
+    let decision = tokio::spawn({
+        let handle = handle.clone();
+        async move {
+            handle
+                .set_file_role(
+                    held_key,
+                    "01 Track.flac".to_string(),
+                    crate::import::folder_scanner::FileRoleChoice::NotATrack,
+                )
+                .await
+        }
+    });
+    tokio::time::timeout(Duration::from_secs(10), entered.recv())
+        .await
+        .expect("the decision reads the folder's tags")
+        .expect("the reader reports its reads");
+
+    let landed = tokio::time::timeout(Duration::from_secs(5), retitle(&handle, &edited_key)).await;
+    reader.open();
+    let decided = decision.await.unwrap();
+    shut_down(handle).await;
+    landed.expect("the edit lands without waiting for the decision's tag reads");
+    decided.expect("the decision lands once its read finishes");
+}

@@ -675,9 +675,10 @@ impl ImportServiceHandle {
             }))
     }
 
-    /// The stored candidate whose preparation may still be changed. Callers
-    /// hold `folder_state_commit` across this check and the ensuing write, so
-    /// an import claim cannot land between them.
+    /// The stored candidate whose preparation may still be changed. A caller
+    /// about to write holds `folder_state_commit` across this check and the
+    /// write, so an import claim cannot land between them; asked without the
+    /// lock, it only refuses early, before work the write would refuse anyway.
     pub(super) async fn editable_candidate_for_commit(
         &self,
         key: &str,

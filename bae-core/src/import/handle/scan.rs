@@ -678,7 +678,12 @@ impl ImportServiceHandle {
         offered_revision: u64,
         decide: impl FnOnce(&mut crate::import::folder_scanner::CandidateFileEdits),
     ) -> Result<(), crate::import::ImportError> {
-        let _commit = self.folder_state_commit.lock().await;
+        // Everything the decision implies — the settled files of every
+        // candidate with these files, the draft their tags seed, the artist
+        // images it credits — is prepared before the commit lock: reading tags
+        // off a network share and fetching images take as long as the share
+        // and the network do, and every pane control waits on this lock. The
+        // lock then covers only the check that nothing moved, and the write.
         let content_hash = files.content_hash();
         let current_candidate = self.editable_candidate_for_commit(candidate_key).await?;
         let current_files = &current_candidate.files;
@@ -716,111 +721,139 @@ impl ImportServiceHandle {
         }
         decide(&mut edits);
 
-        let matching_files = crate::import::candidates::files_for_identity(
-            &self.library_manager.load_all_folder_scan_items().await?,
-            &content_hash,
-            expected_revision,
-        );
-        let (settled, edits) = tokio::task::spawn_blocking(move || {
-            let mut settled = Vec::with_capacity(matching_files.len());
-            for (key, mut files) in matching_files {
-                files.apply_candidate_file_edits(&edits)?;
-                settled.push((key, files));
-            }
-            Ok::<_, crate::import::folder_scanner::InvalidReason>((settled, edits))
-        })
-        .await
-        .map_err(|e| crate::import::ImportError::Internal {
-            detail: format!("candidate file edit task failed: {e}"),
-        })??;
-
-        let settled_files = settled
-            .iter()
-            .find(|(key, _)| key == candidate_key)
-            .map(|(_, files)| files)
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!("file decision produced no settled candidate for {candidate_key}"),
-            })?;
-        let initialized = if self
-            .library_manager
-            .get_config()
-            .prefs
-            .prefill_with_file_metadata
-        {
-            let stored = self
-                .library_manager
-                .load_candidate_file_tag_snapshot(
-                    &current_candidate.watched_folder_path,
-                    candidate_key,
-                )
-                .await?
-                .ok_or_else(|| crate::import::ImportError::Internal {
-                    detail: format!("{candidate_key} has no scanned tag snapshot identity"),
-                })?;
-            let mut replacement = current_candidate.clone();
-            replacement.files = settled_files.clone();
-            let reader = self.file_tags.clone();
-            let clock = self.clock.clone();
-            let ids = self.ids.clone();
-            tokio::task::spawn_blocking(move || {
-                crate::import::file_metadata_seed::FileMetadataSeed::read(
-                    &replacement,
-                    stored.scan_generation,
-                    reader.as_ref(),
-                    clock.as_ref(),
-                    ids.as_ref(),
-                )
-                .map(|seed| seed.draft)
+        loop {
+            let matching_files = crate::import::candidates::files_for_identity(
+                &self.library_manager.load_all_folder_scan_items().await?,
+                &content_hash,
+                expected_revision,
+            );
+            let matching_keys = matching_files
+                .iter()
+                .map(|(key, _)| key.clone())
+                .collect::<std::collections::BTreeSet<_>>();
+            let decided = edits.clone();
+            let settled = tokio::task::spawn_blocking(move || {
+                let mut settled = Vec::with_capacity(matching_files.len());
+                for (key, mut files) in matching_files {
+                    files.apply_candidate_file_edits(&decided)?;
+                    settled.push((key, files));
+                }
+                Ok::<_, crate::import::folder_scanner::InvalidReason>(settled)
             })
             .await
-            .map_err(|error| crate::import::ImportError::Internal {
-                detail: format!("replacement track metadata task failed: {error}"),
-            })??
-        } else {
-            crate::import::pane::blank_candidate_source(settled_files).draft
-        };
-        let draft = crate::import::pane::redraw_draft_for_files(
-            current_files,
-            initialized,
-            &preparation.draft,
-            self.ids.as_ref(),
-        );
-        let active = draft.release_edit();
-        let (source_discogs_artist_ids, artist_images) = self
-            .prepared_artist_images_for_active(
-                preparation.assets.applied_source.as_ref(),
-                &active,
-                &draft.tracks,
-                preparation.assets.artist_images,
-            )
-            .await?;
-        let mapping_preparation = crate::import::CandidateMappingPreparation {
-            draft,
-            source_discogs_artist_ids,
-            artist_images,
-        };
+            .map_err(|e| crate::import::ImportError::Internal {
+                detail: format!("candidate file edit task failed: {e}"),
+            })??;
 
-        // Durable first, and atomically: the decision and the verdict it
-        // invalidates move together, so nothing can observe a folder whose
-        // stored answer describes the shape it just stopped having.
-        let (_next_revision, candidates) = self
-            .preparations
-            .store_file_decisions(
-                &crate::import::CandidateAsRead {
-                    content_hash: content_hash.clone(),
-                    file_edit_revision: expected_revision,
-                    metadata_revision: preparation.metadata_revision,
-                },
-                candidate_key,
-                &edits,
-                &settled,
-                &mapping_preparation,
+            let settled_files = settled
+                .iter()
+                .find(|(key, _)| key == candidate_key)
+                .map(|(_, files)| files)
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!(
+                        "file decision produced no settled candidate for {candidate_key}"
+                    ),
+                })?;
+            let initialized = if self
+                .library_manager
+                .get_config()
+                .prefs
+                .prefill_with_file_metadata
+            {
+                let stored = self
+                    .library_manager
+                    .load_candidate_file_tag_snapshot(
+                        &current_candidate.watched_folder_path,
+                        candidate_key,
+                    )
+                    .await?
+                    .ok_or_else(|| crate::import::ImportError::Internal {
+                        detail: format!("{candidate_key} has no scanned tag snapshot identity"),
+                    })?;
+                let mut replacement = current_candidate.clone();
+                replacement.files = settled_files.clone();
+                let reader = self.file_tags.clone();
+                let clock = self.clock.clone();
+                let ids = self.ids.clone();
+                tokio::task::spawn_blocking(move || {
+                    crate::import::file_metadata_seed::FileMetadataSeed::read(
+                        &replacement,
+                        stored.scan_generation,
+                        reader.as_ref(),
+                        clock.as_ref(),
+                        ids.as_ref(),
+                    )
+                    .map(|seed| seed.draft)
+                })
+                .await
+                .map_err(|error| crate::import::ImportError::Internal {
+                    detail: format!("replacement track metadata task failed: {error}"),
+                })??
+            } else {
+                crate::import::pane::blank_candidate_source(settled_files).draft
+            };
+            let draft = crate::import::pane::redraw_draft_for_files(
+                current_files,
+                initialized,
+                &preparation.draft,
+                self.ids.as_ref(),
+            );
+            let active = draft.release_edit();
+            let (source_discogs_artist_ids, artist_images) = self
+                .prepared_artist_images_for_active(
+                    preparation.assets.applied_source.as_ref(),
+                    &active,
+                    &draft.tracks,
+                    preparation.assets.artist_images.clone(),
+                )
+                .await?;
+            let mapping_preparation = crate::import::CandidateMappingPreparation {
+                draft,
+                source_discogs_artist_ids,
+                artist_images,
+            };
+
+            let commit = self
+                .commit_lock_for_revision(candidate_key, &content_hash, expected_revision)
+                .await?;
+            // A scan that stored or dropped another folder with these same
+            // files while this was prepared changed which candidates the
+            // decision settles: prepare it again over the ones there are now.
+            let matching_now = crate::import::candidates::files_for_identity(
+                &self.library_manager.load_all_folder_scan_items().await?,
+                &content_hash,
+                expected_revision,
             )
-            .await?;
-        for candidate in candidates {
-            self.announce_source_candidate(candidate);
+            .into_iter()
+            .map(|(key, _)| key)
+            .collect::<std::collections::BTreeSet<_>>();
+            if matching_now != matching_keys {
+                drop(commit);
+                continue;
+            }
+            // Durable first, and atomically: the decision and the verdict it
+            // invalidates move together, so nothing can observe a folder whose
+            // stored answer describes the shape it just stopped having. The
+            // write refuses a metadata revision that moved since it was read.
+            let (_next_revision, candidates) = self
+                .preparations
+                .store_file_decisions(
+                    &crate::import::CandidateAsRead {
+                        content_hash: content_hash.clone(),
+                        file_edit_revision: expected_revision,
+                        metadata_revision: preparation.metadata_revision,
+                    },
+                    candidate_key,
+                    &edits,
+                    &settled,
+                    &mapping_preparation,
+                )
+                .await?;
+            for candidate in candidates {
+                self.announce_source_candidate(candidate);
+            }
+            return Ok(());
         }
-        Ok(())
     }
 
     /// A scanned folder candidate's files, read by key, or `None` for a key
