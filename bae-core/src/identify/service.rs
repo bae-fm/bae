@@ -3,7 +3,6 @@
 //! candidate runs in its own spawned driver task.
 
 use super::annotate_with_library_status;
-use super::code::{lookup_code, PrintedCode};
 use super::discid::lookup_and_resolve;
 use super::state::{step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, TitleSearch};
 use crate::import::search::{search_source, SearchQuery, SourceLookup};
@@ -398,14 +397,10 @@ fn dispatch_effect(
         Effect::LookupBarcode { source, barcode } => {
             let library_manager = inner.library_manager.clone();
             runtime.spawn(async move {
-                let lookup = lookup_code(
-                    source,
-                    PrintedCode::Barcode,
-                    &barcode,
-                    &library_manager,
-                    priority,
-                )
-                .await;
+                let query = SearchQuery::Barcode {
+                    barcode: barcode.clone(),
+                };
+                let lookup = search_source(&library_manager, source, &query, priority).await;
                 if token.is_cancelled() {
                     return;
                 }
@@ -467,14 +462,10 @@ fn dispatch_effect(
         Effect::LookupCatalog { source, catalog } => {
             let library_manager = inner.library_manager.clone();
             runtime.spawn(async move {
-                let lookup = lookup_code(
-                    source,
-                    PrintedCode::CatalogNumber,
-                    &catalog,
-                    &library_manager,
-                    priority,
-                )
-                .await;
+                let query = SearchQuery::CatalogNumber {
+                    catalog_number: catalog.clone(),
+                };
+                let lookup = search_source(&library_manager, source, &query, priority).await;
                 if token.is_cancelled() {
                     return;
                 }

@@ -30,7 +30,6 @@
 //! the user for that candidate — derived on every read, never stored.
 
 pub mod agreements;
-pub mod code;
 pub mod combine;
 pub(crate) mod country;
 pub mod discid;
