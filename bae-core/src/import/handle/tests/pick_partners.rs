@@ -499,7 +499,13 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     use crate::import::album_links::{GroupToRead, ToRead};
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    // The pick offers the joined group's album address, which the archive
+    // holds no image at.
+    let archive = crate::util::http::serve_not_found().await;
+    let (handle, _tmp, key, _hash) = pane_fixture_with(
+        crate::util::http::Http::for_test().serve("coverartarchive.org", &archive),
+    )
+    .await;
     handle
         .library_manager
         .set_discogs_key(

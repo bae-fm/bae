@@ -440,8 +440,17 @@ fn artist_at(row: &Row<'_>, first: usize) -> coven::rusqlite::Result<ArtistRef> 
 }
 
 /// The stored release `release` names, read whole, or `None` when nothing
-/// has fetched it. Its records carry what reading its album's release group
-/// found the album to be, as well as what its documents state.
+/// has fetched it.
+///
+/// An album a kept statement joins to one of the release's own — one its
+/// documents never reach — is derived here, on every read, from the statement
+/// and the stored release together: its record, and for a MusicBrainz release
+/// group the archive's images of it. Nothing about it is stored with the
+/// release, so the release reads the same whether it was fetched before the
+/// statement was read or after, and stops naming the album when a later
+/// reading stops stating it. The album's own text — its title, credits and
+/// year — lives in documents a statement does not carry, so a joined album
+/// contributes none; the release's own album documents state those.
 pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
     sql: &S,
     release: &MetadataRef,
@@ -555,29 +564,13 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
             }
         })
         .collect::<Result<_, DbError>>()?;
-    // What reading its album's group found the album to be on a catalog its
-    // records do not reach yet — a join a list read through a Wikidata item
-    // or another pressing's link, which this release's own documents never
-    // state.
-    let albums: Vec<MetadataRef> = source_group_id
-        .iter()
-        .map(|group| MetadataRef::new(release.catalog, group.clone()))
-        .chain(other_records.iter().filter_map(ReleaseRecord::album_ref))
-        .collect();
-    for statement in super::album_link_rows::group_statements_on(sql, &albums)? {
-        for album in &albums {
-            let Some(other) = statement.other_than(album) else {
-                continue;
-            };
-            let recorded = other.catalog == release.catalog
-                || other_records
-                    .iter()
-                    .any(|record| record.catalog() == other.catalog);
-            if !recorded {
-                other_records.push(ReleaseRecord::album(&other));
-            }
-        }
-    }
+    let joined = super::album_link_rows::joined_albums_on(
+        sql,
+        release.catalog,
+        source_group_id.as_deref(),
+        &other_records,
+    )?;
+    other_records.extend(joined.iter().map(ReleaseRecord::album));
     other_records.sort_by_key(|record| crate::import::source_release::catalog_rank(record.catalog()));
     let mut covers = ReleaseCovers {
         release: Vec::new(),
@@ -633,12 +626,26 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
             other => return Err(unreadable("cover scope", other)),
         }
     }
-    let archive_groups = sql.query(
+    let mut archive_groups: Vec<String> = sql.query(
         "SELECT group_id FROM source_release_archive_group \
          WHERE catalog = ? AND release_id = ? ORDER BY position",
         params![catalog, key],
         |row| row.get(0),
     )?;
+    // A joined release group's images, addressed by its id as the extraction
+    // addresses a group its documents reach.
+    for group in joined
+        .iter()
+        .filter(|album| album.catalog == Catalog::MusicBrainz)
+    {
+        crate::import::cover_art::push_unique_cover(
+            &mut covers.album,
+            RemoteCover::musicbrainz_release_group(&group.key),
+        );
+        if !archive_groups.contains(&group.key) {
+            archive_groups.push(group.key.clone());
+        }
+    }
     let mediums = load_mediums(sql, catalog, key)?;
     let unfetched = sql
         .query(

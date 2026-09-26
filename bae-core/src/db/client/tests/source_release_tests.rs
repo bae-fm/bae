@@ -237,17 +237,17 @@ async fn an_unfetched_release_reads_as_nothing() {
 
 /// A Discogs release whose documents never reach a MusicBrainz album reads
 /// back naming the release group a reading found its master to be — the
-/// statement a list read through another pressing's link — and nothing a
-/// statement about another master names. A later reading of the group that
-/// names nothing takes the record away again.
+/// statement a list read through another pressing's link — with the
+/// archive's images of that group, and nothing a statement about another
+/// master names. It reads the same whether it was stored before the statement
+/// was kept or after, and a later reading of the group that names nothing
+/// takes the album away again.
 #[tokio::test]
 async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
     use crate::import::album_links::{AlbumLink, AlbumStatement};
+    use crate::import::cover_art::RemoteCover;
     use crate::import::ReleaseRecord;
 
-    let (db, _tmp) = empty_db().await;
-    let discogs = discogs_documents().extract().unwrap();
-    db.save_source_release(&discogs).await.unwrap();
     let through = |master: &str| AlbumLink {
         album: MetadataRef::new(Catalog::Discogs, master),
         stated: AlbumStatement::Release {
@@ -255,33 +255,53 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
             twin: MetadataRef::new(Catalog::Discogs, "4243"),
         },
     };
-    db.replace_group_album_links(vec![
-        ("mb-group-same".to_string(), vec![through("909")]),
-        ("mb-group-other".to_string(), vec![through("910")]),
-    ])
-    .await
-    .unwrap();
-
-    let records = |release: Option<crate::import::source_release::SourceRelease>| {
-        release.expect("the saved release reads back").records()
-    };
-    assert_eq!(
-        records(db.load_source_release(discogs.release()).await.unwrap()),
+    let statements = || {
         vec![
-            ReleaseRecord::album(&MetadataRef::new(Catalog::MusicBrainz, "mb-group-same")),
-            ReleaseRecord::new(discogs.release(), Some("909".to_string()), true),
+            ("mb-group-same".to_string(), vec![through("909")]),
+            ("mb-group-other".to_string(), vec![through("910")]),
         ]
+    };
+    let discogs = discogs_documents().extract().unwrap();
+    let mut expected = discogs.clone();
+    expected
+        .other_records
+        .push(ReleaseRecord::album(&MetadataRef::new(
+            Catalog::MusicBrainz,
+            "mb-group-same",
+        )));
+    expected
+        .covers
+        .album
+        .push(RemoteCover::musicbrainz_release_group("mb-group-same"));
+    expected.archive_groups.push("mb-group-same".to_string());
+
+    // Stored first, then the statement read.
+    let (db, _tmp) = empty_db().await;
+    db.save_source_release(&discogs).await.unwrap();
+    db.replace_group_album_links(statements()).await.unwrap();
+    let before = db.load_source_release(discogs.release()).await.unwrap();
+    assert_eq!(before.as_ref(), Some(&expected));
+
+    // The statement read first, then stored.
+    let (db_after, _tmp_after) = empty_db().await;
+    db_after
+        .replace_group_album_links(statements())
+        .await
+        .unwrap();
+    db_after.save_source_release(&discogs).await.unwrap();
+    assert_eq!(
+        db_after
+            .load_source_release(discogs.release())
+            .await
+            .unwrap(),
+        before
     );
 
     db.replace_group_album_links(vec![("mb-group-same".to_string(), Vec::new())])
         .await
         .unwrap();
     assert_eq!(
-        records(db.load_source_release(discogs.release()).await.unwrap()),
-        vec![ReleaseRecord::new(
-            discogs.release(),
-            Some("909".to_string()),
-            true
-        )]
+        db.load_source_release(discogs.release()).await.unwrap(),
+        Some(discogs)
     );
 }

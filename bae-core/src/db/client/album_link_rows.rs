@@ -158,6 +158,37 @@ pub(super) fn group_statements_on<S: QueryRows>(
     Ok(statements)
 }
 
+/// The albums kept statements join to a stored release's own albums — its
+/// group, and the albums its records name — on a catalog none of its records
+/// reaches. The release's own catalog is never one: its album is its group.
+pub(super) fn joined_albums_on<S: QueryRows>(
+    sql: &S,
+    catalog: Catalog,
+    source_group_id: Option<&str>,
+    records: &[crate::import::ReleaseRecord],
+) -> Result<Vec<MetadataRef>, DbError> {
+    let albums: Vec<MetadataRef> = source_group_id
+        .map(|group| MetadataRef::new(catalog, group))
+        .into_iter()
+        .chain(records.iter().filter_map(crate::import::ReleaseRecord::album_ref))
+        .collect();
+    let mut joined: Vec<MetadataRef> = Vec::new();
+    for statement in group_statements_on(sql, &albums)? {
+        for album in &albums {
+            let Some(other) = statement.other_than(album) else {
+                continue;
+            };
+            let reached = other.catalog == catalog
+                || records.iter().any(|record| record.catalog() == other.catalog)
+                || joined.iter().any(|named| named.catalog == other.catalog);
+            if !reached {
+                joined.push(other);
+            }
+        }
+    }
+    Ok(joined)
+}
+
 impl Database {
     /// Keep what reading these release groups found each to be, replacing
     /// whatever an earlier reading of the same group found. A group whose
