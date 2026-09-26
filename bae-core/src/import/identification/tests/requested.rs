@@ -770,3 +770,60 @@ async fn the_automatic_admission_leaves_a_candidate_being_looked_up_alone() {
     );
     fixture.provider.release();
 }
+
+/// A run a person asked for whose answer is refused — they edited the
+/// candidate while it was being written — is asked for again straight away,
+/// with automatic identification off: the person is still owed an answer, and
+/// nothing else would come to give one.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_requested_answer_refused_by_an_edit_is_asked_for_again() {
+    let fixture = Fixture::new("requested-refused-asks-again").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    let probed = fixture.probed_total_ms(&dir);
+    fixture
+        .provider
+        .route("/discid/", 200, discid_json("mb-1", "rg-1", &[probed, 0]));
+    fixture.provider.route(
+        "/release/mb-1?",
+        200,
+        release_json("mb-1", "rg-1", &[probed, 0]),
+    );
+    fixture.scan(1).await;
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
+    fixture.provider.hold("/release/mb-1?");
+    let mut events = fixture.import.subscribe_events();
+
+    fixture.start_explicit_lookup(&dir);
+    wait_for_request(&fixture.provider, "/release/mb-1?", 1).await;
+    fixture
+        .import
+        .set_candidate_edit_field(
+            &key,
+            crate::import::DraftFieldEdit::Text {
+                field: crate::import::CandidateEditField::AlbumTitle,
+                value: "Retitled".to_string(),
+            },
+        )
+        .await
+        .unwrap();
+    fixture.provider.release();
+
+    tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
+        .await
+        .expect("the refused request is asked for again and stores its answer");
+    let runs: std::collections::HashSet<IdentifyRunId> = drain_events(&mut events)
+        .into_iter()
+        .filter_map(|event| match event {
+            ImportEvent::IdentifyStateChanged {
+                candidate_key, run, ..
+            } if candidate_key == key => Some(run),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(runs.len(), 2, "the refused answer's run, then the one asked again");
+}
