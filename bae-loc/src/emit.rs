@@ -101,9 +101,14 @@ fn localized<'a>(msg: &'a Message, locale: &str) -> (&'a str, &'static str) {
 /// `stringUnit`. Each locale's value is parsed independently, so a translation
 /// may carry that locale's own plural categories (one/few/many/other) where the
 /// English source has only one/other.
+///
+/// The positions the arguments take are the source message's, whatever order
+/// a translation puts them in: a caller passes them in the order the English
+/// states them, so a translation that says the second one first still names
+/// it `%2$`.
 fn apple_unit(msg: &Message, value: &str, state: &str) -> Result<serde_json::Value, String> {
     let nodes = mf1::parse(value)?;
-    let order = ordered_args(&nodes);
+    let order = ordered_args(&mf1::parse(&msg.value)?);
 
     // Whole-message plural -> variations.plural. Other plural shapes are errors.
     if let [Node::Plural { arg, cases }] = nodes.as_slice() {
@@ -395,6 +400,21 @@ translations = { ar = "أحادي", "zh-Hans" = "单声道" }
             "{paths:?}"
         );
         assert!(paths.contains(&"values-ar/core_strings.xml"), "{paths:?}");
+    }
+
+    /// A translation that puts the arguments in another order keeps each
+    /// argument's source position, which is the order a caller passes them.
+    #[test]
+    fn apple_positions_follow_the_source_order() {
+        let c = cat(r#"
+[messages."core.pressing.media_count"]
+args = { count = "Int", medium = "Str" }
+value = "{count}×{medium}"
+translations = { ja = "{medium}×{count}" }
+"#);
+        let json = apple_xcstrings(&c).unwrap();
+        assert!(json.contains("%1$lld×%2$@"), "{json}");
+        assert!(json.contains("%2$@×%1$lld"), "{json}");
     }
 
     #[test]
