@@ -361,6 +361,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
             }],
             pressings: vec![0],
             narrowed_out: crate::identify::NarrowedOut::default(),
+            medium_conflict: None,
         },
         track_count,
         ledger: None,

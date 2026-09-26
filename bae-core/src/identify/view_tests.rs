@@ -709,6 +709,7 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
                 }],
                 pressings: vec![0],
             },
+            medium_conflict: None,
         },
         track_count: 9,
         ledger: Some(recorded_ledger()),

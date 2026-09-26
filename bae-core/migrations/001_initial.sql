@@ -1435,9 +1435,16 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
         OR (json_valid(ledger_json) AND json_type(ledger_json) = 'object')
     ),
     identified_at TEXT NOT NULL,
+    -- The folder's own files rule out every row the verdict found: it is a CD
+    -- rip and no row could be a CD, or its audio is at a rate no CD holds and
+    -- every row is a CD. Such a verdict is never Ready.
+    medium_conflict TEXT CHECK (medium_conflict IS NULL OR medium_conflict IN ('cd_rip', 'not_cd_audio')),
+    medium_conflict_sample_rate_hz INTEGER CHECK (medium_conflict_sample_rate_hz IS NULL OR medium_conflict_sample_rate_hz > 0),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((kind = 'not_found') = (track_count IS NULL)),
-    CHECK ((kind = 'failed') = (failures_json IS NOT NULL))
+    CHECK ((kind = 'failed') = (failures_json IS NOT NULL)),
+    CHECK (medium_conflict IS NULL OR kind IN ('found', 'failed')),
+    CHECK ((medium_conflict IS 'not_cd_audio') = (medium_conflict_sample_rate_hz IS NOT NULL))
 ) STRICT;
 
 -- An import a verdict owes: an automatic run settled on it as needing nothing

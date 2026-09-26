@@ -110,6 +110,10 @@ pub struct Findings {
     /// re-groups shows rows the run never offered.
     pub pressings: Vec<u32>,
     pub narrowed_out: NarrowedOut,
+    /// Set when the folder's own files rule out every row, offered ones
+    /// included: what they prove. The rows are still offered for a person to
+    /// pick, and nothing picks one for them.
+    pub medium_conflict: Option<super::MediumConflict>,
 }
 
 impl Findings {
@@ -311,7 +315,8 @@ pub fn combine_results(
         .into_iter()
         .flat_map(ReleaseGroup::into_pressings)
         .collect();
-    let (offered, set_aside) = split_rows(rows, &judgements, &returned_by, ripped_from);
+    let (offered, set_aside, medium_conflict) =
+        split_rows(rows, &judgements, &returned_by, ripped_from);
 
     let statuses: HashMap<ReleaseKey, LibraryStatus> = all
         .into_iter()
@@ -354,6 +359,7 @@ pub fn combine_results(
                 provenance: narrowed_out_provenance,
                 pressings: narrowed_out_pressings,
             },
+            medium_conflict,
         },
         LibraryStatuses {
             matches: library_statuses,
@@ -461,19 +467,26 @@ fn support_of(
 
 /// Split the ranked rows into the ones offered and the ones set aside, each
 /// keeping the ranked order: the rows tied at the highest [`Support`] are
-/// offered, and every other row is set aside.
+/// offered, and every other row is set aside. The medium is read first, so
+/// the offered rows are ruled out only when every row is — which is the
+/// conflict returned beside them.
 fn split_rows(
     rows: Vec<Pressing>,
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
     ripped_from: RippedFrom,
-) -> (Vec<Pressing>, Vec<Pressing>) {
+) -> (Vec<Pressing>, Vec<Pressing>, Option<super::MediumConflict>) {
     let support: Vec<Support> = rows
         .iter()
         .map(|row| support_of(row, judgements, provenance, ripped_from))
         .collect();
     let Some(best) = support.iter().copied().max() else {
-        return (Vec::new(), Vec::new());
+        return (Vec::new(), Vec::new(), None);
+    };
+    let medium_conflict = if best.medium {
+        None
+    } else {
+        ripped_from.conflict()
     };
     let mut offered = Vec::new();
     let mut set_aside = Vec::new();
@@ -483,7 +496,7 @@ fn split_rows(
             false => set_aside.push(row),
         }
     }
-    (offered, set_aside)
+    (offered, set_aside, medium_conflict)
 }
 
 fn release_keys(results: &Results) -> HashSet<ReleaseKey> {

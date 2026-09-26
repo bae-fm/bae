@@ -56,6 +56,7 @@ fn one_disc_id_match() -> Findings {
         provenance: vec![disc_id_only()],
         pressings: vec![0],
         narrowed_out: NarrowedOut::default(),
+        medium_conflict: None,
     }
 }
 
@@ -291,6 +292,7 @@ fn signals_that_share_no_result_store_as_one_match_list() {
                     }],
                     pressings: vec![0],
                 },
+                medium_conflict: None,
             },
             track_count: 9,
             ledger: None,

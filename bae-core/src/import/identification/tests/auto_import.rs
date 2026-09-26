@@ -202,6 +202,46 @@ async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
     assert_no_import(&mut events, &key, "the run settled needing a person").await;
 }
 
+/// A folder its rip log proves is a CD rip, and a disc ID answered by a
+/// release whose record states vinyl: the one pressing is offered, but the
+/// folder's own files rule it out, so nothing applies it or imports it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
+    let fixture = Fixture::importing("auto-import-medium").await;
+    fixture.manager.set_import_when_identified(true).await.unwrap();
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    let probed = fixture.probed_total_ms(&dir);
+    let mut answer: serde_json::Value =
+        serde_json::from_str(&discid_json("mb-vinyl", "rg-vinyl", &[probed, 0]))
+            .expect("the disc ID fixture parses");
+    answer["releases"][0]["media"][0]["format"] = serde_json::json!("12\" Vinyl");
+    fixture.provider.route("/discid/", 200, answer.to_string());
+    fixture.scan(1).await;
+    let mut events = fixture.import.subscribe_events();
+
+    fixture.sweep_once().await;
+
+    assert_eq!(
+        fixture.classification_for(&dir).await,
+        QueueClassification::NeedsYou(NeedsYou::MediumDisagrees {
+            folder: crate::identify::MediumConflict::CdRip
+        })
+    );
+    let row = fixture
+        .stored_for(&dir)
+        .await
+        .expect("the candidate stores a row");
+    assert_ne!(
+        row.metadata_author,
+        crate::import::MetadataAuthor::Identification,
+        "the release the folder rules out was not applied to the draft"
+    );
+    assert_eq!(fixture.count_release_lookups("mb-vinyl"), 0);
+    assert!(fixture.owed_import(&dir).await.is_none());
+    assert_no_import(&mut events, &key, "the folder ruled the release out").await;
+}
+
 /// Turning the setting on imports only what settles from then on: a candidate
 /// already identified and ready stays where it is for the person.
 #[tokio::test(flavor = "multi_thread")]

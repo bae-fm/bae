@@ -80,6 +80,7 @@ fn resumed(
                 pressings: crate::import::release_group::form_rows(&narrowed_out),
                 matches: narrowed_out,
             },
+            medium_conflict: None,
         },
         track_count: 9,
         ledger,

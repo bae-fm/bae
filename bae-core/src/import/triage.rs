@@ -117,9 +117,9 @@ pub fn ready_check(placement: &TriagePlacement) -> Option<NeedsYou> {
         return None;
     };
     match reason {
-        NeedsYou::TrackCountDisagrees { .. } | NeedsYou::SourceTracksUnknown => {
-            Some(reason.clone())
-        }
+        NeedsYou::TrackCountDisagrees { .. }
+        | NeedsYou::SourceTracksUnknown
+        | NeedsYou::MediumDisagrees { .. } => Some(reason.clone()),
         NeedsYou::SeveralMatches { .. }
         | NeedsYou::NoMatch
         | NeedsYou::NothingToLookUp

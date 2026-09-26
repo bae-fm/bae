@@ -47,6 +47,7 @@ fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
             provenance,
             pressings,
             narrowed_out: NarrowedOut::default(),
+            medium_conflict: None,
         },
         track_count,
         ledger: None,
@@ -171,6 +172,7 @@ fn what_agreement_narrowed_out_is_not_a_match() {
                 }],
                 pressings: vec![0],
             },
+            medium_conflict: None,
         },
         track_count,
         ledger: None,
@@ -223,6 +225,7 @@ fn the_pressing_count_is_the_rows_the_run_recorded() {
             provenance,
             pressings: vec![0, 1],
             narrowed_out: NarrowedOut::default(),
+            medium_conflict: None,
         },
         track_count,
         ledger: None,
@@ -406,4 +409,34 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
         // list classify without rebuilding the verdict.
         assert_eq!(classify_summary(&summary), classify(&verdict));
     }
+}
+
+/// A single pressing whose tracklist fits is still not Ready when the
+/// folder's own files rule it out: the person picks, or does not.
+#[test]
+fn a_release_the_folder_rules_out_needs_you() {
+    let TerminalVerdict::Found {
+        mut findings,
+        track_count,
+        ledger,
+    } = found(vec![result("mb-1", listing(11))], 11)
+    else {
+        unreachable!("found builds a found verdict");
+    };
+    findings.medium_conflict = Some(crate::identify::MediumConflict::NotCdAudio {
+        sample_rate_hz: 96_000,
+    });
+    let verdict = TerminalVerdict::Found {
+        findings,
+        track_count,
+        ledger,
+    };
+    assert_eq!(
+        classify(&verdict),
+        QueueClassification::NeedsYou(NeedsYou::MediumDisagrees {
+            folder: crate::identify::MediumConflict::NotCdAudio {
+                sample_rate_hz: 96_000
+            }
+        })
+    );
 }

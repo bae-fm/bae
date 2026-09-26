@@ -827,6 +827,7 @@ impl Fixture {
                 }],
                 pressings: vec![0],
                 narrowed_out: crate::identify::NarrowedOut::default(),
+                medium_conflict: None,
             },
             track_count: 2,
             ledger: None,

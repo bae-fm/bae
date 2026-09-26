@@ -118,6 +118,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
             // which one the folder is, is the open question.
             pressings: (0..release_ids.len() as u32).collect(),
             narrowed_out: crate::identify::NarrowedOut::default(),
+            medium_conflict: None,
         },
         track_count: 2,
         ledger: None,

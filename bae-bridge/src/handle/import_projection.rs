@@ -333,6 +333,17 @@ mirror_enum! {
         LookupFailed,
         TrackCountDisagrees { local, source },
         SourceTracksUnknown,
+        MediumDisagrees { folder: (crate::types::BridgeMediumConflict) },
+    },
+}
+
+mirror_enum! {
+    crate::types::BridgeMediumConflict = bae_core::identify::MediumConflict,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        CdRip,
+        NotCdAudio { sample_rate_hz },
     },
 }
 

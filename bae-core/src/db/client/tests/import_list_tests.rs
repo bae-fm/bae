@@ -67,6 +67,7 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
             }],
             pressings: vec![0],
             narrowed_out: crate::identify::NarrowedOut::default(),
+            medium_conflict: None,
         },
         track_count: 1,
         ledger,
@@ -308,6 +309,78 @@ async fn a_row_without_a_pick_leads_with_the_verdicts_lead_match() {
     assert_eq!(matched.release_id, "mb-verdict");
     assert_eq!(matched.title, "Verdict Album");
     assert_eq!(matched.artist.as_deref(), Some("Verdict Artist"));
+}
+
+/// A verdict whose releases the folder's own files rule out stores what they
+/// prove, and the list reads it back into the question the row asks.
+#[tokio::test]
+async fn a_verdict_the_folder_rules_out_reads_back_as_its_question() {
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    let conflict = crate::identify::MediumConflict::NotCdAudio {
+        sample_rate_hz: 96_000,
+    };
+    let TerminalVerdict::Found {
+        mut findings,
+        track_count,
+        ledger,
+    } = verdict("mb-verdict", None)
+    else {
+        unreachable!("verdict builds a found verdict");
+    };
+    findings.medium_conflict = Some(conflict);
+    let stored = TerminalVerdict::Found {
+        findings,
+        track_count,
+        ledger,
+    };
+    assert!(crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&NewImportCandidateVerdict {
+            candidate: crate::import::CandidateAsRead {
+                content_hash: candidate.files.content_hash(),
+                file_edit_revision: 0,
+                metadata_revision: 0,
+            },
+            folder_path: candidate.path.to_string_lossy().into_owned(),
+            verdict: stored.clone(),
+            signals: crate::signals::Signals {
+                rip: crate::signals::RipEvidence::NotCd {
+                    sample_rate_hz: 96_000,
+                },
+                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+                barcode: crate::signals::BarcodeSignal::Absent,
+                text: crate::signals::TextSignal::Settled {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+                text_pool: Vec::new(),
+                durations: crate::import::probe::SourceDurations::totalling(1_000),
+            },
+            metadata: None,
+            owes_import: false,
+        })
+        .await
+        .unwrap());
+
+    let state = db
+        .load_import_candidate_state(&candidate.files.content_hash())
+        .await
+        .unwrap()
+        .expect("the candidate has a state row");
+    assert_eq!(
+        state.identify.expect("the verdict reads back").verdict,
+        stored
+    );
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    assert_eq!(
+        rows(&projection)[0].placement,
+        crate::import::TriagePlacement::NeedsYou {
+            reason: crate::identify::NeedsYou::MediumDisagrees { folder: conflict }
+        }
+    );
 }
 
 /// The list places a row from `scan_candidate`'s own columns and the stored

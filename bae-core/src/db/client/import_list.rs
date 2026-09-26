@@ -405,17 +405,21 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     let mut provenances = load_provenance_on(sql, None)?;
     let mut verdicts: HashMap<String, VerdictSummary> = HashMap::new();
     for row in sql.query(
-        "SELECT content_hash, kind, track_count FROM import_candidate_verdict",
+        "SELECT content_hash, kind, track_count, medium_conflict, \
+                medium_conflict_sample_rate_hz \
+         FROM import_candidate_verdict",
         [],
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<i64>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<i64>>(4)?,
             ))
         },
     )? {
-        let (content_hash, kind, track_count) = row;
+        let (content_hash, kind, track_count, medium_conflict, sample_rate_hz) = row;
         // Read the lead off the first row, then spend the rest on the count:
         // both come from the one read of this candidate's matches.
         // The releases agreement narrowed out are not what the verdict
@@ -444,6 +448,10 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 .transpose()?,
             pressing_count,
             lead,
+            medium_conflict: super::import_state::medium_conflict_of(
+                medium_conflict,
+                sample_rate_hz,
+            )?,
         };
         verdicts.insert(content_hash, summary);
     }

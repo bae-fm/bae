@@ -23,8 +23,12 @@ extension BridgeNeedsYou {
                 Int(local),
                 Int(source)
             )
+        case .mediumDisagrees(.notCdAudio(let sampleRateHz)):
+            let kilohertz = (Double(sampleRateHz) / 1000)
+                .formatted(.number.precision(.fractionLength(0...1)))
+            return String.localizedStringWithFormat(template, kilohertz)
         case .noMatch, .nothingToLookUp,
-            .lookupFailed, .sourceTracksUnknown:
+            .lookupFailed, .sourceTracksUnknown, .mediumDisagrees(.cdRip):
             return template
         }
     }

@@ -114,6 +114,9 @@ impl TerminalVerdict {
                 provenance: vec![LookupProvenance::CHOSEN],
                 pressings: vec![0],
                 narrowed_out: NarrowedOut::default(),
+                // A person's pick is theirs to make, whatever the folder's
+                // medium; nothing is left to hold back.
+                medium_conflict: None,
             },
             track_count,
             ledger: None,

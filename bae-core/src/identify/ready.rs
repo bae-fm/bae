@@ -11,6 +11,7 @@
 
 use super::combine::LookupProvenance;
 use super::verdict::TerminalVerdict;
+use super::MediumConflict;
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::Catalog;
@@ -47,6 +48,11 @@ pub enum NeedsYou {
     /// The release lists no tracks, so its count cannot be checked against
     /// the folder's. Not admitted unverified.
     SourceTracksUnknown,
+    /// The folder's own files rule out every release found — a CD rip against
+    /// no CD, or audio no CD holds against CDs alone — carrying what they
+    /// prove. The releases are offered for a person to pick; none is picked
+    /// for them.
+    MediumDisagrees { folder: MediumConflict },
 }
 
 /// Which question a [`NeedsYou`] asks, without what it carries to state it:
@@ -156,6 +162,8 @@ pub struct VerdictSummary {
     /// the shapes that hold no findings.
     pub pressing_count: u32,
     pub lead: Option<LeadMatch>,
+    /// The folder's own files rule out every release the verdict found.
+    pub medium_conflict: Option<MediumConflict>,
 }
 
 impl VerdictSummary {
@@ -187,6 +195,7 @@ impl VerdictSummary {
                     .first()
                     .map(|result| LeadMatch::of(result, findings.provenance.first()))
             }),
+            medium_conflict: findings.and_then(|findings| findings.medium_conflict),
         }
     }
 }
@@ -204,6 +213,13 @@ pub fn classify_summary(summary: &VerdictSummary) -> QueueClassification {
         VerdictKind::ManualOnly => return QueueClassification::NeedsYou(NeedsYou::NothingToLookUp),
         VerdictKind::Failed => return QueueClassification::NeedsYou(NeedsYou::LookupFailed),
     };
+
+    // A release the folder's own files rule out is never picked unattended,
+    // however well the lookups agree on it: the person reads the evidence and
+    // picks, or does not.
+    if let Some(folder) = summary.medium_conflict {
+        return QueueClassification::NeedsYou(NeedsYou::MediumDisagrees { folder });
+    }
 
     // "An exact signal is not the same as a unique result" — a disc ID or a
     // barcode routinely returns several pressings of one release group, and

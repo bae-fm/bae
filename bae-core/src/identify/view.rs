@@ -523,11 +523,14 @@ struct Folded {
 /// does not change what it says, or which records it holds, between the run
 /// and the read.
 fn fold(findings: Findings, library_statuses: LibraryStatuses, text: &CandidateText) -> Folded {
+    // The medium conflict is the queue's to state, beside Import; the rows
+    // draw as they rank.
     let Findings {
         matches,
         provenance,
         pressings,
         narrowed_out,
+        medium_conflict: _,
     } = findings;
     let offered = judged_results(matches, &provenance, text);
     let set_aside = judged_results(narrowed_out.matches, &narrowed_out.provenance, text);

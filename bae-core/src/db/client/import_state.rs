@@ -634,3 +634,26 @@ pub(super) fn settle_scanned_candidates(
     }));
     Ok(updated_candidates)
 }
+
+/// The stored medium conflict of a verdict row, from its two columns.
+pub(super) fn medium_conflict_of(
+    kind: Option<String>,
+    sample_rate_hz: Option<i64>,
+) -> Result<Option<crate::identify::MediumConflict>, DbError> {
+    let Some(kind) = kind else {
+        return Ok(None);
+    };
+    Ok(Some(match kind.as_str() {
+        "cd_rip" => crate::identify::MediumConflict::CdRip,
+        "not_cd_audio" => crate::identify::MediumConflict::NotCdAudio {
+            sample_rate_hz: sample_rate_hz
+                .ok_or_else(|| DbError::Message("audio that is not a CD's states no rate".into()))
+                .and_then(|rate| {
+                    u32::try_from(rate).map_err(|_| {
+                        DbError::Message(format!("a stored conflict is sampled at {rate} Hz"))
+                    })
+                })?,
+        },
+        other => return Err(verdict_rows::unreadable("medium_conflict", other)),
+    }))
+}

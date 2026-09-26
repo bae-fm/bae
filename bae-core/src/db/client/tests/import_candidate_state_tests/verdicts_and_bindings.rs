@@ -98,6 +98,7 @@ fn sample_findings() -> Findings {
         }],
         pressings: vec![0],
         narrowed_out: NarrowedOut::default(),
+        medium_conflict: None,
     }
 }
 
@@ -297,6 +298,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
             pressings: crate::import::release_group::form_rows(&matches),
             matches: matches.clone(),
             narrowed_out: NarrowedOut::default(),
+            medium_conflict: None,
         },
         track_count: 11,
         ledger: None,

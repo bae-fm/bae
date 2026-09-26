@@ -293,12 +293,33 @@ pub enum BridgeIdentificationStatus {
 /// it into the variant's `core.*` message (`bridge_needs_you_key`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeNeedsYou {
-    SeveralMatches { count: u32 },
+    SeveralMatches {
+        count: u32,
+    },
     NoMatch,
     NothingToLookUp,
     LookupFailed,
-    TrackCountDisagrees { local: u32, source: u32 },
+    TrackCountDisagrees {
+        local: u32,
+        source: u32,
+    },
     SourceTracksUnknown,
+    /// The folder's own files rule out every release found. The sample rate
+    /// crosses raw; the UI formats it.
+    MediumDisagrees {
+        folder: BridgeMediumConflict,
+    },
+}
+
+/// Mirror of bae-core's `identify::MediumConflict`: what the folder's own
+/// files prove against releases that all state a medium it rules out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeMediumConflict {
+    /// The folder is a CD rip, and no release could be a CD.
+    CdRip,
+    /// The folder's audio is at a rate no CD plays at, and every release is
+    /// a CD.
+    NotCdAudio { sample_rate_hz: u32 },
 }
 
 impl BridgeNeedsYou {
@@ -310,6 +331,12 @@ impl BridgeNeedsYou {
             Self::LookupFailed => "core.import.triage.lookup_failed",
             Self::TrackCountDisagrees { .. } => "core.import.triage.track_count_disagrees",
             Self::SourceTracksUnknown => "core.import.triage.source_tracks_unknown",
+            Self::MediumDisagrees {
+                folder: BridgeMediumConflict::CdRip,
+            } => "core.import.triage.medium_disagrees.cd_rip",
+            Self::MediumDisagrees {
+                folder: BridgeMediumConflict::NotCdAudio { .. },
+            } => "core.import.triage.medium_disagrees.not_cd_audio",
         }
     }
 }

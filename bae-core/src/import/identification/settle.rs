@@ -346,6 +346,11 @@ async fn settle_lead(
     let TerminalVerdict::Found { findings, .. } = verdict else {
         return Ok(SettledLead::NoExternalRelease);
     };
+    // The folder's own files rule the releases out: none is applied to the
+    // draft, and the person picks from the list or does not.
+    if findings.medium_conflict.is_some() {
+        return Ok(SettledLead::NoExternalRelease);
+    }
     let Some(pressing) = sole_pressing(findings, text) else {
         return Ok(SettledLead::NoExternalRelease);
     };

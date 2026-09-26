@@ -13,8 +13,23 @@ use crate::signals::RipEvidence;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RippedFrom {
     Cd,
-    NotCd,
+    NotCd { sample_rate_hz: u32 },
     Unknown,
+}
+
+/// The folder's own files rule out every row the run found: what they prove,
+/// against rows that all state a medium it could not have come from.
+///
+/// The rows stay on the list for a person to pick — a catalog may state the
+/// wrong medium, or the one right pressing may not be there — but nothing
+/// picks one for them: a verdict carrying this is never imported unattended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum MediumConflict {
+    /// The folder is a CD rip, and no row could be a CD.
+    CdRip,
+    /// The folder's audio is sampled at a rate no CD plays at, and every row
+    /// is a CD.
+    NotCdAudio { sample_rate_hz: u32 },
 }
 
 impl RippedFrom {
@@ -27,9 +42,21 @@ impl RippedFrom {
             RipEvidence::Cd { .. } => Self::Cd,
             // The disc ID is not computed from a sheet whose audio rules a
             // CD out, so it cannot have matched here.
-            RipEvidence::NotCd { .. } => Self::NotCd,
+            RipEvidence::NotCd { sample_rate_hz } => Self::NotCd {
+                sample_rate_hz: *sample_rate_hz,
+            },
             RipEvidence::Unproven if disc_id_matched => Self::Cd,
             RipEvidence::Unproven => Self::Unknown,
+        }
+    }
+
+    /// What the folder proves, as the conflict it makes with rows that all
+    /// state a medium it rules out. `None` where it proves nothing.
+    pub(crate) fn conflict(self) -> Option<MediumConflict> {
+        match self {
+            Self::Cd => Some(MediumConflict::CdRip),
+            Self::NotCd { sample_rate_hz } => Some(MediumConflict::NotCdAudio { sample_rate_hz }),
+            Self::Unknown => None,
         }
     }
 
@@ -48,7 +75,7 @@ impl RippedFrom {
             Self::Cd => CdAudio::Never,
             // Audio that is not a CD's cannot come off a carrier that plays
             // nothing else.
-            Self::NotCd => CdAudio::Only,
+            Self::NotCd { .. } => CdAudio::Only,
         };
         let entries: Vec<_> = media.into_iter().flat_map(StatedMedia::entries).collect();
         entries.is_empty()
@@ -100,7 +127,9 @@ mod tests {
                 },
                 false
             ),
-            RippedFrom::NotCd
+            RippedFrom::NotCd {
+                sample_rate_hz: 96_000
+            }
         );
     }
 
@@ -123,7 +152,9 @@ mod tests {
     /// another carrier beside them.
     #[test]
     fn audio_off_a_cds_rate_rules_out_only_rows_of_cds() {
-        let not_cd = RippedFrom::NotCd;
+        let not_cd = RippedFrom::NotCd {
+            sample_rate_hz: 96_000,
+        };
         assert!(!not_cd.admits([&per_medium(&[Some(Medium::Cd), Some(Medium::Cd)])]));
         assert!(not_cd.admits([&per_medium(&[Some(Medium::Vinyl)])]));
         assert!(not_cd.admits([&per_medium(&[Some(Medium::Cd), Some(Medium::Dvd)])]));

@@ -7,7 +7,7 @@
 
 use super::*;
 use super::super::album_link_rows::{AlbumLinkRow, StatementColumns};
-use crate::identify::{
+use crate::identify::{MediumConflict, 
     Findings, IdentifyFailure, IdentifyRunView, LookupProvenance, NarrowedOut, TerminalVerdict,
 };
 use crate::import::album_links::AlbumLinks;
@@ -66,6 +66,14 @@ pub(super) fn insert_verdict(
             })
         })
         .transpose()?;
+    let (medium_conflict, medium_conflict_sample_rate_hz) =
+        match verdict.findings().and_then(|findings| findings.medium_conflict) {
+            None => (None, None),
+            Some(MediumConflict::CdRip) => (Some("cd_rip"), None),
+            Some(MediumConflict::NotCdAudio { sample_rate_hz }) => {
+                (Some("not_cd_audio"), Some(sample_rate_hz))
+            }
+        };
     let failures_json = match verdict {
         TerminalVerdict::Failed { failures, .. } => {
             if failures.is_empty() {
@@ -86,8 +94,8 @@ pub(super) fn insert_verdict(
     sql.execute(
         "INSERT INTO import_candidate_verdict \
              (content_hash, kind, track_count, failures_json, \
-              ledger_json, identified_at) \
-         VALUES (?, ?, ?, ?, ?, ?)",
+              ledger_json, identified_at, medium_conflict, medium_conflict_sample_rate_hz) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             kind,
@@ -95,6 +103,8 @@ pub(super) fn insert_verdict(
             failures_json,
             ledger_json,
             identification.identified_at.to_rfc3339(),
+            medium_conflict,
+            medium_conflict_sample_rate_hz,
         ],
     )?;
     insert_matches(sql, content_hash, verdict)
@@ -114,6 +124,7 @@ fn insert_matches(
         provenance,
         pressings,
         narrowed_out,
+        medium_conflict: _,
     }) = verdict.findings()
     else {
         return Ok(());
@@ -614,10 +625,13 @@ pub(super) struct VerdictRow {
     pub(super) failures_json: Option<String>,
     pub(super) ledger_json: Option<String>,
     pub(super) identified_at: DateTime<Utc>,
+    pub(super) medium_conflict: Option<MediumConflict>,
 }
 
 pub(super) const VERDICT_COLUMNS: &str = "content_hash, kind, track_count, \
-     failures_json, ledger_json, identified_at";
+     failures_json, ledger_json, identified_at, medium_conflict, \
+     medium_conflict_sample_rate_hz";
+
 
 pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
     Ok(VerdictRow {
@@ -627,6 +641,10 @@ pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
         failures_json: row.get("failures_json")?,
         ledger_json: row.get("ledger_json")?,
         identified_at: super::rfc3339_column(row, "identified_at")?,
+        medium_conflict: super::medium_conflict_of(
+            row.get("medium_conflict")?,
+            row.get("medium_conflict_sample_rate_hz")?,
+        )?,
     })
 }
 
@@ -642,6 +660,7 @@ pub(super) fn identification_of(
         failures_json,
         ledger_json,
         identified_at,
+        medium_conflict,
     } = row;
     let ledger: Option<IdentifyRunView> = ledger_json
         .map(|json| {
@@ -682,6 +701,7 @@ pub(super) fn identification_of(
                 provenance: narrowed_provenance,
                 pressings: narrowed_pressings,
             },
+            medium_conflict,
         }
     };
     let no_matches = |found: &StoredMatches| {

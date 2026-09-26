@@ -269,6 +269,12 @@ fn produced_keys() -> Vec<String> {
             source: 0,
         },
         BridgeNeedsYou::SourceTracksUnknown,
+        BridgeNeedsYou::MediumDisagrees {
+            folder: BridgeMediumConflict::CdRip,
+        },
+        BridgeNeedsYou::MediumDisagrees {
+            folder: BridgeMediumConflict::NotCdAudio { sample_rate_hz: 0 },
+        },
     ] {
         keys.push(bridge_needs_you_key(&needs_you));
     }

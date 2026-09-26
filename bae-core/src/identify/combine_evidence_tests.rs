@@ -3,6 +3,7 @@
 //! against what names every pressing cut from one master.
 
 use super::*;
+use crate::identify::MediumConflict;
 use crate::pressing::{Medium, StatedMedia};
 use crate::signals::{CdProof, TextLine, TextOrigin};
 
@@ -260,4 +261,44 @@ fn a_sleeve_saying_where_it_was_made_puts_that_pressing_first() {
     );
     assert_eq!(offered(&outcome), vec!["rel-europe", "rel-us"]);
     assert!(set_aside(&outcome).is_empty());
+}
+
+/// Every row ruled out by the folder is still every row the run found, and
+/// the verdict says what the folder proves, so nothing picks one unattended.
+#[test]
+fn rows_the_folder_rules_out_carry_the_conflict() {
+    let every_cd = by_catalog(
+        vec![
+            pressing("rel-cd-1", made_of(&[Medium::Cd])),
+            pressing("rel-cd-2", made_of(&[Medium::Cd, Medium::Cd])),
+        ],
+        &NOT_CD,
+    );
+    assert_eq!(offered(&every_cd), vec!["rel-cd-1", "rel-cd-2"]);
+    assert_eq!(
+        every_cd.0.medium_conflict,
+        Some(MediumConflict::NotCdAudio {
+            sample_rate_hz: 96_000
+        })
+    );
+    let every_vinyl = by_catalog(
+        vec![pressing("rel-vinyl", made_of(&[Medium::Vinyl]))],
+        &CD_RIP,
+    );
+    assert_eq!(every_vinyl.0.medium_conflict, Some(MediumConflict::CdRip));
+}
+
+/// A row the folder admits wins as it always has, and the verdict carries no
+/// conflict: what leads it is not ruled out.
+#[test]
+fn an_admitted_row_leads_with_no_conflict() {
+    let mixed = by_catalog(
+        vec![
+            pressing("rel-cd", made_of(&[Medium::Cd])),
+            pressing("rel-vinyl", made_of(&[Medium::Vinyl])),
+        ],
+        &NOT_CD,
+    );
+    assert_eq!(offered(&mixed), vec!["rel-vinyl"]);
+    assert_eq!(mixed.0.medium_conflict, None);
 }
