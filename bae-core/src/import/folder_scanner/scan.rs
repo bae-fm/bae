@@ -836,11 +836,10 @@ pub(super) fn collect_scoped_entries(
 }
 
 /// Collect one explicit release boundary and give every owned file its role,
-/// preserving relative paths, with stored file decisions applied.
-///
-/// Every caller that re-derives a folder — the commit, the file-metadata seed,
-/// the signal fast pass — goes through here, so none of them can see a shape
-/// the user has already corrected.
+/// preserving relative paths, with stored file decisions applied — the folder
+/// read on its own, outside any scan. Tests build candidates with it; the app
+/// reads folders only through a scan pass.
+#[cfg(any(test, feature = "test-utils"))]
 pub fn collect_release_candidate_files_with_scope(
     release_root: &Path,
     scope: ReleaseFileScope,

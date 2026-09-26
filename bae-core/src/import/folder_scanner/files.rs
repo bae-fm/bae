@@ -869,7 +869,7 @@ impl CategorizedFiles {
 
     /// Apply the user's file decisions over what the scan proposed, and
     /// re-derive everything they decide: which files are audio, what each sheet
-    /// ends up naming, the codec probe that can refuse a binding, and the
+    /// ends up naming, the probed codec that can refuse a binding, and the
     /// release's source-audio summary.
     ///
     /// Roles settle first. A file taken out of the tracklist stops being audio,

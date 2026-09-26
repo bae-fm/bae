@@ -175,7 +175,8 @@ pub(super) fn settle_file_roles(files: &mut [CandidateFile], edits: &FileRoleEdi
 ///
 /// The user's decision wins where they made one; where they did not, the
 /// sheet's `FILE` directives resolve against the folder's audio. Either way
-/// the audio a sheet ends up naming is probed, because bae can only carve
+/// the codec the scan probed for the audio a sheet ends up naming is checked,
+/// because bae can only carve
 /// tracks out of some containers, and a refusal keeps the codec so both the
 /// pane and the picker can say why. Total over the parsed sheets: whatever a
 /// sheet carried in is replaced, so a stale pairing cannot survive a role
@@ -662,10 +663,11 @@ pub(super) fn categorize_files_from_tree(
         });
     }
 
-    // The user's decisions land over the proposals, and the audio each sheet
-    // ends up naming is probed. The hash is what those decisions are stored
-    // under, and it covers files only — so computing it here, before any of
-    // them is applied, is not an ordering trick: applying one cannot change it.
+    // The user's decisions land over the proposals, and the codec probed for the
+    // audio each sheet ends up naming is checked. The hash is what those decisions
+    // are stored under, and it covers files only — so computing it here, before
+    // any of them is applied, is not an ordering trick: applying one cannot change
+    // it.
     let stored = stored
         .for_hash(&content_hash_of(files.iter().map(|entry| &entry.file)))
         .cloned()
