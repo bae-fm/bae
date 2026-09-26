@@ -20,11 +20,11 @@ struct ImageView: View {
     private var imageStore
     @Environment(\.displayScale)
     private var displayScale
+    /// The last load's outcome, with the content it was for. A slot whose
+    /// content has since changed — a list row reused for another item — reads
+    /// as not loaded yet rather than showing the previous item's image.
     @State
-    private var loaded: UIImage?
-    /// Whether the last load failed, as opposed to finding no image.
-    @State
-    private var failed = false
+    private var lastLoad: SlotLoad?
     /// How many times the person asked for a failed load again. Part of the
     /// load's identity, so asking restarts it; the store caches no failure,
     /// so the restarted load goes back to the source.
@@ -35,8 +35,8 @@ struct ImageView: View {
     /// store already has decoded at this size, so a remounting row draws its art
     /// immediately instead of flashing the placeholder.
     private var displayedImage: UIImage? {
-        if let loaded {
-            return loaded
+        if let lastLoad, lastLoad.content == content, let image = lastLoad.image {
+            return image
         }
         guard let content else {
             return nil
@@ -55,7 +55,7 @@ struct ImageView: View {
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
             }
-            else if failed {
+            else if let lastLoad, lastLoad.content == content, lastLoad.failed {
                 Button {
                     attempt += 1
                 } label: {
@@ -81,30 +81,37 @@ struct ImageView: View {
     }
 
     private func load() async {
-        loaded = nil
-        failed = false
-        guard let content else {
+        let requested = content
+        lastLoad = nil
+        guard let requested else {
             return
         }
         do {
-            loaded = try await imageStore.image(
-                content,
+            let image = try await imageStore.image(
+                requested,
                 pointSize: pointSize,
                 displayScale: displayScale
             )
+            lastLoad = SlotLoad(content: requested, image: image, failed: false)
         }
         catch is CancellationError {
-            logger.debug("image load cancelled: \(content.description)")
+            logger.debug("image load cancelled: \(requested.description)")
             return
         }
         catch {
             logger.warning(
-                "Failed to load \(content.description): \(error.localizedDescription)"
+                "Failed to load \(requested.description): \(error.localizedDescription)"
             )
-            loaded = nil
-            failed = true
+            lastLoad = SlotLoad(content: requested, image: nil, failed: true)
         }
     }
+}
+
+/// A load's outcome and the content it was for.
+private struct SlotLoad {
+    let content: ImageContent
+    let image: UIImage?
+    let failed: Bool
 }
 
 /// One load of a slot: the content, and which time of asking.

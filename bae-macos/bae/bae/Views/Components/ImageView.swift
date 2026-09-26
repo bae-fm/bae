@@ -14,8 +14,11 @@ struct ImageView: View {
     private var imageStore
     @Environment(\.displayScale)
     private var displayScale
+    /// The last load's outcome, with the content it was for. A slot whose
+    /// content has since changed — a list row reused for another item — reads
+    /// as not loaded yet rather than showing the previous item's image.
     @State
-    private var loadState: ImageLoadState
+    private var lastLoad: SlotLoad
     /// How many times the person asked for a failed load again. Part of the
     /// load's identity, so asking restarts it; the store caches no failure,
     /// so the restarted load goes back to the source.
@@ -30,9 +33,17 @@ struct ImageView: View {
         self.content = content
         self.contentMode = contentMode
         self.pointSize = pointSize
-        _loadState = State(
-            initialValue: ImageLoadState.initial(content: content)
+        _lastLoad = State(
+            initialValue: SlotLoad(
+                content: content,
+                state: .initial(content: content)
+            )
         )
+    }
+
+    private var loadState: ImageLoadState {
+        lastLoad.content == content
+            ? lastLoad.state : .initial(content: content)
     }
 
     var body: some View {
@@ -102,21 +113,28 @@ struct ImageView: View {
     }
 
     private func load() async {
-        loadState = ImageLoadState.initial(content: content)
-        guard let content else {
+        let requested = content
+        lastLoad = SlotLoad(
+            content: requested,
+            state: .initial(content: requested)
+        )
+        guard let requested else {
             return
         }
         do {
             if let image = try await imageStore.image(
-                content,
+                requested,
                 pointSize: pointSize,
                 displayScale: displayScale
             ) {
-                loadState = .loaded(image)
+                lastLoad = SlotLoad(content: requested, state: .loaded(image))
             }
             else {
                 // No such image — render the unavailable placeholder.
-                loadState = .pending(.unavailable)
+                lastLoad = SlotLoad(
+                    content: requested,
+                    state: .pending(.unavailable)
+                )
             }
         }
         catch is CancellationError {
@@ -130,11 +148,11 @@ struct ImageView: View {
             logger.warning(
                 """
                 Failed to load \
-                \(content.description): \
+                \(requested.description): \
                 \(error.localizedDescription)
                 """
             )
-            loadState = .pending(.failed)
+            lastLoad = SlotLoad(content: requested, state: .pending(.failed))
         }
     }
 }
@@ -144,6 +162,12 @@ struct ImageView: View {
 private struct LoadRequest: Equatable {
     let content: ImageContent?
     let attempt: Int
+}
+
+/// A load's outcome and the content it was for.
+private struct SlotLoad {
+    let content: ImageContent?
+    let state: ImageLoadState
 }
 
 enum ImageLoadState {
