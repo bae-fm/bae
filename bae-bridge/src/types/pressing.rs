@@ -509,7 +509,10 @@ pub enum BridgeFactTerm {
     /// ISO 3166-1 code.
     Country { code: String },
     /// A value worded as its label says.
-    Label { label: BridgeTermLabel },
+    ///
+    /// Not `Label`: C# nests each variant as a record in the enum's scope, and
+    /// a variant named `Label` would shadow `Counted`'s `Label` member's type.
+    Worded { label: BridgeTermLabel },
     /// More than one of a medium: the surface words it with
     /// `core.pressing.media_count`, its `count` and the medium's label.
     Counted { count: u32, label: BridgeTermLabel },
@@ -605,7 +608,7 @@ pub fn bridge_pressing_summary(facts: BridgePressingFacts) -> Vec<BridgeFactTerm
         .area
         .map(|area| match area {
             BridgeReleaseArea::Country { code } => BridgeFactTerm::Country { code },
-            BridgeReleaseArea::Region { region } => BridgeFactTerm::Label {
+            BridgeReleaseArea::Region { region } => BridgeFactTerm::Worded {
                 label: localized(&bridge_region_key(region)),
             },
         })
@@ -636,7 +639,7 @@ pub fn bridge_pressing_details(facts: BridgePressingFacts) -> Vec<BridgeFactTerm
                 .into_iter()
                 .map(bridge_discogs_detail_label),
         )
-        .map(|label| BridgeFactTerm::Label { label })
+        .map(|label| BridgeFactTerm::Worded { label })
         .collect()
 }
 
@@ -649,7 +652,7 @@ pub fn bridge_media_terms(media: Vec<BridgeMediaCount>) -> Vec<BridgeFactTerm> {
         .map(|counted| {
             let label = bridge_medium_label(counted.medium);
             match counted.count {
-                1 => BridgeFactTerm::Label { label },
+                1 => BridgeFactTerm::Worded { label },
                 count => BridgeFactTerm::Counted { count, label },
             }
         })
@@ -767,7 +770,7 @@ mod tests {
                 BridgeFactTerm::Country {
                     code: "JP".to_string()
                 },
-                BridgeFactTerm::Label {
+                BridgeFactTerm::Worded {
                     label: verbatim("CD")
                 },
             ]
@@ -785,7 +788,7 @@ mod tests {
         assert_eq!(
             bridge_pressing_summary(two_vinyl_in_europe),
             vec![
-                BridgeFactTerm::Label {
+                BridgeFactTerm::Worded {
                     label: localized("core.pressing.region.uk_and_europe")
                 },
                 BridgeFactTerm::Counted {
@@ -809,16 +812,16 @@ mod tests {
         assert_eq!(
             bridge_pressing_details(promo),
             vec![
-                BridgeFactTerm::Label {
+                BridgeFactTerm::Worded {
                     label: localized("core.pressing.status.promotion")
                 },
-                BridgeFactTerm::Label {
+                BridgeFactTerm::Worded {
                     label: localized("core.pressing.packaging.digipak")
                 },
-                BridgeFactTerm::Label {
+                BridgeFactTerm::Worded {
                     label: localized("core.pressing.discogs.reissue")
                 },
-                BridgeFactTerm::Label {
+                BridgeFactTerm::Worded {
                     label: verbatim("FLAC")
                 },
             ]

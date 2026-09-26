@@ -33,10 +33,10 @@ class BridgeReleaseFormatTest {
                 {
                     listOf(
                         BridgeFactTerm.Country("JP"),
-                        BridgeFactTerm.Label(BridgeTermLabel.Verbatim("CD")),
+                        BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD")),
                     )
                 },
-                { listOf(BridgeFactTerm.Label(BridgeTermLabel.Localized("core.pressing.status.promotion"))) },
+                { listOf(BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.status.promotion"))) },
             ),
         )
     }

@@ -55,7 +55,7 @@ fun BridgeFactTerm.text(context: Context): String =
             countryName(context, code)
         }
 
-        is BridgeFactTerm.Label -> {
+        is BridgeFactTerm.Worded -> {
             label.text(context)
         }
 

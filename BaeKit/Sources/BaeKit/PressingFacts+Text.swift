@@ -53,7 +53,7 @@ extension BridgeFactTerm {
         switch self {
         case .country(let code):
             PressingText.countryName(code)
-        case .label(let label):
+        case .worded(let label):
             label.text
         case .counted(let count, let label):
             String.localizedStringWithFormat(

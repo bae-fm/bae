@@ -21,7 +21,7 @@ import uniffi.bae_bridge.BridgeTermLabel
 class PressingTextTest {
     private val context: Context = RuntimeEnvironment.getApplication()
 
-    private fun localized(key: String) = BridgeFactTerm.Label(BridgeTermLabel.Localized(key))
+    private fun localized(key: String) = BridgeFactTerm.Worded(BridgeTermLabel.Localized(key))
 
     @Test
     fun aSummaryNamesTheCountryAndTheMedia() {
@@ -29,7 +29,7 @@ class PressingTextTest {
             "Japan · CD",
             factLine(
                 context,
-                listOf(BridgeFactTerm.Country("JP"), BridgeFactTerm.Label(BridgeTermLabel.Verbatim("CD"))),
+                listOf(BridgeFactTerm.Country("JP"), BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))),
             ),
         )
         assertEquals(
@@ -53,7 +53,7 @@ class PressingTextTest {
                 listOf(
                     localized("core.pressing.status.promotion"),
                     localized("core.pressing.discogs.reissue"),
-                    BridgeFactTerm.Label(BridgeTermLabel.Verbatim("FLAC")),
+                    BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("FLAC")),
                 ),
             ),
         )
