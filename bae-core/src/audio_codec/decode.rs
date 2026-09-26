@@ -498,7 +498,6 @@ pub fn decode_audio_to_sink(
 /// sample-window special case. The save re-encoder drives this with the same
 /// per-segment derivation playback uses.
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn decode_audio_to_sink_with_seek(
     buffer: SharedSparseBuffer,
     seek_to_byte: Option<u64>,

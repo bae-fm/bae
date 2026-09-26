@@ -8,14 +8,12 @@ use std::sync::Arc;
 
 /// One track's stored audio, open for a single decode into a
 /// [`DecodedSink`](crate::audio_codec::DecodedSink).
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub struct TrackDecode {
     decode: crate::playback::stream_pipeline::StreamDecodeParams,
     sample_rate: u32,
     channels: u32,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl TrackDecode {
     /// Decode the track into `sink`, announcing its stored format first.
     /// Blocking; run it off the async runtime.
@@ -449,7 +447,6 @@ impl AppServices {
     /// transcode): a stream per file its segments read, each segment seeked
     /// the way playback seeks it. The streams close when the returned decode
     /// is dropped.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub fn open_track_decode(&self, audio: &crate::library::ResolvedTrackAudio) -> TrackDecode {
         use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
 
