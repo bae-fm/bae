@@ -114,6 +114,7 @@ private struct SlotLoad {
     let failed: Bool
 }
 
+// periphery:ignore - a `.task(id:)` identity: compared, never read.
 /// One load of a slot: the content, and which time of asking.
 private struct LoadRequest: Equatable {
     let content: ImageContent?
