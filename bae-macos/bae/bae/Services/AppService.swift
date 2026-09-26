@@ -249,8 +249,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         importStore.candidateSignalsSubject.eraseToAnyPublisher()
     }
 
-    func addWatchedFolder(path: String) async throws {
-        try await importer.addWatchedFolder(path)
+    /// Where Finder's Open With hands a folder: the same entry the window's
+    /// picker and drop use.
+    var importFolderEntry: ImportFolderEntry {
+        ImportFolderEntry(importer: importer, uiStore: uiStore)
     }
 
     func applyDesktopUIEvent(_ event: BridgeUiEvent) {

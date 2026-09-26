@@ -135,35 +135,9 @@ extension AppDelegate {
 
     func application(_: NSApplication, open urls: [URL]) {
         guard runtime.startsApplicationServices else { return }
+        guard let entry = appService?.importFolderEntry else { return }
         for url in urls {
-            addWatchedFolderFromOpenURL(url)
+            entry.take(url)
         }
-    }
-
-    private func addWatchedFolderFromOpenURL(_ url: URL) {
-        var isDir: ObjCBool = false
-        guard
-            FileManager.default.fileExists(
-                atPath: url.path,
-                isDirectory: &isDir
-            ),
-            isDir.boolValue
-        else {
-            return
-        }
-        Task {
-            do {
-                try await appService?.addWatchedFolder(path: url.path)
-            }
-            catch {
-                guard let displayed = DisplayError(error) else { return }
-                uiStore.showError(
-                    displayed.addingContext(
-                        String(localized: "Couldn't add folder")
-                    )
-                )
-            }
-        }
-        uiStore.navigateToImport()
     }
 }

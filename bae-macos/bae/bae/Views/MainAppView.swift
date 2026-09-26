@@ -172,7 +172,7 @@ struct MainAppView: View {
                 set: { uiStore.setImportFolderPickerPresented($0) }
             ),
             allowedContentTypes: [.directory],
-            onCompletion: handleImportFolderResult
+            onCompletion: { importFolderEntry.take($0) }
         )
         .fileDialogDefaultDirectory(.homeDirectory)
         .fileDialogMessage("Select a folder to watch for music to import")
@@ -224,42 +224,10 @@ struct MainAppView: View {
         NSApp.keyWindow?.makeFirstResponder(nil)
     }
 
-    // MARK: - Scan + Drop
+    // MARK: - Import entry
 
-    private func handleImportFolderResult(_ result: Result<URL, any Error>) {
-        switch result {
-        case .success(let url):
-            addWatchedFolder(url)
-        case .failure(let error):
-            // `DisplayError` is nil when core says the failure has no line —
-            // a cancellation — and there is then no alert to raise. Passing the
-            // typed failure rather than a formatted `String` is what keeps the
-            // fault line and Copy Details in the alert; `addingContext` puts the
-            // operation in front of core's line without discarding either.
-            guard let displayed = DisplayError(error) else { return }
-            uiStore.showError(
-                displayed.addingContext(
-                    String(localized: "Couldn't add folder")
-                )
-            )
-        }
-    }
-
-    private func addWatchedFolder(_ url: URL) {
-        Task {
-            do {
-                try await importer.addWatchedFolder(url.path)
-                uiStore.navigateToImport()
-            }
-            catch {
-                guard let displayed = DisplayError(error) else { return }
-                uiStore.showError(
-                    displayed.addingContext(
-                        String(localized: "Couldn't add folder")
-                    )
-                )
-            }
-        }
+    private var importFolderEntry: ImportFolderEntry {
+        ImportFolderEntry(importer: importer, uiStore: uiStore)
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
@@ -287,23 +255,8 @@ struct MainAppView: View {
                 }
                 return
             }
-            var isDir: ObjCBool = false
-            guard
-                FileManager.default.fileExists(
-                    atPath: url.path,
-                    isDirectory: &isDir
-                ),
-                isDir.boolValue
-            else {
-                DispatchQueue.main.async {
-                    uiStore.showError(
-                        String(localized: "Drop a folder to import, not a file")
-                    )
-                }
-                return
-            }
             DispatchQueue.main.async {
-                addWatchedFolder(url)
+                importFolderEntry.take(url)
             }
         }
         return true
