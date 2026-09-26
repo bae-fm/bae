@@ -45,44 +45,23 @@ impl BridgeMetadataResult {
 impl BridgeRemoteCover {
     pub(crate) fn from_core(c: bae_core::import::cover_art::RemoteCover) -> Self {
         let bae_core::import::cover_art::RemoteCover {
-            url,
-            thumbnail_url,
+            image,
             label,
             source,
         } = c;
-        let selection = bridge_remote_cover_selection(url, source);
-        let cover_choice = remote_cover_choice_to_bridge(&selection, &thumbnail_url);
+        let image = BridgeRemoteImageSet::from_core(image);
         BridgeRemoteCover {
-            cover_choice,
+            cover_choice: BridgeCoverChoice {
+                selection: BridgeCoverSelection::RemoteCover {
+                    selection: BridgeRemoteCoverSelection {
+                        image: image.clone(),
+                        source: BridgeCatalog::from_core(source),
+                    },
+                },
+                image: BridgeCoverImageSource::Remote { image },
+            },
             label,
         }
-    }
-}
-
-fn bridge_remote_cover_selection(
-    url: String,
-    source: bae_core::import::Catalog,
-) -> BridgeRemoteCoverSelection {
-    BridgeRemoteCoverSelection {
-        url,
-        source: BridgeCatalog::from_core(source),
-    }
-}
-
-fn remote_cover_choice_to_bridge(
-    selection: &BridgeRemoteCoverSelection,
-    thumbnail_url: &str,
-) -> BridgeCoverChoice {
-    BridgeCoverChoice {
-        selection: BridgeCoverSelection::RemoteCover {
-            selection: selection.clone(),
-        },
-        preview_source: BridgeCoverImageSource::Remote {
-            url: selection.url.clone(),
-        },
-        thumbnail_source: BridgeCoverImageSource::Remote {
-            url: thumbnail_url.to_string(),
-        },
     }
 }
 
@@ -148,27 +127,25 @@ mirror_struct! {
 
 impl BridgeCoverChoice {
     pub(crate) fn from_core(choice: bae_core::import::CoverChoice) -> Self {
-        let bae_core::import::CoverChoice {
-            selection,
-            preview,
-            thumbnail,
-        } = choice;
+        let bae_core::import::CoverChoice { selection, image } = choice;
         Self {
             selection: match selection {
                 bae_core::import::CoverSelection::Local(file_id) => {
                     BridgeCoverSelection::ReleaseImage { file_id }
                 }
-                bae_core::import::CoverSelection::Remote(url, source) => {
+                bae_core::import::CoverSelection::Remote(image, source) => {
                     BridgeCoverSelection::RemoteCover {
-                        selection: bridge_remote_cover_selection(url, source),
+                        selection: BridgeRemoteCoverSelection {
+                            image: BridgeRemoteImageSet::from_core(image),
+                            source: BridgeCatalog::from_core(source),
+                        },
                     }
                 }
                 bae_core::import::CoverSelection::Embedded(source_file_id) => {
                     BridgeCoverSelection::EmbeddedCover { source_file_id }
                 }
             },
-            preview_source: BridgeCoverImageSource::from_core(preview),
-            thumbnail_source: BridgeCoverImageSource::from_core(thumbnail),
+            image: BridgeCoverImageSource::from_core(image),
         }
     }
 }
@@ -176,7 +153,9 @@ impl BridgeCoverChoice {
 impl BridgeCoverImageSource {
     pub(crate) fn from_core(source: bae_core::import::CoverImageSource) -> Self {
         match source {
-            bae_core::import::CoverImageSource::Remote { url } => Self::Remote { url },
+            bae_core::import::CoverImageSource::Remote { image } => Self::Remote {
+                image: BridgeRemoteImageSet::from_core(image),
+            },
             bae_core::import::CoverImageSource::Local { path } => Self::Local {
                 path: path.to_string_lossy().into_owned(),
             },

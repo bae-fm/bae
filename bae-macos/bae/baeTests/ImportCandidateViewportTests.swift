@@ -416,7 +416,7 @@ extension ImportCandidateViewportTests {
                 ),
                 matched: nil,
                 metadataSummary: nil,
-                coverThumbnail: nil,
+                cover: nil,
                 selectable: false,
                 importStatus: nil,
                 metadataProvenance: nil,

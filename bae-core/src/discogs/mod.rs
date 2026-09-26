@@ -1,6 +1,6 @@
 pub mod client;
 pub mod models;
-use crate::import::cover_art::RemoteCover;
+use crate::import::cover_art::{DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::Catalog;
 pub use client::DiscogsClient;
 pub use models::*;
@@ -23,6 +23,13 @@ pub(crate) fn split_title(title: &str) -> Option<(Option<&str>, &str)> {
         })
 }
 
+/// The box Discogs fits its thumbnails in: an image's `uri150` and a search
+/// result's `thumb` are both served at most 150 pixels on either side.
+const DISCOGS_THUMBNAIL_EDGE: u32 = 150;
+
+/// A Discogs cover from the two addresses Discogs gives an image: the image
+/// (`uri`, or a search result's `cover_image`) and its thumbnail (`uri150`, or
+/// `thumb`). A cover with only a thumbnail is that thumbnail at its one size.
 pub(crate) fn remote_cover_from_urls<I>(
     cover_image: Option<&str>,
     thumb: Option<&str>,
@@ -32,15 +39,29 @@ pub(crate) fn remote_cover_from_urls<I>(
 where
     I: Display + Copy,
 {
-    let url = match (cover_image, thumb) {
-        (Some(url), _) => url.to_string(),
+    let image = match (cover_image, thumb) {
+        (Some(url), Some(thumb)) => RemoteImageSet::with_copies(
+            url.to_string(),
+            vec![DownscaledCopy {
+                url: thumb.to_string(),
+                max_edge: DISCOGS_THUMBNAIL_EDGE,
+            }],
+        ),
+        (Some(url), None) => {
+            debug!(
+                discogs_entity = entity,
+                discogs_id = %id,
+                "Discogs cover has no thumbnail URL; every slot reads the image"
+            );
+            RemoteImageSet::original(url.to_string())
+        }
         (None, Some(thumb)) => {
             debug!(
                 discogs_entity = entity,
                 discogs_id = %id,
                 "Discogs cover has no cover image URL; using thumbnail URL"
             );
-            thumb.to_string()
+            RemoteImageSet::original(thumb.to_string())
         }
         (None, None) => {
             debug!(
@@ -51,21 +72,9 @@ where
             return None;
         }
     };
-    let thumbnail_url = match thumb {
-        Some(thumb) => thumb.to_string(),
-        None => {
-            debug!(
-                discogs_entity = entity,
-                discogs_id = %id,
-                "Discogs cover has no thumbnail URL; using image URL"
-            );
-            url.clone()
-        }
-    };
 
     Some(RemoteCover {
-        url,
-        thumbnail_url,
+        image,
         label: Catalog::Discogs.cover_source_label().to_string(),
         source: Catalog::Discogs,
     })

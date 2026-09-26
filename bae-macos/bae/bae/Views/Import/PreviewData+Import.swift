@@ -101,8 +101,8 @@
         /// library to read from.
         static func artImageStore() -> ImageStore {
             ImageStore(
-                fetchRemoteImage: { url in
-                    try Data(contentsOf: URL(fileURLWithPath: url))
+                fetchRemoteImage: { image, _ in
+                    try Data(contentsOf: URL(fileURLWithPath: image.url))
                 }
             )
         }
@@ -257,7 +257,7 @@
                 ),
                 matched: nil,
                 metadataSummary: nil,
-                coverThumbnail: nil,
+                cover: nil,
                 selectable: true,
                 importStatus: nil,
                 metadataProvenance: nil,

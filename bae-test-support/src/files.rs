@@ -180,8 +180,8 @@ impl RemoteImageHost {
             .serve(TEST_IMAGE_HOST, &self.origin)
     }
 
-    /// Serve `bytes` as a MusicBrainz release's front image, at both the full
-    /// and the thumbnail address.
+    /// Serve `bytes` as a MusicBrainz release's front image, at the original's
+    /// address and every downscaled copy's.
     pub fn serve_front(&self, release_id: &str, bytes: Vec<u8>) {
         self.answer_front(release_id, 200, bytes);
     }
@@ -208,7 +208,7 @@ impl RemoteImageHost {
             .routes
             .lock()
             .expect("image host routes mutex poisoned");
-        for suffix in ["front", "front-250"] {
+        for suffix in ["front", "front-250", "front-500", "front-1200"] {
             routes.insert(
                 format!("/release/{release_id}/{suffix}"),
                 (status, bytes.clone()),

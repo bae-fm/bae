@@ -428,7 +428,9 @@
             ),
             query: "placeholder"
         )
+    }
 
+    extension PreviewData {
         // MARK: - Cover sheet
 
         /// Remote cover candidates (front + back) for the CoverSheetView preview.
@@ -450,20 +452,24 @@
             thumbnailUrl: String,
             label: String
         ) -> BridgeRemoteCover {
-            BridgeRemoteCover(
+            let image = BridgeRemoteImageSet(
+                url: url,
+                downscaled: [
+                    BridgeDownscaledCopy(url: thumbnailUrl, maxEdge: 250)
+                ]
+            )
+            return BridgeRemoteCover(
                 coverChoice: BridgeCoverChoice(
                     selection: .remoteCover(
                         selection: BridgeRemoteCoverSelection(
-                            url: url,
+                            image: image,
                             source: .musicBrainz
                         )
                     ),
-                    previewSource: .remote(url: url),
-                    thumbnailSource: .remote(url: thumbnailUrl)
+                    image: .remote(image: image)
                 ),
                 label: label
             )
         }
-
     }
 #endif

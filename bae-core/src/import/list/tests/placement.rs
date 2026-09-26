@@ -26,7 +26,9 @@ fn a_stored_verdict_that_classifies_ready_makes_a_selectable_row() {
         flat.summary.ready,
         vec![ReadyRowRef {
             candidate_key: key("Release"),
-            cover_thumbnail_url: Some("https://example.test/thumb.jpg".to_string()),
+            cover: Some(crate::import::cover_art::RemoteImageSet::original(
+                "https://example.test/front.jpg".to_string(),
+            )),
         }]
     );
 }
@@ -241,7 +243,7 @@ fn a_valid_draft_a_person_typed_is_ready_and_bulk_importable() {
         flat.summary.ready,
         vec![ReadyRowRef {
             candidate_key: key("Release"),
-            cover_thumbnail_url: None,
+            cover: None,
         }]
     );
 }

@@ -21,9 +21,12 @@ public enum ImageContent: Equatable, Hashable, Sendable {
     /// own image files. Core dispatches the read on the `BridgeGallerySource`,
     /// so the UI never picks the byte source itself.
     case releaseImage(releaseId: String, source: BridgeGallerySource)
-    /// Provider art (Cover Art Archive, Discogs) that isn't in the library.
-    /// Fetched through core, which owns every socket the app opens.
-    case remote(url: String)
+    /// Provider art (Cover Art Archive, Discogs) that isn't in the library:
+    /// the original and every downscaled copy its catalog serves. Fetched
+    /// through core, which owns every socket the app opens and reads the copy
+    /// the slot's pixel size needs — no view names a thumbnail, so none can
+    /// draw one too small for it.
+    case remote(BridgeRemoteImageSet)
     /// A file on disk the user is previewing before it enters the library — an
     /// import candidate's cover or folder image.
     case localFile(path: String)
@@ -37,8 +40,8 @@ public enum ImageContent: Equatable, Hashable, Sendable {
         switch bridge {
         case .local(let path):
             self = .localFile(path: path)
-        case .remote(let url):
-            self = .remote(url: url)
+        case .remote(let image):
+            self = .remote(image)
         case .bytes(let data):
             self = .bytes(Data(data))
         }
@@ -51,8 +54,8 @@ public enum ImageContent: Equatable, Hashable, Sendable {
             return "library image: \(image.imageType) \(image.id)"
         case .releaseImage(let releaseId, _):
             return "release image: \(releaseId)"
-        case .remote(let url):
-            return "remote image: \(url)"
+        case .remote(let image):
+            return "remote image: \(image.url)"
         case .localFile(let path):
             return "image at path: \(path)"
         case .bytes(let bytes):
@@ -119,12 +122,14 @@ public final class ImageStore: Sendable, Observable {
     private let fetchReleaseImageBytes:
         @Sendable (_ releaseId: String, _ source: BridgeGallerySource)
             async throws -> Data
-    /// Bytes of provider art at a URL, or nil when the source serves no image
-    /// there — cover addresses are derived from a release's ids, so an offered
-    /// one can hold nothing.
+    /// Bytes of provider art for a slot `pixels` wide on its longer side (nil:
+    /// the original), or nil when the source serves no image there — cover
+    /// addresses are derived from a release's ids, so an offered one can hold
+    /// nothing. Core picks the copy.
     /// Desktop-only; iOS has no import flow and leaves it unwired.
     private let fetchRemoteImage:
-        @Sendable (_ url: String) async throws -> Data?
+        @Sendable (_ image: BridgeRemoteImageSet, _ pixels: UInt32?)
+            async throws -> Data?
 
     private let buckets: Buckets
     private let inFlightLoads = InFlightImageLoads()
@@ -138,9 +143,8 @@ public final class ImageStore: Sendable, Observable {
             @escaping @Sendable (String, BridgeGallerySource) async throws ->
             Data = { _, _ in throw ImageStoreUnavailable() },
         fetchRemoteImage:
-            @escaping @Sendable (String) async throws -> Data? = {
-                _ in throw ImageStoreUnavailable()
-            },
+            @escaping @Sendable (BridgeRemoteImageSet, UInt32?) async throws ->
+            Data? = { _, _ in throw ImageStoreUnavailable() },
         budgets: ImageStoreBudgets = .default
     ) {
         self.fetchLibraryImageBytes = fetchLibraryImageBytes
@@ -164,7 +168,8 @@ public final class ImageStore: Sendable, Observable {
                 fetchRemoteImage: {
                     guard
                         let bytes = try await handle.fetchRemoteImageBytes(
-                            url: $0
+                            image: $0,
+                            pixels: $1
                         )
                     else {
                         return nil
@@ -283,7 +288,13 @@ public final class ImageStore: Sendable, Observable {
         pointSize: CGFloat,
         displayScale: CGFloat
     ) async throws -> PlatformImage? {
-        guard let source = try await decodeSource(for: content) else {
+        let pixels = Int((pointSize * displayScale).rounded())
+        guard
+            let source = try await decodeSource(
+                for: content,
+                at: .slot(pixels: pixels)
+            )
+        else {
             return nil
         }
         let image = try await ImageLoader.load(
@@ -344,10 +355,12 @@ public final class ImageStore: Sendable, Observable {
     /// local file (which streams rather than loading whole), the fetched bytes
     /// otherwise. Nil when no such image exists.
     ///
-    /// The zoomable viewers take this to re-decode the same bytes at native
-    /// resolution without crossing the bridge again.
+    /// The zoomable viewers take this at `.nativeResolution` to decode the
+    /// same bytes to fit the screen and then at full size without crossing
+    /// the bridge again.
     public func decodeSource(
-        for content: ImageContent
+        for content: ImageContent,
+        at target: DecodeTarget
     ) async throws -> ImageLoader.Source? {
         switch content {
         case .libraryImage(let image):
@@ -360,9 +373,14 @@ public final class ImageStore: Sendable, Observable {
             return .data(bytes)
         case .releaseImage(let releaseId, let source):
             return .data(try await fetchReleaseImageBytes(releaseId, source))
-        case .remote(let url):
-            guard let bytes = try await fetchRemoteImage(url) else {
-                logger.debug("No provider art is served at \(url)")
+        case .remote(let image):
+            let pixels: UInt32? =
+                switch target {
+                case .slot(let pixels): UInt32(clamping: pixels)
+                case .nativeResolution: nil
+                }
+            guard let bytes = try await fetchRemoteImage(image, pixels) else {
+                logger.debug("No provider art is served at \(image.url)")
                 return nil
             }
             return .data(bytes)
@@ -373,11 +391,14 @@ public final class ImageStore: Sendable, Observable {
         }
     }
 
+}
+
+extension ImageStore {
     /// Cache key for a decoded image: its content identity plus the decode
     /// resolution, so the now-playing bar's 48pt decode never serves the detail
     /// view's 400pt slot, and vice versa. Nil when the content has no cacheable
     /// identity.
-    private func cacheKey(
+    fileprivate func cacheKey(
         _ content: ImageContent,
         pointSize: CGFloat,
         displayScale: CGFloat
@@ -391,7 +412,7 @@ public final class ImageStore: Sendable, Observable {
 
     /// The content reference the caller supplied. Nil for `.bytes`, whose
     /// identity remains with its caller.
-    private func token(for content: ImageContent) -> String? {
+    fileprivate func token(for content: ImageContent) -> String? {
         switch content {
         case .libraryImage(let image):
             return Self.libraryToken(image)
@@ -407,8 +428,10 @@ public final class ImageStore: Sendable, Observable {
                 // never comes to name different bytes.
                 return "file:\(fileId)"
             }
-        case .remote(let url):
-            return "remote:\(url)"
+        case .remote(let image):
+            // The original names the image; the pixel size beside it in the
+            // key already separates the copies decoded for different slots.
+            return "remote:\(image.url)"
         case .localFile(let path):
             return "path:\(path)"
         case .bytes:
@@ -416,10 +439,21 @@ public final class ImageStore: Sendable, Observable {
         }
     }
 
-    private static func libraryToken(_ image: BridgeImageRef) -> String {
+    fileprivate static func libraryToken(_ image: BridgeImageRef) -> String {
         "library:\(image.imageType):\(image.id):\(image.version)"
     }
+}
 
+extension ImageStore {
+    /// The size a decode's bytes are fetched for. It only chooses among the
+    /// copies of provider art; every other content has one set of bytes.
+    public enum DecodeTarget: Equatable, Sendable {
+        /// A slot `pixels` wide on its longer side: the smallest copy that
+        /// fills it.
+        case slot(pixels: Int)
+        /// The image's own resolution, for a viewer that zooms in.
+        case nativeResolution
+    }
 }
 
 /// A capability this `ImageStore` isn't wired for — the preview stub, or the

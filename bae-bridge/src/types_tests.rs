@@ -537,8 +537,13 @@ mod conversion_roundtrip {
                 side: Some(1),
             }],
             cover_art: vec![bae_core::import::cover_art::RemoteCover {
-                url: "https://example.test/cover.jpg".to_string(),
-                thumbnail_url: "https://example.test/thumb.jpg".to_string(),
+                image: bae_core::import::cover_art::RemoteImageSet::with_copies(
+                    "https://example.test/cover.jpg".to_string(),
+                    vec![bae_core::import::cover_art::DownscaledCopy {
+                        url: "https://example.test/thumb.jpg".to_string(),
+                        max_edge: 250,
+                    }],
+                ),
                 label: "Front".to_string(),
                 source: bae_core::import::Catalog::MusicBrainz,
             }],

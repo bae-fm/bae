@@ -191,14 +191,18 @@ async fn a_picked_release_is_what_the_row_leads_with() {
     assert_eq!(matched.release_id, "mb-picked-1");
     assert_eq!(matched.title, "Picked Album Title");
     assert_eq!(matched.artist.as_deref(), Some("Picked Artist Name"));
-    let thumbnail = matched
-        .cover_thumbnail_url
-        .as_deref()
+    let cover = matched
+        .cover
         .expect("the picked release's document says the archive holds a front image");
     assert!(
-        thumbnail.ends_with("/release/mb-picked-1/front-250"),
-        "the row's thumbnail is the archive's address for the picked release's \
-         front image, got {thumbnail}"
+        cover.url.ends_with("/release/mb-picked-1/front"),
+        "the row's cover is the archive's address for the picked release's \
+         front image, got {}",
+        cover.url
+    );
+    assert!(
+        cover.url_covering(Some(80)).ends_with("/release/mb-picked-1/front-250"),
+        "a row-sized slot reads the archive's smallest copy"
     );
 }
 

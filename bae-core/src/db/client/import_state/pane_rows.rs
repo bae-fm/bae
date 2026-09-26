@@ -13,6 +13,7 @@ mod writes;
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::db::client::candidate_state_rows::COVER_COLUMNS;
+use crate::import::cover_art::{DownscaledCopy, RemoteImageSet};
 use crate::import::{
     ArtistAssignment, ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, CoverSelection,
     ExistingArtist, MetadataAuthor, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
@@ -191,8 +192,32 @@ pub(crate) fn load_covers_on(
             ))
         },
     )?;
+    let mut copies: HashMap<String, Vec<DownscaledCopy>> = HashMap::new();
+    for (content_hash, max_edge, url) in sql.query(
+        "SELECT content_hash, max_edge, url FROM import_candidate_cover_copy \
+         WHERE :only IS NULL OR content_hash = :only",
+        named_params! { ":only": only },
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, u32>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        },
+    )? {
+        copies
+            .entry(content_hash)
+            .or_default()
+            .push(DownscaledCopy { url, max_edge });
+    }
     let mut out = HashMap::with_capacity(rows.len());
     for (content_hash, kind, file_id, url, source) in rows {
+        let copies = copies.remove(&content_hash).unwrap_or_default();
+        if kind != "remote" && !copies.is_empty() {
+            return Err(DbError::Message(format!(
+                "the {kind} cover of {content_hash} holds downscaled copy rows"
+            )));
+        }
         let cover = match kind.as_str() {
             "local" => CoverSelection::Local(
                 file_id.ok_or_else(|| DbError::Message("a local cover names no file".into()))?,
@@ -201,7 +226,12 @@ pub(crate) fn load_covers_on(
                 DbError::Message("an embedded cover names no source file".into())
             })?),
             "remote" => CoverSelection::Remote(
-                url.ok_or_else(|| DbError::Message("a remote cover names no address".into()))?,
+                RemoteImageSet::with_copies(
+                    url.ok_or_else(|| {
+                        DbError::Message("a remote cover names no address".into())
+                    })?,
+                    copies,
+                ),
                 Catalog::from_str(
                     &source
                         .ok_or_else(|| DbError::Message("a remote cover names no source".into()))?,

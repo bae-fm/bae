@@ -21,7 +21,7 @@ struct CoverLightboxTests {
         let path = PreviewData.previewArtPath("Lightbox fixture")
         let file = releaseFile(path)
         let bytes = try Data(contentsOf: URL(fileURLWithPath: path))
-        let images = ImageStore(fetchRemoteImage: { _ in bytes })
+        let images = ImageStore(fetchRemoteImage: { _, _ in bytes })
         var selected: CoverItem?
         var dismissed = false
         let size = NSSize(width: 960, height: 700)
@@ -81,7 +81,7 @@ struct CoverLightboxTests {
     }
 
     @Test(
-        "The lightbox reads the original and keeps the provider thumbnail separate"
+        "The lightbox stage reads the original; its strip asks for its own size"
     )
     func originalImageSource() async throws {
         let item = remote("Booklet")
@@ -91,8 +91,8 @@ struct CoverLightboxTests {
             )
         )
         let recorder = Reads()
-        let images = ImageStore(fetchRemoteImage: { url in
-            await recorder.read(url)
+        let images = ImageStore(fetchRemoteImage: { image, pixels in
+            await recorder.read(Read(url: image.url, pixels: pixels))
             return bytes
         })
         let cursor = try #require(Cursor(items: [item, remote("Back")]))
@@ -105,48 +105,59 @@ struct CoverLightboxTests {
         ) { _, host in
             for _ in 0..<100 {
                 try await SnapshotTestSupport.settle(host)
-                if await recorder.urls.count >= 3 { break }
+                if await recorder.reads.count >= 3 { break }
             }
-            let urls = await recorder.urls
-            #expect(
-                urls.contains("https://images.example/Booklet-original.png")
-            )
-            #expect(urls.contains("https://images.example/Booklet-thumb.png"))
-            #expect(urls.contains("https://images.example/Back-thumb.png"))
-            #expect(!urls.contains("https://images.example/Back-original.png"))
+            let reads = await recorder.reads
+            let booklet = "https://images.example/Booklet-original.png"
+            let back = "https://images.example/Back-original.png"
+            // The stage decodes the current image at its own resolution; the
+            // strip's slots name their pixel size and core picks the copy.
+            #expect(reads.contains(Read(url: booklet, pixels: nil)))
+            #expect(reads.contains { $0.url == booklet && $0.pixels != nil })
+            #expect(reads.contains { $0.url == back && $0.pixels != nil })
+            #expect(!reads.contains(Read(url: back, pixels: nil)))
         }
     }
 
+    private struct Read: Equatable {
+        let url: String
+        let pixels: UInt32?
+    }
+
     private actor Reads {
-        var urls: [String] = []
-        func read(_ url: String) { urls.append(url) }
+        var reads: [Read] = []
+        func read(_ read: Read) { reads.append(read) }
     }
 
     private func releaseFile(_ path: String) -> CoverItem {
         CoverItem(
             coverChoice: BridgeCoverChoice(
                 selection: .releaseImage(fileId: "scan-file"),
-                previewSource: .local(path: path),
-                thumbnailSource: .local(path: path)
+                image: .local(path: path)
             ),
             label: "scans/booklet.png"
         )
     }
 
     private func remote(_ name: String) -> CoverItem {
-        let original = "https://images.example/\(name)-original.png"
+        let image = BridgeRemoteImageSet(
+            url: "https://images.example/\(name)-original.png",
+            downscaled: [
+                BridgeDownscaledCopy(
+                    url: "https://images.example/\(name)-thumb.png",
+                    maxEdge: 150
+                )
+            ]
+        )
         return CoverItem(
             coverChoice: BridgeCoverChoice(
                 selection: .remoteCover(
                     selection: BridgeRemoteCoverSelection(
-                        url: original,
+                        image: image,
                         source: .discogs
                     )
                 ),
-                previewSource: .remote(url: original),
-                thumbnailSource: .remote(
-                    url: "https://images.example/\(name)-thumb.png"
-                )
+                image: .remote(image: image)
             ),
             label: name
         )

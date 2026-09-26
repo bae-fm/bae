@@ -786,13 +786,43 @@ pub struct BridgeRemoteCover {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRemoteCoverSelection {
-    pub url: String,
+    pub image: BridgeRemoteImageSet,
     pub source: BridgeCatalog,
+}
+
+/// A catalog image: the original, and the downscaled copies the catalog serves
+/// of it. A slot hands the whole set to the image fetch with its pixel size,
+/// and core reads the copy that size needs — the UI never picks one.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeRemoteImageSet {
+    pub url: String,
+    pub downscaled: Vec<BridgeDownscaledCopy>,
+}
+
+/// A copy whose longer side is at most `max_edge` pixels.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeDownscaledCopy {
+    pub url: String,
+    pub max_edge: u32,
+}
+
+mirror_struct! {
+    BridgeRemoteImageSet = bae_core::import::cover_art::RemoteImageSet,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { url, downscaled: (each BridgeDownscaledCopy) },
+}
+
+mirror_struct! {
+    BridgeDownscaledCopy = bae_core::import::cover_art::DownscaledCopy,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { url, max_edge },
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCoverImageSource {
-    Remote { url: String },
+    Remote { image: BridgeRemoteImageSet },
     Local { path: String },
     Bytes { data: Vec<u8> },
 }
@@ -810,9 +840,10 @@ pub enum BridgeCoverSelection {
     },
 }
 
+/// A cover and the one image every slot showing it draws; the slot's size
+/// picks among a remote image's copies.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCoverChoice {
     pub selection: BridgeCoverSelection,
-    pub preview_source: BridgeCoverImageSource,
-    pub thumbnail_source: BridgeCoverImageSource,
+    pub image: BridgeCoverImageSource,
 }

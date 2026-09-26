@@ -45,8 +45,7 @@
             let path = previewArtPath(name)
             let choice = BridgeCoverChoice(
                 selection: .releaseImage(fileId: name),
-                previewSource: .local(path: path),
-                thumbnailSource: .local(path: path)
+                image: .local(path: path)
             )
             return previewFile(
                 name: name,
@@ -195,8 +194,7 @@
                 coverArt: [],
                 defaultCover: BridgeCoverChoice(
                     selection: .releaseImage(fileId: "Front.png"),
-                    previewSource: .local(path: previewArtPath("Front.png")),
-                    thumbnailSource: .local(path: previewArtPath("Front.png"))
+                    image: .local(path: previewArtPath("Front.png"))
                 )
             )
         }()

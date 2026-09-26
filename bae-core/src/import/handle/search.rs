@@ -5,18 +5,24 @@ use crate::import::search::{search_source, SearchQuery};
 use crate::util::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
-    /// Bytes of provider art at `url` for previews and explicit selection.
-    /// Candidate preparation persists selected bytes independently; this
-    /// session cache only avoids repeated transport within the process.
+    /// Bytes of provider art for a slot `pixels` wide on its longer side: the
+    /// smallest copy the catalog serves that fills it, or the original when
+    /// none does or `pixels` is `None`. The slot names its size and never a
+    /// copy, so a large slot cannot be drawn from a thumbnail. Candidate
+    /// preparation persists selected bytes independently; this session cache
+    /// only avoids repeated transport within the process.
     ///
     /// `None` when the source serves no image at that address — an offered
     /// cover the archive turns out not to hold. The slot then renders as having
     /// no image, which is what it has, rather than as a failed load.
     pub async fn fetch_remote_image_bytes(
         &self,
-        url: String,
+        image: crate::import::cover_art::RemoteImageSet,
+        pixels: Option<u32>,
     ) -> Result<Option<crate::import::cover_art::RemoteImage>, crate::import::ImportError> {
-        self.library_manager.fetch_remote_image(&url).await
+        self.library_manager
+            .fetch_remote_image(image.url_covering(pixels))
+            .await
     }
 
     /// Submit a candidate's typed search. Fire-and-forget: the run lands on

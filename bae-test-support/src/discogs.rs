@@ -191,8 +191,8 @@ pub fn seed_discogs_test_release(
         })).collect::<Vec<_>>(),
         "images": release.covers.iter().enumerate().map(|(index, cover)| serde_json::json!({
             "type": if index == 0 { "primary" } else { "secondary" },
-            "uri": cover.url,
-            "uri150": cover.thumbnail_url,
+            "uri": cover.image.url,
+            "uri150": cover.image.downscaled.first().map(|copy| &copy.url),
         })).collect::<Vec<_>>(),
         "artists": release.artists.iter().map(credit).collect::<Vec<_>>(),
         "extraartists": release.extraartists.as_ref().map(|artists| {

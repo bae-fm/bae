@@ -35,8 +35,8 @@ pub enum RemoteCoverGallery {
 /// asking the archive anything.
 pub(crate) const ARCHIVE: &str = "https://coverartarchive.org";
 
-/// A remote cover art option from an external source: where the full image and
-/// its thumbnail live, and which service is offering them.
+/// A remote cover art option from an external source: where the image and its
+/// downscaled copies live, and which service is offering them.
 ///
 /// This is an *address*, not a promise. For the Cover Art Archive it is derived
 /// from the entity id; whether the archive actually serves bytes there is
@@ -47,10 +47,65 @@ pub(crate) const ARCHIVE: &str = "https://coverartarchive.org";
 /// `identify::TerminalVerdict` persists.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct RemoteCover {
-    pub url: String,
-    pub thumbnail_url: String,
+    pub image: RemoteImageSet,
     pub label: String,
     pub source: Catalog,
+}
+
+/// One catalog image: the original, and every downscaled copy the catalog
+/// serves of it with the size that copy is bounded to.
+///
+/// Which copy a slot draws follows from the slot's size, through
+/// [`RemoteImageSet::url_covering`] — never from a caller naming a thumbnail —
+/// so a large slot can never be handed a copy too small for it.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct RemoteImageSet {
+    /// The original: the largest image the catalog serves, and the one an
+    /// import commits.
+    pub url: String,
+    /// Smaller copies, one per box size.
+    pub downscaled: Vec<DownscaledCopy>,
+}
+
+/// A copy of a catalog image scaled to fit in a `max_edge` × `max_edge` box:
+/// its longer side is at most `max_edge` pixels. A catalog never scales up, so
+/// a copy of an image smaller than the box is the image at its own size.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct DownscaledCopy {
+    pub url: String,
+    pub max_edge: u32,
+}
+
+impl RemoteImageSet {
+    /// An image the catalog serves at one size only.
+    pub fn original(url: String) -> Self {
+        Self {
+            url,
+            downscaled: Vec::new(),
+        }
+    }
+
+    /// The image with its downscaled copies, one per box size, smallest first.
+    pub fn with_copies(url: String, mut downscaled: Vec<DownscaledCopy>) -> Self {
+        downscaled.sort_by_key(|copy| copy.max_edge);
+        downscaled.dedup_by_key(|copy| copy.max_edge);
+        Self { url, downscaled }
+    }
+
+    /// Where to read the image for a slot `pixels` wide on its longer side:
+    /// the smallest copy that still fills it, or the original when no copy
+    /// does. `None` asks for the original outright — a viewer that zooms to
+    /// the image's own resolution.
+    pub fn url_covering(&self, pixels: Option<u32>) -> &str {
+        let Some(pixels) = pixels else {
+            return &self.url;
+        };
+        self.downscaled
+            .iter()
+            .filter(|copy| copy.max_edge >= pixels)
+            .min_by_key(|copy| copy.max_edge)
+            .map_or(&self.url, |copy| &copy.url)
+    }
 }
 
 impl RemoteCover {
@@ -70,14 +125,26 @@ impl RemoteCover {
     }
 
     fn cover_art_archive(entity: &str, id: &str, label: impl FnOnce(&str) -> String) -> Self {
+        let front = format!("{ARCHIVE}/{entity}/{id}/front");
+        let downscaled = ARCHIVE_COPY_EDGES
+            .iter()
+            .map(|&max_edge| DownscaledCopy {
+                url: format!("{front}-{max_edge}"),
+                max_edge,
+            })
+            .collect();
         Self {
-            url: format!("{ARCHIVE}/{entity}/{id}/front"),
-            thumbnail_url: format!("{ARCHIVE}/{entity}/{id}/front-250"),
+            image: RemoteImageSet::with_copies(front, downscaled),
             label: label(Catalog::MusicBrainz.cover_source_label()),
             source: Catalog::MusicBrainz,
         }
     }
 }
+
+/// The bounding boxes the Cover Art Archive serves every image's copies at:
+/// `front-250`, `front-500`, `front-1200` beside `front`, and the same
+/// suffixes on each gallery image's own file.
+pub(crate) const ARCHIVE_COPY_EDGES: [u32; 3] = [250, 500, 1200];
 
 /// This pressing's own front image, offered only when the release document
 /// says the archive serves one — that block is the release's own statement,
@@ -113,7 +180,7 @@ pub fn musicbrainz_album_cover(
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoverImageSource {
-    Remote { url: String },
+    Remote { image: RemoteImageSet },
     Local { path: std::path::PathBuf },
     Bytes { data: Vec<u8> },
 }
@@ -124,27 +191,23 @@ pub enum CoverImageSource {
 /// folder, what its identification fetched, or what the person chose. A
 /// candidate with none stored commits with no cover, so there is no such
 /// thing here as a cover that only a reader knows about.
+///
+/// One image, not a preview and a thumbnail: a remote image carries its
+/// catalog's downscaled copies, and the size a slot draws at picks among them.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverChoice {
     pub selection: crate::import::CoverSelection,
-    pub preview: CoverImageSource,
-    pub thumbnail: CoverImageSource,
+    pub image: CoverImageSource,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl CoverChoice {
-    /// One of the release's remote covers. Its thumbnail address is the
-    /// archive's own, so a picker row costs no full-size fetch.
-    pub fn remote(cover: &RemoteCover) -> Self {
+    /// A catalog's image, with every copy the catalog serves of it.
+    pub fn remote(image: RemoteImageSet, source: Catalog) -> Self {
         Self {
-            selection: crate::import::CoverSelection::Remote(cover.url.clone(), cover.source),
-            preview: CoverImageSource::Remote {
-                url: cover.url.clone(),
-            },
-            thumbnail: CoverImageSource::Remote {
-                url: cover.thumbnail_url.clone(),
-            },
+            selection: crate::import::CoverSelection::Remote(image.clone(), source),
+            image: CoverImageSource::Remote { image },
         }
     }
 
@@ -153,8 +216,7 @@ impl CoverChoice {
     pub fn local(file_id: String, path: std::path::PathBuf) -> Self {
         Self {
             selection: crate::import::CoverSelection::Local(file_id),
-            preview: CoverImageSource::Local { path: path.clone() },
-            thumbnail: CoverImageSource::Local { path },
+            image: CoverImageSource::Local { path },
         }
     }
 
@@ -164,8 +226,7 @@ impl CoverChoice {
     pub fn embedded(source_file_id: String, data: Vec<u8>) -> Self {
         Self {
             selection: crate::import::CoverSelection::Embedded(source_file_id),
-            preview: CoverImageSource::Bytes { data: data.clone() },
-            thumbnail: CoverImageSource::Bytes { data },
+            image: CoverImageSource::Bytes { data },
         }
     }
 }
@@ -175,7 +236,10 @@ impl CoverChoice {
 /// show that image once.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCover) {
-    if !covers.iter().any(|existing| existing.url == cover.url) {
+    if !covers
+        .iter()
+        .any(|existing| existing.image.url == cover.image.url)
+    {
         covers.push(cover);
     }
 }

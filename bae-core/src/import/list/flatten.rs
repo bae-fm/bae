@@ -415,7 +415,7 @@ fn place_row(
             Vec::new(),
         ),
         metadata_summary: state.and_then(|state| state.metadata_summary.clone()),
-        cover_thumbnail: None,
+        cover: None,
         ready_check: crate::import::triage::ready_check(&placement),
         placement,
         import_status,
@@ -647,10 +647,10 @@ fn summarise(
         if entry.matches_filter && row.selectable {
             ready.push(ReadyRowRef {
                 candidate_key: row.candidate_key.clone(),
-                cover_thumbnail_url: row
+                cover: row
                     .matched
                     .as_ref()
-                    .and_then(|matched| matched.cover_thumbnail_url.clone()),
+                    .and_then(|matched| matched.cover.clone()),
             });
         }
     }

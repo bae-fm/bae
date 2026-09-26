@@ -25,7 +25,7 @@ struct ReleaseGroup: Equatable, Identifiable {
     }
 
     var coverImageContent: ImageContent? {
-        coverArt?.coverChoice.thumbnailContent
+        coverArt?.coverChoice.imageContent
     }
 
     init(bridge: BridgeReleaseGroup) {

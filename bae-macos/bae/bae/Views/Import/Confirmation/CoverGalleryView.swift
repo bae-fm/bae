@@ -176,7 +176,7 @@ struct CoverGalleryView: View {
         }
         .onChange(of: remoteItems) { _, _ in rebuild() }
         .onChange(of: releaseItems) { _, _ in rebuild() }
-        .onChange(of: currentCover?.previewContent) { _, _ in rebuild() }
+        .onChange(of: currentCover?.image) { _, _ in rebuild() }
         .onChange(of: browser.layout) { _, layout in
             previewFocused = layout == .grid
         }
@@ -255,7 +255,7 @@ extension CoverGalleryView {
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 ImageView(
-                    content: item.thumbnailContent,
+                    content: item.image,
                     contentMode: .fit,
                     pointSize: 180
                 )
@@ -346,7 +346,7 @@ extension CoverGalleryView {
                     browser.layout = .lightbox
                 } label: {
                     ImageView(
-                        content: cursor.current.previewContent,
+                        content: cursor.current.image,
                         contentMode: .fit,
                         pointSize: 800
                     )

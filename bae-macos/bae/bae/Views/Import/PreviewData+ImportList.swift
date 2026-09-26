@@ -87,7 +87,7 @@
                 .map { row in
                     BridgeReadyRowRef(
                         candidateKey: row.candidateKey,
-                        coverThumbnailUrl: row.matched?.coverThumbnailUrl
+                        cover: row.matched?.cover
                     )
                 }
         }

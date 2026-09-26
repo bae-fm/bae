@@ -370,8 +370,8 @@ impl ImportService {
         // The selected remote cover and its exact prepared bytes are one
         // candidate revision. Import validates that pair and never fetches it.
         let remote_cover_data = match (&selected_cover, prepared_assets.remote_cover) {
-            (Some(CoverSelection::Remote(url, source)), Some(image)) => {
-                Some(downloaded_cover(image, url, *source)?)
+            (Some(CoverSelection::Remote(remote, source)), Some(image)) => {
+                Some(downloaded_cover(image, &remote.url, *source)?)
             }
             (Some(CoverSelection::Remote(_, _)), None) => {
                 return Err(crate::import::ImportError::Internal {

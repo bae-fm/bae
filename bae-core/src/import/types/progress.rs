@@ -23,8 +23,10 @@ pub enum StorageMode {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CoverSelection {
-    /// Remote cover to download (URL + source for attribution)
-    Remote(String, Catalog),
+    /// A catalog's image, and the catalog for attribution. The import
+    /// commits the original; the downscaled copies are what smaller slots
+    /// showing the selection draw.
+    Remote(crate::import::cover_art::RemoteImageSet, Catalog),
     /// Local file in the album folder (relative path from album root)
     Local(String),
     /// Artwork embedded in one audio file, identified by that file's relative

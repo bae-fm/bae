@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::import::assemble::{ArtistRef, PartDirection};
-use crate::import::cover_art::RemoteCover;
+use crate::import::cover_art::{DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::release_metadata::{AlbumMetadata, ReleaseMetadata};
 use crate::import::source_release::{
     ArchiveRelease, ArtistCredit, CatalogFacts, EntryKind, PerformedWork, ReleaseCovers,
@@ -19,11 +19,12 @@ use crate::import::{MetadataRef, ReleaseRecord};
 /// The tables under `source_release`, children before the tables they hang
 /// off. Deleting a release's mediums takes its entries, and with them their
 /// credits, roles and works.
-const CHILD_TABLES: [&str; 9] = [
+const CHILD_TABLES: [&str; 10] = [
     "source_release_album_artist",
     "source_release_link",
     "source_release_format",
     "source_release_record",
+    "source_release_cover_copy",
     "source_release_cover",
     "source_release_archive_group",
     "source_release_role",
@@ -185,19 +186,26 @@ pub(super) fn replace_source_release_on(
         for (position, cover) in covers.iter().enumerate() {
             sql.execute(
                 "INSERT INTO source_release_cover \
-                     (catalog, release_id, scope, position, url, thumbnail_url, label, source) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                     (catalog, release_id, scope, position, url, label, source) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?)",
                 params![
                     catalog,
                     key,
                     scope,
                     position as i64,
-                    cover.url,
-                    cover.thumbnail_url,
+                    cover.image.url,
                     cover.label,
                     cover.source.as_str(),
                 ],
             )?;
+            for copy in &cover.image.downscaled {
+                sql.execute(
+                    "INSERT INTO source_release_cover_copy \
+                         (catalog, release_id, scope, position, max_edge, url) \
+                     VALUES (?, ?, ?, ?, ?, ?)",
+                    params![catalog, key, scope, position as i64, copy.max_edge, copy.url],
+                )?;
+            }
         }
     }
     for (position, group) in release.archive_groups.iter().enumerate() {
@@ -550,23 +558,44 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         release: Vec::new(),
         album: Vec::new(),
     };
-    for (scope, url, thumbnail_url, label, source) in sql.query(
-        "SELECT scope, url, thumbnail_url, label, source FROM source_release_cover \
+    let mut copies: HashMap<(String, i64), Vec<DownscaledCopy>> = HashMap::new();
+    for (scope, position, max_edge, url) in sql.query(
+        "SELECT scope, position, max_edge, url FROM source_release_cover_copy \
+         WHERE catalog = ? AND release_id = ?",
+        params![catalog, key],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, u32>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        },
+    )? {
+        copies
+            .entry((scope, position))
+            .or_default()
+            .push(DownscaledCopy { url, max_edge });
+    }
+    for (scope, position, url, label, source) in sql.query(
+        "SELECT scope, position, url, label, source FROM source_release_cover \
          WHERE catalog = ? AND release_id = ? ORDER BY scope, position",
         params![catalog, key],
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
+                row.get::<_, i64>(1)?,
                 row.get::<_, String>(2)?,
                 row.get::<_, String>(3)?,
                 row.get::<_, String>(4)?,
             ))
         },
     )? {
+        let downscaled = copies
+            .remove(&(scope.clone(), position))
+            .unwrap_or_default();
         let cover = RemoteCover {
-            url,
-            thumbnail_url,
+            image: RemoteImageSet::with_copies(url, downscaled),
             label,
             source: catalog_column(&source)?,
         };

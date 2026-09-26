@@ -360,8 +360,13 @@ fn discogs_search_result_carries_remote_cover_pair() {
     assert_eq!(
         metadata.cover_art,
         Some(RemoteCover {
-            url: "https://discogs.example/full.jpg".to_string(),
-            thumbnail_url: "https://discogs.example/thumb.jpg".to_string(),
+            image: crate::import::cover_art::RemoteImageSet::with_copies(
+                "https://discogs.example/full.jpg".to_string(),
+                vec![crate::import::cover_art::DownscaledCopy {
+                    url: "https://discogs.example/thumb.jpg".to_string(),
+                    max_edge: 150,
+                }],
+            ),
             label: Catalog::Discogs.cover_source_label().to_string(),
             source: Catalog::Discogs,
         })

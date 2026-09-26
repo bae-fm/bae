@@ -8,7 +8,7 @@
 use super::*;
 use crate::identify::{IdentifyFailure, IdentifyRunView, LookupProvenance, TerminalVerdict};
 use crate::import::album_links::AlbumLinks;
-use crate::import::cover_art::RemoteCover;
+use crate::import::cover_art::{DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::search::{MetadataResult, SourceTracks, StatedMedia};
 use crate::import::{Catalog, MetadataRef};
 use std::str::FromStr;
@@ -213,10 +213,10 @@ fn insert_match(
     sql.execute(
         "INSERT INTO import_candidate_match \
              (content_hash, position, pressing, source, release_id, title, artist, year, format, \
-              label, catalog_number, country, media_kind, cover_url, cover_thumbnail_url, \
-              cover_label, cover_source, source_group_id, album_links, source_tracks_kind, \
-              source_tracks_count, by_disc_id, by_barcode, by_catalog, by_search, narrowed_out) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              label, catalog_number, country, media_kind, cover_url, cover_label, cover_source, \
+              source_group_id, album_links, source_tracks_kind, source_tracks_count, \
+              by_disc_id, by_barcode, by_catalog, by_search, narrowed_out) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -231,8 +231,7 @@ fn insert_match(
             result.catalog_number,
             result.country,
             media_kind,
-            cover.map(|cover| cover.url.as_str()),
-            cover.map(|cover| cover.thumbnail_url.as_str()),
+            cover.map(|cover| cover.image.url.as_str()),
             cover.map(|cover| cover.label.as_str()),
             cover.map(|cover| cover.source.as_str()),
             result.source_group_id,
@@ -246,6 +245,13 @@ fn insert_match(
             narrowed_out,
         ],
     )?;
+    for copy in cover.iter().flat_map(|cover| &cover.image.downscaled) {
+        sql.execute(
+            "INSERT INTO import_candidate_match_cover_copy (content_hash, position, max_edge, url) \
+             VALUES (?, ?, ?, ?)",
+            params![content_hash, position, copy.max_edge, copy.url],
+        )?;
+    }
     for (ordinal, barcode) in result.barcodes.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_barcode (content_hash, position, ordinal, barcode) \
@@ -317,6 +323,8 @@ pub(super) const MEDIA_DESCRIPTORS: &str = "descriptors";
 #[derive(Default)]
 pub(super) struct MatchEntries {
     pub(super) barcodes: Vec<String>,
+    /// The downscaled copies of the match's cover, which it must have.
+    pub(super) cover_copies: Vec<DownscaledCopy>,
     /// `(media_kind, format)`: the kind rides on every medium row, so a row
     /// whose kind disagrees with its match's is unreadable rather than
     /// silently reinterpreted.
@@ -387,6 +395,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
     } = columns;
     let MatchEntries {
         barcodes,
+        cover_copies,
         media,
         links,
         album_links,
@@ -420,6 +429,15 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         other => return Err(unreadable("media_kind", other)),
     };
     result.barcodes = barcodes;
+    match &mut result.cover_art {
+        Some(cover) => cover.image = RemoteImageSet::with_copies(cover.image.url.clone(), cover_copies),
+        None if !cover_copies.is_empty() => {
+            return Err(DbError::Message(format!(
+                "match {position} of {content_hash} holds cover copy rows but no cover"
+            )))
+        }
+        None => {}
+    }
     result.links = links
         .into_iter()
         .map(|(catalog, key)| Ok(MetadataRef::new(source_of(&catalog)?, key)))
@@ -467,9 +485,9 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
     let cover_url: Option<String> = row.get("cover_url")?;
     let cover_source: Option<String> = row.get("cover_source")?;
     let cover_art = match (cover_url, cover_source) {
+        // The copies are child rows; [`match_of`] adds them.
         (Some(url), Some(source)) => Some(RemoteCover {
-            url,
-            thumbnail_url: row.get("cover_thumbnail_url")?,
+            image: RemoteImageSet::original(url),
             label: row.get("cover_label")?,
             source: source_of(&source)?,
         }),

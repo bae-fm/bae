@@ -11,11 +11,11 @@ use super::super::source_releases::load_source_release_on;
 use super::super::records::check_releases_in_library_on;
 use super::*;
 use crate::identify::{classify, TerminalVerdict};
-use crate::import::cover_art::{CoverChoice, RemoteCover};
+use crate::import::cover_art::CoverChoice;
 use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate};
 use crate::import::list::{window_refs, Flattened, ImportListItem, ItemRef};
 use crate::import::folder_scanner::FolderCandidate;
-use crate::import::search::{ImportSearchReleaseDetail, MetadataResult};
+use crate::import::search::MetadataResult;
 use crate::import::triage::MatchedRelease;
 use crate::import::CoverSelection;
 use crate::library::LibraryPageWindow;
@@ -227,7 +227,7 @@ impl WindowItemRows {
                     None if row.metadata_provenance.is_some() => row.matched = None,
                     None => {}
                 }
-                row.cover_thumbnail = cover;
+                row.cover = cover;
                 Ok(ImportListItem::Candidate {
                     row,
                     is_group_member,
@@ -284,9 +284,9 @@ fn row_cover_source(
     cover: &CoverSelection,
 ) -> Result<crate::import::CoverImageSource, DbError> {
     match cover {
-        CoverSelection::Remote(url, _) => {
-            Ok(crate::import::CoverImageSource::Remote { url: url.clone() })
-        }
+        CoverSelection::Remote(image, _) => Ok(crate::import::CoverImageSource::Remote {
+            image: image.clone(),
+        }),
         CoverSelection::Local(file_id) => {
             let path = sql
                 .query_row(
@@ -545,7 +545,6 @@ pub(super) fn load_candidate_detail_on(
         let cover = chosen_cover(
             &candidate.files,
             pane_rows.cover.as_ref(),
-            pane.release.as_ref(),
             embedded_cover.as_ref(),
         );
         Ok(ImportCandidateDetailProjection {
@@ -613,7 +612,6 @@ fn claimed_releases_on(
 fn chosen_cover(
     files: &CategorizedFiles,
     chosen: Option<&CoverSelection>,
-    release: Option<&ImportSearchReleaseDetail>,
     embedded_cover: Option<&crate::import::file_tag_snapshot::EmbeddedCoverFact>,
 ) -> Option<CoverChoice> {
     match chosen {
@@ -633,23 +631,8 @@ fn chosen_cover(
         Some(CoverSelection::Embedded(source_file_id)) => embedded_cover
             .filter(|cover| &cover.source_relative_path == source_file_id)
             .map(|cover| CoverChoice::embedded(source_file_id.clone(), cover.data.clone())),
-        Some(CoverSelection::Remote(url, source)) => {
-            let matching = release
-                .into_iter()
-                .flat_map(|release| release.cover_art.iter())
-                .find(|cover| &cover.url == url);
-            Some(match matching {
-                Some(cover) => CoverChoice::remote(cover),
-                // The chosen address is no longer one the release offers, but
-                // it is still the address the user picked, so it is still what
-                // this import commits with.
-                None => CoverChoice::remote(&RemoteCover {
-                    url: url.clone(),
-                    thumbnail_url: url.clone(),
-                    label: source.cover_source_label().to_string(),
-                    source: *source,
-                }),
-            })
+        Some(CoverSelection::Remote(image, source)) => {
+            Some(CoverChoice::remote(image.clone(), *source))
         }
     }
 }

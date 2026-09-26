@@ -31,7 +31,10 @@
                 ),
                 // In fixtures the "URL" is a path to generated placeholder
                 // art; `PreviewData.artImageStore()` serves it from disk.
-                coverThumbnailUrl: previewArtPath(title),
+                cover: BridgeRemoteImageSet(
+                    url: previewArtPath(title),
+                    downscaled: []
+                ),
                 evidence: BridgeMatchEvidence(source: source, signal: signal)
             )
         }
@@ -45,7 +48,7 @@
             selectable: Bool = false,
             matched: BridgeMatchedRelease?,
             metadataSummary: BridgeTriageMetadataSummary? = nil,
-            coverThumbnail: BridgeCoverImageSource? = nil,
+            cover: BridgeCoverImageSource? = nil,
             importStatus: BridgeTriageImportStatus? = nil,
             metadataProvenance: BridgeMetadataProvenance? = nil,
             reading: BridgeTriageReading = .unidentified
@@ -66,7 +69,7 @@
                 ),
                 matched: matched,
                 metadataSummary: metadataSummary,
-                coverThumbnail: coverThumbnail,
+                cover: cover,
                 selectable: selectable,
                 importStatus: importStatus,
                 metadataProvenance: metadataProvenance,
@@ -288,7 +291,7 @@
             placement: .pending,
             matched: nil,
             metadataSummary: nil,
-            coverThumbnail: .local(path: previewArtPath("Front.png"))
+            cover: .local(path: previewArtPath("Front.png"))
         )
 
         /// A draft read off the folder's own metadata — a title and an artist, and no
@@ -301,7 +304,7 @@
                 albumTitle: "Album Title Twelve",
                 albumArtistAssignments: [artistCredit("Artist Name")]
             ),
-            coverThumbnail: .local(path: previewArtPath("Front.png")),
+            cover: .local(path: previewArtPath("Front.png")),
             metadataProvenance: .fileMetadata,
             reading: .prefilled
         )
@@ -330,7 +333,7 @@
                 albumTitle: "Album Title Thirteen",
                 albumArtistAssignments: [artistCredit("Artist Name")]
             ),
-            coverThumbnail: .local(path: previewArtPath("Front.png")),
+            cover: .local(path: previewArtPath("Front.png")),
             metadataProvenance: .externalRelease(
                 record: BridgeMetadataRef(
                     catalog: .musicBrainz,
@@ -358,7 +361,7 @@
                 albumTitle: "Album Title Fourteen",
                 albumArtistAssignments: [artistCredit("Artist Name")]
             ),
-            coverThumbnail: .local(path: previewArtPath("Front.png")),
+            cover: .local(path: previewArtPath("Front.png")),
             metadataProvenance: .externalRelease(
                 record: BridgeMetadataRef(
                     catalog: .musicBrainz,
@@ -410,7 +413,7 @@
                 title: "Album Title Five",
                 artist: "Artist Name",
                 pressing: nil,
-                coverThumbnailUrl: nil,
+                cover: nil,
                 evidence: BridgeMatchEvidence(
                     source: .musicBrainz,
                     signal: nil

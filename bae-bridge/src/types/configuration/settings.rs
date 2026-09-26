@@ -692,7 +692,7 @@ impl BridgeCoverSelection {
             }
             BridgeCoverSelection::RemoteCover { selection } => {
                 bae_core::import::CoverSelection::Remote(
-                    selection.url,
+                    selection.image.into_core(),
                     selection.source.into_core(),
                 )
             }

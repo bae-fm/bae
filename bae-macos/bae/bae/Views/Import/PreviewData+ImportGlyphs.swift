@@ -29,7 +29,7 @@
                 selectable: true,
                 matched: nil,
                 metadataSummary: glyphSummary,
-                coverThumbnail: .local(path: previewArtPath("Front.png")),
+                cover: .local(path: previewArtPath("Front.png")),
                 metadataProvenance: readFromRecord
                     ? .externalRelease(
                         record: BridgeMetadataRef(

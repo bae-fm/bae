@@ -308,7 +308,7 @@ extension LibraryArtworkBrowserTests {
         )
         let images = ImageStore(
             fetchReleaseImageBytes: { _, _ in bytes },
-            fetchRemoteImage: { _ in bytes }
+            fetchRemoteImage: { _, _ in bytes }
         )
         // A read that never answers: the sheet shows the release it was
         // opened with.
@@ -349,17 +349,19 @@ extension LibraryArtworkBrowserTests {
     private func remote(_ name: String, source: BridgeCatalog)
         -> BridgeRemoteCover
     {
-        let url = "https://images.example/\(name).png"
+        let image = BridgeRemoteImageSet(
+            url: "https://images.example/\(name).png",
+            downscaled: []
+        )
         return BridgeRemoteCover(
             coverChoice: BridgeCoverChoice(
                 selection: .remoteCover(
                     selection: BridgeRemoteCoverSelection(
-                        url: url,
+                        image: image,
                         source: source
                     )
                 ),
-                previewSource: .remote(url: url),
-                thumbnailSource: .remote(url: url)
+                image: .remote(image: image)
             ),
             label: name
         )

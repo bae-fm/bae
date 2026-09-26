@@ -172,7 +172,8 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
 }
 
 /// Every barcode, every medium entry — stated or not — every link a match
-/// carries, and what reading its album's links answered store and read back,
+/// carries, its cover with the copies the catalog serves, and what reading its
+/// album's links answered store and read back,
 /// so the rows and cards a stored verdict groups into are the ones the run
 /// grouped into.
 #[tokio::test]
@@ -203,7 +204,24 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     discogs.source_group_id = Some("7".to_string());
     discogs.barcodes = vec!["0 12345 67890 5".to_string(), "5051961234567".to_string()];
     discogs.media = StatedMedia::Descriptors(vec!["CD".to_string(), "Album".to_string()]);
+    // A cover with every copy the archive serves, one with Discogs's one
+    // thumbnail, and one served at its one size.
+    musicbrainz.cover_art = Some(crate::import::cover_art::RemoteCover::musicbrainz_release(
+        "rel-1",
+    ));
+    discogs.cover_art = crate::discogs::remote_cover_from_urls(
+        Some("https://images.example/front.jpg"),
+        Some("https://images.example/front-150.jpg"),
+        "release",
+        42,
+    );
     let mut undescribed = sample_match();
+    undescribed.cover_art = crate::discogs::remote_cover_from_urls(
+        Some("https://images.example/only.jpg"),
+        None,
+        "release",
+        2,
+    );
     undescribed.release_id = "rel-2".to_string();
     undescribed.year = Some(2001);
     undescribed.media = StatedMedia::Undescribed;

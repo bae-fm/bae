@@ -25,9 +25,9 @@ struct CoverItem: LightboxImage {
         case .currentCover: nil
         }
     }
-    var previewContent: ImageContent {
+    var image: ImageContent {
         switch content {
-        case .candidate(let choice): choice.previewContent
+        case .candidate(let choice): choice.imageContent
         case .releaseFile(let releaseId, let file):
             .releaseImage(
                 releaseId: releaseId,
@@ -35,13 +35,6 @@ struct CoverItem: LightboxImage {
             )
         case .currentCover(let releaseId, let image):
             .releaseImage(releaseId: releaseId, source: .cover(image: image))
-        }
-    }
-
-    var thumbnailContent: ImageContent {
-        switch content {
-        case .candidate(let choice): choice.thumbnailContent
-        case .releaseFile, .currentCover: previewContent
         }
     }
 
@@ -84,12 +77,9 @@ struct CoverItem: LightboxImage {
 }
 
 extension BridgeCoverChoice {
-    var previewContent: ImageContent {
-        ImageContent(bridge: previewSource)
-    }
-
-    var thumbnailContent: ImageContent {
-        ImageContent(bridge: thumbnailSource)
+    /// The cover's image, which every slot showing it draws at its own size.
+    var imageContent: ImageContent {
+        ImageContent(bridge: image)
     }
 }
 

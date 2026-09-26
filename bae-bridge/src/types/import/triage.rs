@@ -369,9 +369,9 @@ pub struct BridgeMatchedRelease {
     /// The lead match's artist, with the same caveat as `title`.
     pub artist: Option<String>,
     pub pressing: Option<BridgeMatchedPressing>,
-    /// Thumbnail-sized cover URL for the row's 40px art — the lead match's own
-    /// sleeve, since cover art is fetched per release id.
-    pub cover_thumbnail_url: Option<String>,
+    /// The lead match's own sleeve, since cover art is fetched per release
+    /// id, with the copies its catalog serves.
+    pub cover: Option<BridgeRemoteImageSet>,
     pub evidence: BridgeMatchEvidence,
 }
 
@@ -482,7 +482,7 @@ pub struct BridgeTriageRow {
     pub metadata_summary: Option<BridgeTriageMetadataSummary>,
     /// The cover selected for this candidate, even when its metadata draft is
     /// otherwise blank.
-    pub cover_thumbnail: Option<BridgeCoverImageSource>,
+    pub cover: Option<BridgeCoverImageSource>,
     /// Whether a bulk import can take this row when nothing is running for
     /// it. What is running is checked when the import runs.
     pub selectable: bool,

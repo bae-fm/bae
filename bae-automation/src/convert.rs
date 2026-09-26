@@ -356,7 +356,21 @@ mirror_struct! {
 mirror_struct! {
     AutomationRemoteCover = RemoteCover,
     from_core: pub(crate) fn,
-    fields: { url, thumbnail_url, label, source: (into) },
+    fields: { image: (AutomationRemoteImageSet), label, source: (into) },
+}
+
+mirror_struct! {
+    AutomationRemoteImageSet = bae_core::import::cover_art::RemoteImageSet,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { url, downscaled: (each AutomationDownscaledCopy) },
+}
+
+mirror_struct! {
+    AutomationDownscaledCopy = bae_core::import::cover_art::DownscaledCopy,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { url, max_edge },
 }
 
 mirror_struct! {
@@ -514,8 +528,8 @@ mirror_enum! {
 /// payloads, which the automation shape names.
 pub(super) fn cover_selection(selection: AutomationCoverSelection) -> CoverSelection {
     match selection {
-        AutomationCoverSelection::Remote { url, source } => {
-            CoverSelection::Remote(url, source.into())
+        AutomationCoverSelection::Remote { image, source } => {
+            CoverSelection::Remote(image.into_core(), source.into())
         }
         AutomationCoverSelection::Local { path } => CoverSelection::Local(path),
     }

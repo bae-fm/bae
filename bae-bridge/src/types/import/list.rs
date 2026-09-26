@@ -71,7 +71,9 @@ pub struct BridgeImportListWindow {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReadyRowRef {
     pub candidate_key: String,
-    pub cover_thumbnail_url: Option<String>,
+    /// The lead match's cover, which the row draws — decoded ahead so Pending
+    /// opens with its art.
+    pub cover: Option<BridgeRemoteImageSet>,
 }
 
 /// The list view and position that reveal one candidate at its current

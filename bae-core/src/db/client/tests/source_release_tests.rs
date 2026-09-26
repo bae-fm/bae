@@ -172,6 +172,16 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
     let discogs = discogs_documents().extract().unwrap();
     assert_eq!(discogs.mediums.len(), 2, "the positions number two discs");
     assert_eq!(discogs.mediums[1].entries[0].children.len(), 2);
+    for extracted in [&musicbrainz, &discogs] {
+        assert!(
+            extracted
+                .covers
+                .release
+                .iter()
+                .all(|cover| !cover.image.downscaled.is_empty()),
+            "every offered image carries the copies its catalog serves"
+        );
+    }
     for extracted in [musicbrainz, discogs] {
         db.save_source_release(&extracted).await.unwrap();
         let stored = db

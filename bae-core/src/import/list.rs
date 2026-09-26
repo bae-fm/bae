@@ -253,7 +253,8 @@ pub struct ImportListWindow {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReadyRowRef {
     pub candidate_key: String,
-    pub cover_thumbnail_url: Option<String>,
+    /// The lead match's cover, which Pending's rows draw.
+    pub cover: Option<crate::import::cover_art::RemoteImageSet>,
 }
 
 /// Everything the chrome around the list shows, computed in the same pass as

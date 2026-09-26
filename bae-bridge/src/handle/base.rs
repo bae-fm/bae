@@ -120,8 +120,9 @@ forward! { async this => {
             BridgeCoverSelection::ReleaseImage { file_id } => {
                 CoverSelection::ReleaseImage { file_id }
             }
+            // The library stores the original; its copies are for drawing.
             BridgeCoverSelection::RemoteCover { selection } => CoverSelection::RemoteCover {
-                url: selection.url,
+                url: selection.image.url,
                 source: selection.source.into_core(),
             },
             BridgeCoverSelection::EmbeddedCover { source_file_id } => {

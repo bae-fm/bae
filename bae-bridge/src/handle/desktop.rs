@@ -615,17 +615,22 @@ forward! {
             Ok(crate::types::BridgeRemoteCoverGallery::from_core(covers))
         }
 
-        /// Bytes of provider art at `url` — art from Cover Art Archive or Discogs
-        /// that isn't in the library yet, so there is no image ref to read it by.
-        /// Core owns the network: this is the only image fetch that leaves the
+        /// Bytes of provider art — art from Cover Art Archive or Discogs that
+        /// isn't in the library yet, so there is no image ref to read it by — for
+        /// a slot `pixels` wide on its longer side, or at the original's size
+        /// when `pixels` is absent. Core reads the copy that size needs. Core
+        /// owns the network: this is the only image fetch that leaves the
         /// device, and its byte cache is core's.
         ///
         /// `None` when the source serves no image at that address: cover addresses
         /// are derived from a release's ids, so an offered one can turn out to hold
         /// nothing. That is the slot having no image, not a failed load.
-        fn fetch_remote_image_bytes(url: String) -> Option<Vec<u8>> {
+        fn fetch_remote_image_bytes(
+            image: crate::types::BridgeRemoteImageSet,
+            pixels: Option<u32>,
+        ) -> Option<Vec<u8>> {
             this.services
-                .import_fetch_remote_image_bytes(url)
+                .import_fetch_remote_image_bytes(image.into_core(), pixels)
                 .await
                 .map(|image| image.map(|image| image.bytes))
                 .map_err(BridgeError::import)

@@ -674,7 +674,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         .set_cover(
             &hash,
             &CoverSelection::Remote(
-                "https://example.invalid/cover".to_string(),
+                crate::import::cover_art::RemoteImageSet::original("https://example.invalid/cover".to_string()),
                 Catalog::MusicBrainz,
             ),
         )
@@ -696,7 +696,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     assert_eq!(
         cleared.cover,
         Some(CoverSelection::Remote(
-            "https://example.invalid/cover".to_string(),
+            crate::import::cover_art::RemoteImageSet::original("https://example.invalid/cover".to_string()),
             Catalog::MusicBrainz,
         )),
         "a draft that brings no image of its own says nothing about the cover, \

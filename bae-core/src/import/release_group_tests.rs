@@ -56,8 +56,13 @@ pub(super) fn rows(groups: &[ReleaseGroup]) -> Vec<Vec<&str>> {
 
 pub(super) fn cover() -> RemoteCover {
     RemoteCover {
-        url: "https://caa.example/front.jpg".to_string(),
-        thumbnail_url: "https://caa.example/thumb.jpg".to_string(),
+image: crate::import::cover_art::RemoteImageSet::with_copies(
+            "https://caa.example/front.jpg".to_string(),
+            vec![crate::import::cover_art::DownscaledCopy {
+                url: "https://caa.example/thumb.jpg".to_string(),
+                max_edge: 250,
+            }],
+        ),
         label: Catalog::MusicBrainz.cover_source_label().to_string(),
         source: Catalog::MusicBrainz,
     }
@@ -885,8 +890,13 @@ fn representative_cover_preserves_remote_cover_pair() {
 fn a_merged_card_prefers_the_musicbrainz_cover() {
     let mut discogs_covered = discogs("dg-1", Some("master-7"), Some(2001));
     discogs_covered.cover_art = Some(RemoteCover {
-        url: "https://discogs.example/front.jpg".to_string(),
-        thumbnail_url: "https://discogs.example/thumb.jpg".to_string(),
+image: crate::import::cover_art::RemoteImageSet::with_copies(
+            "https://discogs.example/front.jpg".to_string(),
+            vec![crate::import::cover_art::DownscaledCopy {
+                url: "https://discogs.example/thumb.jpg".to_string(),
+                max_edge: 150,
+            }],
+        ),
         label: Catalog::Discogs.cover_source_label().to_string(),
         source: Catalog::Discogs,
     });

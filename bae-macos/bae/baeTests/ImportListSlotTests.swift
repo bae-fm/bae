@@ -101,7 +101,7 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             ),
             matched: nil,
             metadataSummary: nil,
-            coverThumbnail: nil,
+            cover: nil,
             selectable: false,
             importStatus: nil,
             metadataProvenance: nil,

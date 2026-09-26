@@ -247,7 +247,7 @@ struct ImportCandidateListContent: View {
 
     private var readyCovers: [ImageContent] {
         summary.ready.compactMap { row in
-            row.coverThumbnailUrl.map { .remote(url: $0) }
+            row.cover.map { .remote($0) }
         }
     }
 

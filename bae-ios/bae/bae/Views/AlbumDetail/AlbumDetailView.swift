@@ -150,7 +150,8 @@ struct AlbumDetailView: View {
                         for: .releaseImage(
                             releaseId: releaseId,
                             source: item.source
-                        )
+                        ),
+                        at: .nativeResolution
                     )
                 }
             )

@@ -37,9 +37,12 @@ pub(super) fn cover_columns(
         CoverSelection::Embedded(source_file_id) => {
             ("embedded", Some(source_file_id.as_str()), None, None)
         }
-        CoverSelection::Remote(url, source) => {
-            ("remote", None, Some(url.as_str()), Some(source.as_str()))
-        }
+        CoverSelection::Remote(image, source) => (
+            "remote",
+            None,
+            Some(image.url.as_str()),
+            Some(source.as_str()),
+        ),
     }
 }
 
@@ -59,5 +62,20 @@ pub(super) fn save_cover(
         ),
         params![content_hash, kind, file_id, url, source],
     )?;
+    // The upsert keeps the row, so the previous selection's copies are
+    // replaced here rather than by the cascade.
+    sql.execute(
+        "DELETE FROM import_candidate_cover_copy WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    if let CoverSelection::Remote(image, _) = cover {
+        for copy in &image.downscaled {
+            sql.execute(
+                "INSERT INTO import_candidate_cover_copy (content_hash, max_edge, url) \
+                 VALUES (?, ?, ?)",
+                params![content_hash, copy.max_edge, copy.url],
+            )?;
+        }
+    }
     Ok(())
 }

@@ -123,7 +123,7 @@ private func matchedRelease(
     releaseId: String,
     title: String,
     trackCount: UInt32? = 10,
-    coverThumbnailUrl: String? = nil
+    cover: BridgeRemoteImageSet? = nil
 ) -> BridgeMatchedRelease {
     BridgeMatchedRelease(
         releaseId: releaseId,
@@ -132,7 +132,7 @@ private func matchedRelease(
         pressing: trackCount.map {
             BridgeMatchedPressing(year: 2000, format: "CD", trackCount: $0)
         },
-        coverThumbnailUrl: coverThumbnailUrl,
+        cover: cover,
         evidence: BridgeMatchEvidence(source: .musicBrainz, signal: .discId)
     )
 }
@@ -141,9 +141,9 @@ private func matchedRelease(
 private func readyRow(
     _ key: String,
     title: String,
-    coverThumbnailUrl: String? = nil,
+    matchedCover: BridgeRemoteImageSet? = nil,
     metadataSummary: BridgeTriageMetadataSummary? = nil,
-    coverThumbnail: BridgeCoverImageSource? = nil
+    cover: BridgeCoverImageSource? = nil
 ) -> BridgeTriageRow {
     BridgeTriageRow(
         candidateKey: key,
@@ -162,10 +162,10 @@ private func readyRow(
         matched: matchedRelease(
             releaseId: "rel-\(key)",
             title: title,
-            coverThumbnailUrl: coverThumbnailUrl
+            cover: matchedCover
         ),
         metadataSummary: metadataSummary,
-        coverThumbnail: coverThumbnail,
+        cover: cover,
         selectable: true,
         importStatus: nil,
         metadataProvenance: .externalRelease(
@@ -200,7 +200,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         ),
         matched: nil,
         metadataSummary: nil,
-        coverThumbnail: nil,
+        cover: nil,
         selectable: false,
         importStatus: nil,
         metadataProvenance: nil,
@@ -378,12 +378,15 @@ struct ImportStoreSidebarCoverTests {
             let row = readyRow(
                 key,
                 title: "Subject",
-                coverThumbnailUrl: "https://example.com/queue-thumbnail.jpg",
+                matchedCover: BridgeRemoteImageSet(
+                    url: "https://example.com/queue-cover.jpg",
+                    downscaled: []
+                ),
                 metadataSummary: BridgeTriageMetadataSummary(
                     albumTitle: "Applied Draft",
                     albumArtistAssignments: []
                 ),
-                coverThumbnail: choice.thumbnailSource
+                cover: choice.image
             )
             store.applyCandidateDetail(
                 key: key,
@@ -398,7 +401,7 @@ struct ImportStoreSidebarCoverTests {
 
             #expect(
                 store.sidebarCover(for: row)
-                    == ImageContent(bridge: choice.thumbnailSource)
+                    == ImageContent(bridge: choice.image)
             )
         }
     }
@@ -408,7 +411,10 @@ struct ImportStoreSidebarCoverTests {
         let row = readyRow(
             "/w/subject",
             title: "Subject",
-            coverThumbnailUrl: "https://example.com/queue-thumbnail.jpg"
+            matchedCover: BridgeRemoteImageSet(
+                url: "https://example.com/queue-cover.jpg",
+                downscaled: []
+            )
         )
 
         #expect(ImportStore().sidebarCover(for: row) == nil)

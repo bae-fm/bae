@@ -172,11 +172,10 @@ pub struct MatchedRelease {
     pub artist: Option<String>,
     /// The facts that are only known once the pressing is settled.
     pub pressing: Option<MatchedPressing>,
-    /// [`crate::import::cover_art::RemoteCover::thumbnail_url`] of the lead
-    /// match — a row renders a 40px cover, and the full-size URL is the mapping
-    /// pane's business. Cover art is fetched per release id, so this is that one
-    /// pressing's sleeve, not the group's.
-    pub cover_thumbnail_url: Option<String>,
+    /// The lead match's cover, with the copies its catalog serves — the slot
+    /// drawing it picks the copy its size needs. Cover art is fetched per
+    /// release id, so this is that one pressing's sleeve, not the group's.
+    pub cover: Option<crate::import::cover_art::RemoteImageSet>,
     pub evidence: MatchEvidence,
 }
 
@@ -251,7 +250,7 @@ impl MatchedRelease {
                 format: lead.format.clone(),
                 track_count: source_track_count(&lead.source_tracks),
             }),
-            cover_thumbnail_url: lead.cover_thumbnail_url.clone(),
+            cover: lead.cover.clone(),
             evidence: MatchEvidence {
                 source: lead.source,
                 // Index-aligned with `matches`, so the lead's provenance is the
@@ -278,9 +277,7 @@ impl MatchedRelease {
                 format: detail.format.clone(),
                 track_count: Some(detail.track_count),
             }),
-            cover_thumbnail_url: detail
-                .default_cover()
-                .map(|cover| cover.thumbnail_url.clone()),
+            cover: detail.default_cover().map(|cover| cover.image.clone()),
             evidence: MatchEvidence {
                 source,
                 signal: None,
@@ -371,7 +368,7 @@ pub struct TriageRow {
     pub metadata_summary: Option<TriageMetadataSummary>,
     /// The effective cover the row renders: selection, matched artwork, or the
     /// folder's default image.
-    pub cover_thumbnail: Option<crate::import::CoverImageSource>,
+    pub cover: Option<crate::import::CoverImageSource>,
     /// Whether a bulk import can take this row when nothing is running for
     /// it: [`CandidateActionBasis::importable_at_rest`]. What is running is
     /// checked when the import runs.

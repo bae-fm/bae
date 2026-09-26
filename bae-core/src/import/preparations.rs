@@ -479,7 +479,9 @@ mod tests {
     fn a_source_with_no_image_keeps_the_stored_cover_and_its_bytes() {
         let folders_own = CoverSelection::Local("cover.jpg".to_string());
         let remote = CoverSelection::Remote(
-            "https://example.invalid/front".to_string(),
+            crate::import::cover_art::RemoteImageSet::original(
+                "https://example.invalid/front".to_string(),
+            ),
             crate::import::Catalog::Discogs,
         );
         let nothing = || PreparedCover {

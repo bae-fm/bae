@@ -44,9 +44,9 @@ impl ImportServiceHandle {
             })?
             .metadata_revision;
         let remote_image = match &cover {
-            crate::import::CoverSelection::Remote(url, _) => Some(
+            crate::import::CoverSelection::Remote(image, _) => Some(
                 self.library_manager
-                    .fetch_required_remote_image(url)
+                    .fetch_required_remote_image(&image.url)
                     .await?,
             ),
             crate::import::CoverSelection::Local(_)

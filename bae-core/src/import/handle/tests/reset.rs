@@ -482,7 +482,9 @@ async fn reset_setup_discards_selected_release_assets_and_identification() {
         metadata_revision: selected.metadata_revision,
     };
     let cover = crate::import::CoverSelection::Remote(
-        "https://images.example/selected.jpg".into(),
+        crate::import::cover_art::RemoteImageSet::original(
+            "https://images.example/selected.jpg".into(),
+        ),
         crate::import::Catalog::Discogs,
     );
     handle

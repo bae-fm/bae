@@ -7,33 +7,33 @@ import VisionKit
 private let logger = Logger.bae("LightboxView")
 
 /// The same artwork can be browsed without adopting a cover-selection identity.
+/// One image per item: the strip's thumbnails and the stage both draw it, each
+/// at its own size.
 protocol LightboxImage: Identifiable, Equatable {
     var label: String { get }
     var sourceLabel: String { get }
-    var previewContent: ImageContent { get }
-    var thumbnailContent: ImageContent { get }
+    var image: ImageContent { get }
 }
 
 struct LightboxItem: LightboxImage {
     let id: String
     let label: String
-    let previewContent: ImageContent
+    let image: ImageContent
 
     init(label: String, path: String) {
         self.init(
             id: path,
             label: label,
-            previewContent: .localFile(path: path)
+            image: .localFile(path: path)
         )
     }
 
-    init(id: String, label: String, previewContent: ImageContent) {
+    init(id: String, label: String, image: ImageContent) {
         self.id = id
         self.label = label
-        self.previewContent = previewContent
+        self.image = image
     }
 
-    var thumbnailContent: ImageContent { previewContent }
     var sourceLabel: String { String(localized: "Release Files") }
 }
 
@@ -90,7 +90,7 @@ struct LightboxView<Item: LightboxImage>: View {
                         closeButtonOverlay
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .task(id: cursor.current.previewContent) {
+                    .task(id: cursor.current.image) {
                         await loadCurrentImage(containerSize: geo.size)
                     }
                 }
@@ -114,7 +114,7 @@ struct LightboxView<Item: LightboxImage>: View {
                             )
                         }
                     ) { item in
-                        ImageView(content: item.thumbnailContent, pointSize: 56)
+                        ImageView(content: item.image, pointSize: 56)
                     }
                     .padding(.bottom, 12)
                     .fadesWhenZoomed(at: magnification)
@@ -139,7 +139,7 @@ struct LightboxView<Item: LightboxImage>: View {
             return .handled
         }
         .onAppear { focused = true }
-        .onChange(of: cursor.current.previewContent) { _, _ in
+        .onChange(of: cursor.current.image) { _, _ in
             magnification = 1.0
             fullResImageUpgradeTask?.cancel()
             fullResImageUpgradeTask = nil
@@ -153,11 +153,12 @@ struct LightboxView<Item: LightboxImage>: View {
         do {
             guard
                 let source = try await imageStore.decodeSource(
-                    for: cursor.current.previewContent
+                    for: cursor.current.image,
+                    at: .nativeResolution
                 )
             else {
                 logger.warning(
-                    "No bytes for lightbox image \(cursor.current.previewContent.description)"
+                    "No bytes for lightbox image \(cursor.current.image.description)"
                 )
                 loadFailed = true
                 return nil
@@ -169,7 +170,7 @@ struct LightboxView<Item: LightboxImage>: View {
         }
         catch {
             logger.warning(
-                "Failed to fetch lightbox image \(cursor.current.previewContent.description): \(error)"
+                "Failed to fetch lightbox image \(cursor.current.image.description): \(error)"
             )
             loadFailed = true
             return nil
@@ -203,7 +204,7 @@ struct LightboxView<Item: LightboxImage>: View {
         }
         catch {
             logger.warning(
-                "Failed to decode lightbox image \(cursor.current.previewContent.description): \(error)"
+                "Failed to decode lightbox image \(cursor.current.image.description): \(error)"
             )
             loadFailed = true
             return

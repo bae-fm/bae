@@ -1021,6 +1021,17 @@ CREATE TABLE IF NOT EXISTS import_candidate_cover (
     CHECK ((kind = 'remote') = (url IS NOT NULL AND source IS NOT NULL))
 ) STRICT;
 
+-- The downscaled copies the catalog serves of a remote cover choice, one per
+-- box size: a copy's longer side is at most max_edge pixels. Only a 'remote'
+-- choice has any; the reader rejects copies of any other kind.
+CREATE TABLE IF NOT EXISTS import_candidate_cover_copy (
+    content_hash TEXT NOT NULL,
+    max_edge     INTEGER NOT NULL CHECK (max_edge > 0),
+    url          TEXT NOT NULL CHECK (url <> ''),
+    PRIMARY KEY (content_hash, max_edge),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_cover (content_hash) ON DELETE CASCADE
+) STRICT;
+
 -- The bytes of a catalog-offered cover, fetched before the import runs.
 CREATE TABLE IF NOT EXISTS import_candidate_remote_cover_asset (
     content_hash TEXT PRIMARY KEY,
@@ -1326,8 +1337,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- describes is not said.
     media_kind          TEXT NOT NULL
         CHECK (media_kind IN ('undescribed', 'per_medium', 'descriptors')),
+    -- The lead cover's original; its downscaled copies are
+    -- import_candidate_match_cover_copy rows.
     cover_url           TEXT,
-    cover_thumbnail_url TEXT,
     cover_label         TEXT,
     cover_source        TEXT CHECK (cover_source IS NULL OR cover_source IN ('musicbrainz', 'discogs')),
     source_group_id     TEXT,
@@ -1356,7 +1368,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- row can only ever belong to a match of the kind it was written for.
     UNIQUE (content_hash, position, media_kind),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
-    CHECK ((cover_url IS NULL) = (cover_thumbnail_url IS NULL) AND (cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL)),
+    CHECK ((cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL)),
     CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL))
 ) STRICT;
 
@@ -1367,6 +1379,19 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_barcode (
     ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
     barcode      TEXT NOT NULL CHECK (barcode <> ''),
     PRIMARY KEY (content_hash, position, ordinal),
+    FOREIGN KEY (content_hash, position)
+        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE
+) STRICT;
+
+-- The downscaled copies the catalog serves of a match's cover, one per box
+-- size: a copy's longer side is at most max_edge pixels. A match rows here
+-- only when it has a cover; the reader rejects copies of no cover.
+CREATE TABLE IF NOT EXISTS import_candidate_match_cover_copy (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL,
+    max_edge     INTEGER NOT NULL CHECK (max_edge > 0),
+    url          TEXT NOT NULL CHECK (url <> ''),
+    PRIMARY KEY (content_hash, position, max_edge),
     FOREIGN KEY (content_hash, position)
         REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE
 ) STRICT;
@@ -1508,13 +1533,27 @@ CREATE TABLE IF NOT EXISTS source_release_cover (
     release_id    TEXT NOT NULL,
     scope         TEXT NOT NULL CHECK (scope IN ('release', 'album')),
     position      INTEGER NOT NULL CHECK (position >= 0),
+    -- The original; its downscaled copies are source_release_cover_copy rows.
     url           TEXT NOT NULL,
-    thumbnail_url TEXT NOT NULL,
     label         TEXT NOT NULL,
     source        TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
     PRIMARY KEY (catalog, release_id, scope, position),
     FOREIGN KEY (catalog, release_id)
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- The downscaled copies the catalog serves of one offered image, one per box
+-- size: a copy's longer side is at most max_edge pixels.
+CREATE TABLE IF NOT EXISTS source_release_cover_copy (
+    catalog    TEXT NOT NULL,
+    release_id TEXT NOT NULL,
+    scope      TEXT NOT NULL,
+    position   INTEGER NOT NULL,
+    max_edge   INTEGER NOT NULL CHECK (max_edge > 0),
+    url        TEXT NOT NULL CHECK (url <> ''),
+    PRIMARY KEY (catalog, release_id, scope, position, max_edge),
+    FOREIGN KEY (catalog, release_id, scope, position)
+        REFERENCES source_release_cover (catalog, release_id, scope, position) ON DELETE CASCADE
 ) STRICT;
 
 -- The MusicBrainz release groups the album was read from, whose Cover Art

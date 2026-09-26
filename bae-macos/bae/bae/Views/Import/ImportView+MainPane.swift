@@ -82,7 +82,7 @@ extension ImportView {
             ImportingCandidatePane(
                 candidate: candidate,
                 runtime: runtime,
-                coverContent: candidate.cover?.thumbnailContent,
+                coverContent: candidate.cover?.imageContent,
                 onOpenImages: mappingActions.openImages,
                 onOpenDocument: mappingActions.openDocument,
                 onPreview: mappingActions.preview,
@@ -107,7 +107,7 @@ extension ImportView {
             ),
             libraryStatus: candidate.pickedLibraryStatus,
             hasCoverOptions: hasCoverOptions(candidate),
-            coverContent: candidate.cover?.thumbnailContent,
+            coverContent: candidate.cover?.imageContent,
             editActions: editActions(for: candidate),
             editingCommands: editingCommands,
             endEditing: commitAndEndEditing,

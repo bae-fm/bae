@@ -487,15 +487,35 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
     assert!(detail.failure.is_none());
 }
 
-/// Both kinds of cover choice come back as they went in.
+fn remote_with_copies(url: &str) -> CoverSelection {
+    use crate::import::cover_art::{DownscaledCopy, RemoteImageSet};
+    CoverSelection::Remote(
+        RemoteImageSet::with_copies(
+            url.to_string(),
+            [250, 500]
+                .map(|max_edge| DownscaledCopy {
+                    url: format!("{url}-{max_edge}"),
+                    max_edge,
+                })
+                .to_vec(),
+        ),
+        Catalog::MusicBrainz,
+    )
+}
+
+/// Every kind of cover choice comes back as it went in, a remote one with its
+/// downscaled copies.
 #[tokio::test]
-async fn a_cover_choice_round_trips_in_both_shapes() {
+async fn a_cover_choice_round_trips_in_every_shape() {
     for cover in [
         CoverSelection::Local("cover.jpg".to_string()),
         CoverSelection::Remote(
-            "https://example.invalid/front".to_string(),
+            crate::import::cover_art::RemoteImageSet::original(
+                "https://example.invalid/front".to_string(),
+            ),
             Catalog::Discogs,
         ),
+        remote_with_copies("https://example.invalid/front"),
     ] {
         let (db, _tmp) = empty_db().await;
         let (_, hash) = stored_pane_candidate(&db).await;
@@ -515,12 +535,38 @@ async fn a_cover_choice_round_trips_in_both_shapes() {
     }
 }
 
+/// Choosing again replaces the previous choice's copies rather than adding the
+/// new ones beside them.
+#[tokio::test]
+async fn a_new_cover_choice_leaves_none_of_the_old_copies() {
+    let (db, _tmp) = empty_db().await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let preparations = crate::import::CandidatePreparations::new(db.clone());
+
+    for cover in [
+        remote_with_copies("https://example.invalid/first"),
+        CoverSelection::Local("cover.jpg".to_string()),
+        remote_with_copies("https://example.invalid/second"),
+    ] {
+        preparations.set_cover(&hash, &cover).await.unwrap();
+        assert_eq!(
+            db.load_import_candidate_pane_rows(&hash)
+                .await
+                .unwrap()
+                .cover,
+            Some(cover)
+        );
+    }
+}
+
 #[tokio::test]
 async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let cover = CoverSelection::Remote(
-        "https://example.invalid/image".to_string(),
+        crate::import::cover_art::RemoteImageSet::original(
+            "https://example.invalid/image".to_string(),
+        ),
         Catalog::Discogs,
     );
     let image = crate::import::cover_art::RemoteImage {
@@ -553,7 +599,9 @@ async fn a_remote_cover_without_exact_bytes_writes_nothing() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let cover = CoverSelection::Remote(
-        "https://example.invalid/image".to_string(),
+        crate::import::cover_art::RemoteImageSet::original(
+            "https://example.invalid/image".to_string(),
+        ),
         Catalog::Discogs,
     );
 
@@ -588,7 +636,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let current_cover = CoverSelection::Remote(
-        "https://example.invalid/current".to_string(),
+        crate::import::cover_art::RemoteImageSet::original("https://example.invalid/current".to_string()),
         Catalog::Discogs,
     );
     let current_image = crate::import::cover_art::RemoteImage {
@@ -607,7 +655,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
         .unwrap();
 
     let stale_cover = CoverSelection::Remote(
-        "https://example.invalid/stale".to_string(),
+        crate::import::cover_art::RemoteImageSet::original("https://example.invalid/stale".to_string()),
         Catalog::MusicBrainz,
     );
     let stale_image = crate::import::cover_art::RemoteImage {

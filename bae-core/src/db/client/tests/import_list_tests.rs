@@ -543,7 +543,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .expect("the row carries its applied draft");
     assert_eq!(summary.album_title, "Edited Album");
     assert_eq!(
-        row.cover_thumbnail,
+        row.cover,
         Some(crate::import::CoverImageSource::Local {
             path: PathBuf::from(format!("{root}/Album/cover.jpg")),
         })
@@ -573,7 +573,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .await
         .unwrap();
     assert_eq!(
-        rows(&projection).remove(0).cover_thumbnail,
+        rows(&projection).remove(0).cover,
         Some(crate::import::CoverImageSource::Local {
             path: PathBuf::from(format!("{root}/Album/folder.jpg")),
         }),
@@ -605,7 +605,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .await
         .unwrap();
     assert_eq!(
-        rows(&projection).remove(0).cover_thumbnail,
+        rows(&projection).remove(0).cover,
         Some(crate::import::CoverImageSource::Local {
             path: PathBuf::from(format!("{root}/Album/folder.jpg")),
         }),
@@ -668,7 +668,7 @@ async fn the_scan_stores_the_folders_own_cover() {
     let row = rows(&projection).remove(0);
     assert!(row.metadata_summary.is_none());
     assert_eq!(
-        row.cover_thumbnail,
+        row.cover,
         Some(crate::import::CoverImageSource::Local {
             path: PathBuf::from(format!("{root}/Album/cover.jpg")),
         })
@@ -678,14 +678,9 @@ async fn the_scan_stores_the_folders_own_cover() {
     let hash = candidate.files.content_hash();
     exec(
         &db,
-        "UPDATE import_candidate_match SET cover_url = ?, cover_thumbnail_url = ?, \
+        "UPDATE import_candidate_match SET cover_url = ?, \
              cover_label = ?, cover_source = 'musicbrainz' WHERE content_hash = ?",
-        &[
-            "https://example.invalid/full.jpg",
-            "https://example.invalid/thumb.jpg",
-            "Cover",
-            &hash,
-        ],
+        &["https://example.invalid/full.jpg", "Cover", &hash],
     )
     .await;
     let projection = db
@@ -693,7 +688,7 @@ async fn the_scan_stores_the_folders_own_cover() {
         .await
         .unwrap();
     assert_eq!(
-        rows(&projection).remove(0).cover_thumbnail,
+        rows(&projection).remove(0).cover,
         Some(crate::import::CoverImageSource::Local {
             path: PathBuf::from(format!("{root}/Album/cover.jpg")),
         }),
@@ -762,7 +757,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
     row.metadata_summary
         .expect("the row carries its file-metadata draft");
     assert_eq!(
-        row.cover_thumbnail,
+        row.cover,
         Some(crate::import::CoverImageSource::Bytes { data: bytes })
     );
 }

@@ -1,8 +1,8 @@
 //! Complete Cover Art Archive galleries, fetched only when a picker opens.
 
 use super::{
-    push_unique_cover, send_artwork_request, Catalog, ImportError, RemoteCover, ARCHIVE,
-    RETRY_BASE_DELAY,
+    push_unique_cover, send_artwork_request, Catalog, DownscaledCopy, ImportError, RemoteCover,
+    RemoteImageSet, ARCHIVE, RETRY_BASE_DELAY,
 };
 use crate::util::http::Http;
 use serde::Deserialize;
@@ -68,17 +68,10 @@ fn parse_gallery(bytes: &[u8]) -> Result<Vec<RemoteCover>, ImportError> {
     gallery.images.sort_by_key(|image| !image.front);
     let mut covers = Vec::new();
     for (index, image) in gallery.images.into_iter().enumerate() {
-        let thumbnail_url = match image
-            .thumbnails
-            .get("250")
-            .or_else(|| image.thumbnails.get("small"))
-        {
-            Some(url) => url.clone(),
-            None => {
-                tracing::debug!(url = %image.image, "Archive image has no thumbnail; previewing its original");
-                image.image.clone()
-            }
-        };
+        let copies = downscaled_copies(&image.thumbnails);
+        if copies.is_empty() {
+            tracing::debug!(url = %image.image, "Archive image lists no downscaled copies; every slot reads its original");
+        }
         let mut label = format!("Cover Art Archive · {}", index + 1);
         if !image.types.is_empty() {
             label.push_str(" · ");
@@ -91,14 +84,34 @@ fn parse_gallery(bytes: &[u8]) -> Result<Vec<RemoteCover>, ImportError> {
         push_unique_cover(
             &mut covers,
             RemoteCover {
-                url: image.image,
-                thumbnail_url,
+                image: RemoteImageSet::with_copies(image.image, copies),
                 label,
                 source: Catalog::MusicBrainz,
             },
         );
     }
     Ok(covers)
+}
+
+/// The copies a gallery image's `thumbnails` map lists, keyed by the box they
+/// fit in. The archive names each by its edge (`250`, `500`, `1200`) and keeps
+/// two older names for the same files: `small` is the 250 copy and `large` the
+/// 500 one.
+fn downscaled_copies(thumbnails: &HashMap<String, String>) -> Vec<DownscaledCopy> {
+    thumbnails
+        .iter()
+        .filter_map(|(key, url)| {
+            let max_edge = match key.as_str() {
+                "small" => 250,
+                "large" => 500,
+                edge => edge.parse().ok()?,
+            };
+            Some(DownscaledCopy {
+                url: url.clone(),
+                max_edge,
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -140,7 +153,7 @@ mod tests {
             .await
             .expect("both galleries load");
         assert_eq!(covers.len(), 3);
-        assert_eq!(covers[2].url, "https://images.example/booklet.jpg");
+        assert_eq!(covers[2].image.url, "https://images.example/booklet.jpg");
         assert!(musicbrainz_gallery(&http, "missing", None)
             .await
             .expect("404 means no artwork")
@@ -154,18 +167,60 @@ mod tests {
         let covers = parse_gallery(&serde_json::to_vec(&serde_json::json!({
             "images": [
                 {"image":"https://images.example/back.jpg", "thumbnails":{}, "types":["Back"], "comment":"liner notes", "front":false},
-                {"image":"https://images.example/front.jpg", "thumbnails":{"250":"https://images.example/front-small.jpg"}, "types":["Front"], "comment":"", "front":true},
+                {"image":"https://images.example/front.jpg", "thumbnails":{
+                    "1200":"https://images.example/front-1200.jpg",
+                    "250":"https://images.example/front-250.jpg",
+                    "500":"https://images.example/front-500.jpg",
+                    "large":"https://images.example/front-500.jpg",
+                    "small":"https://images.example/front-250.jpg"
+                }, "types":["Front"], "comment":"", "front":true},
                 {"image":"https://images.example/booklet.jpg", "thumbnails":{}, "types":["Booklet"], "comment":"pages 1–2", "front":false}
             ]
         })).expect("fixture serializes")).expect("gallery parses");
         assert_eq!(covers.len(), 3);
-        assert_eq!(covers[0].url, "https://images.example/front.jpg");
         assert_eq!(
-            covers[0].thumbnail_url,
-            "https://images.example/front-small.jpg"
+            covers[0].image,
+            RemoteImageSet {
+                url: "https://images.example/front.jpg".to_string(),
+                downscaled: [250, 500, 1200]
+                    .map(|edge| DownscaledCopy {
+                        url: format!("https://images.example/front-{edge}.jpg"),
+                        max_edge: edge,
+                    })
+                    .to_vec(),
+            }
         );
         assert!(covers[1].label.contains("Back · liner notes"));
-        assert_eq!(covers[2].thumbnail_url, covers[2].url);
+        assert!(covers[2].image.downscaled.is_empty());
+    }
+
+    #[test]
+    fn archive_gallery_reads_the_older_copy_names_by_their_edges() {
+        let covers = parse_gallery(
+            &serde_json::to_vec(&serde_json::json!({
+                "images": [
+                    {"image":"https://images.example/front.jpg", "thumbnails":{
+                        "large":"https://images.example/front-large.jpg",
+                        "small":"https://images.example/front-small.jpg"
+                    }, "types":["Front"], "comment":"", "front":true}
+                ]
+            }))
+            .expect("fixture serializes"),
+        )
+        .expect("gallery parses");
+        let image = &covers[0].image;
+        assert_eq!(
+            image.url_covering(Some(200)),
+            "https://images.example/front-small.jpg"
+        );
+        assert_eq!(
+            image.url_covering(Some(400)),
+            "https://images.example/front-large.jpg"
+        );
+        assert_eq!(
+            image.url_covering(Some(520)),
+            "https://images.example/front.jpg"
+        );
     }
 
     #[tokio::test]

@@ -81,7 +81,8 @@ pub struct LeadMatch {
     pub artist: Option<String>,
     pub year: Option<i32>,
     pub format: Option<String>,
-    pub cover_thumbnail_url: Option<String>,
+    /// The lead match's cover, with the copies its catalog serves.
+    pub cover: Option<crate::import::cover_art::RemoteImageSet>,
     pub source_tracks: Option<SourceTracks>,
     pub by_disc_id: bool,
     pub by_barcode: bool,
@@ -100,10 +101,10 @@ impl LeadMatch {
             artist: result.artist.clone(),
             year: result.year,
             format: result.format.clone(),
-            cover_thumbnail_url: result
+            cover: result
                 .cover_art
                 .as_ref()
-                .map(|cover: &RemoteCover| cover.thumbnail_url.clone()),
+                .map(|cover: &RemoteCover| cover.image.clone()),
             source_tracks: result.source_tracks.clone(),
             by_disc_id: provenance.is_some_and(|provenance| provenance.by_disc_id),
             by_barcode: provenance.is_some_and(|provenance| provenance.by_barcode),

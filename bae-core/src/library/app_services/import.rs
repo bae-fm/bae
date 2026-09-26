@@ -41,7 +41,7 @@ impl AppServices {
     delegate_async!(import, import_set_sheet_disc => set_sheet_disc(candidate_key: String, sheet_file_id: String, disc: crate::import::folder_scanner::SheetDisc) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_file_role => set_file_role(candidate_key: String, file_id: String, choice: crate::import::folder_scanner::FileRoleChoice) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_fetch_remote_covers => fetch_remote_covers(target: crate::import::cover_art::CoverTarget) -> Result<crate::import::cover_art::RemoteCoverGallery, crate::import::ImportError>);
-    delegate_async!(import, import_fetch_remote_image_bytes => fetch_remote_image_bytes(url: String) -> Result<Option<crate::import::cover_art::RemoteImage>, crate::import::ImportError>);
+    delegate_async!(import, import_fetch_remote_image_bytes => fetch_remote_image_bytes(image: crate::import::cover_art::RemoteImageSet, pixels: Option<u32>) -> Result<Option<crate::import::cover_art::RemoteImage>, crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_cover => set_candidate_cover(candidate_key: &str, cover: crate::import::CoverSelection) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_presentation => set_candidate_presentation(candidate_key: &str, presentation: crate::import::MetadataPresentation) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_search_form => set_candidate_search_form(candidate_key: &str, search: crate::import::SearchForm) -> Result<(), crate::import::ImportError>);

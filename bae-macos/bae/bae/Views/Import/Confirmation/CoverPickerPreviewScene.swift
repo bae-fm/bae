@@ -80,17 +80,19 @@
             label: String,
             source: BridgeCatalog
         ) -> CoverItem {
-            let path = PreviewData.previewArtPath(image)
+            let image = BridgeRemoteImageSet(
+                url: PreviewData.previewArtPath(image),
+                downscaled: []
+            )
             return CoverItem(
                 coverChoice: BridgeCoverChoice(
                     selection: .remoteCover(
                         selection: BridgeRemoteCoverSelection(
-                            url: path,
+                            image: image,
                             source: source
                         )
                     ),
-                    previewSource: .remote(url: path),
-                    thumbnailSource: .remote(url: path)
+                    image: .remote(image: image)
                 ),
                 label: label
             )
@@ -103,8 +105,7 @@
             return CoverItem(
                 coverChoice: BridgeCoverChoice(
                     selection: .releaseImage(fileId: filename),
-                    previewSource: .local(path: path),
-                    thumbnailSource: .local(path: path)
+                    image: .local(path: path)
                 ),
                 label: filename
             )

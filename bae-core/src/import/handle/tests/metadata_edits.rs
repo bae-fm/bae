@@ -806,7 +806,7 @@ async fn file_tags_uses_the_conventional_folder_cover() {
         cover.selection,
         crate::import::CoverSelection::Local("cover.jpg".to_string())
     );
-    let crate::import::cover_art::CoverImageSource::Local { path } = cover.preview else {
+    let crate::import::cover_art::CoverImageSource::Local { path } = cover.image else {
         panic!("a folder image is drawn from disk, not fetched");
     };
     assert!(path.ends_with("cover.jpg"));

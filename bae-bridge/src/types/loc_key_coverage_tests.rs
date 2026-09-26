@@ -91,10 +91,7 @@ fn loc_cover_choice() -> BridgeCoverChoice {
         selection: BridgeCoverSelection::ReleaseImage {
             file_id: String::new(),
         },
-        preview_source: BridgeCoverImageSource::Local {
-            path: String::new(),
-        },
-        thumbnail_source: BridgeCoverImageSource::Local {
+        image: BridgeCoverImageSource::Local {
             path: String::new(),
         },
     }

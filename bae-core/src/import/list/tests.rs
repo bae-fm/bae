@@ -87,7 +87,9 @@ fn lead(release_id: &str) -> LeadMatch {
         artist: Some("Artist Name".to_string()),
         year: Some(1999),
         format: Some("CD".to_string()),
-        cover_thumbnail_url: Some("https://example.test/thumb.jpg".to_string()),
+        cover: Some(crate::import::cover_art::RemoteImageSet::original(
+            "https://example.test/front.jpg".to_string(),
+        )),
         source_tracks: Some(SourceTracks::Listed { count: 11 }),
         by_disc_id: true,
         by_barcode: false,

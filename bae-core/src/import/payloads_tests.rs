@@ -21,11 +21,14 @@ fn discogs_cover_choices_keep_every_image() {
     );
     let covers = payloads.extract().expect("cover choices parse").covers();
     assert_eq!(covers.len(), 2);
-    assert_eq!(covers[0].url, "https://images.example/front.jpg");
-    assert_eq!(covers[1].url, "https://images.example/back.jpg");
+    assert_eq!(covers[0].image.url, "https://images.example/front.jpg");
+    assert_eq!(covers[1].image.url, "https://images.example/back.jpg");
     assert_eq!(
-        covers[1].thumbnail_url,
-        "https://images.example/back-small.jpg"
+        covers[1].image.downscaled,
+        vec![crate::import::cover_art::DownscaledCopy {
+            url: "https://images.example/back-small.jpg".to_string(),
+            max_edge: 150,
+        }]
     );
 }
 
@@ -133,13 +136,13 @@ fn cover_choices_include_cross_references_and_deduplicate_master_images() {
         assert_eq!(
             covers
                 .iter()
-                .filter(|cover| cover.url == "https://images.example/front.jpg")
+                .filter(|cover| cover.image.url == "https://images.example/front.jpg")
                 .count(),
             1
         );
         assert!(covers
             .iter()
-            .any(|cover| cover.url == "https://images.example/booklet.jpg"));
+            .any(|cover| cover.image.url == "https://images.example/booklet.jpg"));
     }
 }
 
@@ -185,15 +188,15 @@ fn a_picks_covers_lead_with_every_claimed_releases_own_images() {
         &[partner.extract().expect("the partner extracts")],
     );
     assert_eq!(covers.len(), 2, "{covers:?}");
-    assert_eq!(covers[0].url, "https://images.example/front.jpg");
+    assert_eq!(covers[0].image.url, "https://images.example/front.jpg");
     assert!(
-        covers[1].url.ends_with("/release-group/mb-group/front"),
+        covers[1].image.url.ends_with("/release-group/mb-group/front"),
         "the album's address follows the partner's own image: {covers:?}"
     );
     let alone = primary.extract().expect("the primary's own artwork parses").covers();
     assert_eq!(alone.len(), 1, "{alone:?}");
     assert_eq!(
-        alone[0].url, covers[1].url,
+        alone[0].image.url, covers[1].image.url,
         "the primary's own documents offer nothing but its album's address"
     );
 }
@@ -223,9 +226,9 @@ fn a_release_reachable_twice_offers_its_images_once() {
         &[partner.extract().expect("the partner extracts")],
     );
     assert_eq!(covers.len(), 2, "the image reachable twice is offered once: {covers:?}");
-    assert_eq!(covers[0].url, "https://images.example/front.jpg");
+    assert_eq!(covers[0].image.url, "https://images.example/front.jpg");
     assert!(
-        covers[1].url.ends_with("/release-group/mb-group/front"),
+        covers[1].image.url.ends_with("/release-group/mb-group/front"),
         "{covers:?}"
     );
 }

@@ -491,10 +491,23 @@ pub struct AutomationLibraryStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationRemoteCover {
-    pub url: String,
-    pub thumbnail_url: String,
+    pub image: AutomationRemoteImageSet,
     pub label: String,
     pub source: AutomationCatalog,
+}
+
+/// A catalog image: the original, and the downscaled copies the catalog
+/// serves of it, each no larger than `max_edge` pixels on its longer side.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AutomationRemoteImageSet {
+    pub url: String,
+    pub downscaled: Vec<AutomationDownscaledCopy>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AutomationDownscaledCopy {
+    pub url: String,
+    pub max_edge: u32,
 }
 
 /// One signal that identified the picked release, and the candidate file it
@@ -558,7 +571,7 @@ pub struct AutomationStartImport {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationCoverSelection {
     Remote {
-        url: String,
+        image: AutomationRemoteImageSet,
         source: AutomationCatalog,
     },
     Local {

@@ -198,7 +198,7 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
         release
             .cover_art
             .iter()
-            .map(|cover| cover.url.as_str())
+            .map(|cover| cover.image.url.as_str())
             .collect::<Vec<_>>(),
         vec![format!(
             "{}/release-group/rg-offline-1/front",

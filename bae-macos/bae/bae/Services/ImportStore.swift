@@ -171,7 +171,7 @@ class ImportStore {
 
     /// The effective cover resolved by core for this row.
     func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {
-        row.coverThumbnail.map(ImageContent.init(bridge:))
+        row.cover.map(ImageContent.init(bridge:))
     }
 
     // MARK: - Per-key reads

@@ -64,6 +64,14 @@ private actor FetchCount {
     }
 }
 
+private actor PixelReads {
+    private(set) var pixels: [UInt32?] = []
+
+    func record(_ value: UInt32?) {
+        pixels.append(value)
+    }
+}
+
 @Suite("ImageStore cache")
 struct ImageStoreCacheTests {
     @Test(
@@ -117,6 +125,35 @@ struct ImageStoreCacheTests {
             store.cachedImage(content, pointSize: 56, displayScale: 2) == nil,
             "the caller holds these bytes' only identity — nothing to cache under"
         )
+    }
+
+    @Test(
+        "provider art is fetched for the slot's pixel size, and a viewer's decode for the original"
+    )
+    func remoteArtIsFetchedForTheSlotsPixelSize() async throws {
+        let bytes = try makePngBytes(width: 8, height: 8)
+        let asked = PixelReads()
+        let store = ImageStore(fetchRemoteImage: { _, pixels in
+            await asked.record(pixels)
+            return bytes
+        })
+        let content = ImageContent.remote(
+            BridgeRemoteImageSet(
+                url: "https://images.example/front.jpg",
+                downscaled: [
+                    BridgeDownscaledCopy(
+                        url: "https://images.example/front-150.jpg",
+                        maxEdge: 150
+                    )
+                ]
+            )
+        )
+
+        _ = try await store.image(content, pointSize: 40, displayScale: 2)
+        _ = try await store.image(content, pointSize: 260, displayScale: 2)
+        _ = try await store.decodeSource(for: content, at: .nativeResolution)
+
+        #expect(await asked.pixels == [80, 520, nil])
     }
 
     @Test("a library image with no bytes resolves to nothing")

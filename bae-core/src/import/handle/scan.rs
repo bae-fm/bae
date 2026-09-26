@@ -354,10 +354,10 @@ impl ImportServiceHandle {
             .into_iter()
             .next();
         let (cover, remote_cover) = match default_cover {
-            Some(remote) => match self.library_manager.fetch_remote_image(&remote.url).await? {
+            Some(remote) => match self.library_manager.fetch_remote_image(&remote.image.url).await? {
                 Some(image) => (
                     Some(crate::import::CoverSelection::Remote(
-                        remote.url,
+                        remote.image,
                         remote.source,
                     )),
                     Some(image),

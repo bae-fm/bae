@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::cover_art::{DownscaledCopy, RemoteImageSet};
 use crate::import::Catalog;
 use std::io::{Read, Write};
 use std::net::TcpListener;
@@ -84,22 +85,56 @@ fn search_result_remote_cover_uses_thumb_as_cover_when_cover_image_is_absent() {
 
     let cover = result.remote_cover().unwrap();
 
-    assert_eq!(cover.url, "https://discogs.example/thumb.jpg");
-    assert_eq!(cover.thumbnail_url, "https://discogs.example/thumb.jpg");
+    assert_eq!(
+        cover.image,
+        RemoteImageSet::original("https://discogs.example/thumb.jpg".to_string())
+    );
     assert_eq!(cover.label, Catalog::Discogs.cover_source_label());
     assert_eq!(cover.source, Catalog::Discogs);
 }
 
 #[test]
-fn search_result_remote_cover_uses_cover_as_thumbnail_when_thumb_is_absent() {
+fn search_result_remote_cover_reads_the_cover_everywhere_when_thumb_is_absent() {
     let result = search_result_with_cover_fields(Some("https://discogs.example/full.jpg"), None);
 
     let cover = result.remote_cover().unwrap();
 
-    assert_eq!(cover.url, "https://discogs.example/full.jpg");
-    assert_eq!(cover.thumbnail_url, "https://discogs.example/full.jpg");
+    assert_eq!(
+        cover.image,
+        RemoteImageSet::original("https://discogs.example/full.jpg".to_string())
+    );
     assert_eq!(cover.label, Catalog::Discogs.cover_source_label());
     assert_eq!(cover.source, Catalog::Discogs);
+}
+
+#[test]
+fn search_result_thumb_is_the_cover_bounded_to_150_pixels() {
+    let result = search_result_with_cover_fields(
+        Some("https://discogs.example/full.jpg"),
+        Some("https://discogs.example/thumb.jpg"),
+    );
+
+    let cover = result.remote_cover().unwrap();
+
+    assert_eq!(
+        cover.image,
+        RemoteImageSet {
+            url: "https://discogs.example/full.jpg".to_string(),
+            downscaled: vec![DownscaledCopy {
+                url: "https://discogs.example/thumb.jpg".to_string(),
+                max_edge: 150,
+            }],
+        }
+    );
+    // A 40-point row reads the thumbnail; a 200-point pane never does.
+    assert_eq!(
+        cover.image.url_covering(Some(80)),
+        "https://discogs.example/thumb.jpg"
+    );
+    assert_eq!(
+        cover.image.url_covering(Some(400)),
+        "https://discogs.example/full.jpg"
+    );
 }
 
 #[test]
@@ -124,10 +159,13 @@ fn release_images_keep_order_and_normalize_missing_urls() {
     )
     .expect("release parses");
     assert_eq!(release.covers.len(), 2);
-    assert_eq!(release.covers[0].url, "https://images.example/front.jpg");
     assert_eq!(
-        release.covers[1].thumbnail_url,
-        "https://images.example/back.jpg"
+        release.covers[0].image,
+        RemoteImageSet::original("https://images.example/front.jpg".to_string())
+    );
+    assert_eq!(
+        release.covers[1].image,
+        RemoteImageSet::original("https://images.example/back.jpg".to_string())
     );
     assert!(release.covers[0].label.contains("[r123]"));
 }
@@ -146,7 +184,7 @@ fn master_images_keep_secondary_artwork() {
     .expect("master images parse");
     assert_eq!(covers.len(), 2);
     assert!(covers[1].label.contains("[m456]"));
-    assert_eq!(covers[1].url, "https://images.example/booklet.jpg");
+    assert_eq!(covers[1].image.url, "https://images.example/booklet.jpg");
 }
 
 #[test]
@@ -281,7 +319,10 @@ fn master_parser_retains_album_metadata_without_pressing_or_track_defaults() {
     assert_eq!(master.artists[0].id, "12");
     assert_eq!(master.artists[0].name, "Artist Name");
     assert_eq!(master.covers.len(), 1);
-    assert_eq!(master.covers[0].url, "https://images.example/front.jpg");
+    assert_eq!(
+        master.covers[0].image.url,
+        "https://images.example/front.jpg"
+    );
 
     for raw in [r#"{"id":456}"#, r#"{"id":456,"title":"","year":0}"#] {
         let master = parse_discogs_master_json(raw).unwrap();

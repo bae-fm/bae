@@ -200,7 +200,7 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
 const STATE_COLUMNS: &str = "content_hash, folder_path, edit_revision, metadata_revision";
 
 const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_id, title, artist, \
-     year, format, label, catalog_number, country, media_kind, cover_url, cover_thumbnail_url, \
+     year, format, label, catalog_number, country, media_kind, cover_url, \
      cover_label, cover_source, source_group_id, album_links, source_tracks_kind, \
      source_tracks_count, \
      by_disc_id, by_barcode, by_catalog, by_search, narrowed_out";
@@ -249,6 +249,19 @@ pub(crate) fn load_matches_rows_on(
                 row.get::<_, String>(0)?,
                 row.get::<_, i64>(1)?,
                 row.get::<_, String>(2)?,
+            ))
+        },
+    )?;
+    let cover_copies = sql.query(
+        "SELECT content_hash, position, max_edge, url FROM import_candidate_match_cover_copy \
+         WHERE :only IS NULL OR content_hash = :only",
+        named_params! { ":only": only },
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, u32>(2)?,
+                row.get::<_, String>(3)?,
             ))
         },
     )?;
@@ -302,6 +315,13 @@ pub(crate) fn load_matches_rows_on(
                 .or_default()
                 .barcodes
                 .push(barcode);
+        }
+        for (content_hash, position, max_edge, url) in cover_copies {
+            entries
+                .entry((content_hash, position))
+                .or_default()
+                .cover_copies
+                .push(crate::import::cover_art::DownscaledCopy { url, max_edge });
         }
         for (content_hash, position, kind, format) in media {
             entries

@@ -188,7 +188,7 @@ impl crate::types::BridgeTriageRow {
             action_basis,
             matched,
             metadata_summary,
-            cover_thumbnail,
+            cover,
             selectable,
             import_status,
             metadata_provenance,
@@ -207,7 +207,7 @@ impl crate::types::BridgeTriageRow {
             matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
             metadata_summary: metadata_summary
                 .map(crate::types::BridgeTriageMetadataSummary::from_core),
-            cover_thumbnail: cover_thumbnail.map(crate::types::BridgeCoverImageSource::from_core),
+            cover: cover.map(crate::types::BridgeCoverImageSource::from_core),
             selectable,
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
             metadata_provenance: metadata_provenance
@@ -357,7 +357,7 @@ mirror_struct! {
         title,
         artist,
         pressing: (opt crate::types::BridgeMatchedPressing),
-        cover_thumbnail_url,
+        cover: (opt crate::types::BridgeRemoteImageSet),
         evidence: (crate::types::BridgeMatchEvidence),
     },
 }
@@ -464,7 +464,7 @@ mirror_struct! {
 mirror_struct! {
     crate::types::BridgeReadyRowRef = bae_core::import::ReadyRowRef,
     from_core: fn,
-    fields: { candidate_key, cover_thumbnail_url },
+    fields: { candidate_key, cover: (opt crate::types::BridgeRemoteImageSet) },
 }
 
 impl crate::types::BridgeImportQueueSummary {
