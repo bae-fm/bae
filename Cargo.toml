@@ -40,12 +40,12 @@ large_enum_variant = "allow"
 # implements coven's CloudKitOps) resolves the same instance. bae reaches coven
 # only through this facade, in tests too via its InMemoryCloudHome double — with
 # one exception below.
-coven = { git = "https://github.com/bae-fm/coven", rev = "14855153b3fb7c2e898990e477758900899089df" }
+coven = { git = "https://github.com/bae-fm/coven", rev = "05bd2ad24b81f1d098003dce062205372d4f8158" }
 # Test-only: joining a second device over an in-memory cloud home
 # (`joining::join_with_device_pairing_over_test_home`) exists only in this crate;
 # the facade re-exports the production join but not its test-home counterpart.
 # bae-core's two-device sync tests need it to put a second device on a library.
-coven-domain = { git = "https://github.com/bae-fm/coven", rev = "14855153b3fb7c2e898990e477758900899089df" }
+coven-domain = { git = "https://github.com/bae-fm/coven", rev = "05bd2ad24b81f1d098003dce062205372d4f8158" }
 # HTTP
 reqwest = { version = "0.13", default-features = false }
 # Logging
