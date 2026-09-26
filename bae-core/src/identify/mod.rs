@@ -52,7 +52,7 @@ pub use state::{
     IdentifyEvent, IdentifyState, LookupOutcome, LookupResults, LookupState, ProviderBarcodeLookup,
     ProviderLookup, SearchProgress, TitleSearch,
 };
-pub use toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
+pub use toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal, ToolbarValue};
 pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use view::{
     BarcodeStepView, CatalogAgreementView, CatalogCandidateView, CatalogStepView, DiscIdFile,

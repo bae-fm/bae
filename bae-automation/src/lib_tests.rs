@@ -279,7 +279,7 @@ mod identify_mirrors {
     use bae_core::identify::state::{DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
         BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState,
-        ProviderBarcodeLookup, SignalKind, SignalState, ToolbarSignal,
+        ProviderBarcodeLookup, SignalKind, SignalState, ToolbarSignal, ToolbarValue,
     };
     use bae_core::import::search::MetadataResult;
     use bae_core::import::Catalog;
@@ -556,8 +556,10 @@ mod identify_mirrors {
     fn toolbar_signal_maps_snake_case_and_structured_failure() {
         let signal = ToolbarSignal {
             kind: SignalKind::DiscId,
-            value: Some("disc-hash".to_string()),
-            origin: SignalOrigin::DiscToc,
+            shown: Some(ToolbarValue {
+                value: "disc-hash".to_string(),
+                origin: SignalOrigin::DiscToc,
+            }),
             state: SignalState::Failed {
                 failure: LookupFailure::Provider { status: Some(503) },
             },
@@ -567,7 +569,8 @@ mod identify_mirrors {
 
         let json = serde_json::to_value(AutomationToolbarSignal::from_core(signal)).unwrap();
         assert_eq!(json["kind"], "disc_id");
-        assert_eq!(json["origin"], "disc_toc");
+        assert_eq!(json["shown"]["value"], "disc-hash");
+        assert_eq!(json["shown"]["origin"], "disc_toc");
         assert_eq!(json["state"]["kind"], "failed");
         assert_eq!(json["state"]["failure"]["kind"], "provider");
         assert_eq!(json["state"]["failure"]["status"], 503);

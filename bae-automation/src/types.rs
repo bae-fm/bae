@@ -290,12 +290,18 @@ pub struct AutomationSignalOption {
     pub chosen: bool,
 }
 
+/// Mirrors bae-core's `identify::ToolbarValue`.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationToolbarValue {
+    pub value: String,
+    pub origin: AutomationSignalOrigin,
+}
+
 /// Mirrors bae-core's `identify::ToolbarSignal`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationToolbarSignal {
     pub kind: AutomationSignalKind,
-    pub value: Option<String>,
-    pub origin: AutomationSignalOrigin,
+    pub shown: Option<AutomationToolbarValue>,
     pub state: AutomationSignalState,
     pub excluded: bool,
     pub options: Vec<AutomationSignalOption>,

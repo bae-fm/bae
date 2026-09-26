@@ -687,12 +687,18 @@ mirror_struct! {
 
 mirror_struct! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationToolbarValue = bae_core::identify::ToolbarValue,
+    from_core: pub(crate) fn,
+    fields: { value, origin: (AutomationSignalOrigin) },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationToolbarSignal = bae_core::identify::ToolbarSignal,
     from_core: pub(crate) fn,
     fields: {
         kind: (AutomationSignalKind),
-        value,
-        origin: (AutomationSignalOrigin),
+        shown: (opt AutomationToolbarValue),
         state: (AutomationSignalState),
         excluded,
         options: (each AutomationSignalOption),

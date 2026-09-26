@@ -216,13 +216,22 @@ pub struct BridgeSignalOption {
     pub chosen: bool,
 }
 
+/// The value a badge shows, and where it was read. Mirrors
+/// `bae_core::identify::ToolbarValue`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeToolbarValue {
+    pub value: String,
+    pub origin: BridgeSignalOrigin,
+}
+
 /// One badge in the signals toolbar — a pre-shaped row the UI renders without
 /// deriving anything. Mirrors `bae_core::identify::ToolbarSignal`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeToolbarSignal {
     pub kind: BridgeSignalKind,
-    pub value: Option<String>,
-    pub origin: BridgeSignalOrigin,
+    /// The value the badge shows and where it was read; `None` when the
+    /// signal has nothing to show.
+    pub shown: Option<BridgeToolbarValue>,
     pub state: BridgeSignalState,
     pub excluded: bool,
     /// The values this signal offers, each marked when the run asks about it.
@@ -267,12 +276,18 @@ mirror_enum! {
 
 mirror_struct! {
     #[cfg(feature = "desktop")]
+    BridgeToolbarValue = bae_core::identify::ToolbarValue,
+    from_core: fn,
+    fields: { value, origin: (BridgeSignalOrigin) },
+}
+
+mirror_struct! {
+    #[cfg(feature = "desktop")]
     BridgeToolbarSignal = bae_core::identify::ToolbarSignal,
     from_core: fn,
     fields: {
         kind: (BridgeSignalKind),
-        value,
-        origin: (BridgeSignalOrigin),
+        shown: (opt BridgeToolbarValue),
         state: (BridgeSignalState),
         excluded,
         options: (each BridgeSignalOption),

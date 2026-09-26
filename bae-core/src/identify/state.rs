@@ -29,7 +29,7 @@
 //! effects for the service to run. No I/O, no async, nothing outside itself.
 
 use super::combine::{combine_results, Findings, LibraryStatuses};
-use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
+use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal, ToolbarValue};
 use super::view::{run_view, IdentifyRunView};
 use crate::db::LibraryStatus;
 use crate::import::album_links::{self, GroupReading, ToRead};
@@ -175,8 +175,14 @@ impl IdentifyState {
         };
         ToolbarSignal {
             kind: SignalKind::DiscId,
-            value: context.disc.signal.discid_value(),
-            origin: SignalOrigin::DiscToc,
+            shown: context
+                .disc
+                .signal
+                .discid_value()
+                .map(|value| ToolbarValue {
+                    value,
+                    origin: SignalOrigin::DiscToc,
+                }),
             state,
             excluded: context.disc.excluded,
             options: Vec::new(),
@@ -201,8 +207,7 @@ impl IdentifyState {
         };
         ToolbarSignal {
             kind: SignalKind::Barcode,
-            value: code.map(|c| c.value.clone()),
-            origin: code.map_or(SignalOrigin::Artwork, |c| c.origin),
+            shown: code.map(shown_value),
             state,
             excluded: context.barcode.every_code_excluded(),
             options: signal_options(&context.barcode.codes, |value| {
@@ -229,14 +234,21 @@ impl IdentifyState {
         };
         ToolbarSignal {
             kind: SignalKind::Catalog,
-            value: first_chosen.map(|c| c.value.clone()),
-            origin: first_chosen.map_or(SignalOrigin::CueSheet, |c| c.origin),
+            shown: first_chosen.map(shown_value),
             state,
             excluded: false,
             options: signal_options(&context.catalog.numbers, |value| {
                 context.catalog.is_chosen(value)
             }),
         }
+    }
+}
+
+/// A sighting as the value its badge shows.
+fn shown_value(sighting: &SourcedValue) -> ToolbarValue {
+    ToolbarValue {
+        value: sighting.value.clone(),
+        origin: sighting.origin,
     }
 }
 

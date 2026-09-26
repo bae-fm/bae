@@ -46,6 +46,13 @@ pub struct SignalOption {
     pub chosen: bool,
 }
 
+/// The value a badge shows, and where it was read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolbarValue {
+    pub value: String,
+    pub origin: SignalOrigin,
+}
+
 /// One badge in the signals toolbar. An unchecked badge still appears (struck
 /// through, dimmed), so the row's layout holds steady as the user toggles
 /// signals.
@@ -53,11 +60,10 @@ pub struct SignalOption {
 pub struct ToolbarSignal {
     pub kind: SignalKind,
     /// The disc-ID hash, the barcode digits, the first chosen catalog number
-    /// (every chosen one is marked in `options`). `None` when the signal has
-    /// nothing to show — no disc layout, no codes found, no catalog number
-    /// chosen.
-    pub value: Option<String>,
-    pub origin: SignalOrigin,
+    /// (every chosen one is marked in `options`), each with where it was
+    /// read. `None` when the signal has nothing to show — no disc layout, no
+    /// codes found, no catalog number chosen — and so no place it was read.
+    pub shown: Option<ToolbarValue>,
     pub state: SignalState,
     /// Whether the run asks about none of this signal's values: the disc ID
     /// taken out, or every one of the candidate's barcodes. The catalog is

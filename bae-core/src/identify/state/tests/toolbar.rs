@@ -56,20 +56,28 @@ fn toolbar_while_triangulating_shows_spinners() {
 
     let disc = &toolbar[0];
     assert_eq!(disc.kind, SignalKind::DiscId);
-    assert_eq!(disc.value.as_deref(), Some("disc-hash"));
-    assert_eq!(disc.origin, SignalOrigin::DiscToc);
+    assert_eq!(
+        disc.shown,
+        Some(ToolbarValue {
+            value: "disc-hash".to_string(),
+            origin: SignalOrigin::DiscToc,
+        })
+    );
     assert_eq!(disc.state, SignalState::LookingUp);
 
     let barcode = &toolbar[1];
     assert_eq!(barcode.kind, SignalKind::Barcode);
-    assert_eq!(barcode.value.as_deref(), Some("012345678905"));
+    assert_eq!(
+        barcode.shown.as_ref().map(|shown| shown.value.as_str()),
+        Some("012345678905")
+    );
     assert_eq!(barcode.state, SignalState::LookingUp);
 
     // Nothing is chosen for the catalog until the user chooses, so it names no
     // value and nothing ran for it — the extracted numbers are its list.
     let catalog = &toolbar[2];
     assert_eq!(catalog.kind, SignalKind::Catalog);
-    assert_eq!(catalog.value, None);
+    assert_eq!(catalog.shown, None);
     assert_eq!(catalog.state, SignalState::Skipped);
     assert_eq!(
         catalog
@@ -129,7 +137,10 @@ fn a_chosen_catalog_number_is_looked_up_from_the_start() {
         }]
     );
     let catalog_badge = badge(&state, SignalKind::Catalog);
-    assert_eq!(catalog_badge.value.as_deref(), Some("LBL 001"));
+    assert_eq!(
+        catalog_badge.shown.as_ref().map(|shown| shown.value.as_str()),
+        Some("LBL 001")
+    );
     assert_eq!(catalog_badge.state, SignalState::LookingUp);
 
     let (state, _) = step(
@@ -176,7 +187,7 @@ fn a_run_with_no_chosen_number_asks_about_none_of_them() {
     let state = state_with_catalog_offered(vec![MB]);
     assert!(matches!(state, IdentifyState::Found { .. }));
     let catalog_badge = badge(&state, SignalKind::Catalog);
-    assert_eq!(catalog_badge.value, None);
+    assert_eq!(catalog_badge.shown, None);
     assert_eq!(catalog_badge.state, SignalState::Skipped);
     assert!(catalog_badge.options.iter().all(|option| !option.chosen));
 }
@@ -366,7 +377,7 @@ fn toolbar_skipped_disc_and_barcode_in_manual_only() {
     let toolbar = state.toolbar();
     let disc = &toolbar[0];
     assert_eq!(disc.state, SignalState::Skipped);
-    assert_eq!(disc.value, None);
+    assert_eq!(disc.shown, None);
     let barcode = &toolbar[1];
     assert_eq!(barcode.state, SignalState::Skipped);
 }
