@@ -65,12 +65,18 @@ fn expected_provider_errors_remain_domain_failures() {
     use bae_core::{discogs::client::DiscogsError, musicbrainz::MusicBrainzError};
     for error in [
         ImportError::MusicBrainz(MusicBrainzError::NotFound("release".into())),
-        ImportError::MusicBrainz(MusicBrainzError::Provider { status: Some(500) }),
+        ImportError::MusicBrainz(MusicBrainzError::Provider {
+            status: Some(500),
+            told_wait: None,
+        }),
         ImportError::MusicBrainz(MusicBrainzError::Network("connection closed".into())),
         ImportError::MusicBrainz(MusicBrainzError::Timeout),
         ImportError::Discogs(DiscogsError::NotFound),
-        ImportError::Discogs(DiscogsError::Provider(500u16.try_into().unwrap())),
-        ImportError::Discogs(DiscogsError::RateLimit),
+        ImportError::Discogs(DiscogsError::Provider {
+            status: 500u16.try_into().unwrap(),
+            told_wait: None,
+        }),
+        ImportError::Discogs(DiscogsError::RateLimit { told_wait: None }),
         ImportError::Discogs(DiscogsError::InvalidApiKey),
     ] {
         assert!(matches!(

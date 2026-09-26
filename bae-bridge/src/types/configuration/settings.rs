@@ -671,8 +671,8 @@ impl From<bae_core::import::ImportError> for BridgeError {
                     BridgeErrorCategory::Internal
                 }
                 DiscogsError::Transport(_)
-                | DiscogsError::Provider(_)
-                | DiscogsError::RateLimit
+                | DiscogsError::Provider { .. }
+                | DiscogsError::RateLimit { .. }
                 | DiscogsError::InvalidApiKey
                 | DiscogsError::NotFound => BridgeErrorCategory::Import,
             },
