@@ -65,8 +65,8 @@ impl Drop for AppServicesInner {
     /// Until a thread exits it holds a `LibraryManager` clone, and through the
     /// shared coven handle that pins the store's exclusive open lock — so
     /// without joining *every* such thread the same library can't be reopened
-    /// in-process. No-ops if `shutdown` already ran: each join handle is taken
-    /// once.
+    /// in-process. No-ops if [`AppServices::close`] or a playback `shutdown`
+    /// already ran: each join handle is taken once.
     fn drop(&mut self) {
         self.playback.stop_and_join();
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -112,6 +112,34 @@ impl AppServices {
                 identification,
             }),
         }
+    }
+
+    /// Close the library: stop playback, saving where it was, then the
+    /// identification queue and the import service, joining each worker, and
+    /// close the store last. When this returns no service holds a file of the
+    /// library, the track it was playing included, or the store's lock. The
+    /// order is the one [`AppServicesInner`]'s drop keeps; whichever runs
+    /// first stops each worker, and the other finds it stopped.
+    pub async fn close(&self) {
+        self.inner.playback.shutdown().await;
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        {
+            let identification = self.inner.identification.clone();
+            let import = self.inner.import.clone();
+            // Both joins block until their threads exit, so they run off the
+            // runtime rather than stall one of its threads.
+            let stopped = tokio::task::spawn_blocking(move || {
+                // Before the import worker's join, as in the drop: a cancelled
+                // candidate writes no row.
+                identification.stop();
+                import.stop_and_join();
+            })
+            .await;
+            if let Err(error) = stopped {
+                std::panic::resume_unwind(error.into_panic());
+            }
+        }
+        self.inner.manager.close().await;
     }
 
     #[cfg(all(
@@ -297,7 +325,6 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, get_discogs_token => get_discogs_token() -> Result<Option<String>, crate::library::LibraryError>);
     delegate_async!(manager, disconnect_cloud_provider => disconnect_cloud_provider() -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, close => close() -> ());
     delegate_async!(manager, unlock_cloud_home => unlock_cloud_home(serialized_master_key: &str) -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), crate::library::LibraryError>);

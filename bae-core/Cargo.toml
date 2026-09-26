@@ -166,6 +166,11 @@ coven = { workspace = true, features = ["test-utils"] }
 coven-domain = { workspace = true, features = ["test-utils"] }
 
 [[test]]
+name = "test_close_open_files"
+path = "tests/test_close_open_files.rs"
+required-features = ["test-utils"]
+
+[[test]]
 name = "test_playback_behavior"
 path = "tests/test_playback_behavior.rs"
 required-features = ["test-utils"]

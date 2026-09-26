@@ -222,12 +222,12 @@ impl AppHandle {
 
 #[uniffi::export]
 impl AppHandle {
-    /// Close the library so nothing of this process holds its store: stop the
-    /// desktop services and the sync loop, end every background task, then
-    /// shut the app runtime down, waiting for every task on it to end. The
-    /// caller drops this handle next — its remaining services go with it — and
-    /// may then remove the library through `BridgeHost::remove_local_library`,
-    /// which refuses while anything still holds the store.
+    /// Close the library so nothing of this process holds its files: stop the
+    /// desktop services, playback, identification and import, close the
+    /// store, then shut the app runtime down, waiting for every task on it to
+    /// end. The caller may then remove the library through
+    /// `BridgeHost::remove_local_library`, which refuses while anything still
+    /// holds the store.
     ///
     /// Blocks until done, so it is called off the UI thread and never from the
     /// app runtime. Every later call on this handle fails.
