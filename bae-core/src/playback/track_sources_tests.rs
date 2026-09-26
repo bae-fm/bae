@@ -54,9 +54,13 @@ struct Run {
 }
 
 /// Run `tracks` at `parallelism`, each reading every one of its files through
-/// its own reader and holding a moment so tracks overlap.
+/// its own reader and holding a moment so tracks overlap. The first
+/// `parallelism` tracks wait for one another before going on, so the run is
+/// seen at its full width however the tasks are scheduled.
 async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
     let opens = Arc::new(AtomicUsize::new(0));
+    let first_batch = Arc::new(tokio::sync::Barrier::new(parallelism));
+    let starts = Arc::new(AtomicUsize::new(0));
     let running = Arc::new(AtomicUsize::new(0));
     let peak_running = Arc::new(AtomicUsize::new(0));
     let peak_seen_by_tracks = Arc::new(AtomicUsize::new(0));
@@ -78,10 +82,15 @@ async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
             let running = running.clone();
             let peak_running = peak_running.clone();
             let peak_seen_by_tracks = peak_seen_by_tracks.clone();
+            let first_batch = first_batch.clone();
+            let starts = starts.clone();
             let dir = dir.to_path_buf();
             async move {
                 let now = running.fetch_add(1, Ordering::SeqCst) + 1;
                 peak_running.fetch_max(now, Ordering::SeqCst);
+                if starts.fetch_add(1, Ordering::SeqCst) < parallelism {
+                    first_batch.wait().await;
+                }
                 tokio::task::spawn_blocking(move || {
                     for path in &track.files {
                         let mut reader = streams[path].new_reader();
@@ -200,11 +209,16 @@ async fn a_track_reading_more_files_than_the_parallelism_runs_alone() {
 
 /// The first failure stops admitting tracks, lets the running ones finish,
 /// closes every file, and is what the run returns.
+///
+/// Tracks before the failing one finish at once; tracks after it wait until
+/// it has failed, so at most the one track admitted beside it can have
+/// started, whatever order the tasks are scheduled in.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_failed_track_stops_the_run_and_closes_every_file() {
     let dir = tempfile::tempdir().unwrap();
     let tracks = file_per_track(dir.path(), 20);
     let started = Arc::new(Mutex::new(Vec::new()));
+    let (failed_tx, failed_rx) = tokio::sync::watch::channel(false);
 
     let result: Result<Vec<()>, String> = run_tracks_over_sources(
         tracks,
@@ -219,13 +233,21 @@ async fn a_failed_track_stops_the_run_and_closes_every_file() {
         },
         |track, _streams| {
             let started = started.clone();
+            let failed_tx = failed_tx.clone();
+            let mut failed_rx = failed_rx.clone();
             async move {
                 started.lock().unwrap().push(track.name.clone());
-                tokio::time::sleep(Duration::from_millis(5)).await;
-                if track.name.starts_with("03") {
-                    Err(format!("{} failed", track.name))
-                } else {
-                    Ok(())
+                let number: usize = track.name[..2].parse().unwrap();
+                match number {
+                    0..=2 => Ok(()),
+                    3 => {
+                        failed_tx.send_replace(true);
+                        Err(format!("{} failed", track.name))
+                    }
+                    _ => {
+                        failed_rx.wait_for(|failed| *failed).await.unwrap();
+                        Ok(())
+                    }
                 }
             }
         },
@@ -233,7 +255,10 @@ async fn a_failed_track_stops_the_run_and_closes_every_file() {
     .await;
 
     assert_eq!(result, Err("03 Track.flac failed".to_string()));
-    let started = started.lock().unwrap().len();
-    assert!(started <= 5, "{started} tracks started after the failure");
+    let started = started.lock().unwrap().clone();
+    assert!(
+        started.len() <= 5 && !started.iter().any(|name| name.starts_with("05")),
+        "tracks started past the one beside the failure: {started:?}"
+    );
     coven::assert_no_open_files_under(dir.path());
 }
