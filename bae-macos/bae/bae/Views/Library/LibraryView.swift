@@ -181,11 +181,7 @@ extension LibraryView {
                     }
                 }
                 else if albumList.totalCount == 0 {
-                    ContentUnavailableView {
-                        Text("No albums")
-                    } description: {
-                        Text("Import some music to get started")
-                    }
+                    LibraryEmptyState(title: "No albums")
                 }
                 else {
                     AlbumGridView(
@@ -224,11 +220,7 @@ extension LibraryView {
                     }
                 }
                 else if composerList.totalCount == 0 {
-                    ContentUnavailableView {
-                        Text("No composers")
-                    } description: {
-                        Text("Import some music to get started")
-                    }
+                    LibraryEmptyState(title: "No composers")
                 }
                 else {
                     HSplitView {
@@ -257,11 +249,7 @@ extension LibraryView {
                     }
                 }
                 else if artistList.totalCount == 0 {
-                    ContentUnavailableView {
-                        Text("No artists")
-                    } description: {
-                        Text("Import some music to get started")
-                    }
+                    LibraryEmptyState(title: "No artists")
                 }
                 else {
                     HSplitView {
