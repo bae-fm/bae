@@ -19,6 +19,35 @@ use super::ImportError;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+/// Why a grouping's release cannot be worked on as it stands. The release
+/// keeps what it was last built from until this is fixed or the grouping is
+/// undone. Each reason is typed so every surface says it in the person's own
+/// language; the names it carries are for the log, never for display.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum GroupingBlock {
+    /// A release it takes in was read again and is no longer valid.
+    #[error("Source folder changed: {folder}")]
+    SourceChanged { folder: String },
+    /// A release it takes in is no longer stored.
+    #[error("Source folder changed or disappeared: {folder}")]
+    SourceGone { folder: String },
+    /// Another grouping already reads the files of the folder its releases
+    /// sit in.
+    #[error("The files in {folder} already go with the combined release {release}")]
+    FolderFilesTaken { folder: String, release: String },
+    /// Several groupings sit in a folder that has files, none of them reading
+    /// them yet, so no one of them can.
+    #[error("The files in {folder} would go with more than one combined release")]
+    FolderFilesContested { folder: String },
+    /// A download into the folder its releases sit in is still running.
+    #[error("The files in {folder} are still downloading")]
+    FolderFilesDownloading { folder: String },
+    /// The releases it takes in make no release — a fault no person caused,
+    /// said only as the diagnostic it is.
+    #[error("{detail}")]
+    Unbuildable { detail: String },
+}
+
 /// Which of the two grouping actions a release offers, if either.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GroupingAction {

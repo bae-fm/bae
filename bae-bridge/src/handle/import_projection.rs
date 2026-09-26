@@ -150,6 +150,9 @@ impl crate::types::BridgeTriageImportStatus {
             bae_core::import::triage::TriageImportStatus::Error { error } => Self::Error {
                 error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(error)),
             },
+            bae_core::import::triage::TriageImportStatus::Blocked { reason } => Self::Error {
+                error: crate::types::BridgeError::from(&reason),
+            },
         }
     }
 }
@@ -164,6 +167,9 @@ impl crate::types::BridgeCandidateImportStatus {
             },
             bae_core::import::CandidateImportStatus::Error { error } => Self::Error {
                 error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(error)),
+            },
+            bae_core::import::CandidateImportStatus::Blocked { reason } => Self::Error {
+                error: crate::types::BridgeError::from(&reason),
             },
         }
     }

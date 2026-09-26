@@ -404,6 +404,21 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::DeviceJoin {
             failure: BridgeDeviceJoinFailure::OwnerEnded,
         },
+        BridgeErrorCategory::GroupingBlocked {
+            reason: BridgeGroupingBlock::SourceChanged,
+        },
+        BridgeErrorCategory::GroupingBlocked {
+            reason: BridgeGroupingBlock::SourceGone,
+        },
+        BridgeErrorCategory::GroupingBlocked {
+            reason: BridgeGroupingBlock::FolderFilesTaken,
+        },
+        BridgeErrorCategory::GroupingBlocked {
+            reason: BridgeGroupingBlock::FolderFilesContested,
+        },
+        BridgeErrorCategory::GroupingBlocked {
+            reason: BridgeGroupingBlock::FolderFilesDownloading,
+        },
         BridgeErrorCategory::AirPlayUnsupported,
     ] {
         keys.push(bridge_error_category_key(c));

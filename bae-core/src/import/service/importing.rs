@@ -197,6 +197,7 @@ impl ImportService {
         let stored_candidate = match library_manager
             .load_release_candidate(&candidate_key)
             .await?
+            .map_err(|reason| crate::import::ImportError::GroupingBlocked { reason })?
         {
             Some(candidate) => candidate,
             _ => {

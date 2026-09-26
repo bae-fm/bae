@@ -545,11 +545,20 @@ CREATE TABLE IF NOT EXISTS release_grouping (
     -- 'user' and is never read over again.
     author               TEXT NOT NULL CHECK (author IN ('user', 'heuristic')),
     skipped              INTEGER NOT NULL DEFAULT 0 CHECK (skipped IN (0, 1)),
-    -- Why the release a grouping with no anchor reads cannot be built as it
-    -- stands: a release it takes in is gone or no longer valid. The release
-    -- keeps what it was last built from until that is fixed or the grouping
-    -- is undone.
-    error                TEXT,
+    -- Why the release a grouping with no anchor reads cannot be worked on as
+    -- it stands, typed so every surface says it in the person's language: a
+    -- release it takes in changed or is gone, the files of the folder it sits
+    -- in go with another release or are still downloading, or its releases
+    -- make no release. The release keeps what it was last built from until
+    -- that is fixed or the grouping is undone. `blocked_subject` names the
+    -- folder — or, for 'unbuildable', the diagnostic — and `blocked_holder`
+    -- the release already reading the folder's files; both are for the log.
+    blocked              TEXT CHECK (blocked IS NULL OR blocked IN (
+        'source_changed', 'source_gone', 'folder_files_taken',
+        'folder_files_contested', 'folder_files_downloading', 'unbuildable'
+    )),
+    blocked_subject      TEXT,
+    blocked_holder       TEXT,
     -- For a grouping with no anchor: the folder every release it takes in
     -- sits directly in, whose sidecar files (scan_sidecar) are the release's
     -- own; and whether its release reads them. A folder's files go with one
@@ -560,7 +569,9 @@ CREATE TABLE IF NOT EXISTS release_grouping (
     reads_parent_files   INTEGER NOT NULL DEFAULT 0 CHECK (reads_parent_files IN (0, 1)),
     UNIQUE (watched_folder_path, anchor_relative_path),
     CHECK (anchor_relative_path IS NOT NULL OR (combined = 1 AND author = 'user')),
-    CHECK (anchor_relative_path IS NULL OR error IS NULL),
+    CHECK (anchor_relative_path IS NULL OR blocked IS NULL),
+    CHECK ((blocked IS NULL) = (blocked_subject IS NULL)),
+    CHECK ((blocked IS 'folder_files_taken') = (blocked_holder IS NOT NULL)),
     CHECK (anchor_relative_path IS NULL OR parent_folder IS NULL),
     CHECK (reads_parent_files = 0 OR parent_folder IS NOT NULL),
     FOREIGN KEY (watched_folder_path)

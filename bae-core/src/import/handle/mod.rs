@@ -276,14 +276,17 @@ pub(crate) enum WatcherCommand {
 }
 
 impl ImportServiceHandle {
+    /// The release stored at `key`, when it may be worked on. A grouping's
+    /// release that cannot be says why, as a typed refusal.
     pub async fn get_release_candidate(
         &self,
         key: &str,
-    ) -> Result<
-        Option<crate::import::folder_scanner::FolderCandidate>,
-        crate::library::LibraryError,
-    > {
-        self.library_manager.load_release_candidate(key).await
+    ) -> Result<Option<crate::import::folder_scanner::FolderCandidate>, crate::import::ImportError>
+    {
+        self.library_manager
+            .load_release_candidate(key)
+            .await?
+            .map_err(|reason| crate::import::ImportError::GroupingBlocked { reason })
     }
 
     pub(super) fn new(

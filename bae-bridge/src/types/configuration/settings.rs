@@ -190,6 +190,56 @@ pub enum BridgeDeviceJoinFailure {
     OwnerEnded,
 }
 
+/// Why a release read from several folders cannot be worked on as it stands,
+/// or cannot be made. Each is its own line: what the person does next differs
+/// — combine the folders again, separate the release in the way, or wait for
+/// a download. The folder and release names ride in the untranslated detail.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeGroupingBlock {
+    /// A folder the release is read from changed.
+    SourceChanged,
+    /// A folder the release is read from is gone.
+    SourceGone,
+    /// The files of the folder its folders sit in go with another release.
+    FolderFilesTaken,
+    /// More than one release would take the files of the folder its folders
+    /// sit in.
+    FolderFilesContested,
+    /// A download into the folder its folders sit in is still running.
+    FolderFilesDownloading,
+}
+
+impl BridgeGroupingBlock {
+    /// The line for a core grouping block, or `None` for the one no person
+    /// can act on — its releases make no release — which reads as the
+    /// generic import failure it is.
+    #[cfg(feature = "desktop")]
+    pub(crate) fn from_core(block: &bae_core::import::GroupingBlock) -> Option<Self> {
+        use bae_core::import::GroupingBlock;
+        match block {
+            GroupingBlock::SourceChanged { .. } => Some(Self::SourceChanged),
+            GroupingBlock::SourceGone { .. } => Some(Self::SourceGone),
+            GroupingBlock::FolderFilesTaken { .. } => Some(Self::FolderFilesTaken),
+            GroupingBlock::FolderFilesContested { .. } => Some(Self::FolderFilesContested),
+            GroupingBlock::FolderFilesDownloading { .. } => Some(Self::FolderFilesDownloading),
+            GroupingBlock::Unbuildable { .. } => None,
+        }
+    }
+}
+
+/// A core grouping block as the error the UI draws: its own line, with the
+/// names it carries as the untranslated detail.
+#[cfg(feature = "desktop")]
+impl From<&bae_core::import::GroupingBlock> for BridgeError {
+    fn from(block: &bae_core::import::GroupingBlock) -> Self {
+        let category = match BridgeGroupingBlock::from_core(block) {
+            Some(reason) => BridgeErrorCategory::GroupingBlocked { reason },
+            None => BridgeErrorCategory::Import,
+        };
+        BridgeError::diagnostic(category, block)
+    }
+}
+
 /// The kind of diagnostic failure. The UI shows one generic localized line per
 /// category; `detail` is the underlying Rust error chain — logged and offered in
 /// a copyable disclosure, never translated.
@@ -232,6 +282,11 @@ pub enum BridgeErrorCategory {
     /// act on. Carries which end it was so the line can say what to do next.
     DeviceJoin {
         failure: BridgeDeviceJoinFailure,
+    },
+    /// A release read from several folders cannot be worked on as it stands,
+    /// or cannot be made, for a reason the person can act on.
+    GroupingBlocked {
+        reason: BridgeGroupingBlock,
     },
     /// An AirPlay receiver can't be driven — it demands a PIN, or offers only
     /// audio encryption the sender doesn't implement.
@@ -391,6 +446,17 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             BridgeDeviceJoinFailure::OwnerOffline => "core.error.join.owner_offline",
             BridgeDeviceJoinFailure::OwnerEnded => "core.error.join.owner_ended",
         },
+        BridgeErrorCategory::GroupingBlocked { reason } => match reason {
+            BridgeGroupingBlock::SourceChanged => "core.import.grouping.source_changed",
+            BridgeGroupingBlock::SourceGone => "core.import.grouping.source_gone",
+            BridgeGroupingBlock::FolderFilesTaken => "core.import.grouping.folder_files_taken",
+            BridgeGroupingBlock::FolderFilesContested => {
+                "core.import.grouping.folder_files_contested"
+            }
+            BridgeGroupingBlock::FolderFilesDownloading => {
+                "core.import.grouping.folder_files_downloading"
+            }
+        },
         BridgeErrorCategory::AirPlayUnsupported => "core.error.category.airplay_unsupported",
     }
     .to_string()
@@ -506,8 +572,9 @@ pub enum CloudKitError {
 
 mirror_enum! {
     /// The bridge enum carries variants core's has no counterpart for — the two
-    /// candidate-mutation refusals, a device-join failure, an AirPlay receiver
-    /// bae cannot drive — so only the outward direction is a mirror.
+    /// candidate-mutation refusals, a device-join failure, a grouping's block,
+    /// an AirPlay receiver bae cannot drive — so only the outward direction is
+    /// a mirror.
     BridgeErrorCategory = bae_core::ui::UiErrorCategory,
     from_core: pub(crate) fn,
     variants: {
@@ -576,8 +643,12 @@ impl From<bae_core::import::ImportError> for BridgeError {
             discogs::client::DiscogsError, import::ImportError, musicbrainz::MusicBrainzError,
             signals::LookupFailure,
         };
+        if let ImportError::GroupingBlocked { reason } = &error {
+            return BridgeError::from(reason);
+        }
         let detail = error.to_string();
         let category = match error {
+            ImportError::GroupingBlocked { .. } => BridgeErrorCategory::Import,
             ImportError::CandidateImportInProgress => {
                 BridgeErrorCategory::CandidateImportInProgress
             }

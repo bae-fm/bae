@@ -355,7 +355,7 @@ pub struct ImportListSnapshot {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateDetailProjection {
     pub candidate: FolderCandidate,
-    pub source_error: Option<String>,
+    pub source_error: Option<super::GroupingBlock>,
     pub actionable: bool,
     pub skipped: bool,
     pub is_added: bool,
@@ -446,9 +446,8 @@ impl ImportCandidateDetailProjection {
             .unwrap_or_default();
         let import_status = import_status_of(
             imported_release.as_ref(),
-            source_error
-                .as_deref()
-                .or_else(|| failure.as_ref().map(|failure| failure.error.as_str())),
+            source_error.as_ref(),
+            failure.as_ref().map(|failure| failure.error.as_str()),
         );
         // The attempt running now, or the one that completed, is what the pane
         // shows; an earlier failure is behind either.
@@ -574,6 +573,9 @@ pub enum CandidateImportStatus {
     Importing,
     Complete { release: super::ImportedRelease },
     Error { error: String },
+    /// A release read from several folders that cannot be worked on as it
+    /// stands, and why.
+    Blocked { reason: super::GroupingBlock },
 }
 
 impl CandidateImportStatus {
@@ -581,6 +583,7 @@ impl CandidateImportStatus {
         match stored {
             TriageImportStatus::Complete { release } => Self::Complete { release },
             TriageImportStatus::Error { error } => Self::Error { error },
+            TriageImportStatus::Blocked { reason } => Self::Blocked { reason },
         }
     }
 }

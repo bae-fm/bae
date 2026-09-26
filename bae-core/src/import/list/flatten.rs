@@ -369,8 +369,8 @@ fn place_row(
     let imported = rows.imported.get(content_hash);
     let import_status = import_status_of(
         imported,
-        row.error()
-            .or_else(|| rows.failures.get(content_hash).map(String::as_str)),
+        row.error(),
+        rows.failures.get(content_hash).map(String::as_str),
     );
     let answer = verdict.map(classify_summary);
     let skipped = match &row.grouping {

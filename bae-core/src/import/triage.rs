@@ -78,7 +78,7 @@ pub fn place(
     // purpose rather than inherited by an `_`.
     let failed = match import_status {
         Some(TriageImportStatus::Complete { .. }) => return TriagePlacement::Done,
-        Some(TriageImportStatus::Error { .. }) => true,
+        Some(TriageImportStatus::Error { .. } | TriageImportStatus::Blocked { .. }) => true,
         None => false,
     };
     if is_added {
@@ -140,11 +140,17 @@ pub fn ready_check(placement: &TriagePlacement) -> Option<NeedsYou> {
 /// [`TriagePlacement::Failed`] — but as a row that says what went wrong.
 pub fn import_status_of(
     imported: Option<&ImportedRelease>,
+    blocked: Option<&crate::import::GroupingBlock>,
     failure: Option<&str>,
 ) -> Option<TriageImportStatus> {
     if let Some(release) = imported {
         return Some(TriageImportStatus::Complete {
             release: release.clone(),
+        });
+    }
+    if let Some(reason) = blocked {
+        return Some(TriageImportStatus::Blocked {
+            reason: reason.clone(),
         });
     }
     failure.map(|error| TriageImportStatus::Error {

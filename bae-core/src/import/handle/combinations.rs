@@ -80,7 +80,8 @@ impl ImportServiceHandle {
         let regrouped = self
             .library_manager
             .combine_releases(key.clone(), members)
-            .await?;
+            .await?
+            .map_err(|reason| ImportError::GroupingBlocked { reason })?;
         for candidate_key in keys {
             self.cancel_identification(&candidate_key);
             self.event_tx

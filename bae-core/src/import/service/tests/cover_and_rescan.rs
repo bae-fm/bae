@@ -102,6 +102,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             .load_release_candidate(&key)
             .await
             .unwrap()
+            .unwrap()
             .unwrap();
         let hash = candidate.files.content_hash();
         let revision = prepare_named_candidate(

@@ -178,6 +178,7 @@ pub use error::ImportError;
 pub(crate) use folder_state_commit::{FolderStateCommit, FolderStateCommitGuard};
 desktop_only! {
     pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
+    pub use grouping::GroupingBlock;
     pub use folder_scanner::{
         FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
         InvalidReason, ReleaseFileScope, ReleasePart,

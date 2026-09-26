@@ -11,10 +11,18 @@ impl LibraryManager {
         Ok(self.database.set_grouping_skipped(key, skipped).await?)
     }
 
+    /// The release stored at `key`, when it may be worked on — or why a
+    /// grouping's release cannot be.
     pub(crate) async fn load_release_candidate(
         &self,
         key: &str,
-    ) -> Result<Option<crate::import::folder_scanner::FolderCandidate>, LibraryError> {
+    ) -> Result<
+        Result<
+            Option<crate::import::folder_scanner::FolderCandidate>,
+            crate::import::GroupingBlock,
+        >,
+        LibraryError,
+    > {
         Ok(self.database.load_release_candidate(key).await?)
     }
 
@@ -24,7 +32,8 @@ impl LibraryManager {
         &self,
         key: String,
         members: Vec<crate::import::FolderCandidate>,
-    ) -> Result<crate::db::GroupingChanges, LibraryError> {
+    ) -> Result<Result<crate::db::GroupingChanges, crate::import::GroupingBlock>, LibraryError>
+    {
         Ok(self.database.combine_releases(key, members).await?)
     }
 

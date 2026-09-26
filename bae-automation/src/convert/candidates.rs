@@ -182,6 +182,10 @@ pub(crate) fn automation_import_status(
         CandidateImportStatus::Error { error } => AutomationImportStatus::Error {
             error: error.clone(),
         },
+        // An agent reads the reason in the log's own words.
+        CandidateImportStatus::Blocked { reason } => AutomationImportStatus::Error {
+            error: reason.to_string(),
+        },
     })
 }
 

@@ -156,6 +156,16 @@ pub enum ImportError {
     #[error("This release is still being identified; import it once identification finishes")]
     CandidateBeingIdentified,
 
+    /// A release read from several folders cannot be worked on as it stands,
+    /// or cannot be made: one of its folders changed or is gone, or the files
+    /// of the folder they sit in go with another release or are still
+    /// downloading.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("{reason}")]
+    GroupingBlocked {
+        reason: crate::import::grouping::GroupingBlock,
+    },
+
     /// A completed import is edited through the persisted release editor, not
     /// through the candidate preparation it was created from.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -64,17 +64,17 @@ pub struct ScanCandidateListRow {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateListGrouping {
     pub skipped: bool,
-    /// Why the release cannot be built as it stands, for a grouping of
-    /// releases picked together one of which is gone or changed.
-    pub error: Option<String>,
+    /// Why the release cannot be worked on as it stands, for a grouping of
+    /// releases picked together.
+    pub error: Option<crate::import::GroupingBlock>,
 }
 
 impl ScanCandidateListRow {
     /// Why this release cannot be worked on as it stands, if anything says so.
-    pub(crate) fn error(&self) -> Option<&str> {
+    pub(crate) fn error(&self) -> Option<&crate::import::GroupingBlock> {
         self.grouping
             .as_ref()
-            .and_then(|grouping| grouping.error.as_deref())
+            .and_then(|grouping| grouping.error.as_ref())
     }
 }
 
@@ -274,7 +274,8 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
     sql.query(
         "SELECT c.watched_folder_path, c.path, c.folder, c.kind, c.name, c.display_path, \
                 c.content_hash, c.file_edit_revision, c.invalid_reason, c.invalid_reason_path, \
-                COALESCE(c.source_date, c.first_seen_at), c.grouping_key, g.skipped, g.error \
+                COALESCE(c.source_date, c.first_seen_at), c.grouping_key, g.skipped, \
+                g.blocked, g.blocked_subject, g.blocked_holder \
          FROM scan_candidate AS c \
          LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
          WHERE NOT EXISTS \
@@ -298,7 +299,11 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
                     row.get::<_, Option<i64>>(10)?,
                     row.get::<_, Option<String>>(11)?,
                     row.get::<_, Option<bool>>(12)?,
-                    row.get::<_, Option<String>>(13)?,
+                    (
+                        row.get::<_, Option<String>>(13)?,
+                        row.get::<_, Option<String>>(14)?,
+                        row.get::<_, Option<String>>(15)?,
+                    ),
                 ),
             ))
         },
@@ -315,7 +320,7 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
                 discovered_at,
                 grouping_key,
                 grouping_skipped,
-                grouping_error,
+                (blocked, blocked_subject, blocked_holder),
             ),
         )| {
             let kind = match kind.as_str() {
@@ -329,7 +334,11 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
                     skipped: grouping_skipped.ok_or_else(|| {
                         DbError::Message(format!("release {path} names no stored grouping {grouping_key}"))
                     })?,
-                    error: grouping_error,
+                    error: super::release_groupings::block_of(
+                        blocked,
+                        blocked_subject,
+                        blocked_holder,
+                    )?,
                 }),
                 None => None,
             };
@@ -638,7 +647,7 @@ fn load_sweepable_candidates_on(
              LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
              WHERE c.kind = 'valid' \
                AND NOT EXISTS (SELECT 1 FROM release_grouping_member WHERE member_key = c.path) \
-               AND (c.grouping_key IS NULL OR (g.skipped = 0 AND g.error IS NULL))",
+               AND (c.grouping_key IS NULL OR (g.skipped = 0 AND g.blocked IS NULL))",
             [],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )?

@@ -35,7 +35,9 @@ pub enum TriagePlacement {
     /// and the work is waiting on another attempt. Its own variant rather than
     /// a Needs-you group because nothing about the release is in question —
     /// the pick stands, the attempt did not. What went wrong is the row's
-    /// [`TriageImportStatus::Error`], the same place the pane reads it.
+    /// [`TriageImportStatus::Error`] — or, for a release read from several
+    /// folders that cannot be worked on, its [`TriageImportStatus::Blocked`] —
+    /// the same place the pane reads it.
     Failed,
     Done,
     Skipped,
@@ -516,4 +518,7 @@ impl TriageTabCounts {
 pub enum TriageImportStatus {
     Complete { release: ImportedRelease },
     Error { error: String },
+    /// A release read from several folders that cannot be worked on as it
+    /// stands, and why.
+    Blocked { reason: crate::import::GroupingBlock },
 }

@@ -278,6 +278,52 @@ mod conversion_roundtrip {
         );
     }
 
+    /// A grouping's block reaches the UI as its own keyed line, whichever way
+    /// it arrives — refusing an action, or standing on the release — with the
+    /// names it carries only in the untranslated detail. The one no person can
+    /// act on reads as the generic import failure.
+    #[cfg(feature = "desktop")]
+    #[test]
+    fn grouping_blocks_carry_their_own_lines() {
+        use bae_core::import::{GroupingBlock, ImportError};
+        let taken = GroupingBlock::FolderFilesTaken {
+            folder: "Album".into(),
+            release: "Disc 1".into(),
+        };
+        let refused = BridgeError::from(ImportError::GroupingBlocked {
+            reason: taken.clone(),
+        });
+        let BridgeError::Diagnostic { category, detail } = &refused else {
+            panic!("a block is a diagnostic with its own line: {refused:?}");
+        };
+        assert_eq!(
+            *category,
+            BridgeErrorCategory::GroupingBlocked {
+                reason: BridgeGroupingBlock::FolderFilesTaken
+            }
+        );
+        assert_eq!(
+            bridge_error_category_key(*category),
+            "core.import.grouping.folder_files_taken"
+        );
+        assert!(
+            detail.contains("Album") && detail.contains("Disc 1"),
+            "{detail}"
+        );
+        assert_eq!(BridgeError::from(&taken), refused);
+
+        let unbuildable = BridgeError::from(&GroupingBlock::Unbuildable {
+            detail: "no playable tracks".into(),
+        });
+        assert!(matches!(
+            unbuildable,
+            BridgeError::Diagnostic {
+                category: BridgeErrorCategory::Import,
+                ..
+            }
+        ));
+    }
+
     /// A row hands its action basis back with its live-state subscription, so
     /// it has to come back as the value core placed it with.
     #[cfg(feature = "desktop")]

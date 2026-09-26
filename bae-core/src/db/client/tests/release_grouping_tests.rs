@@ -6,6 +6,7 @@ use crate::import::folder_scanner::{
     CandidateFile, FileRole, FolderCandidate, FolderSidecar, InvalidCandidate, InvalidReason,
     ScanItem, ScannedFile, SidecarFiles,
 };
+use crate::import::grouping::GroupingBlock;
 use crate::import::watched_folder::host_root;
 
 /// `names` under one watched root, scanned to completion.
@@ -55,6 +56,7 @@ async fn a_changed_release_rebuilds_the_grouping_in_the_same_write() {
     let root = host_root("/music");
     db.combine_releases("grouping:test".into(), members.clone())
         .await
+        .unwrap()
         .unwrap();
     let Some(ScanItem::Valid(before)) = stored(&db, "grouping:test").await else {
         panic!("the grouping built its release");
@@ -92,6 +94,7 @@ async fn a_grouping_missing_one_of_its_releases_says_so_and_can_be_undone() {
     let root = host_root("/music");
     db.combine_releases("grouping:test".into(), members.clone())
         .await
+        .unwrap()
         .unwrap();
 
     let generation = db
@@ -108,6 +111,7 @@ async fn a_grouping_missing_one_of_its_releases_says_so_and_can_be_undone() {
     let error = db
         .load_release_candidate("grouping:test")
         .await
+        .unwrap()
         .expect_err("a grouping missing a release cannot be worked on");
     assert!(error.to_string().contains("Volume B"), "{error}");
     let detail = db
@@ -132,6 +136,7 @@ async fn a_release_is_taken_into_one_grouping_at_most() {
     let (db, _temp, members) = scanned(&["Volume A", "Volume B", "Volume C"]).await;
     db.combine_releases("grouping:first".into(), members[..2].to_vec())
         .await
+        .unwrap()
         .unwrap();
     assert!(db
         .combine_releases("grouping:second".into(), members[1..].to_vec())
@@ -240,6 +245,7 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
 
     db.combine_releases("grouping:discs".into(), members[..2].to_vec())
         .await
+        .unwrap()
         .unwrap();
     assert_eq!(
         release_files(&db, "grouping:discs").await,
@@ -265,14 +271,19 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
     let error = db
         .combine_releases("grouping:more".into(), members[2..4].to_vec())
         .await
+        .unwrap()
         .expect_err("the album's files already go with a release");
-    assert!(error.to_string().contains("Album"), "{error}");
+    assert!(
+        matches!(&error, GroupingBlock::FolderFilesTaken { folder, .. } if folder == "Album"),
+        "{error}"
+    );
 
     db.combine_releases(
         "grouping:apart".into(),
         vec![members[2].clone(), members[4].clone()],
     )
     .await
+    .unwrap()
     .unwrap();
     assert_eq!(
         release_files(&db, "grouping:apart").await,
@@ -306,6 +317,7 @@ async fn a_release_reading_the_folders_files_replaces_its_sidecar() {
     scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
     db.combine_releases("grouping:discs".into(), members.clone())
         .await
+        .unwrap()
         .unwrap();
 
     let album = super::candidate_with(
@@ -365,10 +377,12 @@ async fn a_grouping_that_comes_to_read_taken_files_waits_for_them() {
     scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
     db.combine_releases("grouping:first".into(), members[..2].to_vec())
         .await
+        .unwrap()
         .unwrap();
     // Each of these sits in a disc folder of its own, so none is shared.
     db.combine_releases("grouping:second".into(), members[2..].to_vec())
         .await
+        .unwrap()
         .unwrap();
     assert!(!release_files(&db, "grouping:second")
         .await
@@ -384,8 +398,12 @@ async fn a_grouping_that_comes_to_read_taken_files_waits_for_them() {
     let error = db
         .load_release_candidate("grouping:second")
         .await
+        .unwrap()
         .expect_err("the album's files already go with the first release");
-    assert!(error.to_string().contains("Album"), "{error}");
+    assert!(
+        matches!(&error, GroupingBlock::FolderFilesTaken { folder, .. } if folder == "Album"),
+        "{error}"
+    );
     assert!(release_files(&db, "grouping:first")
         .await
         .contains(&"cover.jpg".to_string()));
@@ -395,6 +413,7 @@ async fn a_grouping_that_comes_to_read_taken_files_waits_for_them() {
     assert!(db
         .load_release_candidate("grouping:second")
         .await
+        .unwrap()
         .unwrap()
         .is_some());
     assert!(release_files(&db, "grouping:second")
@@ -411,9 +430,11 @@ async fn groupings_contend_only_for_files_that_are_there() {
     let (db, _temp, members) = scanned(&["Box/CD1", "Box/CD2", "Box/CD3", "Box/CD4"]).await;
     db.combine_releases("grouping:first".into(), members[..2].to_vec())
         .await
+        .unwrap()
         .unwrap();
     db.combine_releases("grouping:second".into(), members[2..].to_vec())
         .await
+        .unwrap()
         .unwrap();
 
     let write = scan_in(&db, ScanItem::Sidecar(sidecar_of("Box", &["cover.jpg"]))).await;
@@ -422,8 +443,14 @@ async fn groupings_contend_only_for_files_that_are_there() {
         let error = db
             .load_release_candidate(key)
             .await
+            .unwrap()
             .expect_err("the box's files would go with two releases");
-        assert!(error.to_string().contains("more than one"), "{error}");
+        assert_eq!(
+            error,
+            GroupingBlock::FolderFilesContested {
+                folder: "Box".into()
+            }
+        );
     }
 
     let (_, regrouped) = db.separate_picked_grouping("grouping:first").await.unwrap();
@@ -441,6 +468,7 @@ async fn a_grouping_waits_for_its_folders_files_to_finish_downloading() {
     let (db, _temp, members) = scanned(&["Album/Disc 1", "Album/Disc 2"]).await;
     db.combine_releases("grouping:discs".into(), members.clone())
         .await
+        .unwrap()
         .unwrap();
     scan_in(
         &db,
@@ -453,8 +481,14 @@ async fn a_grouping_waits_for_its_folders_files_to_finish_downloading() {
     let error = db
         .load_release_candidate("grouping:discs")
         .await
+        .unwrap()
         .expect_err("the album's files are not known yet");
-    assert!(error.to_string().contains("still downloading"), "{error}");
+    assert_eq!(
+        error,
+        GroupingBlock::FolderFilesDownloading {
+            folder: "Album".into()
+        }
+    );
 
     scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
     assert_eq!(

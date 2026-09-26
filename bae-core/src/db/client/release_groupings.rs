@@ -24,6 +24,7 @@ use crate::import::folder_scanner::{
     CandidateFile, FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey,
     InvalidCandidate, InvalidReason, ScanItem, SidecarFiles,
 };
+use crate::import::grouping::GroupingBlock;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
@@ -35,7 +36,7 @@ pub(super) struct StoredReleaseCandidate {
     /// Settled, not taken into a grouping, and — for a grouping — built from
     /// every release it takes in.
     pub actionable: bool,
-    pub error: Option<String>,
+    pub error: Option<GroupingBlock>,
 }
 
 /// What rebuilding groupings changed: the releases written, and the keys of
@@ -84,14 +85,7 @@ pub(super) fn load_candidate_on(
         |row| row.get::<_, bool>(0),
     )?;
     let error = match &candidate.grouping {
-        Some(grouping) => sql
-            .query_row(
-                "SELECT error FROM release_grouping WHERE key = ?",
-                [grouping],
-                |row| row.get::<_, Option<String>>(0),
-            )
-            .optional()?
-            .flatten(),
+        Some(grouping) => load_block_on(sql, grouping)?,
         None => None,
     };
     Ok(Some(StoredReleaseCandidate {
@@ -190,20 +184,40 @@ fn rebuild_grouping(
             Some((_, stored)) => match stored.item {
                 ScanItem::Valid(candidate) => members.push(candidate),
                 ScanItem::Discovered(candidate) => {
-                    return blocked(sql, key, &format!("Source folder changed: {}", candidate.name));
+                    return blocked(
+                        sql,
+                        key,
+                        &GroupingBlock::SourceChanged {
+                            folder: candidate.name,
+                        },
+                    );
                 }
                 ScanItem::Invalid(candidate) => {
-                    return blocked(sql, key, &format!("Source folder changed: {}", candidate.name));
+                    return blocked(
+                        sql,
+                        key,
+                        &GroupingBlock::SourceChanged {
+                            folder: candidate.name,
+                        },
+                    );
                 }
                 ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
-                    return blocked(sql, key, &format!("Source folder disappeared: {member}"));
+                    return blocked(
+                        sql,
+                        key,
+                        &GroupingBlock::SourceGone {
+                            folder: member.clone(),
+                        },
+                    );
                 }
             },
             None => {
                 return blocked(
                     sql,
                     key,
-                    &format!("Source folder changed or disappeared: {member}"),
+                    &GroupingBlock::SourceGone {
+                        folder: member.clone(),
+                    },
                 )
             }
         }
@@ -260,7 +274,13 @@ fn rebuild_grouping(
     let mut candidate = match composed {
         Ok((candidate, _)) => candidate,
         Err(error) => {
-            changes.extend(blocked(sql, key, &error.to_string())?);
+            changes.extend(blocked(
+                sql,
+                key,
+                &GroupingBlock::Unbuildable {
+                    detail: error.to_string(),
+                },
+            )?);
             return Ok(changes);
         }
     };
@@ -285,7 +305,10 @@ fn rebuild_grouping(
         }
     };
     sql.execute(
-        "UPDATE release_grouping SET error = NULL, reads_parent_files = ? WHERE key = ?",
+        "UPDATE release_grouping \
+         SET blocked = NULL, blocked_subject = NULL, blocked_holder = NULL, \
+             reads_parent_files = ? \
+         WHERE key = ?",
         params![reads_parent_files, key],
     )?;
     let generation: i64 = sql
@@ -359,49 +382,47 @@ impl ParentFiles {
 /// still downloading are not known yet, so no release reads them until the
 /// download ends.
 fn parent_files_on(
-    sql: &SqlContext<'_, '_>,
+    sql: &(impl QueryOne + QueryRows),
     key: &str,
     folder: Option<&Path>,
     reading: bool,
-) -> Result<Result<ParentFiles, String>, DbError> {
+) -> Result<Result<ParentFiles, GroupingBlock>, DbError> {
     let Some(folder) = folder else {
         return Ok(Ok(ParentFiles::None));
     };
     let Some(sidecar) = folder_scans::load_sidecar(sql, folder)? else {
         return Ok(Ok(ParentFiles::None));
     };
-    let name = folder
+    let named = folder
         .file_name()
-        .map_or_else(|| folder.to_string_lossy(), |name| name.to_string_lossy());
+        .map_or_else(|| folder.to_string_lossy(), |name| name.to_string_lossy())
+        .into_owned();
     if !reading {
-        let others: Vec<(bool, Option<String>)> = sql.query(
-            "SELECT other.reads_parent_files, candidate.name FROM release_grouping AS other \
+        let others: Vec<(bool, String)> = sql.query(
+            "SELECT other.reads_parent_files, COALESCE(candidate.name, other.key) \
+             FROM release_grouping AS other \
              LEFT JOIN scan_candidate AS candidate ON candidate.path = other.key \
              WHERE other.parent_folder = ? AND other.key != ? ORDER BY other.key",
             params![folder.to_string_lossy(), key],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )?;
-        if let Some((_, reader)) = others.iter().find(|(reads, _)| *reads) {
-            return Ok(Err(match reader {
-                Some(reader) => format!(
-                    "The files in {name} already go with the combined release {reader}; \
-                     separate it first"
-                ),
-                None => format!(
-                    "The files in {name} already go with another combined release; \
-                     separate it first"
-                ),
+        if let Some((_, reader)) = others.into_iter().find(|(reads, _)| *reads) {
+            return Ok(Err(GroupingBlock::FolderFilesTaken {
+                folder: named,
+                release: reader,
             }));
         }
-        if !others.is_empty() {
-            return Ok(Err(format!(
-                "The files in {name} would go with more than one combined release; \
-                 separate all but one"
-            )));
+        let contested: bool = sql.query_row(
+            "SELECT EXISTS(SELECT 1 FROM release_grouping WHERE parent_folder = ? AND key != ?)",
+            params![folder.to_string_lossy(), key],
+            |row| row.get(0),
+        )?;
+        if contested {
+            return Ok(Err(GroupingBlock::FolderFilesContested { folder: named }));
         }
     }
     Ok(match sidecar.files {
-        SidecarFiles::Downloading => Err(format!("The files in {name} are still downloading")),
+        SidecarFiles::Downloading => Err(GroupingBlock::FolderFilesDownloading { folder: named }),
         SidecarFiles::Valid(files) => Ok(ParentFiles::Files(files)),
         SidecarFiles::Invalid(reason) => Ok(ParentFiles::Invalid(reason)),
     })
@@ -417,7 +438,7 @@ fn rebuild_blocked_in(
 ) -> Result<GroupingChanges, DbError> {
     let blocked: Vec<String> = sql.query(
         "SELECT key FROM release_grouping \
-         WHERE parent_folder = ? AND error IS NOT NULL AND key != ? ORDER BY key",
+         WHERE parent_folder = ? AND blocked IS NOT NULL AND key != ? ORDER BY key",
         params![folder.to_string_lossy(), key],
         |row| row.get(0),
     )?;
@@ -428,17 +449,80 @@ fn rebuild_blocked_in(
     Ok(changes)
 }
 
-/// Say why grouping `key`'s release cannot be built as it stands.
+/// Say why grouping `key`'s release cannot be worked on as it stands.
 fn blocked(
     sql: &SqlContext<'_, '_>,
     key: &str,
-    error: &str,
+    block: &GroupingBlock,
 ) -> Result<GroupingChanges, DbError> {
+    let (kind, subject, holder) = match block {
+        GroupingBlock::SourceChanged { folder } => ("source_changed", folder, None),
+        GroupingBlock::SourceGone { folder } => ("source_gone", folder, None),
+        GroupingBlock::FolderFilesTaken { folder, release } => {
+            ("folder_files_taken", folder, Some(release))
+        }
+        GroupingBlock::FolderFilesContested { folder } => ("folder_files_contested", folder, None),
+        GroupingBlock::FolderFilesDownloading { folder } => {
+            ("folder_files_downloading", folder, None)
+        }
+        GroupingBlock::Unbuildable { detail } => ("unbuildable", detail, None),
+    };
     sql.execute(
-        "UPDATE release_grouping SET error = ? WHERE key = ?",
-        params![error, key],
+        "UPDATE release_grouping \
+         SET blocked = ?, blocked_subject = ?, blocked_holder = ? WHERE key = ?",
+        params![kind, subject, holder, key],
     )?;
     Ok(GroupingChanges::default())
+}
+
+/// Why grouping `key`'s release cannot be worked on, when something says so.
+pub(super) fn load_block_on(
+    sql: &(impl QueryOne + QueryRows),
+    key: &str,
+) -> Result<Option<GroupingBlock>, DbError> {
+    let columns: Option<(Option<String>, Option<String>, Option<String>)> = sql
+        .query_row(
+            "SELECT blocked, blocked_subject, blocked_holder FROM release_grouping WHERE key = ?",
+            [key],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .optional()?;
+    match columns {
+        Some((kind, subject, holder)) => block_of(kind, subject, holder),
+        None => Ok(None),
+    }
+}
+
+/// A grouping's block from the columns [`blocked`] writes.
+pub(super) fn block_of(
+    kind: Option<String>,
+    subject: Option<String>,
+    holder: Option<String>,
+) -> Result<Option<GroupingBlock>, DbError> {
+    let Some(kind) = kind else {
+        return Ok(None);
+    };
+    let subject = subject.ok_or_else(|| {
+        DbError::Message(format!("grouping block {kind} names no folder or detail"))
+    })?;
+    Ok(Some(match (kind.as_str(), holder) {
+        ("source_changed", None) => GroupingBlock::SourceChanged { folder: subject },
+        ("source_gone", None) => GroupingBlock::SourceGone { folder: subject },
+        ("folder_files_taken", Some(release)) => GroupingBlock::FolderFilesTaken {
+            folder: subject,
+            release,
+        },
+        ("folder_files_contested", None) => GroupingBlock::FolderFilesContested { folder: subject },
+        ("folder_files_downloading", None) => {
+            GroupingBlock::FolderFilesDownloading { folder: subject }
+        }
+        ("unbuildable", None) => GroupingBlock::Unbuildable { detail: subject },
+        (other, _) => {
+            return Err(DbError::Message(format!(
+                "release_grouping.blocked holds {other:?} with a holder it does not name"
+            )))
+        }
+    }))
 }
 
 impl Database {
@@ -466,20 +550,21 @@ impl Database {
         self.read(move |sql| skipped_on(&sql, &candidate)).await
     }
 
-    /// The release stored at `key`, when it may be worked on.
+    /// The release stored at `key`, when it may be worked on — or why a
+    /// grouping's release cannot be.
     pub(crate) async fn load_release_candidate(
         &self,
         key: &str,
-    ) -> Result<Option<FolderCandidate>, DbError> {
+    ) -> Result<Result<Option<FolderCandidate>, GroupingBlock>, DbError> {
         let key = key.to_string();
         self.read(move |sql| {
             let Some(stored) = load_candidate_on(&sql, &key)? else {
-                return Ok(None);
+                return Ok(Ok(None));
             };
-            if let Some(error) = stored.error {
-                return Err(DbError::Message(error));
+            if let Some(block) = stored.error {
+                return Ok(Err(block));
             }
-            Ok(stored.actionable.then_some(stored.candidate))
+            Ok(Ok(stored.actionable.then_some(stored.candidate)))
         })
         .await
     }
@@ -539,7 +624,7 @@ impl Database {
         &self,
         key: String,
         members: Vec<FolderCandidate>,
-    ) -> Result<GroupingChanges, DbError> {
+    ) -> Result<Result<GroupingChanges, GroupingBlock>, DbError> {
         if members.len() < 2 {
             return Err(DbError::Message(
                 "combining a release requires at least two folders".into(),
@@ -549,6 +634,22 @@ impl Database {
         let root_for_compose = root.clone();
         let key_for_compose = key.clone();
         let observed_at = self.inner.clock.now().timestamp_millis();
+        // A refusal writes nothing, so it is found by a read. The write below
+        // asks again, and refuses as a fault a store that changed in between.
+        let sits_in = crate::import::grouping::shared_parent(
+            members
+                .iter()
+                .map(|member| (member.watched_folder_path.as_str(), member.file_root.as_path())),
+        );
+        let refusal_key = key.clone();
+        let refused = self
+            .read(move |sql| {
+                Ok(parent_files_on(&sql, &refusal_key, sits_in.as_deref(), false)?.err())
+            })
+            .await?;
+        if let Some(block) = refused {
+            return Ok(Err(block));
+        }
         self.call(move |sql| {
             // Each folder's own file decisions, which the release takes over
             // as its own starting point.
@@ -564,7 +665,9 @@ impl Database {
                 (member.watched_folder_path.as_str(), member.file_root.as_path())
             }));
             let parent = parent_files_on(sql, &key_for_compose, sits_in.as_deref(), false)?
-                .map_err(DbError::Message)?;
+                .map_err(|block| {
+                    DbError::Message(format!("{key_for_compose} could not be combined: {block}"))
+                })?;
             let (composed, inherited) = crate::import::grouping::compose(
                 &key_for_compose,
                 &root_for_compose,
@@ -653,16 +756,17 @@ impl Database {
             }
             let changes = rebuild_grouping(sql, &key, observed_at)?;
             if changes.written.is_empty() {
-                let error: Option<String> = sql.query_row(
-                    "SELECT error FROM release_grouping WHERE key = ?",
-                    [&key],
-                    |row| row.get(0),
-                )?;
-                return Err(DbError::Message(error.unwrap_or_else(|| {
-                    format!("{key} built no release from the folders it takes in")
-                })));
+                // Nothing of it is kept: the whole write rolls back.
+                return match load_block_on(sql, &key)? {
+                    Some(block) => Err(DbError::Message(format!(
+                        "{key} could not be combined: {block}"
+                    ))),
+                    None => Err(DbError::Message(format!(
+                        "{key} built no release from the folders it takes in"
+                    ))),
+                };
             }
-            Ok(changes)
+            Ok(Ok(changes))
         })
         .await
     }
