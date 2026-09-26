@@ -407,42 +407,50 @@ mod tests {
         assert_eq!(pulled, 0);
     }
 
-    #[tokio::test]
-    async fn test_ready_signal_fires_at_threshold() {
-        use std::thread;
-        use std::time::Duration;
+    /// Ready fires when the ring is half full, not before: 49 samples of a
+    /// 100-sample ring leave it unfired, the 50th fires it.
+    #[test]
+    fn test_ready_signal_fires_at_threshold() {
+        let (mut sink, _source, mut ready_rx) =
+            create_track_stream_pair_with_capacity(44100, 2, 100);
 
-        let (mut sink, _source, ready_rx) = create_track_stream_pair_with_capacity(44100, 2, 100);
-
-        thread::spawn(move || {
-            // Exactly the 50% threshold.
-            let samples: Vec<f32> = (0..50).map(|i| i as f32 * 0.01).collect();
-            sink.push_samples_blocking(&samples);
-        });
-
-        let result = tokio::time::timeout(Duration::from_millis(100), ready_rx).await;
-        assert!(result.is_ok(), "Ready signal should fire at 50%");
-        assert!(result.unwrap().is_ok(), "Oneshot should succeed");
+        let samples: Vec<f32> = (0..50).map(|i| i as f32 * 0.01).collect();
+        sink.push_samples_blocking(&samples[..49]);
+        assert!(
+            matches!(
+                ready_rx.try_recv(),
+                Err(oneshot::error::TryRecvError::Empty)
+            ),
+            "Ready signal should not fire below 50%"
+        );
+        sink.push_samples_blocking(&samples[49..]);
+        assert!(
+            ready_rx.try_recv().is_ok(),
+            "Ready signal should fire at 50%"
+        );
     }
 
-    #[tokio::test]
-    async fn test_ready_signal_on_finish() {
-        use std::thread;
-        use std::time::Duration;
-
+    /// A track shorter than the threshold is ready once it finishes.
+    #[test]
+    fn test_ready_signal_on_finish() {
         // Capacity 1000, so the 50% threshold is 500.
-        let (mut sink, _source, ready_rx) = create_track_stream_pair_with_capacity(44100, 2, 1000);
+        let (mut sink, _source, mut ready_rx) =
+            create_track_stream_pair_with_capacity(44100, 2, 1000);
 
-        thread::spawn(move || {
-            // 100 samples never reaches the threshold; mark_finished fires ready.
-            let samples: Vec<f32> = (0..100).map(|i| i as f32 * 0.001).collect();
-            sink.push_samples_blocking(&samples);
-            sink.mark_finished();
-        });
-
-        let result = tokio::time::timeout(Duration::from_millis(100), ready_rx).await;
-        assert!(result.is_ok(), "Ready signal should fire on finish");
-        assert!(result.unwrap().is_ok(), "Oneshot should succeed");
+        let samples: Vec<f32> = (0..100).map(|i| i as f32 * 0.001).collect();
+        sink.push_samples_blocking(&samples);
+        assert!(
+            matches!(
+                ready_rx.try_recv(),
+                Err(oneshot::error::TryRecvError::Empty)
+            ),
+            "100 samples never reach the threshold"
+        );
+        sink.mark_finished();
+        assert!(
+            ready_rx.try_recv().is_ok(),
+            "Ready signal should fire on finish"
+        );
     }
 
     /// The production producer pushes more samples than the ring holds, so it
