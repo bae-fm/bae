@@ -25,7 +25,8 @@
 //! its audio, how many lookups returned the row, how many of the facts that
 //! name one pressing hold, whether the disc ID returned it, how much of the
 //! album's title and artist the folder states, whether the row states the
-//! folder's mono, and whether the folder's text mentions the row at all. Every other row is set aside under
+//! folder's mono, whether the folder states its country, and whether the
+//! folder's text mentions the row at all. Every other row is set aside under
 //! "N more releases", which a person can open.
 //!
 //! Taking the highest score is what would otherwise be separate rules. A row
@@ -438,6 +439,23 @@ struct Support {
     /// so it separates rows nothing above tells apart. Two channels are never
     /// read: a mono record is routinely ripped to two identical ones.
     states_the_channels: bool,
+    /// Whether the folder's text states the country this pressing was
+    /// released in.
+    ///
+    /// Two pressings a barcode names alike — a US issue and a European one —
+    /// differ here and nowhere above, and a sleeve that says "Made in the EU"
+    /// is the object on the desk saying which it is. A folder that states no
+    /// country leaves every row as it was, and one that states both rows'
+    /// countries agrees with both alike.
+    ///
+    /// The year and the label count only toward `offered`. A folder is
+    /// usually named by the year the album came out rather than the year its
+    /// pressing was made, so the year would lift an original pressing over the
+    /// reissue on the desk; and a label is written many ways — an imprint, a
+    /// parent company, a distributor — so a row whose label the folder spells
+    /// otherwise would be set aside for the spelling. A country is read
+    /// through one table of its names and codes.
+    states_the_country: bool,
     /// Whether there is any reason to show this row at all — see
     /// [`super::agreements::Agreements::offered`].
     ///
@@ -511,6 +529,7 @@ fn support_of(
         .filter(|stated| *stated)
         .count() as u32,
         states_the_channels: channels == ChannelFit::Agrees,
+        states_the_country: agreements.country,
         offered,
     }
 }

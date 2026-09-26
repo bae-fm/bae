@@ -215,12 +215,12 @@ fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
 }
 
 /// Two pressings of one year the barcode names alike, one released in the US
-/// and one in Europe, and a sleeve that says where it was made — beside the label's
-/// address, which says nothing of it. The statement agrees with the European
-/// pressing's country, which leads; the other stays on the list, since a
-/// pressing released in one market is often made in another.
+/// and one in Europe, and a sleeve that says where it was made — beside the
+/// label's address, which says nothing of it. The statement agrees with the
+/// European pressing's country, which is offered; the US one waits behind the
+/// disclosure, one click away should a European-made disc be the US release.
 #[test]
-fn a_sleeve_saying_where_it_was_made_puts_that_pressing_first() {
+fn a_sleeve_saying_where_it_was_made_offers_that_pressing() {
     let line = |text: &str, origin| TextLine {
         text: text.to_string(),
         origin,
@@ -262,8 +262,52 @@ fn a_sleeve_saying_where_it_was_made_puts_that_pressing_first() {
         &text,
         FolderAudio::UNPROVEN,
     );
-    assert_eq!(offered(&outcome), vec!["rel-europe", "rel-us"]);
-    assert!(set_aside(&outcome).is_empty());
+    assert_eq!(offered(&outcome), vec!["rel-europe"]);
+    assert_eq!(set_aside(&outcome), vec!["rel-us"]);
+}
+
+/// A folder that states no pressing's country leaves the two tied, and one
+/// that states both countries agrees with both alike: neither is a reason to
+/// set one aside.
+#[test]
+fn stating_no_country_or_both_leaves_the_pressings_tied() {
+    let line = |text: &str| TextLine {
+        text: text.to_string(),
+        origin: TextOrigin::Artwork,
+        file: None,
+        region: None,
+    };
+    let released_in = |release_id: &str, area: &str| {
+        let (result, status) = pressing(release_id, made_of(&[Medium::Cd]));
+        (
+            MetadataResult {
+                area: Some(crate::pressing::area(area)),
+                catalog_number: None,
+                ..result
+            },
+            status,
+        )
+    };
+    for sleeve in [
+        vec![line("Artist One - Album One")],
+        vec![
+            line("Artist One - Album One"),
+            line("Made in the EU."),
+            line("Distributed in the United States"),
+        ],
+    ] {
+        let outcome = combine_results(
+            Vec::new(),
+            vec![released_in("rel-us", "US"), released_in("rel-europe", "XE")],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            &CandidateText::of(&sleeve, &[]),
+            FolderAudio::UNPROVEN,
+        );
+        assert_eq!(offered(&outcome).len(), 2, "{sleeve:?}");
+        assert!(set_aside(&outcome).is_empty(), "{sleeve:?}");
+    }
 }
 
 /// Every row ruled out by the folder is still every row the run found, and
