@@ -130,7 +130,7 @@ impl ImportServiceHandle {
                 ScanItem::Invalid(candidate) => {
                     candidate.path.starts_with(&folder).then(|| candidate.key())
                 }
-                ScanItem::Decided { .. } => None,
+                ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
             })
             .collect();
         if below != selected {
@@ -190,7 +190,8 @@ impl ImportServiceHandle {
             }
             Some(crate::db::GroupingFacts::Picked { .. }) => {
                 let _commit = self.folder_state_commit.lock("separate a picked release").await;
-                let returned = self.library_manager.separate_picked_grouping(key).await?;
+                let (returned, regrouped) =
+                    self.library_manager.separate_picked_grouping(key).await?;
                 self.cancel_identification(key);
                 self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
                     candidate_key: key.into(),
@@ -218,10 +219,11 @@ impl ImportServiceHandle {
                             }
                         }
                         ScanItem::Invalid(candidate) => ScanEvent::InvalidCandidate(candidate),
-                        ScanItem::Decided { .. } => continue,
+                        ScanItem::Decided { .. } | ScanItem::Sidecar(_) => continue,
                     };
                     self.event_tx.send(ImportEvent::Scan(event));
                 }
+                self.announce_regrouped(&regrouped).await?;
                 self.event_tx.send(ImportEvent::Scan(ScanEvent::Finished));
                 Ok(())
             }
@@ -252,7 +254,9 @@ impl ImportServiceHandle {
                     }
                 }
                 ScanItem::Invalid(candidate) => ScanEvent::InvalidCandidate(candidate),
-                ScanItem::Discovered(_) | ScanItem::Decided { .. } => continue,
+                ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
+                    continue
+                }
             };
             self.event_tx.send(ImportEvent::Scan(event));
         }

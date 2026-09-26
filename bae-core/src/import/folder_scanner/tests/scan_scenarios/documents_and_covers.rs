@@ -105,7 +105,7 @@ fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
                 invalid.reason
             )
         }
-        ScanItem::Discovered(_) | ScanItem::Decided { .. } => {
+        ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
             panic!("terminal scan helper returned a progress item")
         }
     };
@@ -247,7 +247,7 @@ fn unparseable_sheet_lands_as_a_document() {
                 invalid.reason
             )
         }
-        ScanItem::Discovered(_) | ScanItem::Decided { .. } => {
+        ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
             panic!("terminal scan helper returned a progress item")
         }
     }

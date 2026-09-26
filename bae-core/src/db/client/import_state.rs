@@ -553,7 +553,7 @@ pub(super) fn settle_scanned_candidates(
     // A release a grouping built from one of these is built again, with the
     // files it now holds.
     let settled: Vec<String> = updated_folders.into_iter().collect();
-    let regrouped = super::release_groupings::rebuild_groupings(sql, &settled, observed_at)?;
+    let regrouped = super::release_groupings::rebuild_groupings(sql, &settled, &[], observed_at)?;
     updated_candidates.extend(regrouped.written.into_iter().filter_map(|item| match item {
         crate::import::folder_scanner::ScanItem::Valid(candidate) => Some(candidate),
         _ => None,

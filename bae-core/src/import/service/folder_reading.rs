@@ -216,6 +216,15 @@ impl ImportService {
                     candidate.path.clone()
                 }
                 ScanItem::Invalid(candidate) => candidate.path.clone(),
+                // A folder's sidecar files are no release: no date, no tags.
+                ScanItem::Sidecar(_) => {
+                    items.push(crate::db::ScanItemToWrite {
+                        item,
+                        file_metadata: None,
+                        folder_date: None,
+                    });
+                    continue;
+                }
             };
             let folder_date = tokio::task::spawn_blocking(move || {
                 crate::import::folder_scanner::FolderDate::read(&path)

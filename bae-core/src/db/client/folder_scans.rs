@@ -1,19 +1,20 @@
 //! The durable folder-scan tables: `folder_scan_roots`, the `scan_candidate`
-//! family, and the `scan_boundary` family. A scan generation is durable before
+//! family, and the `scan_sidecar` pair. A scan generation is durable before
 //! traversal begins; items are written as they are discovered, each deleting
 //! what it supersedes; successful completion prunes rows not written in that
 //! generation in the same transaction that marks the root complete.
 //!
 //! One [`ScanItem`](crate::import::folder_scanner::ScanItem) is a candidate row
 //! with its files, their parsed track sheets and the decisions that exposed it
-//! — or a boundary row with its tree and the candidates it hides. [`write`]
-//! lays those rows down and [`read`] assembles them back.
+//! — or a folder's sidecar files, which [`sidecar`] stores. [`write`] lays
+//! candidate rows down and [`read`] assembles them back.
 
 pub(super) mod columns;
 mod dates;
 mod progress;
 pub(super) mod read;
 mod reading;
+mod sidecar;
 pub(super) mod write;
 
 use super::import_state::next_folder_scan_generation;
@@ -27,6 +28,7 @@ use std::path::{Path, PathBuf};
 pub(super) use self::read::{
     load_candidate_file_tag_snapshot, load_item_by_key, stored_entries, RowSources,
 };
+pub(super) use self::sidecar::load_sidecar;
 pub(super) use self::write::{delete_entry, insert_candidate_files, StoredEntry};
 pub(crate) use self::reading::{FolderReadingCommit, FolderReadingStamp, FolderReadingWrite};
 
@@ -117,7 +119,7 @@ fn item_was_read_for(
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
             snapshot.was_read_from(candidate.files.audio())
         }
-        ScanItem::Invalid(_) | ScanItem::Decided { .. } => false,
+        ScanItem::Invalid(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => false,
     }
 }
 
@@ -420,13 +422,19 @@ impl Database {
                 return Ok(Some(FinishedScan::default()));
             }
             let pruned = write::prune_other_generations(sql, &watched_folder_path, generation)?;
+            let pruned_sidecars =
+                sidecar::prune_sidecars(sql, &watched_folder_path, generation, None)?;
             sql.execute(
                 "UPDATE folder_scan_roots SET status = 'complete', error = NULL \
                  WHERE watched_folder_path = ? AND generation = ?",
                 params![watched_folder_path, generation],
             )?;
-            let regrouped =
-                super::release_groupings::rebuild_groupings(sql, &pruned, observed_at)?;
+            let regrouped = super::release_groupings::rebuild_groupings(
+                sql,
+                &pruned,
+                &pruned_sidecars,
+                observed_at,
+            )?;
             Ok(Some(FinishedScan { pruned, regrouped }))
         })
         .await
@@ -506,16 +514,22 @@ impl Database {
 /// A tentative candidate replaces nothing: it is seen before the folders
 /// around it are understood, and the reading that settles them is what
 /// replaces whatever it contradicts.
+///
+/// A folder's sidecar replaces every entry that reads the folder's own files:
+/// the scan found that no release read there owns them.
 fn superseded_keys(stored: &[StoredEntry], item: &ScanItem) -> Vec<String> {
-    let (ScanItem::Valid(_) | ScanItem::Invalid(_)) = item else {
+    let (ScanItem::Valid(_) | ScanItem::Invalid(_) | ScanItem::Sidecar(_)) = item else {
         return Vec::new();
     };
-    let (Some(own_key), Some(coverage)) = (item.persisted_key(), item.coverage()) else {
+    let Some(coverage) = item.coverage() else {
         return Vec::new();
     };
+    let own_key = item.persisted_key();
     stored
         .iter()
-        .filter(|entry| entry.key != own_key && entry.coverage.overlaps(&coverage))
+        .filter(|entry| {
+            Some(&entry.key) != own_key.as_ref() && entry.coverage.overlaps(&coverage)
+        })
         .map(|entry| entry.key.clone())
         .collect()
 }
@@ -542,6 +556,15 @@ fn write_scan_item(
     to_write: &ScanItemToWrite,
     observed_at: i64,
 ) -> Result<ScanItemWrite, DbError> {
+    if let ScanItem::Sidecar(folder_sidecar) = &to_write.item {
+        return sidecar::write_sidecar(
+            sql,
+            watched_folder_path,
+            generation,
+            folder_sidecar,
+            observed_at,
+        );
+    }
     let Some(entry_key) = to_write.item.persisted_key() else {
         return Err(DbError::Message(
             "a folder reading is stored as a decision, not as a scan entry".to_string(),
@@ -559,10 +582,20 @@ fn write_scan_item(
     let Some(superseded_keys) = written else {
         return Ok(ScanItemWrite::Unchanged);
     };
+    // A settled entry reads its files itself, so no sidecar of the same files
+    // stands beside it. A tentative one settles nothing (see
+    // `superseded_keys`).
+    let uncovered = match (&to_write.item, to_write.item.coverage()) {
+        (ScanItem::Valid(_) | ScanItem::Invalid(_), Some(coverage)) => {
+            sidecar::delete_covered_sidecars(sql, watched_folder_path, &coverage)?
+        }
+        _ => Vec::new(),
+    };
     let touched: Vec<String> = std::iter::once(entry_key)
         .chain(superseded_keys.iter().cloned())
         .collect();
-    let regrouped = super::release_groupings::rebuild_groupings(sql, &touched, observed_at)?;
+    let regrouped =
+        super::release_groupings::rebuild_groupings(sql, &touched, &uncovered, observed_at)?;
     Ok(ScanItemWrite::Stored {
         superseded_keys,
         regrouped,
@@ -787,7 +820,7 @@ pub(super) fn validate_scan_item_ownership(
             candidate.grouping.is_some()
         }
         ScanItem::Invalid(candidate) => candidate.grouping.is_some(),
-        ScanItem::Decided { .. } => false,
+        ScanItem::Decided { .. } | ScanItem::Sidecar(_) => false,
     };
     let (item_root, item_path) = match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => (
@@ -799,6 +832,10 @@ pub(super) fn validate_scan_item_ownership(
             candidate.path.as_path(),
         ),
         ScanItem::Decided { key, .. } => (key.watched_folder_path.as_str(), Path::new(entry_key)),
+        ScanItem::Sidecar(sidecar) => (
+            sidecar.watched_folder_path.as_str(),
+            sidecar.folder.as_path(),
+        ),
     };
     if item_root != watched_folder_path || (!grouped && !item_path.starts_with(root)) {
         return Err(DbError::Message(format!(
@@ -819,7 +856,10 @@ pub(super) fn validate_scan_item_ownership(
                 )));
             }
         }
-        ScanItem::Discovered(_) | ScanItem::Valid(_) | ScanItem::Invalid(_) => {}
+        ScanItem::Discovered(_)
+        | ScanItem::Valid(_)
+        | ScanItem::Invalid(_)
+        | ScanItem::Sidecar(_) => {}
         ScanItem::Decided { key, .. } => {
             validate_decision_key_ownership(watched_folder_path, key)?;
         }

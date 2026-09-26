@@ -550,9 +550,17 @@ CREATE TABLE IF NOT EXISTS release_grouping (
     -- keeps what it was last built from until that is fixed or the grouping
     -- is undone.
     error                TEXT,
+    -- For a grouping with no anchor: the folder its release reads the sidecar
+    -- files of (scan_sidecar), because every release it takes in sits
+    -- directly in that folder. One grouping at most reads a folder's files,
+    -- so they never go with two releases; a second grouping that would read
+    -- them is refused, or blocked with an error when a rebuild comes to
+    -- read them.
+    parent_folder        TEXT UNIQUE,
     UNIQUE (watched_folder_path, anchor_relative_path),
     CHECK (anchor_relative_path IS NOT NULL OR (combined = 1 AND author = 'user')),
     CHECK (anchor_relative_path IS NULL OR error IS NULL),
+    CHECK (anchor_relative_path IS NULL OR parent_folder IS NULL),
     FOREIGN KEY (watched_folder_path)
         REFERENCES watched_import_folders (path)
         ON DELETE CASCADE
@@ -777,6 +785,41 @@ CREATE TABLE IF NOT EXISTS scan_candidate_part (
     PRIMARY KEY (watched_folder_path, candidate_path, position),
     FOREIGN KEY (watched_folder_path, candidate_path)
         REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE
+) STRICT;
+
+-- The files under a folder that no release the scan read there owns: a cover
+-- or a booklet beside disc folders kept as releases of their own. Stored by
+-- the scan like its candidates, pruned with them, and replaced by any
+-- candidate that reads the folder's files itself.
+CREATE TABLE IF NOT EXISTS scan_sidecar (
+    watched_folder_path TEXT NOT NULL,
+    folder              TEXT NOT NULL,
+    generation          INTEGER NOT NULL CHECK (generation >= 0),
+    -- Why a release taking these files in could not be imported: one of them
+    -- is broken. An invalid sidecar stores no files.
+    invalid_reason      TEXT CHECK (invalid_reason IS NULL OR invalid_reason IN ('corrupt_audio', 'corrupt_image')),
+    invalid_reason_path TEXT,
+    PRIMARY KEY (watched_folder_path, folder),
+    FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE,
+    CHECK ((invalid_reason IS NULL) = (invalid_reason_path IS NULL))
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_scan_sidecar_folder ON scan_sidecar (folder);
+
+-- One sidecar file, in release file order, with the role the scan gave it.
+CREATE TABLE IF NOT EXISTS scan_sidecar_file (
+    watched_folder_path TEXT NOT NULL,
+    folder              TEXT NOT NULL,
+    position            INTEGER NOT NULL CHECK (position >= 0),
+    relative_path       TEXT NOT NULL,
+    absolute_path       TEXT NOT NULL,
+    size                INTEGER NOT NULL CHECK (size >= 0),
+    modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
+    role                TEXT NOT NULL CHECK (role IN ('artwork', 'document', 'other')),
+    PRIMARY KEY (watched_folder_path, folder, position),
+    UNIQUE (watched_folder_path, folder, relative_path),
+    FOREIGN KEY (watched_folder_path, folder)
+        REFERENCES scan_sidecar (watched_folder_path, folder) ON DELETE CASCADE
 ) STRICT;
 
 -- A CUE sheet found beside a candidate's audio, as parsed.

@@ -37,7 +37,7 @@ fn composed(members: &[FolderCandidate]) -> FolderCandidate {
         .map(|member| (member.clone(), CandidateFileEdits::default()))
         .collect();
     let (mut release, inherited) =
-        compose("grouping:test", &members[0].0.watched_folder_path, &members).unwrap();
+        compose("grouping:test", &members[0].0.watched_folder_path, &members, &[]).unwrap();
     release.files.apply_candidate_file_edits(&inherited).unwrap();
     release
 }
@@ -129,10 +129,10 @@ fn folders_under_different_roots_take_their_position_and_name() {
 #[test]
 fn rejects_duplicate_members_and_overlapping_files() {
     let first = folder_at("/music", "Volume A");
-    assert!(compose("grouping:test", &host_root("/music"), &plain(&[first.clone(), first.clone()])).is_err());
+    assert!(compose("grouping:test", &host_root("/music"), &plain(&[first.clone(), first.clone()]), &[]).is_err());
     let mut second = folder_at("/music", "Volume B");
     second.files.files[0] = first.files.files[0].clone();
-    assert!(compose("grouping:test", &host_root("/music"), &plain(&[first, second])).is_err());
+    assert!(compose("grouping:test", &host_root("/music"), &plain(&[first, second]), &[]).is_err());
 }
 
 /// A folder read from its file tags keeps the release's own disc layout,
@@ -198,7 +198,7 @@ fn a_members_file_decisions_carry_into_the_release() {
         (folder_at("/music", "Album/Disc 2"), CandidateFileEdits::default()),
     ];
     let (mut release, inherited) =
-        compose("grouping:test", &host_root("/music"), &members).unwrap();
+        compose("grouping:test", &host_root("/music"), &members, &[]).unwrap();
     release.files.apply_candidate_file_edits(&inherited).unwrap();
     assert_eq!(release.files.audio().count(), 3);
     assert_eq!(
@@ -260,4 +260,114 @@ fn sheets_take_discs_within_their_folders_run() {
             .map(|track| track.file.unwrap())
             .collect::<Vec<_>>()
     );
+}
+
+/// The folder picked releases all sit directly in, as the rule reads it.
+fn parent_of(members: &[FolderCandidate]) -> Option<PathBuf> {
+    shared_parent(
+        members
+            .iter()
+            .map(|member| (member.watched_folder_path.as_str(), member.file_root.as_path())),
+    )
+}
+
+/// Releases sit in one folder when each is directly in it — two discs of
+/// three as much as all of them — and in none when they are at different
+/// places, at different depths, one inside another, under different watched
+/// folders, or directly in the watched folder.
+#[test]
+fn releases_sit_in_one_folder_only_when_each_is_directly_in_it() {
+    let album = PathBuf::from(host_root("/music")).join("Artist/Album");
+    let disc = |relative: &str| folder_at("/music", relative);
+    assert_eq!(
+        parent_of(&[disc("Artist/Album/Disc 1"), disc("Artist/Album/Disc 2")]),
+        Some(album.clone())
+    );
+    assert_eq!(
+        parent_of(&[
+            disc("Artist/Album/Disc 1"),
+            disc("Artist/Album/Disc 2"),
+            disc("Artist/Album/Disc 3"),
+        ]),
+        Some(album)
+    );
+    assert_eq!(
+        parent_of(&[disc("Artist/Album/Disc 1"), disc("Artist/Other/Disc 1")]),
+        None
+    );
+    assert_eq!(
+        parent_of(&[disc("Artist/Album/Disc 1"), disc("Artist/Album/Disc 2/Bonus")]),
+        None
+    );
+    assert_eq!(
+        parent_of(&[disc("Artist/Album"), disc("Artist/Album/Disc 1")]),
+        None
+    );
+    assert_eq!(
+        parent_of(&[folder_at("/music", "Album/Disc 1"), folder_at("/other", "Album/Disc 2")]),
+        None
+    );
+    assert_eq!(parent_of(&[disc("Album A"), disc("Album B")]), None);
+}
+
+/// The folder's files are the release's own, at their paths below it, beside
+/// the discs under theirs; files from anywhere else are refused.
+#[test]
+fn the_folder_the_releases_sit_in_gives_its_files_to_the_release() {
+    let album = PathBuf::from(host_root("/music")).join("Album");
+    let cover = CandidateFile {
+        file: ScannedFile::new(album.join("cover.jpg"), "cover.jpg".into(), 10, 1),
+        role: FileRole::Artwork,
+        proposed_audio: false,
+    };
+    let members = plain(&[
+        folder_at("/music", "Album/Disc 1"),
+        folder_at("/music", "Album/Disc 2"),
+    ]);
+    let (release, _) = compose(
+        "grouping:test",
+        &host_root("/music"),
+        &members,
+        std::slice::from_ref(&cover),
+    )
+    .unwrap();
+    assert_eq!(release.path, album);
+    assert_eq!(
+        release
+            .files
+            .files
+            .iter()
+            .map(|entry| entry.file.relative_path.as_str())
+            .collect::<Vec<_>>(),
+        [
+            "cover.jpg",
+            "Disc 1/01.flac",
+            "Disc 1/02.flac",
+            "Disc 2/01.flac",
+            "Disc 2/02.flac"
+        ]
+    );
+    assert_eq!(release.files.artwork().count(), 1);
+
+    let apart = plain(&[
+        folder_at("/music", "Album/Disc 1"),
+        folder_at("/music", "Other/Disc 2"),
+    ]);
+    assert!(compose(
+        "grouping:test",
+        &host_root("/music"),
+        &apart,
+        std::slice::from_ref(&cover)
+    )
+    .is_err());
+    let elsewhere = CandidateFile {
+        file: ScannedFile::new(
+            PathBuf::from(host_root("/music")).join("Other/cover.jpg"),
+            "cover.jpg".into(),
+            10,
+            1,
+        ),
+        ..cover
+    };
+    assert!(compose("grouping:test", &host_root("/music"), &members, &[elsewhere]).is_err());
 }

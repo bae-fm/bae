@@ -72,6 +72,37 @@ pub enum ScanItem {
         decision: FolderReleaseDecision,
         grouping: String,
     },
+    /// The files under a folder that none of the releases read there owns.
+    Sidecar(FolderSidecar),
+}
+
+/// The files under a folder that none of the releases the scan read there
+/// owns: a cover, a booklet, a folder of scans beside disc folders kept as
+/// releases of their own. The folder holds no audio of its own and is not read
+/// as one release, so no release below it takes them; a grouping whose
+/// releases all sit directly in the folder does (see
+/// [`crate::import::grouping::shared_parent`]).
+///
+/// Only a folder below the watched root has one: the root is never a release,
+/// so nothing is ever read as its own.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct FolderSidecar {
+    pub watched_folder_path: String,
+    /// The folder, absolute. Each file's relative path is below it.
+    pub folder: PathBuf,
+    pub files: SidecarFiles,
+}
+
+/// A folder's sidecar files as the scan read them.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum SidecarFiles {
+    /// Every file, in the release file order, each an artwork, a document, or
+    /// another file. A track sheet with no audio beside it describes nothing
+    /// here to play, so it is carried as the document it is.
+    Valid(Vec<CandidateFile>),
+    /// A file among them is broken — an unreadable image — so a release that
+    /// takes them in cannot be imported.
+    Invalid(InvalidReason),
 }
 
 /// Only the durable folder-scan tables key items this way, and those are
@@ -85,7 +116,7 @@ impl ScanItem {
         match self {
             Self::Discovered(candidate) | Self::Valid(candidate) => Some(candidate.key()),
             Self::Invalid(candidate) => Some(candidate.key()),
-            Self::Decided { .. } => None,
+            Self::Decided { .. } | Self::Sidecar(_) => None,
         }
     }
 
@@ -103,6 +134,12 @@ impl ScanItem {
                 folder: candidate.path.clone(),
                 whole_subtree: candidate.grouping.is_some(),
             }),
+            // The folder's own files, which is what any release reading them
+            // would cover too.
+            Self::Sidecar(sidecar) => Some(Coverage {
+                folder: sidecar.folder.clone(),
+                whole_subtree: false,
+            }),
             Self::Decided { .. } => None,
         }
     }
@@ -113,7 +150,7 @@ impl ScanItem {
         match self {
             Self::Discovered(candidate) | Self::Valid(candidate) => Some(&candidate.display_path),
             Self::Invalid(candidate) => Some(&candidate.display_path),
-            Self::Decided { .. } => None,
+            Self::Decided { .. } | Self::Sidecar(_) => None,
         }
     }
 }

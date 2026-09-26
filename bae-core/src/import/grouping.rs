@@ -39,6 +39,12 @@ pub enum GroupingAction {
 /// run of discs the release gives that folder. Decisions the release stores
 /// later go over them.
 ///
+/// When every member sits directly in one folder ([`shared_parent`]), the
+/// release is that folder's: `parent_files` are the folder's sidecar files —
+/// the cover or booklet beside the disc folders — and they keep their paths
+/// below it. Otherwise there is no such folder and `parent_files` is empty;
+/// files from anywhere else are refused.
+///
 /// Each file keeps its path on disk; its path in the release is its path in
 /// its member, under a prefix naming that member. Within one watched folder
 /// the prefix is the member's folder relative to the folder all members share,
@@ -49,6 +55,7 @@ pub fn compose(
     key: &str,
     watched_folder_path: &str,
     members: &[(FolderCandidate, CandidateFileEdits)],
+    parent_files: &[CandidateFile],
 ) -> Result<(FolderCandidate, CandidateFileEdits), ImportError> {
     let edits: Vec<&CandidateFileEdits> = members.iter().map(|(_, edits)| edits).collect();
     let members: Vec<FolderCandidate> = members.iter().map(|(member, _)| member.clone()).collect();
@@ -70,6 +77,30 @@ pub fn compose(
     let shared = one_root.then(|| shared_folder(members));
     let mut seen_files = HashSet::new();
     let mut files = Vec::new();
+    if !parent_files.is_empty() {
+        let parent = shared_parent(
+            members
+                .iter()
+                .map(|member| (member.watched_folder_path.as_str(), member.file_root.as_path())),
+        )
+        .filter(|parent| shared.as_ref() == Some(parent))
+        .ok_or_else(|| ImportError::Internal {
+            detail: format!("{key} does not sit in one folder, so no folder's files are its own"),
+        })?;
+        for entry in parent_files {
+            if !entry.file.path.starts_with(&parent) {
+                return Err(ImportError::Internal {
+                    detail: format!(
+                        "{} is not under {}, the folder {key} sits in",
+                        entry.file.path.display(),
+                        parent.display()
+                    ),
+                });
+            }
+            seen_files.insert(entry.file.path.clone());
+            files.push(entry.clone());
+        }
+    }
     let mut parts = Vec::new();
     let mut inherited = CandidateFileEdits::default();
     let mut next_disc = 1u32;
@@ -156,6 +187,34 @@ pub fn compose(
         grouping: Some(key.to_string()),
     };
     Ok((release, inherited))
+}
+
+/// The folder a grouping's releases all sit directly in, whose sidecar files
+/// the grouping reads as its own — or `None` when they sit in no one folder.
+///
+/// Each release is given as its watched folder and the folder its files are
+/// read from. They sit in one folder when every one of those is directly in
+/// the same folder, below the watched folder they share: `Album/Disc 1` and
+/// `Album/Disc 2` sit in `Album`, whether or not `Album` holds other releases
+/// too. Releases in different folders, at different depths, or under
+/// different watched folders sit in none, and neither does a release that is
+/// itself the folder the others are in. The watched folder is never one: it is
+/// never a release, so its files are never one's own.
+pub(crate) fn shared_parent<'a>(
+    members: impl IntoIterator<Item = (&'a str, &'a Path)>,
+) -> Option<PathBuf> {
+    let mut shared: Option<(&str, &Path)> = None;
+    for (watched_folder_path, file_root) in members {
+        let parent = file_root.parent()?;
+        match shared {
+            None => shared = Some((watched_folder_path, parent)),
+            Some((root, folder)) if root == watched_folder_path && folder == parent => {}
+            Some(_) => return None,
+        }
+    }
+    let (root, folder) = shared?;
+    let root = Path::new(root);
+    (folder != root && folder.starts_with(root)).then(|| folder.to_path_buf())
 }
 
 /// The deepest folder every member's files are under.

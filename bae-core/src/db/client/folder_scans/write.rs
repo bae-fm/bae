@@ -181,6 +181,9 @@ pub(super) fn insert_item(
         ScanItem::Decided { .. } => Err(DbError::Message(
             "a folder reading is stored as a decision, not as a scan entry".to_string(),
         )),
+        ScanItem::Sidecar(_) => Err(DbError::Message(
+            "a folder's sidecar files are stored as a sidecar, not as a scan entry".to_string(),
+        )),
     }
 }
 

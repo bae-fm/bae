@@ -82,7 +82,10 @@ fn scan_projected_items_with_decisions(
     // deleting what it supersedes, keyed by path.
     let mut stored: std::collections::BTreeMap<String, ScanItem> = Default::default();
     scan_for_candidates_with_decisions(root, &StoredCandidateEdits::none(), &decisions, |item| {
-        if matches!(item, ScanItem::Discovered(_) | ScanItem::Decided { .. }) {
+        if matches!(
+            item,
+            ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_)
+        ) {
             return;
         }
         let coverage = item.coverage().expect("a scan entry reads files");
@@ -105,7 +108,7 @@ fn scan_projected_items_with_decisions(
         match item {
             ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => valid.push(candidate),
             ScanItem::Invalid(candidate) => invalid.push(candidate),
-            ScanItem::Decided { .. } => {}
+            ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {}
         }
     }
     valid.sort_by(|left, right| {
@@ -169,7 +172,7 @@ fn scan_valid(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
         .filter_map(|item| match item {
             ScanItem::Valid(c) => Some(c),
             ScanItem::Invalid(_) => None,
-            ScanItem::Discovered(_) | ScanItem::Decided { .. } => None,
+            ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
         })
         .collect()
 }
@@ -194,3 +197,4 @@ include!("tests/scenario_fixtures.rs");
 include!("tests/scan_scenarios.rs");
 include!("tests/bindings.rs");
 include!("tests/audio_formats.rs");
+include!("tests/sidecars.rs");

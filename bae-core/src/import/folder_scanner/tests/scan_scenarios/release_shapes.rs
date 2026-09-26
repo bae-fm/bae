@@ -425,7 +425,7 @@ fn cue_referencing_missing_audio_leaves_the_sheet_unbound() {
             assert_eq!(candidate.files.audio().count(), 5);
         }
         ScanItem::Invalid(invalid) => panic!("must stay importable: {}", invalid.reason),
-        ScanItem::Discovered(_) | ScanItem::Decided { .. } => {
+        ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
             panic!("terminal scan helper returned a progress item")
         }
     }
@@ -663,7 +663,7 @@ fn multi_file_cue_with_missing_secondary_file_stays_unbound() {
             assert_eq!(candidate.files.track_count(), 1);
         }
         ScanItem::Invalid(invalid) => panic!("must stay importable: {}", invalid.reason),
-        ScanItem::Discovered(_) | ScanItem::Decided { .. } => {
+        ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
             panic!("terminal scan helper returned a progress item")
         }
     }

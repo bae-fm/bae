@@ -192,6 +192,12 @@ impl Database {
             for key in &pruned {
                 delete_entry(sql, &watched_folder_path, key)?;
             }
+            let pruned_sidecars = super::sidecar::prune_sidecars(
+                sql,
+                &watched_folder_path,
+                generation,
+                Some(&folder_path),
+            )?;
             let recorded: Vec<String> = sql.query(
                 "SELECT path FROM folder_scan_directory WHERE watched_folder_path = ?",
                 [&watched_folder_path],
@@ -230,8 +236,12 @@ impl Database {
                     )?;
                 }
             }
-            let regrouped =
-                super::super::release_groupings::rebuild_groupings(sql, &pruned, observed_at)?;
+            let regrouped = super::super::release_groupings::rebuild_groupings(
+                sql,
+                &pruned,
+                &pruned_sidecars,
+                observed_at,
+            )?;
             Ok(FolderReadingWrite {
                 writes,
                 pruned,

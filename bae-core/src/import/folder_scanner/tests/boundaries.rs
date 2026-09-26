@@ -448,7 +448,7 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
         .iter()
         .find_map(|item| match item {
             ScanItem::Valid(candidate) => Some(candidate),
-            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Decided { .. } => None,
+            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
         })
         .expect("combined wrapper is actionable");
     assert_eq!(combined.path, wrapper);
@@ -475,7 +475,7 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
         .iter()
         .filter_map(|item| match item {
             ScanItem::Valid(candidate) => Some(candidate),
-            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Decided { .. } => None,
+            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
         })
         .collect();
     assert_eq!(separate.len(), 2);
@@ -604,7 +604,10 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
             FolderReleaseDecisionAuthor::User,
         )]),
         |item| {
-            if !matches!(item, ScanItem::Discovered(_) | ScanItem::Decided { .. }) {
+            if !matches!(
+            item,
+            ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_)
+        ) {
                 items.push(item);
             }
         },

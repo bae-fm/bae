@@ -57,21 +57,28 @@ impl ImportService {
     ) -> Result<Option<PersistedScanItem>, crate::import::ImportError> {
         let library_manager = &services.library_manager;
         let path = match item {
-            ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.clone(),
-            ScanItem::Invalid(candidate) => candidate.path.clone(),
+            ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
+                Some(candidate.path.clone())
+            }
+            ScanItem::Invalid(candidate) => Some(candidate.path.clone()),
+            // A folder's sidecar files are no release, so no release's date.
+            ScanItem::Sidecar(_) => None,
             ScanItem::Decided { .. } => {
                 return Err(crate::import::ImportError::Internal {
                     detail: "a folder reading is stored as a decision, not as a scan entry".into(),
                 })
             }
         };
-        let folder_date = tokio::task::spawn_blocking(move || {
-            crate::import::folder_scanner::FolderDate::read(&path)
-        })
-        .await
-        .map_err(|error| crate::import::ImportError::Internal {
-            detail: format!("folder date task failed: {error}"),
-        })??;
+        let folder_date = match path {
+            Some(path) => tokio::task::spawn_blocking(move || {
+                crate::import::folder_scanner::FolderDate::read(&path)
+            })
+            .await
+            .map_err(|error| crate::import::ImportError::Internal {
+                detail: format!("folder date task failed: {error}"),
+            })??,
+            None => None,
+        };
         loop {
             // The item as the file decisions stored right now describe it, and
             // what its own tags seed it with, both read before the commit lock:
@@ -234,6 +241,9 @@ impl ImportService {
                     ScanEvent::InvalidCandidate(candidate),
                 ));
             }
+            // A folder's sidecar files are no row of the list; what their
+            // write displaced and rebuilt is announced on its own.
+            ScanItem::Sidecar(_) => {}
             ScanItem::Decided { .. } => {
                 return Err(crate::import::ImportError::Internal {
                     detail: "a folder reading is stored as a decision, not as a scan entry"

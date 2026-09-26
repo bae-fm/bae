@@ -504,6 +504,117 @@ impl DiscLayout {
     }
 }
 
+/// One file under `release_root` as its name proposes it — and, for an image,
+/// as its bytes do — or the defect that makes any release holding it
+/// unimportable: a zero-byte track, or an image that will not decode.
+fn propose_file(
+    entry: &FileEntry,
+    release_root: &Path,
+    fs_root: &Path,
+) -> Result<Result<(ScannedFile, ProposedRole), InvalidReason>, FolderScanError> {
+    let relative_from_release = if release_root.as_os_str().is_empty() {
+        entry.path.clone()
+    } else {
+        entry
+            .path
+            .strip_prefix(release_root)
+            .unwrap_or(&entry.path)
+            .to_path_buf()
+    };
+
+    // Joined from the path's components rather than displayed, so the result is
+    // `/`-separated on Windows too. A displayed `Path` uses the host's
+    // separator, and this string is stored on the row and joined back onto a
+    // directory by every other device in the library.
+    let relative_path = relative_from_release
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/");
+
+    // The absolute path is fs_root + entry.path.
+    let absolute_path = fs_root.join(&entry.path);
+
+    let role = if is_audio_file(&entry.path) {
+        if entry.size == 0 {
+            info!("Invalid candidate: corrupt or zero-byte audio file {relative_path}");
+            return Ok(Err(InvalidReason::CorruptAudioFile {
+                path: relative_path,
+            }));
+        }
+        ProposedRole::Audio
+    } else if is_cue_file(&entry.path) {
+        ProposedRole::Cue
+    } else if is_image_file(&entry.path) {
+        // As with audio: Ok(false) is corruption, Err is a real I/O fault.
+        let valid = file_validation::is_valid_image(&absolute_path).map_err(|e| {
+            FolderScanError::Other(format!(
+                "Failed to validate image file {absolute_path:?}: {e}"
+            ))
+        })?;
+        if entry.size == 0 || !valid {
+            info!("Invalid candidate: corrupt or zero-byte image {relative_path}");
+            return Ok(Err(InvalidReason::CorruptImage {
+                path: relative_path,
+            }));
+        }
+        ProposedRole::Image
+    } else if is_document_file(&entry.path) {
+        ProposedRole::Document
+    } else {
+        // Unrecognized, and carried anyway — the folder is the release.
+        ProposedRole::Other
+    };
+    Ok(Ok((
+        ScannedFile::new(
+            absolute_path,
+            relative_path,
+            entry.size,
+            entry.modified_at_ns,
+        ),
+        role,
+    )))
+}
+
+/// The files under `folder` that no release read there owns, each given its
+/// role the way a release's are — `folder` holds no audio, so every one is an
+/// artwork, a document, or another file.
+pub(super) fn categorize_sidecar(
+    tree: &CandidateFileIndex,
+    folder: &Path,
+    fs_root: &Path,
+    cancellation: &ScanCancellation,
+) -> Result<SidecarFiles, FolderScanError> {
+    let mut files = Vec::new();
+    for entry in tree.all_files_under(folder) {
+        cancellation.check()?;
+        let (file, role) = match propose_file(entry, folder, fs_root)? {
+            Ok(proposal) => proposal,
+            Err(reason) => return Ok(SidecarFiles::Invalid(reason)),
+        };
+        let role = match role {
+            ProposedRole::Audio => {
+                return Err(FolderScanError::Other(format!(
+                    "{} is a track, and a folder's sidecar files hold none",
+                    file.path.display()
+                )))
+            }
+            // A sheet with no audio beside it names nothing here to play.
+            ProposedRole::Cue | ProposedRole::Document => FileRole::Document,
+            ProposedRole::Image => FileRole::Artwork,
+            ProposedRole::Other => FileRole::Other,
+        };
+        files.push(CandidateFile {
+            file,
+            role,
+            proposed_audio: false,
+        });
+    }
+    // The release file order (see `categorize_files_from_tree`).
+    files.sort_by(|a, b| natord::compare_ignore_case(&a.file.relative_path, &b.file.relative_path));
+    Ok(SidecarFiles::Valid(files))
+}
+
 /// Categorize a release root's selected files. `fs_root` is the folder
 /// being imported — validation reads its actual bytes from disk.
 ///
@@ -529,66 +640,10 @@ pub(super) fn categorize_files_from_tree(
 
     for entry in tree.all_files_under(release_root) {
         cancellation.check()?;
-        let relative_from_release = if release_root.as_os_str().is_empty() {
-            entry.path.clone()
-        } else {
-            entry
-                .path
-                .strip_prefix(release_root)
-                .unwrap_or(&entry.path)
-                .to_path_buf()
+        let (mut file, role) = match propose_file(entry, release_root, fs_root)? {
+            Ok(proposal) => proposal,
+            Err(reason) => return invalid(reason),
         };
-
-        // Joined from the path's components rather than displayed, so the result is
-        // `/`-separated on Windows too. A displayed `Path` uses the host's
-        // separator, and this string is stored on the row and joined back onto a
-        // directory by every other device in the library.
-        let relative_path = relative_from_release
-            .components()
-            .map(|component| component.as_os_str().to_string_lossy())
-            .collect::<Vec<_>>()
-            .join("/");
-
-        // The absolute path is fs_root + entry.path.
-        let absolute_path = fs_root.join(&entry.path);
-
-        let role = if is_audio_file(&entry.path) {
-            if entry.size == 0 {
-                info!("Invalid candidate: corrupt or zero-byte audio file {relative_path}");
-                return invalid(InvalidReason::CorruptAudioFile {
-                    path: relative_path.to_string(),
-                });
-            }
-            ProposedRole::Audio
-        } else if is_cue_file(&entry.path) {
-            ProposedRole::Cue
-        } else if is_image_file(&entry.path) {
-            // As with audio: Ok(false) is corruption, Err is a real I/O fault.
-            let valid = file_validation::is_valid_image(&absolute_path).map_err(|e| {
-                FolderScanError::Other(format!(
-                    "Failed to validate image file {absolute_path:?}: {e}"
-                ))
-            })?;
-            if entry.size == 0 || !valid {
-                info!("Invalid candidate: corrupt or zero-byte image {relative_path}");
-                return invalid(InvalidReason::CorruptImage {
-                    path: relative_path.to_string(),
-                });
-            }
-            ProposedRole::Image
-        } else if is_document_file(&entry.path) {
-            ProposedRole::Document
-        } else {
-            // Unrecognized, and carried anyway — the folder is the release.
-            ProposedRole::Other
-        };
-
-        let mut file = ScannedFile::new(
-            absolute_path,
-            relative_path,
-            entry.size,
-            entry.modified_at_ns,
-        );
         if role == ProposedRole::Audio {
             let Some(source_audio) = source_audio_of(&file, probed)? else {
                 return invalid(InvalidReason::CorruptAudioFile {

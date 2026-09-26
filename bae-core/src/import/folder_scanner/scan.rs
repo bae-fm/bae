@@ -153,6 +153,10 @@ pub(super) struct ScannedDirectory {
     audio_folders: Vec<PathBuf>,
     nodes: Vec<ProjectedScanNode>,
     nodes_emitted: bool,
+    /// The sidecar files of every folder in this subtree whose files no
+    /// release owns, waiting on the folders above: one that reads its whole
+    /// subtree as a release takes them after all.
+    sidecars: Vec<FolderSidecar>,
 }
 
 /// The folder one scan pass reads, and what it reads it against: the watched
@@ -428,6 +432,7 @@ where
     if direct_audio {
         audio_folders.push(relative.to_path_buf());
     }
+    let mut sidecars = Vec::new();
     let relative_string = relative_path_string(relative);
     // How this folder is read. A stored reading — the user's, or the one an
     // earlier scan settled on — stands. With nothing stored, the scan decides
@@ -486,6 +491,7 @@ where
         }
         all_files.extend(child_scan.all_files);
         audio_folders.extend(child_scan.audio_folders);
+        sidecars.extend(child_scan.sidecars);
         if !wrapper_has_files && can_stream_collection {
             let nodes = child_scan.nodes;
             if !child_scan.nodes_emitted {
@@ -524,12 +530,15 @@ where
             &audio_folders,
         )?;
         let nodes = node.into_iter().collect();
+        // The release reads every file below the folder, the sidecar files of
+        // the folders under it included.
         return Ok(ScannedDirectory {
             all_files,
             contains_audio,
             audio_folders,
             nodes,
             nodes_emitted: false,
+            sidecars: Vec::new(),
         });
     }
 
@@ -540,7 +549,7 @@ where
     if direct_audio {
         if let Some(node) = candidate_from_files(
             scan,
-            direct_scope_files,
+            std::mem::take(&mut direct_scope_files),
             relative,
             relative,
             ReleaseFileScope::Direct,
@@ -560,6 +569,7 @@ where
     // one release below it. Keep the release's key and display row, but root
     // its reproducible file scope at the wrapper so sidecars and audio-free
     // siblings survive scan, import, and re-scan.
+    let mut collapsed = false;
     if owns_wrapper_files && nodes.len() == 1 {
         if let ProjectedScanNode::Candidate(existing) = &nodes[0] {
             let candidate_relative = existing
@@ -588,8 +598,16 @@ where
                 &part_folders,
             )? {
                 nodes = vec![candidate];
+                collapsed = true;
             }
         }
+    }
+    if collapsed {
+        // The release reads every file below the folder, the sidecar files of
+        // the folders under it included.
+        sidecars.clear();
+    } else if owns_wrapper_files && contains_audio {
+        sidecars.extend(sidecar_of(scan, direct_scope_files, relative)?);
     }
 
     // Children below this folder have already gone out, so the parent will
@@ -605,7 +623,29 @@ where
         audio_folders,
         nodes,
         nodes_emitted: child_nodes_emitted,
+        sidecars,
     })
+}
+
+/// The sidecar of the folder at `relative`, read from `files` — its own files
+/// and those of the folders below it that hold no audio — when no release
+/// read there owns them. `None` while a download into it is still running,
+/// the same as a release would be.
+fn sidecar_of(
+    scan: &ScanRoot<'_>,
+    files: Vec<FileEntry>,
+    relative: &Path,
+) -> Result<Option<FolderSidecar>, FolderScanError> {
+    if files.iter().any(|file| is_partial_marker_file(&file.path)) {
+        info!("Skipping sidecar files of {relative:?}: partial-download marker present");
+        return Ok(None);
+    }
+    let tree = CandidateFileIndex::new(files);
+    Ok(Some(FolderSidecar {
+        watched_folder_path: scan.watched_folder_path.to_string(),
+        folder: scan.root.join(relative),
+        files: categorize_sidecar(&tree, relative, scan.root, scan.cancellation)?,
+    }))
 }
 
 pub(super) fn emit_projected_nodes<F>(nodes: Vec<ProjectedScanNode>, on_item: &mut F)
@@ -709,6 +749,11 @@ where
     let mut scanned = scan_directory(walk, folder, true, on_directory, on_item)?;
     if !scanned.nodes_emitted {
         emit_projected_nodes(std::mem::take(&mut scanned.nodes), on_item);
+    }
+    // Every folder above one of these has been read and none took its files,
+    // so they are the folder's to say.
+    for sidecar in std::mem::take(&mut scanned.sidecars) {
+        on_item(ScanItem::Sidecar(sidecar));
     }
     Ok(scanned)
 }

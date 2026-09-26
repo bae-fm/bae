@@ -168,7 +168,7 @@ pub(crate) fn offers_folder_reading(
             Some((&candidate.path, candidate.grouping.is_some()))
         }
         ScanItem::Invalid(candidate) => Some((&candidate.path, candidate.grouping.is_some())),
-        ScanItem::Decided { .. } => None,
+        ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
     });
     match decision {
         FolderReleaseDecision::CombineAsOneRelease => {

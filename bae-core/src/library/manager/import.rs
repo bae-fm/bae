@@ -29,11 +29,18 @@ impl LibraryManager {
     }
 
     /// Undo the grouping of releases picked together at `key`, returning
-    /// them as they are stored.
+    /// them as they are stored, and the releases of groupings rebuilt because
+    /// the files of the folder it read are free again.
     pub(crate) async fn separate_picked_grouping(
         &self,
         key: &str,
-    ) -> Result<Vec<crate::import::folder_scanner::ScanItem>, LibraryError> {
+    ) -> Result<
+        (
+            Vec<crate::import::folder_scanner::ScanItem>,
+            crate::db::GroupingChanges,
+        ),
+        LibraryError,
+    > {
         Ok(self.database.separate_picked_grouping(key).await?)
     }
 
