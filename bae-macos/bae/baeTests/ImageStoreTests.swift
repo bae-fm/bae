@@ -193,6 +193,38 @@ struct ImageStoreCacheTests {
         #expect(images[0] === images[1])
         #expect(await fetchCount.read() == 1)
     }
+
+    /// A failed fetch leaves nothing behind — no cached failure, no load still
+    /// registered in flight — so asking again goes back to the source.
+    @Test(
+        "a failed load is asked again, not answered from a remembered failure"
+    )
+    func failedLoadIsAskedAgain() async throws {
+        let bytes = try makePngBytes(width: 8, height: 8)
+        let fetchCount = FetchCount()
+        let store = ImageStore(fetchRemoteImage: { _, _ in
+            await fetchCount.increment()
+            if await fetchCount.read() == 1 {
+                throw URLError(.badServerResponse)
+            }
+            return bytes
+        })
+        let content = ImageContent.remote(
+            BridgeRemoteImageSet(
+                url: "https://images.example/front.jpg",
+                downscaled: []
+            )
+        )
+
+        await #expect(throws: URLError.self) {
+            try await store.image(content, pointSize: 56, displayScale: 2)
+        }
+        #expect(
+            try await store.image(content, pointSize: 56, displayScale: 2)
+                != nil
+        )
+        #expect(await fetchCount.read() == 2)
+    }
 }
 
 @Suite("ImageStore bucket isolation")

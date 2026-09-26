@@ -67,6 +67,10 @@ struct LightboxView<Item: LightboxImage>: View {
     private var imageAnalysis: ImageAnalysis?
     @State
     private var loadFailed = false
+    /// How many times the person asked for a failed load again. Part of the
+    /// load's identity, so asking restarts it.
+    @State
+    private var attempt = 0
     @FocusState
     private var focused: Bool
 
@@ -90,7 +94,12 @@ struct LightboxView<Item: LightboxImage>: View {
                         closeButtonOverlay
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .task(id: cursor.current.image) {
+                    .task(
+                        id: LightboxLoad(
+                            image: cursor.current.image,
+                            attempt: attempt
+                        )
+                    ) {
                         await loadCurrentImage(containerSize: geo.size)
                     }
                 }
@@ -143,37 +152,6 @@ struct LightboxView<Item: LightboxImage>: View {
             magnification = 1.0
             fullResImageUpgradeTask?.cancel()
             fullResImageUpgradeTask = nil
-        }
-    }
-
-    /// Where the current item's bytes come from, or nil once the failure has
-    /// been logged and put on screen. A cancellation resolves to nil too, with
-    /// nothing shown — the item is on its way out.
-    private func resolveDecodeSource() async -> ImageLoader.Source? {
-        do {
-            guard
-                let source = try await imageStore.decodeSource(
-                    for: cursor.current.image,
-                    at: .nativeResolution
-                )
-            else {
-                logger.warning(
-                    "No bytes for lightbox image \(cursor.current.image.description)"
-                )
-                loadFailed = true
-                return nil
-            }
-            return source
-        }
-        catch is CancellationError {
-            return nil
-        }
-        catch {
-            logger.warning(
-                "Failed to fetch lightbox image \(cursor.current.image.description): \(error)"
-            )
-            loadFailed = true
-            return nil
         }
     }
 
@@ -410,6 +388,42 @@ extension LightboxView {
         .buttonStyle(.plain)
     }
 
+}
+
+extension LightboxView {
+    /// Where the current item's bytes come from, or nil once the failure has
+    /// been logged and put on screen. A cancellation resolves to nil too, with
+    /// nothing shown — the item is on its way out.
+    private func resolveDecodeSource() async -> ImageLoader.Source? {
+        do {
+            guard
+                let source = try await imageStore.decodeSource(
+                    for: cursor.current.image,
+                    at: .nativeResolution
+                )
+            else {
+                logger.warning(
+                    "No bytes for lightbox image \(cursor.current.image.description)"
+                )
+                loadFailed = true
+                return nil
+            }
+            return source
+        }
+        catch is CancellationError {
+            return nil
+        }
+        catch {
+            logger.warning(
+                "Failed to fetch lightbox image \(cursor.current.image.description): \(error)"
+            )
+            loadFailed = true
+            return nil
+        }
+    }
+
+    /// The item whose bytes could not be had, and a way to ask for them
+    /// again — the source may only have been having a bad moment.
     fileprivate var loadFailedView: some View {
         VStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle")
@@ -418,10 +432,9 @@ extension LightboxView {
             Text("Couldn't load image")
                 .font(.callout)
                 .foregroundStyle(.gray)
+            Button("Try again") { attempt += 1 }
         }
-        .allowsHitTesting(false)
     }
-
 }
 
 extension View {
@@ -465,3 +478,9 @@ private struct LiveTextOverlay: NSViewRepresentable {
         }
     }
 #endif
+
+/// One load of the lightbox's image: which image, and which time of asking.
+private struct LightboxLoad: Equatable {
+    let image: ImageContent
+    let attempt: Int
+}

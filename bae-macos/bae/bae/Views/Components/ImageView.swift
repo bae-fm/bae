@@ -16,6 +16,11 @@ struct ImageView: View {
     private var displayScale
     @State
     private var loadState: ImageLoadState
+    /// How many times the person asked for a failed load again. Part of the
+    /// load's identity, so asking restarts it; the store caches no failure,
+    /// so the restarted load goes back to the source.
+    @State
+    private var attempt = 0
 
     init(
         content: ImageContent?,
@@ -33,7 +38,7 @@ struct ImageView: View {
     var body: some View {
         contentView
             .contentShape(Rectangle())
-            .task(id: content) {
+            .task(id: LoadRequest(content: content, attempt: attempt)) {
                 await load()
             }
     }
@@ -79,13 +84,20 @@ struct ImageView: View {
             Image(nsImage: image ?? Self.emptyImage)
                 .resizable()
                 .aspectRatio(contentMode: contentMode)
+                // Without art the layer is only a stand-in; clicks reach the
+                // placeholder beneath it, whose failed state is a button.
+                .allowsHitTesting(image != nil)
         }
     }
 
     @ViewBuilder
     private var placeholderView: some View {
         if case .pending(let reason) = loadState {
-            ImagePlaceholderView(reason: reason, pointSize: pointSize)
+            ImagePlaceholderView(
+                reason: reason,
+                pointSize: pointSize,
+                retry: { attempt += 1 }
+            )
         }
     }
 
@@ -127,6 +139,12 @@ struct ImageView: View {
     }
 }
 
+/// One load of a slot: the content, and which time of asking.
+private struct LoadRequest: Equatable {
+    let content: ImageContent?
+    let attempt: Int
+}
+
 enum ImageLoadState {
     case pending(PlaceholderReason)
     case loaded(NSImage)
@@ -145,6 +163,10 @@ enum PlaceholderReason {
 struct ImagePlaceholderView: View {
     let reason: PlaceholderReason
     let pointSize: CGFloat
+    /// Asks for a failed load again. A failure is often the source having a
+    /// bad moment — an archive answering 503 — so the slot offers another try
+    /// rather than keeping the failure until something else changes it.
+    let retry: () -> Void
 
     var body: some View {
         switch reason {
@@ -157,8 +179,22 @@ struct ImagePlaceholderView: View {
             Rectangle().fill(Theme.placeholder)
                 .overlay { icon("photo", .tertiary) }
         case .failed:
-            Theme.accent.opacity(0.16)
-                .overlay { icon("exclamationmark.triangle.fill", Theme.accent) }
+            Button(action: retry) {
+                Theme.accent.opacity(0.16)
+                    .overlay {
+                        icon("arrow.clockwise.circle.fill", Theme.accent)
+                    }
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(
+                String(
+                    localized: "Couldn't load the image. Click to try again."
+                )
+            )
+            .accessibilityLabel(
+                String(localized: "Try loading the image again")
+            )
         }
     }
 
