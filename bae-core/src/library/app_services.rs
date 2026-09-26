@@ -118,8 +118,8 @@ impl AppServices {
     /// identification queue and the import service, joining each worker, and
     /// close the store last. When this returns no service holds a file of the
     /// library, the track it was playing included, or the store's lock. The
-    /// order is the one [`AppServicesInner`]'s drop keeps; whichever runs
-    /// first stops each worker, and the other finds it stopped.
+    /// order is the one dropping the last handle to these services keeps;
+    /// whichever runs first stops each worker, and the other finds it stopped.
     pub async fn close(&self) {
         self.inner.playback.shutdown().await;
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
