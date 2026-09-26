@@ -302,62 +302,25 @@ enum SnapshotTestSupport {
 
     /// One line of text Vision read off a capture: the words, and where on
     /// the image they sit (Vision's normalized box, origin at the bottom left).
-    /// A value rather than the observation itself, so it can cross the task
-    /// that races the recognizer against its deadline.
     struct RecognizedLine: Sendable {
         let text: String
         let boundingBox: CGRect
     }
 
-    /// Vision's recognizer did not answer within the deadline.
-    ///
-    /// The recognizer runs in-process on a system service, and that service
-    /// wedges now and then on this machine: the request parks on a semaphore
-    /// that is never signalled and the whole test host sits there until
-    /// somebody notices, hours later. A deadline turns that into one failed
-    /// test with this error as its reason.
-    struct TextRecognitionTimedOut: Error, CustomStringConvertible {
-        let after: TimeInterval
-
-        var description: String {
-            "Vision text recognition did not answer within \(after)s; "
-                + "the recognizer service is wedged, not the view under test"
-        }
-    }
-
-    /// The lines of text drawn in `png`, read by Vision's accurate recognizer.
-    ///
-    /// The recognition runs on a dispatch queue and is raced against
-    /// `timeout`: whichever finishes first resumes the caller, and the other
-    /// finds the continuation already claimed. Dispatch rather than a task
-    /// group: a group waits for every child before it returns, and a child
-    /// parked inside a wedged recognizer never returns, so a deadline thrown
-    /// from a sibling could not end it. A request that has wedged cannot be
-    /// unblocked at all; its thread is abandoned, and the test host is a
-    /// throwaway process.
+    /// The lines of text drawn in `png`, read by Vision's accurate recognizer
+    /// on a dispatch queue, off the main actor the capture was made on.
     static func recognizedText(
         in png: Data,
-        languages: [String]? = nil,
-        timeout: TimeInterval = 60
+        languages: [String]? = nil
     ) async throws -> [RecognizedLine] {
-        let first = FirstToFinish()
-        return try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated)
                 .async {
-                    let outcome = Result {
-                        try recognize(png, languages: languages)
-                    }
-                    if first.claim() {
-                        continuation.resume(with: outcome)
-                    }
-                }
-            DispatchQueue.global()
-                .asyncAfter(deadline: .now() + timeout) {
-                    if first.claim() {
-                        continuation.resume(
-                            throwing: TextRecognitionTimedOut(after: timeout)
-                        )
-                    }
+                    continuation.resume(
+                        with: Result {
+                            try recognize(png, languages: languages)
+                        }
+                    )
                 }
         }
     }
@@ -381,22 +344,6 @@ enum SnapshotTestSupport {
             }
     }
 
-    /// Which of two racing tasks gets to resume a continuation: the first to
-    /// claim, exactly once.
-    private final class FirstToFinish: @unchecked Sendable {
-        private let lock = NSLock()
-        private var claimed = false
-
-        func claim() -> Bool {
-            lock.lock()
-            defer { lock.unlock() }
-            if claimed {
-                return false
-            }
-            claimed = true
-            return true
-        }
-    }
 }
 
 extension Collection<String> {
