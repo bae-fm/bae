@@ -43,6 +43,7 @@ struct IdentifierBand: View {
             barcodeChips
             catalogChips
             titleChip
+            albumLinksChip
             ForEach(catalogAgreements, id: \.value) { agreement in
                 CatalogAgreementChip(
                     agreement: agreement,
@@ -187,6 +188,13 @@ struct IdentifierBand: View {
         case .absent:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No barcode source")
+        // Nothing was read a code off: the art may carry one, and reading it
+        // is switched off.
+        case .coverArtOff:
+            IdentifierChip(label: label) { IdentifierOff() }
+                .help(
+                    "Cover art isn't read: switched off in Import settings"
+                )
         case .noCodes:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No barcode on the artwork")
@@ -238,6 +246,11 @@ struct IdentifierBand: View {
         case .noneFound:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("None found")
+        case .coverArtOff:
+            IdentifierChip(label: label) { IdentifierOff() }
+                .help(
+                    "Cover art isn't read: switched off in Import settings"
+                )
         case .numbers(_, let rows, _):
             ForEach(rows, id: \.value) { row in
                 Button {
@@ -253,47 +266,6 @@ struct IdentifierBand: View {
                 }
                 .buttonStyle(.plain)
                 .help("Take this catalog number out of the run")
-            }
-        }
-    }
-
-    // MARK: - Title
-
-    /// The words the run searched by once its identifiers had named nothing,
-    /// with every provider's answer about them. The words are the person's
-    /// to change: leaving the field with different words searches by them.
-    ///
-    /// A run whose identifiers answered draws no chip at all — the step was
-    /// never part of what that run did.
-    @ViewBuilder
-    private var titleChip: some View {
-        switch run.search {
-        case .notNeeded:
-            EmptyView()
-        case .noTitle:
-            TitleSearchChip(album: "", artist: "", onCommit: onEditTitleSearch)
-            {
-                EmptyView()
-            }
-            .help("No title to search by")
-        // The words stay where the person left them, not editable, until the
-        // run gets to them.
-        case .waiting(let album, let artist):
-            TitleSearchChip(
-                album: album,
-                artist: artist,
-                isWaiting: true,
-                onCommit: onEditTitleSearch
-            ) {
-                ChipSpinner()
-            }
-        case .searched(let album, let artist, let cells):
-            TitleSearchChip(
-                album: album,
-                artist: artist,
-                onCommit: onEditTitleSearch
-            ) {
-                capsules(cells)
             }
         }
     }
@@ -328,6 +300,74 @@ struct IdentifierBand: View {
             return true
         }
         return false
+    }
+}
+
+extension IdentifierBand {
+    // MARK: - Title
+
+    /// The words the run searched by once its identifiers had named nothing,
+    /// with every provider's answer about them. The words are the person's
+    /// to change: leaving the field with different words searches by them.
+    ///
+    /// A run whose identifiers answered draws no chip at all — the step was
+    /// never part of what that run did.
+    @ViewBuilder
+    private var titleChip: some View {
+        switch run.search {
+        case .notNeeded:
+            EmptyView()
+        // The step never runs, whatever the identifiers find, and the chip
+        // says so from the start.
+        case .off:
+            IdentifierChip(label: String(localized: "Title")) {
+                IdentifierOff()
+            }
+            .help("Searching by title is switched off in Import settings")
+        case .noTitle:
+            TitleSearchChip(album: "", artist: "", onCommit: onEditTitleSearch)
+            {
+                EmptyView()
+            }
+            .help("No title to search by")
+        // The words stay where the person left them, not editable, until the
+        // run gets to them.
+        case .waiting(let album, let artist):
+            TitleSearchChip(
+                album: album,
+                artist: artist,
+                isWaiting: true,
+                onCommit: onEditTitleSearch
+            ) {
+                ChipSpinner()
+            }
+        case .searched(let album, let artist, let cells):
+            TitleSearchChip(
+                album: album,
+                artist: artist,
+                onCommit: onEditTitleSearch
+            ) {
+                capsules(cells)
+            }
+        }
+    }
+
+    /// Joining the two catalogs' records of one album by the links their
+    /// pages state: a chip only when that is switched off, since a run that
+    /// follows them shows what they joined in the list itself.
+    @ViewBuilder
+    private var albumLinksChip: some View {
+        switch run.albumLinks {
+        case .followed:
+            EmptyView()
+        case .off:
+            IdentifierChip(label: String(localized: "Catalog links")) {
+                IdentifierOff()
+            }
+            .help(
+                "Joining records across catalogs is switched off in Import settings"
+            )
+        }
     }
 }
 
@@ -554,6 +594,20 @@ private struct TitleSearchChip<Trailing: View>: View {
                 onEditTitleSearch: { _, _ in },
             )
         }
+        .frame(width: 660)
+        .environment(PreviewData.artImageStore())
+        .windowBackground()
+    }
+
+    #Preview("Steps switched off") {
+        IdentifierBand(
+            run: PreviewData.identifyRunStepsOff,
+            catalogAgreements: [],
+            onToggleLookup: { _ in },
+            onToggleCatalogAgreement: { _ in },
+            onRetryFailed: {},
+            onEditTitleSearch: { _, _ in },
+        )
         .frame(width: 660)
         .environment(PreviewData.artImageStore())
         .windowBackground()

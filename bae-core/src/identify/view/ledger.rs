@@ -35,6 +35,11 @@ pub(super) fn search_step(
     identifiers_found_something: bool,
     context: &SignalsContext,
 ) -> SearchStepView {
+    // A run that does not search by title says so from its start, whatever
+    // the identifiers go on to find.
+    if !context.steps.search_by_title {
+        return SearchStepView::Off;
+    }
     let providers = match (progress, &context.search.query) {
         (_, None) => return SearchStepView::NoTitle,
         (SearchProgress::Pending, Some(_)) if identifiers_found_something => {
@@ -47,6 +52,9 @@ pub(super) fn search_step(
             }
         }
         (SearchProgress::Skipped, Some(_)) => return SearchStepView::NotNeeded,
+        (SearchProgress::Off, Some(_)) => {
+            unreachable!("a run that searches by title never settles its search as off")
+        }
         (SearchProgress::Lookups { providers }, Some(_)) => providers,
     };
     let query = context
@@ -115,6 +123,7 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
         // through the terminal state, not through progress.
         DiscidProgress::Computing | DiscidProgress::LookingUp => LookupView::LookingUp,
         DiscidProgress::Done { results, .. } => found_or_no_match(results),
+        DiscidProgress::Off { .. } => LookupView::Off,
         DiscidProgress::Skipped { .. } | DiscidProgress::NotAsked { .. } => {
             unreachable!("a computed disc ID is skipped only by the early return above")
         }
@@ -174,7 +183,28 @@ pub(super) fn barcode_step(
         BarcodeProgress::ScanFailed { failure } => BarcodeStepView::ScanFailed {
             failure: failure.clone(),
         },
+        // Nothing was read: say whether that is because the run leaves the
+        // cover art unread, which may well carry a code.
+        BarcodeProgress::Skipped if matches!(context.artwork, ArtworkScan::Off { .. }) => {
+            BarcodeStepView::CoverArtOff
+        }
         BarcodeProgress::Skipped => BarcodeStepView::Absent,
+        // Every code is the run's and the run does not look barcodes up: every
+        // row stands with its cells saying so.
+        BarcodeProgress::Off { codes } => BarcodeStepView::Rows {
+            scanning: false,
+            rows: codes
+                .iter()
+                .map(|code| {
+                    let excluded = context.barcode.excluded.contains(code);
+                    row(
+                        code.clone(),
+                        excluded,
+                        uniform_cells(context, LookupView::Off),
+                    )
+                })
+                .collect(),
+        },
         // Every code is the run's and nobody was asked about any of them: every
         // row stands with its cells saying so, rather than reading as a lookup
         // that found nothing.
@@ -274,7 +304,11 @@ pub(super) fn catalog_step(
 ) -> CatalogStepView {
     let numbers = context.catalog.number_values();
     if numbers.is_empty() && !scanning {
-        return CatalogStepView::NoneFound;
+        return if matches!(context.artwork, ArtworkScan::Off { .. }) {
+            CatalogStepView::CoverArtOff
+        } else {
+            CatalogStepView::NoneFound
+        };
     }
     let rows = progress
         .lookups()

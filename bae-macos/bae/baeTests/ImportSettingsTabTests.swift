@@ -15,7 +15,7 @@ import Testing
 @MainActor
 @Suite("The import settings")
 struct ImportSettingsTabTests {
-    private static let size = NSSize(width: 520, height: 560)
+    private static let size = NSSize(width: 520, height: 900)
 
     @Test("the tab draws one switch per setting and one per source")
     func theTabDrawsOneSwitchPerSetting() async throws {
@@ -26,11 +26,17 @@ struct ImportSettingsTabTests {
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
 
-            // The two settings, plus the sources core reports — which are core's
-            // list, not a constant this tab repeats.
-            let sources = PreviewData.configStore().config.lookupCatalogs
-            #expect(sources.count == 2)
-            #expect(switches(in: host).count == 2 + sources.count)
+            // The two settings, plus the identification steps and the
+            // sources core reports — which are core's lists, not constants
+            // this tab repeats.
+            let config = PreviewData.configStore().config
+            #expect(config.identificationSteps.count == 5)
+            #expect(config.lookupCatalogs.count == 2)
+            #expect(
+                switches(in: host).count
+                    == 2 + config.identificationSteps.count
+                    + config.lookupCatalogs.count
+            )
         }
     }
 
@@ -52,6 +58,13 @@ struct ImportSettingsTabTests {
 
             #expect(recorder.prefillWrites == [false])
             #expect(recorder.identifyWrites == [false])
+            #expect(
+                recorder.stepWrites.map(\.step)
+                    == PreviewData.configStore().config.identificationSteps
+                    .map(\.step),
+                "each step switch wrote its own step, in core's order"
+            )
+            #expect(recorder.stepWrites.allSatisfy { !$0.enabled })
             #expect(
                 recorder.sourceWrites.map(\.enabled) == [false, false],
                 "each source switch wrote the value it was set to"
@@ -78,6 +91,8 @@ struct ImportSettingsTabTests {
         for label in [
             String(localized: "Pre-fill from file metadata"),
             String(localized: "Identify automatically"),
+            String(localized: "Read cover art"),
+            String(localized: "Search by title"),
         ] {
             #expect(
                 lines.contains { $0.localizedCaseInsensitiveContains(label) },
@@ -199,6 +214,7 @@ private final class ImportSettingRecorder {
     var prefillWrites: [Bool] = []
     var identifyWrites: [Bool] = []
     var sourceWrites: [(source: BridgeCatalog, enabled: Bool)] = []
+    var stepWrites: [(step: BridgeIdentificationStep, enabled: Bool)] = []
 
     var importer: Importer {
         Importer(
@@ -206,6 +222,9 @@ private final class ImportSettingRecorder {
             setPrefillWithFileMetadata: { [self] in prefillWrites.append($0) },
             setMetadataSourceEnabled: { [self] source, enabled in
                 sourceWrites.append((source: source, enabled: enabled))
+            },
+            setIdentificationStep: { [self] step, enabled in
+                stepWrites.append((step: step, enabled: enabled))
             }
         )
     }

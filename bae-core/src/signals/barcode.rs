@@ -22,7 +22,10 @@ pub enum BarcodeSignal {
         failure: LookupFailure,
         codes: Vec<SourcedValue>,
     },
-    /// No barcode source at all — no artwork to scan and no CUE `CATALOG`.
+    /// No barcode source was read — no CUE `CATALOG`, and no artwork read:
+    /// none there, none this platform can read, or a run that leaves the
+    /// cover art unread. Nothing was looked at, which is not the same as
+    /// looking and finding no code.
     Absent,
 }
 

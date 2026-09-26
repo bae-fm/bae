@@ -19,6 +19,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
     SignalsContext {
         rip: crate::signals::RipEvidence::Unproven,
         providers: Vec::new(),
+        steps: crate::config::IdentificationSteps::default(),
         artwork: crate::signals::ArtworkScan::Absent,
         disc: DiscIdEvidence {
             signal: crate::signals::DiscIdSignal::Absent { track_count },

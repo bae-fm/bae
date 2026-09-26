@@ -18,6 +18,9 @@ pub struct BridgeConfig {
     /// are identified as they are found, and opening Find online for a
     /// candidate starts its identification.
     pub identify_automatically: bool,
+    /// Every step of an identification run, in the order a run takes them,
+    /// each with whether runs take it — one switch per entry.
+    pub identification_steps: Vec<BridgeIdentificationStepSetting>,
     /// Whether a newly discovered candidate's draft is created from the
     /// folder's own metadata — its files' tags, its sheets and its name — or
     /// starts blank.
@@ -80,6 +83,33 @@ mirror_enum! {
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { Off, Seconds5, Seconds15, Seconds30, Seconds45, Seconds60 },
+}
+
+/// One step of an identification run a person can switch off. Mirrors
+/// `bae_core::config::IdentificationStep`, which says what each one is and
+/// what switching it off leaves a run with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeIdentificationStep {
+    ReadCoverArt,
+    LookUpDiscIds,
+    LookUpBarcodes,
+    SearchByTitle,
+    FollowCatalogLinks,
+}
+
+mirror_enum! {
+    BridgeIdentificationStep = bae_core::config::IdentificationStep,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { ReadCoverArt, LookUpDiscIds, LookUpBarcodes, SearchByTitle, FollowCatalogLinks },
+}
+
+/// One identification step and whether runs take it — one switch, as a
+/// surface draws it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeIdentificationStepSetting {
+    pub step: BridgeIdentificationStep,
+    pub enabled: bool,
 }
 
 /// Whether Find online asks one catalog, and when it does not, why not. Mirrors

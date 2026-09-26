@@ -58,6 +58,7 @@ fn started_with_choices(
         IdentifyState::Idle,
         IdentifyEvent::Started {
             providers,
+            steps: crate::config::IdentificationSteps::default(),
             choices,
             title_search: None,
         },

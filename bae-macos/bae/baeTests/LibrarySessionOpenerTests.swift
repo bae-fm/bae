@@ -221,8 +221,11 @@ struct LibrarySessionOpenerTests {
         #expect(handle.didShutdown)
     }
 
-    // MARK: - Fixtures
+}
 
+// MARK: - Fixtures
+
+extension LibrarySessionOpenerTests {
     private func makeConfig() -> BridgeConfig {
         BridgeConfig(
             libraryId: "lib-test",
@@ -233,6 +236,11 @@ struct LibrarySessionOpenerTests {
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
             identifyAutomatically: true,
+            identificationSteps: [
+                .readCoverArt, .lookUpDiscIds, .lookUpBarcodes, .searchByTitle,
+                .followCatalogLinks,
+            ]
+            .map { BridgeIdentificationStepSetting(step: $0, enabled: true) },
             prefillWithFileMetadata: true,
             lookupCatalogs: [
                 BridgeLookupCatalogSetting(

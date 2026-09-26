@@ -14,6 +14,7 @@ use tempfile::TempDir;
 
 mod aborts;
 mod cancellation;
+mod cover_art_off;
 
 /// Returns canned text lines keyed by filename rather than full path, so a temp-dir
 /// path can't break it. The optional delay is what lets a test cancel mid-OCR.
@@ -206,6 +207,7 @@ async fn start_signals(
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
+        crate::config::IdentificationSteps::default(),
     );
     (handle, rx, lib_tmp)
 }
@@ -698,6 +700,7 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
+        crate::config::IdentificationSteps::default(),
     );
 
     // One settled snapshot. No scanning one and no OCR snapshots: there is
@@ -734,6 +737,7 @@ FILE \"audio.flac\" WAVE\n  \
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
+        crate::config::IdentificationSteps::default(),
     );
 
     let signals = collect_signals(&mut rx, 1).await;
@@ -859,6 +863,7 @@ async fn an_unchanged_folder_is_not_read_again() {
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
+        crate::config::IdentificationSteps::default(),
     );
     let second = collect_snapshots(&mut rx, 1).await;
     assert_eq!(second[0].0, first[1].0);

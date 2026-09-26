@@ -109,7 +109,7 @@ mod conversion_roundtrip {
                     std::path::PathBuf::from("/library"),
                     "Library".to_string(),
                 );
-                config.prefs.identify_automatically = identify_automatically;
+                config.prefs.identification.automatic = identify_automatically;
                 config.prefs.prefill_with_file_metadata = prefill_with_file_metadata;
 
                 let bridge = BridgeConfig::from_core(&config);
@@ -120,6 +120,41 @@ mod conversion_roundtrip {
                 );
             }
         }
+    }
+
+    /// Every step crosses as one switch, in the order a run takes them, each
+    /// saying whether runs take it.
+    #[test]
+    fn config_exposes_every_identification_step() {
+        use bae_core::config::{Config, IdentificationStep};
+
+        let mut config = Config::with_defaults(
+            "library".to_string(),
+            "device".to_string(),
+            std::path::PathBuf::from("/library"),
+            "Library".to_string(),
+        );
+        config
+            .prefs
+            .identification
+            .steps
+            .set(IdentificationStep::SearchByTitle, false);
+
+        let bridge = BridgeConfig::from_core(&config);
+        assert_eq!(
+            bridge
+                .identification_steps
+                .iter()
+                .map(|setting| (setting.step, setting.enabled))
+                .collect::<Vec<_>>(),
+            vec![
+                (BridgeIdentificationStep::ReadCoverArt, true),
+                (BridgeIdentificationStep::LookUpDiscIds, true),
+                (BridgeIdentificationStep::LookUpBarcodes, true),
+                (BridgeIdentificationStep::SearchByTitle, false),
+                (BridgeIdentificationStep::FollowCatalogLinks, true),
+            ]
+        );
     }
 
     #[test]

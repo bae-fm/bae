@@ -3,8 +3,10 @@
 //! Every identification of an import candidate enters here, through one of two
 //! admissions:
 //!
-//! - **Automatic** — while `identify_automatically` is on, every candidate
-//!   without a usable stored answer is admitted, at [`CallPriority::Background`].
+//! - **Automatic** — while identification runs on its own
+//!   ([`IdentificationPreferences::automatic`](crate::config::IdentificationPreferences::automatic)),
+//!   every candidate without a usable stored answer is admitted, at
+//!   [`CallPriority::Background`].
 //! - **Requested** — a person pressed Identify or Retry, changed what a
 //!   candidate's lookup asks about, or switched a source off under a run. The
 //!   candidate goes to the front and runs at [`CallPriority::Interactive`].

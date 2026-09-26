@@ -320,10 +320,16 @@ pub enum AutomationSignalKind {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationSignalState {
     LookingUp,
-    Found { count: u32 },
+    Found {
+        count: u32,
+    },
     NoMatch,
     Skipped,
-    Failed { failure: AutomationLookupFailure },
+    /// The signal's lookup is switched off in the identification settings.
+    Off,
+    Failed {
+        failure: AutomationLookupFailure,
+    },
 }
 
 /// Mirrors bae-core's `identify::SignalOption` — one of the values a signal

@@ -113,6 +113,9 @@ private struct ImportOperations: Sendable {
         @MainActor @Sendable (Bool) async throws -> Void
     let setMetadataSourceEnabled:
         @MainActor @Sendable (BridgeCatalog, Bool) async throws -> Void
+    let setIdentificationStep:
+        @MainActor @Sendable (BridgeIdentificationStep, Bool) async throws ->
+            Void
 }
 
 extension ImportOperations {
@@ -330,6 +333,9 @@ extension ImportOperations {
                     source: $0,
                     enabled: $1
                 )
+            },
+            setIdentificationStep: {
+                try await handle.setIdentificationStep(step: $0, enabled: $1)
             }
         )
     }
@@ -498,6 +504,10 @@ final class Importer: Sendable, Observable {
         setMetadataSourceEnabled:
             @escaping @MainActor @Sendable (
                 BridgeCatalog, Bool
+            ) async throws -> Void = { _, _ in },
+        setIdentificationStep:
+            @escaping @MainActor @Sendable (
+                BridgeIdentificationStep, Bool
             ) async throws -> Void = { _, _ in }
     ) {
         operations = ImportOperations(
@@ -546,7 +556,8 @@ final class Importer: Sendable, Observable {
             },
             setIdentifyAutomatically: setIdentifyAutomatically,
             setPrefillWithFileMetadata: setPrefillWithFileMetadata,
-            setMetadataSourceEnabled: setMetadataSourceEnabled
+            setMetadataSourceEnabled: setMetadataSourceEnabled,
+            setIdentificationStep: setIdentificationStep
         )
     }
 
@@ -850,6 +861,15 @@ extension Importer {
         _ enabled: Bool
     ) async throws {
         try await operations.setMetadataSourceEnabled(source, enabled)
+    }
+
+    /// Take, or stop taking, one step of every identification run.
+    @MainActor
+    func setIdentificationStep(
+        _ step: BridgeIdentificationStep,
+        _ enabled: Bool
+    ) async throws {
+        try await operations.setIdentificationStep(step, enabled)
     }
 
     convenience init(handle: any AppHandleProtocol) {

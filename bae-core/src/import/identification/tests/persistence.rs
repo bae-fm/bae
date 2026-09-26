@@ -245,6 +245,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
         context: crate::identify::state::SignalsContext {
             rip: crate::signals::RipEvidence::Unproven,
             providers: Vec::new(),
+            steps: crate::config::IdentificationSteps::default(),
             artwork: crate::signals::ArtworkScan::Absent,
             disc: Default::default(),
             barcode: Default::default(),

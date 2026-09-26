@@ -126,8 +126,30 @@ fn a_new_library_pre_fills_with_tags_and_identifies_automatically() {
     let tmp = TempDir::new().unwrap();
     let config = make_test_config("lib", tmp.path().to_path_buf());
 
-    assert!(config.prefs.identify_automatically);
+    assert!(config.prefs.identification.automatic);
     assert!(config.prefs.prefill_with_file_metadata);
+}
+
+/// Every identification step is taken until the person says otherwise: the
+/// defaults are what identification did before any of it was a setting.
+#[test]
+fn a_new_library_takes_every_identification_step() {
+    let prefs = IdentificationPreferences::default();
+    for step in IdentificationStep::ALL {
+        assert!(prefs.steps.takes(step), "{step:?} starts on");
+    }
+}
+
+/// The step accessors are total over the steps, and each flag is its own.
+#[test]
+fn identification_steps_are_total_and_independent() {
+    for off in IdentificationStep::ALL {
+        let mut steps = IdentificationSteps::default();
+        steps.set(off, false);
+        for step in IdentificationStep::ALL {
+            assert_eq!(steps.takes(step), step != off, "{off:?} off, {step:?}");
+        }
+    }
 }
 
 #[test]
@@ -135,13 +157,13 @@ fn prefill_with_file_metadata_and_identify_automatically_roundtrip_independently
     for (prefill, identify) in [(false, true), (true, false), (false, false)] {
         let tmp = TempDir::new().unwrap();
         let mut config = make_test_config("lib", tmp.path().to_path_buf());
-        config.prefs.identify_automatically = identify;
+        config.prefs.identification.automatic = identify;
         config.prefs.prefill_with_file_metadata = prefill;
         config.save_preferences().unwrap();
 
         let prefs = read_preferences(tmp.path()).unwrap();
 
-        assert_eq!(prefs.identify_automatically, identify);
+        assert_eq!(prefs.identification.automatic, identify);
         assert_eq!(prefs.prefill_with_file_metadata, prefill);
     }
 }
@@ -160,7 +182,7 @@ fn preferences_carrying_an_unrecognized_key_load() {
     let loaded = read_preferences_value(&value).expect("an unknown key is ignored");
 
     assert!(loaded.prefill_with_file_metadata);
-    assert!(loaded.identify_automatically);
+    assert!(loaded.identification.automatic);
 }
 
 /// A hand-edited `0` is refused at load rather than reaching coven — the
@@ -259,9 +281,8 @@ fn preferences_require_every_field() {
         "show_remaining_time",
         "library_full_width",
         "verify_decode_on_import",
-        "identify_automatically",
+        "identification",
         "prefill_with_file_metadata",
-        "metadata_sources",
         "cast_enabled",
         "mcp",
         "subsonic",
@@ -320,11 +341,18 @@ max_concurrent_downloads: 3
 show_remaining_time: false
 library_full_width: false
 verify_decode_on_import: true
-identify_automatically: true
+identification:
+  automatic: true
+  steps:
+    read_cover_art: true
+    look_up_disc_ids: true
+    look_up_barcodes: true
+    search_by_title: true
+    follow_catalog_links: true
+  catalogs:
+    musicbrainz: true
+    discogs: true
 prefill_with_file_metadata: true
-metadata_sources:
-  musicbrainz: true
-  discogs: true
 cast_enabled: false
 mcp:
   enabled: false
@@ -441,7 +469,11 @@ fn metadata_sources_fold_the_credential_and_the_switch() {
     );
 
     config.prefs.discogs = Some(DiscogsValidation::Valid);
-    config.prefs.metadata_sources.set(Catalog::Discogs, false);
+    config
+        .prefs
+        .identification
+        .catalogs
+        .set(Catalog::Discogs, false);
     assert_eq!(
         config.metadata_sources()[1].state,
         SourceAvailability::Off,

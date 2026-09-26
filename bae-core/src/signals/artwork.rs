@@ -25,6 +25,12 @@ pub enum ArtworkScan {
     Done {
         total: u32,
     },
+    /// There were `total` images and the run does not read cover art, so
+    /// none of them was read: the barcodes and text on them are not known,
+    /// which is not the same as there being none.
+    Off {
+        total: u32,
+    },
     /// Reading stopped at a failure; `read` images had been read before it.
     Failed {
         failure: LookupFailure,

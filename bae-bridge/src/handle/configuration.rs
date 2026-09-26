@@ -41,6 +41,15 @@ forward! { async this => {
         Ok(this.services.set_identify_automatically(enabled).await?)
     }
 
+    /// Take, or stop taking, one step of every identification run. Runs
+    /// already going finish the way they started.
+    fn set_identification_step(step: crate::types::BridgeIdentificationStep, enabled: bool) -> () {
+        Ok(this
+            .services
+            .set_identification_step(step.into_core(), enabled)
+            .await?)
+    }
+
     /// Ask, or stop asking, one metadata source. Refused when it would leave
     /// nothing to ask — the error carries the sentence to show.
     fn set_metadata_source_enabled(source: crate::types::BridgeCatalog, enabled: bool) -> () {

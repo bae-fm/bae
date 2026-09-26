@@ -61,6 +61,9 @@ pub enum LookupView {
     Failed {
         failure: LookupFailure,
     },
+    /// Never asked: the run does not take this lookup's step — it is switched
+    /// off in the identification settings.
+    Off,
 }
 
 /// One place a value was read: the origin, the file where the origin is one,
@@ -157,6 +160,9 @@ pub enum DiscIdStepView {
 pub enum BarcodeStepView {
     /// No barcode source at all.
     Absent,
+    /// The run does not read cover art, and no CUE sheet states a code: the
+    /// art may carry one, and nobody read it to find out.
+    CoverArtOff,
     /// There was a source and it held no code.
     NoCodes,
     /// Reading the candidate's barcodes failed, so no provider was asked.
@@ -202,6 +208,9 @@ pub struct CatalogAgreementView {
 pub enum CatalogStepView {
     /// Extraction found no catalog number to offer, and is not still looking.
     NoneFound,
+    /// Nothing the folder's own text states is a catalog number, and the run
+    /// does not read cover art, where one is usually printed.
+    CoverArtOff,
     Numbers {
         /// Whether the artwork is still being read, so more numbers may come.
         scanning: bool,
@@ -221,6 +230,8 @@ pub enum CatalogStepView {
 /// when the three identifiers named nothing between them.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SearchStepView {
+    /// The run does not search by title: the step is switched off.
+    Off,
     /// The identifiers answered; no search was needed.
     NotNeeded,
     /// Nothing to search by: the draft has no title.
@@ -239,10 +250,23 @@ pub enum SearchStepView {
     },
 }
 
+/// Whether the run reads what its MusicBrainz albums are on Discogs, once
+/// every lookup has answered — what puts the two catalogs' records of one
+/// album on one card.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum AlbumLinksStepView {
+    /// The run follows the links, where what it found holds both catalogs'
+    /// releases to join.
+    Followed,
+    /// The run does not follow them: the step is switched off, and each
+    /// catalog's records stand on their own cards unless a barcode ties them.
+    Off,
+}
+
 /// The run as a ledger: the three identifiers and the title search behind
 /// them, each carrying what extraction produced for it and every provider's
 /// lookup of it, so a surface lists the run row by row and each cell settles
-/// on its own.
+/// on its own — and whether the run joins the catalogs' albums by their links.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct IdentifyRunView {
     /// The providers the run asks, in the order their cells are listed. Named
@@ -252,6 +276,7 @@ pub struct IdentifyRunView {
     pub barcode: BarcodeStepView,
     pub catalog: CatalogStepView,
     pub search: SearchStepView,
+    pub album_links: AlbumLinksStepView,
 }
 
 /// The rows agreement left out, as a surface offers them behind its "more"
@@ -612,6 +637,11 @@ pub(super) fn run_view(
             identifiers_found_something(discid, barcode, catalog),
             context,
         ),
+        album_links: if context.steps.follow_catalog_links {
+            AlbumLinksStepView::Followed
+        } else {
+            AlbumLinksStepView::Off
+        },
     }
 }
 

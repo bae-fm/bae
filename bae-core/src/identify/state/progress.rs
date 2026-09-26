@@ -42,6 +42,11 @@ pub enum DiscidProgress {
     NotAsked {
         track_count: u32,
     },
+    /// A disc ID was derived and the run does not look disc IDs up: the step
+    /// is switched off. Settled, contributing no results, and not a no-match.
+    Off {
+        track_count: u32,
+    },
     Failed {
         failure: LookupFailure,
         track_count: u32,
@@ -55,6 +60,7 @@ impl DiscidProgress {
             DiscidProgress::Done { .. }
                 | DiscidProgress::Skipped { .. }
                 | DiscidProgress::NotAsked { .. }
+                | DiscidProgress::Off { .. }
                 | DiscidProgress::Failed { .. }
         )
     }
@@ -142,6 +148,9 @@ pub enum BarcodeProgress {
     /// in flight and nothing was found, which is different from having asked
     /// and found nothing.
     NotAsked { codes: Vec<String> },
+    /// The candidate has barcodes and the run does not look barcodes up: the
+    /// step is switched off. Settled, with the codes still the run's to show.
+    Off { codes: Vec<String> },
     /// Reading the candidate's barcodes failed, so no provider was ever asked.
     /// Not a provider's failure, and not a skip either: there was artwork to
     /// read and reading it did not work.
@@ -159,6 +168,7 @@ impl BarcodeProgress {
             }
             BarcodeProgress::NoCodes
             | BarcodeProgress::NotAsked { .. }
+            | BarcodeProgress::Off { .. }
             | BarcodeProgress::ScanFailed { .. }
             | BarcodeProgress::Skipped => true,
         }
@@ -226,14 +236,17 @@ impl BarcodeProgress {
 /// It rests at `Pending` while the three identifier pipes run, because what it
 /// does is decided by what they found: identifiers that named a release leave
 /// nothing to search for, and a candidate whose draft states no title leaves
-/// nothing to search by. Either way it settles as `Skipped`; otherwise every
-/// provider in the run is asked the candidate's own title.
+/// nothing to search by. Either way it settles as `Skipped`; a run that does
+/// not search by title settles as `Off`; otherwise every provider in the run is
+/// asked the candidate's own title.
 #[derive(Clone, Debug, PartialEq)]
 pub enum SearchProgress {
     /// Waiting for the three identifier pipes: nothing decided yet.
     Pending,
     /// The identifiers answered, or there was nothing to search by.
     Skipped,
+    /// The run does not search by title: the step is switched off.
+    Off,
     /// One lookup per provider in the run. Settled once every one of them is.
     Lookups { providers: Vec<ProviderLookup> },
 }
@@ -242,7 +255,7 @@ impl SearchProgress {
     pub fn is_settled(&self) -> bool {
         match self {
             SearchProgress::Pending => false,
-            SearchProgress::Skipped => true,
+            SearchProgress::Skipped | SearchProgress::Off => true,
             SearchProgress::Lookups { providers } => providers.iter().all(|l| l.state.is_settled()),
         }
     }
@@ -258,7 +271,7 @@ impl SearchProgress {
                 })
                 .flatten()
                 .collect(),
-            SearchProgress::Pending | SearchProgress::Skipped => Vec::new(),
+            SearchProgress::Pending | SearchProgress::Skipped | SearchProgress::Off => Vec::new(),
         }
     }
 
@@ -275,7 +288,7 @@ impl SearchProgress {
                     _ => None,
                 })
                 .collect(),
-            SearchProgress::Pending | SearchProgress::Skipped => Vec::new(),
+            SearchProgress::Pending | SearchProgress::Skipped | SearchProgress::Off => Vec::new(),
         }
     }
 
@@ -284,7 +297,7 @@ impl SearchProgress {
     pub fn lookups(&self) -> &[ProviderLookup] {
         match self {
             SearchProgress::Lookups { providers } => providers,
-            SearchProgress::Pending | SearchProgress::Skipped => &[],
+            SearchProgress::Pending | SearchProgress::Skipped | SearchProgress::Off => &[],
         }
     }
 }
@@ -420,6 +433,7 @@ pub(super) fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
         DiscidProgress::Computing | DiscidProgress::LookingUp => SignalState::LookingUp,
         DiscidProgress::Done { results, .. } => found_or_no_match(results.len() as u32),
         DiscidProgress::Skipped { .. } | DiscidProgress::NotAsked { .. } => SignalState::Skipped,
+        DiscidProgress::Off { .. } => SignalState::Off,
         DiscidProgress::Failed { failure, .. } => SignalState::Failed {
             failure: failure.clone(),
         },
@@ -442,6 +456,7 @@ pub(super) fn barcode_progress_state(progress: &BarcodeProgress) -> SignalState 
             failure: failure.clone(),
         },
         BarcodeProgress::NotAsked { .. } | BarcodeProgress::Skipped => SignalState::Skipped,
+        BarcodeProgress::Off { .. } => SignalState::Off,
     }
 }
 
@@ -491,8 +506,10 @@ pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
         DiscIdSignal::Failed { failure, .. } => SignalState::Failed {
             failure: failure.clone(),
         },
-        // A disc ID the run was told to leave out was never asked about, so
-        // the badge says it was skipped rather than that it found nothing.
+        // A disc ID the run does not look up was never asked about, and says
+        // why; one the run was told to leave out says it was skipped. Neither
+        // found nothing.
+        DiscIdSignal::Computed { .. } if !context.steps.look_up_disc_ids => SignalState::Off,
         DiscIdSignal::Computed { .. } if context.disc.excluded => SignalState::Skipped,
         DiscIdSignal::Computed { .. } => found_or_no_match(context.disc.results.len() as u32),
     }
@@ -514,6 +531,9 @@ pub(super) fn barcode_settled_state(context: &SignalsContext) -> SignalState {
         } else {
             SignalState::Skipped
         };
+    }
+    if !context.steps.look_up_barcodes {
+        return SignalState::Off;
     }
     if barcode.every_code_excluded() {
         return SignalState::Skipped;
@@ -546,6 +566,7 @@ pub(super) fn found_or_no_match(count: u32) -> SignalState {
 pub(super) fn start_discid_progress(
     signal: &DiscIdSignal,
     excluded: bool,
+    look_up: bool,
     providers: &[Catalog],
     effects: &mut Vec<Effect>,
 ) -> DiscidProgress {
@@ -555,6 +576,13 @@ pub(super) fn start_discid_progress(
             track_count,
             ..
         } => {
+            // A run that does not look disc IDs up asks nobody, whatever else
+            // is true of this one.
+            if !look_up {
+                return DiscidProgress::Off {
+                    track_count: *track_count,
+                };
+            }
             // One catalog answers disc IDs. A run that is not asking it — or
             // that the person took the disc ID out of — has no disc-ID lookup
             // to dispatch, and says so rather than waiting on an answer that
@@ -593,11 +621,13 @@ pub(super) fn start_discid_progress(
 /// `codes` is every code the candidate carries, each once, in the order they
 /// were first seen; `excluded` is the values the person left out. The walks ask
 /// the rest, in that same order.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn start_barcode_progress(
     codes: Vec<String>,
     excluded: &[String],
     had_source: bool,
     scan_failure: Option<&LookupFailure>,
+    look_up: bool,
     providers: &[Catalog],
     effects: &mut Vec<Effect>,
 ) -> BarcodeProgress {
@@ -615,6 +645,11 @@ pub(super) fn start_barcode_progress(
         } else {
             BarcodeProgress::Skipped
         };
+    }
+    if !look_up {
+        // The codes are the folder's whatever the run asks: they stay listed,
+        // with nobody asked about any of them.
+        return BarcodeProgress::Off { codes };
     }
     let asked: Vec<String> = codes
         .iter()
@@ -698,6 +733,9 @@ pub(super) fn start_search_progress(
     context: &SignalsContext,
     effects: &mut Vec<Effect>,
 ) -> SearchProgress {
+    if !context.steps.search_by_title {
+        return SearchProgress::Off;
+    }
     let identifiers_answered = !context.disc.results.is_empty()
         || !context.barcode.results.is_empty()
         || !context.catalog.active_results().is_empty();
@@ -731,7 +769,9 @@ pub(super) fn settled_track_count(discid: &DiscidProgress) -> u32 {
     match discid {
         DiscidProgress::Done { track_count, .. } => *track_count,
         DiscidProgress::Skipped { track_count } => *track_count,
-        DiscidProgress::NotAsked { track_count } => *track_count,
+        DiscidProgress::NotAsked { track_count } | DiscidProgress::Off { track_count } => {
+            *track_count
+        }
         DiscidProgress::Failed { track_count, .. } => *track_count,
         DiscidProgress::Computing | DiscidProgress::LookingUp => 0,
     }

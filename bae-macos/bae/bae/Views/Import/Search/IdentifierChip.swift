@@ -149,6 +149,18 @@ struct IdentifierDash: View {
     }
 }
 
+/// The mark a step carries when it is switched off in Settings: nothing ran
+/// here because the person turned it off, which is not the same as running
+/// and finding nothing. Why is the chip's hover.
+struct IdentifierOff: View {
+    var body: some View {
+        Text("Off")
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(.tertiary)
+            .fixedSize()
+    }
+}
+
 /// The mark a signal carries when reading its own input failed, before any
 /// provider was asked. What went wrong is the chip's hover.
 struct IdentifierWarning: View {
@@ -185,7 +197,8 @@ struct ScanningChip: View {
 
 /// One provider's lookup of one value, as a glyph: spinner looking up, green
 /// count matched, gray 0 answered empty, a small dot queued, a dash never
-/// needed, a warning with its own Retry failed.
+/// needed, a warning with its own Retry failed, "Off" switched off in
+/// Settings.
 struct LookupCellView: View {
     let lookup: BridgeLookupState
     let onRetry: () -> Void
@@ -198,6 +211,9 @@ struct LookupCellView: View {
                 .frame(width: 5, height: 5)
         case .notAsked:
             IdentifierDash()
+        case .off:
+            IdentifierOff()
+                .help("Switched off in Import settings")
         case .lookingUp:
             ProgressView()
                 .controlSize(.small)

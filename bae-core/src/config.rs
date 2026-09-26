@@ -5,12 +5,16 @@ use tracing::{debug, info, warn};
 
 mod app_dir;
 mod handle;
+mod identification;
 mod keyring;
 mod save;
 mod server;
 
 pub use app_dir::AppDir;
 pub use handle::ConfigHandle;
+pub use identification::{
+    IdentificationPreferences, IdentificationStep, IdentificationSteps, LookupCatalogPreferences,
+};
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
 pub use keyring::install_test_keyring;
@@ -141,52 +145,6 @@ impl SidePauseCountdown {
     }
 }
 
-/// Which catalogs this library asks. One flag per
-/// [`Catalog::LOOKUP`](crate::import::Catalog::LOOKUP) member, all on by
-/// default.
-///
-/// The YAML mapping needs a name per catalog, so the fields are named — but
-/// nothing reads them by name: [`Self::enabled`] and [`Self::set`] are total
-/// over the asked catalogs, so adding one fails the build here rather than
-/// silently defaulting. Neither is the main one; a catalog switched off is not
-/// asked by anything that asks the catalogs together.
-///
-/// A flag stays as the person set it while the source is unreachable for
-/// another reason (Discogs without a key), so supplying the key restores their
-/// choice rather than turning the source on behind them.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LookupCatalogPreferences {
-    pub musicbrainz: bool,
-    pub discogs: bool,
-}
-
-impl LookupCatalogPreferences {
-    pub fn enabled(&self, catalog: crate::import::Catalog) -> bool {
-        match catalog {
-            crate::import::Catalog::MusicBrainz => self.musicbrainz,
-            crate::import::Catalog::Discogs => self.discogs,
-            other => unreachable!("{} answers no lookups", other.as_str()),
-        }
-    }
-
-    pub fn set(&mut self, catalog: crate::import::Catalog, enabled: bool) {
-        match catalog {
-            crate::import::Catalog::MusicBrainz => self.musicbrainz = enabled,
-            crate::import::Catalog::Discogs => self.discogs = enabled,
-            other => unreachable!("{} answers no lookups", other.as_str()),
-        }
-    }
-}
-
-impl Default for LookupCatalogPreferences {
-    fn default() -> Self {
-        Self {
-            musicbrainz: true,
-            discogs: true,
-        }
-    }
-}
-
 /// Whether a usable Discogs API key is configured. Folds the no-key case and
 /// the validation state into the four states a UI shows, so each binding
 /// doesn't re-derive the precedence.
@@ -243,7 +201,7 @@ impl Config {
                 catalog,
                 state: if !self.source_is_configured(catalog) {
                     crate::import::SourceAvailability::NotConfigured
-                } else if !self.prefs.metadata_sources.enabled(catalog) {
+                } else if !self.prefs.identification.catalogs.enabled(catalog) {
                     crate::import::SourceAvailability::Off
                 } else {
                     crate::import::SourceAvailability::On
@@ -391,18 +349,12 @@ pub struct Preferences {
     /// and failing at play time. Rides the loudness decode, so it adds no work.
     /// Defaults to `true`.
     pub verify_decode_on_import: bool,
-    /// Whether identification starts on its own: the automatic admission
-    /// queues every candidate that has no result for its current files.
-    /// Defaults to `true`; off means no new candidate is queued on its own —
-    /// what is already queued finishes, and a person starts each run
-    /// themselves.
-    pub identify_automatically: bool,
+    /// How identification runs: on its own or not, the steps every run takes,
+    /// and the catalogs it asks.
+    pub identification: IdentificationPreferences,
     /// Whether a candidate's draft is created from the folder's own metadata.
     /// Defaults to `true`; off means the draft starts blank.
     pub prefill_with_file_metadata: bool,
-    /// Which metadata sources Find online asks — the automatic run, the typed
-    /// search, and every retry. All on by default.
-    pub metadata_sources: LookupCatalogPreferences,
     /// Whether casting to a network receiver (Cast, UPnP, AirPlay) is available.
     /// Defaults to `false`: casting browses the local network and serves audio
     /// off this machine, so it stays off until the user asks for it. While off,
@@ -431,9 +383,8 @@ impl Default for Preferences {
             show_remaining_time: false,
             library_full_width: false,
             verify_decode_on_import: true,
-            identify_automatically: true,
+            identification: IdentificationPreferences::default(),
             prefill_with_file_metadata: true,
-            metadata_sources: LookupCatalogPreferences::default(),
             cast_enabled: false,
             mcp: McpConfig::disabled_default(),
             subsonic: SubsonicConfig::disabled_default(),

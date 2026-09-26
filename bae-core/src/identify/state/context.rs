@@ -22,6 +22,7 @@ use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, LibraryStatus, MetadataResult,
     SearchProgress, SourceFailure,
 };
+use crate::config::IdentificationSteps;
 use crate::identify::agreements::CandidateText;
 use crate::identify::IdentifyFailure;
 use crate::import::album_links::{self, GroupReading, Twin};
@@ -401,6 +402,9 @@ pub struct SignalsContext {
     /// configured. Fixed when the run starts, so a lookup that starts later,
     /// like a chosen catalog number's, asks the same ones.
     pub providers: Vec<Catalog>,
+    /// The steps this run takes, fixed when it starts as the providers are:
+    /// each lookup reads its own step's flag as it would start.
+    pub steps: IdentificationSteps,
     /// Where the artwork pass has got to, from the latest snapshot. Progress
     /// a surface shows, not an input the lookups read; a context stood up
     /// from a stored verdict never saw a pass and reads `Absent`.
@@ -443,6 +447,9 @@ pub enum AlbumLinkReading {
     /// Read, group by group — empty when what the run found held nothing to
     /// join.
     Read(Vec<GroupReading>),
+    /// Not read: the run does not follow catalog links, so each catalog's
+    /// records stand on their own.
+    Off,
 }
 
 impl Default for SignalsContext {
@@ -453,6 +460,7 @@ impl Default for SignalsContext {
     fn default() -> Self {
         Self {
             providers: Vec::new(),
+            steps: IdentificationSteps::default(),
             artwork: ArtworkScan::Absent,
             rip: RipEvidence::Unproven,
             disc: DiscIdEvidence::default(),
@@ -469,19 +477,22 @@ impl Default for SignalsContext {
 
 impl SignalsContext {
     /// No signals known yet — the context on entry to `Triangulating`, before
-    /// the first `SignalsUpdated`. `providers` is what the run will ask, and
-    /// `choices` is what the person decided it asks about: the exclusions are
+    /// the first `SignalsUpdated`. `providers` is what the run will ask,
+    /// `steps` is which of its steps it takes, and `choices` is what the
+    /// person decided it asks about: the exclusions are
     /// set and every chosen catalog number is chosen, with nothing found for
     /// any of them yet. `title_search` is what the candidate's draft says
     /// about the release, which the run falls back on when the identifiers
     /// name nothing.
     pub(super) fn started(
         providers: Vec<Catalog>,
+        steps: IdentificationSteps,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
     ) -> Self {
         Self {
             providers,
+            steps,
             search: SearchEvidence {
                 query: title_search,
                 ..Default::default()
@@ -543,7 +554,7 @@ impl SignalsContext {
     fn album_readings(&self) -> &[GroupReading] {
         match &self.album_links {
             AlbumLinkReading::Read(read) => read,
-            AlbumLinkReading::Pending | AlbumLinkReading::Reading => &[],
+            AlbumLinkReading::Pending | AlbumLinkReading::Reading | AlbumLinkReading::Off => &[],
         }
     }
 

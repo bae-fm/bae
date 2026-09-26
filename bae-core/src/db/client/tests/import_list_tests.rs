@@ -405,6 +405,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         barcode: crate::identify::BarcodeStepView::Absent,
         catalog: crate::identify::CatalogStepView::NoneFound,
         search: crate::identify::SearchStepView::NotNeeded,
+        album_links: crate::identify::AlbumLinksStepView::Followed,
     };
     save_verdict_with_ledger(&db, &candidate, "mb-verdict", Some(ledger.clone())).await;
 

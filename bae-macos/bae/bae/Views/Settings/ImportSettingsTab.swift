@@ -1,10 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// Import metadata defaults and the sources Find online asks. Every control
-/// writes through core; the config value stream redraws the stored value. The
-/// Discogs key sits under the Discogs switch, because the switch cannot be
-/// moved without one.
+/// Import metadata defaults, what identification does, and the sources Find
+/// online asks. Every control writes through core; the config value stream
+/// redraws the stored value. The Discogs key sits under the Discogs switch,
+/// because the switch cannot be moved without one.
 struct ImportSettingsTab: View {
     @Environment(ConfigStore.self)
     private var configStore
@@ -30,6 +30,24 @@ struct ImportSettingsTab: View {
                     )
                     Text("New candidates are identified as they are added.")
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Section {
+                ForEach(
+                    configStore.config.identificationSteps,
+                    id: \.step
+                ) { setting in
+                    stepToggle(setting)
+                }
+            } header: {
+                Text("Identification")
+            } footer: {
+                Text(
+                    "A step that is off is skipped by every identification from then on, and says so where the run is shown."
+                )
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -113,6 +131,33 @@ struct ImportSettingsTab: View {
         .disabled(!setting.canChange)
     }
 
+    /// One identification step's switch.
+    private func stepToggle(
+        _ setting: BridgeIdentificationStepSetting
+    ) -> some View {
+        Toggle(
+            setting.step.settingLabel,
+            isOn: Binding(
+                get: { setting.enabled },
+                set: { enabled in
+                    write {
+                        try await importer.setIdentificationStep(
+                            setting.step,
+                            enabled
+                        )
+                    }
+                }
+            )
+        )
+    }
+
+    private func write(_ write: @escaping @MainActor () async throws -> Void) {
+        Task { @MainActor in
+            do { try await write() }
+            catch { uiStore.showError(error) }
+        }
+    }
+
     private var identifyAutomatically: Binding<Bool> {
         Binding(
             get: { configStore.config.identifyAutomatically },
@@ -170,3 +215,17 @@ struct ImportSettingsTab: View {
             .frame(width: 500, height: 500)
     }
 #endif
+
+extension BridgeIdentificationStep {
+    /// The step as its switch in Settings names it.
+    var settingLabel: String {
+        switch self {
+        case .readCoverArt: String(localized: "Read cover art")
+        case .lookUpDiscIds: String(localized: "Look up disc IDs")
+        case .lookUpBarcodes: String(localized: "Look up barcodes")
+        case .searchByTitle: String(localized: "Search by title")
+        case .followCatalogLinks:
+            String(localized: "Join records across catalogs")
+        }
+    }
+}

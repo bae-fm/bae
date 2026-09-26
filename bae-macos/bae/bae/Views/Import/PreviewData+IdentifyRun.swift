@@ -49,7 +49,35 @@
                 rows: [],
                 candidates: catalogCandidates
             ),
-            search: .notNeeded
+            search: .notNeeded,
+            albumLinks: .followed
+        )
+
+        /// Every step a person can switch off, switched off: the disc ID and
+        /// the CUE's barcode are read and nobody is asked about them, the
+        /// cover art is left unread, the title is never searched, and the
+        /// catalogs' records are not joined.
+        static let identifyRunStepsOff = BridgeIdentifyRun(
+            providers: [.musicBrainz, .discogs],
+            discId: .read(
+                discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                source: BridgeDiscIdFile(kind: .cue, file: "Album Title.cue"),
+                lookup: .off
+            ),
+            barcode: .rows(
+                scanning: false,
+                rows: [
+                    BridgeSignalValueRow(
+                        value: "0123456789012",
+                        sources: [cueBarcodeSource],
+                        excluded: false,
+                        cells: cells(.off, .off)
+                    )
+                ]
+            ),
+            catalog: .coverArtOff,
+            search: .off,
+            albumLinks: .off
         )
 
         /// A run that has only just started: nothing read yet, the artwork
@@ -59,7 +87,8 @@
             discId: .reading,
             barcode: .rows(scanning: true, rows: []),
             catalog: .numbers(scanning: true, rows: [], candidates: []),
-            search: .notNeeded
+            search: .notNeeded,
+            albumLinks: .followed
         )
 
         /// MusicBrainz switched off, so the run asks Discogs alone: one column,
@@ -92,7 +121,8 @@
                 ]
             ),
             catalog: .numbers(scanning: false, rows: [], candidates: []),
-            search: .notNeeded
+            search: .notNeeded,
+            albumLinks: .followed
         )
 
         /// The one-source run with its disc ID taken out of the run instead
@@ -109,7 +139,8 @@
             ),
             barcode: identifyRunOneSource.barcode,
             catalog: identifyRunOneSource.catalog,
-            search: identifyRunOneSource.search
+            search: identifyRunOneSource.search,
+            albumLinks: .followed
         )
 
         /// Two codes on the sleeve and only one of them the disc's: the box
@@ -142,7 +173,8 @@
                 ]
             ),
             catalog: .numbers(scanning: false, rows: [], candidates: []),
-            search: .notNeeded
+            search: .notNeeded,
+            albumLinks: .followed
         )
 
         /// The same two codes with both of them asked about — what the
@@ -174,7 +206,8 @@
                 ]
             ),
             catalog: identifyRunBarcodeLeftOut.catalog,
-            search: identifyRunBarcodeLeftOut.search
+            search: identifyRunBarcodeLeftOut.search,
+            albumLinks: .followed
         )
 
         /// No disc ID; Discogs failed the first barcode while MusicBrainz
@@ -212,7 +245,8 @@
                 ],
                 candidates: Array(catalogCandidates.dropFirst())
             ),
-            search: .notNeeded
+            search: .notNeeded,
+            albumLinks: .followed
         )
 
         /// The provider-failed run with its chosen catalog number back among
@@ -226,7 +260,8 @@
                 rows: [],
                 candidates: catalogCandidates
             ),
-            search: identifyRunProviderFailed.search
+            search: identifyRunProviderFailed.search,
+            albumLinks: .followed
         )
 
         /// Every lookup answered empty.
@@ -260,7 +295,8 @@
                 album: "Album Title One",
                 artist: "Artist Name",
                 cells: cells(.noMatch, .noMatch)
-            )
+            ),
+            albumLinks: .followed
         )
 
         /// A settled run in which both signals matched: the disc ID's one
@@ -292,7 +328,8 @@
                 rows: [],
                 candidates: Array(catalogCandidates.prefix(1))
             ),
-            search: .notNeeded
+            search: .notNeeded,
+            albumLinks: .followed
         )
 
         /// Nothing to look up on its own — no LOG, no CUE, no barcode — but
@@ -306,7 +343,8 @@
                 rows: [],
                 candidates: Array(catalogCandidates.prefix(2))
             ),
-            search: .noTitle
+            search: .noTitle,
+            albumLinks: .followed
         )
     }
 #endif

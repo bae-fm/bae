@@ -28,6 +28,7 @@ mirror_enum! {
         Found { count, groups: (each AutomationReleaseGroup) },
         NoMatch,
         Failed { failure: (AutomationLookupFailure) },
+        Off,
     },
 }
 
@@ -106,6 +107,7 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Absent,
+        CoverArtOff,
         NoCodes,
         ScanFailed { failure: (AutomationLookupFailure) },
         Rows { scanning, rows: (each AutomationSignalValueRow) },
@@ -125,6 +127,7 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         NoneFound,
+        CoverArtOff,
         Numbers {
             scanning,
             rows: (each AutomationSignalValueRow),
@@ -145,6 +148,7 @@ mirror_enum! {
     AutomationSearchStep = bae_core::identify::SearchStepView,
     from_core: pub(crate) fn,
     variants: {
+        Off,
         NotNeeded,
         NoTitle,
         Waiting { album, artist },
@@ -162,7 +166,15 @@ mirror_struct! {
         barcode: (AutomationBarcodeStep),
         catalog: (AutomationCatalogStep),
         search: (AutomationSearchStep),
+        album_links: (AutomationAlbumLinksStep),
     },
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationAlbumLinksStep = bae_core::identify::AlbumLinksStepView,
+    from_core: pub(crate) fn,
+    variants: { Followed, Off },
 }
 
 impl AutomationIdentifyFailure {

@@ -139,6 +139,11 @@ struct SyncStatusStoreTests {
             maxConcurrentUploads: 1,
             maxConcurrentDownloads: 1,
             identifyAutomatically: true,
+            identificationSteps: [
+                .readCoverArt, .lookUpDiscIds, .lookUpBarcodes, .searchByTitle,
+                .followCatalogLinks,
+            ]
+            .map { BridgeIdentificationStepSetting(step: $0, enabled: true) },
             prefillWithFileMetadata: true,
             lookupCatalogs: [
                 BridgeLookupCatalogSetting(

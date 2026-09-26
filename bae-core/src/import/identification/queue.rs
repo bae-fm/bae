@@ -546,7 +546,7 @@ pub(super) async fn run(
 }
 
 fn automatic_is_on(config: &watch::Receiver<crate::config::Config>) -> bool {
-    config.borrow().prefs.identify_automatically
+    config.borrow().prefs.identification.automatic
 }
 
 /// The one way onto the queue: place every candidate under `admission`, and

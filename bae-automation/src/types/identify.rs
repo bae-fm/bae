@@ -25,6 +25,9 @@ pub enum AutomationLookupState {
     Failed {
         failure: AutomationLookupFailure,
     },
+    /// Never asked: the lookup's step is switched off in the identification
+    /// settings.
+    Off,
 }
 
 /// Mirrors bae-core's `identify::ValueSource` — one place a value was read.
@@ -105,6 +108,8 @@ pub enum AutomationDiscIdStep {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationBarcodeStep {
     Absent,
+    /// The cover art was left unread and no CUE sheet states a code.
+    CoverArtOff,
     NoCodes,
     ScanFailed {
         failure: AutomationLookupFailure,
@@ -128,6 +133,9 @@ pub struct AutomationCatalogCandidate {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationCatalogStep {
     NoneFound,
+    /// Nothing the folder's own text states is a catalog number, and the cover
+    /// art was left unread.
+    CoverArtOff,
     Numbers {
         scanning: bool,
         rows: Vec<AutomationSignalValueRow>,
@@ -149,6 +157,8 @@ pub struct AutomationCatalogAgreement {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationSearchStep {
+    /// The run does not search by title.
+    Off,
     NotNeeded,
     NoTitle,
     Waiting {
@@ -171,6 +181,16 @@ pub struct AutomationIdentifyRun {
     pub barcode: AutomationBarcodeStep,
     pub catalog: AutomationCatalogStep,
     pub search: AutomationSearchStep,
+    pub album_links: AutomationAlbumLinksStep,
+}
+
+/// Mirrors bae-core's `identify::AlbumLinksStepView` — whether the run joins
+/// the two catalogs' albums by the links their pages state.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationAlbumLinksStep {
+    Followed,
+    Off,
 }
 
 /// Mirrors bae-core's `identify::Agreements`, paired with the release id it

@@ -566,6 +566,7 @@ mirror_enum! {
         Found { count },
         NoMatch,
         Skipped,
+        Off,
         Failed { failure: (AutomationLookupFailure) },
     },
 }

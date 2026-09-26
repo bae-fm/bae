@@ -27,6 +27,9 @@ pub enum SignalState {
     /// The signal had nothing to run: no disc layout, no codes found, or — for
     /// the catalog — no number chosen out of the ones extracted.
     Skipped,
+    /// The signal's lookup is switched off in the identification settings, so
+    /// nothing was asked about the value it holds.
+    Off,
     /// A lookup failed. The UI resolves a localized line per variant, and shows
     /// the opaque detail for `Diagnostic`.
     Failed { failure: LookupFailure },

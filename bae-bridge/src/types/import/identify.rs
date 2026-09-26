@@ -215,6 +215,9 @@ pub enum BridgeLookupState {
     Failed {
         failure: BridgeLookupFailure,
     },
+    /// Never asked: the lookup's step is switched off in the identification
+    /// settings.
+    Off,
 }
 
 /// One place a value was read. Mirrors `bae_core::identify::ValueSource`.
@@ -310,6 +313,9 @@ pub enum BridgeDiscIdStep {
 pub enum BridgeBarcodeStep {
     /// No barcode source at all.
     Absent,
+    /// The run does not read cover art, and no CUE sheet states a code: the
+    /// art may carry one, and nobody read it to find out.
+    CoverArtOff,
     /// There was a source and it held no code.
     NoCodes,
     /// Reading the candidate's barcodes failed, so no provider was asked.
@@ -337,6 +343,9 @@ pub struct BridgeCatalogCandidate {
 pub enum BridgeCatalogStep {
     /// Extraction found no catalog number to offer, and is not still looking.
     NoneFound,
+    /// Nothing the folder's own text states is a catalog number, and the run
+    /// does not read cover art, where one is usually printed.
+    CoverArtOff,
     Numbers {
         /// Whether the artwork is still being read, so more may come.
         scanning: bool,
@@ -365,6 +374,8 @@ pub struct BridgeCatalogAgreement {
 /// Mirrors `bae_core::identify::SearchStepView`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSearchStep {
+    /// The run does not search by title: the step is switched off.
+    Off,
     /// The identifiers answered; no search was needed.
     NotNeeded,
     /// Nothing to search by: the draft has no title.
@@ -393,6 +404,19 @@ pub struct BridgeIdentifyRun {
     pub barcode: BridgeBarcodeStep,
     pub catalog: BridgeCatalogStep,
     pub search: BridgeSearchStep,
+    pub album_links: BridgeAlbumLinksStep,
+}
+
+/// Whether a run joins the two catalogs' albums by the links their pages
+/// state. Mirrors `bae_core::identify::AlbumLinksStepView`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeAlbumLinksStep {
+    /// The run follows the links, where what it found holds both catalogs'
+    /// releases to join.
+    Followed,
+    /// The run does not follow them: the step is switched off, and each
+    /// catalog's records stand on their own cards unless a barcode ties them.
+    Off,
 }
 
 /// The disc-ID signal. Mirrors `bae_core::signals::DiscIdSignal`.

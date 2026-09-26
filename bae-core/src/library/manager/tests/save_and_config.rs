@@ -460,7 +460,8 @@ async fn an_unreachable_source_keeps_the_switch_underneath_it() {
         !manager
             .get_config()
             .prefs
-            .metadata_sources
+            .identification
+            .catalogs
             .enabled(Catalog::Discogs),
         "the switch is kept where the person left it"
     );

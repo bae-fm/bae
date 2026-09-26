@@ -269,6 +269,7 @@ async fn drive_fixture(
             },
         },
         bae_core::util::rate_limiter::CallPriority::Interactive,
+        bae_core::config::IdentificationSteps::default(),
     );
 
     // Pull snapshots until the text signal settles. The fixture pipeline is

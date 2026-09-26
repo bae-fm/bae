@@ -118,12 +118,19 @@ struct ExtractionServiceInner {
 
 /// One extraction in flight: the run it feeds, the candidate, the registry
 /// generation that says whether it is still the current one, the run's
-/// priority, and the watch the run reads its snapshots off.
+/// priority, whether the run reads cover art, and the watch the run reads its
+/// snapshots off.
 struct RunningExtraction {
     run: IdentifyRunId,
     key: String,
     generation: u64,
     priority: CallPriority,
+    /// The run's [`IdentificationSteps::read_cover_art`]: off, no image is
+    /// read, and the pass says so rather than reading as art with nothing on
+    /// it.
+    ///
+    /// [`IdentificationSteps::read_cover_art`]: crate::config::IdentificationSteps::read_cover_art
+    read_cover_art: bool,
     snapshots: watch::Sender<Option<SignalsSnapshot>>,
 }
 
@@ -233,12 +240,15 @@ impl ExtractionServiceHandle {
     /// `priority` is the run's, not a call's — extraction makes no provider
     /// calls. It rides the `SignalsUpdated` snapshots so a consumer can tell a
     /// candidate a person opened from one the automatic admission picked up.
+    /// `steps` is the run's too: the extraction reads the cover art only when
+    /// the run takes that step.
     pub fn start(
         &self,
         run: IdentifyRunId,
         key: String,
         source: ExtractionSource,
         priority: CallPriority,
+        steps: crate::config::IdentificationSteps,
     ) -> ExtractionWatch {
         let inner = self.inner.clone();
         let runtime_handle = self.inner.runtime_handle.clone();
@@ -251,6 +261,7 @@ impl ExtractionServiceHandle {
                     key,
                     generation,
                     priority,
+                    read_cover_art: steps.read_cover_art,
                     snapshots,
                 };
                 runtime_handle.spawn(async move {
@@ -292,8 +303,11 @@ async fn run_extraction(
         // One scan derives every non-OCR signal in a single blocking hop, then
         // the artwork OCR streams.
         ExtractionSource::Candidate { candidate } => {
-            let content_hash = candidate.files.content_hash();
-            if let Some(settled) = inner.settled.get_cloned(&content_hash) {
+            // A reading taken with the cover art left unread is not the reading
+            // of a run that reads it, nor the other way round.
+            let settled_key =
+                settled_reading_key(&candidate.files.content_hash(), extraction.read_cover_art);
+            if let Some(settled) = inner.settled.get_cloned(&settled_key) {
                 debug!(
                     "signals: {} was read before with these files; reusing that reading",
                     extraction.key
@@ -328,7 +342,11 @@ async fn run_extraction(
             for catalog in fast.bracket_catalogs {
                 pool.push_bracket(catalog);
             }
-            let artwork = ArtworkPass::new(inner.has_artwork_analyzer(), fast.artwork);
+            let artwork = Artwork::plan(
+                extraction.read_cover_art,
+                inner.has_artwork_analyzer(),
+                fast.artwork,
+            );
             let settled = stream_extraction(
                 inner.clone(),
                 extraction,
@@ -346,7 +364,7 @@ async fn run_extraction(
             )
             .await;
             if let Some(settled) = settled {
-                inner.settled.put(content_hash, settled);
+                inner.settled.put(settled_key, settled);
             }
         }
 
@@ -374,7 +392,9 @@ async fn run_extraction(
                 return;
             }
             // The release's artwork is resolved only when there's an analyzer to
-            // decode it with — staging a cover blob nothing will read is pure cost.
+            // decode it with — staging a cover blob nothing will read is pure
+            // cost. A run that leaves the cover art unread still resolves it,
+            // so it says how many images it left unread rather than none.
             //
             // `_cover_staging` holds the temp dir the cover was staged into and
             // must stay bound until `stream_extraction` returns. A resolve error
@@ -388,7 +408,8 @@ async fn run_extraction(
                         // files of a scanned folder, so nothing here has a
                         // file id for a signal to point at.
                         Ok((paths, staging)) => (
-                            ArtworkPass::new(
+                            Artwork::plan(
+                                extraction.read_cover_art,
                                 true,
                                 paths
                                     .into_iter()
@@ -412,7 +433,7 @@ async fn run_extraction(
                         }
                     }
                 }
-                false => (None, None),
+                false => (Artwork::Absent, None),
             };
             stream_extraction(
                 inner,
@@ -484,26 +505,56 @@ struct Gathered {
 }
 
 /// What the streaming pass consumes: what is already gathered, and the artwork
-/// pass that adds to it. A folder scan and a release re-identify each build one,
+/// that adds to it. A folder scan and a release re-identify each build one,
 /// differing only in which fields are populated.
 struct ExtractionInputs {
     gathered: Gathered,
-    artwork: Option<ArtworkPass>,
+    artwork: Artwork,
 }
 
-/// The artwork OCR pass: the images to decode, and the analyzer that decodes
-/// them. `None` in `ExtractionInputs` means artwork is no signal source for this
-/// candidate — either it has no images, or the platform has no analyzer. The two
-/// are one fact to everything downstream, and pairing the paths with the analyzer
-/// makes "images to scan, but nothing to scan them with" unrepresentable.
+/// What the pass does with the candidate's artwork.
+enum Artwork {
+    /// Artwork is no signal source for this candidate — either it has no
+    /// images, or the platform has no analyzer. The two are one fact to
+    /// everything downstream.
+    Absent,
+    /// There are `total` images to read and the run does not read cover art:
+    /// nothing is read off them, which is not the same as reading them and
+    /// finding nothing.
+    Off { total: u32 },
+    /// The images to read, and the analyzer to read them with.
+    Read(ArtworkPass),
+}
+
+impl Artwork {
+    fn plan(read_cover_art: bool, analyzer_available: bool, images: Vec<ArtworkImage>) -> Self {
+        if images.is_empty() || !analyzer_available {
+            return Artwork::Absent;
+        }
+        if !read_cover_art {
+            return Artwork::Off {
+                total: images.len() as u32,
+            };
+        }
+        Artwork::Read(ArtworkPass { images })
+    }
+}
+
+/// The artwork OCR pass: the images to decode. Built only when there is an
+/// analyzer to decode them with, which makes "images to scan, but nothing to
+/// scan them with" unrepresentable.
 struct ArtworkPass {
     /// Non-empty by construction.
     images: Vec<ArtworkImage>,
 }
 
-impl ArtworkPass {
-    fn new(analyzer_available: bool, images: Vec<ArtworkImage>) -> Option<Self> {
-        (analyzer_available && !images.is_empty()).then_some(ArtworkPass { images })
+/// The session cache's key for a folder's settled reading: its files, and
+/// whether the reading read the cover art.
+fn settled_reading_key(content_hash: &str, read_cover_art: bool) -> String {
+    if read_cover_art {
+        content_hash.to_string()
+    } else {
+        format!("{content_hash} without cover art")
     }
 }
 
@@ -521,6 +572,19 @@ async fn stream_extraction(
         mut gathered,
         artwork,
     } = inputs;
+    // Where the pass will have got to once it is over: every image read, or
+    // none read because the run leaves them unread, or nothing to read.
+    let finished = match &artwork {
+        Artwork::Absent => ArtworkScan::Absent,
+        Artwork::Off { total } => ArtworkScan::Off { total: *total },
+        Artwork::Read(pass) => ArtworkScan::Done {
+            total: pass.images.len() as u32,
+        },
+    };
+    let artwork = match artwork {
+        Artwork::Read(pass) => Some(pass),
+        Artwork::Absent | Artwork::Off { .. } => None,
+    };
     let total = artwork.as_ref().map_or(0, |pass| pass.images.len() as u32);
     let has_artwork = artwork.is_some();
     let position_of = |images: &[ArtworkImage], index: usize| ArtworkScan::Reading {
@@ -658,11 +722,7 @@ async fn stream_extraction(
             text_pool: gathered.pool.text_lines(),
             durations: gathered.durations,
         },
-        artwork: if has_artwork {
-            ArtworkScan::Done { total }
-        } else {
-            ArtworkScan::Absent
-        },
+        artwork: finished,
     };
     emit_signals(
         &inner,

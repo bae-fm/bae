@@ -189,6 +189,7 @@ mirror_enum! {
         Found { count, groups: (each BridgeReleaseGroup) },
         NoMatch,
         Failed { failure: (BridgeLookupFailure) },
+        Off,
     },
 }
 
@@ -260,6 +261,7 @@ mirror_enum! {
     from_core: fn,
     variants: {
         Absent,
+        CoverArtOff,
         NoCodes,
         ScanFailed { failure: (BridgeLookupFailure) },
         Rows { scanning, rows: (each BridgeSignalValueRow) },
@@ -277,6 +279,7 @@ mirror_enum! {
     from_core: fn,
     variants: {
         NoneFound,
+        CoverArtOff,
         Numbers {
             scanning,
             rows: (each BridgeSignalValueRow),
@@ -295,6 +298,7 @@ mirror_enum! {
     BridgeSearchStep = bae_core::identify::SearchStepView,
     from_core: fn,
     variants: {
+        Off,
         NotNeeded,
         NoTitle,
         Waiting { album, artist },
@@ -311,7 +315,14 @@ mirror_struct! {
         barcode: (BridgeBarcodeStep),
         catalog: (BridgeCatalogStep),
         search: (BridgeSearchStep),
+        album_links: (BridgeAlbumLinksStep),
     },
+}
+
+mirror_enum! {
+    BridgeAlbumLinksStep = bae_core::identify::AlbumLinksStepView,
+    from_core: fn,
+    variants: { Followed, Off },
 }
 
 mirror_struct! {
@@ -625,6 +636,7 @@ mod tests {
             search: bae_core::identify::SearchProgress::Skipped,
             context: SignalsContext {
                 providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
+                steps: bae_core::config::IdentificationSteps::default(),
                 artwork: bae_core::signals::ArtworkScan::Absent,
                 rip: bae_core::signals::RipEvidence::Unproven,
                 disc: DiscIdEvidence {

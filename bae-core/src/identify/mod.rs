@@ -58,9 +58,10 @@ pub use toolbar::{
 };
 pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use view::{
-    BarcodeStepView, CatalogAgreementView, CatalogCandidateView, CatalogStepView, DiscIdFile,
-    DiscIdFileKind, DiscIdStepView, IdentifyRunView, IdentifyStateView, LookupView,
-    NarrowedOutView, ProviderCell, SearchStepView, SignalValueRow, ValueSource,
+    AlbumLinksStepView, BarcodeStepView, CatalogAgreementView, CatalogCandidateView,
+    CatalogStepView, DiscIdFile, DiscIdFileKind, DiscIdStepView, IdentifyRunView,
+    IdentifyStateView, LookupView, NarrowedOutView, ProviderCell, SearchStepView, SignalValueRow,
+    ValueSource,
 };
 
 use crate::db::{LibraryCheck, LibraryStatus};

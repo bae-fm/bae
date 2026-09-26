@@ -208,6 +208,7 @@ fn a_number_an_offered_release_carries_is_a_chip_rather_than_a_tile() {
             ],
         },
         search: SearchStepView::NotNeeded,
+        album_links: crate::identify::AlbumLinksStepView::Followed,
     };
     let view = resumed(
         vec![pressing("rel-a", "rg-a", Some("16033-2"), None, None, None)],

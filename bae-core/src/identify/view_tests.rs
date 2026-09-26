@@ -674,6 +674,7 @@ fn recorded_ledger() -> IdentifyRunView {
         },
         catalog: CatalogStepView::NoneFound,
         search: SearchStepView::NotNeeded,
+        album_links: crate::identify::AlbumLinksStepView::Followed,
     }
 }
 

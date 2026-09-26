@@ -36,8 +36,9 @@ pub enum NeedsYou {
     SeveralMatches { count: u32 },
     /// Signals ran and matched nothing anywhere.
     NoMatch,
-    /// Nothing to look up: no disc-ID artifact and no barcode source. Manual
-    /// search is the only way forward.
+    /// Nothing to look up: no disc-ID artifact and no barcode source, or the
+    /// lookups there were are switched off. Manual search is the only way
+    /// forward.
     NothingToLookUp,
     /// An automatic provider lookup failed. A person may retry it explicitly.
     LookupFailed,

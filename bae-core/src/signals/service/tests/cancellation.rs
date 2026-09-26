@@ -59,6 +59,7 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
+        crate::config::IdentificationSteps::default(),
     );
     tokio::time::sleep(Duration::from_millis(100)).await;
     tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
@@ -101,6 +102,7 @@ async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
+        crate::config::IdentificationSteps::default(),
     );
 
     let mut saw_settled = false;
@@ -147,6 +149,7 @@ async fn three_starts_cancel_each_predecessor() {
         "cand-1".to_string(),
         folder_source(folder.clone()),
         CallPriority::Interactive,
+        crate::config::IdentificationSteps::default(),
     );
     tokio::time::sleep(Duration::from_millis(40)).await;
     handle.start(
@@ -154,6 +157,7 @@ async fn three_starts_cancel_each_predecessor() {
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
+        crate::config::IdentificationSteps::default(),
     );
 
     let mut saw_settled = false;

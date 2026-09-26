@@ -5,6 +5,7 @@
 use super::annotate_with_library_status;
 use super::discid::lookup_and_resolve;
 use super::state::{step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, TitleSearch};
+use crate::config::IdentificationSteps;
 use crate::import::search::{search_source, SearchQuery, SourceLookup};
 use crate::import::{Catalog, ImportEvent, ImportEventBus, LookupChoices};
 use crate::library::LibraryManager;
@@ -154,6 +155,9 @@ impl IdentifyServiceHandle {
     /// dispatches is admitted under it, so a candidate a person opened outranks
     /// one the automatic admission picked up.
     ///
+    /// `steps` is which of its steps the run takes, read by the caller once
+    /// for this run and the extraction feeding it alike.
+    ///
     /// `title_search` is what the candidate's draft says about the release,
     /// which the run asks every provider once its identifiers have named
     /// nothing. `None` where the draft states no title.
@@ -177,6 +181,7 @@ impl IdentifyServiceHandle {
         run: IdentifyRunId,
         key: String,
         priority: CallPriority,
+        steps: IdentificationSteps,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
         snapshots: ExtractionWatch,
@@ -207,6 +212,7 @@ impl IdentifyServiceHandle {
                 run,
                 key,
                 priority,
+                steps,
                 choices,
                 title_search,
                 token,
@@ -268,6 +274,7 @@ async fn run_driver(
     run: IdentifyRunId,
     key: String,
     priority: CallPriority,
+    steps: IdentificationSteps,
     choices: LookupChoices,
     title_search: Option<TitleSearch>,
     token: CancellationToken,
@@ -281,6 +288,7 @@ async fn run_driver(
     // what a cancelled run looks like.
     let mut start = Some(IdentifyEvent::Started {
         providers: run_providers(&inner.library_manager),
+        steps,
         choices,
         title_search,
     });
@@ -667,6 +675,7 @@ mod tests {
             handle.new_run(),
             "k".to_string(),
             CallPriority::Interactive,
+            IdentificationSteps::default(),
             LookupChoices::default(),
             None,
             watch,
@@ -719,6 +728,7 @@ mod tests {
             handle.new_run(),
             "k".to_string(),
             CallPriority::Interactive,
+            IdentificationSteps::default(),
             LookupChoices::default(),
             None,
             watch,
@@ -750,6 +760,7 @@ mod tests {
             handle.new_run(),
             "k".to_string(),
             CallPriority::Interactive,
+            IdentificationSteps::default(),
             LookupChoices::default(),
             None,
             watch,
@@ -791,6 +802,7 @@ mod tests {
             handle.new_run(),
             "k".to_string(),
             CallPriority::Interactive,
+            IdentificationSteps::default(),
             LookupChoices::default(),
             None,
             watch,

@@ -192,6 +192,7 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
             identifyAutomatically: true,
+            identificationSteps: PreviewData.everyIdentificationStep,
             prefillWithFileMetadata: true,
             lookupCatalogs: [
                 BridgeLookupCatalogSetting(

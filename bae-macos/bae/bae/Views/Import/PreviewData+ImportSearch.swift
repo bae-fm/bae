@@ -762,7 +762,8 @@
                         ]
                     ),
                     catalog: .noneFound,
-                    search: .notNeeded
+                    search: .notNeeded,
+                    albumLinks: .followed
                 ),
                 failures: [
                     .discId(failure: .network),

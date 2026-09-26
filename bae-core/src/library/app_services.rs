@@ -268,6 +268,7 @@ impl AppServices {
     delegate_async!(manager, set_show_remaining_time => set_show_remaining_time(enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_library_full_width => set_library_full_width(enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_identify_automatically => set_identify_automatically(enabled: bool) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_identification_step => set_identification_step(step: crate::config::IdentificationStep, enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_prefill_with_file_metadata => set_prefill_with_file_metadata(enabled: bool) -> Result<(), crate::config::ConfigError>);
 
     /// Ask, or stop asking, one metadata source — the switch on the Find online

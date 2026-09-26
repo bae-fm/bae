@@ -30,6 +30,9 @@ public struct Config: Equatable {
     /// Whether identification starts on its own: a newly added candidate is
     /// identified as it arrives.
     public let identifyAutomatically: Bool
+    /// Every step of an identification run, in the order a run takes them,
+    /// each with whether runs take it.
+    public let identificationSteps: [BridgeIdentificationStepSetting]
     /// Whether a newly added candidate's draft is created from the folder's
     /// file tags, or starts blank.
     public let prefillWithFileMetadata: Bool
@@ -74,6 +77,7 @@ public struct Config: Equatable {
         maxConcurrentUploads = bridge.maxConcurrentUploads
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
         identifyAutomatically = bridge.identifyAutomatically
+        identificationSteps = bridge.identificationSteps
         prefillWithFileMetadata = bridge.prefillWithFileMetadata
         lookupCatalogs = bridge.lookupCatalogs
         showRemainingTime = bridge.showRemainingTime

@@ -1,10 +1,11 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::types::BridgeOutputKind;
 use crate::types::{
-    BridgeCatalog, BridgeConfig, BridgeDiscogsTokenStatus, BridgeLookupCatalogSetting,
-    BridgeMcpConfig, BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveFilenameToken,
-    BridgeSavePregapPlacement, BridgeSavePreset, BridgeSidePauseCountdown,
-    BridgeSourceAvailability, BridgeSubsonicConfig, BridgeSyncConfig, BridgeSyncProvider,
+    BridgeCatalog, BridgeConfig, BridgeDiscogsTokenStatus, BridgeIdentificationStep,
+    BridgeIdentificationStepSetting, BridgeLookupCatalogSetting, BridgeMcpConfig,
+    BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePregapPlacement,
+    BridgeSavePreset, BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig,
+    BridgeSyncConfig, BridgeSyncProvider,
 };
 
 mirror_enum! {
@@ -212,12 +213,8 @@ impl BridgeConfig {
             side_pause_countdown,
             max_concurrent_uploads,
             max_concurrent_downloads,
-            identify_automatically,
+            identification,
             prefill_with_file_metadata,
-            // Read through `Config::metadata_sources()` above, which folds this
-            // raw preference together with each catalog's credentials into the
-            // one answer a surface renders.
-            metadata_sources: _,
             show_remaining_time,
             library_full_width,
             // Import-time decode verification; not surfaced on the config screen.
@@ -227,6 +224,14 @@ impl BridgeConfig {
             subsonic,
         } = prefs;
 
+        let bae_core::config::IdentificationPreferences {
+            automatic,
+            steps,
+            // Read through `Config::metadata_sources()` above, which folds this
+            // raw preference together with each catalog's credentials into the
+            // one answer a surface renders.
+            catalogs: _,
+        } = identification;
         let bae_core::config::McpConfig { enabled, port } = mcp;
         let bae_core::config::SubsonicConfig {
             enabled: subsonic_enabled,
@@ -243,7 +248,14 @@ impl BridgeConfig {
             side_pause_countdown: BridgeSidePauseCountdown::from_core(*side_pause_countdown),
             max_concurrent_uploads: max_concurrent_uploads.get(),
             max_concurrent_downloads: max_concurrent_downloads.get(),
-            identify_automatically: *identify_automatically,
+            identify_automatically: *automatic,
+            identification_steps: bae_core::config::IdentificationStep::ALL
+                .into_iter()
+                .map(|step| BridgeIdentificationStepSetting {
+                    step: BridgeIdentificationStep::from_core(step),
+                    enabled: steps.takes(step),
+                })
+                .collect(),
             prefill_with_file_metadata: *prefill_with_file_metadata,
             lookup_catalogs,
             show_remaining_time: *show_remaining_time,

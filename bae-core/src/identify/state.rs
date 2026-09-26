@@ -33,6 +33,7 @@ use super::toolbar::{
     SignalKind, SignalOption, SignalState, ToolbarOrigin, ToolbarSignal, ToolbarValue,
 };
 use super::view::{run_view, IdentifyRunView};
+use crate::config::IdentificationSteps;
 use crate::db::LibraryStatus;
 use crate::import::album_links::{self, GroupReading, ToRead};
 use crate::import::search::{MetadataResult, SourceFailure};
@@ -82,8 +83,10 @@ pub enum IdentifyState {
     },
 
     /// Nothing to look up: no disc-ID artifact (LOG/CUE) and no barcode source
-    /// (artwork, CUE `CATALOG`). Distinct from `NotFoundAnywhere`, where signals
-    /// ran and matched nothing — here none ran, so the UI offers manual search.
+    /// (artwork, CUE `CATALOG`), or the lookups there were to run are switched
+    /// off in the identification settings. Distinct from `NotFoundAnywhere`,
+    /// where signals ran and matched nothing — here none ran, so the UI offers
+    /// manual search.
     ManualOnly {
         track_count: u32,
         ledger: Option<IdentifyRunView>,
@@ -282,6 +285,9 @@ pub enum IdentifyEvent {
     /// extraction owns scanning and OCR, not the reducer. `providers` is what
     /// this run asks: MusicBrainz, and Discogs when it is configured.
     ///
+    /// `steps` is which of its steps the run takes, read from the settings
+    /// when it started; a step switched off since is still taken by this run.
+    ///
     /// `choices` is what the person decided this candidate's identification
     /// asks about, read from the candidate when the run started. It is the
     /// only way a choice enters a run: nothing changes one while the run is
@@ -293,6 +299,7 @@ pub enum IdentifyEvent {
     /// title.
     Started {
         providers: Vec<Catalog>,
+        steps: IdentificationSteps,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
     },
@@ -388,11 +395,12 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             IdentifyState::Idle,
             IdentifyEvent::Started {
                 providers,
+                steps,
                 choices,
                 title_search,
             },
         ) => {
-            let context = SignalsContext::started(providers, choices, title_search);
+            let context = SignalsContext::started(providers, steps, choices, title_search);
             // The chosen numbers are the person's decision about this
             // candidate, not something read off a snapshot, so their lookups
             // go out with the run rather than waiting for extraction to offer
@@ -673,6 +681,7 @@ fn apply_signals(
         (DiscidProgress::Computing, signal) => start_discid_progress(
             signal,
             context.disc.excluded,
+            context.steps.look_up_disc_ids,
             &context.providers,
             &mut effects,
         ),
@@ -686,6 +695,7 @@ fn apply_signals(
             &context.barcode.excluded,
             true,
             None,
+            context.steps.look_up_barcodes,
             &context.providers,
             &mut effects,
         ),
@@ -798,6 +808,9 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     // MusicBrainz albums' links when it holds both catalogs' releases, and
     // settle once they are read.
     match context.album_links {
+        AlbumLinkReading::Pending if !context.steps.follow_catalog_links => {
+            context.album_links = AlbumLinkReading::Off;
+        }
         AlbumLinkReading::Pending => {
             let found = context.lookup_results();
             let to_read =
@@ -830,7 +843,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                 vec![],
             )
         }
-        AlbumLinkReading::Read(_) => {}
+        AlbumLinkReading::Read(_) | AlbumLinkReading::Off => {}
     }
 
     // The ledger this run showed, as its last frame showed it: the same
@@ -841,12 +854,17 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         .has_inputs()
         .then(|| run_view(&discid, &barcode, &catalog, &search, &context));
 
-    // Nothing had anything to run, the title included. Offer manual search
-    // rather than claim we looked and found nothing.
-    if matches!(discid, DiscidProgress::Skipped { .. })
-        && matches!(barcode, BarcodeProgress::Skipped)
-        && matches!(catalog, CatalogProgress::Skipped)
-        && matches!(search, SearchProgress::Skipped)
+    // Nothing had anything to run, the title included — or what there was
+    // to run is switched off. Offer manual search rather than claim we looked
+    // and found nothing.
+    if matches!(
+        discid,
+        DiscidProgress::Skipped { .. } | DiscidProgress::Off { .. }
+    ) && matches!(
+        barcode,
+        BarcodeProgress::Skipped | BarcodeProgress::Off { .. }
+    ) && matches!(catalog, CatalogProgress::Skipped)
+        && matches!(search, SearchProgress::Skipped | SearchProgress::Off)
     {
         return (
             IdentifyState::ManualOnly {
