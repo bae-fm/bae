@@ -226,9 +226,6 @@ impl ImportServiceHandle {
                     .as_ref()
                     .map(crate::import::triage::TriageRuntimeFacts::of)
                     .unwrap_or_default();
-                if facts.importing {
-                    return Err(crate::import::ImportError::CandidateImportInProgress);
-                }
                 if facts.identifying() {
                     return Err(crate::import::ImportError::CandidateBeingIdentified);
                 }
@@ -239,6 +236,11 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             });
         };
+        // Whoever asks, a candidate an import already owns, or whose files are
+        // already a release, is not imported again.
+        self.candidate_standing(candidate_key, &candidate)
+            .await?
+            .editable()?;
         let content_hash = candidate.files.content_hash();
         let preparation = self
             .library_manager
@@ -325,10 +327,17 @@ impl ImportServiceHandle {
             user_edit: None,
         };
 
-        self.library_manager
+        // The claim is taken under the commit lock the standing was read
+        // under, so no second import of these files can be claimed between.
+        self.runtime.claim_for_import(candidate_key)?;
+        if let Err(error) = self
+            .library_manager
             .clear_import_candidate_failure(&expectation.candidate.content_hash)
-            .await?;
-        self.runtime.claim_for_import(candidate_key);
+            .await
+        {
+            self.runtime.release_import_claim(candidate_key);
+            return Err(error.into());
+        }
         // The claim is the point the candidate stops being identification's to
         // answer, so the run it had going ends here.
         self.cancel_identification(candidate_key);
@@ -618,7 +627,7 @@ impl ImportServiceHandle {
         self.library_manager
             .clear_import_candidate_failure(&expectation.candidate.content_hash)
             .await?;
-        self.runtime.claim_for_import(&candidate_key);
+        self.runtime.claim_for_import(&candidate_key)?;
         drop(commit);
         self.send_claimed_command(command, expectation).await?;
         Ok(import_id)

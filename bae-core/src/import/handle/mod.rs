@@ -751,7 +751,9 @@ impl ImportServiceHandle {
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn claim_candidate_for_import(&self, candidate_key: &str) {
         let _commit = self.folder_state_commit.lock().await;
-        self.runtime.claim_for_import(candidate_key);
+        self.runtime
+            .claim_for_import(candidate_key)
+            .expect("a test claims a candidate no import owns");
     }
 
     async fn release_import_claim(&self, candidate_key: &str) {

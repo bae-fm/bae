@@ -105,7 +105,7 @@ async fn an_import_outcome_is_recorded_before_it_is_broadcast() {
     let runtime = CandidateRuntime::default();
     let bus = ImportEventBus::new(8, runtime.clone());
     let mut events = bus.subscribe();
-    runtime.claim_for_import("candidate");
+    runtime.claim_for_import("candidate").unwrap();
     assert!(runtime
         .get("candidate")
         .is_some_and(|candidate| candidate.import.is_some()));

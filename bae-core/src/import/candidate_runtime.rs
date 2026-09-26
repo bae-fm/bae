@@ -736,13 +736,23 @@ impl CandidateRuntime {
     /// The automatic admission reads this field to decide whether a candidate still
     /// wants a verdict, and "the user has committed to importing it" has to be
     /// true here from the moment they commit.
-    pub(super) fn claim_for_import(&self, candidate_key: &str) {
+    ///
+    /// One import owns a candidate at a time: a claim on a candidate an import
+    /// already owns — queued or running — is refused, and changes nothing.
+    pub(super) fn claim_for_import(
+        &self,
+        candidate_key: &str,
+    ) -> Result<(), crate::import::ImportError> {
         self.set(candidate_key, |_, runtime| {
+            if runtime.import.is_some() {
+                return Err(crate::import::ImportError::CandidateImportInProgress);
+            }
             runtime.import = Some(ImportInFlight {
                 progress_percent: None,
                 step: Some(ImportStep::Preparing(PrepareStep::Queued)),
             });
-        });
+            Ok(())
+        })
     }
 
     /// Undo [`Self::claim_for_import`] for a command that never made it onto

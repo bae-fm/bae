@@ -157,33 +157,6 @@ fn import_progress_is_recorded_per_key_and_published_for_that_key_only() {
     ));
 }
 
-#[test]
-fn a_claim_is_the_queued_step_until_the_worker_reports() {
-    let runtime = CandidateRuntime::default();
-    let mut changes = runtime.subscribe();
-    let key = "/watch/a/rel1";
-
-    runtime.claim_for_import(key);
-    assert_eq!(
-        runtime.get(key).and_then(|runtime| runtime.import),
-        Some(ImportInFlight {
-            progress_percent: None,
-            step: Some(ImportStep::Preparing(PrepareStep::Queued)),
-        })
-    );
-    drain(&mut changes);
-
-    runtime.release_import_claim(key);
-    assert!(runtime.get(key).is_none());
-    assert_eq!(
-        drain(&mut changes),
-        vec![CandidateRuntimeChange::Removed {
-            key: key.to_string()
-        }],
-        "with nothing else running, releasing the claim empties the key"
-    );
-}
-
 /// Every way an import ends is a row by the time the event reaches here — the
 /// release the worker committed, or the failure it wrote — so the key stops
 /// being in flight.
@@ -266,7 +239,7 @@ fn a_finished_import_keeps_a_key_whose_verdict_is_still_being_saved() {
 fn a_late_subscriber_reads_every_running_key() {
     let runtime = CandidateRuntime::default();
     runtime.record_event(&progress("/watch/a/rel1", 10));
-    runtime.claim_for_import("/watch/a/rel2");
+    runtime.claim_for_import("/watch/a/rel2").unwrap();
 
     let mut changes = runtime.subscribe();
     let running = runtime.all();
@@ -605,7 +578,7 @@ fn a_finished_save_keeps_a_key_whose_import_is_running() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
     runtime.record_event(&identify(key, 1, manual_only()));
-    runtime.claim_for_import(key);
+    runtime.claim_for_import(key).unwrap();
 
     runtime.end_identification_answer(key, run(1));
 
@@ -932,7 +905,7 @@ fn switching_a_source_off_closes_its_part_of_every_live_search() {
         searching,
         CandidateSearch::started(search_query(), &every_source_on()),
     );
-    runtime.claim_for_import(importing);
+    runtime.claim_for_import(importing).unwrap();
     let mut changes = runtime.subscribe();
 
     runtime.switch_source_off(Catalog::MusicBrainz);
@@ -995,4 +968,5 @@ fn a_landing_for_a_switched_off_source_goes_nowhere() {
     assert!(search.groups.is_empty());
 }
 
+include!("tests/claims.rs");
 include!("tests/counting.rs");
