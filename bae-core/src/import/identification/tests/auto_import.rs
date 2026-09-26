@@ -315,6 +315,64 @@ async fn an_import_owed_when_the_app_closed_is_imported_at_the_next_launch() {
     assert_no_import(&mut events, &key, "the owed import was paid").await;
 }
 
+/// A person cancelling the import a verdict owed is their answer to it: what
+/// was owed is withdrawn, and reading the queue again starts nothing.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cancelled_owed_import_is_withdrawn() {
+    let fixture = Fixture::importing("auto-import-cancelled").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.identify_ready(&dir, "mb-cancelled", "rg-cancelled").await;
+    fixture.manager.set_import_when_identified(true).await.unwrap();
+    fixture.owe_import(&dir).await;
+    fixture.import.hold_import_runs();
+    let mut events = fixture.import.subscribe_events();
+
+    fixture.rescan().await;
+    // The queue starts the owed import on its own time; until it has, a
+    // cancel finds nothing importing and changes nothing.
+    let cancelled = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            fixture.import.cancel_import(&key).unwrap();
+            match tokio::time::timeout(Duration::from_millis(20), events.recv()).await {
+                Ok(Ok(ImportEvent::ImportProgress {
+                    candidate_key,
+                    progress: crate::import::ImportProgress::Cancelled { .. },
+                })) if candidate_key == key => return,
+                Ok(Ok(ImportEvent::ImportProgress {
+                    candidate_key,
+                    progress,
+                })) if candidate_key == key => {
+                    panic!("the held import of {key} did not progress, got {progress:?}")
+                }
+                Ok(Err(tokio::sync::broadcast::error::RecvError::Closed)) => {
+                    panic!("the import event bus closed")
+                }
+                _ => {}
+            }
+        }
+    })
+    .await;
+    fixture.import.release_import_runs();
+    cancelled.expect("the owed import starts and is cancelled");
+
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while fixture.owed_import(&dir).await.is_some() {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("the cancelled import's owed row is withdrawn");
+    assert_eq!(
+        fixture.classification_for(&dir).await,
+        QueueClassification::Ready,
+        "the candidate stands as it did before the import"
+    );
+
+    fixture.rescan().await;
+    assert_no_import(&mut events, &key, "the person cancelled it").await;
+}
+
 /// What was owed goes with the setting: found while it is off, it is
 /// withdrawn, and turning the setting on later does not bring it back.
 #[tokio::test(flavor = "multi_thread")]

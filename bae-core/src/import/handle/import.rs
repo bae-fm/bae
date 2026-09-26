@@ -745,6 +745,19 @@ impl ImportServiceHandle {
         }
     }
 
+    /// Hold every import that starts running from now on before it does any
+    /// work, until [`Self::release_import_runs`]: a test's window to act on
+    /// an import while it runs.
+    #[cfg(test)]
+    pub(crate) fn hold_import_runs(&self) {
+        self.import_cancels.hold_runs();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn release_import_runs(&self) {
+        self.import_cancels.release_runs();
+    }
+
     /// Say an import that never reached the worker ended: the worker skips it
     /// and so never will.
     fn announce_cancelled_import(&self, candidate_key: &str, import_id: String) {
