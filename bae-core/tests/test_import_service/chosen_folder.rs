@@ -191,12 +191,24 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_their_state(
         .await
         .unwrap();
     let picked_hash = content_hash_of(&f, &path_string(&picked)).await;
+    let mut scan_events = f.handle.subscribe_folder_scan_events();
 
     let chosen = f
         .handle
         .choose_folder(path_string(&music))
         .await
         .expect("the folder takes over the ones inside it");
+
+    let mut removed = Vec::new();
+    while let Ok(event) = scan_events.try_recv() {
+        if let ScanEvent::CandidateRemoved { candidate_key } = event {
+            removed.push(candidate_key);
+        }
+    }
+    assert!(
+        removed.is_empty(),
+        "reading the folder that took over adds, and removes nothing: {removed:?}"
+    );
 
     let watched: Vec<String> = f
         .handle
@@ -231,4 +243,31 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_their_state(
         Some(MetadataProvenance::FileMetadata),
         "the pick carries over"
     );
+}
+
+/// The takeover's own write moves what the inner folders' scans found under
+/// the folder that takes over, keyed as before with paths below it: nothing
+/// has to be read again for the rows to be there.
+#[tokio::test]
+async fn taking_over_keeps_what_the_inner_scans_found() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let music = f.temp_path().join("Music");
+    let album = album_dir(&f, "Music/Artist/Album");
+    let artist = music.join("Artist");
+    f.handle.choose_folder(path_string(&artist)).await.unwrap();
+
+    f.db
+        .adopt_watched_import_folders(&path_string(&music), vec![path_string(&artist)])
+        .await
+        .expect("the takeover lands");
+
+    match f.handle.get_candidate(&path_string(&album)).await.unwrap() {
+        Some(bae_core::import::ImportCandidateSnapshot::Folder { candidate, .. }) => {
+            assert_eq!(candidate.watched_folder_path, path_string(&music));
+            assert_eq!(candidate.display_path, "Artist/Album");
+            assert!(!candidate.files.release_files().collect::<Vec<_>>().is_empty());
+        }
+        other => panic!("the album is still a scanned folder, before any read: {other:?}"),
+    }
 }

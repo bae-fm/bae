@@ -679,6 +679,9 @@ CREATE TABLE IF NOT EXISTS folder_scan_directory (
 
 -- One release the scan found: a folder, or folders a grouping reads as one.
 -- `path` is the release's key — its folder's path, or its grouping's key.
+-- The tables below it follow its (watched_folder_path, path) key when that
+-- changes (ON UPDATE CASCADE): a folder taking over the watched folders inside
+-- it moves their releases under itself rather than reading them back.
 CREATE TABLE IF NOT EXISTS scan_candidate (
     watched_folder_path            TEXT NOT NULL,
     path                           TEXT NOT NULL,
@@ -742,7 +745,7 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     sheet_disc            TEXT CHECK (sheet_disc IS NULL OR sheet_disc IN ('disc', 'ignored')),
     sheet_disc_number     INTEGER CHECK (sheet_disc_number IS NULL OR sheet_disc_number >= 1),
     PRIMARY KEY (watched_folder_path, candidate_path, relative_path),
-    FOREIGN KEY (watched_folder_path, candidate_path) REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
+    FOREIGN KEY (watched_folder_path, candidate_path) REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE ON UPDATE CASCADE,
     CHECK ((role = 'track_sheet') = (sheet_binding IS NOT NULL AND sheet_disc IS NOT NULL)),
     CHECK ((sheet_binding = 'refused_codec') = (sheet_binding_codec IS NOT NULL)),
     CHECK ((sheet_disc = 'disc') = (sheet_disc_number IS NOT NULL)),
@@ -782,7 +785,7 @@ CREATE TABLE IF NOT EXISTS scan_candidate_tag_snapshot (
     embedded_cover_data                 BLOB,
     PRIMARY KEY (watched_folder_path, candidate_path),
     FOREIGN KEY (watched_folder_path, candidate_path)
-        REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
+        REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE ON UPDATE CASCADE,
     CHECK (
         (embedded_cover_source_relative_path IS NULL
             AND embedded_cover_content_type IS NULL AND embedded_cover_data IS NULL)
@@ -808,9 +811,9 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file_tag (
     disc_number         INTEGER,
     PRIMARY KEY (watched_folder_path, candidate_path, relative_path),
     FOREIGN KEY (watched_folder_path, candidate_path)
-        REFERENCES scan_candidate_tag_snapshot (watched_folder_path, candidate_path) ON DELETE CASCADE,
+        REFERENCES scan_candidate_tag_snapshot (watched_folder_path, candidate_path) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (watched_folder_path, candidate_path, relative_path)
-        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE
+        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE ON UPDATE CASCADE
 ) STRICT;
 
 -- The folders a release read from several is made of, in play order, and the
@@ -823,7 +826,7 @@ CREATE TABLE IF NOT EXISTS scan_candidate_part (
     prefix              TEXT NOT NULL,
     PRIMARY KEY (watched_folder_path, candidate_path, position),
     FOREIGN KEY (watched_folder_path, candidate_path)
-        REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE
+        REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE ON UPDATE CASCADE
 ) STRICT;
 
 -- The files under a folder that no release the scan read there owns: a cover
@@ -875,7 +878,7 @@ CREATE TABLE IF NOT EXISTS scan_cue_sheet (
     ripper              TEXT CHECK (ripper IS NULL OR ripper IN ('exact_audio_copy')),
     PRIMARY KEY (watched_folder_path, candidate_path, sheet_relative_path),
     FOREIGN KEY (watched_folder_path, candidate_path, sheet_relative_path)
-        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE
+        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE ON UPDATE CASCADE
 ) STRICT;
 
 -- One track of a CUE sheet, with the span and pregap it declares.
@@ -898,7 +901,7 @@ CREATE TABLE IF NOT EXISTS scan_cue_track (
     pregap_index_file_reference TEXT,
     PRIMARY KEY (watched_folder_path, candidate_path, sheet_relative_path, position),
     FOREIGN KEY (watched_folder_path, candidate_path, sheet_relative_path)
-        REFERENCES scan_cue_sheet (watched_folder_path, candidate_path, sheet_relative_path) ON DELETE CASCADE,
+        REFERENCES scan_cue_sheet (watched_folder_path, candidate_path, sheet_relative_path) ON DELETE CASCADE ON UPDATE CASCADE,
     CHECK ((mode = 'other') = (mode_other IS NOT NULL)),
     CHECK ((pregap_kind = 'none') = (pregap_frames IS NULL)),
     CHECK ((pregap_kind = 'audio') = (pregap_index_number IS NOT NULL AND pregap_index_file_reference IS NOT NULL))
@@ -916,7 +919,7 @@ CREATE TABLE IF NOT EXISTS scan_cue_index (
     file_reference      TEXT NOT NULL,
     PRIMARY KEY (watched_folder_path, candidate_path, sheet_relative_path, track_position, position),
     FOREIGN KEY (watched_folder_path, candidate_path, sheet_relative_path, track_position)
-        REFERENCES scan_cue_track (watched_folder_path, candidate_path, sheet_relative_path, position) ON DELETE CASCADE
+        REFERENCES scan_cue_track (watched_folder_path, candidate_path, sheet_relative_path, position) ON DELETE CASCADE ON UPDATE CASCADE
 ) STRICT;
 
 -- Which audio file each FILE reference of a CUE sheet resolved to.
@@ -931,9 +934,9 @@ CREATE TABLE IF NOT EXISTS scan_sheet_audio_file (
     UNIQUE (watched_folder_path, candidate_path, sheet_relative_path, file_reference),
     UNIQUE (watched_folder_path, candidate_path, sheet_relative_path, audio_relative_path),
     FOREIGN KEY (watched_folder_path, candidate_path, sheet_relative_path)
-        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE,
+        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (watched_folder_path, candidate_path, audio_relative_path)
-        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE
+        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE ON UPDATE CASCADE
 ) STRICT;
 
 -- A release a grouping reads as one leaves the queue with its grouping.
