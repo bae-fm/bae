@@ -12,7 +12,12 @@
 //!
 //! A country is one field the two write differently: a provider answers `JP`
 //! and a folder writes `Japan`. Both spellings are looked for, through the
-//! country table beside this module. A label is the other: a folder writes
+//! country table in [`crate::pressing::country`] — but a code only where a
+//! person tagged the folder with it: two capital letters in the folder's or a
+//! file's name. Anywhere else a two-letter code is far more often a word —
+//! "for all of us" in reprinted liner notes, "IT" on a sleeve — than a
+//! country, while a sleeve that means a country prints its name ("Made in
+//! Japan"). A label is the other: a folder writes
 //! "Warner Bros." and a source writes "Warner Bros. Records", so the trade word
 //! a label's name trails is dropped from it first, through the label table.
 //!
@@ -25,7 +30,7 @@
 use super::combine::LookupProvenance;
 use crate::import::search::MetadataResult;
 use crate::pressing::ReleaseArea;
-use crate::signals::TextLine;
+use crate::signals::{SignalOrigin, TextLine};
 use crate::util::text::squash;
 use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
@@ -185,7 +190,7 @@ impl CandidateText {
         Self {
             lines: pool
                 .iter()
-                .filter_map(|line| NormalizedLine::of(&line.text))
+                .filter_map(|line| NormalizedLine::of(&line.text, line.origin))
                 .collect(),
             struck_out: struck_out
                 .iter()
@@ -225,13 +230,15 @@ impl CandidateText {
     }
 
     /// Whether the text states `area`, however it writes it. A country is
-    /// stated by its code or any of its names — a folder saying `Japan`
-    /// states `JP`, one saying `JP` states Japan — and a region by any name
-    /// a catalog writes it as.
+    /// stated by any of its names wherever the text prints it, and by its
+    /// code where a name tags the folder with it — a folder called
+    /// "Album (JP)" states Japan, and so does a sleeve saying "Made in
+    /// Japan" — and a region by any name a catalog writes it as.
     pub fn states_area(&self, area: ReleaseArea) -> bool {
         match area {
             ReleaseArea::Country(country) => {
-                self.states(country.code()) || country.names().iter().any(|name| self.states(name))
+                self.lines.iter().any(|line| line.tags_code(country.code()))
+                    || country.names().iter().any(|name| self.states(name))
             }
             ReleaseArea::Region(region) => region.written_names().any(|name| self.states(name)),
         }
@@ -256,10 +263,14 @@ struct NormalizedLine {
     starts: Vec<usize>,
     /// Ascending, one per word.
     ends: Vec<usize>,
+    /// The words written wholly in capitals, as written, where the line is
+    /// a name a person gave the folder or one of its files — the only text
+    /// a two-letter code is a tag in. Empty for every other line.
+    tags: Vec<String>,
 }
 
 impl NormalizedLine {
-    fn of(text: &str) -> Option<Self> {
+    fn of(text: &str, origin: SignalOrigin) -> Option<Self> {
         let mut run = String::new();
         let mut starts = Vec::new();
         let mut ends = Vec::new();
@@ -268,7 +279,29 @@ impl NormalizedLine {
             run.push_str(&word);
             ends.push(run.len());
         }
-        (!run.is_empty()).then_some(Self { run, starts, ends })
+        let tags = match origin {
+            SignalOrigin::FolderName | SignalOrigin::Filename => text
+                .split(|c: char| !c.is_alphanumeric())
+                .filter(|word| !word.is_empty() && word.chars().all(|c| c.is_uppercase()))
+                .map(str::to_string)
+                .collect(),
+            SignalOrigin::DiscToc
+            | SignalOrigin::CueSheet
+            | SignalOrigin::Artwork
+            | SignalOrigin::TextFile => Vec::new(),
+        };
+        (!run.is_empty()).then_some(Self {
+            run,
+            starts,
+            ends,
+            tags,
+        })
+    }
+
+    /// Whether this line tags the folder with `code`: the code as a whole
+    /// word in capitals, in a name.
+    fn tags_code(&self, code: &str) -> bool {
+        self.tags.iter().any(|tag| tag == code)
     }
 
     /// Whether `value` — already squashed — spans whole words of this line.

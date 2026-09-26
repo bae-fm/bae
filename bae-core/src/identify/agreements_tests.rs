@@ -260,6 +260,62 @@ fn an_area_agrees_whichever_way_the_folder_spells_it() {
     }
 }
 
+fn read_off(origin: SignalOrigin, text: &str) -> TextLine {
+    TextLine {
+        origin,
+        ..line(text)
+    }
+}
+
+fn states_country(code: &str, lines: &[TextLine]) -> bool {
+    agreements_of(
+        &MetadataResult {
+            area: Some(crate::pressing::area(code)),
+            ..result()
+        },
+        &CandidateText::of(lines, &[]),
+        &NO_LOOKUP,
+    )
+    .country
+}
+
+/// A two-letter code is a country only where a person tagged the folder with
+/// it. Printed prose is full of two-letter words — "for all of us" in
+/// reprinted liner notes — so a sleeve, a CUE or a document states a country
+/// only by name.
+#[test]
+fn a_country_code_is_a_tag_in_a_name_and_a_word_everywhere_else() {
+    for origin in [
+        SignalOrigin::Artwork,
+        SignalOrigin::TextFile,
+        SignalOrigin::CueSheet,
+    ] {
+        for printed in ["the band played for all of us.", "MADE IN US"] {
+            assert!(
+                !states_country("US", &[read_off(origin, printed)]),
+                "{origin:?}: {printed}"
+            );
+        }
+        assert!(
+            states_country("JP", &[read_off(origin, "Made in Japan")]),
+            "{origin:?}"
+        );
+    }
+    assert!(states_country(
+        "US",
+        &[read_off(SignalOrigin::Filename, "01 - Song (US).flac")]
+    ));
+}
+
+/// A code tags a folder written as a code is: in capitals. The same letters
+/// in lower case are a word in a title.
+#[test]
+fn a_country_code_in_a_name_is_written_in_capitals() {
+    assert!(!states_country("US", &[line("Artist - Songs For Us")]));
+    assert!(!states_country("IT", &[line("Artist - Make it Last")]));
+    assert!(states_country("IT", &[line("Artist - Album (IT)")]));
+}
+
 /// The other spellings are one area's, not any area's: a folder that names a
 /// different one states nothing about this release.
 #[test]
