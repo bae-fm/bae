@@ -1,26 +1,54 @@
-import AppKit
 import BaeKit
+import CoreImage
+import ImageIO
 import Vision
 import os.log
 
 private let logger = Logger.bae("VisionArtworkAnalyzer")
 
 /// Implements the core `ArtworkAnalyzerCallback` with Apple Vision: one
-/// `analyze` pass loads the image once and runs `VNDetectBarcodesRequest`
-/// (identify's barcode signal) and `VNRecognizeTextRequest` (the text signal)
-/// against it in a single `perform`. Synchronous — `perform` blocks until the
-/// completion handlers fire.
+/// `analyze` pass decodes the image once, prepares it for reading (below), and
+/// runs `VNDetectBarcodesRequest` (identify's barcode signal) and
+/// `VNRecognizeTextRequest` (the text signal) against it in a single
+/// `perform`. Synchronous — `perform` blocks until the completion handlers
+/// fire.
 ///
-/// Every payload and line crosses with the box Vision drew around it, so a
-/// surface can show the printed value itself rather than the whole scan.
+/// Every payload and line crosses with the box Vision drew around it, as
+/// fractions of the image, so a surface can show the printed value itself
+/// rather than the whole scan. The preparation below changes the image's
+/// pixel size only, so those fractions point at the same place on the stored
+/// file.
 ///
 /// Rust calls this from `tokio::task::spawn_blocking`, so a slow Vision
 /// pass won't park the async runtime and never touches Swift's cooperative
 /// pool. No caching layer here: the extraction service makes one call per
 /// image and re-runs are rare.
 final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
+    /// An image whose long side is under this many pixels is enlarged to it
+    /// before Vision reads it. A sweep of one Vision pass per setting over a
+    /// real library's 1,639 artwork scans chose this: enlarging to 800 with
+    /// Lanczos and sharpening read 148 verified barcodes and catalog numbers
+    /// against 145 at the stored size unsharpened — among them a catalog
+    /// number on a 636 px back cover that only reads enlarged — while larger
+    /// targets (1000–2000) read no more and cost more Vision time per pass.
+    static let enlargedLongSide: CGFloat = 800
+    /// The unsharp mask every image gets before Vision reads it, enlarged or
+    /// not — the same sweep's best setting (radius 1, intensity 0.8); radius
+    /// 2 read no more.
+    static let unsharpRadius: Double = 1.0
+    static let unsharpIntensity: Double = 0.8
+
+    /// Renders the prepared image. Core Image converts to the context's
+    /// sRGB output, so a grayscale or wide-gamut scan reaches Vision as sRGB
+    /// RGBA — as it did in the sweep.
+    private let ciContext = CIContext()
+
     func analyze(path: String) -> BridgeArtworkAnalysis {
-        guard let cgImage = loadCGImage(path: path) else {
+        guard let decoded = decode(path: path) else {
+            return BridgeArtworkAnalysis(barcodes: [], textLines: [])
+        }
+        guard let cgImage = prepared(decoded.image) else {
+            logger.error("analyze could not prepare \(path) for reading")
             return BridgeArtworkAnalysis(barcodes: [], textLines: [])
         }
 
@@ -56,13 +84,16 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
         }
         textRequest.recognitionLevel = .accurate
         textRequest.automaticallyDetectsLanguage = true
-        // Leave `usesLanguageCorrection` at the default: catalog numbers sit
-        // inside substrings and the core classifier's regex pulls them out
-        // regardless of minor corrections to surrounding words.
+        // No language correction: the codes this pass is for — catalog
+        // numbers, the digits under a barcode — are not words, and correction
+        // rewrites them toward words ("FSR-CD 322" read as "FSA-CO 322"). It
+        // is also the configuration the preparation above was measured with.
+        // Artist and album text gives up dictionary correction for it.
+        textRequest.usesLanguageCorrection = false
 
         let handler = VNImageRequestHandler(
             cgImage: cgImage,
-            orientation: .up,
+            orientation: decoded.orientation,
             options: [:]
         )
         do {
@@ -109,16 +140,60 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
         )
     }
 
-    private func loadCGImage(path: String) -> CGImage? {
-        guard let nsImage = NSImage(contentsOfFile: path),
-            let cgImage = nsImage.cgImage(
-                forProposedRect: nil,
-                context: nil,
-                hints: nil
-            )
+    /// The stored image as ImageIO decodes it, with the orientation its
+    /// EXIF names so Vision reads it upright.
+    private func decode(
+        path: String
+    ) -> (image: CGImage, orientation: CGImagePropertyOrientation)? {
+        let url = URL(fileURLWithPath: path)
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+            let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
         else {
             return nil
         }
-        return cgImage
+        let properties =
+            CGImageSourceCopyPropertiesAtIndex(source, 0, nil)
+            as? [CFString: Any]
+        let orientation =
+            (properties?[kCGImagePropertyOrientation] as? UInt32)
+            .flatMap(CGImagePropertyOrientation.init(rawValue:)) ?? .up
+        return (image, orientation)
+    }
+
+    /// The image Vision reads: enlarged with Lanczos when its long side is
+    /// under `enlargedLongSide`, then unsharp-masked. Rendered after each
+    /// step, as the sweep that chose these settings did, so what Vision sees
+    /// is what was measured. Nothing is written to disk.
+    private func prepared(_ image: CGImage) -> CGImage? {
+        let longSide = CGFloat(max(image.width, image.height))
+        var working = image
+        if longSide < Self.enlargedLongSide {
+            let enlarged = CIImage(cgImage: image)
+                .applyingFilter(
+                    "CILanczosScaleTransform",
+                    parameters: [
+                        kCIInputScaleKey: Self.enlargedLongSide / longSide,
+                        kCIInputAspectRatioKey: 1.0,
+                    ]
+                )
+            guard let rendered = render(enlarged, in: enlarged.extent.integral)
+            else {
+                return nil
+            }
+            working = rendered
+        }
+        let input = CIImage(cgImage: working)
+        let sharpened = input.applyingFilter(
+            "CIUnsharpMask",
+            parameters: [
+                kCIInputRadiusKey: Self.unsharpRadius,
+                kCIInputIntensityKey: Self.unsharpIntensity,
+            ]
+        )
+        return render(sharpened, in: input.extent)
+    }
+
+    private func render(_ image: CIImage, in extent: CGRect) -> CGImage? {
+        ciContext.createCGImage(image.cropped(to: extent), from: extent)
     }
 }
