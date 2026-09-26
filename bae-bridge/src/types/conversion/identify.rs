@@ -624,6 +624,7 @@ mod tests {
             context: SignalsContext {
                 providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
                 artwork: bae_core::signals::ArtworkScan::Absent,
+                rip: bae_core::signals::RipEvidence::Unproven,
                 disc: DiscIdEvidence {
                     signal: DiscIdSignal::Absent { track_count: 9 },
                     ..Default::default()
