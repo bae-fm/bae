@@ -277,9 +277,12 @@ extension BridgeArtistAssignment {
 }
 
 extension EnvironmentValues {
+    // swiftui-environment-audit: optional
     /// What the library holds for the artist credits on screen, as core last
     /// read them: the import pane's live read, or the release editor's own.
     /// Rendered through `bridgeArtistStanding` / `bridgeArtistsStanding`.
+    /// Empty is a real state, not a placeholder: nothing read yet, or a read
+    /// that failed, shows no badge, which is what the editor sets itself.
     @Entry
     var artistResolutions: [BridgeResolvedCredit] = []
 }
