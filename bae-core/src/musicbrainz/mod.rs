@@ -13,6 +13,7 @@
 use std::time::Duration;
 
 use crate::import::CatalogPage;
+use crate::retry::RetryPolicy;
 use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
@@ -104,7 +105,7 @@ fn url_lookup_url(resource: &str, include: &str) -> String {
 
 /// Retry only what a retry can fix. `NotFound` is MusicBrainz's answer, not a
 /// fault — and it's the ordinary answer for a disc it doesn't have, so retrying
-/// buys three round trips and three rate-limit waits to learn it again. `Other`
+/// buys a round trip and a rate-limit wait per try to learn it again. `Other`
 /// is local (URL construction, JSON parse, a missing search field): either no
 /// request was made, or the same bytes will parse the same way.
 fn should_retry_mb(error: &MusicBrainzError) -> bool {
@@ -119,6 +120,20 @@ fn should_retry_mb(error: &MusicBrainzError) -> bool {
     }
 }
 
+/// How MusicBrainz is asked again. Its rate-limiting page
+/// (<https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting>) says every
+/// request it turns away — this address over one request a second, or the
+/// servers as a whole over their 300 a second — is declined with a 503, and
+/// that an address over its rate is declined outright "until the rate drops".
+/// The page names no wait. So a 503 says to ask less, not to ask again at
+/// once: the waits double from one second, which lets the address's own rate
+/// fall back under one a second at the first repeat and gives a busy server
+/// some fifteen seconds in all to recover, and each is jittered, since a
+/// server shedding everyone's load at once hears every client's repeats
+/// together otherwise.
+const RETRY: RetryPolicy =
+    RetryPolicy::exponential(5, Duration::from_secs(1), Duration::from_secs(10));
+
 /// Wrap one request in the client's own retry policy — a caller shouldn't have to
 /// know which of these failures are worth repeating. (Discogs does the same.)
 async fn mb_retry<F, Fut, T>(label: &str, f: F) -> Result<T, MusicBrainzError>
@@ -126,8 +141,7 @@ where
     F: Fn() -> Fut,
     Fut: std::future::Future<Output = Result<T, MusicBrainzError>>,
 {
-    crate::retry::retry_with_backoff_if(3, label, should_retry_mb, crate::retry::linear_backoff, f)
-        .await
+    crate::retry::retry_with_backoff_if(RETRY, label, should_retry_mb, f).await
 }
 
 fn mb_body(response: CachedResponse) -> Result<String, MusicBrainzError> {

@@ -3,7 +3,7 @@ use crate::discogs::models::{
 };
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
-use crate::retry::retry_with_backoff_if;
+use crate::retry::{retry_with_backoff_if, RetryPolicy};
 use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
@@ -15,7 +15,27 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 const DISCOGS_REQUEST_INTERVAL: Duration = Duration::from_secs(1);
-const DISCOGS_RETRY_ATTEMPTS: u32 = 3;
+
+/// How Discogs is asked again. Discogs throttles by source address to 60
+/// authenticated requests a minute (25 unauthenticated), counted as a moving
+/// average over a sixty-second window, and answers a request over it with a
+/// 429; every response states the window in `X-Discogs-Ratelimit`,
+/// `-Used` and `-Remaining`. A full window empties only as its requests age
+/// out of it, so the first repeat waits two seconds — two slots of the one a
+/// second this client keeps to — and each after it doubles, jittered, up to
+/// twenty: about fourteen seconds in all before the lookup is given up.
+const RETRY: RetryPolicy =
+    RetryPolicy::exponential(4, Duration::from_secs(2), Duration::from_secs(20));
+
+/// Wrap one request in the client's own retry policy — a caller shouldn't have to
+/// know which of these failures are worth repeating. (MusicBrainz does the same.)
+async fn discogs_retry<F, Fut, T>(label: &str, f: F) -> Result<T, DiscogsError>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = Result<T, DiscogsError>>,
+{
+    retry_with_backoff_if(RETRY, label, should_retry_discogs, f).await
+}
 
 /// Where every Discogs request goes.
 const API_BASE_URL: &str = "https://api.discogs.com";
@@ -158,8 +178,8 @@ fn classify_discogs_response(response: CachedResponse) -> Result<String, Discogs
 
 /// Retry only what a retry can fix: transport failures, an explicit rate-limit,
 /// and Discogs server errors. A 4xx `Provider` status is the server's permanent
-/// answer to this exact request — retrying it burns three round trips and three
-/// rate-limit waits to hear the same 4xx again.
+/// answer to this exact request — retrying it burns a round trip and a
+/// rate-limit wait per try to hear the same 4xx again.
 fn should_retry_discogs(error: &DiscogsError) -> bool {
     match error {
         DiscogsError::Transport(_) | DiscogsError::RateLimit => true,
@@ -622,16 +642,10 @@ impl DiscogsClient {
         let url = format!("{API_BASE_URL}/database/search");
         let query_params = [("per_page", "1")];
 
-        retry_with_backoff_if(
-            DISCOGS_RETRY_ATTEMPTS,
-            "Discogs token validation",
-            should_retry_discogs,
-            crate::retry::linear_backoff,
-            || async {
-                let request = self.get(&url).query(&query_params).build()?;
-                classify_discogs_response(self.send(request, priority).await?).map(|_| ())
-            },
-        )
+        discogs_retry("Discogs token validation", || async {
+            let request = self.get(&url).query(&query_params).build()?;
+            classify_discogs_response(self.send(request, priority).await?).map(|_| ())
+        })
         .await
     }
 
@@ -672,28 +686,22 @@ impl DiscogsClient {
             query_params.push(("barcode", barcode));
         }
         debug!("Discogs API: GET {} with params: {:?}", url, params);
-        let search_response: SearchResponse = retry_with_backoff_if(
-            DISCOGS_RETRY_ATTEMPTS,
-            "Discogs search",
-            should_retry_discogs,
-            crate::retry::linear_backoff,
-            || async {
-                let body = self
-                    .get_cached(self.get(&url).query(&query_params), priority)
-                    .await
-                    .inspect_err(|error| match error {
-                        DiscogsError::RateLimit => warn!("Discogs rate limit exceeded"),
-                        DiscogsError::InvalidApiKey => warn!("Discogs invalid API key"),
-                        DiscogsError::NotFound => warn!("Discogs API returned not found"),
-                        DiscogsError::Transport(_) => warn!("Discogs API request failed"),
-                        DiscogsError::Provider(status) => {
-                            warn!("Discogs API error response (status {status})")
-                        }
-                        DiscogsError::Serialization(_) => {}
-                    })?;
-                serde_json::from_str(&body).map_err(DiscogsError::Serialization)
-            },
-        )
+        let search_response: SearchResponse = discogs_retry("Discogs search", || async {
+            let body = self
+                .get_cached(self.get(&url).query(&query_params), priority)
+                .await
+                .inspect_err(|error| match error {
+                    DiscogsError::RateLimit => warn!("Discogs rate limit exceeded"),
+                    DiscogsError::InvalidApiKey => warn!("Discogs invalid API key"),
+                    DiscogsError::NotFound => warn!("Discogs API returned not found"),
+                    DiscogsError::Transport(_) => warn!("Discogs API request failed"),
+                    DiscogsError::Provider(status) => {
+                        warn!("Discogs API error response (status {status})")
+                    }
+                    DiscogsError::Serialization(_) => {}
+                })?;
+            serde_json::from_str(&body).map_err(DiscogsError::Serialization)
+        })
         .await?;
         debug!(
             "Discogs search returned {} total result(s)",
@@ -731,17 +739,11 @@ impl DiscogsClient {
         priority: CallPriority,
     ) -> Result<(DiscogsRelease, String), DiscogsError> {
         let url = release_url(id);
-        retry_with_backoff_if(
-            DISCOGS_RETRY_ATTEMPTS,
-            "Discogs release fetch",
-            should_retry_discogs,
-            crate::retry::linear_backoff,
-            || async {
-                let raw_json = self.get_cached(self.get(&url), priority).await?;
-                let release = parse_discogs_release_json(&raw_json)?;
-                Ok((release, raw_json))
-            },
-        )
+        discogs_retry("Discogs release fetch", || async {
+            let raw_json = self.get_cached(self.get(&url), priority).await?;
+            let release = parse_discogs_release_json(&raw_json)?;
+            Ok((release, raw_json))
+        })
         .await
     }
 
@@ -761,17 +763,11 @@ impl DiscogsClient {
         priority: CallPriority,
     ) -> Result<(DiscogsMaster, String), DiscogsError> {
         let url = master_url(master_id);
-        retry_with_backoff_if(
-            DISCOGS_RETRY_ATTEMPTS,
-            "Discogs master fetch",
-            should_retry_discogs,
-            crate::retry::linear_backoff,
-            || async {
-                let raw_json = self.get_cached(self.get(&url), priority).await?;
-                let master = parse_discogs_master_json(&raw_json)?;
-                Ok((master, raw_json))
-            },
-        )
+        discogs_retry("Discogs master fetch", || async {
+            let raw_json = self.get_cached(self.get(&url), priority).await?;
+            let master = parse_discogs_master_json(&raw_json)?;
+            Ok((master, raw_json))
+        })
         .await
     }
 
@@ -790,25 +786,19 @@ impl DiscogsClient {
         priority: CallPriority,
     ) -> Result<Option<String>, DiscogsError> {
         let url = artist_url(artist_id);
-        let Some(body) = retry_with_backoff_if(
-            DISCOGS_RETRY_ATTEMPTS,
-            "Discogs artist fetch",
-            should_retry_discogs,
-            crate::retry::linear_backoff,
-            || async {
-                match self.get_cached(self.get(&url), priority).await {
-                    Ok(body) => Ok(Some(body)),
-                    Err(DiscogsError::NotFound) => {
-                        warn!(
-                            discogs_artist_id = %artist_id,
-                            "Discogs artist image lookup returned not found"
-                        );
-                        Ok(None)
-                    }
-                    Err(error) => Err(error),
+        let Some(body) = discogs_retry("Discogs artist fetch", || async {
+            match self.get_cached(self.get(&url), priority).await {
+                Ok(body) => Ok(Some(body)),
+                Err(DiscogsError::NotFound) => {
+                    warn!(
+                        discogs_artist_id = %artist_id,
+                        "Discogs artist image lookup returned not found"
+                    );
+                    Ok(None)
                 }
-            },
-        )
+                Err(error) => Err(error),
+            }
+        })
         .await?
         else {
             return Ok(None);

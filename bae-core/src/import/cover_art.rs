@@ -1,5 +1,5 @@
 use crate::import::{Catalog, ImportError};
-use crate::retry::{exponential_backoff, is_transient_status, retry_classified, ClassifiedAttempt};
+use crate::retry::{is_transient_status, retry_classified, ClassifiedAttempt, RetryPolicy};
 use crate::signals::LookupFailure;
 use crate::util::content_type::ContentType;
 use crate::util::http::Http;
@@ -323,11 +323,10 @@ pub(crate) fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCove
     }
 }
 
-/// Max retries for transient HTTP failures (network errors, 5xx responses).
-const MAX_RETRIES: u32 = 3;
-
-/// Base delay between retries (doubles each attempt: 1s, 2s, 4s).
-const RETRY_BASE_DELAY: Duration = Duration::from_secs(1);
+/// How an artwork host is asked again after a network error, a 5xx or a 429:
+/// four tries, the waits doubling from one second, jittered.
+const RETRY: RetryPolicy =
+    RetryPolicy::exponential(4, Duration::from_secs(1), Duration::from_secs(8));
 
 /// Encoded provider images retained across launches.
 const REMOTE_IMAGE_DISK_BUDGET: u64 = 128 * 1024 * 1024;
@@ -588,7 +587,6 @@ pub struct RemoteImageCache {
     http: Http,
     in_flight: Arc<Mutex<InFlightImages>>,
     disk: Arc<DiskImageCache>,
-    retry_base_delay: Duration,
     #[cfg(any(test, feature = "test-utils"))]
     _owned_dir: Option<Arc<tempfile::TempDir>>,
 }
@@ -599,7 +597,6 @@ impl RemoteImageCache {
             http,
             library_path.join("cache").join("remote-images-v2"),
             REMOTE_IMAGE_DISK_BUDGET,
-            RETRY_BASE_DELAY,
         )
     }
 
@@ -611,23 +608,16 @@ impl RemoteImageCache {
             http,
             directory.path().to_path_buf(),
             REMOTE_IMAGE_DISK_BUDGET,
-            Duration::from_millis(1),
         );
         cache._owned_dir = Some(Arc::new(directory));
         cache
     }
 
-    fn in_dir(
-        http: Http,
-        dir: std::path::PathBuf,
-        budget: u64,
-        retry_base_delay: Duration,
-    ) -> Self {
+    fn in_dir(http: Http, dir: std::path::PathBuf, budget: u64) -> Self {
         Self {
             http,
             in_flight: Arc::new(Mutex::new(HashMap::new())),
             disk: Arc::new(DiskImageCache::new(dir, budget)),
-            retry_base_delay,
             #[cfg(any(test, feature = "test-utils"))]
             _owned_dir: None,
         }
@@ -649,7 +639,6 @@ impl RemoteImageCache {
                 .or_insert_with(|| Arc::new(tokio::sync::OnceCell::new()))
                 .clone()
         };
-        let retry_base_delay = self.retry_base_delay;
         let http = self.http.clone();
         let disk = Arc::clone(&self.disk);
         let owned_url = url.to_string();
@@ -661,26 +650,20 @@ impl RemoteImageCache {
                 }
 
                 debug!("Downloading remote image from {owned_url}");
-                let entry = match send_image_request(
-                    &http,
-                    &owned_url,
-                    "Cover art download",
-                    retry_base_delay,
-                )
-                .await?
-                {
-                    ImageResponse::Body {
-                        bytes,
-                        content_type,
-                    } => DiskImageEntry::Image(RemoteImage {
-                        bytes,
-                        content_type,
-                    }),
-                    ImageResponse::Nothing => {
-                        debug!("No image is served at {owned_url}");
-                        DiskImageEntry::Nothing
-                    }
-                };
+                let entry =
+                    match send_image_request(&http, &owned_url, "Cover art download").await? {
+                        ImageResponse::Body {
+                            bytes,
+                            content_type,
+                        } => DiskImageEntry::Image(RemoteImage {
+                            bytes,
+                            content_type,
+                        }),
+                        ImageResponse::Nothing => {
+                            debug!("No image is served at {owned_url}");
+                            DiskImageEntry::Nothing
+                        }
+                    };
                 let image = entry.clone().into_image();
                 write_disk(Arc::clone(&disk), owned_url.clone(), entry).await?;
                 Ok(image)
@@ -757,15 +740,14 @@ enum ImageResponse {
     Nothing,
 }
 
-/// GET an image URL. Retries transient failures (network errors, 5xx) up to
-/// `MAX_RETRIES` times.
+/// GET an image URL, repeating transient failures (network errors, 5xx) as
+/// [`RETRY`] says.
 async fn send_image_request(
     http: &Http,
     image_url: &str,
     operation: &str,
-    base_delay: Duration,
 ) -> Result<ImageResponse, ImportError> {
-    match send_artwork_request(http, image_url, operation, base_delay).await? {
+    match send_artwork_request(http, image_url, operation).await? {
         Some(response) => read_image_response(response, image_url).await,
         None => Ok(ImageResponse::Nothing),
     }
@@ -776,63 +758,57 @@ async fn send_artwork_request(
     http: &Http,
     url: &str,
     operation: &str,
-    base_delay: Duration,
 ) -> Result<Option<reqwest::Response>, ImportError> {
-    retry_classified(
-        MAX_RETRIES + 1,
-        operation,
-        |attempt| exponential_backoff(base_delay, attempt),
-        || async {
-            let request = match http
-                .get(url)
-                .timeout(crate::util::http::READ_TIMEOUT)
-                .build()
-            {
-                Ok(request) => request,
-                Err(error) => {
-                    return ClassifiedAttempt::Permanent(artwork_request_error(
-                        error,
-                        "Failed to fetch image",
-                    ));
-                }
-            };
-            let response = match http.execute(request).await {
-                Ok(response) => response,
-                Err(error) if is_permanent_request_error(&error) => {
-                    return ClassifiedAttempt::Permanent(artwork_request_error(
-                        error,
-                        "Failed to fetch image",
-                    ));
-                }
-                Err(error) => {
-                    return ClassifiedAttempt::Retry(artwork_request_error(
-                        error,
-                        "Failed to fetch image",
-                    ));
-                }
-            };
-
-            if response.status().is_success() {
-                ClassifiedAttempt::Done(Some(response))
-            } else if response.status() == reqwest::StatusCode::NOT_FOUND {
-                ClassifiedAttempt::Done(None)
-            } else if is_transient_status(response.status()) {
-                ClassifiedAttempt::Retry(ImportError::CoverArtRequest {
-                    failure: LookupFailure::Provider {
-                        status: Some(response.status().as_u16()),
-                    },
-                    detail: format!("Image download failed with status {}", response.status()),
-                })
-            } else {
-                ClassifiedAttempt::Permanent(ImportError::CoverArtRequest {
-                    failure: LookupFailure::Provider {
-                        status: Some(response.status().as_u16()),
-                    },
-                    detail: format!("Image download failed with status {}", response.status()),
-                })
+    retry_classified(RETRY, operation, || async {
+        let request = match http
+            .get(url)
+            .timeout(crate::util::http::READ_TIMEOUT)
+            .build()
+        {
+            Ok(request) => request,
+            Err(error) => {
+                return ClassifiedAttempt::Permanent(artwork_request_error(
+                    error,
+                    "Failed to fetch image",
+                ));
             }
-        },
-    )
+        };
+        let response = match http.execute(request).await {
+            Ok(response) => response,
+            Err(error) if is_permanent_request_error(&error) => {
+                return ClassifiedAttempt::Permanent(artwork_request_error(
+                    error,
+                    "Failed to fetch image",
+                ));
+            }
+            Err(error) => {
+                return ClassifiedAttempt::Retry(artwork_request_error(
+                    error,
+                    "Failed to fetch image",
+                ));
+            }
+        };
+
+        if response.status().is_success() {
+            ClassifiedAttempt::Done(Some(response))
+        } else if response.status() == reqwest::StatusCode::NOT_FOUND {
+            ClassifiedAttempt::Done(None)
+        } else if is_transient_status(response.status()) {
+            ClassifiedAttempt::Retry(ImportError::CoverArtRequest {
+                failure: LookupFailure::Provider {
+                    status: Some(response.status().as_u16()),
+                },
+                detail: format!("Image download failed with status {}", response.status()),
+            })
+        } else {
+            ClassifiedAttempt::Permanent(ImportError::CoverArtRequest {
+                failure: LookupFailure::Provider {
+                    status: Some(response.status().as_u16()),
+                },
+                detail: format!("Image download failed with status {}", response.status()),
+            })
+        }
+    })
     .await
 }
 

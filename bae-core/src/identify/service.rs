@@ -350,6 +350,23 @@ async fn run_driver(
     }
 }
 
+/// Run one effect's work on the runtime until it ends or the run is cancelled.
+///
+/// A cancelled run's lookup is dropped where it stands — mid-request, or
+/// between a provider's retries while it waits out a busy server — so it
+/// neither keeps asking a provider nobody is waiting on nor takes the
+/// rate-limit slots the next run's requests need.
+fn spawn_until_cancelled(
+    runtime: &tokio::runtime::Handle,
+    token: &CancellationToken,
+    work: impl std::future::Future<Output = ()> + Send + 'static,
+) {
+    let token = token.clone();
+    runtime.spawn(async move {
+        token.run_until_cancelled(work).await;
+    });
+}
+
 fn dispatch_effect(
     inner: Arc<IdentifyServiceInner>,
     effect: Effect,
@@ -364,11 +381,8 @@ fn dispatch_effect(
             track_count,
         } => {
             let library_manager = inner.library_manager.clone();
-            runtime.spawn(async move {
+            spawn_until_cancelled(&runtime, &token, async move {
                 let outcome = lookup_and_resolve(&disc_id, &library_manager, priority).await;
-                if token.is_cancelled() {
-                    return;
-                }
                 match outcome {
                     Ok(results) => {
                         emit_step(
@@ -396,14 +410,11 @@ fn dispatch_effect(
         // one landing never waits on the other.
         Effect::LookupBarcode { source, barcode } => {
             let library_manager = inner.library_manager.clone();
-            runtime.spawn(async move {
+            spawn_until_cancelled(&runtime, &token, async move {
                 let query = SearchQuery::Barcode {
                     barcode: barcode.clone(),
                 };
                 let lookup = search_source(&library_manager, source, &query, priority).await;
-                if token.is_cancelled() {
-                    return;
-                }
                 let outcome = annotate_lookup(lookup, &library_manager).await;
                 if let Err(failure) = &outcome {
                     debug!(
@@ -427,15 +438,12 @@ fn dispatch_effect(
         // tab sends.
         Effect::SearchTitle { source, query } => {
             let library_manager = inner.library_manager.clone();
-            runtime.spawn(async move {
+            spawn_until_cancelled(&runtime, &token, async move {
                 let search = SearchQuery::General {
                     artist: query.artist.clone(),
                     album: query.album.clone(),
                 };
                 let lookup = search_source(&library_manager, source, &search, priority).await;
-                if token.is_cancelled() {
-                    return;
-                }
                 let outcome = annotate_lookup(lookup, &library_manager).await;
                 if let Err(failure) = &outcome {
                     debug!(
@@ -450,25 +458,19 @@ fn dispatch_effect(
 
         Effect::ReadAlbumLinks { to_read } => {
             let library_manager = inner.library_manager.clone();
-            runtime.spawn(async move {
+            spawn_until_cancelled(&runtime, &token, async move {
                 let read = library_manager.read_album_links(&to_read, priority).await;
-                if token.is_cancelled() {
-                    return;
-                }
                 emit_step(&event_tx, IdentifyEvent::AlbumLinksRead { read });
             });
         }
 
         Effect::LookupCatalog { source, catalog } => {
             let library_manager = inner.library_manager.clone();
-            runtime.spawn(async move {
+            spawn_until_cancelled(&runtime, &token, async move {
                 let query = SearchQuery::CatalogNumber {
                     catalog_number: catalog.clone(),
                 };
                 let lookup = search_source(&library_manager, source, &query, priority).await;
-                if token.is_cancelled() {
-                    return;
-                }
                 let outcome = annotate_lookup(lookup, &library_manager).await;
                 if let Err(failure) = &outcome {
                     debug!(
@@ -808,5 +810,31 @@ mod tests {
         );
         await_deregistered(&inner).await;
         assert!(handle.running_keys().is_empty());
+    }
+
+    /// A cancelled run's lookup ends where it stands — here, waiting between
+    /// retries on a provider that never answers — rather than running on.
+    #[tokio::test]
+    async fn a_cancelled_run_drops_the_lookup_it_was_waiting_on() {
+        struct Dropped(Option<tokio::sync::oneshot::Sender<()>>);
+        impl Drop for Dropped {
+            fn drop(&mut self) {
+                let _ = self.0.take().map(|tx| tx.send(()));
+            }
+        }
+        let (dropped_tx, dropped_rx) = tokio::sync::oneshot::channel();
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+        let token = CancellationToken::new();
+        spawn_until_cancelled(&tokio::runtime::Handle::current(), &token, async move {
+            let _guard = Dropped(Some(dropped_tx));
+            let _ = started_tx.send(());
+            std::future::pending::<()>().await;
+        });
+        started_rx.await.expect("the lookup starts");
+        token.cancel();
+        tokio::time::timeout(Duration::from_secs(2), dropped_rx)
+            .await
+            .expect("the lookup is dropped once its run is cancelled")
+            .expect("the guard reports its drop");
     }
 }

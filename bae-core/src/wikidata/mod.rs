@@ -18,6 +18,7 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::import::{Catalog, CatalogPage};
+use crate::retry::RetryPolicy;
 use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
@@ -105,6 +106,11 @@ fn should_retry(error: &WikidataError) -> bool {
     }
 }
 
+/// How Wikidata is asked again: a 429 or a 5xx is Wikimedia shedding load, so
+/// the waits double from one second, jittered, as MusicBrainz's do.
+const RETRY: RetryPolicy =
+    RetryPolicy::exponential(4, Duration::from_secs(1), Duration::from_secs(10));
+
 /// Wrap one request in the client's own retry policy — a caller shouldn't have
 /// to know which of these failures are worth repeating. (MusicBrainz and
 /// Discogs do the same.)
@@ -113,8 +119,7 @@ where
     F: Fn() -> Fut,
     Fut: std::future::Future<Output = Result<T, WikidataError>>,
 {
-    crate::retry::retry_with_backoff_if(3, label, should_retry, crate::retry::linear_backoff, f)
-        .await
+    crate::retry::retry_with_backoff_if(RETRY, label, should_retry, f).await
 }
 
 fn wikidata_body(response: CachedResponse) -> Result<String, WikidataError> {

@@ -2,7 +2,7 @@
 
 use super::{
     push_unique_cover, send_artwork_request, Catalog, CoverStanding, DownscaledCopy, ImportError,
-    RemoteCover, RemoteImageSet, ARCHIVE, RETRY_BASE_DELAY,
+    RemoteCover, RemoteImageSet, ARCHIVE,
 };
 use crate::util::http::Http;
 use serde::Deserialize;
@@ -47,9 +47,7 @@ pub async fn musicbrainz_group_gallery(
 }
 
 async fn fetch_gallery(http: &Http, url: &str) -> Result<Vec<RemoteCover>, ImportError> {
-    let Some(response) =
-        send_artwork_request(http, url, "Cover Art Archive gallery", RETRY_BASE_DELAY).await?
-    else {
+    let Some(response) = send_artwork_request(http, url, "Cover Art Archive gallery").await? else {
         return Ok(Vec::new());
     };
     let bytes = crate::util::http::read_body_capped(response, 4 * 1024 * 1024)

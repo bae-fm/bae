@@ -468,8 +468,8 @@ async fn search_retries_rate_limit_then_returns_success() {
 
 #[tokio::test]
 async fn search_returns_persistent_rate_limit_after_retry_attempts() {
-    let (url, request_count) =
-        discogs_response_server(vec![RATE_LIMITED, RATE_LIMITED, RATE_LIMITED]).await;
+    let attempts = RETRY.attempts() as usize;
+    let (url, request_count) = discogs_response_server(vec![RATE_LIMITED; attempts]).await;
     let client = DiscogsClient::new(served_by(&url), "token".to_string());
 
     let error = client
@@ -478,7 +478,7 @@ async fn search_returns_persistent_rate_limit_after_retry_attempts() {
         .expect_err("persistent rate limit should fail after retry attempts");
 
     assert!(matches!(error, DiscogsError::RateLimit));
-    assert_eq!(request_count.load(Ordering::SeqCst), 3);
+    assert_eq!(request_count.load(Ordering::SeqCst), attempts);
 }
 
 #[tokio::test]
@@ -664,23 +664,22 @@ async fn a_not_found_answer_is_kept() {
 /// answer: every retry goes to the wire, and so does the next call.
 #[tokio::test]
 async fn transient_failures_are_not_kept() {
-    let (url, requests) = scripted_server(vec![
-        (429, String::new()),
-        (503, String::new()),
-        (429, String::new()),
-        (200, release_body(510003)),
-    ])
-    .await;
+    let attempts = RETRY.attempts() as usize;
+    // Every try but the last is a server error; the last is a rate limit.
+    let mut script: Vec<(u16, String)> = (1..attempts).map(|_| (503, String::new())).collect();
+    script.push((429, String::new()));
+    script.push((200, release_body(510003)));
+    let (url, requests) = scripted_server(script).await;
     let client = client_at(url);
 
     let error = client
         .get_release("510003", CallPriority::Interactive)
         .await
-        .expect_err("three transient answers exhaust the retries");
+        .expect_err("transient answers on every try exhaust the retries");
     assert!(matches!(error, DiscogsError::RateLimit));
     assert_eq!(
         requests.load(Ordering::SeqCst),
-        3,
+        attempts,
         "each retry asked the server again"
     );
 
@@ -691,7 +690,7 @@ async fn transient_failures_are_not_kept() {
     assert_eq!(release.id, "510003");
     assert_eq!(
         requests.load(Ordering::SeqCst),
-        4,
+        attempts + 1,
         "the failed answer was not kept"
     );
 }

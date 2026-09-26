@@ -39,14 +39,10 @@ use crate::retry::retry_with_backoff_if;
 const BATCH_SIZE: usize = 50;
 const MAX_BUFFERED_EVENTS: usize = 1_000;
 const FLUSH_INTERVAL: Duration = Duration::from_secs(2);
-const RETRY_ATTEMPTS: u32 = 3;
-/// Flat delay between diagnostics-upload retries. 250ms in production; zero in
-/// any test build so a retry-path test spends no real time between attempts
-/// (same `test` / `test-utils` seam as `retry::LINEAR_BACKOFF_BASE`).
-#[cfg(not(any(test, feature = "test-utils")))]
-const RETRY_DELAY: Duration = Duration::from_millis(250);
-#[cfg(any(test, feature = "test-utils"))]
-const RETRY_DELAY: Duration = Duration::ZERO;
+/// Three tries, a quarter second apart: diagnostics are dropped rather than
+/// queued, so there is no busy server here worth waiting out.
+const RETRY: crate::retry::RetryPolicy =
+    crate::retry::RetryPolicy::flat(3, Duration::from_millis(250));
 const DATADOG_ORIGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -536,13 +532,9 @@ async fn send_with_retry(
     transport: &dyn DiagnosticsTransport,
     request: DatadogRequest,
 ) -> Result<(), DiagnosticsError> {
-    retry_with_backoff_if(
-        RETRY_ATTEMPTS,
-        "diagnostics send",
-        should_retry,
-        |_| RETRY_DELAY,
-        || transport.send(request.clone()),
-    )
+    retry_with_backoff_if(RETRY, "diagnostics send", should_retry, || {
+        transport.send(request.clone())
+    })
     .await
 }
 

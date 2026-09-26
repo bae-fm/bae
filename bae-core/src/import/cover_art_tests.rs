@@ -252,21 +252,13 @@ async fn a_downloaded_image_survives_a_new_cache_over_the_same_directory() {
     let (host, url) = start_counting_host(200, body.clone()).await;
     let directory = tempfile::TempDir::new().expect("a temp image-cache directory");
 
-    let first_cache = RemoteImageCache::in_dir(
-        direct_http(),
-        directory.path().to_path_buf(),
-        u64::MAX,
-        Duration::from_millis(1),
-    );
+    let first_cache =
+        RemoteImageCache::in_dir(direct_http(), directory.path().to_path_buf(), u64::MAX);
     assert_eq!(first_cache.fetch_required(&url).await.unwrap().bytes, body);
     drop(first_cache);
 
-    let second_cache = RemoteImageCache::in_dir(
-        direct_http(),
-        directory.path().to_path_buf(),
-        u64::MAX,
-        Duration::from_millis(1),
-    );
+    let second_cache =
+        RemoteImageCache::in_dir(direct_http(), directory.path().to_path_buf(), u64::MAX);
     assert_eq!(second_cache.fetch_required(&url).await.unwrap().bytes, body);
     assert_eq!(host.hits(), 1, "the second cache reads the stored image");
 }

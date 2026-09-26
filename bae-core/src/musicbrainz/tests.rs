@@ -622,26 +622,25 @@ async fn a_not_found_answer_is_kept() {
 /// answer: every retry goes to the wire, and so does the next call.
 #[tokio::test]
 async fn transient_failures_are_not_kept() {
-    let (url, requests) = mb_response_server(vec![
-        (429, String::new()),
-        (503, String::new()),
-        (429, String::new()),
-        (200, discid_body("mb-after-transient")),
-    ])
-    .await;
+    let attempts = RETRY.attempts() as usize;
+    // Every try but the last is a server error; the last is a rate limit.
+    let mut script: Vec<(u16, String)> = (1..attempts).map(|_| (503, String::new())).collect();
+    script.push((429, String::new()));
+    script.push((200, discid_body("mb-after-transient")));
+    let (url, requests) = mb_response_server(script).await;
     let musicbrainz = served_by(&url);
 
     let error = musicbrainz
         .lookup_by_discid("disc-transient", CallPriority::Interactive)
         .await
-        .expect_err("three transient answers exhaust the retries");
+        .expect_err("transient answers on every try exhaust the retries");
     assert!(matches!(
         error,
         MusicBrainzError::Provider { status: Some(429) }
     ));
     assert_eq!(
         requests.load(Ordering::SeqCst),
-        3,
+        attempts,
         "each retry asked the server again"
     );
 
@@ -652,7 +651,7 @@ async fn transient_failures_are_not_kept() {
     assert_eq!(releases[0].id, "mb-after-transient");
     assert_eq!(
         requests.load(Ordering::SeqCst),
-        4,
+        attempts + 1,
         "the failed answer was not kept"
     );
 }
