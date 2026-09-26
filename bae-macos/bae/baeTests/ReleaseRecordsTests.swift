@@ -11,9 +11,11 @@ import Testing
 @MainActor
 @Suite("Release records")
 struct ReleaseRecordsTests {
-    // Tall enough that the pane's whole scrolling content renders: the
-    // records row is the last thing in it.
-    private static let paneSize = NSSize(width: 900, height: 1800)
+    // Tall enough for the header card down to its records row, its last
+    // line. The track table below takes no part, and capturing it too scales
+    // the row's small type under what text recognition reads reliably:
+    // "Discogs" came back as "Discoas".
+    private static let paneSize = NSSize(width: 900, height: 1100)
     private static let rowSize = NSSize(width: 420, height: 120)
     private static let cardSize = NSSize(width: 1100, height: 760)
 
