@@ -352,6 +352,14 @@ impl RootRemovalBackend for FakeRemovalBackend {
             None => Ok(Vec::new()),
         }
     }
+
+    async fn adopt_durable_roots(&self, _parent: &Path, _inner: &[PathBuf]) -> Result<(), String> {
+        self.calls.lock().unwrap().push("adopt");
+        match self.remove_error.lock().unwrap().clone() {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
+    }
 }
 
 struct CoordinatorHarness {
@@ -599,6 +607,7 @@ impl TestScan {
     }
 }
 
+include!("tests/adoption.rs");
 include!("tests/coordinator.rs");
 include!("tests/cover_and_rescan.rs");
 include!("tests/edits_and_formats.rs");

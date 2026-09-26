@@ -53,8 +53,9 @@ impl ImportServiceHandle {
     /// library once it has been read.
     ///
     /// A folder at or below a watched folder is already covered by it: that
-    /// root is read again rather than a second, overlapping one added. Any
-    /// other folder is added. Either way this returns once the read is over,
+    /// root is read again rather than a second, overlapping one added. A
+    /// folder holding watched folders takes them over. Any other folder is
+    /// added. Either way this returns once the read is over,
     /// so the answer is about what is on disk now — and a read that failed is
     /// that answer, as an error, rather than a conclusion drawn from what an
     /// earlier read left stored.
@@ -109,12 +110,26 @@ impl ImportServiceHandle {
 
     /// Store `path` as watched and ask for it to be read. `completion`, when
     /// given, hears when that read is over.
+    ///
+    /// A folder holding watched folders is watched in their place rather
+    /// than refused as overlapping them: they are the same files under a
+    /// wider root, so what was decided about their candidates carries over.
     async fn add_watched_folder_write(
         &self,
         path: String,
         completion: Option<tokio::sync::oneshot::Sender<Result<(), String>>>,
     ) -> Result<(), crate::import::ImportError> {
         let path = crate::import::watched_folder::canonical_absolute_root(&path)?;
+        let inner: Vec<std::path::PathBuf> = self
+            .watched_folders()
+            .await?
+            .into_iter()
+            .map(|folder| std::path::PathBuf::from(folder.path))
+            .filter(|root| root.as_path() != std::path::Path::new(&path) && root.starts_with(&path))
+            .collect();
+        if !inner.is_empty() {
+            return self.adopt_watched_folders(path, inner, completion).await;
+        }
         let _commit = self.folder_state_commit.lock("add a watched folder").await;
         let added = self
             .library_manager
@@ -141,6 +156,37 @@ impl ImportServiceHandle {
         self.event_tx.send(ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }),
         );
         Ok(())
+    }
+
+    /// Watch `parent` in place of the watched folders `inner` inside it, and
+    /// return once that has landed. The coordinator does it — it stops what
+    /// is reading them first — and holds the folder-state lock for the write,
+    /// so this holds none while it waits. The write checks `inner` is still
+    /// exactly what `parent` holds, so a folder watched or removed since this
+    /// looked is an error rather than a wrong adoption.
+    async fn adopt_watched_folders(
+        &self,
+        parent: String,
+        inner: Vec<std::path::PathBuf>,
+        read: Option<tokio::sync::oneshot::Sender<Result<(), String>>>,
+    ) -> Result<(), crate::import::ImportError> {
+        info!("{parent} takes over the watched folders inside it: {inner:?}");
+        let (adopted, landed) = tokio::sync::oneshot::channel();
+        self.send_watcher_command(
+            WatcherCommand::Adopt {
+                parent: std::path::PathBuf::from(&parent),
+                inner,
+                adopted,
+                read,
+            },
+            "failed to request watching a folder in place of the ones inside it",
+        )?;
+        landed
+            .await
+            .map_err(|_| crate::import::ImportError::Internal {
+                detail: "folder adoption ended without a result".to_string(),
+            })?
+            .map_err(|detail| crate::import::ImportError::Watch { detail })
     }
 
     /// Stop watching `path`. The coordinator first cancels its scan and

@@ -12,6 +12,8 @@
 use super::*;
 use std::collections::BTreeSet;
 
+mod root_tasks;
+
 /// A refresh, folder-decision or removal caller waiting to hear that what it
 /// asked for is over.
 pub(super) type RefreshCompletion = tokio::sync::oneshot::Sender<Result<(), String>>;
@@ -32,6 +34,7 @@ pub(super) struct ActiveRoots {
     next_scan_id: u64,
     removal_backend: Arc<dyn RootRemovalBackend>,
     removal_completions: mpsc::UnboundedSender<RootRemovalCompletion>,
+    adoption_completions: mpsc::UnboundedSender<RootAdoptionCompletion>,
     folder_state_commit: crate::import::FolderStateCommit,
     next_removal_id: u64,
 }
@@ -40,6 +43,11 @@ pub(super) struct ActiveRoots {
 enum RootActivity {
     Scanning(RootScanSchedule),
     Removing(RootRemovalSchedule),
+    /// A folder taking over the watched folders inside it.
+    Adopting(RootAdoptionSchedule),
+    /// A watched folder being folded into the folder that holds it, which is
+    /// where whatever asks for it waits.
+    FoldingInto(PathBuf),
 }
 
 /// What one pass over a root reads.
@@ -127,6 +135,34 @@ struct Queued {
     changed: BTreeSet<String>,
 }
 
+struct RootAdoptionSchedule {
+    id: u64,
+    inner: Vec<PathBuf>,
+    task: tokio::task::JoinHandle<()>,
+    adopted: RefreshCompletion,
+    /// Who waits for the read of the adopting folder: the caller that asked,
+    /// and the refresh callers of the folders it takes over.
+    read_waiters: Vec<RefreshCompletion>,
+}
+
+impl RootAdoptionSchedule {
+    /// The service is going away: wait for the task, and tell everyone
+    /// waiting.
+    async fn shut_down(self) {
+        if let Err(error) = self.task.await {
+            error!("folder adoption task failed during shutdown: {error}");
+        }
+        for waiter in std::iter::once(self.adopted).chain(self.read_waiters) {
+            if waiter
+                .send(Err("folder scan service stopped".to_string()))
+                .is_err()
+            {
+                debug!("folder caller dropped during shutdown");
+            }
+        }
+    }
+}
+
 struct RootRemovalSchedule {
     id: u64,
     task: tokio::task::JoinHandle<()>,
@@ -136,9 +172,9 @@ struct RootRemovalSchedule {
 
 impl ActiveRoots {
     /// The roots, with the completions the coordinator's loop must hand back to
-    /// [`Self::finish_scan`] and [`Self::finish_removal`]. Two channels rather
-    /// than one, because the loop serves a finished removal ahead of a finished
-    /// scan.
+    /// [`Self::finish_scan`], [`Self::finish_removal`] and
+    /// [`Self::finish_adoption`]. A channel each, because the loop serves a
+    /// finished removal or adoption ahead of a finished scan.
     pub(super) fn new(
         starter: RootScanStarter,
         removal_backend: Arc<dyn RootRemovalBackend>,
@@ -147,9 +183,11 @@ impl ActiveRoots {
         Self,
         mpsc::UnboundedReceiver<RootScanCompletion>,
         mpsc::UnboundedReceiver<RootRemovalCompletion>,
+        mpsc::UnboundedReceiver<RootAdoptionCompletion>,
     ) {
         let (scan_completions, scan_rx) = mpsc::unbounded_channel();
         let (removal_completions, removal_rx) = mpsc::unbounded_channel();
+        let (adoption_completions, adoption_rx) = mpsc::unbounded_channel();
         (
             Self {
                 roots: HashMap::new(),
@@ -158,11 +196,13 @@ impl ActiveRoots {
                 next_scan_id: 0,
                 removal_backend,
                 removal_completions,
+                adoption_completions,
                 folder_state_commit,
                 next_removal_id: 0,
             },
             scan_rx,
             removal_rx,
+            adoption_rx,
         )
     }
 
@@ -205,6 +245,13 @@ impl ActiveRoots {
                     }
                 }
             }
+            // The folder that takes it over is read whole once it has, which
+            // is the pass a caller waiting on this one is answered by.
+            Some(RootActivity::Adopting(_) | RootActivity::FoldingInto(_)) => {
+                if let Some(waiter) = waiter {
+                    self.wait_on_adoption(&path, waiter);
+                }
+            }
             None => {
                 info!("folder scan of {} starting: {cause}", path.display());
                 self.start_pass(
@@ -239,7 +286,12 @@ impl ActiveRoots {
                 );
                 schedule.changed.extend(folders);
             }
-            Some(RootActivity::Removing(_)) => {}
+            // The whole pass that follows an adoption reads them.
+            Some(
+                RootActivity::Removing(_)
+                | RootActivity::Adopting(_)
+                | RootActivity::FoldingInto(_),
+            ) => {}
             None => {
                 info!(
                     "reading {folders:?} under {} again: {cause}",
@@ -276,6 +328,12 @@ impl ActiveRoots {
             }
             Some(RootActivity::Removing(_)) => {
                 request.answer(Err(format!("{} is being removed", path.display())));
+            }
+            Some(RootActivity::Adopting(_) | RootActivity::FoldingInto(_)) => {
+                request.answer(Err(format!(
+                    "{} is being taken over by the folder that holds it",
+                    path.display()
+                )));
             }
             None => {
                 self.start_pass(
@@ -354,9 +412,24 @@ impl ActiveRoots {
     /// is under way waits on that one — two removals would race over the same
     /// watch.
     pub(super) fn remove(&mut self, path: PathBuf, completion: RefreshCompletion) {
-        if let Some(RootActivity::Removing(removal)) = self.roots.get_mut(&path) {
-            removal.completions.push(completion);
-            return;
+        match self.roots.get_mut(&path) {
+            Some(RootActivity::Removing(removal)) => {
+                removal.completions.push(completion);
+                return;
+            }
+            Some(RootActivity::Adopting(_) | RootActivity::FoldingInto(_)) => {
+                if completion
+                    .send(Err(format!(
+                        "{} is being taken over by the folder that holds it",
+                        path.display()
+                    )))
+                    .is_err()
+                {
+                    debug!("folder removal caller dropped during an adoption");
+                }
+                return;
+            }
+            Some(RootActivity::Scanning(_)) | None => {}
         }
         // A removal was ruled out just above, so what is here is a pass or
         // nothing. The pass is cancelled and handed over to be waited on: it
@@ -386,7 +459,7 @@ impl ActiveRoots {
         let commit = self.folder_state_commit.clone();
         let completions = self.removal_completions.clone();
         let task = tokio::spawn(async move {
-            let result = run_root_removal(&removal_path, scan, backend.as_ref(), commit).await;
+            let result = root_tasks::run_root_removal(&removal_path, scan, backend.as_ref(), commit).await;
             if completions
                 .send(RootRemovalCompletion {
                     id,
@@ -497,6 +570,8 @@ impl ActiveRoots {
         }
         for (_, activity) in self.roots.drain() {
             match activity {
+                RootActivity::Adopting(adoption) => adoption.shut_down().await,
+                RootActivity::FoldingInto(_) => {}
                 RootActivity::Scanning(schedule) => {
                     if let Err(error) = schedule.scan.task.await {
                         error!("folder scan task failed during shutdown: {error}");
@@ -556,6 +631,180 @@ impl ActiveRoots {
             }),
         );
     }
+}
+
+impl ActiveRoots {
+    /// Watch `parent` in place of the watched folders `inner` inside it.
+    /// `adopted` hears whether the durable change landed; `read`, when given,
+    /// joins the read of `parent` that follows it.
+    pub(super) fn adopt(
+        &mut self,
+        parent: PathBuf,
+        inner: Vec<PathBuf>,
+        adopted: RefreshCompletion,
+        read: Option<RefreshCompletion>,
+    ) {
+        let busy = self.roots.contains_key(&parent)
+            || inner.iter().any(|root| {
+                !matches!(self.roots.get(root), None | Some(RootActivity::Scanning(_)))
+            });
+        if busy {
+            let error = format!(
+                "{} or a watched folder inside it is already being removed or taken over",
+                parent.display()
+            );
+            root_tasks::answer(adopted, Err(error.clone()));
+            if let Some(read) = read {
+                root_tasks::answer(read, Err(error));
+            }
+            return;
+        }
+        let mut scans = Vec::new();
+        let mut read_waiters: Vec<RefreshCompletion> = read.into_iter().collect();
+        for root in &inner {
+            if let Some(RootActivity::Scanning(mut schedule)) = self.roots.remove(root) {
+                schedule.scan.cancellation.cancel();
+                read_waiters.extend(
+                    schedule
+                        .current_waiters
+                        .drain(..)
+                        .chain(schedule.followup_waiters.drain(..)),
+                );
+                for reading in schedule.readings.drain(..) {
+                    reading.answer(Err(format!(
+                        "{} is being taken over by the folder that holds it",
+                        root.display()
+                    )));
+                }
+                scans.push(schedule.scan);
+            }
+            self.roots
+                .insert(root.clone(), RootActivity::FoldingInto(parent.clone()));
+        }
+        self.next_removal_id += 1;
+        let id = self.next_removal_id;
+        let backend = self.removal_backend.clone();
+        let commit = self.folder_state_commit.clone();
+        let completions = self.adoption_completions.clone();
+        let task_parent = parent.clone();
+        let task_inner = inner.clone();
+        let task = tokio::spawn(async move {
+            let result =
+                root_tasks::run_root_adoption(&task_parent, &task_inner, scans, backend.as_ref(), commit).await;
+            if completions
+                .send(RootAdoptionCompletion {
+                    id,
+                    parent: task_parent,
+                    result,
+                })
+                .is_err()
+            {
+                debug!("folder scan coordinator ended before adoption completion");
+            }
+        });
+        self.roots.insert(
+            parent,
+            RootActivity::Adopting(RootAdoptionSchedule {
+                id,
+                inner,
+                task,
+                adopted,
+                read_waiters,
+            }),
+        );
+    }
+
+    /// A caller waiting on `path`, which is adopting or being taken over,
+    /// waits on the read of the folder that takes it over.
+    pub(super) fn wait_on_adoption(&mut self, path: &Path, waiter: RefreshCompletion) {
+        let parent = match self.roots.get(path) {
+            Some(RootActivity::FoldingInto(parent)) => parent.clone(),
+            _ => path.to_path_buf(),
+        };
+        match self.roots.get_mut(&parent) {
+            Some(RootActivity::Adopting(adoption)) => adoption.read_waiters.push(waiter),
+            _ => root_tasks::answer(
+                waiter,
+                Err(format!("{} is no longer watched", path.display())),
+            ),
+        }
+    }
+
+    /// An adoption reported itself over. A landed one starts the read of the
+    /// folder that took over; a failed one puts every folder it would have
+    /// taken over back to being read. Nothing comes back for one this has
+    /// already replaced.
+    pub(super) async fn finish_adoption(
+        &mut self,
+        completion: RootAdoptionCompletion,
+    ) -> Option<AdoptionOutcome> {
+        if !matches!(
+            self.roots.get(&completion.parent),
+            Some(RootActivity::Adopting(adoption)) if adoption.id == completion.id
+        ) {
+            return None;
+        }
+        let Some(RootActivity::Adopting(adoption)) = self.roots.remove(&completion.parent) else {
+            return None;
+        };
+        if let Err(error) = adoption.task.await {
+            error!(
+                "folder adoption task failed for {}: {error}",
+                completion.parent.display()
+            );
+        }
+        for root in &adoption.inner {
+            self.roots.remove(root);
+        }
+        Some(match completion.result {
+            Ok(commit) => {
+                self.start_pass(
+                    completion.parent,
+                    RootPass::WholeRoot,
+                    adoption.read_waiters,
+                    Queued::default(),
+                );
+                AdoptionOutcome::Adopted {
+                    commit,
+                    adopted: adoption.adopted,
+                }
+            }
+            Err(error) => {
+                for waiter in adoption.read_waiters {
+                    root_tasks::answer(waiter, Err(error.clone()));
+                }
+                // Still watched, so read again: the pass the adoption
+                // cancelled may have left them half read.
+                for root in adoption.inner {
+                    self.start_pass(root, RootPass::WholeRoot, Vec::new(), Queued::default());
+                }
+                AdoptionOutcome::Failed {
+                    error,
+                    adopted: adoption.adopted,
+                }
+            }
+        })
+    }
+}
+
+pub(super) struct RootAdoptionCompletion {
+    id: u64,
+    parent: PathBuf,
+    result: Result<crate::import::FolderStateCommitGuard, String>,
+}
+
+/// What a finished adoption leaves the coordinator to announce.
+pub(super) enum AdoptionOutcome {
+    Adopted {
+        /// Held until the change is announced, so nothing else writes folder
+        /// state in between.
+        commit: crate::import::FolderStateCommitGuard,
+        adopted: RefreshCompletion,
+    },
+    Failed {
+        error: String,
+        adopted: RefreshCompletion,
+    },
 }
 
 /// What a finished removal leaves the coordinator to announce. The coordinator
@@ -641,6 +890,9 @@ pub(super) trait RootRemovalBackend: Send + Sync {
     /// Delete the root's rows and return the scan entry keys that went with
     /// them.
     async fn remove_durable_root(&self, path: &Path) -> Result<Vec<String>, String>;
+    /// Watch `parent` in place of the watched folders `inner` inside it, in
+    /// one write that keeps what was decided about their candidates.
+    async fn adopt_durable_roots(&self, parent: &Path, inner: &[PathBuf]) -> Result<(), String>;
 }
 
 pub(super) struct ServiceRootRemovalBackend {
@@ -685,53 +937,17 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
             .map_err(|error| error.to_string())?
             .ok_or_else(|| format!("{} is not a watched folder", path.display()))
     }
-}
 
-async fn run_root_removal(
-    path: &Path,
-    scan: Option<RootScanTask>,
-    backend: &dyn RootRemovalBackend,
-    folder_state_commit: crate::import::FolderStateCommit,
-) -> RootRemovalResult {
-    if let Some(scan) = scan {
-        if let Err(error) = scan.task.await {
-            return RootRemovalResult::Failed(format!(
-                "folder scan task failed while removing {}: {error}",
-                path.display()
-            ));
-        }
-    }
-    let watch_snapshot = match backend.uninstall(path).await {
-        Ok(snapshot) => snapshot,
-        Err(error) => {
-            return RootRemovalResult::Failed(format!(
-                "could not remove folder watch for {}: {error}",
-                path.display()
-            ));
-        }
-    };
-    let commit = folder_state_commit.lock("remove a watched folder").await;
-    let removed_keys = match backend.remove_durable_root(path).await {
-        Ok(removed_keys) => removed_keys,
-        Err(error) => {
-            drop(commit);
-            let rollback = backend.reinstall(path, &watch_snapshot).await;
-            let detail = match rollback {
-                Ok(()) => format!(
-                    "could not remove watched folder {}: {error}",
-                    path.display()
-                ),
-                Err(rollback_error) => format!(
-                    "could not remove watched folder {}: {error}; restoring its folder watch also \
-                 failed: {rollback_error}",
-                    path.display()
-                ),
-            };
-            return RootRemovalResult::Failed(detail);
-        }
-    };
-    RootRemovalResult::Removed {
-        commit,
-        removed_keys,
+    async fn adopt_durable_roots(&self, parent: &Path, inner: &[PathBuf]) -> Result<(), String> {
+        self.library_manager
+            .adopt_watched_import_folders(
+                &parent.to_string_lossy(),
+                inner
+                    .iter()
+                    .map(|root| root.to_string_lossy().into_owned())
+                    .collect(),
+            )
+            .await
+            .map_err(|error| error.to_string())
     }
 }

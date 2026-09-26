@@ -251,6 +251,19 @@ impl LibraryManager {
         Ok(self.database.add_watched_import_folder(path).await?)
     }
 
+    /// Watch `parent` in place of the watched folders `inner` inside it,
+    /// keeping what was decided about their candidates.
+    pub(crate) async fn adopt_watched_import_folders(
+        &self,
+        parent: &str,
+        inner: Vec<String>,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .adopt_watched_import_folders(parent, inner)
+            .await?)
+    }
+
     pub async fn remove_watched_import_folder(
         &self,
         path: &str,

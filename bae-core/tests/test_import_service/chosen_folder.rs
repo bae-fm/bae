@@ -144,3 +144,91 @@ async fn a_folder_that_cannot_be_read_is_an_error() {
         "unexpected error: {error}"
     );
 }
+
+async fn content_hash_of(f: &ImportFixture, key: &str) -> String {
+    match f.handle.get_candidate(key).await.unwrap() {
+        Some(bae_core::import::ImportCandidateSnapshot::Folder { candidate, .. }) => {
+            candidate.files.content_hash()
+        }
+        other => panic!("{key} is a scanned folder: {other:?}"),
+    }
+}
+
+/// A folder holding watched folders takes them over: it is watched in their
+/// place, and what was decided about their candidates — a skip, a folder read
+/// as one release, a pick — carries over, since they are the same files.
+#[tokio::test]
+async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_their_state() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let music = f.temp_path().join("Music");
+    let skipped = album_dir(&f, "Music/Artist/Album");
+    let picked = album_dir(&f, "Music/Artist/Album 2");
+    album_dir(&f, "Music/Other Artist/Box/Album A");
+    album_dir(&f, "Music/Other Artist/Box/Album B");
+    let artist = music.join("Artist");
+    let other = music.join("Other Artist");
+    f.handle.choose_folder(path_string(&artist)).await.unwrap();
+    f.handle.choose_folder(path_string(&other)).await.unwrap();
+
+    f.handle
+        .set_candidate_skipped(path_string(&skipped), true)
+        .await
+        .unwrap();
+    f.handle
+        .select_candidate_metadata_provenance(
+            path_string(&picked),
+            MetadataProvenance::FileMetadata,
+        )
+        .await
+        .unwrap();
+    let combined = f
+        .handle
+        .combine_folder(bae_core::import::FolderReleaseDecisionKey {
+            watched_folder_path: path_string(&other),
+            relative_folder_path: "Box".to_string(),
+        })
+        .await
+        .unwrap();
+    let picked_hash = content_hash_of(&f, &path_string(&picked)).await;
+
+    let chosen = f
+        .handle
+        .choose_folder(path_string(&music))
+        .await
+        .expect("the folder takes over the ones inside it");
+
+    let watched: Vec<String> = f
+        .handle
+        .watched_folders()
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|folder| folder.path)
+        .collect();
+    assert_eq!(watched, vec![path_string(&music)]);
+    assert_eq!(
+        chosen,
+        bae_core::import::ChosenFolder::InImportQueue {
+            candidate_keys: vec![path_string(&picked), combined.clone()],
+        },
+        "the skipped album stays set aside and the box stays one release"
+    );
+    match f.handle.get_candidate(&path_string(&skipped)).await.unwrap() {
+        Some(bae_core::import::ImportCandidateSnapshot::Folder { skipped, .. }) => {
+            assert!(skipped, "the skip carries over")
+        }
+        other => panic!("the skipped album is still a scanned folder: {other:?}"),
+    }
+    let state = f
+        .library_manager
+        .load_import_candidate_state(&picked_hash)
+        .await
+        .unwrap()
+        .expect("the picked album keeps its state");
+    assert_eq!(
+        state.metadata_provenance,
+        Some(MetadataProvenance::FileMetadata),
+        "the pick carries over"
+    );
+}

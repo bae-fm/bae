@@ -11,6 +11,7 @@ mod rows;
 mod session_rows;
 mod signal_rows;
 mod verdict_rows;
+mod watched_folder_adoption;
 mod watched_folder_removal;
 
 use edit_rows::{delete_file_edits, insert_file_edits};

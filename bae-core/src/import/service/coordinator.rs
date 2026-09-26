@@ -66,8 +66,12 @@ impl ImportService {
                 .build()
                 .expect("folder scan coordinator runtime");
             runtime.block_on(async move {
-            let (mut active_roots, mut scan_completion_rx, mut removal_completion_rx) =
-                ActiveRoots::new(starter, removal_backend, folder_state_commit.clone());
+            let (
+                mut active_roots,
+                mut scan_completion_rx,
+                mut removal_completion_rx,
+                mut adoption_completion_rx,
+            ) = ActiveRoots::new(starter, removal_backend, folder_state_commit.clone());
             // A root on a network volume answers the cheap check off the
             // coordinator, because asking 500 directories over SMB whether they
             // have moved takes seconds and the loop has commands to serve
@@ -156,6 +160,14 @@ impl ImportService {
                             WatcherCommand::Remove { path, completion } => {
                                 active_roots.remove(path, completion);
                             }
+                            WatcherCommand::Adopt {
+                                parent,
+                                inner,
+                                adopted,
+                                read,
+                            } => {
+                                active_roots.adopt(parent, inner, adopted, read);
+                            }
                             WatcherCommand::Shutdown { completion } => {
                                 active_roots.shutdown().await;
                                 if completion.send(()).is_err() {
@@ -211,6 +223,28 @@ impl ImportService {
                                     if caller.send(Err(error.clone())).is_err() {
                                         debug!("folder removal caller dropped before failure");
                                     }
+                                }
+                            }
+                        }
+                    }
+                    Some(completion) = adoption_completion_rx.recv() => {
+                        let Some(outcome) = active_roots.finish_adoption(completion).await else {
+                            continue;
+                        };
+                        match outcome {
+                            AdoptionOutcome::Adopted { commit, adopted } => {
+                                let folders = watched_folders(&library_manager).await;
+                                event_tx.send(crate::import::handle::ImportEvent::Scan(
+                                    ScanEvent::WatchedFoldersChanged { folders },
+                                ));
+                                drop(commit);
+                                if adopted.send(Ok(())).is_err() {
+                                    debug!("folder adoption caller dropped before completion");
+                                }
+                            }
+                            AdoptionOutcome::Failed { error, adopted } => {
+                                if adopted.send(Err(error)).is_err() {
+                                    debug!("folder adoption caller dropped before failure");
                                 }
                             }
                         }
