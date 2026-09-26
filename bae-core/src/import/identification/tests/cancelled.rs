@@ -200,3 +200,38 @@ async fn a_cancelled_answer_is_not_written() {
     assert!(fixture.identified_for(&dir).await.is_none());
     assert!(fixture.import.candidate_runtime(&key).is_none());
 }
+
+/// A run the queue never started — a re-identify sheet's — ends through the
+/// same cancel: one cancel for a candidate's identification, however it began.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_run_the_queue_did_not_start_ends_through_the_same_cancel() {
+    let fixture = Fixture::new("cancel-outside-queue").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.provider.hold("/discid/");
+    fixture.scan(1).await;
+    let candidate = fixture
+        .import
+        .answerable_candidate(&key)
+        .await
+        .unwrap()
+        .expect("the scanned candidate is answerable");
+    let run = fixture.import.new_identification_run();
+    assert!(fixture.import.start_identification(
+        run,
+        key.clone(),
+        ExtractionSource::Candidate { candidate },
+        CallPriority::Interactive,
+        LookupChoices::default(),
+        None,
+    ));
+    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    assert!(fixture.import.is_identifying(&key));
+
+    fixture.identification().cancel(vec![key.clone()]);
+    await_not_identifying(&fixture, &key).await;
+    fixture.provider.release();
+
+    assert!(fixture.identified_for(&dir).await.is_none());
+}

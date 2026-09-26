@@ -67,7 +67,6 @@ private struct ImportOperations: Sendable {
         @Sendable (String, String, BridgeFileRoleChoice) async throws -> Void
     let autoIdentifyRelease:
         @Sendable (String, String, BridgeLookupChoices) -> Void
-    let cancelAutoIdentify: @Sendable (String) -> Void
     let startCandidateSearch: @Sendable (String, BridgeSearchQuery) -> Void
     let retryCandidateSearch: @Sendable (String) -> Void
     let subscribeLibraryStatuses: @Sendable () -> LibraryStatusQuery
@@ -191,9 +190,6 @@ extension ImportOperations {
                     releaseId: $1,
                     choices: $2
                 )
-            },
-            cancelAutoIdentify: {
-                handle.cancelAutoIdentify(candidateKey: $0)
             },
             startCandidateSearch: {
                 handle.startCandidateSearch(candidateKey: $0, query: $1)
@@ -415,7 +411,6 @@ final class Importer: Sendable, Observable {
                 _,
                 _ in
             },
-        cancelAutoIdentify: @escaping @Sendable (String) -> Void = { _ in },
         startCandidateSearch:
             @escaping @Sendable (String, BridgeSearchQuery) -> Void = { _, _ in
             },
@@ -521,7 +516,6 @@ final class Importer: Sendable, Observable {
             setSheetDisc: setSheetDisc,
             setFileRole: setFileRole,
             autoIdentifyRelease: autoIdentifyRelease,
-            cancelAutoIdentify: cancelAutoIdentify,
             startCandidateSearch: startCandidateSearch,
             retryCandidateSearch: retryCandidateSearch,
             subscribeLibraryStatuses: subscribeLibraryStatuses,
@@ -664,10 +658,6 @@ extension Importer {
         operations.autoIdentifyRelease(candidateKey, releaseId, choices)
     }
 
-    func cancelAutoIdentify(_ candidateKey: String) {
-        operations.cancelAutoIdentify(candidateKey)
-    }
-
     /// Submit a candidate's typed search. Fire-and-forget: every configured
     /// provider is asked at once and each answer lands on the candidate's
     /// runtime, which the pane already watches.
@@ -709,9 +699,10 @@ extension Importer {
         operations.rerunIdentifyForCandidate(candidateKey)
     }
 
-    /// Take these candidates off the identification queue, waiting or
-    /// running. They are left unidentified and are not picked up again on
-    /// their own; `rerunIdentifyForCandidate` asks for one again.
+    /// Stop these candidates' identification however it was started — queued,
+    /// running, or a re-identify sheet's own run. They are left unidentified
+    /// and are not picked up again on their own; `rerunIdentifyForCandidate`
+    /// asks for one again.
     func cancelIdentification(_ candidateKeys: [String]) {
         operations.cancelIdentification(candidateKeys)
     }

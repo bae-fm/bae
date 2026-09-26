@@ -75,9 +75,9 @@ struct ReIdentifySheet: View {
         }
         .onDisappear {
             commitTask?.cancel()
-            // Stop the core-side pipeline: the identify driver and any in-flight
-            // artwork OCR for this candidate.
-            importer.cancelAutoIdentify(key)
+            // Stop this release's identification: the identify driver and any
+            // in-flight artwork OCR — the one cancel every identification has.
+            importer.cancelIdentification([key])
             // Drop the candidate so a future re-open starts cold rather
             // than replaying the prior session's terminal state.
             importStore.reIdentifyCandidates.removeValue(forKey: key)

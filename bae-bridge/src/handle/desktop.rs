@@ -164,15 +164,6 @@ forward! {
             );
         }
 
-        /// Stop a candidate's identify pipeline: cancels the identify driver and
-        /// the in-flight signal extraction (artwork OCR) for `candidate_key`. The
-        /// inverse of `rerun_identify_for_candidate` / `auto_identify_release`; a no-op for
-        /// a key with nothing running. Called when the UI tears the candidate down
-        /// (the re-identify sheet closing).
-        fn cancel_auto_identify(candidate_key: String) {
-            this.services.cancel_identify(&candidate_key);
-        }
-
         /// Identify a folder candidate again, over what the candidate says its
         /// lookup asks about and the sources the library asks now. A run reads
         /// its inputs once, at its start, so this cancels whatever is going for
@@ -190,10 +181,11 @@ forward! {
             this.services.rerun_identify(candidate_key);
         }
 
-        /// Take these candidates off the identification queue, whether they
-        /// are waiting, running, or having their answer written. They are
-        /// left unidentified — no verdict, no failure — and are not picked up
-        /// again on their own; `rerun_identify_for_candidate` asks for one.
+        /// Stop these candidates' identification however it was started —
+        /// queued, running, having its answer written, or a re-identify
+        /// sheet's own run. They are left unidentified — no verdict, no
+        /// failure — and are not picked up again on their own;
+        /// `rerun_identify_for_candidate` asks for one.
         fn cancel_identification(candidate_keys: Vec<String>) {
             this.services.cancel_identification(candidate_keys);
         }

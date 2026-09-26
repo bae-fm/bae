@@ -318,10 +318,14 @@ impl Queue {
     /// the identity is declined, so the automatic admission does not put it
     /// back. A run in flight is ended, and an answer being written is told to
     /// give itself up before it writes, so the candidates are left as
-    /// unidentified as they were: no verdict, no failure. Nothing for a key the
-    /// queue does not hold.
+    /// unidentified as they were: no verdict, no failure.
+    ///
+    /// A key the queue does not hold may still have a run of its own — a
+    /// library release re-identified in its sheet, which the queue never
+    /// starts — and that run is ended. One cancel, however the run began.
     fn cancel(&mut self, context: &Context, key: &str) {
         let Some(index) = self.index_of_key(key) else {
+            context.import.cancel_identification(key);
             return;
         };
         let job = self

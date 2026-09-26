@@ -130,15 +130,6 @@ impl AppServices {
         }
     }
 
-    /// Stop a candidate's identification: both the identify driver and the
-    /// in-flight signal extraction behind it. The inverse of
-    /// [`Self::rerun_identify`] and
-    /// [`Self::identify_release_for_lookup`]; a no-op for a key with nothing
-    /// running.
-    pub fn cancel_identify(&self, candidate_key: &str) {
-        self.inner.import.cancel_identification(candidate_key);
-    }
-
     /// Identify a folder candidate again, reading what the candidate says its
     /// lookup asks about and the sources the library asks now. A run takes its
     /// inputs once, at its start, so asking for it again is asking for a new
@@ -152,9 +143,10 @@ impl AppServices {
         self.inner.identification.rerun_identify(candidate_key);
     }
 
-    /// Take these candidates off the identification queue, waiting or
-    /// running. They are left unidentified and the automatic admission does
-    /// not take them back up; [`Self::rerun_identify`] asks for them again.
+    /// Stop these candidates' identification, however it was started: off the
+    /// queue whether waiting or running, and a re-identify sheet's own run
+    /// ended. They are left unidentified and the automatic admission does not
+    /// take them back up; [`Self::rerun_identify`] asks for them again.
     pub fn cancel_identification(&self, candidate_keys: Vec<String>) {
         self.inner.identification.cancel(candidate_keys);
     }
