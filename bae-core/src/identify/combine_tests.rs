@@ -133,8 +133,8 @@ fn three_checked_signals_intersect() {
 }
 
 /// Signals that share no result are not a failure to identify: each saw a
-/// real release, so the set is their union, in signal order, and each row
-/// says which signal produced it.
+/// real release, so every answer is kept, and each row says which signal
+/// produced it.
 #[test]
 fn lookups_that_named_different_releases_each_keep_their_answer() {
     let discid = vec![pair("rel-a", Some("group-1"))];
@@ -142,15 +142,16 @@ fn lookups_that_named_different_releases_each_keep_their_answer() {
     let catalog = vec![pair("rel-c", Some("group-3"))];
     let outcome = combine(discid, barcode, catalog);
     let (matches, provenance, _) = found(outcome.clone());
-    // The disc ID is computed from the audio, and a chosen catalog number was
-    // typed off the disc, so those two answers are offered. A barcode is read
-    // off a photograph, and here nothing else stands behind its answer.
-    assert_eq!(ids(&matches), vec!["rel-a", "rel-c"]);
-    assert!(provenance[0].by_disc_id && !provenance[0].by_barcode);
-    assert!(provenance[1].by_catalog && !provenance[1].by_disc_id);
+    // A chosen catalog number was typed off the disc and names one pressing,
+    // so its answer is offered. The disc ID names every pressing sharing its
+    // table of contents, and a barcode is read off a photograph with nothing
+    // else here standing behind its answer, so both are set aside.
+    assert_eq!(ids(&matches), vec!["rel-c"]);
+    assert!(provenance[0].by_catalog && !provenance[0].by_disc_id);
     let left_out = narrowed(outcome);
-    assert_eq!(ids(&left_out.matches), vec!["rel-b"]);
-    assert!(left_out.provenance[0].by_barcode);
+    assert_eq!(ids(&left_out.matches), vec!["rel-a", "rel-b"]);
+    assert!(left_out.provenance[0].by_disc_id);
+    assert!(left_out.provenance[1].by_barcode);
 }
 
 /// The union names each release once even when two signals both saw it —

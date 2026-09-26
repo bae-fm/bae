@@ -21,18 +21,18 @@
 //! states about the row, which is one object whichever record says it.
 //!
 //! **Every row is scored, and the rows tied at the top are offered.** The
-//! score is `Support`: how many lookups returned the row, then how many of
-//! the two facts that name one pressing hold, then whether the folder's text
-//! mentions the row at all. Every other row is set aside under "N more
-//! releases", which a person can open.
+//! score is `Support`: how many lookups returned the row, how many of the
+//! facts that name one pressing hold, whether the disc ID returned it, and
+//! whether the folder's text mentions the row at all. Every other row is set
+//! aside under "N more releases", which a person can open.
 //!
-//! Taking the highest score is what used to be three separate rules. Two
+//! Taking the highest score is what would otherwise be separate rules. Two
 //! lookups naming one release outrank one lookup naming another, which is the
-//! intersection of the answering lookups. A row nothing else tells apart but
-//! the folder's catalog number is the pressing on the desk. A row the folder
-//! never mentions, beside rows it does, came from a misread barcode. And a
-//! score always has a highest value, so the list is shortened and never
-//! emptied.
+//! intersection of the answering lookups. A barcode and a catalog number name
+//! one pressing, where a disc ID names every pressing cut from one master. A
+//! row the folder never mentions, beside rows it does, came from a misread
+//! barcode. And a score always has a highest value, so the list is shortened
+//! and never emptied.
 
 use super::agreements::{agreements_of, CandidateText};
 use crate::db::LibraryStatus;
@@ -369,15 +369,24 @@ struct Support {
     /// another. Where no row was returned twice, every row ties here and the
     /// fields below decide.
     lookups: u32,
-    /// How many of the two facts that name a single pressing hold: the disc
-    /// ID returned this row, and the folder's text states this row's catalog
-    /// number.
+    /// How many of the facts that name this one pressing hold: the folder
+    /// states the row's catalog number, and a barcode lookup returned the
+    /// row.
     ///
-    /// A disc ID is computed from the audio on disk, and a catalog number is
-    /// printed on the disc itself. Each names one pressing rather than one
-    /// album, which is why they are read above the fields below and why the
-    /// disc ID counts here as well as above.
-    pressing: u32,
+    /// A catalog number and a barcode are printed on one pressing's sleeve
+    /// and disc, and a later pressing is given its own. The barcode counts
+    /// only for a row the folder's text also describes (see `offered`): an
+    /// image's bars misread into another valid code name some other
+    /// record entirely, which the text then says nothing about.
+    names_pressing: u32,
+    /// Whether the disc ID returned this row.
+    ///
+    /// A disc ID is computed from the audio on disk, so it names the disc —
+    /// but every pressing cut from one master has the same table of
+    /// contents, so it names all of them alike. That is why it is read below
+    /// what names one pressing, and why it counts here as well as among the
+    /// lookups.
+    shares_toc: bool,
     /// Whether there is any reason to show this row at all — see
     /// [`super::agreements::Agreements::offered`].
     ///
@@ -411,6 +420,7 @@ fn support_of(
         returned.by_search |= found.by_search;
     }
     let agreements = row.agreements(judgements);
+    let offered = agreements.offered();
     Support {
         lookups: [
             returned.by_disc_id,
@@ -421,8 +431,9 @@ fn support_of(
         .into_iter()
         .filter(|returned| *returned)
         .count() as u32,
-        pressing: u32::from(returned.by_disc_id) + u32::from(agreements.catalog),
-        offered: agreements.offered(),
+        names_pressing: u32::from(agreements.catalog) + u32::from(returned.by_barcode && offered),
+        shares_toc: returned.by_disc_id,
+        offered,
     }
 }
 
@@ -478,3 +489,7 @@ fn union_all(sets: &[&Results]) -> Results {
 #[cfg(test)]
 #[path = "combine_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "combine_evidence_tests.rs"]
+mod evidence_tests;
