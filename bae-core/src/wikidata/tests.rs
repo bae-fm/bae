@@ -293,20 +293,33 @@ fn a_document_naming_no_item_does_not_parse() {
 /// read.
 #[test]
 fn only_transient_wikidata_failures_are_retried() {
-    assert!(should_retry(&WikidataError::Timeout));
-    assert!(should_retry(&WikidataError::Network("refused".into())));
-    assert!(should_retry(&WikidataError::Provider { status: None }));
-    assert!(should_retry(&WikidataError::Provider { status: Some(503) }));
-    assert!(should_retry(&WikidataError::Provider { status: Some(429) }));
+    let provider = |status: Option<u16>, told_wait: Option<Duration>| {
+        repeat(&WikidataError::Provider { status, told_wait })
+    };
+    assert_eq!(repeat(&WikidataError::Timeout), Repeat::AfterBackoff);
+    assert_eq!(
+        repeat(&WikidataError::Network("refused".into())),
+        Repeat::AfterBackoff
+    );
+    assert_eq!(provider(None, None), Repeat::AfterBackoff);
+    assert_eq!(provider(Some(503), None), Repeat::AfterBackoff);
+    assert_eq!(
+        provider(Some(429), Some(Duration::from_secs(5))),
+        Repeat::AfterToldWait(Duration::from_secs(5)),
+        "a stated wait replaces the backoff"
+    );
 
-    assert!(!should_retry(&WikidataError::NotFound("Q424242".into())));
-    assert!(!should_retry(&WikidataError::Provider {
-        status: Some(404)
-    }));
-    assert!(!should_retry(&WikidataError::Provider {
-        status: Some(400)
-    }));
-    assert!(!should_retry(&WikidataError::Other(
-        "Failed to parse JSON".into()
-    )));
+    assert_eq!(
+        repeat(&WikidataError::NotFound("Q424242".into())),
+        Repeat::Never
+    );
+    assert_eq!(provider(Some(404), None), Repeat::Never);
+    assert_eq!(
+        provider(Some(400), Some(Duration::from_secs(5))),
+        Repeat::Never
+    );
+    assert_eq!(
+        repeat(&WikidataError::Other("Failed to parse JSON".into())),
+        Repeat::Never
+    );
 }

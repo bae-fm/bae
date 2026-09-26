@@ -85,19 +85,22 @@ impl RetryPolicy {
         span / 2 + span.mul_f64(draw.clamp(0.0, 1.0) / 2.0)
     }
 
-    /// How long this repeat actually sleeps. Zero in any test build, so a
-    /// retry-path test spends no real time between attempts — gated on `test`
-    /// (crate unit tests) and `test-utils` (integration tests, which compile
-    /// the crate as a normal dependency), the same seam
-    /// `install_test_keyring` uses. `test-utils` is dev/test-only, so a
-    /// production build always waits for real.
+    /// How long the wait before repeat `retry` sleeps — see [`pause`].
     fn pause(&self, retry: u32) -> Duration {
-        let wait = self.wait(retry, rand::rng().random::<f64>());
-        if cfg!(any(test, feature = "test-utils")) {
-            Duration::ZERO
-        } else {
-            wait
-        }
+        pause(self.wait(retry, rand::rng().random::<f64>()))
+    }
+}
+
+/// How long a wait actually sleeps. Zero in any test build, so a retry-path
+/// test spends no real time between attempts — gated on `test` (crate unit
+/// tests) and `test-utils` (integration tests, which compile the crate as a
+/// normal dependency), the same seam `install_test_keyring` uses.
+/// `test-utils` is dev/test-only, so a production build always waits for real.
+fn pause(wait: Duration) -> Duration {
+    if cfg!(any(test, feature = "test-utils")) {
+        Duration::ZERO
+    } else {
+        wait
     }
 }
 
@@ -108,23 +111,51 @@ pub fn is_transient_status(status: reqwest::StatusCode) -> bool {
     status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS
 }
 
-/// One attempt's outcome for [`retry_classified`], for callers whose retry/permanent
-/// decision is made inline rather than by inspecting an error type — e.g. a Cover
-/// Art Archive 404 is `Done` ("no cover exists"), a valid answer, not an error.
+/// Whether a failed try is worth repeating, and when.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Repeat {
+    /// The failure is the provider's answer, or a local fault: asking again
+    /// gets the same thing.
+    Never,
+    /// A transient failure the provider said nothing about: ask again after
+    /// the policy's own wait.
+    AfterBackoff,
+    /// The provider said how long to leave it alone — its `Retry-After`. That
+    /// wait replaces the policy's, since asking sooner is asking to be turned
+    /// away again.
+    AfterToldWait(Duration),
+}
+
+impl Repeat {
+    /// A transient failure, repeated after `told_wait` when the response
+    /// stated one and after the policy's own wait otherwise.
+    pub fn transient(told_wait: Option<Duration>) -> Self {
+        told_wait.map_or(Self::AfterBackoff, Self::AfterToldWait)
+    }
+}
+
+/// The longest a provider may ask bae to wait before a repeat. Discogs counts
+/// its limit over a sixty-second window, so no rate limit bae keeps to needs
+/// longer to clear. A provider asking for more is saying it is down for now,
+/// not busy, and the lookup ends at once rather than asking early only to be
+/// turned away again.
+const LONGEST_TOLD_WAIT: Duration = Duration::from_secs(60);
+
+/// One attempt's outcome for [`retry_classified`], for callers whose retry
+/// decision is made inline rather than by inspecting an error type — e.g. a
+/// Cover Art Archive 404 is `Done` ("no cover exists"), a valid answer, not an
+/// error.
 pub enum ClassifiedAttempt<T, E> {
     /// A final answer — return it.
     Done(T),
-    /// A transient failure — retry until attempts run out, then return this error.
-    Retry(E),
-    /// A permanent failure — return it immediately.
-    Permanent(E),
+    /// A failure, and whether and when it is worth repeating.
+    Failed(E, Repeat),
 }
 
-/// Try `attempt` as `policy` says, until it returns [`ClassifiedAttempt::Done`]
-/// or [`ClassifiedAttempt::Permanent`], or attempts run out. The sibling of
-/// [`retry_with_backoff_if`] for callers that classify each try inline (see
-/// [`ClassifiedAttempt`]) instead of returning `Result` + a `should_retry`
-/// predicate.
+/// Try `attempt` as `policy` says, until it returns
+/// [`ClassifiedAttempt::Done`], a failure not worth repeating, or attempts
+/// run out. [`retry_with_backoff_if`] is this for callers that return
+/// `Result` and classify the error with a predicate.
 pub async fn retry_classified<T, E, F, Fut>(
     policy: RetryPolicy,
     label: &str,
@@ -136,71 +167,61 @@ where
     Fut: std::future::Future<Output = ClassifiedAttempt<T, E>>,
 {
     let max_attempts = policy.attempts();
-    let mut last_error: Option<E> = None;
-    for attempt_index in 1..=max_attempts {
-        match attempt().await {
+    let mut attempt_index = 1;
+    loop {
+        let (error, repeat) = match attempt().await {
             ClassifiedAttempt::Done(value) => return Ok(value),
-            ClassifiedAttempt::Permanent(error) => return Err(error),
-            ClassifiedAttempt::Retry(error) => {
-                if attempt_index == max_attempts {
-                    warn!(
-                        "{} failed after {} attempts: {}",
-                        label, max_attempts, error
-                    );
-                    return Err(error);
-                }
-                warn!(
-                    "{} failed (attempt {}/{}): {} — retrying",
-                    label, attempt_index, max_attempts, error
-                );
-                last_error = Some(error);
-                tokio::time::sleep(policy.pause(attempt_index)).await;
+            ClassifiedAttempt::Failed(error, repeat) => (error, repeat),
+        };
+        let wait = match repeat {
+            Repeat::Never => return Err(error),
+            _ if attempt_index == max_attempts => {
+                warn!("{label} failed after {max_attempts} attempts: {error}");
+                return Err(error);
             }
-        }
+            Repeat::AfterToldWait(told) if told > LONGEST_TOLD_WAIT => {
+                warn!(
+                    "{label} failed (attempt {attempt_index}/{max_attempts}): {error} — the \
+                     provider asks for {told:?} before another try, longer than a lookup waits"
+                );
+                return Err(error);
+            }
+            Repeat::AfterToldWait(told) => pause(told),
+            Repeat::AfterBackoff => policy.pause(attempt_index),
+        };
+        warn!("{label} failed (attempt {attempt_index}/{max_attempts}): {error} — retrying in {wait:?}");
+        tokio::time::sleep(wait).await;
+        attempt_index += 1;
     }
-
-    // The loop returns on the final Retry, so reaching here is impossible.
-    Err(last_error.expect("the retry loop ran at least once"))
 }
 
-/// Try `f` as `policy` says, for as long as `should_retry` says the failure is
-/// worth repeating.
+/// Try `f` as `policy` says, repeating a failure as `repeat` classifies it.
 ///
-/// The predicate is required: most of what an API client returns is an answer,
-/// not a fault, and a retry that can't tell the difference asks three times to
-/// be told "not found" three times.
-pub async fn retry_with_backoff_if<F, Fut, T, E, ShouldRetry>(
+/// The classification is required: most of what an API client returns is an
+/// answer, not a fault, and a retry that can't tell the difference asks again
+/// only to be told "not found" again.
+pub async fn retry_with_backoff_if<F, Fut, T, E, Classify>(
     policy: RetryPolicy,
     label: &str,
-    should_retry: ShouldRetry,
+    repeat: Classify,
     f: F,
 ) -> Result<T, E>
 where
     F: Fn() -> Fut,
     Fut: std::future::Future<Output = Result<T, E>>,
     E: Display,
-    ShouldRetry: Fn(&E) -> bool,
+    Classify: Fn(&E) -> Repeat,
 {
-    let max_attempts = policy.attempts();
-    for attempt in 1..=max_attempts {
+    retry_classified(policy, label, || async {
         match f().await {
-            Ok(result) => return Ok(result),
-            Err(error) if !should_retry(&error) => return Err(error),
+            Ok(value) => ClassifiedAttempt::Done(value),
             Err(error) => {
-                if attempt == max_attempts {
-                    warn!("{} failed after {} attempts", label, max_attempts);
-                    return Err(error);
-                }
-                warn!(
-                    "{} failed (attempt {}/{}): {}",
-                    label, attempt, max_attempts, error
-                );
-                tokio::time::sleep(policy.pause(attempt)).await;
+                let repeat = repeat(&error);
+                ClassifiedAttempt::Failed(error, repeat)
             }
         }
-    }
-
-    unreachable!("max_attempts is greater than zero")
+    })
+    .await
 }
 
 #[cfg(test)]
@@ -209,8 +230,8 @@ mod tests {
     use std::time::Duration;
 
     use super::{
-        is_transient_status, retry_classified, retry_with_backoff_if, ClassifiedAttempt,
-        RetryPolicy,
+        is_transient_status, retry_classified, retry_with_backoff_if, ClassifiedAttempt, Repeat,
+        RetryPolicy, LONGEST_TOLD_WAIT,
     };
 
     const THREE: RetryPolicy = RetryPolicy::flat(3, Duration::from_millis(1));
@@ -266,7 +287,7 @@ mod tests {
         let attempts = AtomicUsize::new(0);
         let result: Result<(), &str> = retry_classified(THREE, "test", || async {
             attempts.fetch_add(1, Ordering::SeqCst);
-            ClassifiedAttempt::Permanent("permanent")
+            ClassifiedAttempt::Failed("permanent", Repeat::Never)
         })
         .await;
         assert_eq!(result, Err("permanent"));
@@ -278,7 +299,7 @@ mod tests {
         let attempts = AtomicUsize::new(0);
         let result: Result<(), &str> = retry_classified(THREE, "test", || async {
             attempts.fetch_add(1, Ordering::SeqCst);
-            ClassifiedAttempt::Retry("transient")
+            ClassifiedAttempt::Failed("transient", Repeat::AfterBackoff)
         })
         .await;
         assert_eq!(result, Err("transient"));
@@ -291,7 +312,7 @@ mod tests {
         let result: Result<&str, &str> = retry_classified(THREE, "test", || async {
             let n = attempts.fetch_add(1, Ordering::SeqCst);
             if n < 1 {
-                ClassifiedAttempt::Retry("transient")
+                ClassifiedAttempt::Failed("transient", Repeat::AfterBackoff)
             } else {
                 ClassifiedAttempt::Done("ok")
             }
@@ -308,7 +329,7 @@ mod tests {
         let result = retry_with_backoff_if(
             THREE,
             "test operation",
-            |_| false,
+            |_| Repeat::Never,
             || async {
                 attempts.fetch_add(1, Ordering::SeqCst);
                 Err::<(), _>("permanent")
@@ -327,7 +348,7 @@ mod tests {
         let result = retry_with_backoff_if(
             THREE,
             "test operation",
-            |_| true,
+            |_| Repeat::AfterBackoff,
             || async {
                 let attempt = attempts.fetch_add(1, Ordering::SeqCst);
                 if attempt < 2 {
@@ -341,5 +362,39 @@ mod tests {
 
         assert_eq!(result, Ok("sent"));
         assert_eq!(attempts.load(Ordering::SeqCst), 3);
+    }
+
+    /// A provider that says how long to wait is asked again after that wait,
+    /// within the longest a lookup waits.
+    #[tokio::test]
+    async fn a_told_wait_is_repeated_after() {
+        let attempts = AtomicUsize::new(0);
+        let result: Result<&str, &str> = retry_classified(THREE, "test", || async {
+            if attempts.fetch_add(1, Ordering::SeqCst) == 0 {
+                ClassifiedAttempt::Failed("busy", Repeat::AfterToldWait(LONGEST_TOLD_WAIT))
+            } else {
+                ClassifiedAttempt::Done("ok")
+            }
+        })
+        .await;
+        assert_eq!(result, Ok("ok"));
+        assert_eq!(attempts.load(Ordering::SeqCst), 2);
+    }
+
+    /// A provider asking for longer than a lookup waits is down for now: the
+    /// lookup ends rather than asking early to be turned away again.
+    #[tokio::test]
+    async fn a_told_wait_past_the_longest_ends_the_lookup() {
+        let attempts = AtomicUsize::new(0);
+        let result: Result<(), &str> = retry_classified(THREE, "test", || async {
+            attempts.fetch_add(1, Ordering::SeqCst);
+            ClassifiedAttempt::Failed(
+                "down",
+                Repeat::AfterToldWait(LONGEST_TOLD_WAIT + Duration::from_secs(1)),
+            )
+        })
+        .await;
+        assert_eq!(result, Err("down"));
+        assert_eq!(attempts.load(Ordering::SeqCst), 1);
     }
 }

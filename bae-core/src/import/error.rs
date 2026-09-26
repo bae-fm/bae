@@ -270,10 +270,17 @@ mod tests {
             ImportError::MusicBrainz(MusicBrainzError::Timeout)
         ));
 
-        let err: ImportError = MusicBrainzError::Provider { status: Some(503) }.into();
+        let err: ImportError = MusicBrainzError::Provider {
+            status: Some(503),
+            told_wait: None,
+        }
+        .into();
         assert!(matches!(
             err,
-            ImportError::MusicBrainz(MusicBrainzError::Provider { status: Some(503) })
+            ImportError::MusicBrainz(MusicBrainzError::Provider {
+                status: Some(503),
+                ..
+            })
         ));
     }
 
@@ -281,10 +288,11 @@ mod tests {
     /// can distinguish it from a hard failure.
     #[test]
     fn discogs_error_is_preserved_unflattened() {
-        let err: ImportError = crate::discogs::client::DiscogsError::RateLimit.into();
+        let err: ImportError =
+            crate::discogs::client::DiscogsError::RateLimit { told_wait: None }.into();
         assert!(matches!(
             err,
-            ImportError::Discogs(crate::discogs::client::DiscogsError::RateLimit)
+            ImportError::Discogs(crate::discogs::client::DiscogsError::RateLimit { .. })
         ));
     }
     #[test]

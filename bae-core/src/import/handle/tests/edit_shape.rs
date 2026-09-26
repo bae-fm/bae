@@ -15,7 +15,7 @@ fn validation_folds_validate_token_outcomes() {
     // Anything that merely fails to confirm the key leaves it unvalidated
     // to retry — never rejected.
     for couldnt_confirm in [
-        DiscogsError::RateLimit,
+        DiscogsError::RateLimit { told_wait: None },
         DiscogsError::NotFound,
         DiscogsError::Serialization(serde_json::from_str::<i32>("nope").unwrap_err()),
     ] {

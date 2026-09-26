@@ -478,7 +478,7 @@ fn mb_error_to_lookup_failure(e: &musicbrainz::MusicBrainzError) -> LookupFailur
     match e {
         MusicBrainzError::Network(_) => LookupFailure::Network,
         MusicBrainzError::Timeout => LookupFailure::Timeout,
-        MusicBrainzError::Provider { status } => LookupFailure::Provider { status: *status },
+        MusicBrainzError::Provider { status, .. } => LookupFailure::Provider { status: *status },
         MusicBrainzError::NotFound(_) | MusicBrainzError::Other(_) => LookupFailure::Diagnostic {
             detail: e.to_string(),
         },
@@ -499,10 +499,10 @@ pub(crate) fn import_error_to_lookup_failure(error: &ImportError) -> LookupFailu
             }
             DiscogsError::Transport(error) if error.is_timeout() => LookupFailure::Timeout,
             DiscogsError::Transport(_) => LookupFailure::Network,
-            DiscogsError::Provider(status) => LookupFailure::Provider {
+            DiscogsError::Provider { status, .. } => LookupFailure::Provider {
                 status: Some(status.as_u16()),
             },
-            DiscogsError::RateLimit => LookupFailure::Provider { status: Some(429) },
+            DiscogsError::RateLimit { .. } => LookupFailure::Provider { status: Some(429) },
             DiscogsError::InvalidApiKey => LookupFailure::Provider { status: Some(401) },
             DiscogsError::NotFound | DiscogsError::Serialization(_) => LookupFailure::Diagnostic {
                 detail: error.to_string(),

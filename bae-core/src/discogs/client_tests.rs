@@ -396,7 +396,7 @@ fn observe_signals_only_on_rejection_or_success() {
     client.observe::<()>(&Err(DiscogsError::InvalidApiKey));
     // A rate limit says nothing about the key, so it must not signal — a
     // transient blip cannot be allowed to reject a good key.
-    client.observe::<()>(&Err(DiscogsError::RateLimit));
+    client.observe::<()>(&Err(DiscogsError::RateLimit { told_wait: None }));
 
     assert_eq!(*signals.lock().unwrap(), vec!["accepted", "rejected"]);
 }
@@ -466,6 +466,45 @@ async fn search_retries_rate_limit_then_returns_success() {
     assert_eq!(request_count.load(Ordering::SeqCst), 2);
 }
 
+/// A rate limit that says when to come back is asked again then: the wait it
+/// states replaces the backoff.
+#[tokio::test]
+async fn a_rate_limit_with_a_stated_wait_is_asked_again() {
+    const RATE_LIMITED_BRIEFLY: &str =
+        "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 1\r\nContent-Length: 0\r\n\r\n";
+    let (url, request_count) =
+        discogs_response_server(vec![RATE_LIMITED_BRIEFLY, SEARCH_OK_EMPTY]).await;
+    let client = DiscogsClient::new(served_by(&url), "token".to_string());
+
+    client
+        .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
+        .await
+        .expect("the repeat after the stated wait answers");
+    assert_eq!(request_count.load(Ordering::SeqCst), 2);
+}
+
+/// A provider asking for longer than a lookup waits is down for now: the
+/// lookup ends at once instead of asking early to be turned away again.
+#[tokio::test]
+async fn a_rate_limit_asking_for_too_long_ends_the_lookup() {
+    const RATE_LIMITED_LONG: &str =
+        "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 3600\r\nContent-Length: 0\r\n\r\n";
+    let (url, request_count) = discogs_response_server(vec![RATE_LIMITED_LONG]).await;
+    let client = DiscogsClient::new(served_by(&url), "token".to_string());
+
+    let error = client
+        .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
+        .await
+        .expect_err("an hour is longer than a lookup waits");
+    assert!(matches!(
+        error,
+        DiscogsError::RateLimit {
+            told_wait: Some(wait)
+        } if wait == Duration::from_secs(3600)
+    ));
+    assert_eq!(request_count.load(Ordering::SeqCst), 1);
+}
+
 #[tokio::test]
 async fn search_returns_persistent_rate_limit_after_retry_attempts() {
     let attempts = RETRY.attempts() as usize;
@@ -477,7 +516,7 @@ async fn search_returns_persistent_rate_limit_after_retry_attempts() {
         .await
         .expect_err("persistent rate limit should fail after retry attempts");
 
-    assert!(matches!(error, DiscogsError::RateLimit));
+    assert!(matches!(error, DiscogsError::RateLimit { .. }));
     assert_eq!(request_count.load(Ordering::SeqCst), attempts);
 }
 
@@ -509,7 +548,13 @@ async fn search_does_not_retry_client_error() {
         .expect_err("a 400 should fail without retry");
 
     assert!(
-        matches!(error, DiscogsError::Provider(StatusCode::BAD_REQUEST)),
+        matches!(
+            error,
+            DiscogsError::Provider {
+                status: StatusCode::BAD_REQUEST,
+                ..
+            }
+        ),
         "expected Provider(400), got {error:?}",
     );
     assert_eq!(request_count.load(Ordering::SeqCst), 1);
@@ -517,24 +562,36 @@ async fn search_does_not_retry_client_error() {
 
 #[test]
 fn retry_policy_repeats_only_transient_failures() {
-    assert!(should_retry_discogs(&DiscogsError::RateLimit));
-    assert!(should_retry_discogs(&DiscogsError::Provider(
-        StatusCode::INTERNAL_SERVER_ERROR
-    )));
-    assert!(should_retry_discogs(&DiscogsError::Provider(
-        StatusCode::SERVICE_UNAVAILABLE
-    )));
-    assert!(!should_retry_discogs(&DiscogsError::Provider(
-        StatusCode::BAD_REQUEST
-    )));
-    assert!(!should_retry_discogs(&DiscogsError::Provider(
-        StatusCode::FORBIDDEN
-    )));
-    assert!(!should_retry_discogs(&DiscogsError::Provider(
-        StatusCode::UNPROCESSABLE_ENTITY
-    )));
-    assert!(!should_retry_discogs(&DiscogsError::InvalidApiKey));
-    assert!(!should_retry_discogs(&DiscogsError::NotFound));
+    let provider = |status: StatusCode| {
+        repeat_discogs(&DiscogsError::Provider {
+            status,
+            told_wait: None,
+        })
+    };
+    assert_eq!(
+        repeat_discogs(&DiscogsError::RateLimit { told_wait: None }),
+        Repeat::AfterBackoff
+    );
+    assert_eq!(
+        repeat_discogs(&DiscogsError::RateLimit {
+            told_wait: Some(Duration::from_secs(9))
+        }),
+        Repeat::AfterToldWait(Duration::from_secs(9)),
+        "a stated wait replaces the backoff"
+    );
+    assert_eq!(
+        provider(StatusCode::INTERNAL_SERVER_ERROR),
+        Repeat::AfterBackoff
+    );
+    assert_eq!(
+        provider(StatusCode::SERVICE_UNAVAILABLE),
+        Repeat::AfterBackoff
+    );
+    assert_eq!(provider(StatusCode::BAD_REQUEST), Repeat::Never);
+    assert_eq!(provider(StatusCode::FORBIDDEN), Repeat::Never);
+    assert_eq!(provider(StatusCode::UNPROCESSABLE_ENTITY), Repeat::Never);
+    assert_eq!(repeat_discogs(&DiscogsError::InvalidApiKey), Repeat::Never);
+    assert_eq!(repeat_discogs(&DiscogsError::NotFound), Repeat::Never);
 }
 
 #[tokio::test]
@@ -676,7 +733,7 @@ async fn transient_failures_are_not_kept() {
         .get_release("510003", CallPriority::Interactive)
         .await
         .expect_err("transient answers on every try exhaust the retries");
-    assert!(matches!(error, DiscogsError::RateLimit));
+    assert!(matches!(error, DiscogsError::RateLimit { .. }));
     assert_eq!(
         requests.load(Ordering::SeqCst),
         attempts,

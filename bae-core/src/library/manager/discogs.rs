@@ -166,9 +166,9 @@ pub(crate) fn discogs_validation_from_result(
         Ok(()) => DiscogsValidation::Valid,
         Err(DiscogsError::InvalidApiKey) => DiscogsValidation::Rejected,
         Err(
-            error @ (DiscogsError::RateLimit
+            error @ (DiscogsError::RateLimit { .. }
             | DiscogsError::Transport(_)
-            | DiscogsError::Provider(_)
+            | DiscogsError::Provider { .. }
             | DiscogsError::NotFound
             | DiscogsError::Serialization(_)),
         ) => {

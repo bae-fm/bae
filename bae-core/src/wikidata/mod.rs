@@ -18,7 +18,7 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::import::{Catalog, CatalogPage};
-use crate::retry::RetryPolicy;
+use crate::retry::{Repeat, RetryPolicy};
 use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
@@ -66,9 +66,14 @@ pub enum WikidataError {
     Timeout,
     /// Wikidata returned an HTTP error response. `status` is the HTTP status
     /// code when one was observed (`None` when reqwest classified a send error
-    /// as carrying a status we couldn't read).
+    /// as carrying a status we couldn't read). `told_wait` is how long the
+    /// response's `Retry-After` asked bae to wait before asking again, when it
+    /// stated one.
     #[error("Wikidata returned an error response (status {status:?})")]
-    Provider { status: Option<u16> },
+    Provider {
+        status: Option<u16>,
+        told_wait: Option<Duration>,
+    },
     /// A local/internal failure (JSON parsing, body read).
     #[error("Wikidata API error: {0}")]
     Other(String),
@@ -84,6 +89,7 @@ impl WikidataError {
         } else if let Some(status) = e.status() {
             WikidataError::Provider {
                 status: Some(status.as_u16()),
+                told_wait: None,
             }
         } else {
             WikidataError::Network(e.to_string())
@@ -94,15 +100,24 @@ impl WikidataError {
 /// Retry only what a retry can fix. `NotFound` is Wikidata's answer about an
 /// item, not a fault. `Other` is local (a JSON parse): the same bytes will
 /// parse the same way.
-fn should_retry(error: &WikidataError) -> bool {
+/// A transient status is repeated after the wait the response asked for, when
+/// it asked for one.
+fn repeat(error: &WikidataError) -> Repeat {
     match error {
-        WikidataError::Network(_) | WikidataError::Timeout => true,
+        WikidataError::Network(_) | WikidataError::Timeout => Repeat::AfterBackoff,
         // No readable status means reqwest classified a send error as carrying
         // one it couldn't produce — repeat it like any transport failure.
-        WikidataError::Provider { status } => status.is_none_or(|status| {
-            reqwest::StatusCode::from_u16(status).is_ok_and(crate::retry::is_transient_status)
-        }),
-        WikidataError::NotFound(_) | WikidataError::Other(_) => false,
+        WikidataError::Provider { status, told_wait } => {
+            let transient = status.is_none_or(|status| {
+                reqwest::StatusCode::from_u16(status).is_ok_and(crate::retry::is_transient_status)
+            });
+            if transient {
+                Repeat::transient(*told_wait)
+            } else {
+                Repeat::Never
+            }
+        }
+        WikidataError::NotFound(_) | WikidataError::Other(_) => Repeat::Never,
     }
 }
 
@@ -119,15 +134,22 @@ where
     F: Fn() -> Fut,
     Fut: std::future::Future<Output = Result<T, WikidataError>>,
 {
-    crate::retry::retry_with_backoff_if(RETRY, label, should_retry, f).await
+    crate::retry::retry_with_backoff_if(RETRY, label, repeat, f).await
 }
 
-fn wikidata_body(response: CachedResponse) -> Result<String, WikidataError> {
+/// The body on a success, and the error the status names otherwise, carrying
+/// the wait the response asked for. A kept answer is a 2xx or a 404 and asks
+/// for none.
+fn wikidata_body(
+    response: CachedResponse,
+    told_wait: Option<Duration>,
+) -> Result<String, WikidataError> {
     if response.is_success() {
         Ok(response.body)
     } else {
         Err(WikidataError::Provider {
             status: Some(response.status),
+            told_wait,
         })
     }
 }
@@ -167,7 +189,7 @@ impl Wikidata {
 
         if let Some(cached) = self.responses.get_cloned(&key) {
             debug!("Wikidata response cache hit for {}", key);
-            return wikidata_body(cached);
+            return wikidata_body(cached, None);
         }
 
         self.limiter.wait(priority).await;
@@ -177,6 +199,7 @@ impl Wikidata {
             .await
             .map_err(WikidataError::from_reqwest)?;
         let status = response.status().as_u16();
+        let told_wait = crate::util::http::told_wait(response.headers());
         let body = response.text().await.map_err(WikidataError::from_reqwest)?;
         let response = CachedResponse { status, body };
 
@@ -189,7 +212,7 @@ impl Wikidata {
         if is_cacheable(status) {
             self.responses.put(key, response.clone());
         }
-        wikidata_body(response)
+        wikidata_body(response, told_wait)
     }
 
     /// Pre-populate an item's answer, so a test can drive the archival path
@@ -237,7 +260,9 @@ impl Wikidata {
 
         let raw_json = match self.get(&url, priority).await {
             Ok(body) => body,
-            Err(WikidataError::Provider { status: Some(404) }) => {
+            Err(WikidataError::Provider {
+                status: Some(404), ..
+            }) => {
                 return Err(WikidataError::NotFound(item.to_string()));
             }
             Err(error) => return Err(error),

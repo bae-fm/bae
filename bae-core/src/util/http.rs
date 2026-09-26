@@ -24,6 +24,46 @@ pub(crate) const MAX_REDIRECTS: usize = 10;
 /// Ceiling for image/cover bodies read into memory.
 pub(crate) const MAX_IMAGE_BYTES: usize = 32 * 1024 * 1024;
 
+/// How long a response asks its client to wait before asking again, read off
+/// its `Retry-After`: a number of seconds, or an HTTP-date. A date is measured
+/// from the response's own `Date` — the server's clock, so this machine's
+/// being off does not stretch or cut the wait — and from this machine's clock
+/// only when the response states no date. `None` when the response has no
+/// `Retry-After` or one that says nothing readable; a date already past asks
+/// for no wait.
+///
+/// The one reader of the header: every provider client hands the retry loop
+/// what this returns.
+pub(crate) fn told_wait(headers: &reqwest::header::HeaderMap) -> Option<Duration> {
+    let retry_after = headers.get(reqwest::header::RETRY_AFTER)?.to_str().ok()?;
+    let date = headers
+        .get(reqwest::header::DATE)
+        .and_then(|value| value.to_str().ok());
+    told_wait_at(retry_after, date, chrono::Utc::now())
+}
+
+fn told_wait_at(
+    retry_after: &str,
+    date: Option<&str>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Duration> {
+    let retry_after = retry_after.trim();
+    if let Ok(seconds) = retry_after.parse::<u64>() {
+        return Some(Duration::from_secs(seconds));
+    }
+    let until = http_date(retry_after)?;
+    let from = date.and_then(http_date).unwrap_or(now);
+    Some((until - from).to_std().unwrap_or(Duration::ZERO))
+}
+
+/// An HTTP-date in its preferred form, `Sun, 06 Nov 1994 08:49:37 GMT`, which
+/// is an RFC 2822 date.
+fn http_date(value: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    chrono::DateTime::parse_from_rfc2822(value.trim())
+        .ok()
+        .map(|date| date.with_timezone(&chrono::Utc))
+}
+
 /// One provider response worth keeping: the status it came back with and the
 /// whole body. The MusicBrainz and Discogs clients hold these keyed by request
 /// URL, so asking a provider the same question twice in one session costs one
@@ -365,5 +405,48 @@ mod tests {
             .expect_err("over-limit stream should fail");
 
         assert!(matches!(error, HttpBodyError::TooLarge { limit: 128 }));
+    }
+
+    #[test]
+    fn a_told_wait_reads_seconds_and_dates() {
+        let now = chrono::DateTime::parse_from_rfc2822("Sat, 26 Sep 2026 06:51:45 GMT")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        assert_eq!(
+            told_wait_at("120", None, now),
+            Some(Duration::from_secs(120))
+        );
+        assert_eq!(told_wait_at(" 0 ", None, now), Some(Duration::ZERO));
+        // A date is measured from the response's own clock, not this one.
+        assert_eq!(
+            told_wait_at(
+                "Sat, 26 Sep 2026 07:00:00 GMT",
+                Some("Sat, 26 Sep 2026 06:59:30 GMT"),
+                now,
+            ),
+            Some(Duration::from_secs(30))
+        );
+        assert_eq!(
+            told_wait_at("Sat, 26 Sep 2026 06:52:00 GMT", None, now),
+            Some(Duration::from_secs(15))
+        );
+        assert_eq!(
+            told_wait_at("Sat, 26 Sep 2026 06:00:00 GMT", None, now),
+            Some(Duration::ZERO),
+            "a date already past asks for no wait"
+        );
+        assert_eq!(told_wait_at("soon", None, now), None);
+        assert_eq!(told_wait_at("-5", None, now), None);
+    }
+
+    #[test]
+    fn a_told_wait_is_read_off_the_headers() {
+        let mut headers = reqwest::header::HeaderMap::new();
+        assert_eq!(told_wait(&headers), None);
+        headers.insert(
+            reqwest::header::RETRY_AFTER,
+            reqwest::header::HeaderValue::from_static("7"),
+        );
+        assert_eq!(told_wait(&headers), Some(Duration::from_secs(7)));
     }
 }

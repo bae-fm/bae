@@ -532,7 +532,16 @@ async fn send_with_retry(
     transport: &dyn DiagnosticsTransport,
     request: DatadogRequest,
 ) -> Result<(), DiagnosticsError> {
-    retry_with_backoff_if(RETRY, "diagnostics send", should_retry, || {
+    // The transport hands back a status and not the response's headers, so
+    // a repeat here always takes the flat wait.
+    let repeat = |error: &DiagnosticsError| {
+        if should_retry(error) {
+            crate::retry::Repeat::AfterBackoff
+        } else {
+            crate::retry::Repeat::Never
+        }
+    };
+    retry_with_backoff_if(RETRY, "diagnostics send", repeat, || {
         transport.send(request.clone())
     })
     .await

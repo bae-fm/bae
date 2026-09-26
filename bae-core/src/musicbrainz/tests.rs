@@ -227,27 +227,34 @@ fn mb_release_json(release: &MbReleaseResponse) -> String {
 /// error is raised before a request is even built.
 #[test]
 fn only_transient_musicbrainz_failures_are_retried() {
-    assert!(should_retry_mb(&MusicBrainzError::Timeout));
-    assert!(should_retry_mb(&MusicBrainzError::Network(
-        "refused".into()
-    )));
-    assert!(should_retry_mb(&MusicBrainzError::Provider {
-        status: Some(503)
-    }));
-    assert!(should_retry_mb(&MusicBrainzError::Provider {
-        status: Some(429)
-    }));
+    let provider = |status: Option<u16>, told_wait: Option<Duration>| {
+        repeat_mb(&MusicBrainzError::Provider { status, told_wait })
+    };
+    assert_eq!(repeat_mb(&MusicBrainzError::Timeout), Repeat::AfterBackoff);
+    assert_eq!(
+        repeat_mb(&MusicBrainzError::Network("refused".into())),
+        Repeat::AfterBackoff
+    );
+    assert_eq!(provider(Some(503), None), Repeat::AfterBackoff);
+    assert_eq!(
+        provider(Some(503), Some(Duration::from_secs(3))),
+        Repeat::AfterToldWait(Duration::from_secs(3)),
+        "a stated wait replaces the backoff"
+    );
+    assert_eq!(provider(Some(429), None), Repeat::AfterBackoff);
 
-    assert!(!should_retry_mb(&MusicBrainzError::NotFound("disc".into())));
-    assert!(!should_retry_mb(&MusicBrainzError::Provider {
-        status: Some(404)
-    }));
-    assert!(!should_retry_mb(&MusicBrainzError::Provider {
-        status: Some(400)
-    }));
-    assert!(!should_retry_mb(&MusicBrainzError::Other(
-        "At least one search field must be provided".into()
-    )));
+    assert_eq!(
+        repeat_mb(&MusicBrainzError::NotFound("disc".into())),
+        Repeat::Never
+    );
+    assert_eq!(provider(Some(404), None), Repeat::Never);
+    assert_eq!(provider(Some(400), None), Repeat::Never);
+    assert_eq!(
+        repeat_mb(&MusicBrainzError::Other(
+            "At least one search field must be provided".into()
+        )),
+        Repeat::Never
+    );
 }
 
 // ── label_and_catno ────────────────────────────────────────────────────────
@@ -501,7 +508,10 @@ async fn reverse_lookup_distinguishes_absence_empty_answers_and_failures() {
                 "empty" => assert_eq!(result.unwrap(), Some((Vec::new(), body.into()))),
                 "provider" => assert!(matches!(
                     result,
-                    Err(MusicBrainzError::Provider { status: Some(400) })
+                    Err(MusicBrainzError::Provider {
+                        status: Some(400),
+                        told_wait: None,
+                    })
                 )),
                 "parse" => assert!(matches!(result, Err(MusicBrainzError::Other(_)))),
                 _ => unreachable!(),
@@ -636,7 +646,10 @@ async fn transient_failures_are_not_kept() {
         .expect_err("transient answers on every try exhaust the retries");
     assert!(matches!(
         error,
-        MusicBrainzError::Provider { status: Some(429) }
+        MusicBrainzError::Provider {
+            status: Some(429),
+            ..
+        }
     ));
     assert_eq!(
         requests.load(Ordering::SeqCst),

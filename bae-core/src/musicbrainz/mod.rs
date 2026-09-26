@@ -13,7 +13,7 @@
 use std::time::Duration;
 
 use crate::import::CatalogPage;
-use crate::retry::RetryPolicy;
+use crate::retry::{Repeat, RetryPolicy};
 use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
@@ -108,15 +108,25 @@ fn url_lookup_url(resource: &str, include: &str) -> String {
 /// buys a round trip and a rate-limit wait per try to learn it again. `Other`
 /// is local (URL construction, JSON parse, a missing search field): either no
 /// request was made, or the same bytes will parse the same way.
-fn should_retry_mb(error: &MusicBrainzError) -> bool {
+///
+/// A transient status is repeated after the wait the response asked for, when
+/// it asked for one.
+fn repeat_mb(error: &MusicBrainzError) -> Repeat {
     match error {
-        MusicBrainzError::Network(_) | MusicBrainzError::Timeout => true,
+        MusicBrainzError::Network(_) | MusicBrainzError::Timeout => Repeat::AfterBackoff,
         // No readable status means reqwest classified a send error as carrying
         // one it couldn't produce — repeat it like any transport failure.
-        MusicBrainzError::Provider { status } => status.is_none_or(|status| {
-            reqwest::StatusCode::from_u16(status).is_ok_and(crate::retry::is_transient_status)
-        }),
-        MusicBrainzError::NotFound(_) | MusicBrainzError::Other(_) => false,
+        MusicBrainzError::Provider { status, told_wait } => {
+            let transient = status.is_none_or(|status| {
+                reqwest::StatusCode::from_u16(status).is_ok_and(crate::retry::is_transient_status)
+            });
+            if transient {
+                Repeat::transient(*told_wait)
+            } else {
+                Repeat::Never
+            }
+        }
+        MusicBrainzError::NotFound(_) | MusicBrainzError::Other(_) => Repeat::Never,
     }
 }
 
@@ -130,7 +140,8 @@ fn should_retry_mb(error: &MusicBrainzError) -> bool {
 /// fall back under one a second at the first repeat and gives a busy server
 /// some fifteen seconds in all to recover, and each is jittered, since a
 /// server shedding everyone's load at once hears every client's repeats
-/// together otherwise.
+/// together otherwise. A response that does state a wait in `Retry-After` is
+/// waited out as it asks instead (see [`Repeat`]).
 const RETRY: RetryPolicy =
     RetryPolicy::exponential(5, Duration::from_secs(1), Duration::from_secs(10));
 
@@ -141,15 +152,22 @@ where
     F: Fn() -> Fut,
     Fut: std::future::Future<Output = Result<T, MusicBrainzError>>,
 {
-    crate::retry::retry_with_backoff_if(RETRY, label, should_retry_mb, f).await
+    crate::retry::retry_with_backoff_if(RETRY, label, repeat_mb, f).await
 }
 
-fn mb_body(response: CachedResponse) -> Result<String, MusicBrainzError> {
+/// The body on a success, and the error the status names otherwise, carrying
+/// the wait the response asked for. A kept answer is a 2xx or a 404 and asks
+/// for none.
+fn mb_body(
+    response: CachedResponse,
+    told_wait: Option<Duration>,
+) -> Result<String, MusicBrainzError> {
     if response.is_success() {
         Ok(response.body)
     } else {
         Err(MusicBrainzError::Provider {
             status: Some(response.status),
+            told_wait,
         })
     }
 }
@@ -174,9 +192,14 @@ pub enum MusicBrainzError {
     Timeout,
     /// MusicBrainz returned an HTTP error response. `status` is the HTTP
     /// status code when one was observed (`None` when reqwest classified
-    /// a send error as carrying a status we couldn't read).
+    /// a send error as carrying a status we couldn't read). `told_wait` is
+    /// how long the response's `Retry-After` asked bae to wait before asking
+    /// again, when it stated one.
     #[error("MusicBrainz returned an error response (status {status:?})")]
-    Provider { status: Option<u16> },
+    Provider {
+        status: Option<u16>,
+        told_wait: Option<Duration>,
+    },
     /// A local/internal failure (URL construction, JSON parsing, body read).
     #[error("MusicBrainz API error: {0}")]
     Other(String),
@@ -193,6 +216,7 @@ impl MusicBrainzError {
         } else if let Some(status) = e.status() {
             MusicBrainzError::Provider {
                 status: Some(status.as_u16()),
+                told_wait: None,
             }
         } else {
             MusicBrainzError::Network(e.to_string())
@@ -308,7 +332,7 @@ impl MusicBrainz {
 
         if let Some(cached) = self.responses.get_cloned(&key) {
             debug!("MusicBrainz response cache hit for {}", key);
-            return mb_body(cached);
+            return mb_body(cached, None);
         }
 
         self.limiter.wait(priority).await;
@@ -318,6 +342,7 @@ impl MusicBrainz {
             .await
             .map_err(MusicBrainzError::from_reqwest)?;
         let status = response.status().as_u16();
+        let told_wait = crate::util::http::told_wait(response.headers());
         let body = response
             .text()
             .await
@@ -333,7 +358,7 @@ impl MusicBrainz {
         if is_cacheable(status) {
             self.responses.put(key, response.clone());
         }
-        mb_body(response)
+        mb_body(response, told_wait)
     }
 
     /// Lookup releases by MusicBrainz DiscID.
@@ -359,7 +384,9 @@ impl MusicBrainz {
 
         let body = match self.get(&url, priority).await {
             Ok(body) => body,
-            Err(MusicBrainzError::Provider { status: Some(404) }) => {
+            Err(MusicBrainzError::Provider {
+                status: Some(404), ..
+            }) => {
                 return Err(MusicBrainzError::NotFound(discid.to_string()));
             }
             Err(error) => return Err(error),
@@ -393,7 +420,9 @@ impl MusicBrainz {
         mb_retry("MusicBrainz release fetch", || async {
             let raw_json = match self.get(&release_url(release_id), priority).await {
                 Ok(body) => body,
-                Err(MusicBrainzError::Provider { status: Some(404) }) => {
+                Err(MusicBrainzError::Provider {
+                    status: Some(404), ..
+                }) => {
                     return Err(MusicBrainzError::NotFound(release_id.to_string()));
                 }
                 Err(error) => return Err(error),
@@ -438,7 +467,9 @@ impl MusicBrainz {
         mb_retry("MusicBrainz release-group browse", || async {
             let json = match self.get(&url, priority).await {
                 Ok(json) => json,
-                Err(MusicBrainzError::Provider { status: Some(404) }) => {
+                Err(MusicBrainzError::Provider {
+                    status: Some(404), ..
+                }) => {
                     return Err(MusicBrainzError::NotFound(release_group_id.to_string()));
                 }
                 Err(error) => return Err(error),
@@ -490,7 +521,9 @@ impl MusicBrainz {
             let body = match self.get(&url, priority).await {
                 Ok(body) => body,
                 // The URL endpoint documents 404 as an unknown resource URL.
-                Err(MusicBrainzError::Provider { status: Some(404) }) => return Ok(None),
+                Err(MusicBrainzError::Provider {
+                    status: Some(404), ..
+                }) => return Ok(None),
                 Err(error) => return Err(error),
             };
             let targets = parse(&body).map_err(|error| {
@@ -535,7 +568,9 @@ impl MusicBrainz {
             .query(&[("query", query.as_str()), ("limit", "25")]);
         let body = match self.get_request(request, priority).await {
             Ok(body) => body,
-            Err(MusicBrainzError::Provider { status: Some(404) }) => return Ok(Vec::new()),
+            Err(MusicBrainzError::Provider {
+                status: Some(404), ..
+            }) => return Ok(Vec::new()),
             Err(error) => return Err(error),
         };
 

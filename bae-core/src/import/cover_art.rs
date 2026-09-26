@@ -1,5 +1,5 @@
 use crate::import::{Catalog, ImportError};
-use crate::retry::{is_transient_status, retry_classified, ClassifiedAttempt, RetryPolicy};
+use crate::retry::{is_transient_status, retry_classified, ClassifiedAttempt, Repeat, RetryPolicy};
 use crate::signals::LookupFailure;
 use crate::util::content_type::ContentType;
 use crate::util::http::Http;
@@ -767,47 +767,48 @@ async fn send_artwork_request(
         {
             Ok(request) => request,
             Err(error) => {
-                return ClassifiedAttempt::Permanent(artwork_request_error(
-                    error,
-                    "Failed to fetch image",
-                ));
+                return ClassifiedAttempt::Failed(
+                    artwork_request_error(error, "Failed to fetch image"),
+                    Repeat::Never,
+                );
             }
         };
         let response = match http.execute(request).await {
             Ok(response) => response,
-            Err(error) if is_permanent_request_error(&error) => {
-                return ClassifiedAttempt::Permanent(artwork_request_error(
-                    error,
-                    "Failed to fetch image",
-                ));
-            }
             Err(error) => {
-                return ClassifiedAttempt::Retry(artwork_request_error(
-                    error,
-                    "Failed to fetch image",
-                ));
+                let repeat = if is_permanent_request_error(&error) {
+                    Repeat::Never
+                } else {
+                    Repeat::AfterBackoff
+                };
+                return ClassifiedAttempt::Failed(
+                    artwork_request_error(error, "Failed to fetch image"),
+                    repeat,
+                );
             }
         };
 
-        if response.status().is_success() {
-            ClassifiedAttempt::Done(Some(response))
-        } else if response.status() == reqwest::StatusCode::NOT_FOUND {
-            ClassifiedAttempt::Done(None)
-        } else if is_transient_status(response.status()) {
-            ClassifiedAttempt::Retry(ImportError::CoverArtRequest {
-                failure: LookupFailure::Provider {
-                    status: Some(response.status().as_u16()),
-                },
-                detail: format!("Image download failed with status {}", response.status()),
-            })
-        } else {
-            ClassifiedAttempt::Permanent(ImportError::CoverArtRequest {
-                failure: LookupFailure::Provider {
-                    status: Some(response.status().as_u16()),
-                },
-                detail: format!("Image download failed with status {}", response.status()),
-            })
+        let status = response.status();
+        if status.is_success() {
+            return ClassifiedAttempt::Done(Some(response));
         }
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return ClassifiedAttempt::Done(None);
+        }
+        let repeat = if is_transient_status(status) {
+            Repeat::transient(crate::util::http::told_wait(response.headers()))
+        } else {
+            Repeat::Never
+        };
+        ClassifiedAttempt::Failed(
+            ImportError::CoverArtRequest {
+                failure: LookupFailure::Provider {
+                    status: Some(status.as_u16()),
+                },
+                detail: format!("Image download failed with status {status}"),
+            },
+            repeat,
+        )
     })
     .await
 }
