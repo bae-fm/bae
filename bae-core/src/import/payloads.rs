@@ -223,7 +223,7 @@ impl ReleasePayloads {
                     anchor.release_group.as_ref().map(|group| group.id.clone()),
                     crate::import::musicbrainz_mapper::mediums(&anchor),
                     CatalogFacts::MusicBrainz {
-                        links: crate::import::search::mb_release_links(&anchor),
+                        links: crate::import::search::release_links_of(&anchor.relations),
                     },
                 )
             }

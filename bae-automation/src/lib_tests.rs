@@ -334,12 +334,14 @@ mod identify_mirrors {
                     by_barcode: false,
                     by_catalog: false,
                     by_search: false,
+                    named_by: None,
                 },
                 LookupProvenance {
                     by_disc_id: false,
                     by_barcode: true,
                     by_catalog: true,
                     by_search: false,
+                    named_by: None,
                 },
             ],
             // Two pressings of one album: each release is its own row.
@@ -398,12 +400,14 @@ mod identify_mirrors {
                     by_barcode: false,
                     by_catalog: false,
                     by_search: false,
+                    named_by: None,
                 },
                 LookupProvenance {
                     by_disc_id: false,
                     by_barcode: true,
                     by_catalog: false,
                     by_search: false,
+                    named_by: None,
                 },
             ],
             // One release each, so each is its own row.

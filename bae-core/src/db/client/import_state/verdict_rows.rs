@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::identify::{IdentifyFailure, IdentifyRunView, LookupProvenance, TerminalVerdict};
-use crate::import::album_links::AlbumLinks;
+use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
 use crate::import::cover_art::{DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::search::{MetadataResult, SourceTracks, StatedMedia};
 use crate::import::{Catalog, MetadataRef};
@@ -215,8 +215,9 @@ fn insert_match(
              (content_hash, position, pressing, source, release_id, title, artist, year, format, \
               label, catalog_number, country, media_kind, cover_url, cover_label, cover_source, \
               source_group_id, album_links, source_tracks_kind, source_tracks_count, \
-              by_disc_id, by_barcode, by_catalog, by_search, narrowed_out) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              by_disc_id, by_barcode, by_catalog, by_search, named_by_catalog, named_by_key, \
+              narrowed_out) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -242,6 +243,8 @@ fn insert_match(
             provenance.by_barcode,
             provenance.by_catalog,
             provenance.by_search,
+            provenance.named_by.as_ref().map(|by| by.catalog.as_str()),
+            provenance.named_by.as_ref().map(|by| by.key.as_str()),
             narrowed_out,
         ],
     )?;
@@ -286,17 +289,36 @@ fn insert_match(
             ],
         )?;
     }
-    for (ordinal, link) in result.album_links.named().iter().enumerate() {
+    for (ordinal, link) in result.album_links.read().iter().enumerate() {
+        let (stated, wikidata_item, musicbrainz_release, twin) = match &link.stated {
+            AlbumStatement::Page => (STATED_PAGE, None, None, None),
+            AlbumStatement::Wikidata { item } => (STATED_WIKIDATA, Some(item.as_str()), None, None),
+            AlbumStatement::Release {
+                musicbrainz_release,
+                twin,
+            } => (
+                STATED_RELEASE,
+                None,
+                Some(musicbrainz_release.as_str()),
+                Some(twin),
+            ),
+        };
         sql.execute(
             "INSERT INTO import_candidate_match_album_link \
-                 (content_hash, position, ordinal, catalog, key) \
-             VALUES (?, ?, ?, ?, ?)",
+                 (content_hash, position, ordinal, catalog, key, stated, wikidata_item, \
+                  musicbrainz_release, twin_catalog, twin_key) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 position,
                 ordinal_column(ordinal)?,
-                link.catalog.as_str(),
-                link.key
+                link.album.catalog.as_str(),
+                link.album.key,
+                stated,
+                wikidata_item,
+                musicbrainz_release,
+                twin.map(|twin| twin.catalog.as_str()),
+                twin.map(|twin| twin.key.as_str()),
             ],
         )?;
     }
@@ -312,6 +334,50 @@ fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
 const ALBUM_LINKS_NOT_ASKED: &str = "not_asked";
 const ALBUM_LINKS_READ: &str = "read";
 const ALBUM_LINKS_UNREAD: &str = "unread";
+
+/// The stored album link `stated` values, one per [`AlbumStatement`] shape.
+const STATED_PAGE: &str = "page";
+const STATED_WIKIDATA: &str = "wikidata";
+const STATED_RELEASE: &str = "release";
+
+/// One stored album link row's columns, as read.
+pub(super) struct AlbumLinkRow {
+    pub(super) catalog: String,
+    pub(super) key: String,
+    pub(super) stated: String,
+    pub(super) wikidata_item: Option<String>,
+    pub(super) musicbrainz_release: Option<String>,
+    pub(super) twin_catalog: Option<String>,
+    pub(super) twin_key: Option<String>,
+}
+
+impl AlbumLinkRow {
+    /// The link the row states. The table's checks hold each statement's
+    /// columns to its kind, so a row that breaks them is unreadable.
+    fn link(self) -> Result<AlbumLink, DbError> {
+        let stated = match (
+            self.stated.as_str(),
+            self.wikidata_item,
+            self.musicbrainz_release,
+            self.twin_catalog,
+            self.twin_key,
+        ) {
+            (STATED_PAGE, None, None, None, None) => AlbumStatement::Page,
+            (STATED_WIKIDATA, Some(item), None, None, None) => AlbumStatement::Wikidata { item },
+            (STATED_RELEASE, None, Some(musicbrainz_release), Some(catalog), Some(key)) => {
+                AlbumStatement::Release {
+                    musicbrainz_release,
+                    twin: MetadataRef::new(source_of(&catalog)?, key),
+                }
+            }
+            (other, ..) => return Err(unreadable("stated", other)),
+        };
+        Ok(AlbumLink {
+            album: MetadataRef::new(source_of(&self.catalog)?, self.key),
+            stated,
+        })
+    }
+}
 
 /// The stored `media_kind` values, one per [`StatedMedia`] shape.
 pub(super) const MEDIA_UNDESCRIBED: &str = "undescribed";
@@ -331,7 +397,7 @@ pub(super) struct MatchEntries {
     pub(super) media: Vec<(String, Option<String>)>,
     pub(super) links: Vec<(String, String)>,
     /// The album link rows, for a match whose album links were read.
-    pub(super) album_links: Vec<(String, String)>,
+    pub(super) album_links: Vec<AlbumLinkRow>,
 }
 
 /// One stored release of a verdict: what the lookup returned, which lookups
@@ -446,7 +512,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         ALBUM_LINKS_READ => AlbumLinks::Read(
             album_links
                 .into_iter()
-                .map(|(catalog, key)| Ok(MetadataRef::new(source_of(&catalog)?, key)))
+                .map(AlbumLinkRow::link)
                 .collect::<Result<_, DbError>>()?,
         ),
         ALBUM_LINKS_NOT_ASKED | ALBUM_LINKS_UNREAD if !album_links.is_empty() => {
@@ -542,6 +608,18 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
             by_barcode: row.get("by_barcode")?,
             by_catalog: row.get("by_catalog")?,
             by_search: row.get("by_search")?,
+            named_by: match (
+                row.get::<_, Option<String>>("named_by_catalog")?,
+                row.get::<_, Option<String>>("named_by_key")?,
+            ) {
+                (Some(catalog), Some(key)) => Some(MetadataRef::new(source_of(&catalog)?, key)),
+                (None, None) => None,
+                _ => {
+                    return Err(DbError::Message(
+                        "a match names half of the release that named it".to_string(),
+                    ))
+                }
+            },
         },
         narrowed_out: row.get("narrowed_out")?,
     })

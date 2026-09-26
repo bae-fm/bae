@@ -277,6 +277,27 @@ pub struct ReleaseGroupResponse {
     pub relations: Vec<MbRelation>,
 }
 
+/// One page of a release group's releases, each with the addresses its own
+/// document links and the group's own links beside it: what
+/// `ws/2/release?release-group=…&inc=url-rels+release-groups+release-group-level-rels`
+/// answers. The page holds at most a hundred releases.
+#[derive(Debug, Clone, Deserialize)]
+pub struct GroupReleases {
+    #[serde(default)]
+    pub releases: Vec<GroupRelease>,
+}
+
+/// One release of a browsed group: its id, its own url-rels, and its group
+/// with the group's url-rels.
+#[derive(Debug, Clone, Deserialize)]
+pub struct GroupRelease {
+    pub id: String,
+    #[serde(default)]
+    pub relations: Vec<MbRelation>,
+    #[serde(rename = "release-group")]
+    pub release_group: Option<MbReleaseGroupRef>,
+}
+
 /// One archived release-group document, parsed.
 pub fn parse_release_group(json: &str) -> Result<ReleaseGroupResponse, serde_json::Error> {
     serde_json::from_str(json)

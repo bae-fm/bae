@@ -126,12 +126,7 @@ impl TerminalVerdict {
         Self::Found {
             matches: vec![result],
             track_count,
-            provenance: vec![LookupProvenance {
-                by_disc_id: false,
-                by_barcode: false,
-                by_catalog: false,
-                by_search: false,
-            }],
+            provenance: vec![LookupProvenance::CHOSEN],
             pressings: vec![0],
             narrowed_out: Vec::new(),
             narrowed_out_provenance: Vec::new(),

@@ -42,12 +42,16 @@ pub struct MetadataResult {
     /// contradiction is read from, kept apart from the display `format`.
     pub media: StatedMedia,
     /// Releases on other catalogs this record's own document names as the
-    /// same release. Only a MusicBrainz release document states any.
+    /// same release. Only a MusicBrainz release document states any. A
+    /// search result's response carries no relations, so it states none until
+    /// reading its album's links browses its group's releases, which carry
+    /// each release's own.
     pub links: Vec<MetadataRef>,
     pub cover_art: Option<RemoteCover>,
     pub source_group_id: Option<String>,
-    /// The albums on the other lookup catalog this record's catalog names as
-    /// its album — what puts two catalogs' albums on one card.
+    /// The albums on the other lookup catalog a statement names as this
+    /// record's album, each with the statement — what puts two catalogs'
+    /// albums on one card.
     pub album_links: AlbumLinks,
     /// What the source says about this release's own tracklist — the other half
     /// of the Ready rule, which admits a single match only when the source's
@@ -260,6 +264,41 @@ pub fn discogs_search_result_to_metadata(
     }
 }
 
+/// A Discogs release's own document as a result: what a list holds of a
+/// release it read because a MusicBrainz release on it names this one as
+/// itself. No lookup returned it, and nothing about it was judged or stored,
+/// so its tracklist is not asked for here.
+pub(crate) fn discogs_release_to_metadata(release: &crate::discogs::DiscogsRelease) -> MetadataResult {
+    let metadata = crate::import::discogs_mapper::metadata(release);
+    let pressing = metadata.pressing;
+    let media = if release.format.is_empty() {
+        StatedMedia::Undescribed
+    } else {
+        StatedMedia::Descriptors(release.format.clone())
+    };
+    MetadataResult {
+        source: Catalog::Discogs,
+        release_id: release.id.clone(),
+        title: metadata.album.title,
+        artist: metadata.album.artists.first().map(|artist| artist.name.clone()),
+        year: pressing.year,
+        format: pressing.format,
+        label: pressing.label,
+        catalog_number: pressing.catalog_number,
+        country: pressing.country,
+        barcodes: pressing.barcode.into_iter().collect(),
+        media,
+        // A Discogs document names no counterpart on another catalog.
+        links: Vec::new(),
+        cover_art: release.covers.first().cloned(),
+        source_group_id: release.master_id.clone(),
+        // A Discogs document names no counterpart on another catalog.
+        album_links: AlbumLinks::NotAsked,
+        // Its documents are not stored, and a `Some` here says they are.
+        source_tracks: None,
+    }
+}
+
 fn source_tracks_from_mb_tracks<'a>(
     tracks: impl Iterator<Item = &'a crate::musicbrainz::MbTrack>,
 ) -> SourceTracks {
@@ -300,7 +339,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
     let source_tracks = Some(source_tracks_from_mb_tracks(medium.tracks.iter()));
     let pressing = crate::import::musicbrainz_mapper::pressing(&r);
     let media = mb_stated_media(&r);
-    let links = mb_release_links(&r);
+    let links = release_links_of(&r.relations);
     let cover_art = r
         .has_front_cover()
         .then(|| RemoteCover::musicbrainz_release(&r.id));
@@ -333,11 +372,11 @@ fn mb_stated_media(r: &MbReleaseResponse) -> StatedMedia {
     StatedMedia::PerMedium(r.media.iter().map(|medium| medium.format.clone()).collect())
 }
 
-/// The releases on other catalogs a MusicBrainz release document names as
+/// The releases on other catalogs a MusicBrainz release's relations name as
 /// the same release, in relation order. A link to an album page names an
 /// album, not this pressing, and is not one of them.
-pub(crate) fn mb_release_links(r: &MbReleaseResponse) -> Vec<MetadataRef> {
-    crate::musicbrainz::relation_urls(&r.relations)
+pub(crate) fn release_links_of(relations: &[crate::musicbrainz::MbRelation]) -> Vec<MetadataRef> {
+    crate::musicbrainz::relation_urls(relations)
         .filter_map(parse_catalog_url)
         .filter_map(|page| match page {
             CatalogPage::Release { catalog, key } if catalog != Catalog::MusicBrainz => {

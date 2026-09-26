@@ -11,10 +11,12 @@
 //! says they name the same physical object — what `pressing_evidence`
 //! weighs. Two records of one catalog stay two rows, because the catalog's
 //! editors separated them. Groups become one card
-//! when a row joins them or when MusicBrainz links one to the other — its
-//! release group's document naming the Discogs master. A row is then a
-//! pressing under however many records name it, and picking it claims one
-//! record per catalog — [`Pressing::pick`] says exactly what.
+//! when a row joins them or when a statement links one to the other — what
+//! MusicBrainz's release group is on Discogs, read from the group's page, the
+//! Wikidata item it links, or the Discogs release one of its releases names
+//! (see [`crate::import::album_links`]). A row is then a pressing under
+//! however many records name it, and picking it claims one record per
+//! catalog — [`Pressing::pick`] says exactly what.
 //!
 //! The order is decided here too, so no surface sorts anything: rows come
 //! most-agreed-with first — how much of the candidate's own text states the
@@ -119,10 +121,10 @@ pub struct ReleaseGroupSource {
     /// MusicBrainz, master on Discogs). `None` when the source returned the
     /// release ungrouped, which has no group page to open.
     pub group_url: Option<String>,
-    /// Whether this album's page on its catalog, which states the other
-    /// catalog's album it is, could not be read. Nothing then says whether a
-    /// card of the other catalog on the same list is this album, so a surface
-    /// says it may be listed twice.
+    /// Whether what this album is on the other catalog could not be read —
+    /// its page, or a document a statement about it needed. Nothing then
+    /// says whether a card of the other catalog on the same list is this
+    /// album, so a surface says it may be listed twice.
     pub album_links_unread: bool,
 }
 
@@ -282,8 +284,9 @@ struct Bucket {
 pub type Judged = (MetadataResult, Agreements);
 
 impl Bucket {
-    /// Whether this bucket's catalog links `other`'s album as its own: one of
-    /// its releases names `other`'s group among its album links.
+    /// Whether a statement read about this bucket's album names `other`'s
+    /// album as the same: one of its releases carries it among its album
+    /// links, whichever statement read it.
     fn links(&self, other: &Bucket, releases: &[MetadataResult]) -> bool {
         let Some(group_id) = &other.source_group_id else {
             return false;
@@ -291,7 +294,7 @@ impl Bucket {
         let album = MetadataRef::new(other.source, group_id.clone());
         self.members
             .iter()
-            .any(|&at| releases[at].album_links.named().contains(&album))
+            .any(|&at| releases[at].album_links.names(&album))
     }
 
     fn as_source(&self, read: impl Fn(usize) -> bool) -> ReleaseGroupSource {
@@ -913,3 +916,7 @@ mod tests;
 #[cfg(test)]
 #[path = "release_group/ranking_tests.rs"]
 mod ranking_tests;
+
+#[cfg(test)]
+#[path = "release_group/statement_tests.rs"]
+mod statement_tests;

@@ -448,10 +448,10 @@ fn dispatch_effect(
             });
         }
 
-        Effect::ReadAlbumLinks { groups } => {
+        Effect::ReadAlbumLinks { to_read } => {
             let library_manager = inner.library_manager.clone();
             runtime.spawn(async move {
-                let read = library_manager.read_album_links(&groups, priority).await;
+                let read = library_manager.read_album_links(&to_read, priority).await;
                 if token.is_cancelled() {
                     return;
                 }

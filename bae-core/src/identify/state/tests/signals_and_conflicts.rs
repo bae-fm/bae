@@ -1,6 +1,6 @@
 use super::*;
 use crate::identify::IdentifyFailure;
-use crate::import::album_links::AlbumLinks;
+use crate::import::album_links::{AlbumLinks, GroupReading};
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 
@@ -670,7 +670,7 @@ fn the_matched_code_is_the_earliest_any_provider_matched() {
     let (state, _) = step(
         state,
         IdentifyEvent::AlbumLinksRead {
-            read: vec![("g-y".to_string(), AlbumLinks::Read(Vec::new()))],
+            read: vec![GroupReading::of_links("g-y", AlbumLinks::Read(Vec::new()))],
         },
     );
     let IdentifyState::Found {
@@ -685,67 +685,6 @@ fn the_matched_code_is_the_earliest_any_provider_matched() {
         vec![MB, DG]
     );
     assert_eq!(context.barcode.matched.as_deref(), Some("A"));
-}
-
-/// Once every lookup is in and what they found holds both catalogs'
-/// releases, the run reads its MusicBrainz groups' album links before it
-/// settles, and the matches carry what was read — read or not.
-#[test]
-fn a_run_holding_both_catalogs_reads_album_links_before_it_settles() {
-    let (state, _) = update(
-        started_with(vec![MB, DG]),
-        signals(
-            DiscIdSignal::Absent { track_count: 0 },
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["A"]),
-            },
-            &[],
-        ),
-    );
-    let (state, effects) = step(
-        state,
-        barcode_matched(
-            MB,
-            "A",
-            vec![pair("mb-1", Some("g-linked")), pair("mb-2", Some("g-gone"))],
-        ),
-    );
-    assert!(effects.is_empty(), "one catalog alone joins nothing");
-    let (state, effects) = step(
-        state,
-        barcode_matched(DG, "A", vec![discogs_pair("dg-1", Some("7"))]),
-    );
-    assert_eq!(
-        effects,
-        vec![Effect::ReadAlbumLinks {
-            groups: vec!["g-linked".to_string(), "g-gone".to_string()],
-        }]
-    );
-    assert!(matches!(state, IdentifyState::Triangulating { .. }));
-
-    let linked = AlbumLinks::Read(vec![crate::import::MetadataRef::new(DG, "7")]);
-    let (state, effects) = step(
-        state,
-        IdentifyEvent::AlbumLinksRead {
-            read: vec![
-                ("g-linked".to_string(), linked.clone()),
-                ("g-gone".to_string(), AlbumLinks::Unread),
-            ],
-        },
-    );
-    assert!(effects.is_empty());
-    let IdentifyState::Found { matches, .. } = state else {
-        panic!("expected Found");
-    };
-    let links_of = |release_id: &str| {
-        matches
-            .iter()
-            .find(|m| m.release_id == release_id)
-            .map(|m| m.album_links.clone())
-    };
-    assert_eq!(links_of("mb-1"), Some(linked));
-    assert_eq!(links_of("mb-2"), Some(AlbumLinks::Unread));
-    assert_eq!(links_of("dg-1"), Some(AlbumLinks::NotAsked));
 }
 
 /// An answer for a code the provider's walk has already moved past is stale

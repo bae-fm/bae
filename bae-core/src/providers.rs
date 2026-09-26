@@ -98,12 +98,17 @@ impl Providers {
         crate::import::search::search_mb(&self.musicbrainz, params, priority).await
     }
 
+    /// What each MusicBrainz group to read is on the other catalog, asking
+    /// Discogs with `discogs` when a release link has to be followed.
     pub(crate) async fn read_album_links(
         &self,
-        groups: &[String],
+        discogs: Option<&DiscogsClient>,
+        to_read: &crate::import::album_links::ToRead,
         priority: CallPriority,
-    ) -> Vec<crate::import::album_links::GroupLinks> {
-        crate::import::album_links::read(&self.musicbrainz, groups, priority).await
+    ) -> Vec<crate::import::album_links::GroupReading<()>> {
+        let readers =
+            crate::import::album_links::Readers::new(&self.musicbrainz, &self.wikidata, discogs);
+        crate::import::album_links::read(&readers, to_read, priority).await
     }
 
     pub(crate) async fn lookup_musicbrainz_discid(

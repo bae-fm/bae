@@ -1387,8 +1387,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     cover_source        TEXT CHECK (cover_source IS NULL OR cover_source IN ('musicbrainz', 'discogs')),
     source_group_id     TEXT,
     -- What the record's catalog says its album is on the other lookup catalog.
-    -- 'not_asked': never read. 'read': the album page was read, and names the
-    -- album link rows it has. 'unread': the page could not be read.
+    -- 'not_asked': never read. 'read': read, and the album link rows name
+    -- what the statements named. 'unread': a document the reading needed
+    -- could not be had, and no statement named an album.
     album_links         TEXT NOT NULL CHECK (album_links IN ('not_asked', 'read', 'unread')),
     -- NULL: nobody asked the source for its tracklist yet. 'listed' /
     -- 'nothing': asked.
@@ -1405,6 +1406,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- anything. Never set beside the three above: the search is asked only
     -- once they have all come back empty.
     by_search           INTEGER NOT NULL CHECK (by_search IN (0, 1)),
+    -- Returned by no lookup: the release whose own document names this one as
+    -- the same release, which the run read it through to learn its album.
+    -- NULL for a release a lookup returned or a person chose.
+    named_by_catalog    TEXT CHECK (named_by_catalog IS NULL OR named_by_catalog <> ''),
+    named_by_key        TEXT CHECK (named_by_key IS NULL OR named_by_key <> ''),
     narrowed_out        INTEGER NOT NULL DEFAULT 0 CHECK (narrowed_out IN (0, 1)),
     PRIMARY KEY (content_hash, position),
     -- The medium rows reference the match together with its media kind, so a
@@ -1412,7 +1418,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     UNIQUE (content_hash, position, media_kind),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
     CHECK ((cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL)),
-    CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL))
+    CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
+    CHECK ((named_by_catalog IS NULL) = (named_by_key IS NULL)),
+    CHECK (named_by_catalog IS NULL
+           OR (by_disc_id = 0 AND by_barcode = 0 AND by_catalog = 0 AND by_search = 0))
 ) STRICT;
 
 -- Every barcode a matched record states.
@@ -1451,18 +1460,31 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_link (
         REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE
 ) STRICT;
 
--- Every other catalog's album a matched record's catalog names as its album —
--- the Discogs masters a MusicBrainz release group links — for a match whose
--- album_links is 'read'.
+-- Every other catalog's album a statement names as a matched record's album —
+-- the Discogs masters a MusicBrainz release group is — for a match whose
+-- album_links is 'read', with the statement that names it. 'page': the
+-- group's own page links it. 'wikidata': the Wikidata item the group's page
+-- links states it. 'release': musicbrainz_release, one of the group's
+-- releases, links the twin release as itself, and the twin's own document
+-- files it under the album.
 CREATE TABLE IF NOT EXISTS import_candidate_match_album_link (
-    content_hash TEXT NOT NULL,
-    position     INTEGER NOT NULL,
-    ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
-    catalog      TEXT NOT NULL CHECK (catalog <> ''),
-    key          TEXT NOT NULL CHECK (key <> ''),
+    content_hash        TEXT NOT NULL,
+    position            INTEGER NOT NULL,
+    ordinal             INTEGER NOT NULL CHECK (ordinal >= 0),
+    catalog             TEXT NOT NULL CHECK (catalog <> ''),
+    key                 TEXT NOT NULL CHECK (key <> ''),
+    stated              TEXT NOT NULL CHECK (stated IN ('page', 'wikidata', 'release')),
+    wikidata_item       TEXT CHECK (wikidata_item IS NULL OR wikidata_item <> ''),
+    musicbrainz_release TEXT CHECK (musicbrainz_release IS NULL OR musicbrainz_release <> ''),
+    twin_catalog        TEXT CHECK (twin_catalog IS NULL OR twin_catalog <> ''),
+    twin_key            TEXT CHECK (twin_key IS NULL OR twin_key <> ''),
     PRIMARY KEY (content_hash, position, ordinal),
     FOREIGN KEY (content_hash, position)
-        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE
+        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE,
+    CHECK ((stated = 'wikidata') = (wikidata_item IS NOT NULL)),
+    CHECK ((stated = 'release') = (musicbrainz_release IS NOT NULL)),
+    CHECK ((stated = 'release') = (twin_catalog IS NOT NULL)),
+    CHECK ((stated = 'release') = (twin_key IS NOT NULL))
 ) STRICT;
 
 -- What a matched record said its media are, one row per medium or per format

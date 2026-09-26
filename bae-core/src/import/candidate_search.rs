@@ -12,7 +12,7 @@
 //! [`crate::import::ImportServiceHandle::start_candidate_search`].
 
 use crate::db::LibraryStatus;
-use crate::import::album_links::{self, GroupLinks};
+use crate::import::album_links::{self, GroupReading, ToRead};
 use crate::import::release_group::{group_results, ReleaseGroup};
 use crate::import::search::{MetadataResult, SearchQuery};
 use crate::import::types::{Catalog, CatalogAvailability, SourceAvailability};
@@ -102,9 +102,9 @@ pub struct CandidateSearch {
     pub library_statuses: Vec<LibraryStatus>,
     /// The MusicBrainz groups whose album links are being read.
     pub album_links_reading: Vec<String>,
-    /// What reading each MusicBrainz group's album links answered — already
-    /// folded into `groups`.
-    pub album_links_read: Vec<GroupLinks>,
+    /// What reading each MusicBrainz group's album links answered, with the
+    /// twins it read — already folded into `groups`.
+    pub album_links_read: Vec<GroupReading>,
 }
 
 impl CandidateSearch {
@@ -208,29 +208,30 @@ impl CandidateSearch {
         self.album_links_reading.clear();
     }
 
-    /// The MusicBrainz groups whose album links are to be read now, marked as
-    /// being read: every group on the list not yet asked about, once the list
-    /// holds both catalogs' releases.
-    pub fn start_reading_album_links(&mut self) -> Vec<String> {
-        let groups = album_links::groups_to_read(
+    /// What reading the MusicBrainz groups whose album links are to be read
+    /// now takes, those groups marked as being read: every group on the list
+    /// not yet asked about, once the list holds both catalogs' releases.
+    pub fn start_reading_album_links(&mut self) -> ToRead {
+        let to_read = album_links::to_read(
             self.sources
                 .iter()
                 .flat_map(|(_, state)| state.results())
                 .map(|(result, _)| result),
             |group| {
                 self.album_links_reading.iter().any(|reading| reading == group)
-                    || self.album_links_read.iter().any(|(read, _)| read == group)
+                    || self.album_links_read.iter().any(|read| read.group == group)
             },
         );
-        self.album_links_reading.extend(groups.iter().cloned());
-        groups
+        self.album_links_reading
+            .extend(to_read.group_ids().map(str::to_string));
+        to_read
     }
 
     /// Land what reading some groups' album links answered, and re-derive the
     /// result area with them.
-    pub fn record_album_links(&mut self, read: Vec<GroupLinks>) {
+    pub fn record_album_links(&mut self, read: Vec<GroupReading>) {
         self.album_links_reading
-            .retain(|group| !read.iter().any(|(read, _)| read == group));
+            .retain(|group| !read.iter().any(|read| read.group == *group));
         self.album_links_read.extend(read);
         self.regroup();
     }
@@ -288,7 +289,9 @@ impl CandidateSearch {
 
     /// Re-fold every settled source's results, in source order — so a card two
     /// sources describe reads as the earlier source's with the later one's rows
-    /// merged in.
+    /// merged in — and each twin the album links read beside the release that
+    /// names it, while that release is on the list and the twin's own
+    /// catalog is still asked.
     fn regroup(&mut self) {
         let landed: Vec<(MetadataResult, LibraryStatus)> = self
             .sources
@@ -296,10 +299,22 @@ impl CandidateSearch {
             .flat_map(|(_, state)| state.results())
             .cloned()
             .collect();
-        let (mut results, statuses): (Vec<MetadataResult>, Vec<LibraryStatus>) =
+        let (mut results, mut statuses): (Vec<MetadataResult>, Vec<LibraryStatus>) =
             landed.into_iter().unzip();
         for result in &mut results {
             album_links::apply(result, &self.album_links_read);
+        }
+        let twins: Vec<(MetadataResult, LibraryStatus)> =
+            album_links::twins(&self.album_links_read, &results.iter().collect::<Vec<_>>())
+                .into_iter()
+                .filter(|twin| {
+                    matches!(self.source(twin.result.source), Some(SourceSearch::Done { .. }))
+                })
+                .map(|twin| (twin.result.clone(), twin.status.clone()))
+                .collect();
+        for (twin, status) in twins {
+            results.push(twin);
+            statuses.push(status);
         }
         // Typed search: nothing was judged against the candidate's own text,
         // so the rows keep the pressing-year order alone.
@@ -433,16 +448,25 @@ mod tests {
             unpaired(Catalog::Discogs, "dg-1", "master-7"),
         );
         assert_eq!(search.groups.len(), 2);
-        assert_eq!(search.start_reading_album_links(), vec!["group-x".to_string()]);
+        assert_eq!(
+            search
+                .start_reading_album_links()
+                .group_ids()
+                .collect::<Vec<_>>(),
+            vec!["group-x"]
+        );
         assert!(
             search.start_reading_album_links().is_empty(),
             "a group being read is not asked for again"
         );
 
-        search.record_album_links(vec![(
-            "group-x".to_string(),
+        search.record_album_links(vec![GroupReading::of_links(
+            "group-x",
             crate::import::album_links::AlbumLinks::Read(vec![
-                crate::import::MetadataRef::new(Catalog::Discogs, "master-7"),
+                crate::import::album_links::AlbumLink {
+                    album: crate::import::MetadataRef::new(Catalog::Discogs, "master-7"),
+                    stated: crate::import::album_links::AlbumStatement::Page,
+                },
             ]),
         )]);
         assert_eq!(search.groups.len(), 1);

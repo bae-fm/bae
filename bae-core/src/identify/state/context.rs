@@ -24,7 +24,7 @@ use super::{
 };
 use crate::identify::agreements::CandidateText;
 use crate::identify::IdentifyFailure;
-use crate::import::album_links::{self, GroupLinks};
+use crate::import::album_links::{self, GroupReading, Twin};
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
     ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextSignal,
@@ -423,8 +423,8 @@ pub struct SignalsContext {
     pub text_settled: bool,
     /// The candidate's local track count.
     pub track_count: u32,
-    /// The links between the MusicBrainz albums the run found and the other
-    /// catalog's, read once every lookup has settled.
+    /// What the MusicBrainz albums the run found are on the other catalog,
+    /// read once every lookup has settled, with the twins that reading read.
     pub album_links: AlbumLinkReading,
 }
 
@@ -437,7 +437,7 @@ pub enum AlbumLinkReading {
     Reading,
     /// Read, group by group — empty when what the run found held nothing to
     /// join.
-    Read(Vec<GroupLinks>),
+    Read(Vec<GroupReading>),
 }
 
 impl Default for SignalsContext {
@@ -532,14 +532,19 @@ impl SignalsContext {
         self.search.record(search);
     }
 
+    /// What reading the run's albums answered — nothing until it has.
+    fn album_readings(&self) -> &[GroupReading] {
+        match &self.album_links {
+            AlbumLinkReading::Read(read) => read,
+            AlbumLinkReading::Pending | AlbumLinkReading::Reading => &[],
+        }
+    }
+
     /// What every lookup the current selection still uses returned, each
     /// release with what was read about its album's links — the four sets
     /// combine takes, in its order.
     pub(super) fn lookup_results(&self) -> [Vec<(MetadataResult, LibraryStatus)>; 4] {
-        let read: &[GroupLinks] = match &self.album_links {
-            AlbumLinkReading::Read(read) => read,
-            AlbumLinkReading::Pending | AlbumLinkReading::Reading => &[],
-        };
+        let read = self.album_readings();
         [
             self.disc.results.clone(),
             self.barcode.results.clone(),
@@ -555,6 +560,16 @@ impl SignalsContext {
                 })
                 .collect()
         })
+    }
+
+    /// The releases no lookup returned that reading the run's albums read,
+    /// each named by a release a lookup did return. Combine puts each beside
+    /// the release that names it.
+    pub(super) fn twins(&self) -> Vec<Twin> {
+        self.album_readings()
+            .iter()
+            .filter_map(|reading| reading.twin.clone())
+            .collect()
     }
 
     /// Failures belonging to evidence the current selection still uses.

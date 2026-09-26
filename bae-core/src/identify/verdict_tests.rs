@@ -58,6 +58,7 @@ fn found_state() -> IdentifyState {
             by_barcode: false,
             by_catalog: false,
             by_search: false,
+            named_by: None,
         }],
         pressings: vec![0],
         narrowed_out: NarrowedOut::default(),
@@ -83,6 +84,7 @@ fn found_drops_library_status_and_keeps_the_rest() {
                 by_barcode: false,
                 by_catalog: false,
                 by_search: false,
+                named_by: None,
             }],
             pressings: vec![0],
             narrowed_out: Vec::new(),
@@ -151,6 +153,7 @@ fn disc_id_only() -> LookupProvenance {
         by_barcode: false,
         by_catalog: false,
         by_search: false,
+        named_by: None,
     }
 }
 
@@ -278,6 +281,7 @@ fn signals_that_share_no_result_store_as_one_match_list() {
                 by_barcode: false,
                 by_catalog: false,
                 by_search: false,
+                named_by: None,
             }],
             pressings: vec![0],
             narrowed_out: vec![mk_result("rel-b")],
@@ -286,6 +290,7 @@ fn signals_that_share_no_result_store_as_one_match_list() {
                 by_barcode: true,
                 by_catalog: false,
                 by_search: false,
+                named_by: None,
             }],
             narrowed_out_pressings: vec![0],
             ledger: None,

@@ -35,6 +35,7 @@ fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
             by_barcode: false,
             by_catalog: false,
             by_search: false,
+            named_by: None,
         })
         .collect();
     let pressings = crate::import::release_group::form_rows(&matches);
@@ -94,6 +95,7 @@ fn a_lone_match_found_by_title_is_ready() {
         by_barcode: false,
         by_catalog: false,
         by_search: true,
+        named_by: None,
     };
     assert_eq!(classify(&verdict), QueueClassification::Ready);
 }
@@ -124,6 +126,7 @@ fn what_agreement_narrowed_out_is_not_a_match() {
             by_barcode: false,
             by_catalog: false,
             by_search: false,
+            named_by: None,
         }],
         narrowed_out_pressings: vec![0],
         ledger: None,

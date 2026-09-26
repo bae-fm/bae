@@ -15,9 +15,11 @@
 //! answered.
 //!
 //! Once every step settles, and what they found holds both catalogs'
-//! releases, the run reads its MusicBrainz albums' links to Discogs masters —
-//! what puts the two catalogs' albums on one card. Then the reducer hands the
-//! results to `combine` and lands on `Found`, `NotFoundAnywhere`, or `Failed`.
+//! releases, the run reads what its MusicBrainz albums are on Discogs — the
+//! statements that put the two catalogs' albums on one card, and the Discogs
+//! releases a MusicBrainz release names where that is the statement (see
+//! [`crate::import::album_links`]). Then the reducer hands the results to
+//! `combine` and lands on `Found`, `NotFoundAnywhere`, or `Failed`.
 //!
 //! Settling also records the run's ledger — the layout every surface has been
 //! drawing while it ran — onto the terminal state, so what the run showed
@@ -30,7 +32,7 @@ use super::combine::{combine_results, CombineOutcome, LookupProvenance, Narrowed
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
 use crate::db::LibraryStatus;
-use crate::import::album_links::{self, GroupLinks};
+use crate::import::album_links::{self, GroupReading, ToRead};
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
@@ -343,10 +345,10 @@ pub enum IdentifyEvent {
         outcome: LookupOutcome,
     },
 
-    /// The album links of the groups `Effect::ReadAlbumLinks` named, each
+    /// What reading the groups `Effect::ReadAlbumLinks` named answered, each
     /// read or unread.
     AlbumLinksRead {
-        read: Vec<GroupLinks>,
+        read: Vec<GroupReading>,
     },
 }
 
@@ -373,10 +375,9 @@ pub enum Effect {
         source: Catalog,
         query: TitleSearch,
     },
-    /// Read these MusicBrainz release groups' links to the other catalog's
-    /// albums.
+    /// Read what these MusicBrainz release groups are on the other catalog.
     ReadAlbumLinks {
-        groups: Vec<String>,
+        to_read: ToRead,
     },
 }
 
@@ -803,11 +804,9 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     match context.album_links {
         AlbumLinkReading::Pending => {
             let found = context.lookup_results();
-            let groups = album_links::groups_to_read(
-                found.iter().flatten().map(|(result, _)| result),
-                |_| false,
-            );
-            if groups.is_empty() {
+            let to_read =
+                album_links::to_read(found.iter().flatten().map(|(result, _)| result), |_| false);
+            if to_read.is_empty() {
                 context.album_links = AlbumLinkReading::Read(Vec::new());
             } else {
                 context.album_links = AlbumLinkReading::Reading;
@@ -819,7 +818,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                         search,
                         context,
                     },
-                    vec![Effect::ReadAlbumLinks { groups }],
+                    vec![Effect::ReadAlbumLinks { to_read }],
                 );
             }
         }
@@ -884,6 +883,7 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
         barcode_results,
         catalog_results,
         search_results,
+        context.twins(),
         &context.text,
     );
     let (matches, library_statuses, provenance, pressings, narrowed_out) = match outcome {

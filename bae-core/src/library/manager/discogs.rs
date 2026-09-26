@@ -53,6 +53,17 @@ impl DiscogsSession {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    async fn read_album_links(
+        &self,
+        to_read: &crate::import::album_links::ToRead,
+        priority: CallPriority,
+    ) -> Vec<crate::import::album_links::GroupReading<()>> {
+        self.providers
+            .read_album_links(self.client.as_deref(), to_read, priority)
+            .await
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn release_covers(
         &self,
         release_id: &str,
@@ -267,6 +278,71 @@ impl LibraryManager {
                 self.providers.fetch_payloads(None, release, priority).await
             }
             Err(error) => Err(error.into()),
+        }
+    }
+
+    /// What each MusicBrainz release group to read is on Discogs, with each
+    /// twin the reading read checked against the library the way a lookup's
+    /// answers are.
+    ///
+    /// A library whose Discogs key cannot be read reads without Discogs: a
+    /// release link is then followed only to a release already on the list.
+    /// A twin whose library status cannot be read leaves its group unread
+    /// rather than on the list with a status nothing checked.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn read_album_links(
+        &self,
+        to_read: &crate::import::album_links::ToRead,
+        priority: CallPriority,
+    ) -> Vec<crate::import::album_links::GroupReading> {
+        use crate::import::album_links::{AlbumLinks, GroupReading};
+        let read = match self.discogs_session() {
+            Ok(session) => session.read_album_links(to_read, priority).await,
+            Err(error) => {
+                warn!("Discogs unavailable while reading album links: {error}");
+                self.providers
+                    .read_album_links(None, to_read, priority)
+                    .await
+            }
+        };
+        let twins: Vec<crate::import::search::MetadataResult> = read
+            .iter()
+            .filter_map(|reading| reading.twin.as_ref().map(|twin| twin.result.clone()))
+            .collect();
+        let checked = if twins.is_empty() {
+            Ok(Vec::new())
+        } else {
+            crate::identify::annotate_with_library_status(twins, self).await
+        };
+        match checked {
+            Ok(annotated) => {
+                let mut statuses = annotated.into_iter().map(|(_, status)| status);
+                read.into_iter()
+                    .map(|reading| {
+                        reading.with_status(|_| {
+                            statuses
+                                .next()
+                                .expect("each twin was checked against the library")
+                        })
+                    })
+                    .collect()
+            }
+            Err(detail) => {
+                tracing::error!(
+                    "Twins' library status unread; their groups read as unread: {detail}"
+                );
+                read.into_iter()
+                    .map(|reading| GroupReading {
+                        links: match reading.twin {
+                            Some(_) => AlbumLinks::Unread,
+                            None => reading.links,
+                        },
+                        group: reading.group,
+                        release_links: reading.release_links,
+                        twin: None,
+                    })
+                    .collect()
+            }
         }
     }
 

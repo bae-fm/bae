@@ -203,7 +203,7 @@ const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_i
      year, format, label, catalog_number, country, media_kind, cover_url, \
      cover_label, cover_source, source_group_id, album_links, source_tracks_kind, \
      source_tracks_count, \
-     by_disc_id, by_barcode, by_catalog, by_search, narrowed_out";
+     by_disc_id, by_barcode, by_catalog, by_search, named_by_catalog, named_by_key, narrowed_out";
 
 const FILE_EDIT_COLUMNS: &str =
     "content_hash, relative_path, role_choice, sheet_disc, sheet_disc_number";
@@ -294,7 +294,9 @@ pub(crate) fn load_matches_rows_on(
         },
     )?;
     let album_links = sql.query(
-        "SELECT content_hash, position, catalog, key FROM import_candidate_match_album_link \
+        "SELECT content_hash, position, catalog, key, stated, wikidata_item, \
+                musicbrainz_release, twin_catalog, twin_key \
+         FROM import_candidate_match_album_link \
          WHERE :only IS NULL OR content_hash = :only \
          ORDER BY content_hash, position, ordinal",
         named_params! { ":only": only },
@@ -302,8 +304,15 @@ pub(crate) fn load_matches_rows_on(
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, i64>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
+                super::verdict_rows::AlbumLinkRow {
+                    catalog: row.get(2)?,
+                    key: row.get(3)?,
+                    stated: row.get(4)?,
+                    wikidata_item: row.get(5)?,
+                    musicbrainz_release: row.get(6)?,
+                    twin_catalog: row.get(7)?,
+                    twin_key: row.get(8)?,
+                },
             ))
         },
     )?;
@@ -337,12 +346,12 @@ pub(crate) fn load_matches_rows_on(
                 .links
                 .push((catalog, key));
         }
-        for (content_hash, position, catalog, key) in album_links {
+        for (content_hash, position, link) in album_links {
             entries
                 .entry((content_hash, position))
                 .or_default()
                 .album_links
-                .push((catalog, key));
+                .push(link);
         }
         let mut matches: HashMap<String, StoredMatches> = HashMap::new();
         for row in rows {

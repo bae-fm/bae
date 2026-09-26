@@ -7,9 +7,18 @@
 //! **The pressing is what is offered or set aside, not the release.** Two
 //! sources' records of one physical object are one row a person picks whole,
 //! and the two rarely arrive by the same route: a disc ID answers on
-//! MusicBrainz alone, so the Discogs record of that same pressing can only
-//! ever be a barcode's answer. So every answer the run returned is paired
+//! MusicBrainz alone, so the Discogs record of that pressing comes from a
+//! barcode or catalog number lookup — or from no lookup at all, read because
+//! the MusicBrainz release names it as itself (see
+//! [`crate::import::album_links`]). So every record the run holds is paired
 //! first — [`group_results`] — and the ranking then reads whole rows.
+//!
+//! **A record no lookup returned counts for no lookup.** A twin read through a
+//! MusicBrainz release's link is on the row because that release names it,
+//! not because a lookup of the folder's codes found it, so it raises no row's
+//! lookup count and says so in its provenance: [`LookupProvenance::named_by`].
+//! What the folder's text states about its fields is still what the text
+//! states about the row, which is one object whichever record says it.
 //!
 //! **Every row is scored, and the rows tied at the top are offered.** The
 //! score is `Support`: how many lookups returned the row, then how many of
@@ -27,6 +36,7 @@
 
 use super::agreements::{agreements_of, CandidateText};
 use crate::db::LibraryStatus;
+use crate::import::album_links::Twin;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
 use crate::import::search::MetadataResult;
 use crate::import::Catalog;
@@ -48,6 +58,22 @@ pub struct LookupProvenance {
     /// the three identifiers named nothing, so this is never true beside any
     /// of the others.
     pub by_search: bool,
+    /// Returned by no lookup: the MusicBrainz release whose own document
+    /// names this one as the same release, which the run read to learn its
+    /// album. `None` for a release a lookup returned or a person chose; never
+    /// set beside any of the four above.
+    pub named_by: Option<crate::import::MetadataRef>,
+}
+
+impl LookupProvenance {
+    /// Returned by no lookup and named by nothing: a release a person chose.
+    pub const CHOSEN: Self = Self {
+        by_disc_id: false,
+        by_barcode: false,
+        by_catalog: false,
+        by_search: false,
+        named_by: None,
+    };
 }
 
 /// The rows the ranking did not offer, as the releases they are made of.
@@ -121,6 +147,10 @@ type ReleaseKey = (Catalog, String);
 /// other three: it is asked only when all of them came back empty, so a run
 /// that reaches it ranks what the search alone returned.
 ///
+/// `twins` are the releases no lookup returned, each read because a release a
+/// lookup did return names it as itself. Each joins the list beside the
+/// release that names it, and raises no row's lookup count.
+///
 /// Every answer the run returned is paired into pressing rows first, then:
 ///
 /// 1. **Nothing.** Every set empty: `NotFoundAnywhere`.
@@ -137,6 +167,7 @@ pub fn combine_results(
     barcode_results: Results,
     catalog_results: Results,
     search_results: Results,
+    twins: Vec<Twin>,
     text: &CandidateText,
 ) -> CombineOutcome {
     let by_signal = [
@@ -155,10 +186,32 @@ pub fn combine_results(
         return CombineOutcome::NotFoundAnywhere;
     }
 
-    // Every answer the run returned, each release once, in signal order.
-    // Pairing runs over all of them, so two sources' records of one pressing
-    // are one row whichever lookup returned each of them.
-    let all = union_all(&present);
+    // Every answer the run returned, each release once, in signal order, and
+    // then each twin beside the release that names it. Pairing runs over all
+    // of them, so two sources' records of one pressing are one row whichever
+    // way each of them came.
+    let mut all = union_all(&present);
+    let answered: Vec<&MetadataResult> = all.iter().map(|(result, _)| result).collect();
+    let twins: Vec<(MetadataResult, LibraryStatus, crate::import::MetadataRef)> =
+        crate::import::album_links::beside(&twins, &answered)
+            .into_iter()
+            .map(|twin| {
+                (
+                    twin.result.clone(),
+                    twin.status.clone(),
+                    twin.named_by.clone(),
+                )
+            })
+            .collect();
+    let named_by: HashMap<ReleaseKey, crate::import::MetadataRef> = twins
+        .iter()
+        .map(|(result, _, by)| ((result.source, result.release_id.clone()), by.clone()))
+        .collect();
+    all.extend(
+        twins
+            .into_iter()
+            .map(|(result, status, _)| (result, status)),
+    );
 
     let lookup_of = |result: &MetadataResult| {
         let key = (result.source, result.release_id.clone());
@@ -167,6 +220,7 @@ pub fn combine_results(
             by_barcode: keys[1].contains(&key),
             by_catalog: keys[2].contains(&key),
             by_search: keys[3].contains(&key),
+            named_by: named_by.get(&key).cloned(),
         }
     };
     let judged: Vec<Judged> = all
@@ -209,7 +263,7 @@ pub fn combine_results(
                 let status = statuses
                     .get(&(result.source, result.release_id.clone()))
                     .cloned()
-                    .expect("a pressing is built from the run's own answers");
+                    .expect("a pressing is built from the run's own records");
                 records.push((result, status));
                 pressings.push(row);
             }
@@ -284,16 +338,12 @@ fn support_of(
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
 ) -> Support {
-    let mut returned = LookupProvenance {
-        by_disc_id: false,
-        by_barcode: false,
-        by_catalog: false,
-        by_search: false,
-    };
+    let mut returned = LookupProvenance::CHOSEN;
+    // A twin on the row states no lookup of its own: every field is false.
     for release in &row.releases {
         let found = provenance
             .get(&(release.source, release.release_id.clone()))
-            .expect("a pressing is built from the run's own answers");
+            .expect("a pressing is built from the run's own records");
         returned.by_disc_id |= found.by_disc_id;
         returned.by_barcode |= found.by_barcode;
         returned.by_catalog |= found.by_catalog;

@@ -488,6 +488,9 @@ fn live_matches(
         barcode.results(),
         catalog.results(),
         search.results(),
+        // The albums are read once every lookup has settled, so no twin is
+        // on a list still being looked up.
+        Vec::new(),
         &context.text,
     );
     match outcome {

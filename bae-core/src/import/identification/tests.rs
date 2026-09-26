@@ -811,6 +811,7 @@ impl Fixture {
                 by_barcode: false,
                 by_catalog: false,
                 by_search: false,
+                named_by: None,
             }],
             pressings: vec![0],
             narrowed_out: Vec::new(),

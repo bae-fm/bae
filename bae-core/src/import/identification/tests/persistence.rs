@@ -108,6 +108,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                 by_barcode: false,
                 by_catalog: false,
                 by_search: false,
+                named_by: None,
             })
             .collect(),
         // Each release is a pressing of its own: the group lists several, and

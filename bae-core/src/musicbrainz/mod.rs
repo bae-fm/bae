@@ -58,6 +58,15 @@ fn release_group_url(release_group_id: &str) -> String {
     ))
 }
 
+/// A release group's releases, each with its own links and the group's —
+/// one request that states both what the group's page links and what each
+/// of its releases links.
+fn group_releases_url(release_group_id: &str) -> String {
+    ws2(&format!(
+        "release?release-group={release_group_id}&inc=url-rels+release-groups+release-group-level-rels&limit=100&fmt=json"
+    ))
+}
+
 fn discid_url(discid: &str) -> String {
     ws2(&format!(
         "discid/{discid}?inc=recordings+artist-credits+release-groups+url-rels+labels"
@@ -398,6 +407,30 @@ impl MusicBrainz {
         .await
     }
 
+    /// The first page of a release group's releases, each with its own links
+    /// and the group's.
+    pub async fn browse_group_releases(
+        &self,
+        release_group_id: &str,
+        priority: CallPriority,
+    ) -> Result<GroupReleases, MusicBrainzError> {
+        let url = group_releases_url(release_group_id);
+        debug!("Browsing release-group releases: {}", url);
+        mb_retry("MusicBrainz release-group browse", || async {
+            let json = match self.get(&url, priority).await {
+                Ok(json) => json,
+                Err(MusicBrainzError::Provider { status: Some(404) }) => {
+                    return Err(MusicBrainzError::NotFound(release_group_id.to_string()));
+                }
+                Err(error) => return Err(error),
+            };
+            serde_json::from_str(&json).map_err(|error| {
+                MusicBrainzError::Other(format!("Failed to parse release browse JSON: {error}"))
+            })
+        })
+        .await
+    }
+
     /// Every MusicBrainz release explicitly related to this Discogs release URL.
     /// A missing URL resource is `None`; a found document retains its raw answer,
     /// including an empty or ambiguous set of matching targets.
@@ -557,6 +590,13 @@ impl MusicBrainz {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn seed_release_cache(&self, release_id: &str, raw_json: String) {
         self.seed_response(&release_url(release_id), 200, raw_json);
+    }
+
+    /// Pre-populate a release group's browsed releases, as
+    /// [`Self::browse_group_releases`] asks for them.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn seed_group_releases(&self, release_group_id: &str, raw_json: String) {
+        self.seed_response(&group_releases_url(release_group_id), 200, raw_json);
     }
 
     /// Pre-populate a release-group document. Pairs with `seed_release_cache`.

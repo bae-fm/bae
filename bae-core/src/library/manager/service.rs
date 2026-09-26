@@ -320,16 +320,6 @@ impl LibraryManager {
         self.providers.search_musicbrainz(params, priority).await
     }
 
-    /// Each MusicBrainz release group's links to the other catalog's albums.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) async fn read_album_links(
-        &self,
-        groups: &[String],
-        priority: crate::util::rate_limiter::CallPriority,
-    ) -> Vec<crate::import::album_links::GroupLinks> {
-        self.providers.read_album_links(groups, priority).await
-    }
-
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn lookup_musicbrainz_discid(
         &self,

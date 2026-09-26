@@ -106,12 +106,12 @@ impl ImportServiceHandle {
             }
             // What landed may put the other catalog's releases beside
             // MusicBrainz's, whose album links then join the two.
-            let groups = runtime.start_reading_album_links(&candidate_key, run);
-            if groups.is_empty() {
+            let to_read = runtime.start_reading_album_links(&candidate_key, run);
+            if to_read.is_empty() {
                 return;
             }
             let read = library_manager
-                .read_album_links(&groups, CallPriority::Interactive)
+                .read_album_links(&to_read, CallPriority::Interactive)
                 .await;
             if !runtime.land_album_links(&candidate_key, run, read) {
                 debug!(

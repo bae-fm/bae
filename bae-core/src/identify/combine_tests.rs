@@ -13,6 +13,7 @@ fn combine(discid: Results, barcode: Results, catalog: Results) -> CombineOutcom
         barcode,
         catalog,
         Results::new(),
+        Vec::new(),
         &CandidateText::default(),
     )
 }
@@ -312,7 +313,7 @@ fn the_pressing_the_folder_describes_leads_the_disc_id_s_others() {
         pressing_of_album_one("rel-2003", 2003),
         pressing_of_album_one("rel-1976", 1976),
     ];
-    let outcome = combine_results(discid, vec![], vec![], vec![], &text);
+    let outcome = combine_results(discid, vec![], vec![], vec![], Vec::new(), &text);
     let (matches, provenance, _) = found(outcome);
     assert_eq!(ids(&matches), vec!["rel-1976", "rel-1994", "rel-2003"]);
     assert!(provenance.iter().all(|lookup| lookup.by_disc_id));
@@ -329,6 +330,7 @@ fn a_barcode_naming_a_record_the_folder_never_mentions_folds() {
         vec![unrelated_record()],
         vec![],
         vec![],
+        Vec::new(),
         &text,
     );
     let (matches, _, _) = found(outcome.clone());
@@ -357,6 +359,7 @@ fn the_pressing_whose_catalog_number_the_folder_states_folds_the_other() {
         vec![stated, other],
         vec![],
         vec![],
+        Vec::new(),
         &text,
     );
     let (matches, _, _) = found(outcome.clone());
@@ -377,6 +380,7 @@ fn two_pressings_the_folder_names_no_number_of_both_stay() {
         vec![first, second],
         vec![],
         vec![],
+        Vec::new(),
         &text,
     );
     let (matches, _, _) = found(outcome.clone());
@@ -400,7 +404,7 @@ fn pressings_that_differ_only_by_year_all_stay_on_the_list() {
         pressing_of_album_one("rel-2003", 2003),
         pressing_of_album_one("rel-1976", 1976),
     ];
-    let outcome = combine_results(discid, vec![], vec![], vec![], &text);
+    let outcome = combine_results(discid, vec![], vec![], vec![], Vec::new(), &text);
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-1976", "rel-1994", "rel-2003"]);
     assert!(narrowed(outcome).is_empty());
@@ -416,7 +420,14 @@ fn a_disc_id_s_pressing_stays_however_the_folder_spells_its_label() {
     let mut reissue = pressing_of_album_one("rel-reissue", 1994);
     reissue.0.label = Some("Label Four".to_string());
     reissue.0.catalog_number = None;
-    let outcome = combine_results(vec![matched, reissue], vec![], vec![], vec![], &text);
+    let outcome = combine_results(
+        vec![matched, reissue],
+        vec![],
+        vec![],
+        vec![],
+        Vec::new(),
+        &text,
+    );
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-matched", "rel-reissue"]);
     assert!(narrowed(outcome).is_empty());
@@ -433,6 +444,7 @@ fn a_barcode_answering_alone_is_offered_however_little_the_folder_says() {
         vec![unrelated_record()],
         vec![],
         vec![],
+        Vec::new(),
         &text,
     ));
     assert_eq!(ids(&matches), vec!["rel-album-three"]);
@@ -449,6 +461,7 @@ fn a_candidate_with_no_text_narrows_nothing_on_it() {
         vec![pressing_of_album_one("rel-1976", 1976), unrelated_record()],
         vec![],
         vec![],
+        Vec::new(),
         &CandidateText::default(),
     );
     let (matches, _, _) = found(outcome.clone());
@@ -466,7 +479,7 @@ fn the_intersection_s_leftovers_and_the_folder_s_are_one_list() {
         pressing_of_album_one("rel-1994", 1994),
     ];
     let barcode = vec![pressing_of_album_one("rel-1976", 1976), unrelated_record()];
-    let outcome = combine_results(discid, barcode, vec![], vec![], &text);
+    let outcome = combine_results(discid, barcode, vec![], vec![], Vec::new(), &text);
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-1976"]);
     let left_out = narrowed(outcome).matches;
@@ -585,6 +598,7 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
         ],
         vec![],
         vec![],
+        Vec::new(),
         &text,
     );
     let (matches, provenance, pressings) = found(outcome.clone());
@@ -661,6 +675,7 @@ fn a_pressing_never_splits_across_the_two_lists() {
         ],
         vec![],
         vec![],
+        Vec::new(),
         &text,
     );
     let (_, _, pressings) = found(outcome.clone());
@@ -683,6 +698,7 @@ fn a_lone_pressing_the_folder_describes_is_the_sole_match() {
         vec![unrelated_record()],
         vec![],
         vec![],
+        Vec::new(),
         &text,
     );
     let (_, _, pressings) = found(outcome);
@@ -699,6 +715,7 @@ fn a_search_that_answered_alone_is_offered_whole() {
         vec![],
         vec![],
         vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-y"))],
+        Vec::new(),
         &CandidateText::default(),
     );
     let (matches, provenance, _) = found(outcome.clone());
@@ -711,4 +728,44 @@ fn a_search_that_answered_alone_is_offered_whole() {
         narrowed(outcome).is_empty(),
         "one set alone narrows nothing"
     );
+}
+
+/// A twin read through a disc ID answer's link sits on that answer's row and
+/// counts for no lookup: the row ranks as the disc ID answer would alone, and
+/// the twin's provenance names the release that named it. A twin whose
+/// namer is not among the answers has nothing to sit beside and is left out.
+#[test]
+fn a_twin_counts_for_no_lookup_and_sits_on_its_namer_s_row() {
+    let mut named = pair("mb-1", Some("group-1"));
+    named.0.links = vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-twin")];
+    let twin = |id: &str, named_by: &str| Twin {
+        result: pair_src(Catalog::Discogs, id, Some("master-1")).0,
+        named_by: crate::import::MetadataRef::new(Catalog::MusicBrainz, named_by),
+        status: LibraryStatus::absent(id),
+    };
+    let outcome = combine_results(
+        vec![named],
+        vec![pair_src(Catalog::Discogs, "dg-barcode", Some("master-1"))],
+        vec![],
+        vec![],
+        vec![twin("dg-twin", "mb-1"), twin("dg-orphan", "mb-gone")],
+        &CandidateText::default(),
+    );
+    let (matches, provenance, pressings) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["mb-1", "dg-twin"]);
+    assert_eq!(pressings, vec![0, 0], "the twin shares its namer's row");
+    assert!(provenance[0].by_disc_id && provenance[0].named_by.is_none());
+    assert_eq!(
+        provenance[1],
+        LookupProvenance {
+            named_by: Some(crate::import::MetadataRef::new(
+                Catalog::MusicBrainz,
+                "mb-1"
+            )),
+            ..LookupProvenance::CHOSEN
+        }
+    );
+    // The disc ID's row outranks the barcode's on the disc ID alone, as it
+    // would with no twin beside it.
+    assert_eq!(ids(&narrowed(outcome).matches), vec!["dg-barcode"]);
 }

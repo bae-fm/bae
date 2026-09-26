@@ -44,7 +44,10 @@ pub(super) fn discogs(
 
 /// `release` as its catalog states it: its album is `master` on Discogs.
 pub(super) fn linked(mut release: MetadataResult, master: &str) -> MetadataResult {
-    release.album_links = AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, master)]);
+    release.album_links = AlbumLinks::Read(vec![crate::import::album_links::AlbumLink {
+        album: MetadataRef::new(Catalog::Discogs, master),
+        stated: crate::import::album_links::AlbumStatement::Page,
+    }]);
     release
 }
 

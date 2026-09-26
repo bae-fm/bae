@@ -83,6 +83,7 @@ fn sample_verdict() -> TerminalVerdict {
             by_barcode: true,
             by_catalog: true,
             by_search: false,
+            named_by: None,
         }],
         pressings: vec![0],
         narrowed_out: Vec::new(),
@@ -172,13 +173,13 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
 }
 
 /// Every barcode, every medium entry — stated or not — every link a match
-/// carries, its cover with the copies the catalog serves, and what reading its
-/// album's links answered store and read back,
-/// so the rows and cards a stored verdict groups into are the ones the run
-/// grouped into.
+/// carries, its cover with the copies the catalog serves, what reading its
+/// album's links answered with each statement, and a twin's naming release
+/// store and read back, so the rows and cards a stored verdict groups into are
+/// the ones the run grouped into.
 #[tokio::test]
 async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
-    use crate::import::album_links::AlbumLinks;
+    use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
     use crate::import::search::StatedMedia;
     use crate::import::{Catalog, MetadataRef};
 
@@ -194,8 +195,23 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
         MetadataRef::new(Catalog::Discogs, "43"),
     ];
     let album = AlbumLinks::Read(vec![
-        MetadataRef::new(Catalog::Discogs, "7"),
-        MetadataRef::new(Catalog::Discogs, "8"),
+        AlbumLink {
+            album: MetadataRef::new(Catalog::Discogs, "7"),
+            stated: AlbumStatement::Page,
+        },
+        AlbumLink {
+            album: MetadataRef::new(Catalog::Discogs, "8"),
+            stated: AlbumStatement::Wikidata {
+                item: "Q1".to_string(),
+            },
+        },
+        AlbumLink {
+            album: MetadataRef::new(Catalog::Discogs, "9"),
+            stated: AlbumStatement::Release {
+                musicbrainz_release: "rel-1".to_string(),
+                twin: MetadataRef::new(Catalog::Discogs, "44"),
+            },
+        },
     ]);
     musicbrainz.album_links = album.clone();
     let mut discogs = sample_match();
@@ -230,17 +246,26 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     unread.release_id = "rel-3".to_string();
     unread.source_group_id = Some("group-2".to_string());
     unread.album_links = AlbumLinks::Unread;
-    let matches = vec![musicbrainz, discogs, undescribed, unread];
+    let mut twin = sample_match();
+    twin.source = Catalog::Discogs;
+    twin.release_id = "44".to_string();
+    twin.source_group_id = Some("7".to_string());
+    let matches = vec![musicbrainz, discogs, undescribed, unread, twin];
+    let returned = LookupProvenance {
+        by_disc_id: true,
+        ..LookupProvenance::CHOSEN
+    };
     let verdict = TerminalVerdict::Found {
-        provenance: matches
-            .iter()
-            .map(|_| LookupProvenance {
-                by_disc_id: true,
-                by_barcode: false,
-                by_catalog: false,
-                by_search: false,
-            })
-            .collect(),
+        provenance: vec![
+            returned.clone(),
+            returned.clone(),
+            returned.clone(),
+            returned,
+            LookupProvenance {
+                named_by: Some(MetadataRef::new(Catalog::MusicBrainz, "rel-1")),
+                ..LookupProvenance::CHOSEN
+            },
+        ],
         pressings: crate::import::release_group::form_rows(&matches),
         matches: matches.clone(),
         track_count: 11,
@@ -287,10 +312,10 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
             .pressings()
             .map(|pressing| pressing.releases.len())
             .collect::<Vec<_>>(),
-        vec![2, 1],
-        "the linked pair is one row, the other release its own"
+        vec![2, 1, 1],
+        "the linked pair is one row, the others their own"
     );
-    assert_eq!(crate::import::release_group::pressing_count(matches), 3);
+    assert_eq!(crate::import::release_group::pressing_count(matches), 4);
 }
 
 /// The candidate's own text stores and reads back whole — every line, in the
@@ -422,6 +447,7 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
             by_barcode: false,
             by_catalog: false,
             by_search: false,
+            named_by: None,
         }],
         narrowed_out_pressings: vec![0],
         ledger: Some(sample_ledger()),
