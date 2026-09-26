@@ -21,30 +21,25 @@ struct TriageRowView: View {
     let row: BridgeTriageRow
     let coverContent: ImageContent?
     let isGroupMember: Bool
-    let onReveal: () -> Void
-    let onSkip: (_ skipped: Bool) -> Void
-    /// Read this release as the folders it is made of.
-    let onSeparate: () -> Void
-    /// Stop the work running for the candidate: the cancel action its live
-    /// state offers.
-    let onCancel: (_ action: BridgeCandidateAction) -> Void
+    /// What the row's menu offers, given what is running for it: the row's
+    /// own actions, or the selection's when the row is part of a larger one.
+    let menuOffers: (_ live: BridgeCandidateLiveState?) -> CandidateActionMenu
+    let onPerform: (ImportCandidateActionOffer) -> Void
 
     init(
         row: BridgeTriageRow,
         coverContent: ImageContent?,
         isGroupMember: Bool,
-        onReveal: @escaping () -> Void,
-        onSkip: @escaping (_ skipped: Bool) -> Void,
-        onSeparate: @escaping () -> Void = {},
-        onCancel: @escaping (_ action: BridgeCandidateAction) -> Void = { _ in }
+        menuOffers:
+            @escaping (_ live: BridgeCandidateLiveState?) ->
+            CandidateActionMenu = { _ in .empty },
+        onPerform: @escaping (ImportCandidateActionOffer) -> Void = { _ in }
     ) {
         self.row = row
         self.coverContent = coverContent
         self.isGroupMember = isGroupMember
-        self.onReveal = onReveal
-        self.onSkip = onSkip
-        self.onSeparate = onSeparate
-        self.onCancel = onCancel
+        self.menuOffers = menuOffers
+        self.onPerform = onPerform
     }
 
     var body: some View {
@@ -57,10 +52,8 @@ struct TriageRowView: View {
                 live: live,
                 coverContent: coverContent,
                 isGroupMember: isGroupMember,
-                onReveal: onReveal,
-                onSkip: onSkip,
-                onSeparate: onSeparate,
-                onCancel: onCancel
+                menuOffers: menuOffers(live),
+                onPerform: onPerform
             )
         }
     }
@@ -73,41 +66,20 @@ struct TriageRowContent: View {
     let live: BridgeCandidateLiveState?
     let coverContent: ImageContent?
     let isGroupMember: Bool
-    let onReveal: () -> Void
-    let onSkip: (_ skipped: Bool) -> Void
-    /// Read this release as the folders it is made of.
-    let onSeparate: () -> Void
-    let onCancel: (_ action: BridgeCandidateAction) -> Void
+    /// What the row's menu offers — the same offers, and the same order, the
+    /// pane a selection opens draws.
+    let menuOffers: CandidateActionMenu
+    let onPerform: (ImportCandidateActionOffer) -> Void
 
     var body: some View {
         rowContent
             .groupMemberRail(isGroupMember)
             .contentShape(Rectangle())
             .contextMenu {
-                if let cancel = live?.actions.first(where: \.isCancel) {
-                    Button(cancel.rowLabel) { onCancel(cancel) }
-                    Divider()
-                }
-                if let actions = live?.actions,
-                    actions.contains(.skip) || actions.contains(.restore)
-                {
-                    if actions.contains(.skip) {
-                        Button("Skip") { onSkip(true) }
-                    }
-                    if actions.contains(.restore) {
-                        Button("Unskip") { onSkip(false) }
-                    }
-                    Divider()
-                }
-                Button("Reveal in Finder", action: onReveal)
-                // A release read from several folders is this row and nothing
-                // else, so its row is the only place left to say otherwise. A
-                // folder read as several releases is a group of rows, and its
-                // header carries that choice.
-                if row.separable {
-                    Divider()
-                    Button("Keep as Separate Releases", action: onSeparate)
-                }
+                CandidateActionMenuItems(
+                    menu: menuOffers,
+                    onPerform: onPerform
+                )
             }
     }
 
@@ -344,99 +316,77 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowUnidentified
                 ),
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             TriageRowView(
                 row: PreviewData.triageRowPrefilledFromTags,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowPrefilledFromTags
                 ),
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             TriageRowView(
                 row: PreviewData.triageRowIdentifiedOnline,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowIdentifiedOnline
                 ),
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             TriageRowView(
                 row: PreviewData.triageRowIdentifiedSeveralMatches,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowIdentifiedSeveralMatches
                 ),
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             TriageRowView(
                 row: PreviewData.triageRowReady,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowReady
                 ),
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             TriageRowView(
                 row: PreviewData.triageRowPickAPressing,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowPickAPressing
                 ),
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             TriageRowView(
                 row: PreviewData.triageRowSeveralMatchesFromSignals,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowSeveralMatchesFromSignals
                 ),
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             TriageRowView(
                 row: PreviewData.triageRowAlreadyInLibrary,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowAlreadyInLibrary
                 ),
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             TriageRowView(
                 row: PreviewData.triageRowNoMatch,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowNoMatch
                 ),
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             TriageRowView(
                 row: PreviewData.triageRowIdentifying,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowIdentifying
                 ),
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             TriageRowView(
                 row: PreviewData.triageRowFailed,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowFailed
                 ),
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
         }
         .padding()
@@ -457,9 +407,7 @@ extension TriageRowContent {
                 TriageRowView(
                     row: row,
                     coverContent: importStore.sidebarCover(for: row),
-                    isGroupMember: false,
-                    onReveal: {},
-                    onSkip: { _ in }
+                    isGroupMember: false
                 )
             }
             // The same row as the list's first, drawn as the selection draws
@@ -469,9 +417,7 @@ extension TriageRowContent {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowReadFromRecord
                 ),
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             .environment(\.backgroundProminence, .increased)
             .background(Color.accentColor)

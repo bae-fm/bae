@@ -198,14 +198,13 @@ struct ImportCandidateListContent: View {
     let onRefreshFolder: (_ folder: BridgeWatchedFolder) -> Void
     /// Read every release below the header's folder as one.
     let onCombineFolder: (_ key: BridgeFolderReleaseDecisionKey) -> Void
-    /// Read the release at `key` as the folders it is made of.
+    /// Read the release at `key` as the folders it is made of — an
+    /// unreadable folder's own menu, which offers nothing else.
     let onSeparate: (_ key: String) -> Void
-    /// Skip (or unskip) the candidate at `key`. Wired to the row context menu.
-    let onSkip: (_ key: String, _ skipped: Bool) -> Void
+    /// Show an imported row's folders.
     let onReveal: (_ key: String) -> Void
-    /// Stop the work running for the candidate at `key`: the cancel action
-    /// its row offers.
-    let onCancel: (_ key: String, _ action: BridgeCandidateAction) -> Void
+    /// Run one action a row's menu offers, over the candidates it names.
+    let onPerform: (ImportCandidateActionOffer) -> Void
     /// Take every candidate off the identification queue.
     let onCancelAllIdentification: () -> Void
     /// Cancel every import that has not begun writing its release.
@@ -677,6 +676,38 @@ extension ImportCandidateListContent {
         }
     }
 
+    /// What a row's menu offers: the selection's actions when the row is
+    /// one of several selected, as the pane that selection opens draws them,
+    /// and the row's own otherwise.
+    private func menuOffers(
+        for row: BridgeTriageRow,
+        live: BridgeCandidateLiveState?
+    ) -> CandidateActionMenu {
+        let selection = uiStore.selectedFolderCandidates
+        if selection.count > 1, selection.contains(row.candidateKey) {
+            return CandidateActionMenu(
+                offers: ImportCandidateSelection(
+                    importStore: importStore,
+                    uiStore: uiStore
+                )
+                .offers,
+                isSelection: true
+            )
+        }
+        return CandidateActionMenu(
+            offers: ImportCandidateActionOffer.offers(for: [
+                (
+                    ImportCandidateActionTarget(
+                        key: row.candidateKey,
+                        displayName: row.folderName
+                    ),
+                    live?.actions ?? []
+                )
+            ]),
+            isSelection: false
+        )
+    }
+
     private func cancelReveal() {
         revealOperation?.cancel()
         revealOperation = nil
@@ -690,10 +721,8 @@ extension ImportCandidateListContent {
             row: row,
             coverContent: importStore.sidebarCover(for: row),
             isGroupMember: isGroupMember,
-            onReveal: { onReveal(row.candidateKey) },
-            onSkip: { onSkip(row.candidateKey, $0) },
-            onSeparate: { onSeparate(row.candidateKey) },
-            onCancel: { onCancel(row.candidateKey, $0) }
+            menuOffers: { live in menuOffers(for: row, live: live) },
+            onPerform: onPerform
         )
         .tag(row.candidateKey)
     }
@@ -798,9 +827,8 @@ extension ImportCandidateListContent {
             onRefreshFolder: { _ in },
             onCombineFolder: { _ in },
             onSeparate: { _ in },
-            onSkip: { _, _ in },
             onReveal: { _ in },
-            onCancel: { _, _ in },
+            onPerform: { _ in },
             onCancelAllIdentification: {},
             onCancelAllImports: {}
         )
@@ -827,9 +855,8 @@ extension ImportCandidateListContent {
             onRefreshFolder: { _ in },
             onCombineFolder: { _ in },
             onSeparate: { _ in },
-            onSkip: { _, _ in },
             onReveal: { _ in },
-            onCancel: { _, _ in },
+            onPerform: { _ in },
             onCancelAllIdentification: {},
             onCancelAllImports: {}
         )

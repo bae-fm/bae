@@ -15,7 +15,7 @@ struct ImportCandidateActionRunTests {
         let entered = AsyncStream<Void>.makeStream()
         let submitted = uiStore.candidateActionRun.start(
             action: .skip,
-            candidates: [candidate],
+            targets: [candidate.actionTarget],
             uiStore: uiStore,
             before: {},
             operation: { _ in
@@ -28,7 +28,7 @@ struct ImportCandidateActionRunTests {
         await iterator.next()
         let duplicate = uiStore.candidateActionRun.start(
             action: .skip,
-            candidates: [candidate],
+            targets: [candidate.actionTarget],
             uiStore: uiStore,
             before: {},
             operation: { _ in
@@ -56,7 +56,7 @@ struct ImportCandidateActionRunTests {
         var attempted: [String] = []
         await uiStore.candidateActionRun.perform(
             action: .skip,
-            candidates: candidates,
+            targets: candidates.map(\.actionTarget),
             uiStore: uiStore
         ) { key in
             attempted.append(key)
@@ -85,7 +85,7 @@ struct ImportCandidateActionRunTests {
         var attempted: [String] = []
         await uiStore.candidateActionRun.perform(
             action: .clearMetadata,
-            candidates: candidates,
+            targets: candidates.map(\.actionTarget),
             uiStore: uiStore
         ) { key in
             attempted.append(key)
@@ -112,7 +112,7 @@ struct ImportCandidateActionRunTests {
         var attempted: [String] = []
         await uiStore.candidateActionRun.perform(
             action: .importReady,
-            candidates: [identifying, ready],
+            targets: [identifying, ready].map(\.actionTarget),
             uiStore: uiStore
         ) { key in
             attempted.append(key)
@@ -142,7 +142,7 @@ struct ImportCandidateActionRunTests {
         uiStore.setFolderCandidateSelection([candidate.key])
         await uiStore.candidateActionRun.perform(
             action: .skip,
-            candidates: [candidate],
+            targets: [candidate.actionTarget],
             uiStore: uiStore
         ) { _ in
             uiStore.setFolderCandidateSelection([other.key])
@@ -165,13 +165,14 @@ struct ImportCandidateActionRunTests {
         #expect(selection.candidates(for: .importReady).count == 1)
         #expect(selection.candidates(for: .skip).count == 2)
         #expect(selection.candidates(for: .restore).isEmpty)
+        #expect(selection.candidates(for: .combine).count == 2)
+        #expect(selection.candidates(for: .revealFolder).count == 2)
         let size = NSSize(width: 720, height: 580)
         try await SnapshotTestSupport.withHostedWindow(
             ImportCandidateBulkSelectionPane(
                 storageCloud: .constant(true),
                 storagePinned: .constant(true),
-                onPerform: { _ in },
-                onCombine: {}
+                onPerform: { _ in }
             )
             .environment(scene.store)
             .environment(uiStore)
@@ -183,5 +184,12 @@ struct ImportCandidateActionRunTests {
             let png = try await SnapshotTestSupport.capturePNG(host, size: size)
             #expect(!png.isEmpty)
         }
+    }
+}
+
+extension Candidate {
+    /// The candidate as an action runs on it: its key and its name.
+    fileprivate var actionTarget: ImportCandidateActionTarget {
+        ImportCandidateActionTarget(key: key, displayName: displayName)
     }
 }

@@ -88,8 +88,11 @@ async fn a_claimed_import_reaches_its_row_and_not_the_list() {
     assert!(claimed.facts.importing);
     assert_eq!(
         claimed.actions,
-        vec![crate::import::CandidateAction::CancelImport],
-        "a claimed import offers only its cancel"
+        vec![
+            crate::import::CandidateAction::CancelImport,
+            crate::import::CandidateAction::RevealFolder
+        ],
+        "a claimed import offers only its cancel, beside showing its folder"
     );
     assert!(
         tokio::time::timeout(Duration::from_millis(500), list.next())

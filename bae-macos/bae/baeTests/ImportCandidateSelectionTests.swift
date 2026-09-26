@@ -47,9 +47,7 @@ struct ImportCandidateSelectionTests {
             TriageRowView(
                 row: PreviewData.triageRowDoneImported,
                 coverContent: nil,
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             .environment(ImageStore.stub())
             .frame(width: size.width, height: size.height),
@@ -88,9 +86,7 @@ struct ImportCandidateSelectionTests {
                 TriageRowView(
                     row: row,
                     coverContent: nil,
-                    isGroupMember: false,
-                    onReveal: {},
-                    onSkip: { _ in }
+                    isGroupMember: false
                 )
                 .environment(importer)
                 .environment(ImageStore.stub())
@@ -155,9 +151,8 @@ struct ImportCandidateSelectionTests {
                 onRefreshFolder: { _ in },
                 onCombineFolder: { _ in },
                 onSeparate: { _ in },
-                onSkip: { _, _ in },
                 onReveal: { _ in },
-                onCancel: { _, _ in },
+                onPerform: { _ in },
                 onCancelAllIdentification: {},
                 onCancelAllImports: {}
             )

@@ -16,8 +16,7 @@ extension ImportView {
                 ImportCandidateBulkSelectionPane(
                     storageCloud: storageCloud,
                     storagePinned: storagePinned,
-                    onPerform: performCandidateAction,
-                    onCombine: combineSelectedCandidates
+                    onPerform: requestCandidateAction
                 )
                 .frame(
                     minWidth: 620,

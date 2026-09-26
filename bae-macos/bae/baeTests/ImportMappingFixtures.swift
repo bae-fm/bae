@@ -465,7 +465,10 @@ extension MappingFixtures {
                 importing: false,
                 actions: (metadataProvenance == nil && edit.albumTitle.isEmpty
                     ? [] : [.importReady])
-                    + [.identify, .resetToFileMetadata, .clearMetadata, .skip]
+                    + [
+                        .identify, .resetToFileMetadata, .clearMetadata,
+                        .combine, .skip, .revealFolder,
+                    ]
             ),
             importStatus: nil,
             release: {
@@ -504,7 +507,6 @@ extension MappingFixtures {
         audioIdentity: String
     ) -> BridgeFolderCandidate {
         BridgeFolderCandidate(
-            groupingAction: .combine,
             parts: [],
             folderPath: key,
             sourceFolderName: name,

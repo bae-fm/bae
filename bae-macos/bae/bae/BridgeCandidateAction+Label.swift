@@ -16,8 +16,11 @@ extension BridgeCandidateAction {
             String(localized: "Retry failed identification")
         case .resetToFileMetadata: String(localized: "Reset to file metadata")
         case .clearMetadata: String(localized: "Clear metadata")
+        case .combine: String(localized: "Combine as One Release")
+        case .separate: String(localized: "Keep as Separate Releases")
         case .skip: String(localized: "Skip selected")
         case .restore: String(localized: "Restore to Pending")
+        case .revealFolder: String(localized: "Reveal in Finder")
         }
     }
 
@@ -28,26 +31,31 @@ extension BridgeCandidateAction {
         String(localized: "\(label) (\(count))")
     }
 
-    /// Whether the action stops work already running for the candidate —
-    /// what a row offers first in its menu.
-    var isCancel: Bool {
-        switch self {
-        case .cancelIdentification, .cancelImport: true
-        case .importReady, .identify, .retryIdentification,
-            .resetToFileMetadata, .clearMetadata, .skip, .restore:
-            false
-        }
-    }
-
     /// What the action is called in one row's menu, where it names that row's
     /// candidate rather than a selection.
     var rowLabel: String {
         switch self {
+        case .importReady: String(localized: "Import")
+        case .identify: String(localized: "Identify")
         case .cancelIdentification: String(localized: "Stop Identifying")
         case .cancelImport: String(localized: "Cancel Import")
-        case .importReady, .identify, .retryIdentification,
-            .resetToFileMetadata, .clearMetadata, .skip, .restore:
+        case .skip: String(localized: "Skip")
+        case .restore: String(localized: "Unskip")
+        case .retryIdentification, .resetToFileMetadata, .clearMetadata,
+            .combine, .separate, .revealFolder:
             label
+        }
+    }
+
+    /// Whether the action replaces what a person may have chosen, so a
+    /// surface asks before it runs.
+    var needsConfirmation: Bool {
+        switch self {
+        case .resetToFileMetadata, .clearMetadata: true
+        case .importReady, .identify, .cancelIdentification, .cancelImport,
+            .retryIdentification, .combine, .separate, .skip, .restore,
+            .revealFolder:
+            false
         }
     }
 
@@ -59,8 +67,11 @@ extension BridgeCandidateAction {
         case .retryIdentification: "arrow.clockwise"
         case .resetToFileMetadata: "doc.text"
         case .clearMetadata: "eraser"
+        case .combine: "square.stack.3d.up"
+        case .separate: "square.split.1x2"
         case .skip: "minus.circle"
         case .restore: "arrow.uturn.backward"
+        case .revealFolder: "folder"
         }
     }
 }

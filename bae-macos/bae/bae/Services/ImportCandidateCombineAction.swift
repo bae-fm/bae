@@ -12,12 +12,12 @@ import Foundation
 struct ImportCandidateCombineAction {
     let importer: Importer
     let uiStore: UiStore
+    /// The releases to read as one, in the order the selection offers them.
+    let keys: [String]
 
     func run() async {
         do {
-            let key = try await importer.combineCandidates(
-                uiStore.selectedFolderCandidates.sorted()
-            )
+            let key = try await importer.combineCandidates(keys)
             try Task.checkCancellation()
             uiStore.navigateToImportCandidate(key, selecting: [key])
         }

@@ -23,7 +23,7 @@ struct ImportCandidateSkipAction {
     func start() -> Task<Void, Never>? {
         uiStore.candidateActionRun.start(
             action: .skip,
-            candidates: eligibleCandidates,
+            targets: eligibleCandidates,
             uiStore: uiStore,
             before: {},
             operation: { key in
@@ -36,7 +36,7 @@ struct ImportCandidateSkipAction {
     /// Skip command. Reading it off each selected candidate's row makes a
     /// stale selection and a row whose import has started ineligible without
     /// teaching either action surface lifecycle rules.
-    private var eligibleCandidates: [Candidate] {
+    private var eligibleCandidates: [ImportCandidateActionTarget] {
         ImportCandidateSelection(importStore: importStore, uiStore: uiStore)
             .candidates(for: .skip)
     }

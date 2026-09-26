@@ -3,8 +3,10 @@ use super::{
     TriageSkipAction,
 };
 
-/// Commands offered for a candidate at its current lifecycle position.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Commands offered for a candidate at its current lifecycle position —
+/// every one a candidate can take, so every surface that acts on candidates
+/// offers them from this one list.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CandidateAction {
     ImportReady,
     Identify,
@@ -15,8 +17,34 @@ pub enum CandidateAction {
     RetryIdentification,
     ResetToFileMetadata,
     ClearMetadata,
+    /// Read this folder together with others as one release. Offered by each
+    /// candidate that could join one; a selection offers it once, over every
+    /// member, and only when it holds two or more.
+    Combine,
+    /// Read this release as the folders it is made of.
+    Separate,
     Skip,
     Restore,
+    /// Show the candidate's folders where the platform keeps files.
+    RevealFolder,
+}
+
+impl CandidateAction {
+    /// Every action, in the order a surface lists them.
+    pub const ALL: [CandidateAction; 12] = [
+        CandidateAction::ImportReady,
+        CandidateAction::CancelImport,
+        CandidateAction::Identify,
+        CandidateAction::CancelIdentification,
+        CandidateAction::RetryIdentification,
+        CandidateAction::ResetToFileMetadata,
+        CandidateAction::ClearMetadata,
+        CandidateAction::Combine,
+        CandidateAction::Separate,
+        CandidateAction::Skip,
+        CandidateAction::Restore,
+        CandidateAction::RevealFolder,
+    ];
 }
 
 /// What the tables say a candidate's commands are decided from: whether it can
@@ -31,6 +59,9 @@ pub struct CandidateActionBasis {
     pub actionable: bool,
     pub placement: TriagePlacement,
     pub lookup_failed: bool,
+    /// Whether this release is folders a grouping reads as one, which the
+    /// candidate offers to read as releases of their own.
+    pub separable: bool,
 }
 
 impl CandidateActionBasis {
@@ -38,6 +69,7 @@ impl CandidateActionBasis {
         actionable: bool,
         placement: &TriagePlacement,
         answer: Option<&QueueClassification>,
+        separable: bool,
     ) -> Self {
         Self {
             actionable,
@@ -46,6 +78,7 @@ impl CandidateActionBasis {
                 answer,
                 Some(QueueClassification::NeedsYou(NeedsYou::LookupFailed))
             ),
+            separable,
         }
     }
 
@@ -62,7 +95,32 @@ impl CandidateActionBasis {
     /// skip: the attempt is what decides it now. A run in flight leaves only cancelling
     /// it and the skip — the run is about to write the answer every other
     /// command would overwrite.
+    ///
+    /// How its folders are read is decided before any of that: a release
+    /// imported, or with work running for it, is past regrouping; any other
+    /// separates when a grouping reads it — even one that cannot be worked on
+    /// as it stands, which is what separating fixes — and combines when it can
+    /// be acted on. Revealing its folders is always there.
     pub fn actions(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction> {
+        use CandidateAction as A;
+        let mut actions = self.commands(live);
+        let settled = matches!(self.placement, TriagePlacement::Done)
+            || live.importing
+            || live.identifying();
+        if !settled {
+            if self.separable {
+                actions.push(A::Separate);
+            } else if self.actionable {
+                actions.push(A::Combine);
+            }
+        }
+        actions.push(A::RevealFolder);
+        actions
+    }
+
+    /// The commands that act on what the candidate holds, before how its
+    /// folders are read and revealing them.
+    fn commands(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction> {
         use CandidateAction as A;
         use TriagePlacement as P;
         if !self.actionable {
@@ -132,7 +190,7 @@ mod tests {
         placement: TriagePlacement,
         answer: Option<&QueueClassification>,
     ) -> CandidateActionBasis {
-        CandidateActionBasis::of(true, &placement, answer)
+        CandidateActionBasis::of(true, &placement, answer, false)
     }
 
     fn identifying(status: IdentificationStatus) -> TriageRuntimeFacts {
@@ -155,9 +213,12 @@ mod tests {
                 basis(placement.clone(), None).importable_at_rest(),
                 placement == TriagePlacement::Ready
             );
-            assert!(CandidateActionBasis::of(false, &placement, None)
-                .actions(&TriageRuntimeFacts::default())
-                .is_empty());
+            assert_eq!(
+                CandidateActionBasis::of(false, &placement, None, false)
+                    .actions(&TriageRuntimeFacts::default()),
+                vec![CandidateAction::RevealFolder],
+                "a candidate that cannot be acted on still shows where it is"
+            );
         }
     }
 
@@ -165,7 +226,11 @@ mod tests {
     fn skipped_candidates_offer_restore_without_replacing_metadata() {
         assert_eq!(
             basis(TriagePlacement::Skipped, None).actions(&TriageRuntimeFacts::default()),
-            vec![CandidateAction::Restore]
+            vec![
+                CandidateAction::Restore,
+                CandidateAction::Combine,
+                CandidateAction::RevealFolder
+            ]
         );
     }
 
@@ -180,7 +245,7 @@ mod tests {
         for placement in [TriagePlacement::Ready, TriagePlacement::Pending] {
             assert_eq!(
                 basis(placement, None).actions(&importing),
-                vec![CandidateAction::CancelImport]
+                vec![CandidateAction::CancelImport, CandidateAction::RevealFolder]
             );
         }
     }
@@ -195,7 +260,11 @@ mod tests {
             assert_eq!(
                 basis(TriagePlacement::Ready, Some(&QueueClassification::Ready))
                     .actions(&identifying(status)),
-                vec![CandidateAction::CancelIdentification, CandidateAction::Skip]
+                vec![
+                    CandidateAction::CancelIdentification,
+                    CandidateAction::Skip,
+                    CandidateAction::RevealFolder
+                ]
             );
         }
     }
@@ -212,9 +281,39 @@ mod tests {
         ] {
             assert_eq!(
                 basis(TriagePlacement::Pending, None).actions(&identifying(status)),
-                vec![CandidateAction::CancelIdentification, CandidateAction::Skip]
+                vec![
+                    CandidateAction::CancelIdentification,
+                    CandidateAction::Skip,
+                    CandidateAction::RevealFolder
+                ]
             );
         }
+    }
+
+    /// How a candidate's folders are read is offered only while nothing is
+    /// running for it and it is not imported: a grouping separates — even one
+    /// that cannot be worked on, which separating fixes — and anything else
+    /// that can be acted on combines.
+    #[test]
+    fn a_candidate_offers_separating_or_combining_while_it_is_settled_nowhere() {
+        let rest = TriageRuntimeFacts::default();
+        let grouped = CandidateActionBasis::of(true, &TriagePlacement::Pending, None, true);
+        assert!(grouped.actions(&rest).contains(&CandidateAction::Separate));
+        assert!(!grouped.actions(&rest).contains(&CandidateAction::Combine));
+        let blocked = CandidateActionBasis::of(false, &TriagePlacement::Failed, None, true);
+        assert_eq!(
+            blocked.actions(&rest),
+            vec![CandidateAction::Separate, CandidateAction::RevealFolder]
+        );
+        let lone = basis(TriagePlacement::Ready, Some(&QueueClassification::Ready));
+        assert!(lone.actions(&rest).contains(&CandidateAction::Combine));
+        let done = CandidateActionBasis::of(true, &TriagePlacement::Done, None, true);
+        assert_eq!(done.actions(&rest), vec![CandidateAction::RevealFolder]);
+        let importing = TriageRuntimeFacts {
+            identification: None,
+            importing: true,
+        };
+        assert!(!grouped.actions(&importing).contains(&CandidateAction::Separate));
     }
 
     #[test]

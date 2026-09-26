@@ -14,10 +14,9 @@ struct ImportCandidateBulkSelectionPane: View {
     var storageCloud: Bool
     @Binding
     var storagePinned: Bool
+    /// Run one of the selection's actions. Whoever runs it asks before one
+    /// that replaces a person's choices, as a row's menu does too.
     let onPerform: (ImportCandidateActionOffer) -> Void
-    let onCombine: () -> Void
-    @State
-    private var confirmation: ImportCandidateActionOffer?
 
     var body: some View {
         // A scroll view proposes its content no height of its own, so the
@@ -34,22 +33,11 @@ struct ImportCandidateBulkSelectionPane: View {
                     ImportCandidateBulkSelectionCard(
                         selectedCount: uiStore.selectedFolderCandidates.count,
                         offers: selection.offers,
-                        canCombine: selection.canCombine,
                         isRunning: uiStore.candidateActionRun.isRunning,
                         showsStorageChoices: configStore.config.hasCloudHome,
                         storageCloud: $storageCloud,
                         storagePinned: $storagePinned,
-                        onPerform: { offer in
-                            if offer.action == .resetToFileMetadata
-                                || offer.action == .clearMetadata
-                            {
-                                confirmation = offer
-                            }
-                            else {
-                                onPerform(offer)
-                            }
-                        },
-                        onCombine: onCombine
+                        onPerform: onPerform
                     )
                     if let progress = uiStore.candidateActionRun.progress {
                         ProgressView(
@@ -67,24 +55,6 @@ struct ImportCandidateBulkSelectionPane: View {
                 .frame(maxWidth: .infinity, minHeight: pane.size.height)
             }
         }
-        .alert(
-            "Replace selected metadata?",
-            isPresented: Binding(
-                get: { confirmation != nil },
-                set: { if !$0 { confirmation = nil } }
-            ),
-            presenting: confirmation
-        ) { offer in
-            Button(
-                offer.action.label(count: offer.candidates.count),
-                role: .destructive
-            ) { onPerform(offer) }
-            Button("Cancel", role: .cancel) {}
-        } message: { _ in
-            Text(
-                "This replaces metadata and cover choices for the selected folders. Source files and track layout are unchanged."
-            )
-        }
     }
 }
 
@@ -99,7 +69,6 @@ struct ImportCandidateBulkSelectionCard: View {
 
     let selectedCount: Int
     let offers: [ImportCandidateActionOffer]
-    let canCombine: Bool
     let isRunning: Bool
     /// Whether the library has a cloud home, which is what gives Import ready
     /// its storage choices.
@@ -109,7 +78,6 @@ struct ImportCandidateBulkSelectionCard: View {
     @Binding
     var storagePinned: Bool
     let onPerform: (ImportCandidateActionOffer) -> Void
-    let onCombine: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -151,10 +119,10 @@ struct ImportCandidateBulkSelectionCard: View {
                         .padding(.bottom, 4)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                ForEach(rows(in: group)) { row in
-                    BulkActionRow(row: row) { perform(row) }
-                        .disabled(isDisabled(row))
-                    if row.action == .importReady, showsStorageChoices {
+                ForEach(rows(in: group)) { offer in
+                    BulkActionRow(offer: offer) { onPerform(offer) }
+                        .disabled(isRunning || !offer.enabled)
+                    if offer.action == .importReady, showsStorageChoices {
                         storageChoices
                     }
                 }
@@ -185,92 +153,32 @@ struct ImportCandidateBulkSelectionCard: View {
     }
 
     /// The groups holding a row. A group whose actions nothing in the
-    /// selection offers is not drawn; Import always is, because Combine is one
-    /// of its rows whether or not the selection can be combined.
+    /// selection offers is not drawn.
     var drawnGroups: [ImportBulkActionGroup] {
         ImportBulkActionGroup.allCases.filter { !rows(in: $0).isEmpty }
     }
 
-    /// The group's rows, in the order the selection offers them, with Combine
-    /// ending the Import group.
-    func rows(in group: ImportBulkActionGroup) -> [ImportBulkActionRow] {
-        let offered =
-            offers
-            .filter { group.actions.contains($0.action) }
-            .map(ImportBulkActionRow.offer)
-        return group == .importing ? offered + [.combine] : offered
-    }
-
-    private func perform(_ row: ImportBulkActionRow) {
-        switch row {
-        case .offer(let offer): onPerform(offer)
-        case .combine: onCombine()
-        }
-    }
-
-    private func isDisabled(_ row: ImportBulkActionRow) -> Bool {
-        switch row {
-        case .offer: isRunning
-        case .combine: isRunning || !canCombine
-        }
+    /// The group's rows, in the order the selection offers them.
+    func rows(in group: ImportBulkActionGroup) -> [ImportCandidateActionOffer] {
+        offers.filter { group.actions.contains($0.action) }
     }
 }
 
-/// One row of the card: an action the selection offers, or Combine, which the
-/// selection offers as a whole rather than folder by folder.
-enum ImportBulkActionRow: Identifiable {
-    case offer(ImportCandidateActionOffer)
-    case combine
+extension ImportCandidateActionOffer {
+    /// How many of the selected folders the row applies to, absent for an
+    /// action over the selection as a whole.
+    var count: Int? { action == .combine ? nil : targets.count }
 
-    /// The action the row runs. Combine has none — it is not one of the
-    /// actions a folder offers.
-    var action: BridgeCandidateAction? {
-        switch self {
-        case .offer(let offer): offer.action
-        case .combine: nil
-        }
-    }
-
-    var id: BridgeCandidateAction? { action }
-
-    /// How many of the selected folders the row applies to, absent for a row
-    /// that applies to the selection as a whole.
-    var count: Int? {
-        switch self {
-        case .offer(let offer): offer.candidates.count
-        case .combine: nil
-        }
-    }
-
-    var title: String {
-        switch self {
-        case .offer(let offer): offer.action.label
-        case .combine: String(localized: "Combine as One Release")
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .offer(let offer): offer.action.symbol
-        case .combine: "square.stack.3d.up"
-        }
-    }
-
-    /// Whether the row gets folders into the library, which is what the accent
-    /// and the heavier name mark.
-    var isConstructive: Bool {
-        switch self {
-        case .offer(let offer): offer.action == .importReady
-        case .combine: true
-        }
-    }
+    /// Whether the row gets folders into the library, which is what the
+    /// accent and the heavier name mark.
+    var isConstructive: Bool { action == .importReady || action == .combine }
 }
 
-/// The rows' three groups, in the order the card draws them: getting the
-/// folders in, where their metadata comes from, and whether they are in the
-/// queue at all.
+/// The groups a selection's actions are listed in, in the order both the card
+/// and a row's menu draw them: getting the folders in, where their metadata
+/// comes from, whether they are in the queue at all, and where they are.
 enum ImportBulkActionGroup: CaseIterable, Identifiable {
-    case importing, metadata, placement
+    case importing, metadata, placement, folder
 
     var id: Self { self }
 
@@ -280,19 +188,20 @@ enum ImportBulkActionGroup: CaseIterable, Identifiable {
         switch self {
         case .importing: "Import"
         case .metadata: "Metadata"
-        case .placement: nil
+        case .placement, .folder: nil
         }
     }
 
     var actions: [BridgeCandidateAction] {
         switch self {
-        case .importing: [.importReady, .cancelImport]
+        case .importing: [.importReady, .cancelImport, .combine, .separate]
         case .metadata:
             [
                 .identify, .cancelIdentification, .retryIdentification,
                 .resetToFileMetadata, .clearMetadata,
             ]
         case .placement: [.skip, .restore]
+        case .folder: [.revealFolder]
         }
     }
 }
@@ -321,21 +230,21 @@ enum ImportBulkActionRowMetrics {
 /// accent and a heavier name; the rest are quieter, so the card states what it
 /// is for at a glance.
 private struct BulkActionRow: View {
-    let row: ImportBulkActionRow
+    let offer: ImportCandidateActionOffer
     let action: () -> Void
 
-    private var isConstructive: Bool { row.isConstructive }
+    private var isConstructive: Bool { offer.isConstructive }
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: ImportBulkActionRowMetrics.spacing) {
-                Image(systemName: row.symbol)
+                Image(systemName: offer.action.symbol)
                     .font(.system(size: 15))
                     .foregroundStyle(
                         isConstructive ? Theme.accent : Color.secondary
                     )
                     .frame(width: ImportBulkActionRowMetrics.iconWidth)
-                Text(verbatim: row.title)
+                Text(verbatim: offer.action.label)
                     .font(
                         .system(
                             size: 13,
@@ -346,7 +255,7 @@ private struct BulkActionRow: View {
                         isConstructive ? Color.primary : Color.secondary
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
-                if let count = row.count {
+                if let count = offer.count {
                     Text(verbatim: count.formatted())
                         .font(.system(size: 11, weight: .bold))
                         .monospacedDigit()

@@ -521,7 +521,12 @@ impl ImportCandidateDetailProjection {
             metadata_draft.clone().shape().is_ok(),
             classification,
         );
-        let action_basis = CandidateActionBasis::of(actionable, &placement, classification);
+        let action_basis = CandidateActionBasis::of(
+            actionable,
+            &placement,
+            classification,
+            candidate.grouping.is_some(),
+        );
         let live = CandidateLiveState::of(&action_basis, facts.clone());
         // The catalogs the draft was read from, as the row names them: only a
         // draft read from a catalog's release names any.
@@ -548,22 +553,12 @@ impl ImportCandidateDetailProjection {
             TriageTab::Done => CandidatePanePlacement::Done,
         };
         let metadata_draft_is_blank = metadata_draft.is_blank();
-        let grouping_action = if is_added || facts.importing || facts.identifying() {
-            None
-        } else if candidate.grouping.is_some() {
-            Some(super::grouping::GroupingAction::Separate)
-        } else if actionable {
-            Some(super::grouping::GroupingAction::Combine)
-        } else {
-            None
-        };
         let import_status = if facts.importing {
             Some(CandidateImportStatus::Importing)
         } else {
             import_status.map(CandidateImportStatus::of)
         };
         ImportCandidateDetail {
-            grouping_action,
             candidate,
             actionable,
             skipped,
@@ -644,9 +639,6 @@ impl CandidateImportStatus {
 /// it, and the identify state it resumes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateDetail {
-    /// Whether this release can be read together with others as one, or
-    /// read as the folders it is made of.
-    pub grouping_action: Option<super::grouping::GroupingAction>,
     pub candidate: FolderCandidate,
     pub actionable: bool,
     pub skipped: bool,

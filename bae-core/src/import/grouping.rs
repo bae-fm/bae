@@ -48,15 +48,6 @@ pub enum GroupingBlock {
     Unbuildable { detail: String },
 }
 
-/// Which of the two grouping actions a release offers, if either.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GroupingAction {
-    /// Read this release together with others as one.
-    Combine,
-    /// Read the folders this release is made of as releases of their own.
-    Separate,
-}
-
 /// The release a grouping with no anchor reads `members` as, in the order
 /// given — each with the file decisions stored for it — and the decisions the
 /// release takes over from them: its files and parts, before any decision

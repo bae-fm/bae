@@ -2,7 +2,6 @@ use super::super::*;
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderCandidate {
-    pub grouping_action: Option<BridgeGroupingAction>,
     /// The folders this release is read from, in play order, when it is
     /// several. Empty for a release read from one folder.
     pub parts: Vec<BridgeReleasePart>,
@@ -237,7 +236,9 @@ pub enum BridgeTriagePlacement {
     Skipped,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+/// Every command a candidate can take. Mirrors
+/// `bae_core::import::triage::CandidateAction`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeCandidateAction {
     ImportReady,
     Identify,
@@ -246,17 +247,72 @@ pub enum BridgeCandidateAction {
     RetryIdentification,
     ResetToFileMetadata,
     ClearMetadata,
+    /// Read this folder together with the rest of the selection as one
+    /// release. A selection offers it once, over every member.
+    Combine,
+    /// Read this release as the folders it is made of.
+    Separate,
     Skip,
     Restore,
+    /// Show the candidate's folders in the platform's file browser.
+    RevealFolder,
 }
 
 /// What the tables say a row's commands are decided from: whether it can be
-/// acted on, where it is placed, and whether its stored lookup failed.
+/// acted on, where it is placed, whether its stored lookup failed, and whether
+/// it is folders a grouping reads as one.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCandidateActionBasis {
     pub actionable: bool,
     pub placement: BridgeTriagePlacement,
     pub lookup_failed: bool,
+    pub separable: bool,
+}
+
+/// One selected candidate and the actions its live state offers. Mirrors
+/// `bae_core::import::triage::SelectionMember`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSelectionMember {
+    pub candidate_key: String,
+    pub actions: Vec<BridgeCandidateAction>,
+}
+
+/// One action a selection offers, the members it applies to, and whether it
+/// can run as the selection stands. Mirrors
+/// `bae_core::import::triage::SelectionOffer`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSelectionOffer {
+    pub action: BridgeCandidateAction,
+    pub candidate_keys: Vec<String>,
+    pub enabled: bool,
+}
+
+/// What a selection of candidates can be told to do, in the order every
+/// surface lists it — the one answer the pane a multi-selection opens and the
+/// list's menu both render.
+#[uniffi::export]
+pub fn bridge_candidate_selection_offers(
+    members: Vec<BridgeSelectionMember>,
+) -> Vec<BridgeSelectionOffer> {
+    let members: Vec<bae_core::import::triage::SelectionMember> = members
+        .into_iter()
+        .map(|member| bae_core::import::triage::SelectionMember {
+            candidate_key: member.candidate_key,
+            actions: member
+                .actions
+                .into_iter()
+                .map(BridgeCandidateAction::into_core)
+                .collect(),
+        })
+        .collect();
+    bae_core::import::triage::selection_offers(&members)
+        .into_iter()
+        .map(|offer| BridgeSelectionOffer {
+            action: BridgeCandidateAction::from_core(offer.action),
+            candidate_keys: offer.candidate_keys,
+            enabled: offer.enabled,
+        })
+        .collect()
 }
 
 /// What is running for one candidate right now, and the commands its row

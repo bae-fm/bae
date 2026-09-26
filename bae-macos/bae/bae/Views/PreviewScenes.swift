@@ -134,9 +134,8 @@
                 onRefreshFolder: { _ in },
                 onCombineFolder: { _ in },
                 onSeparate: { _ in },
-                onSkip: { _, _ in },
                 onReveal: { _ in },
-                onCancel: { _, _ in },
+                onPerform: { _ in },
                 onCancelAllIdentification: {},
                 onCancelAllImports: {}
             )
@@ -158,8 +157,7 @@
             return ImportCandidateBulkSelectionPane(
                 storageCloud: .constant(true),
                 storagePinned: .constant(true),
-                onPerform: { _ in },
-                onCombine: {}
+                onPerform: { _ in }
             )
             .environment(PreviewData.importTabScene().store)
             .environment(uiStore)

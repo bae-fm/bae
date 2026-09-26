@@ -49,22 +49,27 @@ struct ImportCandidateBulkSelectionPaneTests {
     }
 
     /// The rows are the actions the selection offers, grouped: what gets the
-    /// folders in, where their metadata comes from, and what takes them out of
-    /// the queue. An action none of the selected folders offers is no row —
-    /// here, retrying an identification neither of them failed.
+    /// folders in, where their metadata comes from, what takes them out of
+    /// the queue, and where they are. An action none of the selected folders
+    /// offers is no row — here, retrying an identification neither of them
+    /// failed.
     @Test("the card's rows are the actions the selection offers, grouped")
     func theRowsAreTheSelectionsOffers() {
         let card = Self.card()
 
-        #expect(card.drawnGroups == [.importing, .metadata, .placement])
-        // Combine ends the Import group and is no folder's action.
-        #expect(card.rows(in: .importing).map(\.action) == [.importReady, nil])
+        #expect(
+            card.drawnGroups == [.importing, .metadata, .placement, .folder]
+        )
+        #expect(
+            card.rows(in: .importing).map(\.action) == [.importReady, .combine]
+        )
         #expect(
             card.rows(in: .metadata).map(\.action) == [
                 .identify, .resetToFileMetadata, .clearMetadata,
             ]
         )
         #expect(card.rows(in: .placement).map(\.action) == [.skip])
+        #expect(card.rows(in: .folder).map(\.action) == [.revealFolder])
     }
 
     /// Each row states how many of the selected folders its action applies to:
@@ -76,6 +81,7 @@ struct ImportCandidateBulkSelectionPaneTests {
         #expect(card.rows(in: .importing).map(\.count) == [1, nil])
         #expect(card.rows(in: .metadata).map(\.count) == [2, 2, 2])
         #expect(card.rows(in: .placement).map(\.count) == [2])
+        #expect(card.rows(in: .folder).map(\.count) == [2])
     }
 
     /// Combine applies to the selection as a whole rather than folder by
@@ -87,19 +93,18 @@ struct ImportCandidateBulkSelectionPaneTests {
         let selection = Self.selection()
 
         for row in card.drawnGroups.flatMap(card.rows(in:)) {
-            guard let action = row.action else {
+            guard row.action != .combine else {
                 #expect(row.count == nil)
                 continue
             }
-            #expect(row.count == selection.candidates(for: action).count)
+            #expect(row.count == selection.candidates(for: row.action).count)
         }
     }
 
-    /// A group with no row is not drawn, and Import is drawn whatever the
-    /// selection offers: Combine is its row.
-    @Test("only the Import group survives a selection that offers nothing")
+    /// A group with no row is not drawn.
+    @Test("a selection that offers nothing draws no group")
     func anEmptyGroupIsNotDrawn() {
-        #expect(Self.card(offers: []).drawnGroups == [.importing])
+        #expect(Self.card(offers: []).drawnGroups.isEmpty)
     }
 
     /// The number of folders belongs beside an action's name, not inside it:
@@ -150,8 +155,9 @@ struct ImportCandidateBulkSelectionPaneTests {
     // MARK: - Staging
 
     private static let everyAction: [BridgeCandidateAction] = [
-        .importReady, .identify, .retryIdentification, .resetToFileMetadata,
-        .clearMetadata, .skip, .restore,
+        .importReady, .identify, .cancelIdentification, .cancelImport,
+        .retryIdentification, .resetToFileMetadata, .clearMetadata, .combine,
+        .separate, .skip, .restore, .revealFolder,
     ]
 
     /// Two selected folders: one ready to import, one whose signals disagree.
@@ -175,29 +181,24 @@ struct ImportCandidateBulkSelectionPaneTests {
     private static func card(
         showsStorageChoices: Bool = false
     ) -> ImportCandidateBulkSelectionCard {
-        let selection = selection()
-        return card(
-            offers: selection.offers,
-            canCombine: selection.canCombine,
+        card(
+            offers: selection().offers,
             showsStorageChoices: showsStorageChoices
         )
     }
 
     private static func card(
         offers: [ImportCandidateActionOffer],
-        canCombine: Bool = false,
         showsStorageChoices: Bool = false
     ) -> ImportCandidateBulkSelectionCard {
         ImportCandidateBulkSelectionCard(
             selectedCount: selectedKeys.count,
             offers: offers,
-            canCombine: canCombine,
             isRunning: false,
             showsStorageChoices: showsStorageChoices,
             storageCloud: .constant(true),
             storagePinned: .constant(true),
-            onPerform: { _ in },
-            onCombine: {}
+            onPerform: { _ in }
         )
     }
 
@@ -214,8 +215,7 @@ struct ImportCandidateBulkSelectionPaneTests {
                 ImportCandidateBulkSelectionPane(
                     storageCloud: .constant(true),
                     storagePinned: .constant(true),
-                    onPerform: { _ in },
-                    onCombine: {}
+                    onPerform: { _ in }
                 )
                 .environment(PreviewData.importTabScene().store)
                 .environment(uiStore)

@@ -27,11 +27,9 @@ impl crate::types::BridgeFolderCandidate {
         candidate: bae_core::import::FolderCandidate,
         skipped: bool,
         is_added: bool,
-        grouping_action: Option<bae_core::import::grouping::GroupingAction>,
     ) -> Self {
         let track_count = candidate.files.track_count();
         crate::types::BridgeFolderCandidate {
-            grouping_action: grouping_action.map(crate::types::BridgeGroupingAction::from_core),
             parts: candidate
                 .files
                 .parts
@@ -244,7 +242,8 @@ mirror_struct! {
 
 mirror_enum! {
     crate::types::BridgeCandidateAction = bae_core::import::triage::CandidateAction,
-    from_core: fn,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
     variants: {
         ImportReady,
         Identify,
@@ -253,8 +252,11 @@ mirror_enum! {
         RetryIdentification,
         ResetToFileMetadata,
         ClearMetadata,
+        Combine,
+        Separate,
         Skip,
         Restore,
+        RevealFolder,
     },
 }
 
@@ -287,6 +289,7 @@ mirror_struct! {
         actionable,
         placement: (crate::types::BridgeTriagePlacement),
         lookup_failed,
+        separable,
     },
 }
 
@@ -613,7 +616,6 @@ mirror_enum! {
 impl crate::types::BridgeImportCandidateDetail {
     pub(super) fn from_core(detail: bae_core::import::ImportCandidateDetail) -> Self {
         let bae_core::import::ImportCandidateDetail {
-            grouping_action,
             candidate,
             actionable,
             skipped,
@@ -642,12 +644,7 @@ impl crate::types::BridgeImportCandidateDetail {
             session,
         } = detail;
         Self {
-            candidate: crate::types::BridgeFolderCandidate::from_core(
-                candidate,
-                skipped,
-                is_added,
-                grouping_action,
-            ),
+            candidate: crate::types::BridgeFolderCandidate::from_core(candidate, skipped, is_added),
             actionable,
             resumed_identify_state: crate::types::BridgeIdentifyState::from_core(
                 resumed_identify_state,

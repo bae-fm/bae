@@ -157,9 +157,7 @@ struct TriageRowIdentifiedTests {
             TriageRowView(
                 row: row,
                 coverContent: nil,
-                isGroupMember: false,
-                onReveal: {},
-                onSkip: { _ in }
+                isGroupMember: false
             )
             .environment(\.backgroundProminence, prominence)
             .environment(ImageStore.stub())

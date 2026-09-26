@@ -16,9 +16,8 @@ extension ImportView {
             onRefreshFolder: { folder in refreshWatchedFolder(folder) },
             onCombineFolder: { key in combineFolder(key) },
             onSeparate: { key in separateCandidate(key) },
-            onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
             onReveal: revealCandidateSources,
-            onCancel: { key, action in cancelCandidateWork(key, action) },
+            onPerform: requestCandidateAction,
             onCancelAllIdentification: {
                 Task {
                     do { try await importer.cancelAllIdentification() }
@@ -39,8 +38,8 @@ extension ImportView {
                 if !candidate.parts.isEmpty {
                     ImportCombinedSourceView(
                         parts: candidate.parts,
-                        canSeparate: candidate.detail?.candidate
-                            .groupingAction == .separate,
+                        canSeparate: candidate.live?.actions
+                            .contains(.separate) == true,
                         onSeparate: { separateCandidate(candidate.key) }
                     )
                 }

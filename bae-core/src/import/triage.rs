@@ -28,9 +28,11 @@ use crate::identify::{LeadMatch, NeedsYou, QueueClassification, VerdictSummary};
 
 mod actions;
 mod model;
+mod selection;
 
 pub use actions::{CandidateAction, CandidateActionBasis, CandidateLiveState};
 pub use model::*;
+pub use selection::{selection_offers, SelectionMember, SelectionOffer};
 
 /// Which tab a candidate belongs to, and why a Pending row still needs input.
 ///

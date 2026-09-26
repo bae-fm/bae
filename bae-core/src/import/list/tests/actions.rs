@@ -32,7 +32,11 @@ fn a_ready_candidate_under_identification_stays_in_the_ready_set() {
         );
         assert_eq!(
             live.actions,
-            vec![CandidateAction::CancelIdentification, CandidateAction::Skip]
+            vec![
+                CandidateAction::CancelIdentification,
+                CandidateAction::Skip,
+                CandidateAction::RevealFolder
+            ]
         );
     }
     assert!(

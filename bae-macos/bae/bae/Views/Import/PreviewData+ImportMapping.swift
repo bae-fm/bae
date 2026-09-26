@@ -381,7 +381,6 @@
             files: BridgeCandidateFiles
         ) -> BridgeFolderCandidate {
             BridgeFolderCandidate(
-                groupingAction: .combine,
                 parts: [],
                 folderPath: "/Music/Downloads/\(name)",
                 sourceFolderName: name,
@@ -437,7 +436,7 @@
                             && edit.albumTitle.isEmpty ? [] : [.importReady])
                             + [
                                 .identify, .resetToFileMetadata,
-                                .clearMetadata, .skip,
+                                .clearMetadata, .combine, .skip, .revealFolder,
                             ]
                     ),
                     importStatus: nil,
@@ -612,7 +611,6 @@
         @MainActor
         static let moreTracksMappingCandidate: Candidate = paneCandidate(
             folder: BridgeFolderCandidate(
-                groupingAction: .combine,
                 parts: [],
                 folderPath: "/Music/Downloads/Partial Album",
                 sourceFolderName: "Partial Album",

@@ -109,7 +109,6 @@
 
         static let folderCandidates: [Candidate] = [
             BridgeFolderCandidate(
-                groupingAction: .combine,
                 parts: [],
                 folderPath: "/Music/Downloads/Album Title One",
                 sourceFolderName: "Album Title One",
@@ -120,7 +119,6 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
-                groupingAction: .combine,
                 parts: [],
                 folderPath: "/Music/Downloads/Album Title Two [Label CAT-002]",
                 sourceFolderName: "Album Title Two",
@@ -132,7 +130,6 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
-                groupingAction: .combine,
                 parts: [],
                 folderPath: "/Music/Downloads/Compilation Vol. 3",
                 sourceFolderName: "Compilation Vol. 3",
@@ -143,7 +140,6 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
-                groupingAction: .combine,
                 parts: [],
                 folderPath: "/Music/Downloads/EP Release",
                 sourceFolderName: "EP Release",
@@ -154,7 +150,6 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
-                groupingAction: nil,
                 parts: [],
                 folderPath: "/Music/Downloads/Live Recording 2023",
                 sourceFolderName: "Live Recording 2023",
@@ -168,7 +163,6 @@
             // Two more importable folders, so Pending shows a folder group with
             // rows in it beside a row that belongs to no group.
             BridgeFolderCandidate(
-                groupingAction: .combine,
                 parts: [],
                 folderPath: "/Music/Downloads/Album Title Three",
                 sourceFolderName: "Album Title Three",
@@ -179,7 +173,6 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
-                groupingAction: .combine,
                 parts: [],
                 folderPath: "/Music/Downloads/Single Release",
                 sourceFolderName: "Single Release",
@@ -253,7 +246,8 @@
                 actionBasis: BridgeCandidateActionBasis(
                     actionable: true,
                     placement: .ready,
-                    lookupFailed: false
+                    lookupFailed: false,
+                    separable: false
                 ),
                 matched: nil,
                 metadataSummary: nil,
@@ -287,7 +281,6 @@
             row -> Candidate in
             var candidate = Candidate(
                 bridge: BridgeFolderCandidate(
-                    groupingAction: .combine,
                     parts: [],
                     folderPath: row.candidateKey,
                     sourceFolderName: row.folderName,

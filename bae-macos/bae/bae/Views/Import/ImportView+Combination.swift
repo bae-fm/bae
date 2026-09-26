@@ -17,11 +17,13 @@ extension ImportView {
         }
     }
 
-    func combineSelectedCandidates() {
+    /// Read `keys` as one release: the selection's Combine.
+    func combineCandidates(_ keys: [String]) {
         let taskKey = "combine-selected"
         let action = ImportCandidateCombineAction(
             importer: importer,
-            uiStore: uiStore
+            uiStore: uiStore,
+            keys: keys
         )
         candidateMutationTasks[taskKey]?.cancel()
         candidateMutationTasks[taskKey] = Task {

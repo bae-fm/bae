@@ -69,7 +69,6 @@ private func bridgeFolder(
     isAdded: Bool = false
 ) -> BridgeFolderCandidate {
     BridgeFolderCandidate(
-        groupingAction: .combine,
         parts: [],
         folderPath: folderPath,
         sourceFolderName: name,
@@ -161,7 +160,8 @@ private func readyRow(
         actionBasis: BridgeCandidateActionBasis(
             actionable: true,
             placement: .ready,
-            lookupFailed: false
+            lookupFailed: false,
+            separable: false
         ),
         matched: matchedRelease(
             releaseId: "rel-\(key)",
@@ -200,7 +200,8 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         actionBasis: BridgeCandidateActionBasis(
             actionable: true,
             placement: .skipped,
-            lookupFailed: false
+            lookupFailed: false,
+            separable: false
         ),
         matched: nil,
         metadataSummary: nil,

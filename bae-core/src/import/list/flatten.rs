@@ -397,7 +397,8 @@ pub(super) fn place_row(
     // Every row the list holds is a settled release: a tentative candidate
     // never becomes one.
     let actionable = row.error().is_none();
-    let action_basis = CandidateActionBasis::of(actionable, &placement, answer.as_ref());
+    let action_basis =
+        CandidateActionBasis::of(actionable, &placement, answer.as_ref(), row.grouping.is_some());
     Ok(TriageRow {
         candidate_key: row.path.clone(),
         folder_name: row.name.clone(),

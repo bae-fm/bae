@@ -389,9 +389,8 @@ extension ImportCandidateViewportTests {
             onRefreshFolder: { _ in },
             onCombineFolder: { _ in },
             onSeparate: { _ in },
-            onSkip: { _, _ in },
             onReveal: { _ in },
-            onCancel: { _, _ in },
+            onPerform: { _ in },
             onCancelAllIdentification: {},
             onCancelAllImports: {}
         )
@@ -415,7 +414,8 @@ extension ImportCandidateViewportTests {
                 actionBasis: BridgeCandidateActionBasis(
                     actionable: true,
                     placement: .skipped,
-                    lookupFailed: false
+                    lookupFailed: false,
+                    separable: false
                 ),
                 matched: nil,
                 metadataSummary: nil,

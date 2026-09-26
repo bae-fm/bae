@@ -346,6 +346,7 @@ mod conversion_roundtrip {
                 },
             },
             lookup_failed: true,
+            separable: true,
         };
         assert_eq!(
             core,

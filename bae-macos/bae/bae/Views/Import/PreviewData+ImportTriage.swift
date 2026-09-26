@@ -65,7 +65,8 @@
                 actionBasis: BridgeCandidateActionBasis(
                     actionable: true,
                     placement: placement,
-                    lookupFailed: false
+                    lookupFailed: false,
+                    separable: false
                 ),
                 matched: matched,
                 metadataSummary: metadataSummary,
@@ -88,7 +89,6 @@
         ) -> Candidate {
             var candidate = Candidate(
                 bridge: BridgeFolderCandidate(
-                    groupingAction: .combine,
                     parts: [],
                     folderPath: "\(importWatchedFolder.path)/\(path)",
                     sourceFolderName: name,
@@ -209,7 +209,6 @@
         @MainActor
         private static let importTabGroupedReadyCandidate = paneCandidate(
             folder: BridgeFolderCandidate(
-                groupingAction: .combine,
                 parts: [],
                 folderPath:
                     "\(importWatchedFolder.path)/Artist Collection/Album Title Nine",
@@ -566,7 +565,8 @@
                 actionBasis: BridgeCandidateActionBasis(
                     actionable: true,
                     placement: .done,
-                    lookupFailed: false
+                    lookupFailed: false,
+                    separable: false
                 ),
                 release: BridgeImportedReleaseSummary(
                     releaseId: "preview-release",
@@ -723,7 +723,8 @@
         }
 
         private static let everyDraftCommand: [BridgeCandidateAction] = [
-            .identify, .resetToFileMetadata, .clearMetadata, .skip,
+            .identify, .resetToFileMetadata, .clearMetadata, .combine, .skip,
+            .revealFolder,
         ]
 
         /// What is running for each of the tab's rows, and the commands each

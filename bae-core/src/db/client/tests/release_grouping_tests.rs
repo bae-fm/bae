@@ -120,9 +120,13 @@ async fn a_grouping_missing_one_of_its_releases_says_so_and_can_be_undone() {
         .unwrap()
         .expect("the release is still listed");
     assert!(!detail.actionable);
-    assert_eq!(
-        detail.resolve(&Default::default()).grouping_action,
-        Some(crate::import::grouping::GroupingAction::Separate)
+    assert!(
+        detail
+            .resolve(&Default::default())
+            .live
+            .actions
+            .contains(&crate::import::CandidateAction::Separate),
+        "a grouping that cannot be worked on is still read apart again"
     );
 
     let (returned, _) = db.separate_picked_grouping("grouping:test").await.unwrap();

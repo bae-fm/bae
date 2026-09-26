@@ -71,6 +71,10 @@ struct ImportView: View {
     /// again. Session state of this view, not of the candidate.
     @State
     var initialFindOnlineSection: [String: FindOnlineSection] = [:]
+    /// An action waiting on the person's say-so before it replaces what they
+    /// may have chosen: from the pane a selection opens, or a row's menu.
+    @State
+    var candidateActionConfirmation: ImportCandidateActionOffer?
     @Environment(\.openSettings)
     var openSettings
     @Environment(UiStore.self)
@@ -115,6 +119,24 @@ struct ImportView: View {
                 }
                 candidateMutationTasks.removeAll()
             }
+        }
+        .alert(
+            "Replace selected metadata?",
+            isPresented: Binding(
+                get: { candidateActionConfirmation != nil },
+                set: { if !$0 { candidateActionConfirmation = nil } }
+            ),
+            presenting: candidateActionConfirmation
+        ) { offer in
+            Button(
+                offer.action.label(count: offer.targets.count),
+                role: .destructive
+            ) { performCandidateAction(offer) }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text(
+                "This replaces metadata and cover choices for the selected folders. Source files and track layout are unchanged."
+            )
         }
     }
 
