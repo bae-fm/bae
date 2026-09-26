@@ -69,6 +69,11 @@ pub enum ImportProgress {
         error: String,
         import_id: String,
     },
+    /// A person cancelled the import before it wrote anything. The candidate
+    /// is as it was before the import was asked for.
+    Cancelled {
+        import_id: String,
+    },
 }
 
 /// The running phase of an import, after phase-0 preparation. Emitted as each

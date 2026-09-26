@@ -116,6 +116,12 @@ impl UiEventBus {
                                     total,
                                 });
                             }
+                            // The sidebar header's import indicator, which
+                            // offers to cancel them all.
+                            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                            ImportEvent::ImportsInFlight { count } => {
+                                bus.emit(UiBusEvent::ImportsInFlight { count });
+                            }
                             _ => {}
                         }
                     }

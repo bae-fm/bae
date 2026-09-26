@@ -24,6 +24,9 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
 
     let mut events = service.event_tx.subscribe();
     service
+        .import_cancels
+        .register(&candidate_key, "import-reading-progress");
+    service
         .prepare_and_run_folder_import(
             "import-reading-progress".to_string(),
             candidate_key.clone(),

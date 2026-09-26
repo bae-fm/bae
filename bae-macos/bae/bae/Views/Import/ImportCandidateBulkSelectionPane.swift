@@ -286,7 +286,7 @@ enum ImportBulkActionGroup: CaseIterable, Identifiable {
 
     var actions: [BridgeCandidateAction] {
         switch self {
-        case .importing: [.importReady]
+        case .importing: [.importReady, .cancelImport]
         case .metadata:
             [
                 .identify, .cancelIdentification, .retryIdentification,

@@ -203,6 +203,11 @@ forward! {
             this.services.cancel_all_identification();
         }
 
+        /// Cancel every import that has not begun writing its release.
+        fn cancel_all_imports() {
+            this.services.import_cancel_all();
+        }
+
         /// Submit a candidate's typed search. Fire-and-forget like
         /// `rerun_identify_for_candidate`: every configured provider is asked at
         /// once, and each answer lands on the candidate's runtime as it arrives.
@@ -293,6 +298,15 @@ forward! {
                 .import_choose_folder(path)
                 .await
                 .map(crate::types::BridgeChosenFolder::from_core)
+                .map_err(BridgeError::import)
+        }
+
+        /// Cancel the import of `candidate_key`, waiting or running. It writes
+        /// nothing and records no failure. An import already writing its
+        /// release completes, and that is the error.
+        fn cancel_import(candidate_key: String) -> () {
+            this.services
+                .import_cancel(&candidate_key)
                 .map_err(BridgeError::import)
         }
 

@@ -242,6 +242,7 @@ pub enum BridgeCandidateAction {
     ImportReady,
     Identify,
     CancelIdentification,
+    CancelImport,
     RetryIdentification,
     ResetToFileMetadata,
     ClearMetadata,

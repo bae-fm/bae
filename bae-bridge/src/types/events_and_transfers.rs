@@ -98,6 +98,12 @@ pub enum BridgeUiEvent {
         identified: u32,
         total: u32,
     },
+    /// How many imports are waiting or running, whoever started them — what
+    /// the sidebar header's import indicator shows and offers to cancel.
+    #[cfg(feature = "desktop")]
+    ImportsInFlight {
+        count: u32,
+    },
 
     // ── Errors ─────────────────────────────────────────────────────
     Error {

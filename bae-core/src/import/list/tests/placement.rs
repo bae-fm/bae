@@ -110,7 +110,7 @@ fn a_claimed_import_leaves_the_row_where_its_draft_puts_it() {
             importing: true,
         },
     );
-    assert!(importing.actions.is_empty());
+    assert_eq!(importing.actions, vec![crate::import::CandidateAction::CancelImport]);
 }
 /// The failure is a row, so it survives the session that produced it: a
 /// relaunched queue still says why the attempt failed. It stays Pending —

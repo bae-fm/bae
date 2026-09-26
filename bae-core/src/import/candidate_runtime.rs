@@ -255,6 +255,8 @@ struct Inner {
     /// The identifications in flight, counted for the surfaces that draw how
     /// far along they are.
     batch: IdentificationBatch,
+    /// How many keys an import owns right now.
+    importing: u32,
 }
 
 impl Inner {
@@ -382,6 +384,14 @@ impl CandidateRuntime {
         let _ = events.send(ImportEvent::IdentificationProgress { identified, total });
     }
 
+    /// Say how many imports are in flight, the same way as [`Self::announce`].
+    fn announce_imports(&self, count: u32) {
+        let Some(events) = self.events.get() else {
+            return;
+        };
+        let _ = events.send(ImportEvent::ImportsInFlight { count });
+    }
+
     /// Apply `mutate` to the key's entry, creating one if it has none, and
     /// publish the snapshot it left behind. The map's own bookkeeping comes
     /// with it, so a mutation that needs a fresh search run mints one under
@@ -394,14 +404,16 @@ impl CandidateRuntime {
         key: &str,
         mutate: impl FnOnce(&mut Inner, &mut CandidateRuntimeState) -> R,
     ) -> R {
-        let (result, change, progress) = {
+        let (result, change, progress, importing) = {
             let mut inner = self.inner.lock().unwrap();
             let entry = inner.runtime.get(key);
             let previous = entry.map(CandidateRuntimeState::snapshot);
             let was_identifying = entry.map(Identifying::of).unwrap_or_default();
+            let was_importing = entry.is_some_and(|entry| entry.import.is_some());
             let mut next = entry.cloned().unwrap_or_default();
             let result = mutate(&mut inner, &mut next);
             let is_identifying = Identifying::of(&next);
+            let is_importing = next.import.is_some();
             let change = if next.is_idle() {
                 inner.runtime.remove(key);
                 previous.is_some().then(|| CandidateRuntimeChange::Removed {
@@ -418,13 +430,27 @@ impl CandidateRuntime {
             let progress = inner
                 .count_identification(key, was_identifying, is_identifying)
                 .then(|| inner.batch.progress());
-            (result, change, progress)
+            let importing = match (was_importing, is_importing) {
+                (false, true) => {
+                    inner.importing += 1;
+                    Some(inner.importing)
+                }
+                (true, false) => {
+                    inner.importing -= 1;
+                    Some(inner.importing)
+                }
+                _ => None,
+            };
+            (result, change, progress, importing)
         };
         if let Some(change) = change {
             self.publish(change);
         }
         if let Some(progress) = progress {
             self.announce(progress);
+        }
+        if let Some(count) = importing {
+            self.announce_imports(count);
         }
         result
     }
@@ -802,7 +828,8 @@ impl CandidateRuntime {
                     }),
                     ImportProgress::Complete { .. }
                     | ImportProgress::RemoteUploadQueued { .. }
-                    | ImportProgress::Failed { .. } => None,
+                    | ImportProgress::Failed { .. }
+                    | ImportProgress::Cancelled { .. } => None,
                 };
                 self.set(candidate_key, |_, runtime| runtime.import = in_flight);
             }
@@ -858,7 +885,8 @@ impl CandidateRuntime {
                 | ScanEvent::FolderScanStatusChanged { .. }
                 | ScanEvent::Finished,
             )
-            | ImportEvent::IdentificationProgress { .. } => {}
+            | ImportEvent::IdentificationProgress { .. }
+            | ImportEvent::ImportsInFlight { .. } => {}
         }
     }
 }

@@ -112,6 +112,10 @@ class ImportStore {
     /// has said anything this session; `(0, 0)` once nothing is running.
     var identificationProgress: (identified: UInt32, total: UInt32)?
 
+    /// How many imports are waiting or running, whoever started them, for the
+    /// filter row's import indicator. Zero shows nothing.
+    var importsInFlight: UInt32 = 0
+
     var previewState: BridgePreviewState = .idle
 
     /// Preview audio progress (the import-tab preview player).

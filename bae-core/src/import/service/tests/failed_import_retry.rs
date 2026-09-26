@@ -93,6 +93,9 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
     let blocked_name = Path::new("CD2").join("02 Track 2.flac");
     let blocked = UnopenableFile::block(&folder.join(&blocked_name));
     test.service
+        .import_cancels
+        .register(&candidate_key, "import-blocked");
+    test.service
         .do_import(
             local_import_command("import-blocked", &candidate_key, &folder),
             expectation(),
@@ -132,6 +135,9 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         "a failed import writes no release of its files"
     );
 
+    test.service
+        .import_cancels
+        .register(&candidate_key, "import-retry");
     test.service
         .prepare_and_run_folder_import(
             "import-retry".to_string(),

@@ -156,6 +156,18 @@ pub enum ImportError {
     #[error("This release is still being identified; import it once identification finishes")]
     CandidateBeingIdentified,
 
+    /// A person cancelled the import before it wrote anything. The worker's
+    /// own signal to stop, never a failure it records.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("the import was cancelled")]
+    ImportCancelled,
+
+    /// A cancel reached an import that is already writing its release, which
+    /// is one transaction and completes.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("This release is already being written to the library and can no longer be cancelled")]
+    ImportWriting,
+
     /// A release read from several folders cannot be worked on as it stands,
     /// or cannot be made: one of its folders changed or is gone, or the files
     /// of the folder they sit in go with another release or are still

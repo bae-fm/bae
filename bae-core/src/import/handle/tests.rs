@@ -119,8 +119,16 @@ async fn an_import_outcome_is_recorded_before_it_is_broadcast() {
         },
     });
 
+    // The runtime's import count is announced as it records, so it can come
+    // first; the outcome is the next event about the import itself.
+    let outcome = loop {
+        match events.recv().await.unwrap() {
+            ImportEvent::ImportsInFlight { .. } => continue,
+            event => break event,
+        }
+    };
     assert!(matches!(
-        events.recv().await.unwrap(),
+        outcome,
         ImportEvent::ImportProgress {
             progress: crate::import::ImportProgress::Complete { .. },
             ..

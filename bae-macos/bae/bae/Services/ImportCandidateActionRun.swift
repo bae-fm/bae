@@ -66,7 +66,7 @@ final class ImportCandidateActionRun {
             case .importReady, .skip, .restore:
                 uiStore.removeFolderCandidateSelection(successful)
             case .identify, .cancelIdentification, .retryIdentification,
-                .resetToFileMetadata, .clearMetadata:
+                .resetToFileMetadata, .clearMetadata, .cancelImport:
                 break
             }
             progress = nil
@@ -118,7 +118,7 @@ struct ImportCandidateSelection {
 
     var offers: [ImportCandidateActionOffer] {
         let actions: [BridgeCandidateAction] = [
-            .importReady, .identify, .cancelIdentification,
+            .importReady, .cancelImport, .identify, .cancelIdentification,
             .retryIdentification,
             .resetToFileMetadata, .clearMetadata, .skip, .restore,
         ]

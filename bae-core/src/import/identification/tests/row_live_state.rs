@@ -86,7 +86,11 @@ async fn a_claimed_import_reaches_its_row_and_not_the_list() {
 
     let claimed = next_live_state(&mut live).await;
     assert!(claimed.facts.importing);
-    assert!(claimed.actions.is_empty());
+    assert_eq!(
+        claimed.actions,
+        vec![crate::import::CandidateAction::CancelImport],
+        "a claimed import offers only its cancel"
+    );
     assert!(
         tokio::time::timeout(Duration::from_millis(500), list.next())
             .await

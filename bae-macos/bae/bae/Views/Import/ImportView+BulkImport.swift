@@ -8,6 +8,11 @@ extension ImportView {
         switch action {
         case .cancelIdentification:
             importer.cancelIdentification([key])
+        case .cancelImport:
+            Task {
+                do { try await importer.cancelImport(key) }
+                catch { uiStore.showError(error) }
+            }
         case .importReady, .identify, .retryIdentification,
             .resetToFileMetadata, .clearMetadata, .skip, .restore:
             assertionFailure("\(action) is not a cancel action")
@@ -45,6 +50,8 @@ extension ImportView {
                 importer.rerunIdentifyForCandidate(key)
             case .cancelIdentification:
                 importer.cancelIdentification([key])
+            case .cancelImport:
+                try await importer.cancelImport(key)
             case .resetToFileMetadata:
                 _ = try await importer.applyCandidateFileMetadata(key)
             case .clearMetadata:

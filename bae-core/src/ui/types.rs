@@ -150,6 +150,13 @@ pub enum UiBusEvent {
         identified: u32,
         total: u32,
     },
+    /// How many imports are waiting or running, whoever started them. The
+    /// sidebar header shows them, and a way to cancel them all, while there
+    /// are any.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    ImportsInFlight {
+        count: u32,
+    },
 
     // ── Errors ─────────────────────────────────────────────────────
     Error {

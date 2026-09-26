@@ -1,5 +1,6 @@
 mod candidate_mutation_race;
 mod commit_lock_waits;
+mod import_cancellation;
 mod import_ownership;
 mod lookup_choices;
 mod metadata_application;

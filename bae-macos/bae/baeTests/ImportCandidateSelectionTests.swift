@@ -158,7 +158,8 @@ struct ImportCandidateSelectionTests {
                 onSkip: { _, _ in },
                 onReveal: { _ in },
                 onCancel: { _, _ in },
-                onCancelAllIdentification: {}
+                onCancelAllIdentification: {},
+                onCancelAllImports: {}
             )
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
             .environment(uiStore)

@@ -11,6 +11,7 @@ extension BridgeCandidateAction {
         case .identify: String(localized: "Identify selected")
         case .cancelIdentification:
             String(localized: "Stop identifying selected")
+        case .cancelImport: String(localized: "Cancel import of selected")
         case .retryIdentification:
             String(localized: "Retry failed identification")
         case .resetToFileMetadata: String(localized: "Reset to file metadata")
@@ -31,7 +32,7 @@ extension BridgeCandidateAction {
     /// what a row offers first in its menu.
     var isCancel: Bool {
         switch self {
-        case .cancelIdentification: true
+        case .cancelIdentification, .cancelImport: true
         case .importReady, .identify, .retryIdentification,
             .resetToFileMetadata, .clearMetadata, .skip, .restore:
             false
@@ -43,6 +44,7 @@ extension BridgeCandidateAction {
     var rowLabel: String {
         switch self {
         case .cancelIdentification: String(localized: "Stop Identifying")
+        case .cancelImport: String(localized: "Cancel Import")
         case .importReady, .identify, .retryIdentification,
             .resetToFileMetadata, .clearMetadata, .skip, .restore:
             label
@@ -53,7 +55,7 @@ extension BridgeCandidateAction {
         switch self {
         case .importReady: "square.and.arrow.down"
         case .identify: "magnifyingglass"
-        case .cancelIdentification: "xmark.circle"
+        case .cancelIdentification, .cancelImport: "xmark.circle"
         case .retryIdentification: "arrow.clockwise"
         case .resetToFileMetadata: "doc.text"
         case .clearMetadata: "eraser"

@@ -1,5 +1,6 @@
 use super::*;
 use crate::import::types::TrackAudio;
+use crate::import::import_cancel::ImportRunEnd;
 use crate::util::worker_thread::WorkerThread;
 
 impl ImportService {
@@ -59,6 +60,7 @@ impl ImportService {
         let library_manager = services.library_manager.clone();
         let clock = services.clock.clone();
         let ids = services.ids.clone();
+        let import_cancels = services.import_cancels.clone();
 
         // Constructed before the watcher task spawns; the task doesn't need the
         // watcher, only the `fs_rx` end of its event channel.
@@ -82,6 +84,7 @@ impl ImportService {
                         library_manager,
                         clock,
                         ids,
+                        import_cancels,
                     };
 
                     while let Some(message) = service.commands_rx.recv().await {
@@ -105,17 +108,38 @@ impl ImportService {
         let candidate_key = command.candidate_key.clone();
         let content_hash = expectation.candidate.content_hash.clone();
         let edit_revision = expectation.candidate.file_edit_revision;
-        let result = self
-            .prepare_and_run_folder_import(
-                import_id.clone(),
-                candidate_key.clone(),
-                command.source,
-                expectation,
-                command.storage_mode,
-                command.pin,
+        let run = self
+            .import_cancels
+            .run(
+                &candidate_key,
+                self.prepare_and_run_folder_import(
+                    import_id.clone(),
+                    candidate_key.clone(),
+                    command.source,
+                    expectation,
+                    command.storage_mode,
+                    command.pin,
+                ),
             )
             .await;
+        let result = match run {
+            ImportRunEnd::Ran(result) => result,
+            // Whoever cancelled it while it waited already said it ended.
+            ImportRunEnd::CancelledWaiting => return,
+            ImportRunEnd::CancelledRunning => Err(crate::import::ImportError::ImportCancelled),
+        };
 
+        // A cancelled import wrote nothing and failed at nothing: it records
+        // no failure, and ends as the candidate stood before it was asked for.
+        if let Err(crate::import::ImportError::ImportCancelled) = result {
+            info!("Import of {candidate_key} was cancelled");
+            self.event_tx
+                .send(crate::import::handle::ImportEvent::ImportProgress {
+                    candidate_key,
+                    progress: ImportProgress::Cancelled { import_id },
+                });
+            return;
+        }
         if let Err(e) = result {
             error!("Import failed: {}", e);
             self.library_manager
@@ -783,6 +807,9 @@ impl ImportService {
             .map(|(image, bytes)| (image, bytes.as_slice()));
         let cover_rel_id = Some((album_id, db_release.id.as_str()));
 
+        // Past here the release is written in one transaction, which a cancel
+        // no longer interrupts; one that came first stops the import here.
+        self.import_cancels.begin_writing(candidate_key)?;
         self.emit_phase_progress(run, &db_release.id, None, ImportPhase::Finalizing);
 
         let remote_intent = matches!(storage_mode, StorageMode::Remote);

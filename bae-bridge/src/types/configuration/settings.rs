@@ -646,9 +646,15 @@ impl From<bae_core::import::ImportError> for BridgeError {
         if let ImportError::GroupingBlocked { reason } = &error {
             return BridgeError::from(reason);
         }
+        if let ImportError::ImportCancelled = &error {
+            return BridgeError::Cancelled;
+        }
         let detail = error.to_string();
         let category = match error {
-            ImportError::GroupingBlocked { .. } => BridgeErrorCategory::Import,
+            ImportError::GroupingBlocked { .. } | ImportError::ImportCancelled => {
+                BridgeErrorCategory::Import
+            }
+            ImportError::ImportWriting => BridgeErrorCategory::Import,
             ImportError::CandidateImportInProgress => {
                 BridgeErrorCategory::CandidateImportInProgress
             }

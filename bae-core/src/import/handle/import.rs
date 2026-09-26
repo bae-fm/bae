@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::import_cancel::CancelOutcome;
 use crate::util::rate_limiter::CallPriority;
 
 #[derive(PartialEq, Eq)]
@@ -641,6 +642,8 @@ impl ImportServiceHandle {
         expectation: crate::import::service::ImportExpectation,
     ) -> Result<(), crate::import::ImportError> {
         let candidate_key = command.candidate_key.clone();
+        self.import_cancels
+            .register(&candidate_key, &command.import_id);
         if self
             .worker
             .send(crate::import::service::ImportWorkerMessage::Import {
@@ -649,6 +652,7 @@ impl ImportServiceHandle {
             })
             .is_err()
         {
+            self.import_cancels.forget(&candidate_key);
             self.release_import_claim(&candidate_key).await;
             return Err(crate::import::ImportError::Internal {
                 detail: "Failed to queue import command".to_string(),
@@ -679,7 +683,8 @@ impl ImportServiceHandle {
                             | ImportProgress::Progress { import_id: iid, .. }
                             | ImportProgress::Complete { import_id: iid, .. }
                             | ImportProgress::RemoteUploadQueued { import_id: iid, .. }
-                            | ImportProgress::Failed { import_id: iid, .. } => *iid == import_id,
+                            | ImportProgress::Failed { import_id: iid, .. }
+                            | ImportProgress::Cancelled { import_id: iid } => *iid == import_id,
                         };
                         if matches && tx.send(progress).is_err() {
                             break;
@@ -699,6 +704,39 @@ impl ImportServiceHandle {
             }
         });
         rx
+    }
+
+    /// Cancel the import of `candidate_key`, waiting or running. It writes
+    /// nothing and records no failure: the candidate is left as it stood
+    /// before the import was asked for. An import already writing its release
+    /// completes, and saying so is the error. Nothing importing the candidate
+    /// is nothing to cancel.
+    pub fn cancel_import(&self, candidate_key: &str) -> Result<(), crate::import::ImportError> {
+        match self.import_cancels.cancel(candidate_key) {
+            CancelOutcome::NotImporting | CancelOutcome::CancelledRunning => Ok(()),
+            CancelOutcome::CancelledWaiting { import_id } => {
+                self.announce_cancelled_import(candidate_key, import_id);
+                Ok(())
+            }
+            CancelOutcome::Writing => Err(crate::import::ImportError::ImportWriting),
+        }
+    }
+
+    /// Cancel every import that has not begun writing its release.
+    pub fn cancel_all_imports(&self) {
+        for (candidate_key, import_id) in self.import_cancels.cancel_all() {
+            self.announce_cancelled_import(&candidate_key, import_id);
+        }
+    }
+
+    /// Say an import that never reached the worker ended: the worker skips it
+    /// and so never will.
+    fn announce_cancelled_import(&self, candidate_key: &str, import_id: String) {
+        info!("Import of {candidate_key} was cancelled before it started");
+        self.event_tx.send(ImportEvent::ImportProgress {
+            candidate_key: candidate_key.to_string(),
+            progress: ImportProgress::Cancelled { import_id },
+        });
     }
 
     /// Subscribe to the unified event channel.

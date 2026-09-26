@@ -23,6 +23,9 @@ final class DesktopEventHandler {
                 identified: identified, total: total
             )
 
+        case .importsInFlight(let count):
+            importStore.importsInFlight = count
+
         case .playbackError, .queueItemsAdded, .error:
             preconditionFailure("Unhandled UI event \(event)")
         }

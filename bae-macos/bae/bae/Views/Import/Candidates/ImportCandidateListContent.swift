@@ -208,6 +208,8 @@ struct ImportCandidateListContent: View {
     let onCancel: (_ key: String, _ action: BridgeCandidateAction) -> Void
     /// Take every candidate off the identification queue.
     let onCancelAllIdentification: () -> Void
+    /// Cancel every import that has not begun writing its release.
+    let onCancelAllImports: () -> Void
 
     @Environment(UiStore.self)
     private var uiStore
@@ -341,6 +343,12 @@ struct ImportCandidateListContent: View {
                                     using: proxy
                                 ),
                                 onCancelAll: onCancelAllIdentification
+                            )
+                        }
+                        if importStore.importsInFlight > 0 {
+                            ImportActivityIndicator(
+                                count: importStore.importsInFlight,
+                                onCancelAll: onCancelAllImports
                             )
                         }
                         if let activity = summary.folderScanActivity {
@@ -785,7 +793,8 @@ extension ImportCandidateListContent {
             onSkip: { _, _ in },
             onReveal: { _ in },
             onCancel: { _, _ in },
-            onCancelAllIdentification: {}
+            onCancelAllIdentification: {},
+            onCancelAllImports: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)
@@ -813,7 +822,8 @@ extension ImportCandidateListContent {
             onSkip: { _, _ in },
             onReveal: { _ in },
             onCancel: { _, _ in },
-            onCancelAllIdentification: {}
+            onCancelAllIdentification: {},
+            onCancelAllImports: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)

@@ -39,7 +39,8 @@ public enum UiEventDispatcher {
 
         #if os(macOS)
             case .candidateSignalsUpdated,
-                .importIdentificationProgress:
+                .importIdentificationProgress,
+                .importsInFlight:
                 return .unhandled
         #endif
         }

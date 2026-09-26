@@ -10,6 +10,8 @@ pub enum CandidateAction {
     Identify,
     /// Stop the identification that is waiting, running, or being written.
     CancelIdentification,
+    /// Stop the import that is waiting for the worker or running.
+    CancelImport,
     RetryIdentification,
     ResetToFileMetadata,
     ClearMetadata,
@@ -56,15 +58,18 @@ impl CandidateActionBasis {
 
     /// The commands these facts offer with `live` running for the candidate.
     ///
-    /// An import owning the candidate leaves nothing, not even a skip: the
-    /// attempt is what decides it now. A run in flight leaves only cancelling
+    /// An import owning the candidate leaves only cancelling it, not even a
+    /// skip: the attempt is what decides it now. A run in flight leaves only cancelling
     /// it and the skip — the run is about to write the answer every other
     /// command would overwrite.
     pub fn actions(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction> {
         use CandidateAction as A;
         use TriagePlacement as P;
-        if !self.actionable || live.importing {
+        if !self.actionable {
             return Vec::new();
+        }
+        if live.importing {
+            return vec![A::CancelImport];
         }
         let identifying = live.identifying();
         let placement = &self.placement;
@@ -164,16 +169,19 @@ mod tests {
         );
     }
 
-    /// An import owning the candidate takes every command away, the skip
-    /// included, wherever the tables still place it.
+    /// An import owning the candidate takes every command away but cancelling
+    /// it, the skip included, wherever the tables still place it.
     #[test]
-    fn a_running_import_offers_nothing() {
+    fn a_running_import_offers_only_its_cancel() {
         let importing = TriageRuntimeFacts {
             identification: None,
             importing: true,
         };
         for placement in [TriagePlacement::Ready, TriagePlacement::Pending] {
-            assert!(basis(placement, None).actions(&importing).is_empty());
+            assert_eq!(
+                basis(placement, None).actions(&importing),
+                vec![CandidateAction::CancelImport]
+            );
         }
     }
 

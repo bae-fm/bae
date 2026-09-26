@@ -26,6 +26,7 @@ desktop_only! {
     mod file_validation;
     pub mod folder_scanner;
     pub(crate) mod folder_state_commit;
+    pub(crate) mod import_cancel;
     pub(crate) mod volume;
     pub mod watched_folder;
     pub use volume::check_period_minutes;
@@ -133,6 +134,10 @@ pub(crate) struct ImportServices {
     /// listing closed, and observe what the scan has announced by then.
     directories: std::sync::Arc<dyn folder_scanner::DirectoryReader>,
     folder_state_commit: folder_state_commit::FolderStateCommit,
+    /// The imports between their claim and their end, which a person can
+    /// cancel: shared by the handle that claims and cancels them and the
+    /// worker that runs them.
+    import_cancels: import_cancel::ImportCancels,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -153,6 +158,7 @@ impl ImportServices {
             file_tags: std::sync::Arc::new(file_tag_snapshot::LoftyFileTagReader),
             directories: std::sync::Arc::new(folder_scanner::OsDirectoryReader),
             folder_state_commit: folder_state_commit::FolderStateCommit::default(),
+            import_cancels: import_cancel::ImportCancels::default(),
         }
     }
 }

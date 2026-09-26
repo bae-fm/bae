@@ -186,6 +186,7 @@ pub struct ImportService {
     library_manager: LibraryManager,
     clock: coven::ClockRef,
     ids: coven::IdRef,
+    import_cancels: crate::import::import_cancel::ImportCancels,
 }
 
 /// One downloaded cover as the import funnel's candidate.

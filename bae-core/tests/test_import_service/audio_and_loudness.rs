@@ -122,6 +122,7 @@ async fn import_progress_names_every_operation_before_loudness() {
                 break;
             }
             ImportProgress::Failed { error, .. } => panic!("import failed: {error}"),
+            ImportProgress::Cancelled { .. } => panic!("nothing cancelled the import"),
             ImportProgress::RemoteUploadQueued { .. } => None,
             ImportProgress::Complete { .. } => None,
         };

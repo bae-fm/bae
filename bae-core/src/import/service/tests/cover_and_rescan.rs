@@ -155,6 +155,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             crate::util::content_type::ContentType::Bmp
         );
         let mut events = test.service.event_tx.subscribe();
+        test.service.import_cancels.register(&key, "import-cover");
         let result = test
             .service
             .prepare_and_run_folder_import(
@@ -329,6 +330,9 @@ async fn selected_local_cover_path_must_match_discovered_file() {
     let audio_path = folder.join("01.flac");
     let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
 
+    service
+        .import_cancels
+        .register(&folder.to_string_lossy(), "import-1");
     let result = service
         .prepare_and_run_folder_import(
             "import-1".to_string(),

@@ -65,6 +65,7 @@ async fn setup_import_service() -> TestService {
             library_manager: manager,
             clock: Arc::new(coven::SystemClock),
             ids: Arc::new(coven::UuidProvider),
+            import_cancels: Default::default(),
         },
         preparations,
         temp: temp_dir,
@@ -427,6 +428,7 @@ impl CoordinatorHarness {
                 file_tags: Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
                 directories: Arc::new(crate::import::folder_scanner::OsDirectoryReader),
                 folder_state_commit: folder_state_commit.clone(),
+                import_cancels: Default::default(),
             },
             starter,
             removal_backend.clone(),
@@ -530,6 +532,7 @@ fn test_scan_services(
             file_tags,
             directories,
             folder_state_commit: crate::import::FolderStateCommit::default(),
+            import_cancels: Default::default(),
         },
         folder_watcher,
     )

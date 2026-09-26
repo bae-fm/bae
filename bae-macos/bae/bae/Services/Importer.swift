@@ -76,6 +76,8 @@ private struct ImportOperations: Sendable {
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
     let cancelIdentification: @Sendable ([String]) -> Void
     let cancelAllIdentification: @Sendable () -> Void
+    let cancelImport: @Sendable (String) async throws -> Void
+    let cancelAllImports: @Sendable () -> Void
     let setCandidatePresentation:
         @Sendable (String, BridgeMetadataPresentation) async throws -> Void
     let setCandidateSearchForm:
@@ -221,6 +223,12 @@ extension ImportOperations {
             },
             cancelAllIdentification: {
                 handle.cancelAllIdentification()
+            },
+            cancelImport: {
+                try await handle.cancelImport(candidateKey: $0)
+            },
+            cancelAllImports: {
+                handle.cancelAllImports()
             },
             setCandidatePresentation: {
                 try await handle.setCandidatePresentation(
@@ -422,6 +430,10 @@ final class Importer: Sendable, Observable {
         cancelIdentification:
             @escaping @Sendable ([String]) -> Void = { _ in },
         cancelAllIdentification: @escaping @Sendable () -> Void = {},
+        cancelImport: @escaping @Sendable (String) async throws -> Void = {
+            _ in
+        },
+        cancelAllImports: @escaping @Sendable () -> Void = {},
         setCandidatePresentation:
             @escaping @Sendable (String, BridgeMetadataPresentation)
             async throws ->
@@ -517,6 +529,8 @@ final class Importer: Sendable, Observable {
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
             cancelIdentification: cancelIdentification,
             cancelAllIdentification: cancelAllIdentification,
+            cancelImport: cancelImport,
+            cancelAllImports: cancelAllImports,
             setCandidatePresentation: setCandidatePresentation,
             setCandidateSearchForm: setCandidateSearchForm,
             setCandidatePaneError: setCandidatePaneError,
@@ -705,6 +719,18 @@ extension Importer {
     /// Take every candidate off the identification queue.
     func cancelAllIdentification() {
         operations.cancelAllIdentification()
+    }
+
+    /// Cancel the candidate's import, waiting or running. It writes nothing
+    /// and records no failure; one already writing its release completes, and
+    /// that is the error.
+    func cancelImport(_ candidateKey: String) async throws {
+        try await operations.cancelImport(candidateKey)
+    }
+
+    /// Cancel every import that has not begun writing its release.
+    func cancelAllImports() {
+        operations.cancelAllImports()
     }
 
     /// Record which surface the pane's metadata slot shows for a candidate.

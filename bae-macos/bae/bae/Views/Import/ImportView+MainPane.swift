@@ -19,7 +19,8 @@ extension ImportView {
             onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
             onReveal: revealCandidateSources,
             onCancel: { key, action in cancelCandidateWork(key, action) },
-            onCancelAllIdentification: { importer.cancelAllIdentification() }
+            onCancelAllIdentification: { importer.cancelAllIdentification() },
+            onCancelAllImports: { importer.cancelAllImports() }
         )
     }
 

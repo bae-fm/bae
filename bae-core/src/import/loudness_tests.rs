@@ -40,6 +40,8 @@ fn measured_frames_control_progress_value_and_determinacy() {
                 assert_eq!(phase, crate::import::types::ImportPhase::MeasuringLoudness);
                 percents.extend(percent);
             }
+            // The runtime counting the import it now holds.
+            crate::import::handle::ImportEvent::ImportsInFlight { .. } => {}
             other => panic!("unexpected event: {other:?}"),
         }
     }

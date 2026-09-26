@@ -129,6 +129,9 @@ pub enum ImportEvent {
         identified: u32,
         total: u32,
     },
+    /// How many imports are waiting for the worker or running, announced by
+    /// the candidate runtime whenever one starts or ends.
+    ImportsInFlight { count: u32 },
 }
 
 /// Search results grouped by release group, with the per-release library dupe
@@ -188,6 +191,7 @@ pub struct ImportServiceHandle {
     identify: crate::identify::IdentifyServiceHandle,
     extraction: crate::signals::ExtractionServiceHandle,
     folder_state_commit: crate::import::FolderStateCommit,
+    import_cancels: crate::import::import_cancel::ImportCancels,
     watcher: WorkerThread<WatcherCommand>,
     runtime_handle: tokio::runtime::Handle,
 }
@@ -305,6 +309,7 @@ impl ImportServiceHandle {
             file_tags,
             directories: _,
             folder_state_commit,
+            import_cancels,
         } = services;
         let identify = crate::identify::IdentifyServiceHandle::new(
             library_manager.clone(),
@@ -328,6 +333,7 @@ impl ImportServiceHandle {
             identify,
             extraction,
             folder_state_commit,
+            import_cancels,
             watcher,
             runtime_handle,
         }
