@@ -789,6 +789,7 @@ where
     )
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) fn read_file_subtree<R: DirectoryReader + ?Sized>(
     reader: &R,
     root: &Path,
@@ -810,6 +811,7 @@ pub(super) fn read_file_subtree<R: DirectoryReader + ?Sized>(
     Ok((files, contains_audio))
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) fn collect_scoped_entries(
     root: &Path,
     scope: ReleaseFileScope,
