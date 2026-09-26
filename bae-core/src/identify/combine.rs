@@ -23,8 +23,9 @@
 //! **Every row is scored, and the rows tied at the top are offered.** The
 //! score is `Support`: whether the row's media could have given the folder
 //! its audio, how many lookups returned the row, how many of the facts that
-//! name one pressing hold, whether the disc ID returned it, and whether the
-//! folder's text mentions the row at all. Every other row is set aside under
+//! name one pressing hold, whether the disc ID returned it, how much of the
+//! album's title and artist the folder states, whether the row states the
+//! folder's mono, and whether the folder's text mentions the row at all. Every other row is set aside under
 //! "N more releases", which a person can open.
 //!
 //! Taking the highest score is what would otherwise be separate rules. A row
@@ -314,8 +315,14 @@ pub fn combine_results(
         .into_iter()
         .flat_map(ReleaseGroup::into_pressings)
         .collect();
-    let (offered, set_aside, medium_conflict) =
-        split_rows(rows, &judgements, &returned_by, ripped_from, folder.mono);
+    let (offered, set_aside, medium_conflict) = split_rows(
+        rows,
+        &judgements,
+        &returned_by,
+        text,
+        ripped_from,
+        folder.mono,
+    );
 
     let statuses: HashMap<ReleaseKey, LibraryStatus> = all
         .into_iter()
@@ -412,6 +419,18 @@ struct Support {
     /// what names one pressing, and why it counts here as well as among the
     /// lookups.
     shares_toc: bool,
+    /// How many of the album's title and its artist the folder's text states
+    /// — the name a person gave the folder, its files' tags, a CUE's `TITLE`
+    /// and `PERFORMER`, the sleeve.
+    ///
+    /// They name the album, not the pressing, which is why they are read
+    /// below everything that names one. What they tell apart is a row a
+    /// lookup returned for some other album: a catalog number another label
+    /// also used, a label and a country every release shares. A title the
+    /// folder writes in another language, or a compilation's "Various
+    /// Artists" it does not write at all, is only no agreement, never a
+    /// reason against the row.
+    names_album: u32,
     /// Whether the row states mono and the folder's audio is one channel.
     ///
     /// A catalog tells a mono pressing from a stereo one of the same album
@@ -440,6 +459,7 @@ fn support_of(
     row: &Pressing,
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
+    text: &CandidateText,
     ripped_from: RippedFrom,
     mono: bool,
 ) -> Support {
@@ -476,6 +496,20 @@ fn support_of(
         .count() as u32,
         names_pressing: u32::from(agreements.catalog) + u32::from(returned.by_barcode && offered),
         shares_toc: returned.by_disc_id,
+        names_album: [
+            row.releases
+                .iter()
+                .any(|release| text.states(&release.title)),
+            row.releases.iter().any(|release| {
+                release
+                    .artist
+                    .as_deref()
+                    .is_some_and(|artist| text.states(artist))
+            }),
+        ]
+        .into_iter()
+        .filter(|stated| *stated)
+        .count() as u32,
         states_the_channels: channels == ChannelFit::Agrees,
         offered,
     }
@@ -490,12 +524,13 @@ fn split_rows(
     rows: Vec<Pressing>,
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
+    text: &CandidateText,
     ripped_from: RippedFrom,
     mono: bool,
 ) -> (Vec<Pressing>, Vec<Pressing>, Option<super::MediumConflict>) {
     let support: Vec<Support> = rows
         .iter()
-        .map(|row| support_of(row, judgements, provenance, ripped_from, mono))
+        .map(|row| support_of(row, judgements, provenance, text, ripped_from, mono))
         .collect();
     let Some(best) = support.iter().copied().max() else {
         return (Vec::new(), Vec::new(), None);

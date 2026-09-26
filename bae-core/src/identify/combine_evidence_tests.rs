@@ -388,3 +388,48 @@ fn mono_audio_rules_out_pressings_stated_stereo() {
         Some(MediumConflict::MonoAudio)
     );
 }
+
+/// A catalog number the folder prints, and two releases the lookups named
+/// that share the folder's label and country: the one whose album title and
+/// artist the folder states is offered, and the other album waits behind the
+/// disclosure.
+#[test]
+fn the_album_the_folder_names_outranks_another_on_the_same_label() {
+    let text = CandidateText::of(
+        &[TextLine {
+            text: "Artist One - Album One (Label One, US)".to_string(),
+            origin: TextOrigin::FolderName,
+            file: None,
+            region: None,
+        }],
+        &[],
+    );
+    let on_label = |release_id: &str, title: &str, artist: &str| {
+        let (result, status) = pressing(release_id, made_of(&[Medium::Vinyl]));
+        (
+            MetadataResult {
+                title: title.to_string(),
+                artist: Some(artist.to_string()),
+                label: Some("Label One".to_string()),
+                area: Some(crate::pressing::area("US")),
+                catalog_number: None,
+                ..result
+            },
+            status,
+        )
+    };
+    let outcome = combine_results(
+        Vec::new(),
+        vec![
+            on_label("rel-other", "Album Two", "Artist Two"),
+            on_label("rel-named", "Album One", "Artist One"),
+        ],
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        &text,
+        FolderAudio::UNPROVEN,
+    );
+    assert_eq!(offered(&outcome), vec!["rel-named"]);
+    assert_eq!(set_aside(&outcome), vec!["rel-other"]);
+}
