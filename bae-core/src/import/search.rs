@@ -47,6 +47,10 @@ pub struct MetadataResult {
     /// reading its album's links browses its group's releases, which carry
     /// each release's own.
     pub links: Vec<MetadataRef>,
+    /// What the record says about its cover: a stated cover, an unstated
+    /// address when it said nothing (a MusicBrainz search result), or `None`
+    /// when it states it has none (a release document whose archive block has
+    /// no front, a Discogs result listing no image).
     pub cover_art: Option<RemoteCover>,
     pub source_group_id: Option<String>,
     /// The albums on the other lookup catalog a statement names as this
@@ -340,9 +344,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
     let pressing = crate::import::musicbrainz_mapper::pressing(&r);
     let media = mb_stated_media(&r);
     let links = release_links_of(&r.relations);
-    let cover_art = r
-        .has_front_cover()
-        .then(|| RemoteCover::musicbrainz_release(&r.id));
+    let cover_art = crate::import::cover_art::musicbrainz_release_cover(&r);
     Some(MetadataResult {
         source: Catalog::MusicBrainz,
         release_id: r.id,
@@ -428,11 +430,12 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
 
 /// Search MusicBrainz for metadata matching the provider params.
 ///
-/// Each result carries the archive's address for that release's front image.
-/// The search endpoint takes no `inc` and returns no `cover-art-archive` block,
-/// so nothing here states whether the archive holds one — the thumbnail fetch
-/// the result card makes is what answers that, and it is the same request the
-/// card would make anyway.
+/// Each result carries the archive's address for that release's front image,
+/// unstated: the search endpoint takes no `inc` and returns no
+/// `cover-art-archive` block, so the result says nothing about whether the
+/// archive holds one. A stated cover from another record is preferred over it
+/// wherever covers are picked ([`crate::import::cover_art::offered_covers`]),
+/// and the release's own document states it once a pick fetches it.
 pub(crate) async fn search_mb(
     musicbrainz: &musicbrainz::MusicBrainz,
     params: ReleaseSearchParams,

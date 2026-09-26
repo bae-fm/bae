@@ -370,6 +370,7 @@ fn discogs_search_result_carries_remote_cover_pair() {
             ),
             label: Catalog::Discogs.cover_source_label().to_string(),
             source: Catalog::Discogs,
+            standing: crate::import::cover_art::CoverStanding::Stated,
         })
     );
 }
@@ -455,9 +456,9 @@ fn discid_metadata_skips_only_releases_without_one_matching_medium() {
 }
 
 /// A release whose document says the archive holds its front image offers
-/// that image first, then its release group's.
+/// that image, and not the release group's address, which nothing states.
 #[test]
-fn mb_detail_offers_the_archive_front_before_the_album_image() {
+fn mb_detail_offers_the_stated_archive_front_alone() {
     let response = response_with_media(vec![MbMedium {
         discs: vec![],
         format: Some("CD".to_string()),
@@ -468,10 +469,10 @@ fn mb_detail_offers_the_archive_front_before_the_album_image() {
 
     assert_eq!(
         detail.cover_art,
-        vec![
-            RemoteCover::musicbrainz_release("mb-release-1"),
-            RemoteCover::musicbrainz_release_group("mb-group-1"),
-        ]
+        vec![RemoteCover {
+            standing: crate::import::cover_art::CoverStanding::Stated,
+            ..RemoteCover::musicbrainz_release("mb-release-1")
+        }]
     );
 }
 

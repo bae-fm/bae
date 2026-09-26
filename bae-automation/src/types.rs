@@ -494,6 +494,16 @@ pub struct AutomationRemoteCover {
     pub image: AutomationRemoteImageSet,
     pub label: String,
     pub source: AutomationCatalog,
+    pub standing: AutomationCoverStanding,
+}
+
+/// Whether a catalog stated the cover is there, or it is an address nothing
+/// said anything about.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationCoverStanding {
+    Stated,
+    Unstated,
 }
 
 /// A catalog image: the original, and the downscaled copies the catalog

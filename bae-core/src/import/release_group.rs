@@ -739,7 +739,9 @@ fn build_group(
     let title = lead.title.clone();
     let artist = members.iter().find_map(|&at| read(at).artist.clone());
     let label = members.iter().find_map(|&at| read(at).label.clone());
-    let cover_art = members.iter().find_map(|&at| read(at).cover_art.clone());
+    let cover_art = crate::import::cover_art::preferred_cover(
+        members.iter().filter_map(|&at| read(at).cover_art.clone()),
+    );
     let years: Vec<i32> = members.iter().filter_map(|&at| read(at).year).collect();
     let year_min = years.iter().min().copied();
     let year_max = years.iter().max().copied();
@@ -912,6 +914,10 @@ fn ordered_rows(mut rows: Vec<Row>) -> Vec<Row> {
 #[cfg(test)]
 #[path = "release_group_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "release_group_cover_tests.rs"]
+mod cover_tests;
 
 #[cfg(test)]
 #[path = "release_group/ranking_tests.rs"]

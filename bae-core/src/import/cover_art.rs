@@ -38,10 +38,17 @@ pub(crate) const ARCHIVE: &str = "https://coverartarchive.org";
 /// A remote cover art option from an external source: where the image and its
 /// downscaled copies live, and which service is offering them.
 ///
-/// This is an *address*, not a promise. For the Cover Art Archive it is derived
-/// from the entity id; whether the archive actually serves bytes there is
-/// answered by fetching it, and — for a MusicBrainz release — stated in advance
-/// by the release document's own `cover-art-archive` block.
+/// Its `standing` says whether a catalog stated the image is there. For the
+/// Cover Art Archive the address is derived from the entity id, so it exists
+/// before anything is known: a MusicBrainz release document's own
+/// `cover-art-archive` block states whether the archive serves its front, and
+/// nothing states it for a search result or a release group.
+///
+/// A record's cover is one of three things, read off
+/// `MetadataResult::cover_art`: a stated cover (the record has one), an
+/// unstated address (the record said nothing), or `None` (the record states
+/// it has none). [`offered_covers`] is the one rule every surface that picks
+/// among covers applies.
 ///
 /// `Serialize`/`Deserialize`: reachable from `MetadataResult::cover_art`, which
 /// `identify::TerminalVerdict` persists.
@@ -50,6 +57,60 @@ pub struct RemoteCover {
     pub image: RemoteImageSet,
     pub label: String,
     pub source: Catalog,
+    pub standing: CoverStanding,
+}
+
+/// Whether a catalog stated a cover is there.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum CoverStanding {
+    /// A catalog's document lists this image: a Discogs image, an archive
+    /// gallery entry, a MusicBrainz release whose document says the archive
+    /// serves its front.
+    Stated,
+    /// An address nothing has said anything about: the archive's front for a
+    /// MusicBrainz search result or release group. It may hold nothing.
+    Unstated,
+}
+
+impl CoverStanding {
+    /// The stored column value.
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Stated => "stated",
+            Self::Unstated => "unstated",
+        }
+    }
+
+    /// The standing a stored column value names.
+    pub(crate) fn from_column(value: &str) -> Option<Self> {
+        match value {
+            "stated" => Some(Self::Stated),
+            "unstated" => Some(Self::Unstated),
+            _ => None,
+        }
+    }
+}
+
+/// The covers to offer from `covers`, in their order: every one a catalog
+/// stated, or — only when none is stated — the unstated addresses. A record
+/// that states it has no cover contributes none, so it is never offered.
+///
+/// Every surface that picks a cover applies this: a card's heading, a pick's
+/// default cover, and the cover options a pick offers.
+pub fn offered_covers(covers: impl IntoIterator<Item = RemoteCover>) -> Vec<RemoteCover> {
+    let (stated, unstated): (Vec<_>, Vec<_>) = covers
+        .into_iter()
+        .partition(|cover| cover.standing == CoverStanding::Stated);
+    if stated.is_empty() {
+        unstated
+    } else {
+        stated
+    }
+}
+
+/// The cover to show for `covers`: the first [`offered_covers`] offers.
+pub fn preferred_cover(covers: impl IntoIterator<Item = RemoteCover>) -> Option<RemoteCover> {
+    offered_covers(covers).into_iter().next()
 }
 
 /// One catalog image: the original, and every downscaled copy the catalog
@@ -70,6 +131,10 @@ pub struct RemoteImageSet {
 /// A copy of a catalog image scaled to fit in a `max_edge` × `max_edge` box:
 /// its longer side is at most `max_edge` pixels. A catalog never scales up, so
 /// a copy of an image smaller than the box is the image at its own size.
+///
+/// A copy is there exactly when its image is — each catalog serves its copies
+/// of every image it holds — so it carries no standing of its own: the
+/// cover's [`CoverStanding`] is the copies' too.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DownscaledCopy {
     pub url: String,
@@ -109,15 +174,17 @@ impl RemoteImageSet {
 }
 
 impl RemoteCover {
-    /// The archive's front image for a MusicBrainz release — this pressing's
-    /// own cover.
+    /// The archive's address for a MusicBrainz release's front image — this
+    /// pressing's own cover, if the archive holds one. Unstated: only the
+    /// release's document says whether it does ([`musicbrainz_release_cover`]).
     pub fn musicbrainz_release(release_id: &str) -> Self {
         Self::cover_art_archive("release", release_id, |label| label.to_string())
     }
 
-    /// The archive's front image for a MusicBrainz release group — the cover
-    /// the album is represented by, which is some release in the group's and
-    /// may not be this pressing's.
+    /// The archive's address for a MusicBrainz release group's front image —
+    /// the cover the album is represented by, which is some release in the
+    /// group's and may not be this pressing's. Unstated: no document says
+    /// whether the archive holds one.
     pub fn musicbrainz_release_group(release_group_id: &str) -> Self {
         Self::cover_art_archive("release-group", release_group_id, |label| {
             format!("{label} (Album)")
@@ -137,13 +204,17 @@ impl RemoteCover {
             image: RemoteImageSet::with_copies(front, downscaled),
             label: label(Catalog::MusicBrainz.cover_source_label()),
             source: Catalog::MusicBrainz,
+            standing: CoverStanding::Unstated,
         }
     }
 }
 
 /// The bounding boxes the Cover Art Archive serves every image's copies at:
-/// `front-250`, `front-500`, `front-1200` beside `front`, and the same
-/// suffixes on each gallery image's own file.
+/// `front-250`, `front-500`, `front-1200` beside `front`. The archive's API
+/// serves these for every image it holds (and each gallery entry lists them
+/// under `thumbnails`), so a derived copy exists exactly when its image does:
+/// the copies share the cover's [`CoverStanding`]. A copy that answers with
+/// nothing is an image that is not there, not a copy missing beside it.
 pub(crate) const ARCHIVE_COPY_EDGES: [u32; 3] = [250, 500, 1200];
 
 /// This pressing's own front image, offered only when the release document
@@ -153,9 +224,10 @@ pub(crate) const ARCHIVE_COPY_EDGES: [u32; 3] = [250, 500, 1200];
 pub fn musicbrainz_release_cover(
     response: &crate::musicbrainz::MbReleaseResponse,
 ) -> Option<RemoteCover> {
-    response
-        .has_front_cover()
-        .then(|| RemoteCover::musicbrainz_release(&response.id))
+    response.has_front_cover().then(|| RemoteCover {
+        standing: CoverStanding::Stated,
+        ..RemoteCover::musicbrainz_release(&response.id)
+    })
 }
 
 /// The album this release belongs to, as the archive addresses it.
@@ -233,14 +305,18 @@ impl CoverChoice {
 
 /// Append `cover` unless the list already offers the same image. Two identity
 /// rows on one release can name the same archive entity, and the picker should
-/// show that image once.
+/// show that image once — stated, when either of the two stated it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCover) {
-    if !covers
-        .iter()
-        .any(|existing| existing.image.url == cover.image.url)
+    match covers
+        .iter_mut()
+        .find(|existing| existing.image.url == cover.image.url)
     {
-        covers.push(cover);
+        Some(existing) if cover.standing == CoverStanding::Stated => {
+            existing.standing = CoverStanding::Stated;
+        }
+        Some(_) => {}
+        None => covers.push(cover),
     }
 }
 

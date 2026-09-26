@@ -356,7 +356,18 @@ mirror_struct! {
 mirror_struct! {
     AutomationRemoteCover = RemoteCover,
     from_core: pub(crate) fn,
-    fields: { image: (AutomationRemoteImageSet), label, source: (into) },
+    fields: {
+        image: (AutomationRemoteImageSet),
+        label,
+        source: (into),
+        standing: (AutomationCoverStanding),
+    },
+}
+
+mirror_enum! {
+    AutomationCoverStanding = bae_core::import::cover_art::CoverStanding,
+    from_core: pub(crate) fn,
+    variants: { Stated, Unstated },
 }
 
 mirror_struct! {

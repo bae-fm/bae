@@ -57,20 +57,6 @@ pub(super) fn rows(groups: &[ReleaseGroup]) -> Vec<Vec<&str>> {
     groups.iter().flat_map(lead_ids).collect()
 }
 
-pub(super) fn cover() -> RemoteCover {
-    RemoteCover {
-image: crate::import::cover_art::RemoteImageSet::with_copies(
-            "https://caa.example/front.jpg".to_string(),
-            vec![crate::import::cover_art::DownscaledCopy {
-                url: "https://caa.example/thumb.jpg".to_string(),
-                max_edge: 250,
-            }],
-        ),
-        label: Catalog::MusicBrainz.cover_source_label().to_string(),
-        source: Catalog::MusicBrainz,
-    }
-}
-
 pub(super) fn lead_ids(group: &ReleaseGroup) -> Vec<Vec<&str>> {
     group
         .pressings()
@@ -305,9 +291,10 @@ fn a_card_holding_two_albums_of_one_catalog_splits_its_rows_by_album() {
         .iter()
         .map(|section| {
             (
-                section.album.as_ref().map(|album| {
-                    (album.title.as_str(), album.source.group_url.as_deref())
-                }),
+                section
+                    .album
+                    .as_ref()
+                    .map(|album| (album.title.as_str(), album.source.group_url.as_deref())),
                 section
                     .pressings
                     .iter()
@@ -876,40 +863,6 @@ fn a_card_whose_pressings_name_no_label_has_none() {
     assert_eq!(groups[0].label, None);
 }
 
-#[test]
-fn representative_cover_preserves_remote_cover_pair() {
-    let cover = cover();
-    let mut first = mb("rel-1", Some("group-x"), Some(1992));
-    first.cover_art = Some(cover.clone());
-
-    let groups = grouped(vec![first, mb("rel-2", Some("group-x"), Some(1994))]);
-
-    assert_eq!(groups[0].cover_art, Some(cover));
-}
-
-/// A merged card takes its cover from MusicBrainz when both sources offer
-/// one, whichever bucket was seen first.
-#[test]
-fn a_merged_card_prefers_the_musicbrainz_cover() {
-    let mut discogs_covered = discogs("dg-1", Some("master-7"), Some(2001));
-    discogs_covered.cover_art = Some(RemoteCover {
-image: crate::import::cover_art::RemoteImageSet::with_copies(
-            "https://discogs.example/front.jpg".to_string(),
-            vec![crate::import::cover_art::DownscaledCopy {
-                url: "https://discogs.example/thumb.jpg".to_string(),
-                max_edge: 150,
-            }],
-        ),
-        label: Catalog::Discogs.cover_source_label().to_string(),
-        source: Catalog::Discogs,
-    });
-    let mut mb_covered = linked(mb("mb-1", Some("group-x"), Some(1992)), "master-7");
-    mb_covered.cover_art = Some(cover());
-
-    let groups = grouped(vec![discogs_covered, mb_covered]);
-    assert_eq!(groups[0].cover_art, Some(cover()));
-}
-
 /// Two results carrying the same `source_group_id` string but different
 /// sources are still bucketed apart: only a link joins them, and none is
 /// stated here.
@@ -950,7 +903,10 @@ fn rows_either_side_of_the_disclosure_are_one_card() {
         &[0, 1],
     );
     assert_eq!(
-        groups.iter().map(|group| group.id.as_str()).collect::<Vec<_>>(),
+        groups
+            .iter()
+            .map(|group| group.id.as_str())
+            .collect::<Vec<_>>(),
         vec!["group-x", "group-z"]
     );
     let ids = |pressings: &[Pressing]| -> Vec<String> {

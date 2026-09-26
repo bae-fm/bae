@@ -48,6 +48,9 @@ impl BridgeRemoteCover {
             image,
             label,
             source,
+            // Core already chose which covers to offer by it; a surface
+            // draws the covers it is handed.
+            standing: _,
         } = c;
         let image = BridgeRemoteImageSet::from_core(image);
         BridgeRemoteCover {

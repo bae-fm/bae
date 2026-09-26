@@ -437,25 +437,25 @@
         static let remoteCovers: [BridgeRemoteCover] = [
             remoteCover(
                 url: "https://example.com/cover1.jpg",
-                thumbnailUrl: "https://example.com/thumb1.jpg",
+                downscaledUrl: "https://example.com/cover1-250.jpg",
                 label: "Front"
             ),
             remoteCover(
                 url: "https://example.com/cover2.jpg",
-                thumbnailUrl: "https://example.com/thumb2.jpg",
+                downscaledUrl: "https://example.com/cover2-250.jpg",
                 label: "Back"
             ),
         ]
 
         private static func remoteCover(
             url: String,
-            thumbnailUrl: String,
+            downscaledUrl: String,
             label: String
         ) -> BridgeRemoteCover {
             let image = BridgeRemoteImageSet(
                 url: url,
                 downscaled: [
-                    BridgeDownscaledCopy(url: thumbnailUrl, maxEdge: 250)
+                    BridgeDownscaledCopy(url: downscaledUrl, maxEdge: 250)
                 ]
             )
             return BridgeRemoteCover(

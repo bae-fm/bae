@@ -1,6 +1,6 @@
 pub mod client;
 pub mod models;
-use crate::import::cover_art::{DownscaledCopy, RemoteCover, RemoteImageSet};
+use crate::import::cover_art::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::Catalog;
 pub use client::DiscogsClient;
 pub use models::*;
@@ -77,5 +77,7 @@ where
         image,
         label: Catalog::Discogs.cover_source_label().to_string(),
         source: Catalog::Discogs,
+        // Discogs lists the images a record has; one it lists is there.
+        standing: CoverStanding::Stated,
     })
 }

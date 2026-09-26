@@ -331,7 +331,8 @@ impl SourceRelease {
     }
 
     /// Every cover option this one release offers, its pressing's images
-    /// before its album's, each offered once.
+    /// before its album's, each offered once, by
+    /// [`crate::import::cover_art::offered_covers`].
     pub(crate) fn covers(&self) -> Vec<RemoteCover> {
         let mut unique = Vec::new();
         for cover in self
@@ -343,7 +344,7 @@ impl SourceRelease {
         {
             crate::import::cover_art::push_unique_cover(&mut unique, cover);
         }
-        unique
+        crate::import::cover_art::offered_covers(unique)
     }
 
     /// On-demand picker artwork: the Discogs images the release stored, and
@@ -563,7 +564,7 @@ pub fn pick_covers(primary: &SourceRelease, partners: &[SourceRelease]) -> Vec<R
             crate::import::cover_art::push_unique_cover(&mut covers, cover.clone());
         }
     }
-    covers
+    crate::import::cover_art::offered_covers(covers)
 }
 
 /// The complete galleries behind [`pick_covers`], for the picker: the same

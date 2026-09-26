@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::import::assemble::{ArtistRef, PartDirection};
-use crate::import::cover_art::{DownscaledCopy, RemoteCover, RemoteImageSet};
+use crate::import::cover_art::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::release_metadata::{AlbumMetadata, ReleaseMetadata};
 use crate::import::source_release::{
     ArchiveRelease, ArtistCredit, CatalogFacts, EntryKind, PerformedWork, ReleaseCovers,
@@ -186,8 +186,8 @@ pub(super) fn replace_source_release_on(
         for (position, cover) in covers.iter().enumerate() {
             sql.execute(
                 "INSERT INTO source_release_cover \
-                     (catalog, release_id, scope, position, url, label, source) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?)",
+                     (catalog, release_id, scope, position, url, label, source, standing) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
                     catalog,
                     key,
@@ -196,6 +196,7 @@ pub(super) fn replace_source_release_on(
                     cover.image.url,
                     cover.label,
                     cover.source.as_str(),
+                    cover.standing.as_str(),
                 ],
             )?;
             for copy in &cover.image.downscaled {
@@ -601,8 +602,8 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
             .or_default()
             .push(DownscaledCopy { url, max_edge });
     }
-    for (scope, position, url, label, source) in sql.query(
-        "SELECT scope, position, url, label, source FROM source_release_cover \
+    for (scope, position, url, label, source, standing) in sql.query(
+        "SELECT scope, position, url, label, source, standing FROM source_release_cover \
          WHERE catalog = ? AND release_id = ? ORDER BY scope, position",
         params![catalog, key],
         |row| {
@@ -612,6 +613,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
                 row.get::<_, String>(2)?,
                 row.get::<_, String>(3)?,
                 row.get::<_, String>(4)?,
+                row.get::<_, String>(5)?,
             ))
         },
     )? {
@@ -622,6 +624,8 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
             image: RemoteImageSet::with_copies(url, downscaled),
             label,
             source: catalog_column(&source)?,
+            standing: CoverStanding::from_column(&standing)
+                .ok_or_else(|| unreadable("cover standing", &standing))?,
         };
         match scope.as_str() {
             "release" => covers.release.push(cover),

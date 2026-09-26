@@ -109,6 +109,7 @@ fn push_unique_cover_dedupes_by_url() {
         ),
         label: label.to_string(),
         source: Catalog::MusicBrainz,
+        standing: CoverStanding::Stated,
     };
     let mut covers = vec![cover(
         "https://caa.example/thumb-a.jpg",

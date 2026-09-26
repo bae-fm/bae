@@ -546,6 +546,7 @@ mod conversion_roundtrip {
                 ),
                 label: "Front".to_string(),
                 source: bae_core::import::Catalog::MusicBrainz,
+                standing: bae_core::import::cover_art::CoverStanding::Stated,
             }],
         };
         // `default_cover` is derived from the first cover.

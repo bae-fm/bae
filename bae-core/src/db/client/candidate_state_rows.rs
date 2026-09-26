@@ -53,6 +53,12 @@ pub(super) fn save_cover(
 ) -> Result<(), DbError> {
     require_state_row(sql, content_hash, "cover choice")?;
     let (kind, file_id, url, source) = cover_columns(cover);
+    // The copies reference the previous choice's address, which the upsert
+    // replaces, so they go first.
+    sql.execute(
+        "DELETE FROM import_candidate_cover_copy WHERE content_hash = ?",
+        [content_hash],
+    )?;
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_cover ({COVER_COLUMNS}) VALUES (?, ?, ?, ?, ?) \
@@ -62,18 +68,13 @@ pub(super) fn save_cover(
         ),
         params![content_hash, kind, file_id, url, source],
     )?;
-    // The upsert keeps the row, so the previous selection's copies are
-    // replaced here rather than by the cascade.
-    sql.execute(
-        "DELETE FROM import_candidate_cover_copy WHERE content_hash = ?",
-        [content_hash],
-    )?;
     if let CoverSelection::Remote(image, _) = cover {
         for copy in &image.downscaled {
             sql.execute(
-                "INSERT INTO import_candidate_cover_copy (content_hash, max_edge, url) \
-                 VALUES (?, ?, ?)",
-                params![content_hash, copy.max_edge, copy.url],
+                "INSERT INTO import_candidate_cover_copy \
+                     (content_hash, image_url, max_edge, url) \
+                 VALUES (?, ?, ?, ?)",
+                params![content_hash, image.url, copy.max_edge, copy.url],
             )?;
         }
     }

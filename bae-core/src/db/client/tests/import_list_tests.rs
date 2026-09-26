@@ -680,7 +680,8 @@ async fn the_scan_stores_the_folders_own_cover() {
     exec(
         &db,
         "UPDATE import_candidate_match SET cover_url = ?, \
-             cover_label = ?, cover_source = 'musicbrainz' WHERE content_hash = ?",
+             cover_label = ?, cover_source = 'musicbrainz', cover_standing = 'stated' \
+             WHERE content_hash = ?",
         &["https://example.invalid/full.jpg", "Cover", &hash],
     )
     .await;

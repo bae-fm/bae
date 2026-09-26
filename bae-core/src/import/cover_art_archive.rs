@@ -1,8 +1,8 @@
 //! Complete Cover Art Archive galleries, fetched only when a picker opens.
 
 use super::{
-    push_unique_cover, send_artwork_request, Catalog, DownscaledCopy, ImportError, RemoteCover,
-    RemoteImageSet, ARCHIVE, RETRY_BASE_DELAY,
+    push_unique_cover, send_artwork_request, Catalog, CoverStanding, DownscaledCopy, ImportError,
+    RemoteCover, RemoteImageSet, ARCHIVE, RETRY_BASE_DELAY,
 };
 use crate::util::http::Http;
 use serde::Deserialize;
@@ -87,6 +87,8 @@ fn parse_gallery(bytes: &[u8]) -> Result<Vec<RemoteCover>, ImportError> {
                 image: RemoteImageSet::with_copies(image.image, copies),
                 label,
                 source: Catalog::MusicBrainz,
+                // The archive's own listing of what it holds.
+                standing: CoverStanding::Stated,
             },
         );
     }
@@ -96,22 +98,29 @@ fn parse_gallery(bytes: &[u8]) -> Result<Vec<RemoteCover>, ImportError> {
 /// The copies a gallery image's `thumbnails` map lists, keyed by the box they
 /// fit in. The archive names each by its edge (`250`, `500`, `1200`) and keeps
 /// two older names for the same files: `small` is the 250 copy and `large` the
-/// 500 one.
+/// 500 one. An edge-named entry is the one read; an older name stands in only
+/// for an edge the map does not name.
 fn downscaled_copies(thumbnails: &HashMap<String, String>) -> Vec<DownscaledCopy> {
-    thumbnails
+    let mut copies: Vec<DownscaledCopy> = thumbnails
         .iter()
         .filter_map(|(key, url)| {
-            let max_edge = match key.as_str() {
-                "small" => 250,
-                "large" => 500,
-                edge => edge.parse().ok()?,
-            };
             Some(DownscaledCopy {
                 url: url.clone(),
-                max_edge,
+                max_edge: key.parse().ok()?,
             })
         })
-        .collect()
+        .collect();
+    for (alias, max_edge) in [("small", 250), ("large", 500)] {
+        if let Some(url) = thumbnails.get(alias) {
+            if !copies.iter().any(|copy| copy.max_edge == max_edge) {
+                copies.push(DownscaledCopy {
+                    url: url.clone(),
+                    max_edge,
+                });
+            }
+        }
+    }
+    copies
 }
 
 #[cfg(test)]
@@ -192,6 +201,29 @@ mod tests {
         );
         assert!(covers[1].label.contains("Back · liner notes"));
         assert!(covers[2].image.downscaled.is_empty());
+    }
+
+    #[test]
+    fn an_edge_named_copy_wins_over_its_older_name() {
+        let covers = parse_gallery(
+            &serde_json::to_vec(&serde_json::json!({
+                "images": [
+                    {"image":"https://images.example/front.jpg", "thumbnails":{
+                        "250":"https://images.example/front-250.jpg",
+                        "small":"https://images.example/front-small.jpg"
+                    }, "types":["Front"], "comment":"", "front":true}
+                ]
+            }))
+            .expect("fixture serializes"),
+        )
+        .expect("gallery parses");
+        assert_eq!(
+            covers[0].image.downscaled,
+            vec![DownscaledCopy {
+                url: "https://images.example/front-250.jpg".to_string(),
+                max_edge: 250,
+            }]
+        );
     }
 
     #[test]

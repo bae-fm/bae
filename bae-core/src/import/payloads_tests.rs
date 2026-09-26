@@ -125,7 +125,13 @@ fn cover_choices_include_cross_references_and_deduplicate_master_images() {
     )
         .extract().expect("all archived artwork parses")
         .covers();
-        assert_eq!(covers.len(), 4);
+        // The archive's front the release document states, Discogs's front,
+        // and the master's booklet; the release group's address, which
+        // nothing states, is not offered beside them.
+        assert_eq!(covers.len(), 3, "{covers:?}");
+        assert!(covers
+            .iter()
+            .all(|cover| cover.standing == crate::import::cover_art::CoverStanding::Stated));
         assert_eq!(
             covers
                 .iter()
@@ -167,12 +173,13 @@ fn illustrated_discogs_release() -> String {
     .to_string()
 }
 
-/// A pick's covers are every claimed release's own images first, the
-/// primary's first among them — so a primary the archive holds nothing for
-/// offers its partner's image, and the album address, which may be some
-/// other release's cover or nothing at all, comes after it.
+/// A pick's covers are the images its claimed releases' documents state, the
+/// primary's first. A MusicBrainz primary whose document states the archive
+/// holds no front offers nothing of its own, and the album address nothing
+/// states is not offered while a partner states an image: the pick's default
+/// cover is the partner's.
 #[test]
-fn a_picks_covers_lead_with_every_claimed_releases_own_images() {
+fn a_picks_covers_are_the_images_its_documents_state() {
     let primary = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
         unillustrated_musicbrainz_release(serde_json::json!([])),
@@ -187,17 +194,18 @@ fn a_picks_covers_lead_with_every_claimed_releases_own_images() {
         &primary.extract().expect("the primary extracts"),
         &[partner.extract().expect("the partner extracts")],
     );
-    assert_eq!(covers.len(), 2, "{covers:?}");
+    assert_eq!(covers.len(), 1, "{covers:?}");
     assert_eq!(covers[0].image.url, "https://images.example/front.jpg");
-    assert!(
-        covers[1].image.url.ends_with("/release-group/mb-group/front"),
-        "the album's address follows the partner's own image: {covers:?}"
-    );
+    assert_eq!(covers[0].source, Catalog::Discogs);
     let alone = primary.extract().expect("the primary's own artwork parses").covers();
     assert_eq!(alone.len(), 1, "{alone:?}");
+    assert!(
+        alone[0].image.url.ends_with("/release-group/mb-group/front"),
+        "with nothing stated, the album's unstated address is what is offered: {alone:?}"
+    );
     assert_eq!(
-        alone[0].image.url, covers[1].image.url,
-        "the primary's own documents offer nothing but its album's address"
+        alone[0].standing,
+        crate::import::cover_art::CoverStanding::Unstated
     );
 }
 
@@ -225,12 +233,8 @@ fn a_release_reachable_twice_offers_its_images_once() {
         &primary.extract().expect("the primary extracts"),
         &[partner.extract().expect("the partner extracts")],
     );
-    assert_eq!(covers.len(), 2, "the image reachable twice is offered once: {covers:?}");
+    assert_eq!(covers.len(), 1, "the image reachable twice is offered once: {covers:?}");
     assert_eq!(covers[0].image.url, "https://images.example/front.jpg");
-    assert!(
-        covers[1].image.url.ends_with("/release-group/mb-group/front"),
-        "{covers:?}"
-    );
 }
 
 fn mb_release_with_relations(id: &str, group_id: &str, urls: &[&str]) -> serde_json::Value {

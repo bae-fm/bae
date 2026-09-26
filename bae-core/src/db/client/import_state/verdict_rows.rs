@@ -9,7 +9,7 @@ use super::*;
 use crate::identify::{IdentifyFailure, IdentifyRunView, LookupProvenance, TerminalVerdict};
 use super::super::album_link_rows::{AlbumLinkRow, StatementColumns};
 use crate::import::album_links::AlbumLinks;
-use crate::import::cover_art::{DownscaledCopy, RemoteCover, RemoteImageSet};
+use crate::import::cover_art::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::search::{MetadataResult, SourceTracks, StatedMedia};
 use crate::import::{Catalog, MetadataRef};
 use std::str::FromStr;
@@ -21,6 +21,10 @@ pub(super) fn unreadable(column: &str, stored: &str) -> DbError {
 
 fn source_of(stored: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(stored).map_err(DbError::Message)
+}
+
+fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
+    CoverStanding::from_column(stored).ok_or_else(|| unreadable("cover_standing", stored))
 }
 
 /// Clear whatever verdict stands under `content_hash`. The match rows go with
@@ -215,10 +219,10 @@ fn insert_match(
         "INSERT INTO import_candidate_match \
              (content_hash, position, pressing, source, release_id, title, artist, year, format, \
               label, catalog_number, country, media_kind, cover_url, cover_label, cover_source, \
-              source_group_id, album_links, source_tracks_kind, source_tracks_count, \
-              by_disc_id, by_barcode, by_catalog, by_search, named_by_catalog, named_by_key, \
-              narrowed_out) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              cover_standing, source_group_id, album_links, source_tracks_kind, \
+              source_tracks_count, by_disc_id, by_barcode, by_catalog, by_search, \
+              named_by_catalog, named_by_key, narrowed_out) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -236,6 +240,7 @@ fn insert_match(
             cover.map(|cover| cover.image.url.as_str()),
             cover.map(|cover| cover.label.as_str()),
             cover.map(|cover| cover.source.as_str()),
+            cover.map(|cover| cover.standing.as_str()),
             result.source_group_id,
             album_links_kind,
             tracks_kind,
@@ -249,12 +254,15 @@ fn insert_match(
             narrowed_out,
         ],
     )?;
-    for copy in cover.iter().flat_map(|cover| &cover.image.downscaled) {
-        sql.execute(
-            "INSERT INTO import_candidate_match_cover_copy (content_hash, position, max_edge, url) \
-             VALUES (?, ?, ?, ?)",
-            params![content_hash, position, copy.max_edge, copy.url],
-        )?;
+    if let Some(cover) = cover {
+        for copy in &cover.image.downscaled {
+            sql.execute(
+                "INSERT INTO import_candidate_match_cover_copy \
+                     (content_hash, position, cover_url, max_edge, url) \
+                 VALUES (?, ?, ?, ?, ?)",
+                params![content_hash, position, cover.image.url, copy.max_edge, copy.url],
+            )?;
+        }
     }
     for (ordinal, barcode) in result.barcodes.iter().enumerate() {
         sql.execute(
@@ -339,7 +347,7 @@ pub(super) const MEDIA_DESCRIPTORS: &str = "descriptors";
 #[derive(Default)]
 pub(super) struct MatchEntries {
     pub(super) barcodes: Vec<String>,
-    /// The downscaled copies of the match's cover, which it must have.
+    /// The downscaled copies of the match's cover.
     pub(super) cover_copies: Vec<DownscaledCopy>,
     /// `(media_kind, format)`: the kind rides on every medium row, so a row
     /// whose kind disagrees with its match's is unreadable rather than
@@ -445,14 +453,9 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         other => return Err(unreadable("media_kind", other)),
     };
     result.barcodes = barcodes;
-    match &mut result.cover_art {
-        Some(cover) => cover.image = RemoteImageSet::with_copies(cover.image.url.clone(), cover_copies),
-        None if !cover_copies.is_empty() => {
-            return Err(DbError::Message(format!(
-                "match {position} of {content_hash} holds cover copy rows but no cover"
-            )))
-        }
-        None => {}
+    // Copy rows reference their match's cover, so a match without one has none.
+    if let Some(cover) = &mut result.cover_art {
+        cover.image = RemoteImageSet::with_copies(cover.image.url.clone(), cover_copies);
     }
     result.links = links
         .into_iter()
@@ -506,6 +509,7 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
             image: RemoteImageSet::original(url),
             label: row.get("cover_label")?,
             source: source_of(&source)?,
+            standing: standing_of(&row.get::<_, String>("cover_standing")?)?,
         }),
         // The table sets and clears the four cover columns together.
         _ => None,

@@ -201,7 +201,7 @@ const STATE_COLUMNS: &str = "content_hash, folder_path, edit_revision, metadata_
 
 const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_id, title, artist, \
      year, format, label, catalog_number, country, media_kind, cover_url, \
-     cover_label, cover_source, source_group_id, album_links, source_tracks_kind, \
+     cover_label, cover_source, cover_standing, source_group_id, album_links, source_tracks_kind, \
      source_tracks_count, \
      by_disc_id, by_barcode, by_catalog, by_search, named_by_catalog, named_by_key, narrowed_out";
 

@@ -1075,18 +1075,23 @@ CREATE TABLE IF NOT EXISTS import_candidate_cover (
     source       TEXT CHECK (source IS NULL OR source IN ('musicbrainz', 'discogs')),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((kind IN ('local', 'embedded')) = (file_id IS NOT NULL)),
-    CHECK ((kind = 'remote') = (url IS NOT NULL AND source IS NOT NULL))
+    CHECK ((kind = 'remote') = (url IS NOT NULL AND source IS NOT NULL)),
+    -- What the copies reference: only a remote choice has an address.
+    UNIQUE (content_hash, url)
 ) STRICT;
 
 -- The downscaled copies the catalog serves of a remote cover choice, one per
--- box size: a copy's longer side is at most max_edge pixels. Only a 'remote'
--- choice has any; the reader rejects copies of any other kind.
+-- box size: a copy's longer side is at most max_edge pixels. Each names the
+-- image it is a copy of, so a choice with no address — a folder file, an
+-- embedded image — cannot have any.
 CREATE TABLE IF NOT EXISTS import_candidate_cover_copy (
     content_hash TEXT NOT NULL,
+    image_url    TEXT NOT NULL,
     max_edge     INTEGER NOT NULL CHECK (max_edge > 0),
     url          TEXT NOT NULL CHECK (url <> ''),
     PRIMARY KEY (content_hash, max_edge),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_cover (content_hash) ON DELETE CASCADE
+    FOREIGN KEY (content_hash, image_url)
+        REFERENCES import_candidate_cover (content_hash, url) ON DELETE CASCADE
 ) STRICT;
 
 -- The bytes of a catalog-offered cover, fetched before the import runs.
@@ -1399,6 +1404,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     cover_url           TEXT,
     cover_label         TEXT,
     cover_source        TEXT CHECK (cover_source IS NULL OR cover_source IN ('musicbrainz', 'discogs')),
+    -- 'stated': the record's catalog says the image is there. 'unstated': an
+    -- address the record said nothing about. No cover: the record states none.
+    cover_standing      TEXT CHECK (cover_standing IS NULL OR cover_standing IN ('stated', 'unstated')),
     source_group_id     TEXT,
     -- What the record's catalog says its album is on the other lookup catalog.
     -- 'not_asked': never read. 'read': read, and the album link rows name
@@ -1430,8 +1438,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- The medium rows reference the match together with its media kind, so a
     -- row can only ever belong to a match of the kind it was written for.
     UNIQUE (content_hash, position, media_kind),
+    -- What the cover copies reference: only a match with a cover has one.
+    UNIQUE (content_hash, position, cover_url),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
-    CHECK ((cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL)),
+    CHECK ((cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL) AND (cover_url IS NULL) = (cover_standing IS NULL)),
     CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
     CHECK ((named_by_catalog IS NULL) = (named_by_key IS NULL)),
     CHECK (named_by_catalog IS NULL
@@ -1450,16 +1460,17 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_barcode (
 ) STRICT;
 
 -- The downscaled copies the catalog serves of a match's cover, one per box
--- size: a copy's longer side is at most max_edge pixels. A match rows here
--- only when it has a cover; the reader rejects copies of no cover.
+-- size: a copy's longer side is at most max_edge pixels. Each names the
+-- cover it is a copy of, so a match with no cover cannot have any.
 CREATE TABLE IF NOT EXISTS import_candidate_match_cover_copy (
     content_hash TEXT NOT NULL,
     position     INTEGER NOT NULL,
+    cover_url    TEXT NOT NULL,
     max_edge     INTEGER NOT NULL CHECK (max_edge > 0),
     url          TEXT NOT NULL CHECK (url <> ''),
     PRIMARY KEY (content_hash, position, max_edge),
-    FOREIGN KEY (content_hash, position)
-        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE
+    FOREIGN KEY (content_hash, position, cover_url)
+        REFERENCES import_candidate_match (content_hash, position, cover_url) ON DELETE CASCADE
 ) STRICT;
 
 -- Every other catalog entry a matched record links to.
@@ -1641,6 +1652,9 @@ CREATE TABLE IF NOT EXISTS source_release_cover (
     url           TEXT NOT NULL,
     label         TEXT NOT NULL,
     source        TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
+    -- Whether a catalog stated the image is there, or it is an address
+    -- nothing said anything about.
+    standing      TEXT NOT NULL CHECK (standing IN ('stated', 'unstated')),
     PRIMARY KEY (catalog, release_id, scope, position),
     FOREIGN KEY (catalog, release_id)
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE

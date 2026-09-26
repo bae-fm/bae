@@ -212,12 +212,8 @@ pub(crate) fn load_covers_on(
     }
     let mut out = HashMap::with_capacity(rows.len());
     for (content_hash, kind, file_id, url, source) in rows {
+        // Only a remote choice has an address for copies to reference.
         let copies = copies.remove(&content_hash).unwrap_or_default();
-        if kind != "remote" && !copies.is_empty() {
-            return Err(DbError::Message(format!(
-                "the {kind} cover of {content_hash} holds downscaled copy rows"
-            )));
-        }
         let cover = match kind.as_str() {
             "local" => CoverSelection::Local(
                 file_id.ok_or_else(|| DbError::Message("a local cover names no file".into()))?,
