@@ -33,6 +33,8 @@ public struct Config: Equatable {
     /// Every step of an identification run, in the order a run takes them,
     /// each with whether runs take it.
     public let identificationSteps: [BridgeIdentificationStepSetting]
+    /// Where an import puts its release: the choice an import pane last made.
+    public let importStorage: BridgeImportStorage
     /// Whether a newly added candidate's draft is created from the folder's
     /// file tags, or starts blank.
     public let prefillWithFileMetadata: Bool
@@ -78,6 +80,7 @@ public struct Config: Equatable {
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
         identifyAutomatically = bridge.identifyAutomatically
         identificationSteps = bridge.identificationSteps
+        importStorage = bridge.importStorage
         prefillWithFileMetadata = bridge.prefillWithFileMetadata
         lookupCatalogs = bridge.lookupCatalogs
         showRemainingTime = bridge.showRemainingTime
@@ -91,12 +94,11 @@ public struct Config: Equatable {
     }
 
     #if os(macOS)
-        /// The storage state to import into. `Cloud` only when a cloud home exists
-        /// and the user chose it; otherwise `Local`. Whether to keep the
-        /// release pinned locally is the orthogonal `pin` argument to
-        /// `startImport`, never folded in here.
-        public func importStorageMode(cloud: Bool) -> BridgeStorageMode {
-            hasCloudHome && cloud ? .remote : .local
+        /// The storage state to import into, as core decides it from the
+        /// stored choice. Whether to keep the release pinned locally is the
+        /// orthogonal `pin` argument to `startImport`, never folded in here.
+        public var importStorageMode: BridgeStorageMode {
+            importStorage.goesToCloud ? .remote : .local
         }
     #endif
 }

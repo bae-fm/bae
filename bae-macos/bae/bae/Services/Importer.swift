@@ -116,6 +116,8 @@ private struct ImportOperations: Sendable {
     let setIdentificationStep:
         @MainActor @Sendable (BridgeIdentificationStep, Bool) async throws ->
             Void
+    let setImportToCloud: @MainActor @Sendable (Bool) async throws -> Void
+    let setImportPinned: @MainActor @Sendable (Bool) async throws -> Void
 }
 
 extension ImportOperations {
@@ -336,6 +338,12 @@ extension ImportOperations {
             },
             setIdentificationStep: {
                 try await handle.setIdentificationStep(step: $0, enabled: $1)
+            },
+            setImportToCloud: {
+                try await handle.setImportToCloud(enabled: $0)
+            },
+            setImportPinned: {
+                try await handle.setImportPinned(enabled: $0)
             }
         )
     }
@@ -508,7 +516,13 @@ final class Importer: Sendable, Observable {
         setIdentificationStep:
             @escaping @MainActor @Sendable (
                 BridgeIdentificationStep, Bool
-            ) async throws -> Void = { _, _ in }
+            ) async throws -> Void = { _, _ in },
+        setImportToCloud:
+            @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
+            },
+        setImportPinned:
+            @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
+            }
     ) {
         operations = ImportOperations(
             candidateSourceFolders: candidateSourceFolders,
@@ -557,7 +571,9 @@ final class Importer: Sendable, Observable {
             setIdentifyAutomatically: setIdentifyAutomatically,
             setPrefillWithFileMetadata: setPrefillWithFileMetadata,
             setMetadataSourceEnabled: setMetadataSourceEnabled,
-            setIdentificationStep: setIdentificationStep
+            setIdentificationStep: setIdentificationStep,
+            setImportToCloud: setImportToCloud,
+            setImportPinned: setImportPinned
         )
     }
 
@@ -870,6 +886,18 @@ extension Importer {
         _ enabled: Bool
     ) async throws {
         try await operations.setIdentificationStep(step, enabled)
+    }
+
+    /// Whether an import goes to the cloud home, when there is one.
+    @MainActor
+    func setImportToCloud(_ enabled: Bool) async throws {
+        try await operations.setImportToCloud(enabled)
+    }
+
+    /// Whether a release that goes to the cloud stays downloaded here.
+    @MainActor
+    func setImportPinned(_ enabled: Bool) async throws {
+        try await operations.setImportPinned(enabled)
     }
 
     convenience init(handle: any AppHandleProtocol) {

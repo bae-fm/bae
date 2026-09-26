@@ -21,10 +21,8 @@ extension ImportView {
         }
         let request = ImportCommitRequest(
             candidateKey: candidate.key,
-            storageMode: configStore.config.importStorageMode(
-                cloud: storageCloud
-            ),
-            pin: storagePinned,
+            storageMode: configStore.config.importStorageMode,
+            pin: configStore.config.importStorage.pinned,
         )
         runCandidateMutation(candidate: candidate) {
             try await importer.startImport(request)

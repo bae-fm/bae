@@ -89,6 +89,11 @@
                         identifyAutomatically: true,
                         identificationSteps: PreviewData
                             .everyIdentificationStep,
+                        importStorage: BridgeImportStorage(
+                            cloud: true,
+                            pinned: true,
+                            goesToCloud: false
+                        ),
                         prefillWithFileMetadata: true,
                         lookupCatalogs: lookupCatalogs(
                             musicBrainz: musicBrainz,

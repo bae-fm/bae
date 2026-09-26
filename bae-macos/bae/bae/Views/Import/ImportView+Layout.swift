@@ -14,8 +14,8 @@ extension ImportView {
                 .frame(minWidth: 410, idealWidth: 420, maxWidth: 460)
             if uiStore.selectedFolderCandidates.count > 1 {
                 ImportCandidateBulkSelectionPane(
-                    storageCloud: $storageCloud,
-                    storagePinned: $storagePinned,
+                    storageCloud: storageCloud,
+                    storagePinned: storagePinned,
                     onPerform: performCandidateAction,
                     onCombine: combineSelectedCandidates
                 )

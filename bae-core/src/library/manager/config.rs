@@ -81,6 +81,24 @@ impl LibraryManager {
             .await
     }
 
+    /// Whether an import goes to the cloud home, when the library has one —
+    /// the choice an import pane last made.
+    pub async fn set_import_to_cloud(
+        &self,
+        enabled: bool,
+    ) -> Result<(), crate::config::ConfigError> {
+        self.config_handle
+            .update_preferences(move |prefs| prefs.import_storage.cloud = enabled)
+            .await
+    }
+
+    /// Whether a release that goes to the cloud also stays downloaded here.
+    pub async fn set_import_pinned(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
+        self.config_handle
+            .update_preferences(move |prefs| prefs.import_storage.pinned = enabled)
+            .await
+    }
+
     /// The steps an identification run takes, as a run starting now reads
     /// them.
     pub fn identification_steps(&self) -> crate::config::IdentificationSteps {

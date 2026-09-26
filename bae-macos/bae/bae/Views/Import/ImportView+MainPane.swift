@@ -119,8 +119,8 @@ extension ImportView {
             editActions: editActions(for: candidate),
             editingCommands: editingCommands,
             endEditing: commitAndEndEditing,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned,
+            storageCloud: storageCloud,
+            storagePinned: storagePinned,
             mappingActions: mappingActions(for: candidate),
             commitActions: commitActions(for: candidate),
             onPresentMetadata: {

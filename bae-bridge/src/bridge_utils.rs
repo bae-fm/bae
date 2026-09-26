@@ -2,10 +2,10 @@
 use crate::types::BridgeOutputKind;
 use crate::types::{
     BridgeCatalog, BridgeConfig, BridgeDiscogsTokenStatus, BridgeIdentificationStep,
-    BridgeIdentificationStepSetting, BridgeLookupCatalogSetting, BridgeMcpConfig,
-    BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePregapPlacement,
-    BridgeSavePreset, BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig,
-    BridgeSyncConfig, BridgeSyncProvider,
+    BridgeIdentificationStepSetting, BridgeImportStorage, BridgeLookupCatalogSetting,
+    BridgeMcpConfig, BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveFilenameToken,
+    BridgeSavePregapPlacement, BridgeSavePreset, BridgeSidePauseCountdown,
+    BridgeSourceAvailability, BridgeSubsonicConfig, BridgeSyncConfig, BridgeSyncProvider,
 };
 
 mirror_enum! {
@@ -213,6 +213,7 @@ impl BridgeConfig {
             side_pause_countdown,
             max_concurrent_uploads,
             max_concurrent_downloads,
+            import_storage,
             identification,
             prefill_with_file_metadata,
             show_remaining_time,
@@ -232,6 +233,7 @@ impl BridgeConfig {
             // one answer a surface renders.
             catalogs: _,
         } = identification;
+        let bae_core::config::ImportStoragePreferences { cloud, pinned } = import_storage;
         let bae_core::config::McpConfig { enabled, port } = mcp;
         let bae_core::config::SubsonicConfig {
             enabled: subsonic_enabled,
@@ -256,6 +258,11 @@ impl BridgeConfig {
                     enabled: steps.takes(step),
                 })
                 .collect(),
+            import_storage: BridgeImportStorage {
+                cloud: *cloud,
+                pinned: *pinned,
+                goes_to_cloud: config.imports_to_cloud(),
+            },
             prefill_with_file_metadata: *prefill_with_file_metadata,
             lookup_catalogs,
             show_remaining_time: *show_remaining_time,

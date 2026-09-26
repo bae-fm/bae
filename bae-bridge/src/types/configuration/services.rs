@@ -21,6 +21,8 @@ pub struct BridgeConfig {
     /// Every step of an identification run, in the order a run takes them,
     /// each with whether runs take it — one switch per entry.
     pub identification_steps: Vec<BridgeIdentificationStepSetting>,
+    /// Where an import puts its release: the choice an import pane last made.
+    pub import_storage: BridgeImportStorage,
     /// Whether a newly discovered candidate's draft is created from the
     /// folder's own metadata — its files' tags, its sheets and its name — or
     /// starts blank.
@@ -110,6 +112,22 @@ mirror_enum! {
 pub struct BridgeIdentificationStepSetting {
     pub step: BridgeIdentificationStep,
     pub enabled: bool,
+}
+
+/// Where an import puts its release. Mirrors
+/// `bae_core::config::ImportStoragePreferences`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeImportStorage {
+    /// Whether an import goes to the cloud home. Read only while the library
+    /// has one (`sync` is present); without one every import stays local.
+    pub cloud: bool,
+    /// Whether a release that goes to the cloud also stays downloaded on this
+    /// device. Moving a library release to the cloud reads the same choice.
+    pub pinned: bool,
+    /// Whether an import goes to the cloud as things stand: `cloud`, and a
+    /// cloud home to go to. Core's answer, so a surface does not work it out
+    /// again.
+    pub goes_to_cloud: bool,
 }
 
 /// Whether Find online asks one catalog, and when it does not, why not. Mirrors

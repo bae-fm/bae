@@ -50,6 +50,16 @@ forward! { async this => {
             .await?)
     }
 
+    /// Whether an import goes to the cloud home, when the library has one.
+    fn set_import_to_cloud(enabled: bool) -> () {
+        Ok(this.services.set_import_to_cloud(enabled).await?)
+    }
+
+    /// Whether a release that goes to the cloud also stays downloaded here.
+    fn set_import_pinned(enabled: bool) -> () {
+        Ok(this.services.set_import_pinned(enabled).await?)
+    }
+
     /// Ask, or stop asking, one metadata source. Refused when it would leave
     /// nothing to ask — the error carries the sentence to show.
     fn set_metadata_source_enabled(source: crate::types::BridgeCatalog, enabled: bool) -> () {

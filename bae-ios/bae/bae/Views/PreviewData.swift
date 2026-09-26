@@ -30,6 +30,11 @@ enum PreviewData {
                     .map {
                         BridgeIdentificationStepSetting(step: $0, enabled: true)
                     },
+                    importStorage: BridgeImportStorage(
+                        cloud: true,
+                        pinned: true,
+                        goesToCloud: false
+                    ),
                     prefillWithFileMetadata: true,
                     lookupCatalogs: [
                         BridgeLookupCatalogSetting(

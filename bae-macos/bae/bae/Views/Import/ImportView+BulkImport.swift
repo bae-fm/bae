@@ -23,10 +23,8 @@ extension ImportView {
     }
 
     func performCandidateAction(_ offer: ImportCandidateActionOffer) {
-        let storageMode = configStore.config.importStorageMode(
-            cloud: storageCloud
-        )
-        let pin = storagePinned
+        let storageMode = configStore.config.importStorageMode
+        let pin = configStore.config.importStorage.pinned
         uiStore.candidateActionRun.start(
             action: offer.action,
             candidates: offer.candidates,

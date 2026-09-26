@@ -152,6 +152,21 @@ fn identification_steps_are_total_and_independent() {
     }
 }
 
+/// An import goes to the cloud only when there is a home to go to.
+#[test]
+fn an_import_goes_to_the_cloud_only_with_a_home() {
+    let tmp = TempDir::new().unwrap();
+    let mut config = make_test_config("lib", tmp.path().to_path_buf());
+    assert!(
+        !config.imports_to_cloud(),
+        "no cloud home: local, whatever the choice"
+    );
+    config.cloud_home.provider = Some(CloudProvider::Dropbox);
+    assert!(config.imports_to_cloud());
+    config.prefs.import_storage.cloud = false;
+    assert!(!config.imports_to_cloud());
+}
+
 #[test]
 fn prefill_with_file_metadata_and_identify_automatically_roundtrip_independently() {
     for (prefill, identify) in [(false, true), (true, false), (false, false)] {
@@ -281,6 +296,7 @@ fn preferences_require_every_field() {
         "show_remaining_time",
         "library_full_width",
         "verify_decode_on_import",
+        "import_storage",
         "identification",
         "prefill_with_file_metadata",
         "cast_enabled",
@@ -341,6 +357,9 @@ max_concurrent_downloads: 3
 show_remaining_time: false
 library_full_width: false
 verify_decode_on_import: true
+import_storage:
+  cloud: true
+  pinned: true
 identification:
   automatic: true
   steps:

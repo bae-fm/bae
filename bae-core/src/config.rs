@@ -6,6 +6,7 @@ use tracing::{debug, info, warn};
 mod app_dir;
 mod handle;
 mod identification;
+mod import_storage;
 mod keyring;
 mod save;
 mod server;
@@ -15,6 +16,7 @@ pub use handle::ConfigHandle;
 pub use identification::{
     IdentificationPreferences, IdentificationStep, IdentificationSteps, LookupCatalogPreferences,
 };
+pub use import_storage::ImportStoragePreferences;
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
 pub use keyring::install_test_keyring;
@@ -349,6 +351,9 @@ pub struct Preferences {
     /// and failing at play time. Rides the loudness decode, so it adds no work.
     /// Defaults to `true`.
     pub verify_decode_on_import: bool,
+    /// Where an import puts its release: the cloud or this device, and whether
+    /// a cloud release stays downloaded here.
+    pub import_storage: ImportStoragePreferences,
     /// How identification runs: on its own or not, the steps every run takes,
     /// and the catalogs it asks.
     pub identification: IdentificationPreferences,
@@ -383,6 +388,7 @@ impl Default for Preferences {
             show_remaining_time: false,
             library_full_width: false,
             verify_decode_on_import: true,
+            import_storage: ImportStoragePreferences::default(),
             identification: IdentificationPreferences::default(),
             prefill_with_file_metadata: true,
             cast_enabled: false,

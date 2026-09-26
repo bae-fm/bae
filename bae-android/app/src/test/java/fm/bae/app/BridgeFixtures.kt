@@ -17,6 +17,7 @@ import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeIdentificationStep
 import uniffi.bae_bridge.BridgeIdentificationStepSetting
+import uniffi.bae_bridge.BridgeImportStorage
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLookupCatalogSetting
 import uniffi.bae_bridge.BridgeMcpConfig
@@ -309,6 +310,8 @@ object BridgeFixtures {
                         enabled = true,
                     ),
                 ),
+            importStorage =
+                BridgeImportStorage(cloud = true, pinned = true, goesToCloud = false),
             prefillWithFileMetadata = true,
             // Every source in core's order, matching this fixture's Discogs
             // state below: MusicBrainz is asked and, as the only source still
