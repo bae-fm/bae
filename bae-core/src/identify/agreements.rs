@@ -40,10 +40,11 @@ use unicode_normalization::UnicodeNormalization;
 /// What the candidate's own text agrees with about one result — one badge per
 /// field, and the count is what orders the rows.
 ///
-/// `disc_id` and `barcode` are the lookups that returned it. `catalog` is
-/// either: the catalog lookup returned it, or its catalog number is printed in
-/// the folder's text. `label`, `year` and `country` are the text alone. A
-/// field the result does not state is no agreement.
+/// `disc_id` and `barcode` are the lookups that returned it. `catalog`,
+/// `label`, `year` and `country` are the text alone: its catalog number is
+/// printed in the folder's text — which a chosen number, read off that text,
+/// is — however a lookup came by it. A field the result does not state is no
+/// agreement.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Agreements {
     pub disc_id: bool,
@@ -126,11 +127,10 @@ pub fn agreements_of(
     Agreements {
         disc_id: lookup.by_disc_id,
         barcode: lookup.by_barcode,
-        catalog: lookup.by_catalog
-            || result
-                .catalog_number
-                .as_deref()
-                .is_some_and(|value| text.states_catalog(value)),
+        catalog: result
+            .catalog_number
+            .as_deref()
+            .is_some_and(|value| text.states_catalog(value)),
         label: result
             .label
             .as_deref()

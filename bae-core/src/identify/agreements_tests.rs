@@ -123,21 +123,26 @@ fn the_disc_id_and_the_barcode_come_from_the_lookups_alone() {
     assert_eq!(judged.count(), 2);
 }
 
-/// The lookup path and the text path land on one badge.
+/// The agreement is the number itself: a release a catalog lookup returned
+/// under some other number — Discogs matches a number inside longer ones —
+/// does not agree because a lookup returned it.
 #[test]
-fn a_catalog_lookup_agrees_whether_or_not_the_text_states_the_number() {
-    let judged = agreements_of(
-        &result(),
-        &CandidateText::default(),
-        &LookupProvenance {
-            by_disc_id: false,
-            by_barcode: false,
-            by_catalog: true,
-            by_search: false,
-            named_by: None,
-        },
-    );
-    assert!(judged.catalog);
+fn a_catalog_lookup_agrees_only_through_the_number() {
+    let catalog_lookup = LookupProvenance {
+        by_disc_id: false,
+        by_barcode: false,
+        by_catalog: true,
+        by_search: false,
+        named_by: None,
+    };
+    let folder = text(&["Artist One - Album One [LBL-719]"]);
+    let numbered = |number: &str| MetadataResult {
+        catalog_number: Some(number.to_string()),
+        ..result()
+    };
+    assert!(agreements_of(&numbered("LBL 719"), &folder, &catalog_lookup).catalog);
+    assert!(!agreements_of(&numbered("LBL 1719"), &folder, &catalog_lookup).catalog);
+    assert!(!agreements_of(&result(), &folder, &catalog_lookup).catalog);
 }
 
 /// A barcode that came back naming a release nothing else stands behind read
@@ -214,10 +219,10 @@ fn striking_out_a_value_leaves_the_other_fields_alone() {
     assert!(judged.year);
 }
 
-/// A catalog lookup that returned the result states its number itself, so
-/// striking the number out of the text leaves that agreement standing.
+/// A number the person struck out is not a catalog number, whatever lookup
+/// returned a release under it.
 #[test]
-fn striking_out_a_number_a_lookup_asked_leaves_its_agreement() {
+fn striking_out_a_number_takes_its_agreement_away() {
     let folder = CandidateText::of(&[line("[LBL-1]")], &["LBL-1".to_string()]);
     let judged = agreements_of(
         &MetadataResult {
@@ -233,7 +238,7 @@ fn striking_out_a_number_a_lookup_asked_leaves_its_agreement() {
             named_by: None,
         },
     );
-    assert!(judged.catalog);
+    assert!(!judged.catalog);
 }
 
 /// A catalog states a country as a code or a name and a folder writes it

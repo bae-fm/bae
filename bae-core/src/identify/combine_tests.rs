@@ -140,11 +140,21 @@ fn three_checked_signals_intersect() {
 fn lookups_that_named_different_releases_each_keep_their_answer() {
     let discid = vec![pair("rel-a", Some("group-1"))];
     let barcode = vec![pair("rel-b", Some("group-2"))];
-    let catalog = vec![pair("rel-c", Some("group-3"))];
-    let outcome = combine(discid, barcode, catalog);
+    let (mut numbered, status) = pair("rel-c", Some("group-3"));
+    numbered.catalog_number = Some("L3-100".to_string());
+    let catalog = vec![(numbered, status)];
+    let outcome = combine_results(
+        discid,
+        barcode,
+        catalog,
+        Results::new(),
+        Vec::new(),
+        &folder(&["Album [L3-100]"]),
+        FolderAudio::UNPROVEN,
+    );
     let (matches, provenance, _) = found(outcome.clone());
-    // A chosen catalog number was typed off the disc and names one pressing,
-    // so its answer is offered. The disc ID names every pressing sharing its
+    // A chosen catalog number was read off the folder, and the release under
+    // it names one pressing, so its answer is offered. The disc ID names every pressing sharing its
     // table of contents, and a barcode is read off a photograph with nothing
     // else here standing behind its answer, so both are set aside.
     assert_eq!(ids(&matches), vec!["rel-c"]);

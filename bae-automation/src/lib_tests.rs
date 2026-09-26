@@ -350,9 +350,9 @@ mod identify_mirrors {
                         named_by: None,
                     },
                     LookupProvenance {
-                        by_disc_id: false,
+                        by_disc_id: true,
                         by_barcode: true,
-                        by_catalog: true,
+                        by_catalog: false,
                         by_search: false,
                         named_by: None,
                     },
@@ -388,8 +388,8 @@ mod identify_mirrors {
         };
         assert_eq!(by_release("agreements", "rel-1")["disc_id"], true);
         let second = by_release("agreements", "rel-2");
+        assert_eq!(second["disc_id"], true);
         assert_eq!(second["barcode"], true);
-        assert_eq!(second["catalog"], true);
         by_release("library_statuses", "rel-1");
         by_release("library_statuses", "rel-2");
     }
