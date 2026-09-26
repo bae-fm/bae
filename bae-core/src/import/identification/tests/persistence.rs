@@ -257,6 +257,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
             text_settled: false,
             track_count: 0,
             album_links: crate::identify::state::AlbumLinkReading::Pending,
+            mono_audio: false,
         },
     };
     fixture

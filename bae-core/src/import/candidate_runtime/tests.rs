@@ -63,6 +63,7 @@ fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
         text_settled: true,
         track_count,
         album_links: crate::identify::state::AlbumLinkReading::Pending,
+        mono_audio: false,
     }
 }
 
@@ -123,6 +124,7 @@ fn extracted_signals() -> crate::signals::Signals {
         },
         text_pool: Vec::new(),
         durations: crate::import::probe::SourceDurations::totalling(1_000),
+        mono_audio: false,
     }
 }
 

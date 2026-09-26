@@ -37,13 +37,12 @@
 //! the list is shortened and never emptied.
 
 use super::agreements::{agreements_of, CandidateText};
-use super::medium::RippedFrom;
+use super::medium::{ChannelFit, FolderAudio, RippedFrom};
 use crate::db::LibraryStatus;
 use crate::import::album_links::Twin;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
 use crate::import::search::MetadataResult;
 use crate::import::Catalog;
-use crate::signals::RipEvidence;
 use std::collections::{HashMap, HashSet};
 
 /// Which lookup produced one result: the result came back from that signal's
@@ -238,9 +237,9 @@ pub fn combine_results(
     search_results: Results,
     twins: Vec<Twin>,
     text: &CandidateText,
-    rip: &RipEvidence,
+    folder: FolderAudio<'_>,
 ) -> (Findings, LibraryStatuses) {
-    let ripped_from = RippedFrom::of(rip, !discid_results.is_empty());
+    let ripped_from = RippedFrom::of(folder.rip, !discid_results.is_empty());
     let by_signal = [
         &discid_results,
         &barcode_results,
@@ -316,7 +315,7 @@ pub fn combine_results(
         .flat_map(ReleaseGroup::into_pressings)
         .collect();
     let (offered, set_aside, medium_conflict) =
-        split_rows(rows, &judgements, &returned_by, ripped_from);
+        split_rows(rows, &judgements, &returned_by, ripped_from, folder.mono);
 
     let statuses: HashMap<ReleaseKey, LibraryStatus> = all
         .into_iter()
@@ -377,7 +376,8 @@ pub fn combine_results(
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 struct Support {
     /// Whether what the row's records say it is made of could have given
-    /// the folder its audio — see [`RippedFrom::admits`].
+    /// the folder its audio — see [`RippedFrom::admits`] — and, for mono
+    /// audio, whether it states no more channels than one.
     ///
     /// Read first because it is the one field that speaks to the object
     /// rather than to how well the lookups agree: a vinyl pressing every
@@ -412,6 +412,13 @@ struct Support {
     /// what names one pressing, and why it counts here as well as among the
     /// lookups.
     shares_toc: bool,
+    /// Whether the row states mono and the folder's audio is one channel.
+    ///
+    /// A catalog tells a mono pressing from a stereo one of the same album
+    /// by this alone, often under catalog numbers a folder does not print,
+    /// so it separates rows nothing above tells apart. Two channels are never
+    /// read: a mono record is routinely ripped to two identical ones.
+    states_the_channels: bool,
     /// Whether there is any reason to show this row at all — see
     /// [`super::agreements::Agreements::offered`].
     ///
@@ -434,6 +441,7 @@ fn support_of(
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
     ripped_from: RippedFrom,
+    mono: bool,
 ) -> Support {
     let mut returned = LookupProvenance::CHOSEN;
     // A twin on the row states no lookup of its own: every field is false.
@@ -448,8 +456,15 @@ fn support_of(
     }
     let agreements = row.agreements(judgements);
     let offered = agreements.offered();
+    let channels = ChannelFit::of(
+        mono,
+        row.releases
+            .iter()
+            .flat_map(|release| &release.discogs_details),
+    );
     Support {
-        medium: ripped_from.admits(row.releases.iter().map(|release| &release.media)),
+        medium: ripped_from.admits(row.releases.iter().map(|release| &release.media))
+            && channels != ChannelFit::Contradicts,
         lookups: [
             returned.by_disc_id,
             returned.by_barcode,
@@ -461,6 +476,7 @@ fn support_of(
         .count() as u32,
         names_pressing: u32::from(agreements.catalog) + u32::from(returned.by_barcode && offered),
         shares_toc: returned.by_disc_id,
+        states_the_channels: channels == ChannelFit::Agrees,
         offered,
     }
 }
@@ -475,18 +491,27 @@ fn split_rows(
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
     ripped_from: RippedFrom,
+    mono: bool,
 ) -> (Vec<Pressing>, Vec<Pressing>, Option<super::MediumConflict>) {
     let support: Vec<Support> = rows
         .iter()
-        .map(|row| support_of(row, judgements, provenance, ripped_from))
+        .map(|row| support_of(row, judgements, provenance, ripped_from, mono))
         .collect();
     let Some(best) = support.iter().copied().max() else {
         return (Vec::new(), Vec::new(), None);
     };
+    // Every row fails the medium, each by its carrier or its channels. What
+    // the verdict names is the carrier, where every row fails by it, and the
+    // mono audio otherwise.
     let medium_conflict = if best.medium {
         None
-    } else {
+    } else if rows
+        .iter()
+        .all(|row| !ripped_from.admits(row.releases.iter().map(|release| &release.media)))
+    {
         ripped_from.conflict()
+    } else {
+        Some(super::MediumConflict::MonoAudio)
     };
     let mut offered = Vec::new();
     let mut set_aside = Vec::new();

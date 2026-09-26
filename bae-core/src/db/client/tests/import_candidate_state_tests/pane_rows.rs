@@ -58,6 +58,7 @@ fn signals_with(durations: SourceDurations) -> Signals {
         },
         text_pool: Vec::new(),
         durations,
+        mono_audio: false,
     }
 }
 
@@ -356,8 +357,12 @@ async fn every_settled_signal_shape_round_trips() {
     for (what, rip, disc_id, barcode, text) in cases {
         let (db, _tmp) = empty_db().await;
         let (_, hash) = stored_pane_candidate(&db).await;
+        // The rip whose audio is not a CD's is the mono transfer of a record,
+        // so the one-channel fact round-trips too.
+        let mono_audio = matches!(rip, RipEvidence::NotCd { .. });
         let signals = Signals {
             rip,
+            mono_audio,
             disc_id,
             barcode,
             text,
@@ -402,6 +407,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             },
             text_pool: Vec::new(),
             durations: SourceDurations::default(),
+            mono_audio: false,
         },
         Signals {
             rip: crate::signals::RipEvidence::Unproven,
@@ -413,6 +419,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             },
             text_pool: Vec::new(),
             durations: SourceDurations::default(),
+            mono_audio: false,
         },
     ] {
         let (db, _tmp) = empty_db().await;

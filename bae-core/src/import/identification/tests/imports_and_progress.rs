@@ -546,6 +546,7 @@ async fn a_cancelled_candidate_writes_no_row() {
                 },
                 text_pool: Vec::new(),
                 durations: crate::import::probe::SourceDurations::default(),
+                mono_audio: false,
             },
             None,
             false,

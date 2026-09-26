@@ -96,6 +96,7 @@ mod tests {
             },
             text_pool: Vec::new(),
             durations: Default::default(),
+            mono_audio: false,
         }
     }
 

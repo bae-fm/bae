@@ -222,6 +222,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
                     region: None,
                 }],
                 durations: crate::import::probe::SourceDurations::totalling(1_000),
+                mono_audio: false,
             },
             metadata: None,
             owes_import: false,

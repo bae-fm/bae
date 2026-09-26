@@ -457,6 +457,7 @@ impl BridgeSignals {
     pub(crate) fn from_core(s: bae_core::signals::Signals) -> Self {
         let bae_core::signals::Signals {
             rip: _,
+            mono_audio: _,
             disc_id,
             barcode,
             text,
@@ -639,6 +640,7 @@ mod tests {
                 steps: bae_core::config::IdentificationSteps::default(),
                 artwork: bae_core::signals::ArtworkScan::Absent,
                 rip: bae_core::signals::RipEvidence::Unproven,
+                mono_audio: false,
                 disc: DiscIdEvidence {
                     signal: DiscIdSignal::Absent { track_count: 9 },
                     ..Default::default()

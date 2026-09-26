@@ -320,6 +320,7 @@ mod identify_mirrors {
             text_settled: true,
             track_count: 0,
             album_links: bae_core::identify::state::AlbumLinkReading::Pending,
+            mono_audio: false,
         }
     }
 
@@ -607,6 +608,7 @@ mod identify_mirrors {
             // would claim the audio could not be probed.
             text_pool: Vec::new(),
             durations: bae_core::import::probe::SourceDurations::totalling(2_400_000),
+            mono_audio: false,
         };
 
         let json = serde_json::to_value(AutomationSignals::from_core(signals)).unwrap();

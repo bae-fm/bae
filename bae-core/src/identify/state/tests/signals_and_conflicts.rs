@@ -177,6 +177,7 @@ fn signals_with_catalogs(
         },
         text_pool: Vec::new(),
         durations: crate::import::probe::SourceDurations::default(),
+        mono_audio: false,
     }
 }
 
@@ -300,6 +301,7 @@ fn nothing_to_run_waits_for_the_settled_text() {
         },
         text_pool: Vec::new(),
         durations: crate::import::probe::SourceDurations::default(),
+        mono_audio: false,
     };
     let (state, effects) = update(started(), scanning);
     assert!(effects.is_empty());
@@ -348,6 +350,7 @@ fn an_aborted_extraction_settles_the_run_as_failed() {
         },
         text_pool: Vec::new(),
         durations: crate::import::probe::SourceDurations::default(),
+        mono_audio: false,
     };
     let (state, effects) = update(started(), aborted);
     assert!(effects.is_empty(), "nothing is asked, got {effects:?}");

@@ -20,6 +20,7 @@ use crate::signals::{
 };
 
 const SIGNALS_COLUMNS: &str = "content_hash, rip, rip_proof, rip_file, rip_sample_rate_hz, \
+     mono_audio, \
      disc_id_state, disc_id, disc_id_source_file, \
      track_count, \
      disc_id_failure, disc_id_failure_status, disc_id_failure_detail, \
@@ -174,7 +175,7 @@ pub(super) fn insert_signals(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
@@ -182,6 +183,7 @@ pub(super) fn insert_signals(
             rip_proof,
             rip_file,
             rip_sample_rate_hz,
+            signals.mono_audio,
             disc_id_state,
             disc_id,
             disc_id_source_file,
@@ -350,6 +352,7 @@ pub(super) fn load_signals_on(
                     row.get::<_, Option<String>>("rip_proof")?,
                     row.get::<_, Option<String>>("rip_file")?,
                     row.get::<_, Option<i64>>("rip_sample_rate_hz")?,
+                    row.get::<_, bool>("mono_audio")?,
                 ),
                 row.get::<_, String>("disc_id_state")?,
                 row.get::<_, Option<String>>("disc_id")?,
@@ -403,7 +406,7 @@ pub(super) fn load_signals_on(
         for row in rows {
             let (
                 content_hash,
-                (rip, rip_proof, rip_file, rip_sample_rate_hz),
+                (rip, rip_proof, rip_file, rip_sample_rate_hz, mono_audio),
                 disc_id_state,
                 disc_id,
                 disc_id_source_file,
@@ -510,6 +513,7 @@ pub(super) fn load_signals_on(
                 content_hash,
                 Signals {
                     rip,
+                    mono_audio,
                     disc_id,
                     barcode,
                     text,

@@ -899,7 +899,10 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
         search_results,
         context.twins(),
         &context.text,
-        &context.rip,
+        super::medium::FolderAudio {
+            rip: &context.rip,
+            mono: context.mono_audio,
+        },
     );
     let track_count = context.track_count;
     let failures = context.active_failures();

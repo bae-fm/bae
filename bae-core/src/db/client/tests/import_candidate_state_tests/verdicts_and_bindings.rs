@@ -115,6 +115,7 @@ fn sample_signals() -> crate::signals::Signals {
         },
         text_pool: Vec::new(),
         durations: crate::import::probe::SourceDurations::totalling(2_700_000),
+        mono_audio: false,
     }
 }
 
@@ -944,6 +945,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
                 },
                 text_pool: Vec::new(),
                 durations: crate::import::probe::SourceDurations::default(),
+                mono_audio: false,
             },
             artwork: crate::signals::ArtworkScan::Absent,
         },

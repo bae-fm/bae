@@ -68,6 +68,7 @@ fn settled_signals(durations: crate::import::probe::SourceDurations) -> Signals 
         },
         text_pool: Vec::new(),
         durations,
+        mono_audio: false,
     }
 }
 

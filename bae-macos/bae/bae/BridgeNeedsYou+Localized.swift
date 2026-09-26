@@ -28,7 +28,8 @@ extension BridgeNeedsYou {
                 .formatted(.number.precision(.fractionLength(0...1)))
             return String.localizedStringWithFormat(template, kilohertz)
         case .noMatch, .nothingToLookUp,
-            .lookupFailed, .sourceTracksUnknown, .mediumDisagrees(.cdRip):
+            .lookupFailed, .sourceTracksUnknown, .mediumDisagrees(.cdRip),
+            .mediumDisagrees(.monoAudio):
             return template
         }
     }

@@ -413,6 +413,8 @@ pub struct SignalsContext {
     /// from — what the rows' stated media are held against. The candidate's,
     /// like `text`.
     pub rip: RipEvidence,
+    /// Whether every one of the candidate's audio files carries one channel.
+    pub mono_audio: bool,
     pub disc: DiscIdEvidence,
     pub barcode: BarcodeEvidence,
     pub catalog: CatalogEvidence,
@@ -463,6 +465,7 @@ impl Default for SignalsContext {
             steps: IdentificationSteps::default(),
             artwork: ArtworkScan::Absent,
             rip: RipEvidence::Unproven,
+            mono_audio: false,
             disc: DiscIdEvidence::default(),
             barcode: BarcodeEvidence::default(),
             catalog: CatalogEvidence::default(),
@@ -524,6 +527,7 @@ impl SignalsContext {
     pub(super) fn refresh_inputs(&mut self, signals: &Signals, artwork: ArtworkScan) {
         self.artwork = artwork;
         self.rip = signals.rip.clone();
+        self.mono_audio = signals.mono_audio;
         self.disc.refresh_input(&signals.disc_id);
         self.barcode.refresh_input(&signals.barcode);
         self.catalog.refresh_input(&signals.text);

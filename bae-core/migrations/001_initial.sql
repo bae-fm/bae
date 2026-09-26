@@ -1283,6 +1283,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     rip_file               TEXT,
     -- The rate the audio is sampled at, where it rules a CD out.
     rip_sample_rate_hz     INTEGER CHECK (rip_sample_rate_hz IS NULL OR rip_sample_rate_hz > 0),
+    -- Every audio file carries one channel.
+    mono_audio             INTEGER NOT NULL CHECK (mono_audio IN (0, 1)),
     disc_id_state          TEXT NOT NULL CHECK (disc_id_state IN ('computed', 'absent', 'not_cd_audio', 'failed')),
     disc_id                TEXT,
     -- The candidate-relative path of the LOG or CUE the disc ID came from, so a
@@ -1436,9 +1438,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     ),
     identified_at TEXT NOT NULL,
     -- The folder's own files rule out every row the verdict found: it is a CD
-    -- rip and no row could be a CD, or its audio is at a rate no CD holds and
-    -- every row is a CD. Such a verdict is never Ready.
-    medium_conflict TEXT CHECK (medium_conflict IS NULL OR medium_conflict IN ('cd_rip', 'not_cd_audio')),
+    -- rip and no row could be a CD, its audio is at a rate no CD holds and
+    -- every row is a CD, or its audio is mono and every row states more
+    -- channels. Such a verdict is never Ready.
+    medium_conflict TEXT CHECK (medium_conflict IS NULL OR medium_conflict IN ('cd_rip', 'not_cd_audio', 'mono_audio')),
     medium_conflict_sample_rate_hz INTEGER CHECK (medium_conflict_sample_rate_hz IS NULL OR medium_conflict_sample_rate_hz > 0),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((kind = 'not_found') = (track_count IS NULL)),

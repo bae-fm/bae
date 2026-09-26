@@ -36,6 +36,7 @@ pub(super) struct FastPass {
     pub(super) bracket_catalogs: Vec<String>,
     pub(super) artwork: Vec<ArtworkImage>,
     pub(super) rip: RipEvidence,
+    pub(super) mono_audio: bool,
     pub(super) disc_id: DiscIdSignal,
     pub(super) cue_barcodes: Vec<SourcedValue>,
     /// What every one of the folder's audio units plays for, read off the same
@@ -52,6 +53,7 @@ impl FastPass {
             bracket_catalogs: Vec::new(),
             artwork: Vec::new(),
             rip: RipEvidence::Unproven,
+            mono_audio: false,
             disc_id: DiscIdSignal::Absent { track_count: 0 },
             cue_barcodes: Vec::new(),
             durations: SourceDurations::default(),
@@ -131,6 +133,7 @@ pub(super) fn gather_non_ocr_sources(
     pass.durations = source_durations(categorized)?;
     let rip = read_rip_artifacts(categorized);
     pass.rip = rip.evidence;
+    pass.mono_audio = rip.mono;
     pass.disc_id = rip.disc_id.into_signal(track_count);
     pass.cue_barcodes = cue_barcodes(categorized);
 

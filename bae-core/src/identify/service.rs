@@ -561,6 +561,7 @@ mod tests {
             },
             text_pool: Vec::new(),
             durations: crate::import::probe::SourceDurations::default(),
+            mono_audio: false,
         }
     }
 

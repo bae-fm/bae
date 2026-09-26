@@ -99,6 +99,7 @@ async fn pure_reads_use_the_read_connection() {
                 },
                 text_pool: Vec::new(),
                 durations: bae_core::import::probe::SourceDurations::default(),
+                mono_audio: false,
             },
             metadata: Some(bae_core::import::CandidateMetadataDraft {
                 draft: bae_core::import::CandidateDraft {

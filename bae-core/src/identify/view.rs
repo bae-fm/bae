@@ -490,7 +490,10 @@ fn live_findings(
         // on a list still being looked up.
         Vec::new(),
         &context.text,
-        &context.rip,
+        super::medium::FolderAudio {
+            rip: &context.rip,
+            mono: context.mono_audio,
+        },
     )
 }
 

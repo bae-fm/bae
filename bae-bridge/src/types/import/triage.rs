@@ -376,6 +376,8 @@ pub enum BridgeMediumConflict {
     /// The folder's audio is at a rate no CD plays at, and every release is
     /// a CD.
     NotCdAudio { sample_rate_hz: u32 },
+    /// The folder's audio is one channel, and every release states more.
+    MonoAudio,
 }
 
 impl BridgeNeedsYou {
@@ -393,6 +395,9 @@ impl BridgeNeedsYou {
             Self::MediumDisagrees {
                 folder: BridgeMediumConflict::NotCdAudio { .. },
             } => "core.import.triage.medium_disagrees.not_cd_audio",
+            Self::MediumDisagrees {
+                folder: BridgeMediumConflict::MonoAudio,
+            } => "core.import.triage.medium_disagrees.mono_audio",
         }
     }
 }

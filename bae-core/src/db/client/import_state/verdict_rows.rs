@@ -73,6 +73,7 @@ pub(super) fn insert_verdict(
             Some(MediumConflict::NotCdAudio { sample_rate_hz }) => {
                 (Some("not_cd_audio"), Some(sample_rate_hz))
             }
+            Some(MediumConflict::MonoAudio) => (Some("mono_audio"), None),
         };
     let failures_json = match verdict {
         TerminalVerdict::Failed { failures, .. } => {

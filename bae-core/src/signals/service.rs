@@ -354,6 +354,7 @@ async fn run_extraction(
                 ExtractionInputs {
                     gathered: Gathered {
                         rip: fast.rip,
+                        mono_audio: fast.mono_audio,
                         disc_id: fast.disc_id,
                         barcodes: fast.cue_barcodes,
                         pool,
@@ -371,17 +372,19 @@ async fn run_extraction(
         // Re-identify: the rip artifacts and artwork come from the library, not
         // a folder scan. No non-OCR text sources.
         ExtractionSource::Release { release_id } => {
-            let (rip, disc_id) =
+            let (rip, mono_audio, disc_id) =
                 match resolve_release_identity(&inner.library_manager, &release_id).await {
                     // A library release's files are its own, not files of a
                     // scanned folder, so nothing the reading names has a row
                     // to point at.
                     Ok(identity) => (
                         identity.rip.evidence,
+                        identity.rip.mono,
                         identity.rip.disc_id.into_signal(identity.track_count),
                     ),
                     Err(detail) => (
                         RipEvidence::Unproven,
+                        false,
                         DiscIdSignal::Failed {
                             failure: crate::signals::LookupFailure::Diagnostic { detail },
                             track_count: 0,
@@ -442,6 +445,7 @@ async fn run_extraction(
                 ExtractionInputs {
                     gathered: Gathered {
                         rip,
+                        mono_audio,
                         disc_id,
                         barcodes: Vec::new(),
                         pool: Pool::default(),
@@ -498,6 +502,7 @@ where
 /// track durations. Every snapshot the pass emits is built from this.
 struct Gathered {
     rip: RipEvidence,
+    mono_audio: bool,
     disc_id: DiscIdSignal,
     barcodes: Vec<SourcedValue>,
     pool: Pool,
@@ -713,6 +718,7 @@ async fn stream_extraction(
     let settled = SignalsSnapshot {
         signals: Signals {
             rip: gathered.rip,
+            mono_audio: gathered.mono_audio,
             disc_id: gathered.disc_id,
             barcode,
             text: TextSignal::Settled {
@@ -750,6 +756,7 @@ fn emit_failed_ocr_signals(
         extraction,
         Signals {
             rip: gathered.rip,
+            mono_audio: gathered.mono_audio,
             disc_id: gathered.disc_id,
             barcode,
             text: TextSignal::Failed {
@@ -780,6 +787,7 @@ fn emit_aborted_signals(
         Signals {
             // Nothing was read, so nothing is proven.
             rip: RipEvidence::Unproven,
+            mono_audio: false,
             disc_id,
             barcode: BarcodeSignal::Failed {
                 failure: failure.clone(),
@@ -812,6 +820,7 @@ fn scanning_signals(
     let text_pool = gathered.pool.text_lines();
     Signals {
         rip: gathered.rip.clone(),
+        mono_audio: gathered.mono_audio,
         disc_id: gathered.disc_id.clone(),
         barcode: BarcodeSignal::Scanning {
             codes: gathered.barcodes.clone(),

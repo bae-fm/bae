@@ -380,6 +380,7 @@ async fn pump_ui_events_keeps_delivering_after_broadcast_lag() {
 fn extracted_signals_cross_the_bus_with_their_key() {
     let signals = bae_core::signals::Signals {
         rip: bae_core::signals::RipEvidence::Unproven,
+        mono_audio: false,
         disc_id: bae_core::signals::DiscIdSignal::Absent { track_count: 9 },
         barcode: bae_core::signals::BarcodeSignal::Settled { codes: Vec::new() },
         text: bae_core::signals::TextSignal::Settled {

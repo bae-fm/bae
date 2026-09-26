@@ -63,6 +63,7 @@ fn extracted(catalog: &str) -> crate::signals::Signals {
         },
         text_pool: Vec::new(),
         durations: crate::import::probe::SourceDurations::totalling(1_000),
+        mono_audio: false,
     }
 }
 

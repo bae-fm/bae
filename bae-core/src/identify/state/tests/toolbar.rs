@@ -242,6 +242,7 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
                 },
                 text_pool: Vec::new(),
                 durations: crate::import::probe::SourceDurations::default(),
+                mono_audio: false,
             },
             artwork: crate::signals::ArtworkScan::Absent,
         },

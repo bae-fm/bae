@@ -50,6 +50,7 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
                 },
                 text_pool: Vec::new(),
                 durations: crate::import::probe::SourceDurations::default(),
+                mono_audio: false,
             },
             ArtworkScan::Absent,
         );

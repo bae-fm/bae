@@ -645,6 +645,7 @@ pub(super) fn medium_conflict_of(
     };
     Ok(Some(match kind.as_str() {
         "cd_rip" => crate::identify::MediumConflict::CdRip,
+        "mono_audio" => crate::identify::MediumConflict::MonoAudio,
         "not_cd_audio" => crate::identify::MediumConflict::NotCdAudio {
             sample_rate_hz: sample_rate_hz
                 .ok_or_else(|| DbError::Message("audio that is not a CD's states no rate".into()))

@@ -6,8 +6,25 @@
 //! object. Such a row is still an answer a lookup gave, so it is set aside
 //! rather than dropped — see [`super::combine`].
 
-use crate::pressing::{CdAudio, StatedMedia};
+use crate::pressing::{CdAudio, DiscogsDetail, StatedMedia};
 use crate::signals::RipEvidence;
+
+/// What the folder's own files say about its medium, as combine reads it:
+/// the rip evidence, and whether the audio is one channel.
+#[derive(Debug, Clone, Copy)]
+pub struct FolderAudio<'a> {
+    pub rip: &'a RipEvidence,
+    /// Every audio file carries one channel.
+    pub mono: bool,
+}
+
+impl FolderAudio<'static> {
+    /// Files that prove nothing about their medium.
+    pub const UNPROVEN: Self = Self {
+        rip: &RipEvidence::Unproven,
+        mono: false,
+    };
+}
 
 /// What a run knows about the medium the folder's audio was ripped from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,6 +47,56 @@ pub enum MediumConflict {
     /// The folder's audio is sampled at a rate no CD plays at, and every row
     /// is a CD.
     NotCdAudio { sample_rate_hz: u32 },
+    /// The folder's audio is one channel, and every row states more.
+    MonoAudio,
+}
+
+/// How mono audio stands to what a row's records state about its channels.
+/// Only Discogs states channels, as format descriptions; a record that
+/// states none says nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum ChannelFit {
+    /// The row states more channels than one, and not one: a one-channel
+    /// file cannot hold what it describes.
+    Contradicts,
+    /// Nothing to go on: the audio is not mono, or the row states nothing,
+    /// or it states both.
+    Silent,
+    /// The row states mono, as the audio is.
+    Agrees,
+}
+
+impl ChannelFit {
+    /// How mono audio stands to a row stating `details`. Audio of two
+    /// channels is never read against a row: a mono record is routinely
+    /// ripped to two identical channels, so two channels prove nothing.
+    pub(crate) fn of<'a>(
+        mono_audio: bool,
+        details: impl IntoIterator<Item = &'a DiscogsDetail>,
+    ) -> Self {
+        if !mono_audio {
+            return Self::Silent;
+        }
+        let (mut mono, mut more) = (false, false);
+        for detail in details {
+            match detail {
+                DiscogsDetail::Mono | DiscogsDetail::T2TrackMono | DiscogsDetail::T4TrackMono => {
+                    mono = true
+                }
+                DiscogsDetail::Stereo
+                | DiscogsDetail::T2TrackStereo
+                | DiscogsDetail::T4TrackStereo
+                | DiscogsDetail::Quadraphonic
+                | DiscogsDetail::Multichannel => more = true,
+                _ => {}
+            }
+        }
+        match (mono, more) {
+            (true, _) => Self::Agrees,
+            (false, true) => Self::Contradicts,
+            (false, false) => Self::Silent,
+        }
+    }
 }
 
 impl RippedFrom {
@@ -170,5 +237,18 @@ mod tests {
         assert!(!cd.admits([&StatedMedia::Undescribed, &formats(&[Some(Medium::Vinyl)])]));
         assert!(cd.admits([&per_medium(&[Some(Medium::Vinyl)]), &formats(&[None])]));
         assert!(RippedFrom::Unknown.admits([&per_medium(&[Some(Medium::Vinyl)])]));
+    }
+
+    /// A row stating mono agrees with mono audio, one stating only stereo
+    /// contradicts it, and two channels say nothing either way.
+    #[test]
+    fn mono_audio_reads_a_rows_channels() {
+        use DiscogsDetail::{Mono, Stereo};
+        assert_eq!(ChannelFit::of(true, &[Mono]), ChannelFit::Agrees);
+        assert_eq!(ChannelFit::of(true, &[Stereo]), ChannelFit::Contradicts);
+        assert_eq!(ChannelFit::of(true, &[Mono, Stereo]), ChannelFit::Agrees);
+        assert_eq!(ChannelFit::of(true, &[]), ChannelFit::Silent);
+        assert_eq!(ChannelFit::of(false, &[Mono]), ChannelFit::Silent);
+        assert_eq!(ChannelFit::of(false, &[Stereo]), ChannelFit::Silent);
     }
 }

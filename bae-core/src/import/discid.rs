@@ -289,6 +289,8 @@ pub struct ComputedDiscId {
 pub struct RipReading {
     pub evidence: RipEvidence,
     pub disc_id: DiscIdReading,
+    /// Every audio file carries one channel.
+    pub mono: bool,
 }
 
 /// The disc ID a candidate's rip artifacts hash to.
@@ -378,6 +380,8 @@ pub(crate) fn is_rip_document(path: &Path) -> bool {
 /// a CD out; and the sheets are hashed unless it does. Failures along the
 /// way log at `debug!` so the chain shows up in traces.
 fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
+    let mono = !artifacts.audio.is_empty()
+        && artifacts.audio.iter().all(|format| format.channels == 1);
     // Logs first: a log's table of contents is the disc ID as well as the
     // proof, which a report is not.
     artifacts.documents.sort_by_key(|document| !document.is_log());
@@ -400,6 +404,7 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
                             disc_id,
                             source_file: file,
                         }),
+                        mono,
                     };
                 }
                 Err(e) => debug!("DiscID from LOG failed for {:?}: {}", document.path, e),
@@ -450,7 +455,11 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
             })
             .unwrap_or(DiscIdReading::Absent),
     };
-    RipReading { evidence, disc_id }
+    RipReading {
+        evidence,
+        disc_id,
+        mono,
+    }
 }
 
 /// One of a library release's audio files: where it is, how long it plays,
