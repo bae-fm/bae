@@ -1,7 +1,7 @@
 use super::super::*;
 use crate::identify::{
-    DiscIdFile, DiscIdFileKind, DiscIdStepView, IdentifyRunView, LookupProvenance, LookupView,
-    TerminalVerdict,
+    DiscIdFile, DiscIdFileKind, DiscIdStepView, Findings, IdentifyRunView, LookupProvenance,
+    LookupView, NarrowedOut, TerminalVerdict,
 };
 use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
 use crate::import::search::MetadataResult;
@@ -25,7 +25,8 @@ fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
                 role: FileRole::Audio,
                 proposed_audio: true,
             })
-            .collect(), parts: Vec::new(), 
+            .collect(),
+        parts: Vec::new(),
     }
 }
 
@@ -76,8 +77,15 @@ fn sample_match() -> MetadataResult {
 
 fn sample_verdict() -> TerminalVerdict {
     TerminalVerdict::Found {
-        matches: vec![sample_match()],
+        findings: sample_findings(),
         track_count: 11,
+        ledger: Some(sample_ledger()),
+    }
+}
+
+fn sample_findings() -> Findings {
+    Findings {
+        matches: vec![sample_match()],
         provenance: vec![LookupProvenance {
             by_disc_id: true,
             by_barcode: true,
@@ -86,10 +94,7 @@ fn sample_verdict() -> TerminalVerdict {
             named_by: None,
         }],
         pressings: vec![0],
-        narrowed_out: Vec::new(),
-        narrowed_out_provenance: Vec::new(),
-        narrowed_out_pressings: Vec::new(),
-        ledger: Some(sample_ledger()),
+        narrowed_out: NarrowedOut::default(),
     }
 }
 
@@ -256,22 +261,22 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
         ..LookupProvenance::CHOSEN
     };
     let verdict = TerminalVerdict::Found {
-        provenance: vec![
-            returned.clone(),
-            returned.clone(),
-            returned.clone(),
-            returned,
-            LookupProvenance {
-                named_by: Some(MetadataRef::new(Catalog::MusicBrainz, "rel-1")),
-                ..LookupProvenance::CHOSEN
-            },
-        ],
-        pressings: crate::import::release_group::form_rows(&matches),
-        matches: matches.clone(),
+        findings: Findings {
+            provenance: vec![
+                returned.clone(),
+                returned.clone(),
+                returned.clone(),
+                returned,
+                LookupProvenance {
+                    named_by: Some(MetadataRef::new(Catalog::MusicBrainz, "rel-1")),
+                    ..LookupProvenance::CHOSEN
+                },
+            ],
+            pressings: crate::import::release_group::form_rows(&matches),
+            matches: matches.clone(),
+            narrowed_out: NarrowedOut::default(),
+        },
         track_count: 11,
-        narrowed_out: Vec::new(),
-        narrowed_out_provenance: Vec::new(),
-        narrowed_out_pressings: Vec::new(),
         ledger: None,
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
@@ -289,7 +294,10 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
         .verdict;
     assert_eq!(*stored, verdict);
     let TerminalVerdict::Found {
-        matches: stored_matches,
+        findings: Findings {
+            matches: stored_matches,
+            ..
+        },
         ..
     } = stored
     else {
@@ -342,11 +350,7 @@ async fn the_candidate_s_text_round_trips_line_by_line() {
             region: crate::signals::ImageRegion::new(0.1, 0.2, 0.3, 0.4),
         },
     ];
-    let mut row = new_candidate_row(
-        &hash,
-        &host_root("/music/Some Album"),
-        &sample_verdict(),
-    );
+    let mut row = new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict());
     row.signals.text_pool = pool.clone();
     store_candidate_state(&db, &candidate, &row.folder_path).await;
 
@@ -365,6 +369,43 @@ async fn the_candidate_s_text_round_trips_line_by_line() {
     assert_eq!(stored.text_pool, pool);
 }
 
+/// A failed verdict stores what the lookups that answered found beside the
+/// lookups that failed, and reads both back: a failed candidate opened later
+/// shows the results its run showed rather than an empty pane.
+#[tokio::test]
+async fn a_failed_verdict_round_trips_what_its_answering_lookups_found() {
+    let (db, _tmp) = empty_db().await;
+    let candidate =
+        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+    let hash = candidate.content_hash();
+    let verdict = TerminalVerdict::Failed {
+        failures: vec![crate::identify::IdentifyFailure::Search(
+            crate::import::search::SourceFailure {
+                source: crate::import::Catalog::MusicBrainz,
+                failure: crate::signals::LookupFailure::Provider { status: Some(503) },
+            },
+        )],
+        findings: sample_findings(),
+        track_count: 11,
+        ledger: Some(sample_ledger()),
+    };
+    let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
+    store_candidate_state(&db, &candidate, &row.folder_path).await;
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&row)
+        .await
+        .unwrap();
+
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    let identify = loaded
+        .get(&hash)
+        .expect("row present under its content hash")
+        .identify
+        .as_ref()
+        .expect("a stored verdict reads back as an identify result");
+    assert_eq!(identify.verdict, verdict);
+}
+
 /// A verdict recorded with no ledger reads back with none: the column is
 /// empty, and the pane draws the settled lists without a run beside them.
 #[tokio::test]
@@ -373,27 +414,9 @@ async fn a_verdict_with_no_ledger_reads_back_without_one() {
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
-    let TerminalVerdict::Found {
-        matches,
-        track_count,
-        provenance,
-        pressings,
-        narrowed_out,
-        narrowed_out_provenance,
-        narrowed_out_pressings,
-        ..
-    } = sample_verdict()
-    else {
-        panic!("the sample verdict is a found one");
-    };
     let verdict = TerminalVerdict::Found {
-        matches,
-        track_count,
-        provenance,
-        pressings,
-        narrowed_out,
-        narrowed_out_provenance,
-        narrowed_out_pressings,
+        findings: sample_findings(),
+        track_count: 11,
         ledger: None,
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
@@ -424,32 +447,24 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
-    let TerminalVerdict::Found {
-        matches,
-        track_count,
-        provenance,
-        pressings,
-        ..
-    } = sample_verdict()
-    else {
-        panic!("the sample verdict is a found one");
-    };
-    let mut left_out = matches[0].clone();
+    let mut left_out = sample_match();
     left_out.release_id = "rel-narrowed".to_string();
     let verdict = TerminalVerdict::Found {
-        matches,
-        track_count,
-        provenance,
-        pressings,
-        narrowed_out: vec![left_out],
-        narrowed_out_provenance: vec![LookupProvenance {
-            by_disc_id: true,
-            by_barcode: false,
-            by_catalog: false,
-            by_search: false,
-            named_by: None,
-        }],
-        narrowed_out_pressings: vec![0],
+        findings: Findings {
+            narrowed_out: NarrowedOut {
+                matches: vec![left_out],
+                provenance: vec![LookupProvenance {
+                    by_disc_id: true,
+                    by_barcode: false,
+                    by_catalog: false,
+                    by_search: false,
+                    named_by: None,
+                }],
+                pressings: vec![0],
+            },
+            ..sample_findings()
+        },
+        track_count: 11,
         ledger: Some(sample_ledger()),
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
@@ -469,8 +484,11 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
         .expect("a stored verdict reads back as an identify result");
     assert_eq!(identify.verdict, verdict);
     let TerminalVerdict::Found {
-        matches,
-        narrowed_out,
+        findings: Findings {
+            matches,
+            narrowed_out,
+            ..
+        },
         ..
     } = &identify.verdict
     else {
@@ -485,6 +503,7 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
     );
     assert_eq!(
         narrowed_out
+            .matches
             .iter()
             .map(|result| result.release_id.as_str())
             .collect::<Vec<_>>(),
@@ -605,12 +624,9 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     drop(db);
 
     let path = tmp.path().join("test.db");
-    let reopened = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(FixedClock(fixed_now())),
-    )
-    .await
-    .unwrap();
+    let reopened = Database::new_test(path.to_str().unwrap(), Arc::new(FixedClock(fixed_now())))
+        .await
+        .unwrap();
     let loaded = reopened.load_import_candidate_states().await.unwrap();
 
     for (content_hash, _, _, provenance) in &cases {
@@ -641,11 +657,7 @@ async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
     let settled = concluding(
-        new_candidate_row(
-            &hash,
-            &host_root("/music/Album"),
-            &sample_verdict(),
-        ),
+        new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-1",
     );
     crate::import::CandidatePreparations::new(db.clone())
@@ -653,11 +665,7 @@ async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
         .await
         .unwrap();
 
-    let mut re_run = new_candidate_row(
-        &hash,
-        &host_root("/music/Album"),
-        &found_nothing(),
-    );
+    let mut re_run = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
     re_run.candidate.metadata_revision = 1;
     assert!(re_run.metadata.is_none(), "nothing was found to pick");
     crate::import::CandidatePreparations::new(db.clone())
@@ -686,11 +694,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
-    let initial = new_candidate_row(
-        &hash,
-        &host_root("/music/Album"),
-        &found_nothing(),
-    );
+    let initial = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&initial)
         .await
@@ -705,11 +709,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
         .await
         .unwrap();
 
-    let mut re_run = new_candidate_row(
-        &hash,
-        &host_root("/music/Album"),
-        &found_nothing(),
-    );
+    let mut re_run = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
     re_run.candidate.metadata_revision = 2;
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&re_run)
@@ -738,11 +738,7 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
     let first = concluding(
-        new_candidate_row(
-            &hash,
-            &host_root("/music/Album"),
-            &sample_verdict(),
-        ),
+        new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-first",
     );
     crate::import::CandidatePreparations::new(db.clone())
@@ -751,11 +747,7 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
         .unwrap();
 
     let mut second = concluding(
-        new_candidate_row(
-            &hash,
-            &host_root("/music/Album"),
-            &sample_verdict(),
-        ),
+        new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-second",
     );
     second.candidate.metadata_revision = 1;
@@ -788,11 +780,7 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
     store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
     let settled = concluding(
-        new_candidate_row(
-            &hash,
-            &host_root("/music/Album"),
-            &sample_verdict(),
-        ),
+        new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-derived",
     );
     crate::import::CandidatePreparations::new(db.clone())

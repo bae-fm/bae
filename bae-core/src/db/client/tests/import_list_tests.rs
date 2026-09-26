@@ -37,36 +37,36 @@ async fn scanned(db: &Database, root: &str, name: &str) -> FolderCandidate {
 
 fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -> TerminalVerdict {
     TerminalVerdict::Found {
-        matches: vec![MetadataResult {
-            source: Catalog::MusicBrainz,
-            release_id: release_id.to_string(),
-            title: "Verdict Album".to_string(),
-            artist: Some("Verdict Artist".to_string()),
-            year: Some(1999),
-            format: Some("CD".to_string()),
-            label: None,
-            catalog_number: None,
-            country: None,
-            barcodes: Vec::new(),
-            media: crate::import::search::StatedMedia::Undescribed,
-            links: Vec::new(),
-            cover_art: None,
-            source_group_id: Some("group-1".to_string()),
-            album_links: crate::import::album_links::AlbumLinks::NotAsked,
-            source_tracks: Some(SourceTracks::Listed { count: 1 }),
-        }],
+        findings: crate::identify::Findings {
+            matches: vec![MetadataResult {
+                source: Catalog::MusicBrainz,
+                release_id: release_id.to_string(),
+                title: "Verdict Album".to_string(),
+                artist: Some("Verdict Artist".to_string()),
+                year: Some(1999),
+                format: Some("CD".to_string()),
+                label: None,
+                catalog_number: None,
+                country: None,
+                barcodes: Vec::new(),
+                media: crate::import::search::StatedMedia::Undescribed,
+                links: Vec::new(),
+                cover_art: None,
+                source_group_id: Some("group-1".to_string()),
+                album_links: crate::import::album_links::AlbumLinks::NotAsked,
+                source_tracks: Some(SourceTracks::Listed { count: 1 }),
+            }],
+            provenance: vec![LookupProvenance {
+                by_disc_id: true,
+                by_barcode: false,
+                by_catalog: false,
+                by_search: false,
+                named_by: None,
+            }],
+            pressings: vec![0],
+            narrowed_out: crate::identify::NarrowedOut::default(),
+        },
         track_count: 1,
-        provenance: vec![LookupProvenance {
-            by_disc_id: true,
-            by_barcode: false,
-            by_catalog: false,
-            by_search: false,
-            named_by: None,
-        }],
-        pressings: vec![0],
-        narrowed_out: Vec::new(),
-        narrowed_out_provenance: Vec::new(),
-        narrowed_out_pressings: Vec::new(),
         ledger,
     }
 }
@@ -345,8 +345,8 @@ async fn the_detail_resumes_the_stored_verdict_with_live_statuses() {
         .expect("the scanned candidate reads back");
 
     let crate::identify::IdentifyState::Found {
-        matches,
         library_statuses,
+        findings: crate::identify::Findings { matches, .. },
         ..
     } = &detail.resumed_identify_state
     else {
@@ -364,6 +364,7 @@ async fn the_detail_resumes_the_stored_verdict_with_live_statuses() {
     );
     assert_eq!(
         library_statuses
+            .matches
             .iter()
             .map(|status| (status.release_id.as_str(), status.release_in_library))
             .collect::<Vec<_>>(),

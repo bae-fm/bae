@@ -48,20 +48,23 @@ fn in_flight_states_have_no_terminal_verdict() {
     .is_err());
 }
 
-fn found_state() -> IdentifyState {
-    IdentifyState::Found {
+fn one_disc_id_match() -> Findings {
+    Findings {
         matches: vec![mk_result("rel-1")],
-        library_statuses: vec![LibraryStatus::absent("rel-1")],
-        track_count: 11,
-        provenance: vec![LookupProvenance {
-            by_disc_id: true,
-            by_barcode: false,
-            by_catalog: false,
-            by_search: false,
-            named_by: None,
-        }],
+        provenance: vec![disc_id_only()],
         pressings: vec![0],
         narrowed_out: NarrowedOut::default(),
+    }
+}
+
+fn found_state() -> IdentifyState {
+    IdentifyState::Found {
+        findings: one_disc_id_match(),
+        library_statuses: LibraryStatuses {
+            matches: vec![LibraryStatus::absent("rel-1")],
+            narrowed_out: Vec::new(),
+        },
+        track_count: 11,
         ledger: None,
         context: mk_context(11),
     }
@@ -77,19 +80,8 @@ fn found_drops_library_status_and_keeps_the_rest() {
     assert_eq!(
         verdict,
         TerminalVerdict::Found {
-            matches: vec![mk_result("rel-1")],
+            findings: one_disc_id_match(),
             track_count: 11,
-            provenance: vec![LookupProvenance {
-                by_disc_id: true,
-                by_barcode: false,
-                by_catalog: false,
-                by_search: false,
-                named_by: None,
-            }],
-            pressings: vec![0],
-            narrowed_out: Vec::new(),
-            narrowed_out_provenance: Vec::new(),
-            narrowed_out_pressings: Vec::new(),
             ledger: None,
         }
     );
@@ -164,26 +156,26 @@ fn disc_id_only() -> LookupProvenance {
 #[test]
 fn a_stored_verdict_keeps_what_agreement_narrowed_out() {
     let mut state = found_state();
-    let IdentifyState::Found { narrowed_out, .. } = &mut state else {
+    let IdentifyState::Found {
+        findings,
+        library_statuses,
+        ..
+    } = &mut state
+    else {
         panic!("a found state");
     };
-    *narrowed_out = NarrowedOut {
+    findings.narrowed_out = NarrowedOut {
         matches: vec![mk_result("rel-out")],
-        library_statuses: vec![LibraryStatus::absent("rel-out")],
         provenance: vec![disc_id_only()],
         pressings: vec![0],
     };
+    library_statuses.narrowed_out = vec![LibraryStatus::absent("rel-out")];
     let verdict = TerminalVerdict::try_from(state).unwrap();
-    let TerminalVerdict::Found {
-        narrowed_out,
-        narrowed_out_provenance,
-        ..
-    } = &verdict
-    else {
+    let TerminalVerdict::Found { findings, .. } = &verdict else {
         panic!("a found state stores as a found verdict");
     };
-    assert_eq!(narrowed_out, &vec![mk_result("rel-out")]);
-    assert_eq!(narrowed_out_provenance, &vec![disc_id_only()]);
+    assert_eq!(findings.narrowed_out.matches, vec![mk_result("rel-out")]);
+    assert_eq!(findings.narrowed_out.provenance, vec![disc_id_only()]);
     assert_eq!(
         verdict
             .named_releases()
@@ -200,25 +192,33 @@ fn a_stored_verdict_keeps_what_agreement_narrowed_out() {
 #[test]
 fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
     let verdict = TerminalVerdict::Found {
-        matches: vec![mk_result("rel-1")],
+        findings: Findings {
+            narrowed_out: NarrowedOut {
+                matches: vec![mk_result("rel-out")],
+                provenance: vec![disc_id_only()],
+                pressings: vec![0],
+            },
+            ..one_disc_id_match()
+        },
         track_count: 11,
-        provenance: vec![disc_id_only()],
-        pressings: vec![0],
-        narrowed_out: vec![mk_result("rel-out")],
-        narrowed_out_provenance: vec![disc_id_only()],
-        narrowed_out_pressings: vec![0],
         ledger: None,
     };
-    let IdentifyState::Found { narrowed_out, .. } = verdict.resume_state(
+    let IdentifyState::Found {
+        findings,
+        library_statuses,
+        ..
+    } = verdict.resume_state(
         &|result| LibraryStatus::absent(&result.release_id),
         Default::default(),
-    ) else {
+    )
+    else {
         panic!("a found verdict resumes as Found");
     };
+    let narrowed_out = findings.narrowed_out;
     assert_eq!(narrowed_out.matches, vec![mk_result("rel-out")]);
     assert_eq!(
-        narrowed_out
-            .library_statuses
+        library_statuses
+            .narrowed_out
             .iter()
             .map(|status| status.release_id.as_str())
             .collect::<Vec<_>>(),
@@ -274,25 +274,23 @@ fn signals_that_share_no_result_store_as_one_match_list() {
     assert_eq!(
         verdict,
         TerminalVerdict::Found {
-            matches: vec![mk_result("rel-a")],
+            findings: Findings {
+                matches: vec![mk_result("rel-a")],
+                provenance: vec![disc_id_only()],
+                pressings: vec![0],
+                narrowed_out: NarrowedOut {
+                    matches: vec![mk_result("rel-b")],
+                    provenance: vec![LookupProvenance {
+                        by_disc_id: false,
+                        by_barcode: true,
+                        by_catalog: false,
+                        by_search: false,
+                        named_by: None,
+                    }],
+                    pressings: vec![0],
+                },
+            },
             track_count: 9,
-            provenance: vec![LookupProvenance {
-                by_disc_id: true,
-                by_barcode: false,
-                by_catalog: false,
-                by_search: false,
-                named_by: None,
-            }],
-            pressings: vec![0],
-            narrowed_out: vec![mk_result("rel-b")],
-            narrowed_out_provenance: vec![LookupProvenance {
-                by_disc_id: false,
-                by_barcode: true,
-                by_catalog: false,
-                by_search: false,
-                named_by: None,
-            }],
-            narrowed_out_pressings: vec![0],
             ledger: None,
         }
     );
@@ -391,8 +389,8 @@ fn barcode_failure_derives_to_failed() {
 }
 
 /// One provider failing on the barcode while the other answered is still a
-/// failed verdict — but the live state keeps the answering provider's
-/// match, so the pane shows it instead of blanking.
+/// failed verdict — but it keeps the answering provider's match, live and
+/// stored, so the pane shows it instead of blanking.
 #[test]
 fn a_partial_barcode_answer_keeps_its_matches_on_a_failed_state() {
     let mut context = mk_context(7);
@@ -404,12 +402,17 @@ fn a_partial_barcode_answer_keeps_its_matches_on_a_failed_state() {
     }];
     let state = crate::identify::state::re_derive_for_tests(context);
     let IdentifyState::Failed {
-        matches, failures, ..
+        findings, failures, ..
     } = &state
     else {
         panic!("a provider failure is a failed state");
     };
-    assert_eq!(matches.len(), 1, "the other provider's match still stands");
+    assert_eq!(
+        findings.matches.len(),
+        1,
+        "the other provider's match still stands"
+    );
+    let live = findings.clone();
     assert_eq!(
         failures,
         &vec![IdentifyFailure::Barcode(SourceFailure {
@@ -417,12 +420,10 @@ fn a_partial_barcode_answer_keeps_its_matches_on_a_failed_state() {
             failure: crate::signals::LookupFailure::Network,
         })]
     );
-    // What stores is the failure: the partial match is live evidence, and
-    // re-running is what turns it into an answer.
-    assert!(matches!(
-        TerminalVerdict::try_from(state).unwrap(),
-        TerminalVerdict::Failed { .. }
-    ));
+    let TerminalVerdict::Failed { findings, .. } = TerminalVerdict::try_from(state).unwrap() else {
+        panic!("a failed state stores as a failed verdict");
+    };
+    assert_eq!(findings, live, "the stored failure keeps the match");
 }
 
 /// Both providers answering the barcode is an ordinary `Found`, with no
@@ -449,12 +450,12 @@ fn a_barcode_failure_with_no_results_carries_no_matches() {
         source: Catalog::Discogs,
         failure: crate::signals::LookupFailure::Network,
     }];
-    let IdentifyState::Failed { matches, .. } =
+    let IdentifyState::Failed { findings, .. } =
         crate::identify::state::re_derive_for_tests(context)
     else {
         panic!("a provider failure is a failed state");
     };
-    assert!(matches.is_empty());
+    assert!(findings.is_empty());
 }
 
 #[test]
@@ -482,4 +483,70 @@ fn chosen_catalog_failure_derives_to_failed() {
             failure: crate::signals::LookupFailure::Network,
         })]
     ));
+}
+
+/// A step after the lookups failing — fetching the settled release's details —
+/// turns the verdict into a failure that keeps what the lookups found and the
+/// ledger they recorded, and a failure that fails again names both failures.
+#[test]
+fn a_later_failure_keeps_the_findings_and_joins_earlier_failures() {
+    let details = |detail: &str| {
+        IdentifyFailure::ReleaseDetails(crate::signals::LookupFailure::Diagnostic {
+            detail: detail.to_string(),
+        })
+    };
+    let mut verdict = TerminalVerdict::try_from(found_state()).unwrap();
+    verdict.fail(details("first"));
+    assert_eq!(
+        verdict,
+        TerminalVerdict::Failed {
+            failures: vec![details("first")],
+            findings: one_disc_id_match(),
+            track_count: 11,
+            ledger: None,
+        }
+    );
+    verdict.fail(details("second"));
+    let TerminalVerdict::Failed { failures, .. } = &verdict else {
+        panic!("a failure stays a failure");
+    };
+    assert_eq!(failures, &vec![details("first"), details("second")]);
+}
+
+/// A stored failure stands back up with its findings and a live library
+/// status for each, exactly as a stored `Found` does.
+#[test]
+fn a_resumed_failure_stands_its_findings_back_up() {
+    let verdict = TerminalVerdict::Failed {
+        failures: vec![IdentifyFailure::DiscId(
+            crate::signals::LookupFailure::Network,
+        )],
+        findings: one_disc_id_match(),
+        track_count: 11,
+        ledger: None,
+    };
+    assert_eq!(
+        verdict
+            .named_releases()
+            .iter()
+            .map(|result| result.release_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["rel-1"]
+    );
+    let IdentifyState::Failed {
+        findings,
+        library_statuses,
+        ..
+    } = verdict.resume_state(
+        &|result| LibraryStatus::absent(&result.release_id),
+        Default::default(),
+    )
+    else {
+        panic!("a failed verdict resumes as Failed");
+    };
+    assert_eq!(findings, one_disc_id_match());
+    assert_eq!(
+        library_statuses.matches,
+        vec![LibraryStatus::absent("rel-1")]
+    );
 }

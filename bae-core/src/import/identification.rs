@@ -52,7 +52,6 @@ use super::folder_scanner::FolderCandidate;
 use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::{IdentifyRunId, IdentifyState, TerminalVerdict, TitleSearch};
 use crate::import::candidates::Admission;
-use crate::import::search::MetadataResult;
 use crate::import::LookupChoices;
 use crate::library::LibraryManager;
 use crate::signals::ExtractionSource;

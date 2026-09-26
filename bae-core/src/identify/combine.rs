@@ -47,8 +47,8 @@ use std::collections::{HashMap, HashSet};
 /// about the result — is derived from this and the text (see
 /// [`agreements_of`]), never stored.
 ///
-/// `Serialize`/`Deserialize`: carried on `identify::TerminalVerdict::Found`,
-/// which `import_candidate_match` persists.
+/// `Serialize`/`Deserialize`: carried on the [`Findings`] a stored
+/// `identify::TerminalVerdict` holds, which `import_candidate_match` persists.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct LookupProvenance {
     pub by_disc_id: bool,
@@ -76,6 +76,52 @@ impl LookupProvenance {
     };
 }
 
+/// What a run's lookups found, once combined: the rows offered and the rows
+/// set aside, each release with the lookups that returned it and the pressing
+/// row it belongs to.
+///
+/// One shape for every state that holds answers. A run that settled on them
+/// carries it, and so does a run where some lookup failed: one provider not
+/// answering never invalidates what the others returned, so a failed run's
+/// findings are as real as a found one's and are stored the same way. A run
+/// that found nothing has none, which is why `NotFoundAnywhere` carries no
+/// findings at all rather than an empty one.
+///
+/// Whether each release is already in the library is not here: that is a
+/// live check a reader repeats, never a fact about the run — see
+/// [`LibraryStatuses`].
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct Findings {
+    /// The offered rows' releases, most-agreed-with first.
+    pub matches: Vec<MetadataResult>,
+    /// Index-aligned with `matches`: which signals named each one — the
+    /// sidebar's "matched on disc ID / barcode / text" evidence line.
+    pub provenance: Vec<LookupProvenance>,
+    /// Index-aligned with `matches`: which pressing row of this list each
+    /// release belongs to, numbered from zero in row order.
+    ///
+    /// The rows the run built, kept rather than re-formed on read: a record
+    /// the run settled as ambiguous because of a record in the other list
+    /// rolls up when this list is grouped without it, so a reader that
+    /// re-groups shows rows the run never offered.
+    pub pressings: Vec<u32>,
+    pub narrowed_out: NarrowedOut,
+}
+
+impl Findings {
+    /// Nothing came back from any lookup. Combine never empties the offered
+    /// list while anything was returned, so no offered match means no answer.
+    pub fn is_empty(&self) -> bool {
+        self.matches.is_empty()
+    }
+
+    /// Every release named, the offered ones first — what a reader checks
+    /// live library status for.
+    pub fn releases(&self) -> impl Iterator<Item = &MetadataResult> {
+        self.matches.iter().chain(&self.narrowed_out.matches)
+    }
+}
+
 /// The rows the ranking did not offer, as the releases they are made of.
 ///
 /// A short list is what makes identification worth having: a disc ID that
@@ -97,16 +143,15 @@ impl LookupProvenance {
 /// Empty when every row tied at the highest score: one lookup answering alone
 /// with nothing to tell its answers apart, or a candidate carrying no text to
 /// read them against.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NarrowedOut {
     /// In signal order, each release once.
     pub matches: Vec<MetadataResult>,
-    /// Index-aligned with `matches`.
-    pub library_statuses: Vec<LibraryStatus>,
     /// Index-aligned with `matches`: which signals named each one.
     pub provenance: Vec<LookupProvenance>,
     /// Index-aligned with `matches`: which row of this list each release
-    /// belongs to, numbered from zero in row order.
+    /// belongs to, numbered from zero in row order. Each list numbers its own
+    /// rows.
     pub pressings: Vec<u32>,
 }
 
@@ -116,28 +161,40 @@ impl NarrowedOut {
     }
 }
 
-/// What combine decided; the reducer lifts it into a terminal `IdentifyState`.
-#[derive(Debug, Clone)]
-pub enum CombineOutcome {
-    /// One or more results. `provenance` is index-aligned with `matches` and
-    /// says which signal produced each one.
-    Found {
-        matches: Vec<MetadataResult>,
-        library_statuses: Vec<LibraryStatus>,
-        provenance: Vec<LookupProvenance>,
-        /// Index-aligned with `matches`: which row each release belongs to,
-        /// numbered from zero in row order.
-        pressings: Vec<u32>,
-        narrowed_out: NarrowedOut,
-    },
-    /// Every checked signal settled with zero results.
-    NotFoundAnywhere,
+/// Whether each release a [`Findings`] names is already in the library,
+/// index-aligned with its two lists.
+///
+/// Mutable local state — another import landing can flip it — so it rides
+/// beside the findings while a state is live and is never stored with them: a
+/// reader standing a stored verdict back up checks it again.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct LibraryStatuses {
+    /// Index-aligned with [`Findings::matches`].
+    pub matches: Vec<LibraryStatus>,
+    /// Index-aligned with [`NarrowedOut::matches`].
+    pub narrowed_out: Vec<LibraryStatus>,
+}
+
+impl LibraryStatuses {
+    /// Check every release `findings` names with `status_of`.
+    pub fn of(findings: &Findings, status_of: impl Fn(&MetadataResult) -> LibraryStatus) -> Self {
+        Self {
+            matches: findings.matches.iter().map(&status_of).collect(),
+            narrowed_out: findings
+                .narrowed_out
+                .matches
+                .iter()
+                .map(&status_of)
+                .collect(),
+        }
+    }
 }
 
 type Results = Vec<(MetadataResult, LibraryStatus)>;
 type ReleaseKey = (Catalog, String);
 
-/// Settle the checked signals' results into a `CombineOutcome`.
+/// Settle the checked signals' results into what the run found, with each
+/// release's library status as the lookups reported it.
 ///
 /// A signal the user left unchecked arrives empty and takes no part. So does
 /// a checked signal whose lookup found nothing: it returned no row, so it
@@ -153,7 +210,7 @@ type ReleaseKey = (Catalog, String);
 ///
 /// Every answer the run returned is paired into pressing rows first, then:
 ///
-/// 1. **Nothing.** Every set empty: `NotFoundAnywhere`.
+/// 1. **Nothing.** Every set empty: empty findings.
 /// 2. **Every row is scored** by `Support`, and the rows tied at the
 ///    highest score are offered. Every other row is set aside, and a person
 ///    can open the list it is on.
@@ -169,7 +226,7 @@ pub fn combine_results(
     search_results: Results,
     twins: Vec<Twin>,
     text: &CandidateText,
-) -> CombineOutcome {
+) -> (Findings, LibraryStatuses) {
     let by_signal = [
         &discid_results,
         &barcode_results,
@@ -183,7 +240,7 @@ pub fn combine_results(
         .filter(|set| !set.is_empty())
         .collect();
     if present.is_empty() {
-        return CombineOutcome::NotFoundAnywhere;
+        return (Findings::default(), LibraryStatuses::default());
     }
 
     // Every answer the run returned, each release once, in signal order, and
@@ -277,18 +334,22 @@ pub fn combine_results(
     let narrowed_out_provenance = left_out.iter().map(|(r, _)| lookup_of(r)).collect();
     let (matches, library_statuses) = combined.into_iter().unzip();
     let (narrowed_matches, narrowed_statuses) = left_out.into_iter().unzip();
-    CombineOutcome::Found {
-        matches,
-        library_statuses,
-        provenance,
-        pressings,
-        narrowed_out: NarrowedOut {
-            matches: narrowed_matches,
-            library_statuses: narrowed_statuses,
-            provenance: narrowed_out_provenance,
-            pressings: narrowed_out_pressings,
+    (
+        Findings {
+            matches,
+            provenance,
+            pressings,
+            narrowed_out: NarrowedOut {
+                matches: narrowed_matches,
+                provenance: narrowed_out_provenance,
+                pressings: narrowed_out_pressings,
+            },
         },
-    }
+        LibraryStatuses {
+            matches: library_statuses,
+            narrowed_out: narrowed_statuses,
+        },
+    )
 }
 
 /// How much of what the run found stands behind one row. Rows are compared

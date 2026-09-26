@@ -7,7 +7,10 @@ use super::*;
 /// The title search is not one of the sets here: it is asked only when the
 /// three identifiers came back empty, so every case about how they intersect
 /// is a case where it never ran.
-fn combine(discid: Results, barcode: Results, catalog: Results) -> CombineOutcome {
+/// What combine hands back: the findings, and each release's library status.
+type Outcome = (Findings, LibraryStatuses);
+
+fn combine(discid: Results, barcode: Results, catalog: Results) -> Outcome {
     combine_results(
         discid,
         barcode,
@@ -43,29 +46,21 @@ fn ids(matches: &[MetadataResult]) -> Vec<&str> {
     matches.iter().map(|m| m.release_id.as_str()).collect()
 }
 
-fn narrowed(outcome: CombineOutcome) -> NarrowedOut {
-    match outcome {
-        CombineOutcome::Found { narrowed_out, .. } => narrowed_out,
-        other => panic!("expected Found, got {other:?}"),
-    }
+fn narrowed((findings, _): Outcome) -> NarrowedOut {
+    assert!(!findings.is_empty(), "expected findings, got none");
+    findings.narrowed_out
 }
 
-fn found(outcome: CombineOutcome) -> (Vec<MetadataResult>, Vec<LookupProvenance>, Vec<u32>) {
-    match outcome {
-        CombineOutcome::Found {
-            matches,
-            provenance,
-            pressings,
-            ..
-        } => (matches, provenance, pressings),
-        other => panic!("expected Found, got {other:?}"),
-    }
+fn found((findings, _): Outcome) -> (Vec<MetadataResult>, Vec<LookupProvenance>, Vec<u32>) {
+    assert!(!findings.is_empty(), "expected findings, got none");
+    (findings.matches, findings.provenance, findings.pressings)
 }
 
 #[test]
 fn nothing_checked_or_nothing_found_yields_not_found_anywhere() {
-    let outcome = combine(vec![], vec![], vec![]);
-    assert!(matches!(outcome, CombineOutcome::NotFoundAnywhere));
+    let (findings, statuses) = combine(vec![], vec![], vec![]);
+    assert_eq!(findings, Findings::default());
+    assert_eq!(statuses, LibraryStatuses::default());
 }
 
 /// One checked signal answers on its own: there is nothing to agree with.
@@ -210,10 +205,10 @@ fn an_intersection_hands_back_what_it_narrowed_out() {
     let outcome = combine(discid, barcode, vec![]);
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-shared"]);
+    assert_eq!(outcome.1.narrowed_out.len(), 3);
 
     let narrowed = narrowed(outcome);
     assert_eq!(ids(&narrowed.matches), vec!["rel-a", "rel-b", "rel-c"]);
-    assert_eq!(narrowed.library_statuses.len(), 3);
     assert!(narrowed.provenance[0].by_disc_id && !narrowed.provenance[0].by_barcode);
     assert!(narrowed.provenance[2].by_barcode && !narrowed.provenance[2].by_disc_id);
 }

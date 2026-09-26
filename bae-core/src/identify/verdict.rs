@@ -22,12 +22,18 @@
 //! freeze a snapshot nothing invalidates. A reader re-checks it live, against
 //! the release ids named here, rather than trusting a stored copy.
 //!
+//! What the lookups found is one shape, [`Findings`], on both variants that
+//! hold answers. A failed run keeps what the lookups that did answer returned,
+//! exactly as a found one does, so opening a failed candidate later shows the
+//! results the live run showed beside the lookups that failed.
+//!
 //! The reducer makes partial evidence unrepresentable as a successful terminal
-//! state: any active lookup failure produces `IdentifyState::Failed`. Only
-//! `Idle` and `Triangulating` have no terminal verdict.
+//! state: any active lookup failure produces `IdentifyState::Failed`, whose
+//! findings the queue never imports unattended. Only `Idle` and
+//! `Triangulating` have no terminal verdict.
 
 use super::agreements::CandidateText;
-use super::combine::{LookupProvenance, NarrowedOut};
+use super::combine::{Findings, LibraryStatuses, LookupProvenance, NarrowedOut};
 use super::state::{IdentifyState, SignalsContext};
 use super::view::IdentifyRunView;
 use crate::db::LibraryStatus;
@@ -69,31 +75,8 @@ pub enum TerminalVerdict {
     /// One or more results — what `combine` produced, and what the sidebar and
     /// the Ready rule both work from directly.
     Found {
-        matches: Vec<MetadataResult>,
+        findings: Findings,
         track_count: u32,
-        /// Index-aligned with `matches`: which signal(s) produced or confirmed
-        /// each one, for the sidebar's "matched on disc ID / barcode / text"
-        /// evidence line.
-        provenance: Vec<LookupProvenance>,
-        /// Index-aligned with `matches`: which pressing row of this list each
-        /// release belongs to, numbered from zero in row order.
-        ///
-        /// The rows the run built, kept rather than re-formed on read: a
-        /// record the run settled as ambiguous because of a record in the
-        /// other list rolls up when this list is grouped without it, so a
-        /// reader that re-groups shows rows the run never offered.
-        pressings: Vec<u32>,
-        /// The releases the signals' agreement left out of `matches` — real
-        /// answers from real lookups that the intersection discarded. Kept so
-        /// a resumed candidate can still offer them; empty when the agreement
-        /// narrowed nothing.
-        narrowed_out: Vec<MetadataResult>,
-        /// Index-aligned with `narrowed_out`, as `provenance` is with
-        /// `matches`.
-        narrowed_out_provenance: Vec<LookupProvenance>,
-        /// Index-aligned with `narrowed_out`, as `pressings` is with
-        /// `matches`. Each list numbers its own rows from zero.
-        narrowed_out_pressings: Vec<u32>,
         ledger: Option<IdentifyRunView>,
     },
     /// Both signals ran and settled on zero results. Distinct from a transport
@@ -108,10 +91,12 @@ pub enum TerminalVerdict {
         track_count: u32,
         ledger: Option<IdentifyRunView>,
     },
-    /// At least one provider step failed, so partial evidence must not be
-    /// classified as a complete answer.
+    /// At least one lookup failed, so what the others found must not be
+    /// classified as a complete answer. `findings` is what they found — empty
+    /// when nothing that answered returned anything.
     Failed {
         failures: Vec<IdentifyFailure>,
+        findings: Findings,
         track_count: u32,
         ledger: Option<IdentifyRunView>,
     },
@@ -124,32 +109,54 @@ impl TerminalVerdict {
     /// the queue sweep from asking a question the person has already answered.
     pub(crate) fn of_pick(result: MetadataResult, track_count: u32) -> Self {
         Self::Found {
-            matches: vec![result],
+            findings: Findings {
+                matches: vec![result],
+                provenance: vec![LookupProvenance::CHOSEN],
+                pressings: vec![0],
+                narrowed_out: NarrowedOut::default(),
+            },
             track_count,
-            provenance: vec![LookupProvenance::CHOSEN],
-            pressings: vec![0],
-            narrowed_out: Vec::new(),
-            narrowed_out_provenance: Vec::new(),
-            narrowed_out_pressings: Vec::new(),
             ledger: None,
         }
     }
 
-    /// Every release this verdict settled on, paired with the lookups that
-    /// named it. Empty for a verdict that settled on none, and for the
-    /// releases agreement narrowed out — those are answers about releases the
-    /// verdict did not settle on.
-    pub fn lookups(&self) -> impl Iterator<Item = (&MetadataResult, &LookupProvenance)> {
+    /// What the lookups found. `None` for the verdicts that hold no answers.
+    pub fn findings(&self) -> Option<&Findings> {
         match self {
-            Self::Found {
-                matches,
-                provenance,
-                ..
-            } => matches.iter().zip(provenance.iter()),
-            Self::NotFoundAnywhere { .. } | Self::ManualOnly { .. } | Self::Failed { .. } => {
-                [].iter().zip([].iter())
-            }
+            Self::Found { findings, .. } | Self::Failed { findings, .. } => Some(findings),
+            Self::NotFoundAnywhere { .. } | Self::ManualOnly { .. } => None,
         }
+    }
+
+    /// The verdict this one becomes when a step after the lookups fails —
+    /// fetching the details of the release they settled on, or projecting its
+    /// metadata. The lookups ran and showed what they showed, so what they
+    /// found and the ledger they recorded stay; the failure joins any the run
+    /// already had.
+    pub(crate) fn fail(&mut self, failure: IdentifyFailure) {
+        let (findings, track_count, ledger) = match self {
+            Self::Failed { failures, .. } => {
+                failures.push(failure);
+                return;
+            }
+            Self::Found {
+                findings,
+                track_count,
+                ledger,
+            } => (std::mem::take(findings), *track_count, ledger.take()),
+            Self::ManualOnly {
+                track_count,
+                ledger,
+            } => (Findings::default(), *track_count, ledger.take()),
+            // Nothing counted the folder's tracks on the way to finding nothing.
+            Self::NotFoundAnywhere { ledger } => (Findings::default(), 0, ledger.take()),
+        };
+        *self = Self::Failed {
+            failures: vec![failure],
+            findings,
+            track_count,
+            ledger,
+        };
     }
 }
 
@@ -161,26 +168,18 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
     fn try_from(state: IdentifyState) -> Result<Self, Self::Error> {
         match state {
             IdentifyState::Found {
-                matches,
+                findings,
                 track_count,
-                provenance,
-                pressings,
-                narrowed_out,
                 ledger,
                 // A live per-release check at read time, not a stored copy —
                 // see the module doc.
                 library_statuses: _,
                 // The run's, and the candidate's text it judged against, which
-                // is stored on its own and read back beside these matches.
+                // is stored on its own and read back beside these findings.
                 context: _,
             } => Ok(Self::Found {
-                matches,
+                findings,
                 track_count,
-                provenance,
-                pressings,
-                narrowed_out: narrowed_out.matches,
-                narrowed_out_provenance: narrowed_out.provenance,
-                narrowed_out_pressings: narrowed_out.pressings,
                 ledger,
             }),
 
@@ -197,22 +196,16 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 ledger,
             }),
 
-            // The partial matches a failed state carries are live evidence of
-            // what the other source found, not a stored answer: the failure is
-            // what the next launch has to know, and re-running is what turns
-            // partial evidence into a verdict.
             IdentifyState::Failed {
                 failures,
+                findings,
                 track_count,
                 ledger,
-                matches: _,
                 library_statuses: _,
-                provenance: _,
-                pressings: _,
-                narrowed_out: _,
                 context: _,
             } => Ok(Self::Failed {
                 failures,
+                findings,
                 track_count,
                 ledger,
             }),
@@ -224,21 +217,14 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
 
 impl TerminalVerdict {
     /// Every release this verdict names — what a resumer checks live library
-    /// status for before standing the state back up.
+    /// status for before standing the state back up. The narrowed-out
+    /// releases are named too: a surface offers them beside the matches, so
+    /// their library status is checked with the matches' rather than left
+    /// unanswered.
     pub fn named_releases(&self) -> Vec<&MetadataResult> {
-        match self {
-            // The narrowed-out releases are named too: a surface offers them
-            // beside the matches, so their library status is checked with the
-            // matches' rather than left unanswered.
-            Self::Found {
-                matches,
-                narrowed_out,
-                ..
-            } => matches.iter().chain(narrowed_out).collect(),
-            Self::NotFoundAnywhere { .. } | Self::ManualOnly { .. } | Self::Failed { .. } => {
-                Vec::new()
-            }
-        }
+        self.findings()
+            .map(|findings| findings.releases().collect())
+            .unwrap_or_default()
     }
 
     /// The ledger the run showed, as it recorded it. `None` for a run
@@ -266,9 +252,8 @@ impl TerminalVerdict {
     /// ended, and a toggle or a re-run starts another from the candidate's own
     /// signals and choices, which are stored and read on their own.
     ///
-    /// One thing no write keeps, so no resume has it: a failed run's partial
-    /// matches. The failure is what stores, and re-running is what turns
-    /// partial evidence into an answer.
+    /// A failed run stands back up with what its answering lookups found,
+    /// beside the lookups that failed — the pane it showed as it ended.
     ///
     /// `status_of` is the live library check for a release id the verdict
     /// names, never a stored copy (see the module doc).
@@ -289,33 +274,16 @@ impl TerminalVerdict {
         };
         match self {
             Self::Found {
-                matches,
+                findings,
                 track_count,
-                provenance,
-                pressings,
-                narrowed_out,
-                narrowed_out_provenance,
-                narrowed_out_pressings,
                 ledger,
-            } => {
-                let library_statuses: Vec<LibraryStatus> = matches.iter().map(status_of).collect();
-                let narrowed_out = NarrowedOut {
-                    library_statuses: narrowed_out.iter().map(status_of).collect(),
-                    matches: narrowed_out,
-                    provenance: narrowed_out_provenance,
-                    pressings: narrowed_out_pressings,
-                };
-                IdentifyState::Found {
-                    matches,
-                    library_statuses,
-                    track_count,
-                    provenance,
-                    pressings,
-                    narrowed_out,
-                    ledger,
-                    context: context(),
-                }
-            }
+            } => IdentifyState::Found {
+                library_statuses: LibraryStatuses::of(&findings, status_of),
+                findings,
+                track_count,
+                ledger,
+                context: context(),
+            },
             Self::NotFoundAnywhere { ledger } => IdentifyState::NotFoundAnywhere {
                 ledger,
                 context: context(),
@@ -328,23 +296,18 @@ impl TerminalVerdict {
                 ledger,
                 context: context(),
             },
-            // A stored failure resumes with no matches: what one source found
-            // before the other failed was never stored, so a resumed failure
-            // offers the re-run rather than a partial list.
             Self::Failed {
                 failures,
+                findings,
                 track_count,
                 ledger,
             } => IdentifyState::Failed {
                 failures,
+                library_statuses: LibraryStatuses::of(&findings, status_of),
+                findings,
                 track_count,
                 ledger,
                 context: context(),
-                matches: Vec::new(),
-                library_statuses: Vec::new(),
-                provenance: Vec::new(),
-                pressings: Vec::new(),
-                narrowed_out: NarrowedOut::default(),
             },
         }
     }

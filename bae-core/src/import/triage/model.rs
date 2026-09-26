@@ -227,9 +227,9 @@ impl MatchedRelease {
     /// The release a stored verdict leads with, read off the columns of its
     /// lead match row, or `None` when it named none.
     ///
-    /// `Conflict`, `NotFoundAnywhere` and `ManualOnly` all lead with nothing:
-    /// the first has results but no agreement on which is the match, and the
-    /// other two have no results at all.
+    /// `NotFoundAnywhere` and `ManualOnly` lead with nothing: they have no
+    /// results at all. A failed verdict leads with what its answering lookups
+    /// found, but never as a settled pressing.
     ///
     /// With several pressings the row still leads with the first one's title,
     /// artist and cover. Those are not group-level truths — a release group
@@ -240,7 +240,10 @@ impl MatchedRelease {
     /// pre-empting the user.
     pub fn of_summary(summary: &VerdictSummary) -> Option<Self> {
         let lead = summary.lead.as_ref()?;
-        let settled = summary.pressing_count == 1;
+        // A failed verdict's single pressing is not settled: it is what the
+        // lookups that answered found, and the one that failed may have named
+        // others.
+        let settled = summary.kind == crate::identify::VerdictKind::Found && summary.pressing_count == 1;
         Some(Self {
             release_id: lead.release_id.clone(),
             title: lead.title.clone(),

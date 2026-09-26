@@ -1,5 +1,5 @@
 use super::*;
-use crate::identify::IdentifyFailure;
+use crate::identify::{IdentifyFailure, LookupProvenance};
 use crate::import::album_links::{AlbumLinks, GroupReading};
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
@@ -450,8 +450,12 @@ fn disc_only_resolves_to_found_with_provenance() {
     );
     match state {
         IdentifyState::Found {
-            matches,
-            provenance,
+            findings:
+                Findings {
+                    matches,
+                    provenance,
+                    ..
+                },
             ..
         } => {
             assert_eq!(matches.len(), 1);
@@ -484,8 +488,12 @@ fn both_signals_intersect_to_found_combined() {
     );
     match state {
         IdentifyState::Found {
-            matches,
-            provenance,
+            findings:
+                Findings {
+                    matches,
+                    provenance,
+                    ..
+                },
             ..
         } => {
             assert_eq!(matches.len(), 1);
@@ -523,9 +531,13 @@ fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
     );
     match state {
         IdentifyState::Found {
-            matches,
-            provenance,
             context,
+            findings:
+                Findings {
+                    matches,
+                    provenance,
+                    ..
+                },
             ..
         } => {
             assert_eq!(matches.len(), 1);
@@ -568,8 +580,8 @@ fn a_provider_s_walk_stops_at_its_first_match() {
     );
     match state {
         IdentifyState::Found {
-            provenance,
             context,
+            findings: Findings { provenance, .. },
             ..
         } => {
             assert!(provenance[0].by_barcode && !provenance[0].by_disc_id);
@@ -629,9 +641,13 @@ fn each_provider_walks_the_codes_on_its_own() {
     assert!(effects.is_empty());
     match state {
         IdentifyState::Found {
-            matches,
-            provenance,
             context,
+            findings:
+                Findings {
+                    matches,
+                    provenance,
+                    ..
+                },
             ..
         } => {
             assert_eq!(matches.len(), 1);
@@ -674,7 +690,9 @@ fn the_matched_code_is_the_earliest_any_provider_matched() {
         },
     );
     let IdentifyState::Found {
-        matches, context, ..
+        context,
+        findings: Findings { matches, .. },
+        ..
     } = state
     else {
         panic!("expected Found");
@@ -778,8 +796,8 @@ fn a_failed_provider_does_not_stop_the_other_s_walk() {
     match state {
         IdentifyState::Failed {
             failures,
-            matches,
             context,
+            findings: Findings { matches, .. },
             ..
         } => {
             assert_eq!(
@@ -845,8 +863,12 @@ fn an_unchosen_catalog_number_narrows_nothing() {
     );
     match state {
         IdentifyState::Found {
-            matches,
-            provenance,
+            findings:
+                Findings {
+                    matches,
+                    provenance,
+                    ..
+                },
             ..
         } => {
             assert_eq!(matches.len(), 2);

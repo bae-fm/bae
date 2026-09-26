@@ -344,12 +344,12 @@ impl ImportServiceHandle {
         else {
             return Ok(false);
         };
-        let Some(crate::identify::TerminalVerdict::Found { matches, .. }) =
+        let Some(crate::identify::TerminalVerdict::Found { findings, .. }) =
             row.identify.map(|identify| identify.verdict)
         else {
             return Ok(false);
         };
-        let [only] = matches.as_slice() else {
+        let [only] = findings.matches.as_slice() else {
             return Ok(false);
         };
         Ok(only.source == release.catalog

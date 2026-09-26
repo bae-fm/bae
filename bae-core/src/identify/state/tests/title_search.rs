@@ -91,8 +91,12 @@ fn the_title_goes_out_once_the_identifiers_name_nothing() {
     assert!(effects.is_empty());
     match state {
         IdentifyState::Found {
-            matches,
-            provenance,
+            findings:
+                Findings {
+                    matches,
+                    provenance,
+                    ..
+                },
             ..
         } => {
             assert_eq!(matches.len(), 1);
@@ -118,7 +122,10 @@ fn an_identifier_that_named_something_leaves_the_title_unasked() {
         "the barcode answered, so nothing searches by title: {effects:?}"
     );
     match state {
-        IdentifyState::Found { provenance, .. } => {
+        IdentifyState::Found {
+            findings: Findings { provenance, .. },
+            ..
+        } => {
             assert!(provenance[0].by_barcode && !provenance[0].by_search);
         }
         other => panic!("expected Found, got {other:?}"),
@@ -159,7 +166,9 @@ fn one_provider_failing_the_search_leaves_the_other_s_matches_standing() {
     assert!(effects.is_empty());
     match state {
         IdentifyState::Failed {
-            failures, matches, ..
+            failures,
+            findings: Findings { matches, .. },
+            ..
         } => {
             assert_eq!(
                 failures,
@@ -173,6 +182,81 @@ fn one_provider_failing_the_search_leaves_the_other_s_matches_standing() {
         }
         other => panic!("expected Failed with the surviving match, got {other:?}"),
     }
+}
+
+/// The disc ID names nothing, the folder has no barcode, and the title search
+/// goes out: Discogs answers with several releases while MusicBrainz is too
+/// busy to answer at all. The run fails on MusicBrainz, and what Discogs
+/// found is stored with that failure — so the candidate opened later shows
+/// the same results beside the same failure as the run did while it went.
+#[test]
+fn a_failed_search_stores_what_the_other_provider_found() {
+    let state = started_searching(vec![MB, DG], "Album Title", "Artist Name");
+    let (state, effects) = update(state, signals(disc("d", 9), BarcodeSignal::Absent, &[]));
+    assert!(matches!(effects.as_slice(), [Effect::LookupDiscid { .. }]));
+    let (state, effects) = step(
+        state,
+        IdentifyEvent::DiscidLookupCompleted {
+            results: Vec::new(),
+            track_count: 9,
+        },
+    );
+    assert_eq!(
+        effects,
+        vec![
+            search_title(MB, "Album Title", "Artist Name"),
+            search_title(DG, "Album Title", "Artist Name"),
+        ]
+    );
+    let busy = LookupFailure::Provider { status: Some(503) };
+    let (state, _) = step(state, search_failed(MB, busy.clone()));
+    let (live, _) = step(
+        state,
+        search_answered(
+            DG,
+            vec![
+                discogs_pair("dg-1", Some("g-x")),
+                discogs_pair("dg-2", Some("g-x")),
+                discogs_pair("dg-3", Some("g-y")),
+            ],
+        ),
+    );
+    let IdentifyState::Failed {
+        failures, findings, ..
+    } = &live
+    else {
+        panic!("MusicBrainz failed the search, got {live:?}");
+    };
+    assert_eq!(
+        failures,
+        &vec![IdentifyFailure::Search(SourceFailure {
+            source: MB,
+            failure: busy,
+        })]
+    );
+    assert_eq!(
+        findings.releases().count(),
+        3,
+        "every release Discogs returned is kept"
+    );
+
+    let text = live.candidate_text();
+    let verdict =
+        crate::identify::TerminalVerdict::try_from(live.clone()).expect("a failed run is terminal");
+    assert_eq!(
+        verdict.findings(),
+        Some(findings),
+        "the stored failure keeps what Discogs found"
+    );
+    let resumed = verdict.resume_state(
+        &|result: &MetadataResult| LibraryStatus::absent(&result.release_id),
+        text,
+    );
+    assert_eq!(
+        crate::identify::IdentifyStateView::from(resumed),
+        crate::identify::IdentifyStateView::from(live),
+        "the candidate opened later shows what the run showed"
+    );
 }
 
 /// Nothing to look up and nothing to search by is the only way a run offers

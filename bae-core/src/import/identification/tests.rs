@@ -334,12 +334,10 @@ impl Fixture {
         let temp = TempDir::new().unwrap();
         let clock: coven::ClockRef = Arc::new(coven::FixedClock(fixed_now()));
         let ids: coven::IdRef = Arc::new(coven::SequentialIdProvider::new(name));
-        let database = Database::new_test(
-            temp.path().join("test.db").to_str().unwrap(),
-            clock.clone(),
-        )
-        .await
-        .unwrap();
+        let database =
+            Database::new_test(temp.path().join("test.db").to_str().unwrap(), clock.clone())
+                .await
+                .unwrap();
         let preparations = crate::import::CandidatePreparations::new(database.clone());
         let library_dir = coven::StoreDir::new(temp.path());
         let library_id = format!("sweep-{name}-{}", uuid::Uuid::new_v4());
@@ -667,7 +665,8 @@ impl Fixture {
             .set_discogs_key(
                 "test-discogs-token",
                 crate::config::DiscogsValidation::Valid,
-            ).await
+            )
+            .await
             .expect("the fake Discogs key is stored");
     }
 
@@ -776,7 +775,8 @@ impl Fixture {
             .expect("the scanned candidate is sweepable");
         let mut draft = candidate.blank_source().draft;
         draft.album_title = "Album".to_string();
-        draft.album_artist_assignments = vec![crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
+        draft.album_artist_assignments = vec![crate::import::ArtistAssignment::Credit {
+            credit: crate::import::ArtistCredit {
                 name: "Artist".to_string(),
                 sort_name: None,
                 musicbrainz_artist_id: None,
@@ -787,36 +787,36 @@ impl Fixture {
             track.edit.title = format!("Track {}", index + 1);
         }
         let verdict = TerminalVerdict::Found {
-            matches: vec![MetadataResult {
-                source: crate::import::Catalog::MusicBrainz,
-                release_id: release_id.to_string(),
-                title: "Album".to_string(),
-                artist: Some("Artist".to_string()),
-                year: None,
-                format: None,
-                label: None,
-                catalog_number: None,
-                country: None,
-                barcodes: Vec::new(),
-                media: crate::import::search::StatedMedia::Undescribed,
-                links: Vec::new(),
-                cover_art: None,
-                source_group_id: Some(group_id.to_string()),
-                album_links: crate::import::album_links::AlbumLinks::NotAsked,
-                source_tracks: Some(source_tracks),
-            }],
+            findings: crate::identify::Findings {
+                matches: vec![MetadataResult {
+                    source: crate::import::Catalog::MusicBrainz,
+                    release_id: release_id.to_string(),
+                    title: "Album".to_string(),
+                    artist: Some("Artist".to_string()),
+                    year: None,
+                    format: None,
+                    label: None,
+                    catalog_number: None,
+                    country: None,
+                    barcodes: Vec::new(),
+                    media: crate::import::search::StatedMedia::Undescribed,
+                    links: Vec::new(),
+                    cover_art: None,
+                    source_group_id: Some(group_id.to_string()),
+                    album_links: crate::import::album_links::AlbumLinks::NotAsked,
+                    source_tracks: Some(source_tracks),
+                }],
+                provenance: vec![crate::identify::combine::LookupProvenance {
+                    by_disc_id: true,
+                    by_barcode: false,
+                    by_catalog: false,
+                    by_search: false,
+                    named_by: None,
+                }],
+                pressings: vec![0],
+                narrowed_out: crate::identify::NarrowedOut::default(),
+            },
             track_count: 2,
-            provenance: vec![crate::identify::combine::LookupProvenance {
-                by_disc_id: true,
-                by_barcode: false,
-                by_catalog: false,
-                by_search: false,
-                named_by: None,
-            }],
-            pressings: vec![0],
-            narrowed_out: Vec::new(),
-            narrowed_out_provenance: Vec::new(),
-            narrowed_out_pressings: Vec::new(),
             ledger: None,
         };
         let wrote = self
@@ -845,18 +845,20 @@ impl Fixture {
                             probed_total_ms,
                         ))
                     },
-                    metadata: matches!(settled_draft, SettledDraft::Picked).then(|| crate::import::CandidateMetadataDraft {
-                        draft,
-                        source_discogs_artist_ids: Default::default(),
-                        provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
-                            record: crate::import::MetadataRef::new(
-                                crate::import::Catalog::MusicBrainz,
-                                release_id.to_string(),
-                            ),
-                            partners: vec![],
-                        }),
-                        cover: None,
-                        assets: crate::import::CandidatePreparedAssets::default(),
+                    metadata: matches!(settled_draft, SettledDraft::Picked).then(|| {
+                        crate::import::CandidateMetadataDraft {
+                            draft,
+                            source_discogs_artist_ids: Default::default(),
+                            provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
+                                record: crate::import::MetadataRef::new(
+                                    crate::import::Catalog::MusicBrainz,
+                                    release_id.to_string(),
+                                ),
+                                partners: vec![],
+                            }),
+                            cover: None,
+                            assets: crate::import::CandidatePreparedAssets::default(),
+                        }
                     }),
                 },
             )

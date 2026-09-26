@@ -2,7 +2,7 @@
 //! sweep's tests; these are about what the queue asks of the user given one.
 
 use super::*;
-use crate::identify::LookupProvenance;
+use crate::identify::{Findings, LookupProvenance, NarrowedOut};
 use crate::import::search::SourceTracks;
 use crate::import::Catalog;
 
@@ -40,15 +40,45 @@ fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
         .collect();
     let pressings = crate::import::release_group::form_rows(&matches);
     TerminalVerdict::Found {
-        matches,
+        findings: Findings {
+            matches,
+            provenance,
+            pressings,
+            narrowed_out: NarrowedOut::default(),
+        },
         track_count,
-        provenance,
-        pressings,
-        narrowed_out: Vec::new(),
-        narrowed_out_provenance: Vec::new(),
-        narrowed_out_pressings: Vec::new(),
         ledger: None,
     }
+}
+
+/// What `found` would store, had a lookup failed beside the ones that
+/// returned these matches.
+fn failed_with_findings(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
+    let TerminalVerdict::Found { findings, .. } = found(matches, track_count) else {
+        unreachable!("`found` builds a found verdict");
+    };
+    TerminalVerdict::Failed {
+        failures: vec![crate::identify::IdentifyFailure::Search(
+            crate::import::search::SourceFailure {
+                source: Catalog::MusicBrainz,
+                failure: crate::signals::LookupFailure::Provider { status: Some(503) },
+            },
+        )],
+        findings,
+        track_count,
+        ledger: None,
+    }
+}
+
+/// A failed lookup keeps a candidate out of Ready however good what the other
+/// lookups found looks: the one that failed may have named other pressings.
+#[test]
+fn a_failed_verdict_is_never_ready_whatever_it_found() {
+    let verdict = failed_with_findings(vec![result("rel-a", listing(11))], 11);
+    assert_eq!(
+        classify(&verdict),
+        QueueClassification::NeedsYou(NeedsYou::LookupFailed)
+    );
 }
 
 /// The barcode printed on the sleeve, which both sources state.
@@ -87,7 +117,11 @@ fn one_verified_match_is_ready() {
 #[test]
 fn a_lone_match_found_by_title_is_ready() {
     let mut verdict = found(vec![result("mb-1", listing(11))], 11);
-    let TerminalVerdict::Found { provenance, .. } = &mut verdict else {
+    let TerminalVerdict::Found {
+        findings: Findings { provenance, .. },
+        ..
+    } = &mut verdict
+    else {
         unreachable!("the fixture is a found verdict");
     };
     provenance[0] = LookupProvenance {
@@ -106,29 +140,37 @@ fn a_lone_match_found_by_title_is_ready() {
 #[test]
 fn what_agreement_narrowed_out_is_not_a_match() {
     let TerminalVerdict::Found {
-        matches,
         track_count,
-        provenance,
-        pressings,
+        findings:
+            Findings {
+                matches,
+                provenance,
+                pressings,
+                ..
+            },
         ..
     } = found(vec![result("mb-1", listing(11))], 11)
     else {
         panic!("a found verdict");
     };
     let verdict = TerminalVerdict::Found {
-        matches,
+        findings: Findings {
+            matches,
+            provenance,
+            pressings,
+            narrowed_out: NarrowedOut {
+                matches: vec![result("mb-2", listing(11))],
+                provenance: vec![LookupProvenance {
+                    by_disc_id: true,
+                    by_barcode: false,
+                    by_catalog: false,
+                    by_search: false,
+                    named_by: None,
+                }],
+                pressings: vec![0],
+            },
+        },
         track_count,
-        provenance,
-        pressings,
-        narrowed_out: vec![result("mb-2", listing(11))],
-        narrowed_out_provenance: vec![LookupProvenance {
-            by_disc_id: true,
-            by_barcode: false,
-            by_catalog: false,
-            by_search: false,
-            named_by: None,
-        }],
-        narrowed_out_pressings: vec![0],
         ledger: None,
     };
     assert_eq!(classify(&verdict), QueueClassification::Ready);
@@ -167,20 +209,20 @@ fn the_pressing_count_is_the_rows_the_run_recorded() {
     );
     let TerminalVerdict::Found {
         track_count,
-        provenance,
+        findings: Findings { provenance, .. },
         ..
     } = found(matches.clone(), 11)
     else {
         panic!("a found verdict");
     };
     let verdict = TerminalVerdict::Found {
-        matches,
+        findings: Findings {
+            matches,
+            provenance,
+            pressings: vec![0, 1],
+            narrowed_out: NarrowedOut::default(),
+        },
         track_count,
-        provenance,
-        pressings: vec![0, 1],
-        narrowed_out: Vec::new(),
-        narrowed_out_provenance: Vec::new(),
-        narrowed_out_pressings: Vec::new(),
         ledger: None,
     };
     assert_eq!(VerdictSummary::of(&verdict).pressing_count, 2);
@@ -307,10 +349,16 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
                 failures: vec![crate::identify::IdentifyFailure::DiscId(
                     crate::signals::LookupFailure::Network,
                 )],
+                findings: Findings::default(),
                 track_count: 11,
                 ledger: None,
             },
             0,
+        ),
+        // What the answering lookups found leads the failed row too.
+        (
+            failed_with_findings(vec![result("rel-a", listing(11))], 11),
+            1,
         ),
     ];
 
@@ -319,8 +367,8 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
         assert_eq!(summary.pressing_count, pressings, "{verdict:?}");
         match &verdict {
             TerminalVerdict::Found {
-                matches,
                 track_count,
+                findings: Findings { matches, .. },
                 ..
             } => {
                 assert_eq!(summary.kind, VerdictKind::Found);
@@ -338,9 +386,17 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
                 assert_eq!(summary.kind, VerdictKind::ManualOnly);
                 assert_eq!(summary.track_count, Some(*track_count));
             }
-            TerminalVerdict::Failed { track_count, .. } => {
+            TerminalVerdict::Failed {
+                track_count,
+                findings,
+                ..
+            } => {
                 assert_eq!(summary.kind, VerdictKind::Failed);
                 assert_eq!(summary.track_count, Some(*track_count));
+                assert_eq!(
+                    summary.lead.as_ref().map(|lead| lead.release_id.as_str()),
+                    findings.matches.first().map(|m| m.release_id.as_str())
+                );
             }
         }
 

@@ -30,8 +30,12 @@ fn a_run_that_leaves_the_disc_id_out_never_asks_about_it() {
     );
     match state {
         IdentifyState::Found {
-            provenance,
-            matches,
+            findings:
+                Findings {
+                    provenance,
+                    matches,
+                    ..
+                },
             ..
         } => {
             assert_eq!(matches.len(), 1);
@@ -48,10 +52,9 @@ fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
     let (state, _) = started_with_choices(vec![MB], excluding(false, &["BAR"]));
     let (state, effects) = update(state, disc_and_codes("d", &["BAR"]));
     assert!(
-        !effects.iter().any(|effect| matches!(
-            effect,
-            Effect::LookupBarcode { .. }
-        )),
+        !effects
+            .iter()
+            .any(|effect| matches!(effect, Effect::LookupBarcode { .. })),
         "the barcode was left out, so nothing asks about it: {effects:?}"
     );
     assert!(effects
@@ -71,8 +74,12 @@ fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
     );
     match state {
         IdentifyState::Found {
-            provenance,
-            matches,
+            findings:
+                Findings {
+                    provenance,
+                    matches,
+                    ..
+                },
             ..
         } => {
             assert_eq!(matches.len(), 1);
@@ -98,7 +105,10 @@ fn an_excluded_disc_id_cannot_fail_the_barcode_answer() {
         ),
     );
 
-    assert!(matches!(state, IdentifyState::Found { .. }), "got {state:?}");
+    assert!(
+        matches!(state, IdentifyState::Found { .. }),
+        "got {state:?}"
+    );
     assert!(matches!(
         crate::identify::TerminalVerdict::try_from(state),
         Ok(crate::identify::TerminalVerdict::Found { .. })
@@ -185,7 +195,10 @@ fn leaving_every_code_out_asks_about_none_of_them() {
     }
 
     let barcode = badge(&state, SignalKind::Barcode);
-    assert!(barcode.excluded, "no code is asked about, so the badge says so");
+    assert!(
+        barcode.excluded,
+        "no code is asked about, so the badge says so"
+    );
     assert_eq!(barcode.state, SignalState::Skipped);
     assert!(barcode.options.iter().all(|option| !option.chosen));
 }

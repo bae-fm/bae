@@ -214,34 +214,14 @@ async fn metadata_or_failed_verdict(
             );
             // The lookups ran and showed what they showed; what could not be
             // fetched is the release detail behind the match they settled on.
-            // So the run's ledger carries onto the failure that replaces its
-            // verdict, rather than the pane losing the run it just watched.
-            let (track_count, ledger) = match verdict {
-                TerminalVerdict::Found {
-                    track_count,
-                    ledger,
-                    ..
-                }
-                | TerminalVerdict::Failed {
-                    track_count,
-                    ledger,
-                    ..
-                }
-                | TerminalVerdict::ManualOnly {
-                    track_count,
-                    ledger,
-                } => (*track_count, ledger.take()),
-                TerminalVerdict::NotFoundAnywhere { ledger } => (0, ledger.take()),
-            };
-            *verdict = TerminalVerdict::Failed {
-                failures: vec![crate::identify::IdentifyFailure::ReleaseDetails(
-                    crate::signals::LookupFailure::Diagnostic {
-                        detail: error.to_string(),
-                    },
-                )],
-                track_count,
-                ledger,
-            };
+            // So what they found and the ledger they recorded carry onto the
+            // failure that replaces the verdict, rather than the pane losing
+            // the run it just watched.
+            verdict.fail(crate::identify::IdentifyFailure::ReleaseDetails(
+                crate::signals::LookupFailure::Diagnostic {
+                    detail: error.to_string(),
+                },
+            ));
             None
         }
     }
@@ -311,15 +291,15 @@ pub(super) async fn save(
 /// by that evidence: the record whose document fills the draft has to be the
 /// one a person sees leading the row.
 fn sole_pressing(
-    matches: &[MetadataResult],
-    provenance: &[crate::identify::LookupProvenance],
-    pressings: &[u32],
+    findings: &crate::identify::Findings,
     text: &crate::identify::CandidateText,
 ) -> Option<crate::import::release_group::Pressing> {
-    let judged = crate::identify::judged_results(matches.to_vec(), provenance, text);
-    let mut rows = crate::import::release_group::group_formed_rows(judged, pressings, Vec::new(), &[])
-        .into_iter()
-        .flat_map(crate::import::release_group::ReleaseGroup::into_pressings);
+    let judged =
+        crate::identify::judged_results(findings.matches.clone(), &findings.provenance, text);
+    let mut rows =
+        crate::import::release_group::group_formed_rows(judged, &findings.pressings, Vec::new(), &[])
+            .into_iter()
+            .flat_map(crate::import::release_group::ReleaseGroup::into_pressings);
     let only = rows.next()?;
     rows.next().is_none().then_some(only)
 }
@@ -357,18 +337,10 @@ async fn settle_lead(
     priority: CallPriority,
     token: &CancellationToken,
 ) -> Result<SettledLead, FinalizationError> {
-    let TerminalVerdict::Found {
-        matches,
-        provenance,
-        pressings,
-        track_count,
-        ledger,
-        ..
-    } = verdict
-    else {
+    let TerminalVerdict::Found { findings, .. } = verdict else {
         return Ok(SettledLead::NoExternalRelease);
     };
-    let Some(pressing) = sole_pressing(matches, provenance, pressings, text) else {
+    let Some(pressing) = sole_pressing(findings, text) else {
         return Ok(SettledLead::NoExternalRelease);
     };
     let (primary, partners) = pressing.claims();
@@ -399,13 +371,9 @@ async fn settle_lead(
                 "identification: could not settle {} ({error}); storing the failure",
                 primary.key
             );
-            *verdict = TerminalVerdict::Failed {
-                failures: vec![crate::identify::IdentifyFailure::ReleaseDetails(
-                    crate::import::search::import_error_to_lookup_failure(&error),
-                )],
-                track_count: *track_count,
-                ledger: ledger.take(),
-            };
+            verdict.fail(crate::identify::IdentifyFailure::ReleaseDetails(
+                crate::import::search::import_error_to_lookup_failure(&error),
+            ));
             return Ok(SettledLead::NoExternalRelease);
         }
     };
@@ -422,7 +390,8 @@ async fn settle_lead(
     //
     // The tracklist belongs to the primary's own match row: it is read from
     // the primary's release, and a partner states its own.
-    matches
+    findings
+        .matches
         .iter_mut()
         .find(|result| result.source == primary.catalog && result.release_id == primary.key)
         .expect("the pressing's primary is one of the verdict's matches")

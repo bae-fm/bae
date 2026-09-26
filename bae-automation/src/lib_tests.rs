@@ -322,31 +322,36 @@ mod identify_mirrors {
             metadata_result("rel-2", "group-1"),
         ];
         let state = IdentifyState::Found {
-            matches: matches.clone(),
-            library_statuses: vec![
-                LibraryStatus::absent("rel-1"),
-                LibraryStatus::absent("rel-2"),
-            ],
+            library_statuses: bae_core::identify::LibraryStatuses {
+                matches: vec![
+                    LibraryStatus::absent("rel-1"),
+                    LibraryStatus::absent("rel-2"),
+                ],
+                narrowed_out: Vec::new(),
+            },
             track_count: 12,
-            provenance: vec![
-                LookupProvenance {
-                    by_disc_id: true,
-                    by_barcode: false,
-                    by_catalog: false,
-                    by_search: false,
-                    named_by: None,
-                },
-                LookupProvenance {
-                    by_disc_id: false,
-                    by_barcode: true,
-                    by_catalog: true,
-                    by_search: false,
-                    named_by: None,
-                },
-            ],
-            // Two pressings of one album: each release is its own row.
-            pressings: vec![0, 1],
-            narrowed_out: Default::default(),
+            findings: bae_core::identify::Findings {
+                matches: matches.clone(),
+                provenance: vec![
+                    LookupProvenance {
+                        by_disc_id: true,
+                        by_barcode: false,
+                        by_catalog: false,
+                        by_search: false,
+                        named_by: None,
+                    },
+                    LookupProvenance {
+                        by_disc_id: false,
+                        by_barcode: true,
+                        by_catalog: true,
+                        by_search: false,
+                        named_by: None,
+                    },
+                ],
+                // Two pressings of one album: each release is its own row.
+                pressings: vec![0, 1],
+                narrowed_out: Default::default(),
+            },
             ledger: None,
             context: empty_context(),
         };
@@ -385,34 +390,39 @@ mod identify_mirrors {
     #[test]
     fn disagreeing_signals_become_one_found_over_several_groups() {
         let state = IdentifyState::Found {
-            matches: vec![
-                metadata_result("rel-disc", "g-d"),
-                metadata_result("rel-bar", "g-b"),
-            ],
-            library_statuses: vec![
-                LibraryStatus::absent("rel-disc"),
-                LibraryStatus::absent("rel-bar"),
-            ],
+            library_statuses: bae_core::identify::LibraryStatuses {
+                matches: vec![
+                    LibraryStatus::absent("rel-disc"),
+                    LibraryStatus::absent("rel-bar"),
+                ],
+                narrowed_out: Vec::new(),
+            },
             track_count: 9,
-            provenance: vec![
-                LookupProvenance {
-                    by_disc_id: true,
-                    by_barcode: false,
-                    by_catalog: false,
-                    by_search: false,
-                    named_by: None,
-                },
-                LookupProvenance {
-                    by_disc_id: false,
-                    by_barcode: true,
-                    by_catalog: false,
-                    by_search: false,
-                    named_by: None,
-                },
-            ],
-            // One release each, so each is its own row.
-            pressings: vec![0, 1],
-            narrowed_out: Default::default(),
+            findings: bae_core::identify::Findings {
+                matches: vec![
+                    metadata_result("rel-disc", "g-d"),
+                    metadata_result("rel-bar", "g-b"),
+                ],
+                provenance: vec![
+                    LookupProvenance {
+                        by_disc_id: true,
+                        by_barcode: false,
+                        by_catalog: false,
+                        by_search: false,
+                        named_by: None,
+                    },
+                    LookupProvenance {
+                        by_disc_id: false,
+                        by_barcode: true,
+                        by_catalog: false,
+                        by_search: false,
+                        named_by: None,
+                    },
+                ],
+                // One release each, so each is its own row.
+                pressings: vec![0, 1],
+                narrowed_out: Default::default(),
+            },
             ledger: None,
             context: empty_context(),
         };

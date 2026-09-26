@@ -259,9 +259,9 @@ pub enum AutomationIdentifyState {
         run: Option<AutomationIdentifyRun>,
     },
     /// A lookup failed, with whatever the surviving evidence still found: one
-    /// provider failing leaves the other's matches standing. Empty groups mean
-    /// nothing answered, or that the failure was resumed from its stored
-    /// verdict.
+    /// provider failing leaves the other's matches standing, live or resumed
+    /// from the stored verdict. Empty groups mean nothing that answered
+    /// returned anything.
     Failed {
         run: Option<AutomationIdentifyRun>,
         failures: Vec<AutomationIdentifyFailure>,

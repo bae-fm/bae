@@ -366,7 +366,11 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
         .await
         .expect("the paired candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { matches, .. } = &verdict else {
+    let TerminalVerdict::Found {
+        findings: crate::identify::Findings { matches, .. },
+        ..
+    } = &verdict
+    else {
         panic!("expected a Found verdict, got {verdict:?}");
     };
     assert_eq!(
@@ -464,8 +468,12 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
         .expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
     let TerminalVerdict::Found {
-        matches,
-        narrowed_out,
+        findings:
+            crate::identify::Findings {
+                matches,
+                narrowed_out,
+                ..
+            },
         ..
     } = &verdict
     else {
@@ -562,7 +570,11 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
         .await
         .expect("the paired candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { matches, .. } = &verdict else {
+    let TerminalVerdict::Found {
+        findings: crate::identify::Findings { matches, .. },
+        ..
+    } = &verdict
+    else {
         panic!("expected a Found verdict, got {verdict:?}");
     };
     assert_eq!(
@@ -634,7 +646,11 @@ async fn two_distinct_pressings_do_not_settle() {
         .await
         .expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { matches, .. } = &verdict else {
+    let TerminalVerdict::Found {
+        findings: crate::identify::Findings { matches, .. },
+        ..
+    } = &verdict
+    else {
         panic!("expected a Found verdict, got {verdict:?}");
     };
     assert_eq!(matches.len(), 2);

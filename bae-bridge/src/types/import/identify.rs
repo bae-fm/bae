@@ -646,8 +646,9 @@ pub enum BridgeIdentifyState {
     ///
     /// It still carries whatever the surviving evidence found: one provider
     /// failing leaves the other's matches standing, and the pane shows them
-    /// with the failures named beside them. `groups` is empty when nothing
-    /// answered, and for a failure resumed from its stored verdict.
+    /// with the failures named beside them, live or resumed from the stored
+    /// verdict. `groups` is empty when nothing that answered returned
+    /// anything.
     Failed {
         run: Option<BridgeIdentifyRun>,
         failures: Vec<BridgeIdentifyFailure>,

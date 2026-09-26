@@ -142,12 +142,19 @@ fn a_chosen_catalog_number_is_looked_up_from_the_start() {
     );
     match state {
         IdentifyState::Found {
-            ref matches,
-            ref provenance,
+            findings:
+                Findings {
+                    ref matches,
+                    ref provenance,
+                    ..
+                },
             ..
         } => {
             assert_eq!(
-                matches.iter().map(|m| m.release_id.as_str()).collect::<Vec<_>>(),
+                matches
+                    .iter()
+                    .map(|m| m.release_id.as_str())
+                    .collect::<Vec<_>>(),
                 vec!["rel-b"]
             );
             assert!(provenance[0].by_disc_id && provenance[0].by_catalog);
@@ -324,7 +331,10 @@ fn toolbar_keeps_failed_barcode_lookup_after_settle() {
 /// failure must not be persisted as a permanent verdict.
 #[test]
 fn toolbar_keeps_failed_disc_id_lookup_after_settle() {
-    let (state, _) = update(started(), signals(disc("disc-hash", 5), BarcodeSignal::Absent, &[]));
+    let (state, _) = update(
+        started(),
+        signals(disc("disc-hash", 5), BarcodeSignal::Absent, &[]),
+    );
     let failure = LookupFailure::Provider { status: Some(503) };
     let (state, _) = step(
         state,
@@ -398,11 +408,12 @@ fn found_carries_in_library_status_through() {
     );
     match state {
         IdentifyState::Found {
-            matches,
             library_statuses,
+            findings: Findings { matches, .. },
             ..
         } => {
             assert_eq!(matches.len(), 1);
+            let library_statuses = &library_statuses.matches;
             assert_eq!(library_statuses.len(), 1);
             assert!(library_statuses[0].release_in_library);
             assert!(library_statuses[0].album_in_library);
@@ -503,7 +514,9 @@ fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
     );
     match &state {
         IdentifyState::Failed {
-            failures, matches, ..
+            failures,
+            findings: Findings { matches, .. },
+            ..
         } => {
             assert_eq!(
                 failures,
@@ -513,7 +526,10 @@ fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
                 })]
             );
             assert_eq!(
-                matches.iter().map(|m| m.release_id.as_str()).collect::<Vec<_>>(),
+                matches
+                    .iter()
+                    .map(|m| m.release_id.as_str())
+                    .collect::<Vec<_>>(),
                 vec!["rel-b"]
             );
         }
@@ -543,11 +559,7 @@ fn toolbar_barcode_spins_until_every_provider_answers() {
     );
     let (state, _) = step(
         state,
-        barcode_matched(
-            DG,
-            "012345678905",
-            vec![discogs_pair("dg-1", Some("g-x"))],
-        ),
+        barcode_matched(DG, "012345678905", vec![discogs_pair("dg-1", Some("g-x"))]),
     );
     let barcode = state.toolbar()[1].clone();
     assert_eq!(barcode.state, SignalState::LookingUp);

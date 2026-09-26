@@ -2,9 +2,9 @@
 //!
 //! [`IdentifyState`] is the reducer's working shape. It carries the whole
 //! [`SignalsContext`] through every state so each landing answer re-combines
-//! without re-fetching, and it keeps
-//! `matches`, `library_statuses` and `provenance` as three index-aligned
-//! vectors because that is what `combine` hands it.
+//! without re-fetching, and it keeps what the lookups found as the
+//! [`Findings`] `combine` hands it, with the library status of each release
+//! beside it.
 //!
 //! No surface wants that shape, and every surface wants the same *other*
 //! shape: the matches folded into their release-group cards, ranked and
@@ -25,14 +25,13 @@
 //! this view into their own wire types field by field and decide nothing.
 
 use super::agreements::{judged_results, Agreements, CandidateText};
-use super::combine::{combine_results, CombineOutcome, LookupProvenance, NarrowedOut};
+use super::combine::{combine_results, Findings, LibraryStatuses};
 use super::state::{
     BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
     IdentifyState, LookupResults, LookupState, SearchProgress, SignalsContext,
 };
 use crate::db::LibraryStatus;
 use crate::import::release_group::{group_formed_rows, group_results, Judgements, ReleaseGroup};
-use crate::import::search::MetadataResult;
 use crate::import::Catalog;
 use crate::signals::{ArtworkScan, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin};
 use crate::util::text::squash;
@@ -257,7 +256,7 @@ pub struct IdentifyRunView {
 /// nothing was narrowed — one signal answering alone, signals that shared
 /// nothing, and a candidate whose text stands behind none of the answers,
 /// which is offered whole rather than emptied.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct NarrowedOutView {
     /// The cards none of whose rows is offered.
     pub groups: Vec<ReleaseGroup>,
@@ -279,7 +278,7 @@ impl NarrowedOutView {
 /// when extraction handed the run nothing to lay out — a folder with no disc
 /// ID, no barcode source and no catalog number — and for a verdict whose
 /// stored row records none.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IdentifyStateView {
     Idle,
 
@@ -341,8 +340,8 @@ pub enum IdentifyStateView {
     /// A lookup failed, with whatever the surviving evidence still combined
     /// to. `groups` is folded exactly as `Found`'s is, so a surface renders one
     /// result area either way and names the failures beside it. It is empty
-    /// when nothing answered, and for a failure resumed from its stored
-    /// verdict.
+    /// when nothing that answered returned anything; a failure resumed from
+    /// its stored verdict shows what the live one did.
     Failed {
         run: Option<IdentifyRunView>,
         failures: Vec<super::IdentifyFailure>,
@@ -368,16 +367,9 @@ impl From<IdentifyState> for IdentifyStateView {
                 search,
                 context,
             } => {
-                let (matches, library_statuses, provenance, pressings, narrowed_out) =
-                    live_matches(&discid, &barcode, &catalog, &search, &context);
-                let folded = fold(
-                    matches,
-                    library_statuses,
-                    provenance,
-                    &pressings,
-                    narrowed_out,
-                    &context.text,
-                );
+                let (findings, library_statuses) =
+                    live_findings(&discid, &barcode, &catalog, &search, &context);
+                let folded = fold(findings, library_statuses, &context.text);
                 IdentifyStateView::Triangulating {
                     run: run_view(&discid, &barcode, &catalog, &search, &context),
                     groups: folded.groups,
@@ -388,24 +380,14 @@ impl From<IdentifyState> for IdentifyStateView {
             }
 
             IdentifyState::Found {
-                matches,
+                findings,
                 library_statuses,
                 track_count,
-                provenance,
-                pressings,
-                narrowed_out,
                 ledger,
                 context,
             } => {
-                let catalog_agreements = catalog_agreements(&matches, &provenance, &context.text);
-                let folded = fold(
-                    matches,
-                    library_statuses,
-                    provenance,
-                    &pressings,
-                    narrowed_out,
-                    &context.text,
-                );
+                let catalog_agreements = catalog_agreements(&findings, &context.text);
+                let folded = fold(findings, library_statuses, &context.text);
                 IdentifyStateView::Found {
                     run: ledger.map(|run| without_chip_tiles(run, &catalog_agreements)),
                     groups: folded.groups,
@@ -432,24 +414,14 @@ impl From<IdentifyState> for IdentifyStateView {
 
             IdentifyState::Failed {
                 failures,
-                matches,
+                findings,
                 library_statuses,
-                provenance,
-                pressings,
-                narrowed_out,
                 track_count: _,
                 ledger,
                 context,
             } => {
-                let catalog_agreements = catalog_agreements(&matches, &provenance, &context.text);
-                let folded = fold(
-                    matches,
-                    library_statuses,
-                    provenance,
-                    &pressings,
-                    narrowed_out,
-                    &context.text,
-                );
+                let catalog_agreements = catalog_agreements(&findings, &context.text);
+                let folded = fold(findings, library_statuses, &context.text);
                 IdentifyStateView::Failed {
                     run: ledger.map(|run| without_chip_tiles(run, &catalog_agreements)),
                     failures,
@@ -470,20 +442,14 @@ impl From<IdentifyState> for IdentifyStateView {
 /// the settle treats it. A lookup that has not answered leaves its signal
 /// empty, which combine reads as taking no part, so the first answer shows on
 /// its own and later ones narrow or widen it the way the verdict will.
-fn live_matches(
+fn live_findings(
     discid: &DiscidProgress,
     barcode: &BarcodeProgress,
     catalog: &CatalogProgress,
     search: &SearchProgress,
     context: &SignalsContext,
-) -> (
-    Vec<MetadataResult>,
-    Vec<LibraryStatus>,
-    Vec<LookupProvenance>,
-    Vec<u32>,
-    NarrowedOut,
-) {
-    let outcome = combine_results(
+) -> (Findings, LibraryStatuses) {
+    combine_results(
         discid.results(),
         barcode.results(),
         catalog.results(),
@@ -492,29 +458,7 @@ fn live_matches(
         // on a list still being looked up.
         Vec::new(),
         &context.text,
-    );
-    match outcome {
-        CombineOutcome::Found {
-            matches,
-            library_statuses,
-            provenance,
-            pressings,
-            narrowed_out,
-        } => (
-            matches,
-            library_statuses,
-            provenance,
-            pressings,
-            narrowed_out,
-        ),
-        CombineOutcome::NotFoundAnywhere => (
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            NarrowedOut::default(),
-        ),
-    }
+    )
 }
 
 /// A state's answers as a surface lists them: its cards, and the library
@@ -545,14 +489,13 @@ struct Folded {
 /// run's own rows were judged by `combine` against this same text, so a row
 /// does not change what it says, or which records it holds, between the run
 /// and the read.
-fn fold(
-    matches: Vec<MetadataResult>,
-    library_statuses: Vec<LibraryStatus>,
-    provenance: Vec<LookupProvenance>,
-    pressings: &[u32],
-    narrowed_out: NarrowedOut,
-    text: &CandidateText,
-) -> Folded {
+fn fold(findings: Findings, library_statuses: LibraryStatuses, text: &CandidateText) -> Folded {
+    let Findings {
+        matches,
+        provenance,
+        pressings,
+        narrowed_out,
+    } = findings;
     let offered = judged_results(matches, &provenance, text);
     let set_aside = judged_results(narrowed_out.matches, &narrowed_out.provenance, text);
     let judgements = Judgements::of(
@@ -562,7 +505,7 @@ fn fold(
             .cloned()
             .collect::<Vec<_>>(),
     );
-    let cards = group_formed_rows(offered, pressings, set_aside, &narrowed_out.pressings);
+    let cards = group_formed_rows(offered, &pressings, set_aside, &narrowed_out.pressings);
     let agreements = cards
         .iter()
         .flat_map(|group| group.pressings().chain(group.narrowed_out()))
@@ -584,8 +527,9 @@ fn fold(
     Folded {
         groups,
         library_statuses: library_statuses
+            .matches
             .into_iter()
-            .chain(narrowed_out.library_statuses)
+            .chain(library_statuses.narrowed_out)
             .collect(),
         agreements,
         narrowed_out: NarrowedOutView {
@@ -608,15 +552,12 @@ fn fold(
 ///
 /// A struck-out number is still one of these. It is what the person comes
 /// back to, checked off, when they want it counted again.
-fn catalog_agreements(
-    matches: &[MetadataResult],
-    provenance: &[LookupProvenance],
-    text: &CandidateText,
-) -> Vec<CatalogAgreementView> {
+fn catalog_agreements(findings: &Findings, text: &CandidateText) -> Vec<CatalogAgreementView> {
     let mut seen: HashSet<String> = HashSet::new();
-    matches
+    findings
+        .matches
         .iter()
-        .zip(provenance)
+        .zip(&findings.provenance)
         .filter(|(_, lookup)| !lookup.by_catalog)
         .filter_map(|(result, _)| result.catalog_number.as_deref())
         .filter(|value| text.states(value) && seen.insert(squash(value)))

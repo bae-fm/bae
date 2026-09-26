@@ -58,7 +58,7 @@ pub enum VerdictKind {
     Failed,
 }
 
-/// The match a `Found` verdict leads with, as its own columns.
+/// The match a verdict's findings lead with, as its own columns.
 ///
 /// One row of `import_candidate_match` at `list = 'found'`, `position = 0`.
 /// Everything the queue asks of a verdict's matches is asked of this one: the
@@ -90,8 +90,8 @@ pub struct LeadMatch {
 }
 
 impl LeadMatch {
-    /// The lead of a `Found` verdict's index-aligned match and provenance
-    /// lists — also how the stored `position = 0` row reads back.
+    /// The lead of a verdict's findings, from their index-aligned match and
+    /// provenance lists — also how the stored `position = 0` row reads back.
     pub(crate) fn of(result: &MetadataResult, provenance: Option<&LookupProvenance>) -> Self {
         Self {
             release_id: result.release_id.clone(),
@@ -127,46 +127,40 @@ pub struct VerdictSummary {
     pub track_count: Option<u32>,
     /// How many physical pressings the `found` list names — the rows the run
     /// built, so two sources' records of one pressing count once. Zero for
-    /// the other shapes.
+    /// the shapes that hold no findings.
     pub pressing_count: u32,
     pub lead: Option<LeadMatch>,
 }
 
 impl VerdictSummary {
     pub fn of(verdict: &TerminalVerdict) -> Self {
-        match verdict {
-            TerminalVerdict::Found {
-                matches,
-                track_count,
-                provenance,
-                pressings,
-                ..
-            } => Self {
-                kind: VerdictKind::Found,
-                track_count: Some(*track_count),
-                pressing_count: crate::import::release_group::row_count(pressings) as u32,
-                lead: matches
+        let kind = match verdict {
+            TerminalVerdict::Found { .. } => VerdictKind::Found,
+            TerminalVerdict::NotFoundAnywhere { .. } => VerdictKind::NotFound,
+            TerminalVerdict::ManualOnly { .. } => VerdictKind::ManualOnly,
+            TerminalVerdict::Failed { .. } => VerdictKind::Failed,
+        };
+        let track_count = match verdict {
+            TerminalVerdict::Found { track_count, .. }
+            | TerminalVerdict::ManualOnly { track_count, .. }
+            | TerminalVerdict::Failed { track_count, .. } => Some(*track_count),
+            TerminalVerdict::NotFoundAnywhere { .. } => None,
+        };
+        // A failed verdict leads with what its answering lookups found, as a
+        // found one does; its kind is what keeps it from being Ready.
+        let findings = verdict.findings();
+        Self {
+            kind,
+            track_count,
+            pressing_count: findings.map_or(0, |findings| {
+                crate::import::release_group::row_count(&findings.pressings) as u32
+            }),
+            lead: findings.and_then(|findings| {
+                findings
+                    .matches
                     .first()
-                    .map(|result| LeadMatch::of(result, provenance.first())),
-            },
-            TerminalVerdict::NotFoundAnywhere { .. } => Self {
-                kind: VerdictKind::NotFound,
-                track_count: None,
-                pressing_count: 0,
-                lead: None,
-            },
-            TerminalVerdict::ManualOnly { track_count, .. } => Self {
-                kind: VerdictKind::ManualOnly,
-                track_count: Some(*track_count),
-                pressing_count: 0,
-                lead: None,
-            },
-            TerminalVerdict::Failed { track_count, .. } => Self {
-                kind: VerdictKind::Failed,
-                track_count: Some(*track_count),
-                pressing_count: 0,
-                lead: None,
-            },
+                    .map(|result| LeadMatch::of(result, findings.provenance.first()))
+            }),
         }
     }
 }

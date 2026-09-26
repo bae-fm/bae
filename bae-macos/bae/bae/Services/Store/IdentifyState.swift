@@ -77,9 +77,9 @@ enum IdentifyState: Equatable {
     /// numbers the person can still activate.
     case manualOnly(trackCount: UInt32, run: BridgeIdentifyRun?)
     /// A lookup failed, with whatever the surviving evidence still found: one
-    /// provider failing leaves the other's matches standing. `groups` is empty
-    /// when nothing answered, and for a failure resumed from its stored
-    /// verdict.
+    /// provider failing leaves the other's matches standing, live or resumed
+    /// from the stored verdict. `groups` is empty when nothing that answered
+    /// returned anything.
     case failed(
         run: BridgeIdentifyRun?,
         failures: [BridgeIdentifyFailure],

@@ -37,7 +37,10 @@ fn a_run_holding_both_catalogs_reads_album_links_before_it_settles() {
     );
     assert_eq!(
         to_read.on_list,
-        vec![(crate::import::MetadataRef::new(DG, "dg-1"), Some("7".to_string()))]
+        vec![(
+            crate::import::MetadataRef::new(DG, "dg-1"),
+            Some("7".to_string())
+        )]
     );
     assert!(matches!(state, IdentifyState::Triangulating { .. }));
 
@@ -55,7 +58,11 @@ fn a_run_holding_both_catalogs_reads_album_links_before_it_settles() {
         },
     );
     assert!(effects.is_empty());
-    let IdentifyState::Found { matches, .. } = state else {
+    let IdentifyState::Found {
+        findings: Findings { matches, .. },
+        ..
+    } = state
+    else {
         panic!("expected Found");
     };
     let links_of = |release_id: &str| {
@@ -68,7 +75,6 @@ fn a_run_holding_both_catalogs_reads_album_links_before_it_settles() {
     assert_eq!(links_of("mb-2"), Some(AlbumLinks::Unread));
     assert_eq!(links_of("dg-1"), Some(AlbumLinks::NotAsked));
 }
-
 
 /// A Discogs release the reading read through a MusicBrainz release's link
 /// goes on the list beside that release: one row with both catalogs' records,
@@ -121,12 +127,21 @@ fn a_twin_joins_the_row_of_the_release_that_names_it() {
             status: LibraryStatus::absent("dg-twin"),
         }),
     };
-    let (state, _) = step(state, IdentifyEvent::AlbumLinksRead { read: vec![reading] });
+    let (state, _) = step(
+        state,
+        IdentifyEvent::AlbumLinksRead {
+            read: vec![reading],
+        },
+    );
     let IdentifyState::Found {
-        matches,
-        provenance,
-        pressings,
-        narrowed_out,
+        findings:
+            Findings {
+                matches,
+                provenance,
+                pressings,
+                narrowed_out,
+                ..
+            },
         ..
     } = state
     else {

@@ -63,7 +63,8 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
                 )
                 .with_test_flac_audio(),
                 role: FileRole::Audio,
-            }], parts: Vec::new(), 
+            }],
+            parts: Vec::new(),
         },
         watched_folder_path: "/".to_string(),
         scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
@@ -79,44 +80,44 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
 /// open question, so no match carries a settled tracklist.
 fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict {
     TerminalVerdict::Found {
-        matches: release_ids
-            .iter()
-            .map(|release_id| MetadataResult {
-                source: crate::import::Catalog::MusicBrainz,
-                release_id: release_id.to_string(),
-                title: "Album".to_string(),
-                artist: Some("Artist".to_string()),
-                year: None,
-                format: None,
-                label: None,
-                catalog_number: None,
-                country: None,
-                barcodes: Vec::new(),
-                media: crate::import::search::StatedMedia::Undescribed,
-                links: Vec::new(),
-                cover_art: None,
-                source_group_id: Some(group_id.to_string()),
-                album_links: crate::import::album_links::AlbumLinks::NotAsked,
-                source_tracks: None,
-            })
-            .collect(),
+        findings: crate::identify::Findings {
+            matches: release_ids
+                .iter()
+                .map(|release_id| MetadataResult {
+                    source: crate::import::Catalog::MusicBrainz,
+                    release_id: release_id.to_string(),
+                    title: "Album".to_string(),
+                    artist: Some("Artist".to_string()),
+                    year: None,
+                    format: None,
+                    label: None,
+                    catalog_number: None,
+                    country: None,
+                    barcodes: Vec::new(),
+                    media: crate::import::search::StatedMedia::Undescribed,
+                    links: Vec::new(),
+                    cover_art: None,
+                    source_group_id: Some(group_id.to_string()),
+                    album_links: crate::import::album_links::AlbumLinks::NotAsked,
+                    source_tracks: None,
+                })
+                .collect(),
+            provenance: release_ids
+                .iter()
+                .map(|_| crate::identify::LookupProvenance {
+                    by_disc_id: true,
+                    by_barcode: false,
+                    by_catalog: false,
+                    by_search: false,
+                    named_by: None,
+                })
+                .collect(),
+            // Each release is a pressing of its own: the group lists several, and
+            // which one the folder is, is the open question.
+            pressings: (0..release_ids.len() as u32).collect(),
+            narrowed_out: crate::identify::NarrowedOut::default(),
+        },
         track_count: 2,
-        provenance: release_ids
-            .iter()
-            .map(|_| crate::identify::LookupProvenance {
-                by_disc_id: true,
-                by_barcode: false,
-                by_catalog: false,
-                by_search: false,
-                named_by: None,
-            })
-            .collect(),
-        // Each release is a pressing of its own: the group lists several, and
-        // which one the folder is, is the open question.
-        pressings: (0..release_ids.len() as u32).collect(),
-        narrowed_out: Vec::new(),
-        narrowed_out_provenance: Vec::new(),
-        narrowed_out_pressings: Vec::new(),
         ledger: None,
     }
 }
@@ -223,8 +224,10 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
     else {
         panic!("the scanned candidate is readable");
     };
-    let Some(IdentifyState::Found { matches, .. }) =
-        &runtime.as_ref().and_then(|runtime| runtime.saving.clone())
+    let Some(IdentifyState::Found {
+        findings: crate::identify::Findings { matches, .. },
+        ..
+    }) = &runtime.as_ref().and_then(|runtime| runtime.saving.clone())
     else {
         panic!("the answer stays where its write will find it, got {runtime:?}");
     };

@@ -138,7 +138,8 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
 
     fixture
         .manager
-        .set_metadata_source_enabled(crate::import::Catalog::Discogs, false).await
+        .set_metadata_source_enabled(crate::import::Catalog::Discogs, false)
+        .await
         .expect("MusicBrainz is still asked, so Discogs can be switched off");
     fixture.identification().rerun_identify(key.clone());
     await_run_state(&mut events, &key, |run, _| run != asked_both).await;
@@ -146,7 +147,11 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
 
     let row = fixture.await_identified_row(&dir).await;
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { matches, .. } = &verdict else {
+    let TerminalVerdict::Found {
+        findings: crate::identify::Findings { matches, .. },
+        ..
+    } = &verdict
+    else {
         panic!("expected a Found verdict, got {verdict:?}");
     };
     assert_eq!(
@@ -197,7 +202,11 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
         .expect("the explicit Lookup recorder stores the verdict");
 
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { matches, .. } = &verdict else {
+    let TerminalVerdict::Found {
+        findings: crate::identify::Findings { matches, .. },
+        ..
+    } = &verdict
+    else {
         panic!("expected a single-match Found, got {verdict:?}");
     };
     assert!(
@@ -289,7 +298,11 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
         release_json("mb-interactive-off", "rg-interactive-off", &[probed, 0]),
     );
     fixture.scan(1).await;
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
 
     fixture.start_explicit_lookup(&dir);
 
@@ -390,7 +403,7 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
         while !fixture.identified_for(&dir).await.is_some_and(|result| {
             matches!(
                 &result.verdict,
-                TerminalVerdict::Found { matches, .. }
+                TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. }
                     if matches.iter().any(|m| m.release_id == "mb-asked-again")
             )
         }) {
@@ -476,7 +489,9 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
-    fixture.archive("mb-rerun-1", "rg-rerun-1", &[probed, 0]).await;
+    fixture
+        .archive("mb-rerun-1", "rg-rerun-1", &[probed, 0])
+        .await;
     fixture
         .store_settled_verdict(&dir, "mb-rerun-1", "rg-rerun-1", probed)
         .await;

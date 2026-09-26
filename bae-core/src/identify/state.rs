@@ -28,7 +28,7 @@
 //! `step` takes a state and an event and returns the next state plus the side
 //! effects for the service to run. No I/O, no async, nothing outside itself.
 
-use super::combine::{combine_results, CombineOutcome, LookupProvenance, NarrowedOut};
+use super::combine::{combine_results, Findings, LibraryStatuses};
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
 use crate::db::LibraryStatus;
@@ -66,21 +66,12 @@ pub enum IdentifyState {
         context: SignalsContext,
     },
 
+    /// The run settled on its findings, every lookup having answered.
     Found {
-        matches: Vec<MetadataResult>,
-        library_statuses: Vec<LibraryStatus>,
+        findings: Findings,
+        /// The live library check of every release `findings` names.
+        library_statuses: LibraryStatuses,
         track_count: u32,
-        /// Per-match provenance (which signals produced/confirmed each row),
-        /// index-aligned with `matches` — drives the per-row signal badges, and
-        /// says which signal produced any given match.
-        provenance: Vec<LookupProvenance>,
-        /// Index-aligned with `matches`: which pressing row of this list each
-        /// release belongs to. The rows this run built, carried rather than
-        /// re-formed by whoever draws them.
-        pressings: Vec<u32>,
-        /// The releases the signals' agreement left out of `matches`. Empty
-        /// when nothing was narrowed.
-        narrowed_out: NarrowedOut,
         ledger: Option<IdentifyRunView>,
         context: SignalsContext,
     },
@@ -102,22 +93,15 @@ pub enum IdentifyState {
     /// An automatic lookup failed, either in the live reducer or resumed from
     /// its stored verdict after the run ended.
     ///
-    /// It carries whatever the surviving evidence combined to, which is
-    /// usually not nothing: one provider failing on the barcode leaves the
-    /// other provider's matches standing, and a person looking at the pane
-    /// should see them rather than an empty result area. They are not a
-    /// verdict — the failure is what stores — so a resumed failure has none.
+    /// It carries what the lookups that did answer found, which is usually not
+    /// nothing: one provider failing on the title search leaves the other
+    /// provider's results standing, and a person looking at the pane should see
+    /// them rather than an empty result area. They are stored with the
+    /// failures, so a resumed failure shows what the live one did.
     Failed {
         failures: Vec<super::IdentifyFailure>,
-        matches: Vec<MetadataResult>,
-        library_statuses: Vec<LibraryStatus>,
-        provenance: Vec<LookupProvenance>,
-        /// Index-aligned with `matches`, as on `Found`.
-        pressings: Vec<u32>,
-        /// The releases the surviving signals' agreement left out of
-        /// `matches`. Empty when nothing was narrowed, and for a failure
-        /// resumed from its stored verdict.
-        narrowed_out: NarrowedOut,
+        findings: Findings,
+        library_statuses: LibraryStatuses,
         track_count: u32,
         ledger: Option<IdentifyRunView>,
         context: SignalsContext,
@@ -878,7 +862,7 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
     // had the answer.
     let [discid_results, barcode_results, catalog_results, search_results] =
         context.lookup_results();
-    let outcome = combine_results(
+    let (findings, library_statuses) = combine_results(
         discid_results,
         barcode_results,
         catalog_results,
@@ -886,53 +870,25 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
         context.twins(),
         &context.text,
     );
-    let (matches, library_statuses, provenance, pressings, narrowed_out) = match outcome {
-        CombineOutcome::Found {
-            matches,
-            library_statuses,
-            provenance,
-            pressings,
-            narrowed_out,
-        } => (
-            matches,
-            library_statuses,
-            provenance,
-            pressings,
-            narrowed_out,
-        ),
-        CombineOutcome::NotFoundAnywhere => (
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            NarrowedOut::default(),
-        ),
-    };
     let track_count = context.track_count;
     let failures = context.active_failures();
     if !failures.is_empty() {
         return IdentifyState::Failed {
             failures,
-            matches,
+            findings,
             library_statuses,
-            provenance,
-            pressings,
-            narrowed_out,
             track_count,
             ledger,
             context,
         };
     }
-    if matches.is_empty() {
+    if findings.is_empty() {
         return IdentifyState::NotFoundAnywhere { ledger, context };
     }
     IdentifyState::Found {
-        matches,
+        findings,
         library_statuses,
         track_count,
-        provenance,
-        pressings,
-        narrowed_out,
         ledger,
         context,
     }

@@ -4,7 +4,7 @@ use crate::identify::state::{
     step, BarcodeEvidence, BarcodeLookupState, ChosenCatalog, DiscIdEvidence, IdentifyEvent,
     ProviderBarcodeLookup, ProviderLookup, SearchProgress,
 };
-use crate::identify::{IdentifyFailure, TerminalVerdict};
+use crate::identify::{Findings, IdentifyFailure, LookupProvenance, NarrowedOut, TerminalVerdict};
 use crate::import::release_group::unranked;
 use crate::import::search::MetadataResult;
 use crate::import::Catalog;
@@ -673,25 +673,29 @@ pub(super) fn not_in_library(result: &MetadataResult) -> LibraryStatus {
 #[test]
 fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
     let verdict = TerminalVerdict::Found {
-        matches: vec![MetadataResult::for_test(MB, "mb-1", Some("g"))],
+        findings: Findings {
+            matches: vec![MetadataResult::for_test(MB, "mb-1", Some("g"))],
+            provenance: vec![LookupProvenance {
+                by_disc_id: true,
+                by_barcode: false,
+                by_catalog: false,
+                by_search: false,
+                named_by: None,
+            }],
+            pressings: vec![0],
+            narrowed_out: NarrowedOut {
+                matches: vec![MetadataResult::for_test(DG, "dg-1", Some("g"))],
+                provenance: vec![LookupProvenance {
+                    by_disc_id: false,
+                    by_barcode: true,
+                    by_catalog: false,
+                    by_search: false,
+                    named_by: None,
+                }],
+                pressings: vec![0],
+            },
+        },
         track_count: 9,
-        provenance: vec![LookupProvenance {
-            by_disc_id: true,
-            by_barcode: false,
-            by_catalog: false,
-            by_search: false,
-            named_by: None,
-        }],
-        pressings: vec![0],
-        narrowed_out: vec![MetadataResult::for_test(DG, "dg-1", Some("g"))],
-        narrowed_out_provenance: vec![LookupProvenance {
-            by_disc_id: false,
-            by_barcode: true,
-            by_catalog: false,
-            by_search: false,
-            named_by: None,
-        }],
-        narrowed_out_pressings: vec![0],
         ledger: Some(recorded_ledger()),
     };
     let run = run_of(verdict.resume_state(&not_in_library, Default::default()));
@@ -709,6 +713,7 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
 fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
     let verdict = TerminalVerdict::Failed {
         failures: vec![IdentifyFailure::DiscId(LookupFailure::Network)],
+        findings: Findings::default(),
         track_count: 9,
         ledger: None,
     };

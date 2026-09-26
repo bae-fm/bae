@@ -4,7 +4,8 @@
 
 use super::tests::*;
 use super::*;
-use crate::identify::TerminalVerdict;
+use crate::identify::{Findings, LookupProvenance, NarrowedOut, TerminalVerdict};
+use crate::import::search::MetadataResult;
 use crate::signals::TextLine;
 
 fn folder(lines: &[&str], struck_out: &[&str]) -> CandidateText {
@@ -64,14 +65,18 @@ fn resumed(
         ]
     };
     let verdict = TerminalVerdict::Found {
-        provenance: by_disc_id(matches.len()),
-        narrowed_out_provenance: by_disc_id(narrowed_out.len()),
-        // A stored verdict carries the rows its run built; a test that
-        // stands one up forms them over each list the way a run would.
-        pressings: crate::import::release_group::form_rows(&matches),
-        narrowed_out_pressings: crate::import::release_group::form_rows(&narrowed_out),
-        matches,
-        narrowed_out,
+        findings: Findings {
+            provenance: by_disc_id(matches.len()),
+            // A stored verdict carries the rows its run built; a test that
+            // stands one up forms them over each list the way a run would.
+            pressings: crate::import::release_group::form_rows(&matches),
+            matches,
+            narrowed_out: NarrowedOut {
+                provenance: by_disc_id(narrowed_out.len()),
+                pressings: crate::import::release_group::form_rows(&narrowed_out),
+                matches: narrowed_out,
+            },
+        },
         track_count: 9,
         ledger,
     };

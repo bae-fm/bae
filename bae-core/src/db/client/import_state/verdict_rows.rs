@@ -6,8 +6,10 @@
 //! candidate can neither hold two verdicts nor keep matches without one.
 
 use super::*;
-use crate::identify::{IdentifyFailure, IdentifyRunView, LookupProvenance, TerminalVerdict};
 use super::super::album_link_rows::{AlbumLinkRow, StatementColumns};
+use crate::identify::{
+    Findings, IdentifyFailure, IdentifyRunView, LookupProvenance, NarrowedOut, TerminalVerdict,
+};
 use crate::import::album_links::AlbumLinks;
 use crate::import::cover_art::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::search::{MetadataResult, SourceTracks, StatedMedia};
@@ -99,85 +101,79 @@ pub(super) fn insert_verdict(
 
 /// The releases of one verdict, written under the verdict row that found them:
 /// the matches first, then the ones agreement narrowed out, which continue the
-/// same position sequence and are marked as what they are.
+/// same position sequence and are marked as what they are. A found verdict and
+/// a failed one write theirs alike; the other two hold none.
 fn insert_matches(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     verdict: &TerminalVerdict,
 ) -> Result<(), DbError> {
-    match verdict {
-        TerminalVerdict::Found {
-            matches,
-            provenance,
-            pressings,
-            narrowed_out,
-            narrowed_out_provenance,
-            narrowed_out_pressings,
-            ..
-        } => {
-            let aligned =
-                |what: &str, results: &[MetadataResult], provenance: &[LookupProvenance]| {
-                    if results.len() == provenance.len() {
-                        return Ok(());
-                    }
-                    Err(DbError::Message(format!(
-                        "a found verdict for {content_hash} carries {} {what} and {} provenance \
-                     entries; they are index-aligned",
-                        results.len(),
-                        provenance.len()
-                    )))
-                };
-            aligned("matches", matches, provenance)?;
-            aligned(
-                "narrowed-out releases",
-                narrowed_out,
-                narrowed_out_provenance,
-            )?;
-            let rowed = |what: &str, results: &[MetadataResult], rows: &[u32]| {
-                if results.len() == rows.len() {
-                    return Ok(());
-                }
-                Err(DbError::Message(format!(
-                    "a found verdict for {content_hash} carries {} {what} and {} pressing \
-                     entries; they are index-aligned",
-                    results.len(),
-                    rows.len()
-                )))
-            };
-            rowed("matches", matches, pressings)?;
-            rowed(
-                "narrowed-out releases",
-                narrowed_out,
-                narrowed_out_pressings,
-            )?;
-            let written = matches
-                .iter()
-                .zip(provenance.iter())
-                .zip(pressings.iter())
-                .map(|pair| (pair, false))
-                .chain(
-                    narrowed_out
-                        .iter()
-                        .zip(narrowed_out_provenance.iter())
-                        .zip(narrowed_out_pressings.iter())
-                        .map(|pair| (pair, true)),
-                );
-            for (position, (((result, provenance), pressing), narrowed_out)) in written.enumerate()
-            {
-                insert_match(
-                    sql,
-                    content_hash,
-                    position,
-                    *pressing,
-                    result,
-                    provenance,
-                    narrowed_out,
-                )?;
-            }
+    let Some(Findings {
+        matches,
+        provenance,
+        pressings,
+        narrowed_out,
+    }) = verdict.findings()
+    else {
+        return Ok(());
+    };
+    let aligned = |what: &str, results: &[MetadataResult], provenance: &[LookupProvenance]| {
+        if results.len() == provenance.len() {
+            return Ok(());
         }
-        TerminalVerdict::NotFoundAnywhere { .. }
-        | TerminalVerdict::ManualOnly { .. }
-        | TerminalVerdict::Failed { .. } => {}
+        Err(DbError::Message(format!(
+            "a verdict for {content_hash} carries {} {what} and {} provenance entries; they \
+             are index-aligned",
+            results.len(),
+            provenance.len()
+        )))
+    };
+    aligned("matches", matches, provenance)?;
+    aligned(
+        "narrowed-out releases",
+        &narrowed_out.matches,
+        &narrowed_out.provenance,
+    )?;
+    let rowed = |what: &str, results: &[MetadataResult], rows: &[u32]| {
+        if results.len() == rows.len() {
+            return Ok(());
+        }
+        Err(DbError::Message(format!(
+            "a verdict for {content_hash} carries {} {what} and {} pressing entries; they are \
+             index-aligned",
+            results.len(),
+            rows.len()
+        )))
+    };
+    rowed("matches", matches, pressings)?;
+    rowed(
+        "narrowed-out releases",
+        &narrowed_out.matches,
+        &narrowed_out.pressings,
+    )?;
+    let written = matches
+        .iter()
+        .zip(provenance.iter())
+        .zip(pressings.iter())
+        .map(|pair| (pair, false))
+        .chain(
+            narrowed_out
+                .matches
+                .iter()
+                .zip(narrowed_out.provenance.iter())
+                .zip(narrowed_out.pressings.iter())
+                .map(|pair| (pair, true)),
+        );
+    for (position, (((result, provenance), pressing), narrowed_out)) in written.enumerate() {
+        insert_match(
+            sql,
+            content_hash,
+            position,
+            *pressing,
+            result,
+            provenance,
+            narrowed_out,
+        )?;
     }
     Ok(())
 }
@@ -640,27 +636,48 @@ pub(super) fn identification_of(
                 })
             })
     };
-    let verdict = match kind.as_str() {
-        "found" => {
-            let (matches, provenance, pressings) = unzip_stored(found.found);
-            let (narrowed_out, narrowed_out_provenance, narrowed_out_pressings) =
-                unzip_stored(found.narrowed_out);
-            TerminalVerdict::Found {
-                matches,
-                track_count: count_of()?,
-                provenance,
-                pressings,
-                narrowed_out,
-                narrowed_out_provenance,
-                narrowed_out_pressings,
-                ledger,
-            }
+    // Only the verdicts that hold findings may have match rows under them; a
+    // row under any other kind is one no writer here produces.
+    let findings_of = |found: StoredMatches| {
+        let (matches, provenance, pressings) = unzip_stored(found.found);
+        let (narrowed_matches, narrowed_provenance, narrowed_pressings) =
+            unzip_stored(found.narrowed_out);
+        Findings {
+            matches,
+            provenance,
+            pressings,
+            narrowed_out: NarrowedOut {
+                matches: narrowed_matches,
+                provenance: narrowed_provenance,
+                pressings: narrowed_pressings,
+            },
         }
-        "not_found" => TerminalVerdict::NotFoundAnywhere { ledger },
-        "manual_only" => TerminalVerdict::ManualOnly {
+    };
+    let no_matches = |found: &StoredMatches| {
+        if found.found.is_empty() && found.narrowed_out.is_empty() {
+            return Ok(());
+        }
+        Err(DbError::Message(format!(
+            "verdict {kind} for {content_hash} holds match rows"
+        )))
+    };
+    let verdict = match kind.as_str() {
+        "found" => TerminalVerdict::Found {
+            findings: findings_of(found),
             track_count: count_of()?,
             ledger,
         },
+        "not_found" => {
+            no_matches(&found)?;
+            TerminalVerdict::NotFoundAnywhere { ledger }
+        }
+        "manual_only" => {
+            no_matches(&found)?;
+            TerminalVerdict::ManualOnly {
+                track_count: count_of()?,
+                ledger,
+            }
+        }
         "failed" => {
             let json = failures_json.ok_or_else(|| {
                 DbError::Message(format!(
@@ -679,6 +696,7 @@ pub(super) fn identification_of(
             }
             TerminalVerdict::Failed {
                 failures,
+                findings: findings_of(found),
                 track_count: count_of()?,
                 ledger,
             }

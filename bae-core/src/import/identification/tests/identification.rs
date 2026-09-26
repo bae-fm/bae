@@ -304,7 +304,7 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
             CallPriority::Interactive,
         )
         .await
-    .expect("the typed search succeeds");
+        .expect("the typed search succeeds");
     let waited = started.elapsed();
 
     // Still running, so the search really was admitted past a live background
@@ -331,36 +331,36 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
 
 fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerdict {
     TerminalVerdict::Found {
-        matches: vec![MetadataResult {
-            source: crate::import::Catalog::MusicBrainz,
-            release_id: "mb-1".to_string(),
-            title: "Album".to_string(),
-            artist: None,
-            year: None,
-            format: None,
-            label: None,
-            catalog_number: None,
-            country: None,
-            barcodes: Vec::new(),
-            media: crate::import::search::StatedMedia::Undescribed,
-            links: Vec::new(),
-            cover_art: None,
-            source_group_id: Some("rg-1".to_string()),
-            album_links: crate::import::album_links::AlbumLinks::NotAsked,
-            source_tracks: source,
-        }],
+        findings: crate::identify::Findings {
+            matches: vec![MetadataResult {
+                source: crate::import::Catalog::MusicBrainz,
+                release_id: "mb-1".to_string(),
+                title: "Album".to_string(),
+                artist: None,
+                year: None,
+                format: None,
+                label: None,
+                catalog_number: None,
+                country: None,
+                barcodes: Vec::new(),
+                media: crate::import::search::StatedMedia::Undescribed,
+                links: Vec::new(),
+                cover_art: None,
+                source_group_id: Some("rg-1".to_string()),
+                album_links: crate::import::album_links::AlbumLinks::NotAsked,
+                source_tracks: source,
+            }],
+            provenance: vec![crate::identify::LookupProvenance {
+                by_disc_id: true,
+                by_barcode: false,
+                by_catalog: false,
+                by_search: false,
+                named_by: None,
+            }],
+            pressings: vec![0],
+            narrowed_out: crate::identify::NarrowedOut::default(),
+        },
         track_count,
-        provenance: vec![crate::identify::LookupProvenance {
-            by_disc_id: true,
-            by_barcode: false,
-            by_catalog: false,
-            by_search: false,
-            named_by: None,
-        }],
-        pressings: vec![0],
-        narrowed_out: Vec::new(),
-        narrowed_out_provenance: Vec::new(),
-        narrowed_out_pressings: Vec::new(),
         ledger: None,
     }
 }
@@ -372,10 +372,10 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
 fn the_lengths_a_source_states_do_not_decide() {
     let payloads: crate::import::payloads::ReleasePayloads =
         crate::import::payloads::ReleasePayloads::for_test(
-        crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-1"),
-        release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
-        Vec::new(),
-    );
+            crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-1"),
+            release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
+            Vec::new(),
+        );
     let source = payloads.extract().unwrap().source_tracks_for_audio(&[]);
     assert_eq!(source, SourceTracks::Listed { count: 3 });
     assert_eq!(
@@ -389,9 +389,7 @@ fn the_lengths_a_source_states_do_not_decide() {
 #[test]
 fn a_count_disagreement_is_named_as_one() {
     assert_eq!(
-        classify(
-            &found_verdict(11, Some(SourceTracks::Listed { count: 12 })),
-        ),
+        classify(&found_verdict(11, Some(SourceTracks::Listed { count: 12 })),),
         QueueClassification::NeedsYou(NeedsYou::TrackCountDisagrees {
             local: 11,
             source: 12
@@ -499,8 +497,10 @@ async fn unskipping_a_stored_candidate_mid_pass_does_not_identify_it_again() {
         .await
         .expect("stored row remains");
     let verdict = identify_result(&row).verdict.clone();
-    assert!(matches!(&verdict, TerminalVerdict::Found { matches, .. }
-        if matches[0].source_tracks.is_some()));
+    assert!(
+        matches!(&verdict, TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. }
+        if matches[0].source_tracks.is_some())
+    );
     let progress: Vec<_> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
@@ -621,8 +621,12 @@ async fn a_release_no_identifier_names_is_found_by_its_title() {
         .verdict
         .clone();
     let TerminalVerdict::Found {
-        matches,
-        provenance,
+        findings:
+            crate::identify::Findings {
+                matches,
+                provenance,
+                ..
+            },
         ..
     } = &verdict
     else {
