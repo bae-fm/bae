@@ -54,7 +54,7 @@ impl ImportServiceHandle {
         path: String,
     ) -> Result<(), crate::import::ImportError> {
         let path = crate::import::watched_folder::canonical_absolute_root(&path)?;
-        let _commit = self.folder_state_commit.lock().await;
+        let _commit = self.folder_state_commit.lock("add a watched folder").await;
         let added = self
             .library_manager
             .add_watched_import_folder(&path)

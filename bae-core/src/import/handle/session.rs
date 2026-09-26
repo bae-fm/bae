@@ -27,7 +27,7 @@ impl ImportServiceHandle {
         &self,
         content_hashes: Vec<String>,
     ) -> Result<(), crate::import::ImportError> {
-        let _commit = self.folder_state_commit.lock().await;
+        let _commit = self.folder_state_commit.lock("open panes on Find online").await;
         self.library_manager
             .open_import_candidate_sessions_on_find_online(content_hashes)
             .await?;
@@ -81,7 +81,7 @@ impl ImportServiceHandle {
         candidate_key: &str,
         change: impl FnOnce(&mut CandidateSession),
     ) -> Result<(), crate::import::ImportError> {
-        let _commit = self.folder_state_commit.lock().await;
+        let _commit = self.folder_state_commit.lock("store a pane session").await;
         let projection = self
             .library_manager
             .load_import_candidate(candidate_key)

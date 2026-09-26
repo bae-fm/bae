@@ -235,7 +235,7 @@ impl ImportService {
         }
         let prepared_at = started.elapsed();
 
-        let _commit = services.folder_state_commit.lock().await;
+        let _commit = services.folder_state_commit.lock("store a folder reading").await;
         let locked_at = started.elapsed();
         if cancellation.is_cancelled() {
             return Err(crate::import::ImportError::Internal {

@@ -36,7 +36,7 @@ impl ImportServiceHandle {
         // A number struck out is not one the run looks up: the value stored
         // is the one every reader of it can trust to say so.
         let choices = choices.normalized();
-        let _commit = self.folder_state_commit.lock().await;
+        let _commit = self.folder_state_commit.lock("store lookup choices").await;
         let projection = self
             .library_manager
             .load_import_candidate(candidate_key)

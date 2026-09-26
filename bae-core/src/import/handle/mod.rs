@@ -187,7 +187,7 @@ pub struct ImportServiceHandle {
     /// identification as part of their own write.
     identify: crate::identify::IdentifyServiceHandle,
     extraction: crate::signals::ExtractionServiceHandle,
-    folder_state_commit: Arc<tokio::sync::Mutex<()>>,
+    folder_state_commit: crate::import::FolderStateCommit,
     watcher: WorkerThread<WatcherCommand>,
     runtime_handle: tokio::runtime::Handle,
 }
@@ -721,14 +721,16 @@ impl ImportServiceHandle {
 
     /// Take `folder_state_commit` and recheck, while holding it, that the
     /// candidate still stands at the exact revision the edit was prepared
-    /// from. The caller holds the returned guard across its write.
+    /// from. The caller holds the returned guard across its write;
+    /// `operation` names it in the lock's log lines.
     pub(super) async fn commit_lock_for_revision(
         &self,
+        operation: &'static str,
         key: &str,
         expected_content_hash: &str,
         expected_file_edit_revision: u64,
-    ) -> Result<tokio::sync::MutexGuard<'_, ()>, crate::import::ImportError> {
-        let commit = self.folder_state_commit.lock().await;
+    ) -> Result<crate::import::FolderStateCommitGuard, crate::import::ImportError> {
+        let commit = self.folder_state_commit.lock(operation).await;
         let candidate = self.editable_candidate_for_commit(key).await?;
         if candidate.files.content_hash() != expected_content_hash
             || candidate.file_edit_revision != expected_file_edit_revision
@@ -750,14 +752,14 @@ impl ImportServiceHandle {
     /// candidate whose import has been committed to.
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn claim_candidate_for_import(&self, candidate_key: &str) {
-        let _commit = self.folder_state_commit.lock().await;
+        let _commit = self.folder_state_commit.lock("claim a candidate for a test").await;
         self.runtime
             .claim_for_import(candidate_key)
             .expect("a test claims a candidate no import owns");
     }
 
     async fn release_import_claim(&self, candidate_key: &str) {
-        let _commit = self.folder_state_commit.lock().await;
+        let _commit = self.folder_state_commit.lock("release an import claim").await;
         self.runtime.release_import_claim(candidate_key);
     }
 
@@ -839,7 +841,7 @@ impl ImportServiceHandle {
         candidate_key: &str,
         row: &crate::db::NewImportCandidateVerdict,
     ) -> Result<bool, crate::library::LibraryError> {
-        let _commit = self.folder_state_commit.lock().await;
+        let _commit = self.folder_state_commit.lock("store an identification verdict").await;
         let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
             return Ok(false);
         };

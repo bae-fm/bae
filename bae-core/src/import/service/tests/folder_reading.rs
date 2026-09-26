@@ -304,7 +304,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     // and move the root's generation under it the way a pass over the root
     // would.
     let commit = fixture.scan.services.services.folder_state_commit.clone();
-    let held = commit.lock().await;
+    let held = commit.lock("hold for a test").await;
     let reading = {
         let root = fixture.root.clone();
         let key = fixture.album_key();

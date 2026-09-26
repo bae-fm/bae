@@ -53,7 +53,8 @@ impl ImportServiceHandle {
             | crate::import::CoverSelection::Embedded(_) => None,
         };
         let _commit = self
-            .commit_lock_for_revision(candidate_key, &hash, candidate.file_edit_revision)
+            .commit_lock_for_revision(
+"set the cover",candidate_key, &hash, candidate.file_edit_revision)
             .await?;
         self.preparations
             .set_prepared_cover(
@@ -96,7 +97,8 @@ impl ImportServiceHandle {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
         let _commit = self
-            .commit_lock_for_revision(candidate_key, &hash, candidate.file_edit_revision)
+            .commit_lock_for_revision(
+"edit a field",candidate_key, &hash, candidate.file_edit_revision)
             .await?;
         self.preparations
             .set_field_prepared(
@@ -141,6 +143,7 @@ impl ImportServiceHandle {
             .await?;
         let _commit = self
             .commit_lock_for_revision(
+"set album artists",
                 candidate_key,
                 &prepared.candidate.content_hash,
                 prepared.candidate.file_edit_revision,
@@ -219,6 +222,7 @@ impl ImportServiceHandle {
         }
         let _commit = self
             .commit_lock_for_revision(
+"edit a track",
                 candidate_key,
                 &prepared.candidate.content_hash,
                 prepared.candidate.file_edit_revision,
@@ -273,6 +277,7 @@ impl ImportServiceHandle {
             .await?;
         let _commit = self
             .commit_lock_for_revision(
+"set track artists",
                 candidate_key,
                 &prepared.candidate.content_hash,
                 prepared.candidate.file_edit_revision,
@@ -321,6 +326,7 @@ impl ImportServiceHandle {
             .await?;
         let _commit = self
             .commit_lock_for_revision(
+"drop a track",
                 candidate_key,
                 &prepared.candidate.content_hash,
                 prepared.candidate.file_edit_revision,
@@ -366,6 +372,7 @@ impl ImportServiceHandle {
         let (candidate, preparation, available, source_position) = {
             let _commit = self
                 .commit_lock_for_revision(
+"check an added track",
                     candidate_key,
                     &read.content_hash,
                     read.file_edit_revision,
@@ -477,7 +484,8 @@ impl ImportServiceHandle {
         // Unchanged source revisions preserve the exact available-audio set
         // checked above, including every CUE FILE association and slice index.
         let _commit = self
-            .commit_lock_for_revision(candidate_key, &read.content_hash, read.file_edit_revision)
+            .commit_lock_for_revision(
+"add a track",candidate_key, &read.content_hash, read.file_edit_revision)
             .await?;
         self.preparations
             .add_track_prepared(

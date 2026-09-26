@@ -13,7 +13,7 @@ impl ImportService {
         message: String,
         services: &crate::import::ImportServices,
     ) -> Result<bool, crate::import::ImportError> {
-        let _commit = services.folder_state_commit.lock().await;
+        let _commit = services.folder_state_commit.lock("store a failed scan").await;
         if services
             .library_manager
             .finish_folder_scan(&root.to_string_lossy(), generation, Some(&message))
@@ -81,7 +81,7 @@ impl ImportService {
             let file_metadata = library_manager
                 .scan_item_seed(&item, generation, services.file_tags.clone())
                 .await?;
-            let commit = services.folder_state_commit.clone().lock_owned().await;
+            let commit = services.folder_state_commit.lock("store a scan item").await;
             // A file decision stored while the tags were being read describes
             // other files than the ones read: read them again, as decided now.
             if let Some((content_hash, read_revision)) = &edits_read {
@@ -336,7 +336,7 @@ impl ImportService {
     ) -> Result<u64, crate::import::ImportError> {
         let event_tx = &services.event_tx;
         let on_network_volume = volume_kind(root).await == VolumeKind::Network;
-        let _commit = services.folder_state_commit.lock().await;
+        let _commit = services.folder_state_commit.lock("begin a scan").await;
         let generation = services.library_manager.begin_folder_scan(root_key).await?;
         let watched_folder =
             crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
@@ -540,7 +540,7 @@ impl ImportService {
         // The generation check, pruning, and status change share one
         // transaction: a newer decision or scan cannot be pruned by this
         // completed write, and `None` says one took the root first.
-        let commit = services.folder_state_commit.clone().lock_owned().await;
+        let commit = services.folder_state_commit.lock("finish a scan").await;
         let Some(crate::db::FinishedScan { pruned, regrouped }) = library_manager
             .finish_folder_scan(root_key, generation, None)
             .await?

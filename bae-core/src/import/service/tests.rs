@@ -358,7 +358,7 @@ struct CoordinatorHarness {
     fs_events: tokio::sync::mpsc::UnboundedSender<WatchReport>,
     scans: FakeScanStarter,
     library_manager: LibraryManager,
-    folder_state_commit: Arc<tokio::sync::Mutex<()>>,
+    folder_state_commit: crate::import::FolderStateCommit,
     removal_backend: Arc<FakeRemovalBackend>,
     coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
     _temp: TempDir,
@@ -412,7 +412,7 @@ impl CoordinatorHarness {
                 .unwrap()
                 .expect("the seeded scan generation is current");
         }
-        let folder_state_commit = Arc::new(tokio::sync::Mutex::new(()));
+        let folder_state_commit = crate::import::FolderStateCommit::default();
         let (scans, starter) = FakeScanStarter::new();
         let removal_backend = Arc::new(FakeRemovalBackend::default());
         let coordinator_thread = ImportService::start_watcher_with_starter(
@@ -529,7 +529,7 @@ fn test_scan_services(
             ids: service.ids.clone(),
             file_tags,
             directories,
-            folder_state_commit: Arc::new(tokio::sync::Mutex::new(())),
+            folder_state_commit: crate::import::FolderStateCommit::default(),
         },
         folder_watcher,
     )

@@ -4,7 +4,7 @@ use super::*;
 async fn an_edit_prepared_before_a_claim_cannot_land_after_the_claim() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let title_before = pane(&handle, &key).await.metadata_draft.album_title;
-    let commit = handle.folder_state_commit.lock().await;
+    let commit = handle.folder_state_commit.lock("hold for a test").await;
     let edit = tokio::spawn({
         let handle = handle.clone();
         let key = key.clone();

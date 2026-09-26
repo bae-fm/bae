@@ -25,6 +25,7 @@ desktop_only! {
     pub(crate) mod file_metadata_seed;
     mod file_validation;
     pub mod folder_scanner;
+    pub(crate) mod folder_state_commit;
     pub(crate) mod volume;
     pub mod watched_folder;
     pub use volume::check_period_minutes;
@@ -131,7 +132,7 @@ pub(crate) struct ImportServices {
     /// `file_tags`: a test can hand the scan a reader that holds one folder's
     /// listing closed, and observe what the scan has announced by then.
     directories: std::sync::Arc<dyn folder_scanner::DirectoryReader>,
-    folder_state_commit: std::sync::Arc<tokio::sync::Mutex<()>>,
+    folder_state_commit: folder_state_commit::FolderStateCommit,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -151,7 +152,7 @@ impl ImportServices {
             ids,
             file_tags: std::sync::Arc::new(file_tag_snapshot::LoftyFileTagReader),
             directories: std::sync::Arc::new(folder_scanner::OsDirectoryReader),
-            folder_state_commit: std::sync::Arc::new(tokio::sync::Mutex::new(())),
+            folder_state_commit: folder_state_commit::FolderStateCommit::default(),
         }
     }
 }
@@ -172,6 +173,8 @@ desktop_only! {
 pub(crate) use error::artist_source_ids_are_compatible;
 pub use error::ArtistIdentityConflict;
 pub use error::ImportError;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use folder_state_commit::{FolderStateCommit, FolderStateCommitGuard};
 desktop_only! {
     pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
     pub use folder_scanner::{

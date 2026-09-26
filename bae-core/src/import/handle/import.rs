@@ -214,7 +214,7 @@ impl ImportServiceHandle {
         pin: bool,
         request: ImportRequest,
     ) -> Result<String, crate::import::ImportError> {
-        let commit = self.folder_state_commit.lock().await;
+        let commit = self.folder_state_commit.lock("start an import").await;
         match request {
             // A person importing the candidate they are looking at is
             // answering it themselves; the claim ends whatever run it had.
@@ -621,7 +621,7 @@ impl ImportServiceHandle {
     ) -> Result<String, crate::import::ImportError> {
         let import_id = command.import_id.clone();
         let candidate_key = command.candidate_key.clone();
-        let commit = self.folder_state_commit.lock().await;
+        let commit = self.folder_state_commit.lock("queue a test import").await;
         // Whatever the last attempt left is about to be answered by this one,
         // so the pane stops offering Retry the moment the work is queued.
         self.library_manager

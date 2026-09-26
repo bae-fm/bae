@@ -25,7 +25,7 @@ impl ImportServiceHandle {
         path: String,
         skipped: bool,
     ) -> Result<(), crate::import::ImportError> {
-        let _commit = self.folder_state_commit.lock().await;
+        let _commit = self.folder_state_commit.lock("skip a candidate").await;
         let Some(candidate) = self.get_release_candidate(&path).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{path} is not an actionable folder candidate"),
@@ -147,7 +147,7 @@ impl ImportServiceHandle {
                 detail: format!("{sheet_file_id} has no FILE reference {file_reference}"),
             })?;
         if audio_file_id.is_some() && reference.file_id == audio_file_id {
-            let _commit = self.folder_state_commit.lock().await;
+            let _commit = self.folder_state_commit.lock("check a sheet binding").await;
             self.editable_candidate_for_commit(&candidate_key).await?;
             return Ok(());
         }
@@ -248,7 +248,7 @@ impl ImportServiceHandle {
         // a write here would clear the stored verdict and re-identify a
         // folder whose shape did not change.
         if selected.disc == disc {
-            let _commit = self.folder_state_commit.lock().await;
+            let _commit = self.folder_state_commit.lock("check a sheet disc").await;
             self.editable_candidate_for_commit(&candidate_key).await?;
             debug!("{sheet_file_id} is already disc {disc:?}; nothing to write");
             return Ok(());
@@ -421,6 +421,7 @@ impl ImportServiceHandle {
                 )?;
                 let commit = self
                     .commit_lock_for_revision(
+"pick file tags",
                         &candidate_key,
                         &content_hash,
                         current.file_edit_revision,
@@ -494,6 +495,7 @@ impl ImportServiceHandle {
                 );
                 let _commit = self
                     .commit_lock_for_revision(
+"pick a release",
                         &candidate_key,
                         &content_hash,
                         current.file_edit_revision,
@@ -560,7 +562,8 @@ impl ImportServiceHandle {
         draft.tracks =
             crate::import::pane::file_metadata_tracks(&draft.tracks, &current.draft.tracks);
         let _commit = self
-            .commit_lock_for_revision(&candidate_key, &content_hash, current.file_edit_revision)
+            .commit_lock_for_revision(
+"clear metadata",&candidate_key, &content_hash, current.file_edit_revision)
             .await?;
         Ok(self
             .preparations
@@ -652,7 +655,7 @@ impl ImportServiceHandle {
         // Same rule as `set_sheet_disc`: re-stating the role in force decides
         // nothing, and must not clear the verdict.
         if entry.role_choice() == Some(choice) {
-            let _commit = self.folder_state_commit.lock().await;
+            let _commit = self.folder_state_commit.lock("check a file role").await;
             self.editable_candidate_for_commit(&candidate_key).await?;
             debug!("{file_id} is already {choice:?}; nothing to write");
             return Ok(());
@@ -814,7 +817,8 @@ impl ImportServiceHandle {
             };
 
             let commit = self
-                .commit_lock_for_revision(candidate_key, &content_hash, expected_revision)
+                .commit_lock_for_revision(
+"store a file decision",candidate_key, &content_hash, expected_revision)
                 .await?;
             // A scan that stored or dropped another folder with these same
             // files while this was prepared changed which candidates the

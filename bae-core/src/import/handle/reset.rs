@@ -20,7 +20,7 @@ impl ImportServiceHandle {
 
     async fn reset_candidate_setup_write(&self, candidate_key: &str) -> Result<(), ImportError> {
         let (candidate, read, generation, lookup_choices, matching_folders, prefill) = {
-            let _commit = self.folder_state_commit.lock().await;
+            let _commit = self.folder_state_commit.lock("read a candidate to reset").await;
             let candidate = self.editable_candidate_for_commit(candidate_key).await?;
             let content_hash = candidate.files.content_hash();
             let state = self
@@ -148,7 +148,8 @@ impl ImportServiceHandle {
             detail: format!("candidate reset preparation failed: {error}"),
         })??;
         let _commit = self
-            .commit_lock_for_revision(candidate_key, &read.content_hash, read.file_edit_revision)
+            .commit_lock_for_revision(
+"reset a candidate",candidate_key, &read.content_hash, read.file_edit_revision)
             .await?;
         let candidates = self
             .preparations

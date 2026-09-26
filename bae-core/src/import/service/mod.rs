@@ -440,7 +440,7 @@ type FolderWalk = tokio::task::JoinHandle<FolderWalkOutcome>;
 /// One scan item after its durable write, with the commit lock still held so
 /// the events announcing it go out before anything else writes.
 struct PersistedScanItem {
-    commit: tokio::sync::OwnedMutexGuard<()>,
+    commit: crate::import::FolderStateCommitGuard,
     item: ScanItem,
     /// What the write did — and so whether there is anything to announce. A
     /// pass over an untouched folder finds every row exactly as it left it, and

@@ -52,7 +52,7 @@ impl ImportServiceHandle {
         }
         let mut members = Vec::with_capacity(keys.len());
         {
-            let _commit = self.folder_state_commit.lock().await;
+            let _commit = self.folder_state_commit.lock("check folders to combine").await;
             for key in &keys {
                 self.ensure_combination_idle(key)?;
                 members.push(self.editable_candidate_for_commit(key).await?);
@@ -76,7 +76,7 @@ impl ImportServiceHandle {
             return self.combine_folder(folder).await;
         }
         let key = format!("grouping:{}", self.library_manager.new_id());
-        let _commit = self.folder_state_commit.lock().await;
+        let _commit = self.folder_state_commit.lock("combine releases").await;
         let regrouped = self
             .library_manager
             .combine_releases(key.clone(), members)
@@ -172,7 +172,7 @@ impl ImportServiceHandle {
 
     async fn separate_candidate_write(&self, key: &str) -> Result<(), ImportError> {
         {
-            let _commit = self.folder_state_commit.lock().await;
+            let _commit = self.folder_state_commit.lock("check a release to separate").await;
             self.ensure_combination_idle(key)?;
             if let Some(detail) = self.library_manager.load_import_candidate(key).await? {
                 if detail.is_added {
@@ -189,7 +189,7 @@ impl ImportServiceHandle {
                 .await
             }
             Some(crate::db::GroupingFacts::Picked { .. }) => {
-                let _commit = self.folder_state_commit.lock().await;
+                let _commit = self.folder_state_commit.lock("separate a picked release").await;
                 let returned = self.library_manager.separate_picked_grouping(key).await?;
                 self.cancel_identification(key);
                 self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {

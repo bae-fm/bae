@@ -32,7 +32,7 @@ pub(super) struct ActiveRoots {
     next_scan_id: u64,
     removal_backend: Arc<dyn RootRemovalBackend>,
     removal_completions: mpsc::UnboundedSender<RootRemovalCompletion>,
-    folder_state_commit: Arc<tokio::sync::Mutex<()>>,
+    folder_state_commit: crate::import::FolderStateCommit,
     next_removal_id: u64,
 }
 
@@ -142,7 +142,7 @@ impl ActiveRoots {
     pub(super) fn new(
         starter: RootScanStarter,
         removal_backend: Arc<dyn RootRemovalBackend>,
-        folder_state_commit: Arc<tokio::sync::Mutex<()>>,
+        folder_state_commit: crate::import::FolderStateCommit,
     ) -> (
         Self,
         mpsc::UnboundedReceiver<RootScanCompletion>,
@@ -565,7 +565,7 @@ pub(super) enum RemovalOutcome {
         path: PathBuf,
         /// Held until the events announcing the removal are out, so nothing
         /// else writes folder state in between.
-        commit: tokio::sync::OwnedMutexGuard<()>,
+        commit: crate::import::FolderStateCommitGuard,
         /// The scan entries the removal cascaded away, announced as
         /// `CandidateRemoved` so in-flight work on them is cancelled.
         removed_keys: Vec<String>,
@@ -627,7 +627,7 @@ pub(super) struct RootRemovalCompletion {
 
 enum RootRemovalResult {
     Removed {
-        commit: tokio::sync::OwnedMutexGuard<()>,
+        commit: crate::import::FolderStateCommitGuard,
         /// The scan entries the removal cascaded away.
         removed_keys: Vec<String>,
     },
@@ -691,7 +691,7 @@ async fn run_root_removal(
     path: &Path,
     scan: Option<RootScanTask>,
     backend: &dyn RootRemovalBackend,
-    folder_state_commit: Arc<tokio::sync::Mutex<()>>,
+    folder_state_commit: crate::import::FolderStateCommit,
 ) -> RootRemovalResult {
     if let Some(scan) = scan {
         if let Err(error) = scan.task.await {
@@ -710,7 +710,7 @@ async fn run_root_removal(
             ));
         }
     };
-    let commit = folder_state_commit.lock_owned().await;
+    let commit = folder_state_commit.lock("remove a watched folder").await;
     let removed_keys = match backend.remove_durable_root(path).await {
         Ok(removed_keys) => removed_keys,
         Err(error) => {

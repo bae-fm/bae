@@ -232,7 +232,7 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
     harness.scans.wait_for_count(2).await;
     let other_root_commit = tokio::time::timeout(
         Duration::from_millis(50),
-        harness.folder_state_commit.lock(),
+        harness.folder_state_commit.lock("hold for a test"),
     )
     .await;
     let other_root_was_blocked = other_root_commit.is_err();
