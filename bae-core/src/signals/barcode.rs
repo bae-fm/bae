@@ -1,7 +1,9 @@
-//! The barcode signal: UPC/EAN code payloads found on a candidate's artwork
-//! (via OCR) or in a CUE `CATALOG` field.
+//! The barcode signal: UPC/EAN codes found on a candidate's artwork — decoded
+//! from the bars or read from the digits printed under them — or in a CUE
+//! `CATALOG` field. What counts as a code is [`crate::barcode`]'s to say.
 
-use super::{LookupFailure, SourcedValue};
+use super::{ArtworkAnalysis, ImageRegion, LookupFailure, SourcedValue};
+use crate::barcode::Barcode;
 
 /// The codes found in a candidate's files, deduped, in discovery order, each with
 /// its [`SignalOrigin`]. A run looks up the ones the person left in, and those
@@ -35,47 +37,29 @@ impl BarcodeSignal {
     }
 }
 
-/// Whether a code is a placeholder rather than a barcode: every character the
-/// same digit, which is what an unfilled tag or CUE `CATALOG` field holds
-/// (`0000000000000`). No printed UPC or EAN reads this way — its check digit
-/// alone rules it out — so a lookup for one can only miss, and extraction
-/// drops it rather than spending a request to learn that.
-pub fn is_placeholder_code(value: &str) -> bool {
-    let mut chars = value.chars();
-    let Some(first) = chars.next() else {
-        return false;
-    };
-    first.is_ascii_digit() && chars.all(|c| c == first)
+/// The codes one read of an image holds, each with where on the image it was
+/// read: every detector payload that is a code, then every recognized line
+/// that is a code printed under its bars. Both are read through [`Barcode`],
+/// so the bars and the digits printed under them spell one code the same way
+/// and the extraction pass keeps it once — the detector's sighting, the bars
+/// themselves, since it comes first.
+///
+/// The printed digits matter where the bars do not decode: a scan too coarse
+/// for the detector still reads as text.
+pub(super) fn codes_in(
+    analysis: &ArtworkAnalysis,
+) -> impl Iterator<Item = (Barcode, Option<ImageRegion>)> + '_ {
+    let detected = analysis
+        .barcodes
+        .iter()
+        .filter_map(|barcode| Some((Barcode::stated(&barcode.payload)?, barcode.region)));
+    let printed = analysis
+        .text_lines
+        .iter()
+        .filter_map(|line| Some((Barcode::printed(&line.text)?, line.region)));
+    detected.chain(printed)
 }
 
 #[cfg(test)]
-mod tests {
-    use super::is_placeholder_code;
-
-    /// A run of one digit is a placeholder whatever the length or the digit;
-    /// anything with a second distinct character is a code to look up.
-    #[test]
-    fn a_run_of_one_digit_is_a_placeholder() {
-        for value in [
-            "0000000000000",
-            "000000000000",
-            "00000000",
-            "1111111111111",
-            "9999999999999",
-            "0",
-        ] {
-            assert!(is_placeholder_code(value), "{value} is a placeholder");
-        }
-        for value in [
-            "0075678164521",
-            "5051961234567",
-            "0000000000001",
-            "1000000000000",
-            "",
-            "N/A",
-            "000-000",
-        ] {
-            assert!(!is_placeholder_code(value), "{value} is a code");
-        }
-    }
-}
+#[path = "barcode_tests.rs"]
+mod tests;

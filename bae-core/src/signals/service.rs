@@ -579,28 +579,22 @@ async fn stream_extraction(
 
             // Accumulate barcodes — one sighting per image a code was read
             // off, a code read twice off one image once — and text lines.
-            for barcode in analysis.barcodes {
-                // A run of one digit is printed on nothing; OCR reads them off
-                // borders and shadows, and looking one up can only miss.
-                if crate::signals::is_placeholder_code(&barcode.payload) {
-                    continue;
-                }
+            for (code, region) in super::barcode::codes_in(&analysis) {
                 let seen_here = gathered
                     .barcodes
                     .iter()
-                    .any(|b| b.value == barcode.payload && &b.origin_path == file_id);
+                    .any(|b| b.value == code.as_str() && &b.origin_path == file_id);
                 if !seen_here {
                     // The image it was read off, so a surface can put the
                     // barcode on that image rather than beside the release.
+                    let value = code.into_string();
                     let sighting = match file_id {
-                        Some(file_id) => SourcedValue::in_file(
-                            barcode.payload,
-                            SignalOrigin::Artwork,
-                            file_id.clone(),
-                        ),
-                        None => SourcedValue::new(barcode.payload, SignalOrigin::Artwork),
+                        Some(file_id) => {
+                            SourcedValue::in_file(value, SignalOrigin::Artwork, file_id.clone())
+                        }
+                        None => SourcedValue::new(value, SignalOrigin::Artwork),
                     };
-                    gathered.barcodes.push(sighting.at(barcode.region));
+                    gathered.barcodes.push(sighting.at(region));
                 }
             }
             for line in analysis.text_lines {

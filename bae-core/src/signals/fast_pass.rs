@@ -4,6 +4,7 @@
 //! The service emits the result as its first `Signals` snapshot.
 
 use super::candidate_text::{extract_folder_brackets, parse_filename_stem, Source, SourcedLine};
+use crate::barcode::Barcode;
 use crate::import::discid::read_rip_artifacts;
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::probe::{source_durations, SourceDurations};
@@ -55,27 +56,31 @@ impl FastPass {
     }
 }
 
-/// CUE `CATALOG` payloads (the disc's UPC/EAN) from the folder's parsed sheets,
+/// CUE `CATALOG` codes (the disc's UPC/EAN) from the folder's parsed sheets,
 /// bound and unbound — one sighting per sheet that states a code, so a code
 /// two sheets state points at both. These are barcode-lookup inputs, not
-/// catalog-number filter values. A sheet whose field was never filled in holds
-/// a run of one digit, which is not a code (see
-/// [`is_placeholder_code`](super::is_placeholder_code)).
+/// catalog-number filter values. A field that holds no code — one never
+/// filled in, a run of one digit, a number whose check digit fails — is
+/// left out (see [`Barcode::stated`]).
 fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
-    let mut out: Vec<SourcedValue> = Vec::new();
-    for sheet in categorized.track_sheets() {
-        if let Some(value) = &sheet.sheet.catalog {
-            let value = value.trim();
-            if !value.is_empty() && !super::is_placeholder_code(value) {
-                out.push(SourcedValue::in_file(
-                    value.to_string(),
-                    SignalOrigin::CueSheet,
-                    sheet.file.relative_path.clone(),
-                ));
-            }
-        }
-    }
-    out
+    categorized
+        .track_sheets()
+        .filter_map(|sheet| {
+            let catalog = sheet.sheet.catalog.as_deref()?;
+            let Some(code) = Barcode::stated(catalog) else {
+                debug!(
+                    sheet = %sheet.file.relative_path,
+                    catalog, "a CUE CATALOG field holds no UPC or EAN"
+                );
+                return None;
+            };
+            Some(SourcedValue::in_file(
+                code.into_string(),
+                SignalOrigin::CueSheet,
+                sheet.file.relative_path.clone(),
+            ))
+        })
+        .collect()
 }
 
 /// Enumerate and read every non-OCR source. Blocking; the service runs it via

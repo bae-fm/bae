@@ -8,23 +8,6 @@ fn evidence(a: &MetadataResult, b: &MetadataResult) -> PressingEvidence {
     PressingEvidence::between(&PressingFacts::of(a), &PressingFacts::of(b))
 }
 
-/// The one rewrite is UPC-A to EAN-13; every other length is compared as
-/// printed, so codes of different lengths never meet by accident.
-#[test]
-fn barcode_keys_meet_only_where_the_encodings_define_it() {
-    let key = |stated: &str| barcode_key(Catalog::Discogs, "dg-1", stated);
-    assert_eq!(key("0 12345 67890 5").as_deref(), Some("0012345678905"));
-    assert_eq!(key("012345678905").as_deref(), Some("0012345678905"));
-    assert_eq!(key("0012345678905").as_deref(), Some("0012345678905"));
-    assert_eq!(key("5051961234567").as_deref(), Some("5051961234567"));
-    assert_eq!(key("12345678").as_deref(), Some("12345678"));
-    assert_eq!(key("1234567"), None, "too few digits for a code");
-    assert_eq!(key("0000000000000"), None, "a placeholder");
-    assert_eq!(key("none"), None, "not a code");
-    assert_eq!(key("0 12345 67890 5 (sticker)"), None, "not a code");
-    assert_eq!(key("012345678905>"), None, "not a code");
-}
-
 /// A stated barcode that is not a code is skipped, which leaves the record
 /// with no barcode to compare rather than a fabricated one.
 #[test]

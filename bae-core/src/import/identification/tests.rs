@@ -252,7 +252,7 @@ impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
         let ordinal: u32 = digits.parse().expect("a numbered candidate folder");
         ArtworkAnalysis {
             barcodes: vec![DetectedBarcode {
-                payload: format!("012345678{ordinal:04}"),
+                payload: crate::barcode::with_check_digit(&format!("01234567{ordinal:04}")),
                 region: None,
             }],
             text_lines: Vec::new(),

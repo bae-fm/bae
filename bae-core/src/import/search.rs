@@ -2,6 +2,7 @@
 //! Discogs for release metadata, checking Cover Art Archive for thumbnails, and
 //! fetching full release details for the import confirmation step.
 
+use crate::barcode::written_digits;
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::import::cover_art::RemoteCover;
 use crate::import::parse_year;
@@ -503,7 +504,7 @@ impl SearchQuery {
                 ..Default::default()
             },
             SearchQuery::Barcode { barcode } => ReleaseSearchParams {
-                barcode: Some(barcode.clone()),
+                barcode: Some(barcode_query(barcode)),
                 ..Default::default()
             },
         }
@@ -521,11 +522,19 @@ impl SearchQuery {
                 ..Default::default()
             },
             SearchQuery::Barcode { barcode } => DiscogsSearchParams {
-                barcode: Some(barcode.clone()),
+                barcode: Some(barcode_query(barcode)),
                 ..Default::default()
             },
         }
     }
+}
+
+/// The barcode a `Barcode` query asks for, as the providers index it: a code
+/// written with its print spacing (`5 012345 678900`) is asked for by its
+/// digits, since MusicBrainz reads a space as the end of the value. Anything
+/// not written as a code is asked for as written.
+fn barcode_query(barcode: &str) -> String {
+    written_digits(barcode).unwrap_or_else(|| barcode.to_string())
 }
 
 /// Ask one provider a typed query, in the provider's own error type — for a

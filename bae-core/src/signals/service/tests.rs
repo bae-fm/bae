@@ -1,6 +1,6 @@
 use super::*;
 use crate::signals::ArtworkScan;
-use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
+use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, DetectedBarcode, ImageRegion, RecognizedLine};
 use crate::util::rate_limiter::CallPriority;
 use std::collections::HashMap;
 use std::fs;
@@ -482,6 +482,125 @@ FILE \"audio.flac\" WAVE\n  \
         final_signals.barcode.codes().is_empty(),
         "an all-zero CATALOG must not become a barcode, got {:?}",
         final_signals.barcode,
+    );
+}
+
+/// A `CATALOG` field whose check digit fails is some other number written
+/// where the disc's code goes, not a code to look up.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cue_catalog_whose_check_digit_fails_is_not_a_barcode() {
+    let tmp = TempDir::new().unwrap();
+    let folder = tmp.path().join("Some Folder");
+    fs::create_dir_all(&folder).unwrap();
+    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
+    let cue = "CATALOG 5012345678901\n\
+FILE \"audio.flac\" WAVE\n  \
+  TRACK 01 AUDIO\n    \
+    INDEX 01 00:00:00\n";
+    fs::write(folder.join("Album.cue"), cue).unwrap();
+
+    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
+    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+
+    let signals = collect_signals(&mut rx, 1).await;
+    assert_eq!(
+        signals[0].barcode,
+        BarcodeSignal::Absent,
+        "no code was stated and there is no artwork to read"
+    );
+}
+
+/// The digits printed under a back cover's bars are the same barcode signal
+/// as a decoded payload: a sighting of the code, read off that image, in the
+/// one spelling the CUE sheet's sighting of it has too. The image's other
+/// lines still reach the text pool.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_barcode_printed_as_text_on_the_artwork_is_a_barcode_sighting() {
+    let tmp = TempDir::new().unwrap();
+    let folder = tmp.path().join("Some Folder");
+    fs::create_dir_all(&folder).unwrap();
+    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
+    fs::write(folder.join("Back.jpg"), minimal_jpeg()).unwrap();
+    let cue = "CATALOG 0012345678905\n\
+FILE \"audio.flac\" WAVE\n  \
+  TRACK 01 AUDIO\n    \
+    INDEX 01 00:00:00\n";
+    fs::write(folder.join("Album.cue"), cue).unwrap();
+
+    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new().with(
+        "Back.jpg",
+        vec![
+            "Artist Alpha".to_string(),
+            "0 12345 67890 5".to_string(),
+            "5 012345 678901".to_string(),
+        ],
+    ));
+    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+
+    // The fast pass, then the settled snapshot after the one image.
+    let signals = collect_signals(&mut rx, 2).await;
+    let settled = &signals[1];
+    assert!(matches!(settled.barcode, BarcodeSignal::Settled { .. }));
+    assert_eq!(
+        settled.barcode.codes(),
+        [
+            SourcedValue::in_file(
+                "0012345678905".to_string(),
+                SignalOrigin::CueSheet,
+                "Album.cue".to_string(),
+            ),
+            SourcedValue::in_file(
+                "0012345678905".to_string(),
+                SignalOrigin::Artwork,
+                "Back.jpg".to_string(),
+            ),
+        ]
+    );
+    assert!(
+        settled.text_pool.iter().any(|line| line.text == "Artist Alpha"),
+        "the image's text still reaches the pool, got {:?}",
+        settled.text_pool,
+    );
+}
+
+/// Where the detector decodes the bars and the recognizer reads the digits
+/// under them, the image holds one sighting of the code: the detector's, at
+/// the box it drew around the bars.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_bars_and_their_printed_digits_are_one_sighting() {
+    struct BarsAndDigits;
+    impl ArtworkAnalyzer for BarsAndDigits {
+        fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
+            ArtworkAnalysis {
+                barcodes: vec![DetectedBarcode {
+                    payload: "5012345678900".to_string(),
+                    region: ImageRegion::new(0.6, 0.8, 0.3, 0.1),
+                }],
+                text_lines: vec![RecognizedLine {
+                    text: "5 012345 678900".to_string(),
+                    region: ImageRegion::new(0.6, 0.9, 0.3, 0.05),
+                }],
+            }
+        }
+    }
+
+    let tmp = TempDir::new().unwrap();
+    let folder = tmp.path().join("Some Folder");
+    fs::create_dir_all(&folder).unwrap();
+    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
+    fs::write(folder.join("Back.jpg"), minimal_jpeg()).unwrap();
+
+    let (_handle, mut rx, _lib_tmp) = start_signals(folder, Arc::new(BarsAndDigits)).await;
+
+    let signals = collect_signals(&mut rx, 2).await;
+    assert_eq!(
+        signals[1].barcode.codes(),
+        [SourcedValue::in_file(
+            "5012345678900".to_string(),
+            SignalOrigin::Artwork,
+            "Back.jpg".to_string(),
+        )
+        .at(ImageRegion::new(0.6, 0.8, 0.3, 0.1))]
     );
 }
 

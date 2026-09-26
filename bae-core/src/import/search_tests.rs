@@ -312,6 +312,20 @@ fn catalog_and_barcode_queries_fill_their_own_provider_fields() {
         barcode.discogs_params().barcode.as_deref(),
         Some("012345678905")
     );
+
+    // Typed with its print spacing, a code is asked for by its digits: a
+    // space would end the value in MusicBrainz's query.
+    let spaced = SearchQuery::Barcode {
+        barcode: " 0 12345 67890 5 ".to_string(),
+    };
+    assert_eq!(
+        spaced.musicbrainz_params().barcode.as_deref(),
+        Some("012345678905")
+    );
+    assert_eq!(
+        spaced.discogs_params().barcode.as_deref(),
+        Some("012345678905")
+    );
 }
 
 #[test]

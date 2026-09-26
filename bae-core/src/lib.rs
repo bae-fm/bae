@@ -17,6 +17,8 @@ pub mod airplay;
 pub mod album_detail;
 pub mod app;
 pub mod audio_codec;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod barcode;
 pub mod cast;
 #[doc(hidden)]
 pub mod config;

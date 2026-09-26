@@ -9,12 +9,12 @@
 //! whether the two records are candidates for one pressing and how well
 //! supported that claim is.
 
+use crate::barcode::comparison_key;
 use crate::identify::country::named;
 use crate::identify::label::stated;
 use crate::import::medium::{Lookup, Medium};
 use crate::import::search::{MetadataResult, StatedMedia};
 use crate::import::types::{Catalog, MetadataRef};
-use crate::signals::barcode::is_placeholder_code;
 use crate::util::text::squash;
 use tracing::{debug, warn};
 
@@ -63,53 +63,21 @@ impl<'a> PressingFacts<'a> {
     }
 }
 
-/// The key a stated barcode is compared by, or `None` when the value is not
-/// usable as one.
-///
-/// A code is digits, with spaces and dashes between them and nothing else; a
-/// value with letters or other punctuation is something else printed in the
-/// barcode field. Fewer than eight digits is no UPC or EAN, and a run of one
-/// digit is a placeholder. The key is the digits, with a twelve-digit UPC-A
-/// written as the thirteen-digit EAN that prefixes a zero — the one
-/// equivalence the two encodings define. No other length is rewritten, so an
-/// eight-digit code and a thirteen-digit one never meet.
+/// The key a stated barcode is compared by (see [`comparison_key`]), or
+/// `None` when the value is not usable as one — which is logged, since a
+/// catalog's barcode field holding something else is worth seeing.
 fn barcode_key(source: Catalog, release_id: &str, stated: &str) -> Option<String> {
-    if !stated
-        .chars()
-        .all(|c| c.is_ascii_digit() || c == ' ' || c == '-')
-    {
-        debug!(
-            %source,
-            release_id,
-            stated,
-            "skipping a stated barcode that is not a code"
-        );
-        return None;
-    }
-    let digits: String = stated.chars().filter(char::is_ascii_digit).collect();
-    if digits.len() < 8 {
-        debug!(
-            %source,
-            release_id,
-            stated,
-            "skipping a stated barcode with too few digits for a code"
-        );
-        return None;
-    }
-    if is_placeholder_code(&digits) {
-        debug!(
-            %source,
-            release_id,
-            stated,
-            "skipping a placeholder barcode"
-        );
-        return None;
-    }
-    Some(if digits.len() == 12 {
-        format!("0{digits}")
-    } else {
-        digits
-    })
+    comparison_key(stated)
+        .inspect_err(|unusable| {
+            debug!(
+                %source,
+                release_id,
+                stated,
+                ?unusable,
+                "skipping a stated barcode that is no key to compare by"
+            )
+        })
+        .ok()
 }
 
 /// A catalog number as it is compared: squashed, and only when that leaves a

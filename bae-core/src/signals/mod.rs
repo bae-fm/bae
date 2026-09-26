@@ -6,7 +6,8 @@
 //! Three signal kinds, each its own module:
 //!
 //! * [`disc_id`] — a MusicBrainz disc ID from LOG/CUE artifacts.
-//! * [`barcode`] — UPC/EAN codes from artwork OCR and CUE `CATALOG`.
+//! * [`barcode`] — UPC/EAN codes from artwork (the bars, and the digits
+//!   printed under them) and CUE `CATALOG`.
 //! * [`text`] — catalog-number candidates and free text from artwork OCR,
 //!   folder name, filenames, CUE, and text files.
 //!
@@ -46,7 +47,7 @@ desktop_only! {
 
     pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer, DetectedBarcode, RecognizedLine};
     pub use artwork::ArtworkScan;
-    pub use barcode::{is_placeholder_code, BarcodeSignal};
+    pub use barcode::BarcodeSignal;
     pub use disc_id::DiscIdSignal;
     pub use service::{
         ExtractionService, ExtractionServiceHandle, ExtractionSource, ExtractionWatch,

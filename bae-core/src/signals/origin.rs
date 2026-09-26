@@ -16,7 +16,8 @@ pub enum SignalOrigin {
     DiscToc,
     /// A CUE sheet field (`CATALOG`, `PERFORMER`/`TITLE`).
     CueSheet,
-    /// OCR of a cover/artwork image.
+    /// Read off a cover/artwork image: text its recognizer read, or a
+    /// barcode its detector decoded from the bars.
     Artwork,
     /// The candidate's folder name — a path component or a bracketed tag.
     FolderName,
