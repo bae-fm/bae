@@ -203,6 +203,11 @@ struct ImportCandidateListContent: View {
     /// Skip (or unskip) the candidate at `key`. Wired to the row context menu.
     let onSkip: (_ key: String, _ skipped: Bool) -> Void
     let onReveal: (_ key: String) -> Void
+    /// Stop the work running for the candidate at `key`: the cancel action
+    /// its row offers.
+    let onCancel: (_ key: String, _ action: BridgeCandidateAction) -> Void
+    /// Take every candidate off the identification queue.
+    let onCancelAllIdentification: () -> Void
 
     @Environment(UiStore.self)
     private var uiStore
@@ -334,7 +339,8 @@ struct ImportCandidateListContent: View {
                                 total: progress.total,
                                 onGoToUnidentified: goToFirstUnidentified(
                                     using: proxy
-                                )
+                                ),
+                                onCancelAll: onCancelAllIdentification
                             )
                         }
                         if let activity = summary.folderScanActivity {
@@ -670,7 +676,8 @@ extension ImportCandidateListContent {
             isGroupMember: isGroupMember,
             onReveal: { onReveal(row.candidateKey) },
             onSkip: { onSkip(row.candidateKey, $0) },
-            onSeparate: { onSeparate(row.candidateKey) }
+            onSeparate: { onSeparate(row.candidateKey) },
+            onCancel: { onCancel(row.candidateKey, $0) }
         )
         .tag(row.candidateKey)
     }
@@ -776,7 +783,9 @@ extension ImportCandidateListContent {
             onCombineFolder: { _ in },
             onSeparate: { _ in },
             onSkip: { _, _ in },
-            onReveal: { _ in }
+            onReveal: { _ in },
+            onCancel: { _, _ in },
+            onCancelAllIdentification: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)
@@ -802,7 +811,9 @@ extension ImportCandidateListContent {
             onCombineFolder: { _ in },
             onSeparate: { _ in },
             onSkip: { _, _ in },
-            onReveal: { _ in }
+            onReveal: { _ in },
+            onCancel: { _, _ in },
+            onCancelAllIdentification: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)

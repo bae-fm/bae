@@ -150,6 +150,18 @@ impl AppServices {
         self.inner.identification.rerun_identify(candidate_key);
     }
 
+    /// Take these candidates off the identification queue, waiting or
+    /// running. They are left unidentified and the automatic admission does
+    /// not take them back up; [`Self::rerun_identify`] asks for them again.
+    pub fn cancel_identification(&self, candidate_keys: Vec<String>) {
+        self.inner.identification.cancel(candidate_keys);
+    }
+
+    /// Take every candidate off the identification queue.
+    pub fn cancel_all_identification(&self) {
+        self.inner.identification.cancel_all();
+    }
+
     /// Every key with something in flight right now.
     pub fn candidate_runtimes(
         &self,

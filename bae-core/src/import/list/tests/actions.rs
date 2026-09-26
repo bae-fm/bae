@@ -30,7 +30,10 @@ fn a_ready_candidate_under_identification_stays_in_the_ready_set() {
                 importing: false,
             },
         );
-        assert_eq!(live.actions, vec![CandidateAction::Skip]);
+        assert_eq!(
+            live.actions,
+            vec![CandidateAction::CancelIdentification, CandidateAction::Skip]
+        );
     }
     assert!(
         CandidateLiveState::of(&row.action_basis, TriageRuntimeFacts::default())

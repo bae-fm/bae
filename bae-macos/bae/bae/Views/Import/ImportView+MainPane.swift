@@ -17,7 +17,9 @@ extension ImportView {
             onCombineFolder: { key in combineFolder(key) },
             onSeparate: { key in separateCandidate(key) },
             onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
-            onReveal: revealCandidateSources
+            onReveal: revealCandidateSources,
+            onCancel: { key, action in cancelCandidateWork(key, action) },
+            onCancelAllIdentification: { importer.cancelAllIdentification() }
         )
     }
 

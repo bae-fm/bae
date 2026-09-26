@@ -25,6 +25,9 @@ struct TriageRowView: View {
     let onSkip: (_ skipped: Bool) -> Void
     /// Read this release as the folders it is made of.
     let onSeparate: () -> Void
+    /// Stop the work running for the candidate: the cancel action its live
+    /// state offers.
+    let onCancel: (_ action: BridgeCandidateAction) -> Void
 
     init(
         row: BridgeTriageRow,
@@ -32,7 +35,8 @@ struct TriageRowView: View {
         isGroupMember: Bool,
         onReveal: @escaping () -> Void,
         onSkip: @escaping (_ skipped: Bool) -> Void,
-        onSeparate: @escaping () -> Void = {}
+        onSeparate: @escaping () -> Void = {},
+        onCancel: @escaping (_ action: BridgeCandidateAction) -> Void = { _ in }
     ) {
         self.row = row
         self.coverContent = coverContent
@@ -40,6 +44,7 @@ struct TriageRowView: View {
         self.onReveal = onReveal
         self.onSkip = onSkip
         self.onSeparate = onSeparate
+        self.onCancel = onCancel
     }
 
     var body: some View {
@@ -54,7 +59,8 @@ struct TriageRowView: View {
                 isGroupMember: isGroupMember,
                 onReveal: onReveal,
                 onSkip: onSkip,
-                onSeparate: onSeparate
+                onSeparate: onSeparate,
+                onCancel: onCancel
             )
         }
     }
@@ -71,12 +77,17 @@ struct TriageRowContent: View {
     let onSkip: (_ skipped: Bool) -> Void
     /// Read this release as the folders it is made of.
     let onSeparate: () -> Void
+    let onCancel: (_ action: BridgeCandidateAction) -> Void
 
     var body: some View {
         rowContent
             .groupMemberRail(isGroupMember)
             .contentShape(Rectangle())
             .contextMenu {
+                if let cancel = live?.actions.first(where: \.isCancel) {
+                    Button(cancel.rowLabel) { onCancel(cancel) }
+                    Divider()
+                }
                 if let actions = live?.actions,
                     actions.contains(.skip) || actions.contains(.restore)
                 {

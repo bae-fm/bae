@@ -241,6 +241,7 @@ pub enum BridgeTriagePlacement {
 pub enum BridgeCandidateAction {
     ImportReady,
     Identify,
+    CancelIdentification,
     RetryIdentification,
     ResetToFileMetadata,
     ClearMetadata,

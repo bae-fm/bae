@@ -190,6 +190,19 @@ forward! {
             this.services.rerun_identify(candidate_key);
         }
 
+        /// Take these candidates off the identification queue, whether they
+        /// are waiting, running, or having their answer written. They are
+        /// left unidentified — no verdict, no failure — and are not picked up
+        /// again on their own; `rerun_identify_for_candidate` asks for one.
+        fn cancel_identification(candidate_keys: Vec<String>) {
+            this.services.cancel_identification(candidate_keys);
+        }
+
+        /// Take every candidate off the identification queue.
+        fn cancel_all_identification() {
+            this.services.cancel_all_identification();
+        }
+
         /// Submit a candidate's typed search. Fire-and-forget like
         /// `rerun_identify_for_candidate`: every configured provider is asked at
         /// once, and each answer lands on the candidate's runtime as it arrives.

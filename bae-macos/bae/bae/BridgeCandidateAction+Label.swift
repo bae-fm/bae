@@ -9,6 +9,8 @@ extension BridgeCandidateAction {
         switch self {
         case .importReady: String(localized: "Import ready")
         case .identify: String(localized: "Identify selected")
+        case .cancelIdentification:
+            String(localized: "Stop identifying selected")
         case .retryIdentification:
             String(localized: "Retry failed identification")
         case .resetToFileMetadata: String(localized: "Reset to file metadata")
@@ -25,10 +27,33 @@ extension BridgeCandidateAction {
         String(localized: "\(label) (\(count))")
     }
 
+    /// Whether the action stops work already running for the candidate —
+    /// what a row offers first in its menu.
+    var isCancel: Bool {
+        switch self {
+        case .cancelIdentification: true
+        case .importReady, .identify, .retryIdentification,
+            .resetToFileMetadata, .clearMetadata, .skip, .restore:
+            false
+        }
+    }
+
+    /// What the action is called in one row's menu, where it names that row's
+    /// candidate rather than a selection.
+    var rowLabel: String {
+        switch self {
+        case .cancelIdentification: String(localized: "Stop Identifying")
+        case .importReady, .identify, .retryIdentification,
+            .resetToFileMetadata, .clearMetadata, .skip, .restore:
+            label
+        }
+    }
+
     var symbol: String {
         switch self {
         case .importReady: "square.and.arrow.down"
         case .identify: "magnifyingglass"
+        case .cancelIdentification: "xmark.circle"
         case .retryIdentification: "arrow.clockwise"
         case .resetToFileMetadata: "doc.text"
         case .clearMetadata: "eraser"

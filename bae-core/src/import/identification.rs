@@ -105,6 +105,10 @@ struct Context {
 enum Command {
     /// A person asked for this candidate to be identified now.
     Request { candidate_key: String },
+    /// A person cancelled these candidates' identification.
+    Cancel { candidate_keys: Vec<String> },
+    /// A person cancelled every identification the queue holds.
+    CancelAll,
     /// Run the automatic admission, and say when everything it is responsible
     /// for has ended. The events that trigger one in the app carry no
     /// acknowledgement, and nothing there waits for the queue to drain — it is

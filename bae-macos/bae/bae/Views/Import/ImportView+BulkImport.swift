@@ -2,6 +2,18 @@ import BaeKit
 import SwiftUI
 
 extension ImportView {
+    /// Stop what is running for one candidate, from its row's menu. A row
+    /// offers only the cancel actions its live state carries.
+    func cancelCandidateWork(_ key: String, _ action: BridgeCandidateAction) {
+        switch action {
+        case .cancelIdentification:
+            importer.cancelIdentification([key])
+        case .importReady, .identify, .retryIdentification,
+            .resetToFileMetadata, .clearMetadata, .skip, .restore:
+            assertionFailure("\(action) is not a cancel action")
+        }
+    }
+
     func performCandidateAction(_ offer: ImportCandidateActionOffer) {
         let storageMode = configStore.config.importStorageMode(
             cloud: storageCloud
@@ -31,6 +43,8 @@ extension ImportView {
             // actions differ in what the row offers, not in what core does.
             case .identify, .retryIdentification:
                 importer.rerunIdentifyForCandidate(key)
+            case .cancelIdentification:
+                importer.cancelIdentification([key])
             case .resetToFileMetadata:
                 _ = try await importer.applyCandidateFileMetadata(key)
             case .clearMetadata:

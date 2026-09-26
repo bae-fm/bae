@@ -40,6 +40,9 @@ enum JobState {
     Settling {
         representative: String,
         run: IdentifyRunId,
+        /// Tells this settle to give its answer up before it writes: what a
+        /// person cancelling the job asks of it.
+        abandon: CancellationToken,
     },
 }
 
@@ -110,6 +113,14 @@ pub(super) struct Queue {
     /// The jobs in the order they run: the ones a person asked for at the
     /// front, each of them in the order it was admitted.
     jobs: VecDeque<Job>,
+    /// The identities a person took off the queue. The automatic admission
+    /// leaves them alone: without this, the next scan or setting change would
+    /// put a cancelled candidate straight back and the cancel would undo
+    /// itself. A person asking for one again takes it out of here, and files
+    /// that change give the candidate an identity nobody declined. Held for
+    /// the library session, not stored: nothing about the candidate changed,
+    /// only whether this session should spend lookups on it.
+    declined: std::collections::HashSet<CandidateIdentity>,
 }
 
 impl Queue {
@@ -196,6 +207,13 @@ impl Queue {
         for candidate in candidates {
             let key = candidate.key();
             let identity = candidate_identity(&candidate);
+            match admission {
+                Admission::Automatic if self.declined.contains(&identity) => continue,
+                Admission::Automatic => {}
+                Admission::Requested => {
+                    self.declined.remove(&identity);
+                }
+            }
             if let Some(index) = self.index_of_key(&key) {
                 if admission == Admission::Automatic && self.jobs[index].identity == identity {
                     continue;
@@ -295,6 +313,49 @@ impl Queue {
         context.import.withdraw_identification(key);
     }
 
+    /// A person cancelled `key`'s identification: its whole job leaves the
+    /// queue — every member shares the one run, and it answers them all — and
+    /// the identity is declined, so the automatic admission does not put it
+    /// back. A run in flight is ended, and an answer being written is told to
+    /// give itself up before it writes, so the candidates are left as
+    /// unidentified as they were: no verdict, no failure. Nothing for a key the
+    /// queue does not hold.
+    fn cancel(&mut self, context: &Context, key: &str) {
+        let Some(index) = self.index_of_key(key) else {
+            return;
+        };
+        let job = self
+            .jobs
+            .remove(index)
+            .expect("the located job still exists");
+        self.end_cancelled(context, job);
+    }
+
+    /// Cancel every job the queue holds.
+    fn cancel_all(&mut self, context: &Context) {
+        for job in std::mem::take(&mut self.jobs) {
+            self.end_cancelled(context, job);
+        }
+    }
+
+    fn end_cancelled(&mut self, context: &Context, job: Job) {
+        match &job.state {
+            JobState::Waiting => {}
+            JobState::Running { representative, .. } => {
+                context.import.cancel_identification(representative);
+            }
+            JobState::Settling { abandon, .. } => abandon.cancel(),
+        }
+        for key in job.keys() {
+            context.import.withdraw_identification(&key);
+        }
+        info!(
+            "identification: cancelled {} candidate(s) of one job",
+            job.members.len()
+        );
+        self.declined.insert(job.identity);
+    }
+
     /// Every entry with this identity leaves: the answer that just stored
     /// covers all of them.
     fn retire(&mut self, context: &Context, identity: &CandidateIdentity) {
@@ -382,7 +443,7 @@ impl Queue {
             &job.identity == identity
                 && matches!(
                     &job.state,
-                    JobState::Settling { representative, run: settling }
+                    JobState::Settling { representative, run: settling, .. }
                         if representative == key && *settling == run
                 )
         })
@@ -450,6 +511,12 @@ pub(super) async fn run(
                 Command::Request { candidate_key } => {
                     request(context, &mut queue, candidate_key).await;
                 }
+                Command::Cancel { candidate_keys } => {
+                    for key in &candidate_keys {
+                        queue.cancel(context, key);
+                    }
+                }
+                Command::CancelAll => queue.cancel_all(context),
                 #[cfg(any(test, feature = "test-utils"))]
                 Command::AdmitAutomatic { drained } => {
                     if automatic_is_on(config) {
@@ -724,12 +791,13 @@ async fn advance(
     // the extraction that fed it, whose artwork pass would otherwise keep
     // going beside the settle.
     context.import.cancel_candidate_extraction(key);
+    let settle_token = settle_token.child_token();
     job.state = JobState::Settling {
         representative: key.to_string(),
         run,
+        abandon: settle_token.clone(),
     };
     let context = context.clone();
-    let settle_token = settle_token.clone();
     settling.spawn(async move {
         settle_answer(
             context,

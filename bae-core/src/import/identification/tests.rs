@@ -930,6 +930,7 @@ include!("tests/settled_panes.rs");
 include!("tests/persistence_late.rs");
 include!("tests/candidate_decisions.rs");
 include!("tests/cancellation.rs");
+include!("tests/cancelled.rs");
 include!("tests/requested.rs");
 include!("tests/admissions.rs");
 include!("tests/row_live_state.rs");

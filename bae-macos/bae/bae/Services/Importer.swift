@@ -74,6 +74,8 @@ private struct ImportOperations: Sendable {
     let setCandidateLookupChoices:
         @Sendable (String, BridgeLookupChoices) async throws -> Void
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
+    let cancelIdentification: @Sendable ([String]) -> Void
+    let cancelAllIdentification: @Sendable () -> Void
     let setCandidatePresentation:
         @Sendable (String, BridgeMetadataPresentation) async throws -> Void
     let setCandidateSearchForm:
@@ -213,6 +215,12 @@ extension ImportOperations {
             },
             rerunIdentifyForCandidate: {
                 handle.rerunIdentifyForCandidate(candidateKey: $0)
+            },
+            cancelIdentification: {
+                handle.cancelIdentification(candidateKeys: $0)
+            },
+            cancelAllIdentification: {
+                handle.cancelAllIdentification()
             },
             setCandidatePresentation: {
                 try await handle.setCandidatePresentation(
@@ -411,6 +419,9 @@ final class Importer: Sendable, Observable {
             Void = { _, _ in },
         rerunIdentifyForCandidate:
             @escaping @Sendable (String) -> Void = { _ in },
+        cancelIdentification:
+            @escaping @Sendable ([String]) -> Void = { _ in },
+        cancelAllIdentification: @escaping @Sendable () -> Void = {},
         setCandidatePresentation:
             @escaping @Sendable (String, BridgeMetadataPresentation)
             async throws ->
@@ -504,6 +515,8 @@ final class Importer: Sendable, Observable {
             subscribeLibraryStatuses: subscribeLibraryStatuses,
             setCandidateLookupChoices: setCandidateLookupChoices,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
+            cancelIdentification: cancelIdentification,
+            cancelAllIdentification: cancelAllIdentification,
             setCandidatePresentation: setCandidatePresentation,
             setCandidateSearchForm: setCandidateSearchForm,
             setCandidatePaneError: setCandidatePaneError,
@@ -680,6 +693,18 @@ extension Importer {
     /// already succeeded.
     func rerunIdentifyForCandidate(_ candidateKey: String) {
         operations.rerunIdentifyForCandidate(candidateKey)
+    }
+
+    /// Take these candidates off the identification queue, waiting or
+    /// running. They are left unidentified and are not picked up again on
+    /// their own; `rerunIdentifyForCandidate` asks for one again.
+    func cancelIdentification(_ candidateKeys: [String]) {
+        operations.cancelIdentification(candidateKeys)
+    }
+
+    /// Take every candidate off the identification queue.
+    func cancelAllIdentification() {
+        operations.cancelAllIdentification()
     }
 
     /// Record which surface the pane's metadata slot shows for a candidate.

@@ -289,8 +289,8 @@ enum ImportBulkActionGroup: CaseIterable, Identifiable {
         case .importing: [.importReady]
         case .metadata:
             [
-                .identify, .retryIdentification, .resetToFileMetadata,
-                .clearMetadata,
+                .identify, .cancelIdentification, .retryIdentification,
+                .resetToFileMetadata, .clearMetadata,
             ]
         case .placement: [.skip, .restore]
         }

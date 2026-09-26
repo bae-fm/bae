@@ -8,6 +8,8 @@ use super::{
 pub enum CandidateAction {
     ImportReady,
     Identify,
+    /// Stop the identification that is waiting, running, or being written.
+    CancelIdentification,
     RetryIdentification,
     ResetToFileMetadata,
     ClearMetadata,
@@ -55,9 +57,9 @@ impl CandidateActionBasis {
     /// The commands these facts offer with `live` running for the candidate.
     ///
     /// An import owning the candidate leaves nothing, not even a skip: the
-    /// attempt is what decides it now. A run in flight leaves only the skip —
-    /// the run is about to write the answer every other command would
-    /// overwrite.
+    /// attempt is what decides it now. A run in flight leaves only cancelling
+    /// it and the skip — the run is about to write the answer every other
+    /// command would overwrite.
     pub fn actions(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction> {
         use CandidateAction as A;
         use TriagePlacement as P;
@@ -68,7 +70,7 @@ impl CandidateActionBasis {
         let placement = &self.placement;
         let mut actions = match placement {
             P::Done | P::Skipped => Vec::new(),
-            _ if identifying => Vec::new(),
+            _ if identifying => vec![A::CancelIdentification],
             P::Pending | P::Ready | P::NeedsYou { .. } | P::Failed => {
                 let mut actions = Vec::new();
                 if matches!(placement, P::Ready) {
@@ -185,14 +187,14 @@ mod tests {
             assert_eq!(
                 basis(TriagePlacement::Ready, Some(&QueueClassification::Ready))
                     .actions(&identifying(status)),
-                vec![CandidateAction::Skip]
+                vec![CandidateAction::CancelIdentification, CandidateAction::Skip]
             );
         }
     }
 
     /// A candidate nobody has answered yet is Pending, and a run in flight for
-    /// it leaves only the skip — the run is about to write the answer every
-    /// other command would overwrite.
+    /// it leaves only cancelling the run and the skip — the run is about to
+    /// write the answer every other command would overwrite.
     #[test]
     fn active_identification_cannot_be_overwritten_by_a_bulk_action() {
         for status in [
@@ -202,7 +204,7 @@ mod tests {
         ] {
             assert_eq!(
                 basis(TriagePlacement::Pending, None).actions(&identifying(status)),
-                vec![CandidateAction::Skip]
+                vec![CandidateAction::CancelIdentification, CandidateAction::Skip]
             );
         }
     }

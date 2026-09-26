@@ -79,6 +79,28 @@ impl IdentificationHandle {
         }
     }
 
+    /// Stop identifying these candidates, whether they are waiting, running,
+    /// or having their answer written. Each one's whole job goes — candidates
+    /// with the same files share one run — and it is left unidentified: no
+    /// verdict and no failure are stored, and the automatic admission does not
+    /// take it back up. Identifying it again is a person's request.
+    pub fn cancel(&self, candidate_keys: Vec<String>) {
+        if self
+            .commands
+            .send(Command::Cancel { candidate_keys })
+            .is_err()
+        {
+            warn!("identification: the queue has stopped; there is nothing to cancel");
+        }
+    }
+
+    /// Stop every identification on the queue, as [`Self::cancel`] does for one.
+    pub fn cancel_all(&self) {
+        if self.commands.send(Command::CancelAll).is_err() {
+            warn!("identification: the queue has stopped; there is nothing to cancel");
+        }
+    }
+
     /// Run the automatic admission now, and wait until every job it is
     /// responsible for has ended — a verdict stored, refused, failed, or
     /// withdrawn. The whole of what one pass over the queue was.

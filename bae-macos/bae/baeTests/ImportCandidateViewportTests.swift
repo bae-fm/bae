@@ -390,7 +390,9 @@ extension ImportCandidateViewportTests {
             onCombineFolder: { _ in },
             onSeparate: { _ in },
             onSkip: { _, _ in },
-            onReveal: { _ in }
+            onReveal: { _ in },
+            onCancel: { _, _ in },
+            onCancelAllIdentification: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)

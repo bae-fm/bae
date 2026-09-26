@@ -17,25 +17,34 @@ struct IdentificationProgressView: View {
     let total: UInt32
     /// Go to the first candidate the count is still waiting on.
     let onGoToUnidentified: () -> Void
+    /// Take every candidate off the identification queue.
+    let onCancelAll: () -> Void
 
     private var fraction: Double {
         total == 0 ? 1 : Double(identified) / Double(total)
     }
 
     var body: some View {
-        Button {
-            onGoToUnidentified()
-        } label: {
-            ProgressLine(
-                String(localized: "Identifying"),
-                progress: fraction,
-                detail: "\(identified.formatted()) / \(total.formatted())"
-            )
-            .font(.system(size: 12))
-            .contentShape(Rectangle())
+        VStack(alignment: .trailing, spacing: 8) {
+            Button {
+                onGoToUnidentified()
+            } label: {
+                ProgressLine(
+                    String(localized: "Identifying"),
+                    progress: fraction,
+                    detail: "\(identified.formatted()) / \(total.formatted())"
+                )
+                .font(.system(size: 12))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Go to a candidate still being identified")
+            Button("Cancel All", role: .destructive, action: onCancelAll)
+                .controlSize(.small)
+                .help(
+                    "Stop identifying every candidate still waiting or running"
+                )
         }
-        .buttonStyle(.plain)
-        .help("Go to a candidate still being identified")
     }
 }
 
@@ -45,6 +54,7 @@ struct IdentificationProgressIndicator: View {
     let identified: UInt32
     let total: UInt32
     let onGoToUnidentified: () -> Void
+    let onCancelAll: () -> Void
 
     @State
     private var lineShown = false
@@ -67,7 +77,11 @@ struct IdentificationProgressIndicator: View {
             IdentificationProgressView(
                 identified: identified,
                 total: total,
-                onGoToUnidentified: onGoToUnidentified
+                onGoToUnidentified: onGoToUnidentified,
+                onCancelAll: {
+                    lineShown = false
+                    onCancelAll()
+                }
             )
             .frame(width: 220)
             .padding(12)
@@ -151,7 +165,8 @@ struct FolderScanProgressIndicator: View {
         IdentificationProgressIndicator(
             identified: 112,
             total: 130,
-            onGoToUnidentified: {}
+            onGoToUnidentified: {},
+            onCancelAll: {}
         )
         .padding()
         .windowBackground()
@@ -161,7 +176,8 @@ struct FolderScanProgressIndicator: View {
         IdentificationProgressView(
             identified: 112,
             total: 130,
-            onGoToUnidentified: {}
+            onGoToUnidentified: {},
+            onCancelAll: {}
         )
         .padding()
         .frame(width: 280)

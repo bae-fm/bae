@@ -248,6 +248,7 @@ mirror_enum! {
     variants: {
         ImportReady,
         Identify,
+        CancelIdentification,
         RetryIdentification,
         ResetToFileMetadata,
         ClearMetadata,
