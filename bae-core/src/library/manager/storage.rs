@@ -83,6 +83,24 @@ impl LibraryManager {
         Ok(())
     }
 
+    /// Stop every make-Remote transition coven can still unwind, as
+    /// [`Self::cancel_release_upload`] stops one. A release already publishing
+    /// has committed its objects and finishes; one already cancelling is on
+    /// its way. Each release's cancel is its own durable write, so a failure
+    /// partway leaves the earlier releases cancelled and says which failed.
+    pub async fn cancel_all_release_uploads(&self) -> Result<(), LibraryError> {
+        let snapshot = self.outbox_snapshot().await?;
+        for group in snapshot
+            .upload_groups
+            .iter()
+            .filter(|group| group.progress.can_cancel())
+        {
+            self.coven_cancel_make_remote(&group.release_id).await?;
+        }
+        self.emit_outbox_changed().await;
+        Ok(())
+    }
+
     /// Drive coven's upload drain once through the handle's connected sync
     /// manager, for tests that connected an injected cloud home via
     /// [`connect_test_cloud_home`](Self::connect_test_cloud_home). Production

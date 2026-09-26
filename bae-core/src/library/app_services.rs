@@ -332,6 +332,7 @@ impl AppServices {
     delegate_sync!(manager, download_snapshot => download_snapshot() -> crate::library::DownloadSnapshot);
     delegate_sync!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> ());
     delegate_sync!(manager, cancel_download => cancel_download(release_id: &str) -> ());
+    delegate_sync!(manager, cancel_all_downloads => cancel_all_downloads() -> ());
     delegate_sync!(manager, retry_downloads => retry_downloads() -> ());
     delegate_async!(manager, get_artist_count => get_artist_count() -> Result<u64, crate::library::LibraryError>);
     delegate_async!(manager, get_artist_page => get_artist_page(sort: &[crate::db::ArtistSortCriterion], offset: u64, limit: u64) -> Result<Vec<crate::album_detail::ArtistSummary>, crate::library::LibraryError>);
@@ -374,6 +375,7 @@ impl AppServices {
     delegate_async!(manager, outbox_snapshot => outbox_snapshot() -> Result<crate::library::OutboxSnapshot, crate::library::LibraryError>);
     delegate_async!(manager, retry_outbox_now => retry_outbox_now() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_release_transition => cancel_release_transition(release_id: &str) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, cancel_all_release_uploads => cancel_all_release_uploads() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, set_sync_paused => set_sync_paused(paused: bool) -> ());
     delegate_async!(manager, enqueue_pins => enqueue_pins(release_ids: Vec<String>) -> ());
     delegate_async!(manager, use_cloudkit => use_cloudkit(storage: crate::config::HomeStorage) -> Result<(), crate::library::LibraryError>);
@@ -405,6 +407,7 @@ impl AppServices {
     delegate_sync!(manager, set_outputs_paused => set_outputs_paused(paused: bool) -> ());
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(manager, cancel_output => cancel_output(release_id: &str) -> ());
+    delegate_sync!(manager, cancel_all_outputs => cancel_all_outputs() -> ());
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(manager, retry_outputs => retry_outputs() -> ());
 

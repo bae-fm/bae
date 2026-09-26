@@ -22,6 +22,8 @@ public final class Downloads: Sendable, Observable {
     /// Cancel a release's download — drops a queued/failed entry or aborts the
     /// in-flight one (the release stays cloud-only).
     public let cancelDownload: @Sendable (_ releaseId: String) -> Void
+    /// Cancel every download — queued, failed, and the one in flight.
+    public let cancelAllDownloads: @Sendable () -> Void
     /// Retry every failed download now (flips them back to queued).
     public let retryDownloads: @Sendable () -> Void
     /// How many downloads a pin fetches at once (1...8). A persisted device-local
@@ -39,6 +41,7 @@ public final class Downloads: Sendable, Observable {
         },
         setDownloadsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
         cancelDownload: @escaping @Sendable (String) -> Void = { _ in },
+        cancelAllDownloads: @escaping @Sendable () -> Void = {},
         retryDownloads: @escaping @Sendable () -> Void = {},
         setMaxConcurrentDownloads:
             @escaping @Sendable (UInt32) async throws -> Void =
@@ -50,6 +53,7 @@ public final class Downloads: Sendable, Observable {
         self.unpinRelease = unpinRelease
         self.setDownloadsPaused = setDownloadsPaused
         self.cancelDownload = cancelDownload
+        self.cancelAllDownloads = cancelAllDownloads
         self.retryDownloads = retryDownloads
         self.setMaxConcurrentDownloads = setMaxConcurrentDownloads
     }
@@ -60,6 +64,7 @@ public final class Downloads: Sendable, Observable {
             unpinRelease: { try await handle.unpinRelease(releaseId: $0) },
             setDownloadsPaused: { handle.setDownloadsPaused(paused: $0) },
             cancelDownload: { handle.cancelDownload(releaseId: $0) },
+            cancelAllDownloads: { handle.cancelAllDownloads() },
             retryDownloads: { handle.retryDownloads() },
             setMaxConcurrentDownloads: {
                 try await handle.setMaxConcurrentDownloads(n: $0)

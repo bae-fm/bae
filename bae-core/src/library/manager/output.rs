@@ -120,6 +120,12 @@ impl LibraryManager {
         self.outputs.cancel(release_id);
     }
 
+    /// Cancel every export — queued, failed, and the one in flight — as
+    /// [`Self::cancel_output`] cancels one. Emits a fresh snapshot.
+    pub fn cancel_all_outputs(&self) {
+        self.outputs.cancel_all();
+    }
+
     /// Flip every failed export back to queued and wake the worker to retry them.
     /// Emits a fresh snapshot.
     pub fn retry_outputs(&self) {

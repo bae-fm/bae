@@ -72,6 +72,13 @@ impl<Extra: Clone, Progress: Clone, Snapshot> QueuedReleases<Extra, Progress, Sn
         self.republish();
     }
 
+    /// Empty the queue: drop every queued and failed entry and abort the
+    /// active one's task.
+    pub fn cancel_all(&self) {
+        self.queue.cancel_all();
+        self.republish();
+    }
+
     /// Flip every failed entry back to queued and wake the worker.
     pub fn retry_failed(&self) {
         if self.queue.retry_failed() {

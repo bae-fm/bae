@@ -1,6 +1,528 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Stop every upload that can still be stopped, not only this release's" : {
+      "comment" : "Storage inspector: tooltip of the Sync queue section's Cancel All button; uploads already publishing finish",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إيقاف كل عمليات الرفع التي لا يزال يمكن إيقافها، لا رفع هذا الإصدار فقط"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спиране на всички качвания, които още могат да бъдат спрени, не само на това издание"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zastavit všechna nahrávání, která lze ještě zastavit, nejen nahrávání tohoto vydání"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop alle uploads, der stadig kan stoppes, ikke kun denne udgivelses"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Uploads beenden, die sich noch beenden lassen, nicht nur den dieser Veröffentlichung"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Διακοπή όλων των μεταφορτώσεων που μπορούν ακόμα να διακοπούν, όχι μόνο αυτής της κυκλοφορίας"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop every upload that can still be stopped, not only this release's"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detener todas las subidas que aún se puedan detener, no solo la de esta edición"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pysäytä kaikki lähetykset, jotka voi vielä pysäyttää, ei vain tämän julkaisun"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter tous les envois encore interruptibles, pas seulement celui de cette parution"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עצירת כל ההעלאות שעדיין אפשר לעצור, לא רק של המהדורה הזו"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zaustavi sva prijenosa koja se još mogu zaustaviti, ne samo ovog izdanja"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minden még leállítható feltöltés leállítása, nem csak ennek a kiadásnak a feltöltéséé"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interrompi tutti i caricamenti ancora interrompibili, non solo quello di questa pubblicazione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリリースだけでなく、まだ停止できるすべてのアップロードを停止"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴리스만이 아니라 아직 중지할 수 있는 모든 업로드 중지"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopp alle opplastinger som fortsatt kan stoppes, ikke bare denne utgivelsens"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle uploads stoppen die nog te stoppen zijn, niet alleen die van deze uitgave"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zatrzymaj wszystkie wysyłania, które można jeszcze zatrzymać, nie tylko tego wydania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parar todos os envios que ainda podem ser parados, não só o deste lançamento"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parar todos os carregamentos que ainda podem ser parados, não só o desta edição"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oprește toate încărcările care mai pot fi oprite, nu doar pe cea a acestei ediții"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zastaviť všetky nahrávania, ktoré sa ešte dajú zastaviť, nielen nahrávanie tohto vydania"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stoppa alla uppladdningar som fortfarande kan stoppas, inte bara den här utgåvans"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yalnızca bu yayının değil, hâlâ durdurulabilen tüm yüklemeleri durdur"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зупинити всі вивантаження, які ще можна зупинити, а не лише цього видання"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止所有仍可停止的上传，而不只是此版本的上传"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止所有仍可停止的上傳，而不只是此版本的上傳"
+          }
+        }
+      }
+    },
+    "Cancel every export, not only this release's" : {
+      "comment" : "Storage inspector: tooltip of the Export & Save section's Cancel All button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إلغاء كل عمليات التصدير، لا تصدير هذا الإصدار فقط"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отказ на всички експорти, не само на това издание"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zrušit všechny exporty, nejen export tohoto vydání"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuller alle eksporter, ikke kun denne udgivelses"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Exporte abbrechen, nicht nur den dieser Veröffentlichung"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ακύρωση όλων των εξαγωγών, όχι μόνο αυτής της κυκλοφορίας"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel every export, not only this release's"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar todas las exportaciones, no solo la de esta edición"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peru kaikki viennit, ei vain tämän julkaisun"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler toutes les exportations, pas seulement celle de cette parution"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ביטול כל הייצואים, לא רק של המהדורה הזו"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otkaži sve izvoze, ne samo ovog izdanja"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Az összes exportálás megszakítása, nem csak ennek a kiadásnak az exportálásáé"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annulla tutte le esportazioni, non solo quella di questa pubblicazione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリリースだけでなく、すべての書き出しをキャンセル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴리스만이 아니라 모든 내보내기 취소"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryt alle eksporter, ikke bare denne utgivelsens"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle exports annuleren, niet alleen die van deze uitgave"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anuluj wszystkie eksporty, nie tylko tego wydania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar todas as exportações, não só a deste lançamento"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar todas as exportações, não só a desta edição"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anulează toate exporturile, nu doar pe cel al acestei ediții"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zrušiť všetky exporty, nielen export tohto vydania"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryt alla exporter, inte bara den här utgåvans"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yalnızca bu yayının değil, tüm dışa aktarmaları iptal et"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скасувати всі експорти, а не лише цього видання"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消所有导出，而不只是此版本的导出"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消所有匯出，而不只是此版本的匯出"
+          }
+        }
+      }
+    },
+    "Cancel every download, not only this release's" : {
+      "comment" : "Storage inspector: tooltip of the Downloads section's Cancel All button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إلغاء كل التنزيلات، لا تنزيل هذا الإصدار فقط"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отказ на всички изтегляния, не само на това издание"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zrušit všechna stahování, nejen stahování tohoto vydání"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuller alle downloads, ikke kun denne udgivelses"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Downloads abbrechen, nicht nur den dieser Veröffentlichung"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ακύρωση όλων των λήψεων, όχι μόνο αυτής της κυκλοφορίας"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel every download, not only this release's"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar todas las descargas, no solo la de esta edición"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peru kaikki lataukset, ei vain tämän julkaisun"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler tous les téléchargements, pas seulement celui de cette parution"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ביטול כל ההורדות, לא רק של המהדורה הזו"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otkaži sva preuzimanja, ne samo ovog izdanja"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Az összes letöltés megszakítása, nem csak ennek a kiadásnak a letöltéséé"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annulla tutti i download, non solo quello di questa pubblicazione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリリースだけでなく、すべてのダウンロードをキャンセル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴리스만이 아니라 모든 다운로드 취소"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryt alle nedlastinger, ikke bare denne utgivelsens"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle downloads annuleren, niet alleen die van deze uitgave"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anuluj wszystkie pobierania, nie tylko tego wydania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar todos os downloads, não só o deste lançamento"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar todas as transferências, não só a desta edição"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anulează toate descărcările, nu doar pe cea a acestei ediții"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zrušiť všetky sťahovania, nielen sťahovanie tohto vydania"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryt alla nedladdningar, inte bara den här utgåvans"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yalnızca bu yayının değil, tüm indirmeleri iptal et"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скасувати всі завантаження, а не лише цього видання"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消所有下载，而不只是此版本的下载"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消所有下載，而不只是此版本的下載"
+          }
+        }
+      }
+    },
     "Cancel every import that has not begun writing to the library" : {
       "comment" : "Import: tooltip of the import indicator's Cancel All button; an import already writing completes",
       "extractionState" : "manual",

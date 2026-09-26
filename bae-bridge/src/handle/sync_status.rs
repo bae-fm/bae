@@ -146,6 +146,15 @@ forward! { async this => {
             .map_err(BridgeError::internal)
     }
 
+    /// Stop every upload coven can still unwind, leaving each release Local. A
+    /// release already publishing finishes.
+    fn cancel_all_release_uploads() -> () {
+        this.services
+            .cancel_all_release_uploads()
+            .await
+            .map_err(BridgeError::from)
+    }
+
     /// Pause or resume the cloud-upload pipeline. While paused, new enqueues
     /// still land in the outbox but the sync cycle won't drain them; the
     /// snapshot's pause phase changes so the UI can distinguish pausing from

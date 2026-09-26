@@ -49,6 +49,11 @@ struct StorageTransferControls: View {
                     setPaused(!paused, for: item)
                 }
                 .controlSize(.small)
+                Button("Cancel All", role: .destructive) {
+                    cancelAll(item)
+                }
+                .controlSize(.small)
+                .help(item.cancelAllHelp)
             }
             .foregroundStyle(.secondary)
             .padding(.horizontal)
@@ -84,6 +89,22 @@ struct StorageTransferControls: View {
         case .upload:
             Task {
                 do { try await sync.setSyncPaused(paused) }
+                catch { uiStore.showError(error) }
+            }
+        }
+    }
+
+    /// Cancel the whole queue this section belongs to, not only the selected
+    /// release's entry in it.
+    private func cancelAll(_ item: BridgeStorageInspectorTransfer) {
+        switch item {
+        case .download:
+            downloads.cancelAllDownloads()
+        case .output:
+            outputs.cancelAllOutputs()
+        case .upload:
+            Task {
+                do { try await sync.cancelAllReleaseUploads() }
                 catch { uiStore.showError(error) }
             }
         }

@@ -337,6 +337,52 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     assert_eq!(snap.total.retrying, 0);
 }
 
+/// Cancelling every upload unwinds each release's make-Remote, as cancelling
+/// each one would, and leaves the outbox empty.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn cancelling_every_upload_empties_the_outbox() {
+    let (manager, temp_dir, first, _) = queued_upload_fixture("first").await;
+    let second = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("second"),
+        "Album",
+        &[("b.flac", &vec![b'b'; 1000])],
+    )
+    .await;
+    let queued: Vec<String> = manager
+        .outbox_snapshot()
+        .await
+        .unwrap()
+        .upload_groups
+        .iter()
+        .map(|group| group.release_id.clone())
+        .collect();
+    assert_eq!(queued.len(), 2);
+    assert!(queued.contains(&first.id) && queued.contains(&second.id));
+
+    manager.cancel_all_release_uploads().await.unwrap();
+    manager.drain_uploads_for_test().await.unwrap();
+
+    let snapshot = manager.outbox_snapshot().await.unwrap();
+    assert!(
+        snapshot.upload_groups.is_empty(),
+        "every upload was unwound: {:?}",
+        snapshot.upload_groups
+    );
+    for release in [&first, &second] {
+        assert!(
+            !manager
+                .database
+                .has_pending_uploads_for_release(&release.id)
+                .await
+                .unwrap(),
+            "{} keeps nothing queued",
+            release.id
+        );
+    }
+}
+
 /// The sequence a live library hit: queue an upload, cancel it while it is
 /// still queued, then delete the release. Nothing may be left in the outbox
 /// naming a release that is gone — the snapshot reads the release row for its

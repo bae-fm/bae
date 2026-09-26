@@ -36,6 +36,9 @@ public final class Sync: Sendable, Observable {
     public let cancelReleaseTransition:
         @Sendable (_ releaseId: String) async throws
             -> Void
+    /// Stop every upload that can still be unwound, leaving each release
+    /// Local. One already publishing finishes.
+    public let cancelAllReleaseUploads: @Sendable () async throws -> Void
     /// Pause or resume the cloud-upload pipeline. In-flight uploads finish; the
     /// queue stops draining until resumed.
     public let setSyncPaused: @Sendable (_ paused: Bool) async throws -> Void
@@ -105,6 +108,8 @@ public final class Sync: Sendable, Observable {
             },
         cancelReleaseTransition:
             @escaping @Sendable (String) async throws -> Void = { _ in },
+        cancelAllReleaseUploads:
+            @escaping @Sendable () async throws -> Void = {},
         setSyncPaused: @escaping @Sendable (Bool) async throws -> Void = { _ in
         },
         triggerSync: @escaping @Sendable () -> Void = {},
@@ -132,6 +137,7 @@ public final class Sync: Sendable, Observable {
         self.retryBlockedSyncOperation = retryBlockedSyncOperation
         self.renameLibrary = renameLibrary
         self.cancelReleaseTransition = cancelReleaseTransition
+        self.cancelAllReleaseUploads = cancelAllReleaseUploads
         self.setSyncPaused = setSyncPaused
         self.lockActiveLibrary = lockActiveLibrary
         self.setMaxConcurrentUploads = setMaxConcurrentUploads
@@ -156,6 +162,9 @@ public final class Sync: Sendable, Observable {
             },
             cancelReleaseTransition: {
                 try await handle.cancelReleaseTransition(releaseId: $0)
+            },
+            cancelAllReleaseUploads: {
+                try await handle.cancelAllReleaseUploads()
             },
             setSyncPaused: { try await handle.setSyncPaused(paused: $0) },
             triggerSync: { handle.triggerSync() },

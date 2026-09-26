@@ -242,6 +242,12 @@ impl LibraryManager {
         self.downloads.cancel(release_id);
     }
 
+    /// Cancel every download — queued, failed, and the one in flight — as
+    /// [`Self::cancel_download`] cancels one. Emits a fresh snapshot.
+    pub fn cancel_all_downloads(&self) {
+        self.downloads.cancel_all();
+    }
+
     /// Flip every failed download back to queued and wake the worker to retry
     /// them. Emits a fresh snapshot.
     pub fn retry_downloads(&self) {

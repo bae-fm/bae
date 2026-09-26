@@ -732,6 +732,11 @@ forward! {
             this.services.cancel_output(&release_id);
         }
 
+        /// Cancel every export — queued, failed, and the one in flight.
+        fn cancel_all_outputs() {
+            this.services.cancel_all_outputs();
+        }
+
         /// Retry every failed export now (flips them back to queued and wakes the
         /// worker).
         fn retry_outputs() {

@@ -247,6 +247,26 @@ impl<Extra: Clone, Progress: Clone> ReleaseQueue<Extra, Progress> {
     }
 }
 
+impl<Extra: Clone, Progress: Clone> ReleaseQueue<Extra, Progress> {
+    /// Empty the queue: every queued and failed entry leaves, and the active
+    /// one's task is aborted — each as [`Self::cancel`] leaves one. Reports
+    /// whether an active entry was aborted.
+    pub fn cancel_all(&self) -> bool {
+        let mut state = self.state.lock().unwrap();
+        let was_active = state
+            .ops
+            .iter()
+            .any(|o| matches!(o.state, ReleaseQueueState::Active { .. }));
+        if was_active {
+            if let Some(abort) = state.active_abort.take() {
+                abort.abort();
+            }
+        }
+        state.ops.clear();
+        was_active
+    }
+}
+
 /// A queued operation that has been started: the handle a cancel aborts, and the
 /// future that yields the operation's outcome.
 pub struct RunningOp<Fut> {
@@ -484,6 +504,22 @@ mod tests {
         q.enqueue(op("rel-a"));
         assert!(!q.cancel("rel-a"));
         assert!(q.ops().is_empty());
+    }
+
+    #[tokio::test]
+    async fn cancelling_all_empties_the_queue_and_aborts_the_active_entry() {
+        let q: ReleaseQueue<(), u8> = ReleaseQueue::new();
+        q.enqueue(op("rel-a"));
+        q.enqueue(op("rel-b"));
+        q.enqueue(op("rel-c"));
+        let task = tokio::spawn(std::future::pending::<()>());
+        assert!(q.activate("rel-a", task.abort_handle(), 0));
+        q.mark_failed("rel-c", "boom".to_string());
+
+        assert!(q.cancel_all());
+        assert!(q.ops().is_empty());
+        assert!(task.await.unwrap_err().is_cancelled());
+        assert!(!q.cancel_all(), "nothing is left to abort");
     }
 
     #[test]
