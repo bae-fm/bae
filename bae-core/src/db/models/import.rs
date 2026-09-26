@@ -50,6 +50,10 @@ pub struct NewImportCandidateVerdict {
     /// draft replaces whatever stands — pre-filled, edited or picked — while
     /// a person's newer edit wins through `candidate`'s metadata revision.
     pub metadata: Option<crate::import::CandidateMetadataDraft>,
+    /// Whether this verdict owes an import if it needs nothing from anyone:
+    /// the automatic admission's run reached it while "Import automatically
+    /// when identified" was on. A run a person asked for owes none.
+    pub owes_import: bool,
 }
 
 /// What identification concluded about one candidate. Present as a whole or

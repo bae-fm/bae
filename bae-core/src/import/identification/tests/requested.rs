@@ -391,6 +391,7 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
                 verdict,
                 signals: settled_signals(fixture.probed_durations(&dir)),
                 metadata: None,
+                owes_import: false,
             },
         )
         .await

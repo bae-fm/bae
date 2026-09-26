@@ -224,6 +224,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
                 durations: crate::import::probe::SourceDurations::totalling(1_000),
             },
             metadata: None,
+            owes_import: false,
         })
         .await
         .unwrap();

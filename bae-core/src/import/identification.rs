@@ -44,6 +44,12 @@
 //! its result and writes no draft: it says what the candidate is not, and a
 //! person's pre-fill, edits and pick are none of its business.
 //!
+//! **An automatic run can end in an import.** While "Import automatically
+//! when identified" is on, a verdict the automatic admission's run settles on
+//! as needing nothing owes an import, stored with it; the queue pays what is
+//! owed from the stored row (see `owed`), so a launch finds what the last
+//! session left owed and nothing is imported twice.
+//!
 //! **Provider failures are answers.** They are stored as failed verdicts and
 //! the automatic admission leaves them alone; only a request replaces one.
 //! Cancellation and a candidate that vanished mid-flight still write nothing,
@@ -66,10 +72,12 @@ use tracing::{debug, info, warn};
 
 mod admission;
 mod handle;
+mod owed;
 mod queue;
 mod settle;
 
 use admission::*;
+use owed::{pay_owed_import, pay_owed_imports};
 pub use handle::IdentificationHandle;
 use queue::{admit, Queue};
 use settle::*;

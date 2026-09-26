@@ -125,7 +125,11 @@ impl ImportService {
         let result = match run {
             ImportRunEnd::Ran(result) => result,
             // Whoever cancelled it while it waited already said it ended.
-            ImportRunEnd::CancelledWaiting => return,
+            ImportRunEnd::CancelledWaiting => {
+                self.end_owed_import_of_cancelled(&candidate_key, &content_hash)
+                    .await;
+                return;
+            }
             ImportRunEnd::CancelledRunning => Err(crate::import::ImportError::ImportCancelled),
         };
 
@@ -133,6 +137,8 @@ impl ImportService {
         // no failure, and ends as the candidate stood before it was asked for.
         if let Err(crate::import::ImportError::ImportCancelled) = result {
             info!("Import of {candidate_key} was cancelled");
+            self.end_owed_import_of_cancelled(&candidate_key, &content_hash)
+                .await;
             self.event_tx
                 .send(crate::import::handle::ImportEvent::ImportProgress {
                     candidate_key,
@@ -172,7 +178,15 @@ impl ImportService {
         }
     }
 
-    pub(super) fn terminal_failure(
+    /// A person cancelling an import is their answer to whatever import the
+    /// candidate's verdict owed: it is not started again behind them.
+    async fn end_owed_import_of_cancelled(&self, candidate_key: &str, content_hash: &str) {
+        if let Err(error) = self.library_manager.withdraw_owed_import(content_hash).await {
+            error!("could not withdraw the owed import of the cancelled {candidate_key}: {error}");
+        }
+    }
+
+    pub(crate) fn terminal_failure(
         error: &crate::import::ImportError,
         failed_at: chrono::DateTime<chrono::Utc>,
     ) -> crate::import::ImportFailure {

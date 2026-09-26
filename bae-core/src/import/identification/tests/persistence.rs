@@ -145,6 +145,7 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
         verdict: multi_match_verdict(&["mb-claimed-1"], "rg-claimed-1"),
         signals: settled_signals(fixture.probed_durations(&dir)),
         metadata: None,
+        owes_import: false,
     };
 
     assert!(

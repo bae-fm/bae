@@ -18,10 +18,16 @@ pub struct BridgeConfig {
     /// are identified as they are found, and opening Find online for a
     /// candidate starts its identification.
     pub identify_automatically: bool,
+    /// Whether what an automatic run settles on as needing nothing from anyone
+    /// is imported straight away, going where `import_storage` says. Read only
+    /// while `identify_automatically` is on, and kept while it is off: a
+    /// surface disables the switch then rather than clearing it.
+    pub import_when_identified: bool,
     /// Every step of an identification run, in the order a run takes them,
     /// each with whether runs take it — one switch per entry.
     pub identification_steps: Vec<BridgeIdentificationStepSetting>,
-    /// Where an import puts its release: the choice an import pane last made.
+    /// Where an import puts its release: the choice an import pane last made,
+    /// which is also what an automatic import goes by.
     pub import_storage: BridgeImportStorage,
     /// Whether a newly discovered candidate's draft is created from the
     /// folder's own metadata — its files' tags, its sheets and its name — or
@@ -125,8 +131,8 @@ pub struct BridgeImportStorage {
     /// device. Moving a library release to the cloud reads the same choice.
     pub pinned: bool,
     /// Whether an import goes to the cloud as things stand: `cloud`, and a
-    /// cloud home to go to. Core's answer, so a surface does not work it out
-    /// again.
+    /// cloud home to go to. Core's answer, the one an automatic import goes
+    /// by, so a surface does not work it out again.
     pub goes_to_cloud: bool,
 }
 

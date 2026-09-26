@@ -1,11 +1,14 @@
 //! How identification runs, as `preferences.yaml`'s `identification` mapping
-//! carries it: whether it starts on its own, which steps every run takes, and
-//! which catalogs it asks.
+//! carries it: whether it starts on its own, what a run it started on its own
+//! goes on to do, which steps every run takes, and which catalogs it asks.
 
 use serde::{Deserialize, Serialize};
 
-/// Everything a person decides about identification, in one place. Every
-/// setting defaults to what identification did before it was a setting.
+/// Everything a person decides about identification, in one place.
+///
+/// Every setting defaults to what identification did before it was a
+/// setting, except [`Self::import_when_identified`], which starts off: an
+/// import nobody asked for is not something to start doing behind anyone.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IdentificationPreferences {
     /// Whether identification starts on its own: the automatic admission
@@ -14,6 +17,13 @@ pub struct IdentificationPreferences {
     /// what is already queued finishes, and a person starts each run
     /// themselves.
     pub automatic: bool,
+    /// Whether a candidate an automatic run settles on as needing nothing from
+    /// anyone is imported straight away. Defaults to `false`.
+    ///
+    /// Read only while [`Self::automatic`] is on, and kept as the person set
+    /// it while that is off — turning automatic identification back on brings
+    /// it back — so what decides is [`Self::imports_when_identified`].
+    pub import_when_identified: bool,
     /// The steps every run takes, each of which can be switched off.
     pub steps: IdentificationSteps,
     /// Which catalogs identification asks — the automatic run, the typed
@@ -21,10 +31,20 @@ pub struct IdentificationPreferences {
     pub catalogs: LookupCatalogPreferences,
 }
 
+impl IdentificationPreferences {
+    /// Whether a run the automatic admission started imports what it settles
+    /// on as needing nothing: [`Self::import_when_identified`], while
+    /// identification runs on its own at all.
+    pub fn imports_when_identified(&self) -> bool {
+        self.automatic && self.import_when_identified
+    }
+}
+
 impl Default for IdentificationPreferences {
     fn default() -> Self {
         Self {
             automatic: true,
+            import_when_identified: false,
             steps: IdentificationSteps::default(),
             catalogs: LookupCatalogPreferences::default(),
         }

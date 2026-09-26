@@ -548,6 +548,7 @@ async fn a_cancelled_candidate_writes_no_row() {
                 durations: crate::import::probe::SourceDurations::default(),
             },
             None,
+            false,
         )
         .await,
         Settled::Abandoned

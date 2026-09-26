@@ -41,6 +41,7 @@ async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
                 verdict: TerminalVerdict::NotFoundAnywhere { ledger: None },
                 signals: settled_signals(Default::default()),
                 metadata: None,
+                owes_import: false,
             })
             .await
             .unwrap()

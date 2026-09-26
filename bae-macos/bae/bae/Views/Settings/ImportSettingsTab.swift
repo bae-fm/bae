@@ -21,6 +21,14 @@ struct ImportSettingsTab: View {
                     isOn: prefillWithFileMetadata
                 )
                 Toggle("Identify automatically", isOn: identifyAutomatically)
+                // Only an automatic run imports on its own, so the switch
+                // waits, as the person left it, while identification does
+                // not run on its own.
+                Toggle(
+                    "Import automatically when identified",
+                    isOn: importWhenIdentified
+                )
+                .disabled(!configStore.config.identifyAutomatically)
             } header: {
                 Text("Metadata")
             } footer: {
@@ -29,6 +37,9 @@ struct ImportSettingsTab: View {
                         "New candidates start from a draft read from their files, sheets and folder name."
                     )
                     Text("New candidates are identified as they are added.")
+                    Text(
+                        "A candidate identified from then on that needs nothing from you is imported right away, where your last import went."
+                    )
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -148,6 +159,15 @@ struct ImportSettingsTab: View {
                     }
                 }
             )
+        )
+    }
+
+    private var importWhenIdentified: Binding<Bool> {
+        Binding(
+            get: { configStore.config.importWhenIdentified },
+            set: { enabled in
+                write { try await importer.setImportWhenIdentified(enabled) }
+            }
         )
     }
 

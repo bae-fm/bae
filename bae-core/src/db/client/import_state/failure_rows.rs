@@ -107,6 +107,9 @@ impl Database {
                      error = excluded.error, failed_at = excluded.failed_at",
                 params![content_hash, error, failed_at],
             )?;
+            // The attempt that failed answers any import the verdict owed:
+            // a failure is shown, not retried behind the person's back.
+            end_owed_import_on(sql, &content_hash)?;
             sql.execute(
                 "DELETE FROM import_candidate_artist_identity_conflict WHERE content_hash = ?",
                 [&content_hash],

@@ -1,5 +1,5 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use super::import_state::require_import_commit_guard;
+use super::import_state::{end_owed_import_of_commit, require_import_commit_guard};
 use super::*;
 mod storage;
 
@@ -517,6 +517,7 @@ impl Database {
                 move |sql| {
                     let tx = &sql;
                     require_import_commit_guard(tx, &guard)?;
+                    end_owed_import_of_commit(tx, &guard)?;
                     // Every synced row this transaction inserts shares one HLC stamp
                     // for `_updated_at`; wall-clock `now` stays for `created_at`.
                     let reg = sql.stamp();

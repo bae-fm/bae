@@ -30,10 +30,15 @@ public struct Config: Equatable {
     /// Whether identification starts on its own: a newly added candidate is
     /// identified as it arrives.
     public let identifyAutomatically: Bool
+    /// Whether what an automatic run identifies as needing nothing is imported
+    /// straight away. Read only while `identifyAutomatically` is on; Settings
+    /// disables its switch then rather than clearing it.
+    public let importWhenIdentified: Bool
     /// Every step of an identification run, in the order a run takes them,
     /// each with whether runs take it.
     public let identificationSteps: [BridgeIdentificationStepSetting]
-    /// Where an import puts its release: the choice an import pane last made.
+    /// Where an import puts its release: the choice an import pane last made,
+    /// which an automatic import goes by too.
     public let importStorage: BridgeImportStorage
     /// Whether a newly added candidate's draft is created from the folder's
     /// file tags, or starts blank.
@@ -79,6 +84,7 @@ public struct Config: Equatable {
         maxConcurrentUploads = bridge.maxConcurrentUploads
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
         identifyAutomatically = bridge.identifyAutomatically
+        importWhenIdentified = bridge.importWhenIdentified
         identificationSteps = bridge.identificationSteps
         importStorage = bridge.importStorage
         prefillWithFileMetadata = bridge.prefillWithFileMetadata

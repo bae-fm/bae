@@ -797,6 +797,7 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),
             }),
+            owes_import: false,
         })
         .await
         .unwrap());
@@ -840,6 +841,7 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),
             }),
+            owes_import: false,
         })
         .await
         .unwrap());
@@ -861,6 +863,7 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),
             }),
+            owes_import: false,
         })
         .await
         .unwrap());

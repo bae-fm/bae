@@ -221,17 +221,33 @@ impl ImportServiceHandle {
             // answering it themselves; the claim ends whatever run it had.
             ImportRequest::Person => {}
             ImportRequest::ReadySet => {
-                let facts = self
-                    .runtime
-                    .get(candidate_key)
-                    .as_ref()
-                    .map(crate::import::triage::TriageRuntimeFacts::of)
-                    .unwrap_or_default();
-                if facts.identifying() {
+                if self.runtime_facts(candidate_key).identifying() {
                     return Err(crate::import::ImportError::CandidateBeingIdentified);
                 }
             }
         }
+        self.claim_import(commit, candidate_key, storage_mode, pin)
+            .await
+    }
+
+    /// What is running for `candidate_key` right now, as a row reads it.
+    pub(super) fn runtime_facts(&self, candidate_key: &str) -> crate::import::triage::TriageRuntimeFacts {
+        self.runtime
+            .get(candidate_key)
+            .as_ref()
+            .map(crate::import::triage::TriageRuntimeFacts::of)
+            .unwrap_or_default()
+    }
+
+    /// Claim the candidate for an import and hand the worker its command,
+    /// under `commit` — the lock whoever asked checked the candidate under.
+    pub(super) async fn claim_import(
+        &self,
+        commit: crate::import::FolderStateCommitGuard,
+        candidate_key: &str,
+        storage_mode: StorageMode,
+        pin: bool,
+    ) -> Result<String, crate::import::ImportError> {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),

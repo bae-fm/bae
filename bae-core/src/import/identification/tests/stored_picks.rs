@@ -409,6 +409,7 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
             Default::default(),
         ),
         CallPriority::Background,
+        false,
         CancellationToken::new(),
     )
     .await;
@@ -443,6 +444,7 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
         verdict: multi_match_verdict(&["mb-torn-1", "mb-torn-2"], "rg-torn-1"),
         signals: settled_signals(fixture.probed_durations(&dir)),
         metadata: None,
+        owes_import: false,
     };
 
     // The run's terminal state is what puts the key on a pending save.

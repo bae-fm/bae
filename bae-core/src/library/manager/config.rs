@@ -58,13 +58,27 @@ impl LibraryManager {
 
     /// Whether identification starts on its own. The identification queue
     /// follows the value: on, it admits what has no answer; off, it admits
-    /// nothing new.
+    /// nothing new, and nothing it identifies is imported on its own.
     pub async fn set_identify_automatically(
         &self,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
         self.config_handle
             .update_preferences(move |prefs| prefs.identification.automatic = enabled)
+            .await
+    }
+
+    /// Whether what an automatic run settles on as needing nothing is imported
+    /// straight away. Turning it on imports nothing identified before: only a
+    /// run that settles while it is on owes an import. Turning it off
+    /// withdraws what was owed and not yet started; an import already running
+    /// runs to its end.
+    pub async fn set_import_when_identified(
+        &self,
+        enabled: bool,
+    ) -> Result<(), crate::config::ConfigError> {
+        self.config_handle
+            .update_preferences(move |prefs| prefs.identification.import_when_identified = enabled)
             .await
     }
 
@@ -82,7 +96,8 @@ impl LibraryManager {
     }
 
     /// Whether an import goes to the cloud home, when the library has one —
-    /// the choice an import pane last made.
+    /// the choice an import pane last made, and what an automatic import
+    /// goes by.
     pub async fn set_import_to_cloud(
         &self,
         enabled: bool,

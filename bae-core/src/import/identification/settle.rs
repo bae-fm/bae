@@ -63,6 +63,7 @@ pub(super) async fn settle_answer(
     expected_metadata_revision: u64,
     state: IdentifyState,
     priority: CallPriority,
+    owes_import: bool,
     token: CancellationToken,
 ) -> Finished {
     let representative_key = candidate.key();
@@ -73,6 +74,7 @@ pub(super) async fn settle_answer(
         expected_metadata_revision,
         state,
         priority,
+        owes_import,
         &token,
     )
     .await;
@@ -106,6 +108,7 @@ async fn settle_verdict(
     expected_metadata_revision: u64,
     state: IdentifyState,
     priority: CallPriority,
+    owes_import: bool,
     token: &CancellationToken,
 ) -> Settled {
     let text = state.candidate_text();
@@ -164,6 +167,7 @@ async fn settle_verdict(
         &verdict,
         signals,
         metadata,
+        owes_import,
     )
     .await
 }
@@ -242,6 +246,7 @@ pub(super) async fn save(
     verdict: &TerminalVerdict,
     signals: crate::signals::Signals,
     metadata: Option<crate::import::CandidateMetadataDraft>,
+    owes_import: bool,
 ) -> Settled {
     if token.is_cancelled() {
         return Settled::Abandoned;
@@ -252,6 +257,7 @@ pub(super) async fn save(
         verdict: verdict.clone(),
         signals,
         metadata,
+        owes_import,
     };
     let wrote = match context
         .import

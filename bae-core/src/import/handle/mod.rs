@@ -17,6 +17,8 @@ mod edits;
 mod identification;
 mod import;
 mod lookup_choices;
+mod owed_import;
+pub(crate) use owed_import::{OwedImport, OwedImportDeclined};
 mod reset;
 mod scan;
 mod search;

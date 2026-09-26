@@ -41,6 +41,13 @@ forward! { async this => {
         Ok(this.services.set_identify_automatically(enabled).await?)
     }
 
+    /// Import what an automatic run settles on as needing nothing, or stop.
+    /// On, only runs that settle from now on import; off, nothing owed and not
+    /// yet started is imported.
+    fn set_import_when_identified(enabled: bool) -> () {
+        Ok(this.services.set_import_when_identified(enabled).await?)
+    }
+
     /// Take, or stop taking, one step of every identification run. Runs
     /// already going finish the way they started.
     fn set_identification_step(step: crate::types::BridgeIdentificationStep, enabled: bool) -> () {

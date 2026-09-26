@@ -29,6 +29,21 @@ pub(crate) fn require_import_commit_guard(
     }
 }
 
+/// End the import the committed candidate's verdict owed, inside the commit:
+/// the release landing is the attempt the owed import asked for.
+pub(crate) fn end_owed_import_of_commit(
+    sql: &SqlContext<'_, '_>,
+    guard: &ImportCommitGuard,
+) -> Result<(), DbError> {
+    match guard {
+        ImportCommitGuard::Candidate { expectation, .. } => {
+            super::end_owed_import_on(sql, &expectation.candidate.content_hash)
+        }
+        #[cfg(test)]
+        ImportCommitGuard::UncheckedTestSetup => Ok(()),
+    }
+}
+
 /// The stored candidate at `candidate_key` as the commit sees it, or `None`
 /// when the scan no longer lists one there.
 fn load_committing_candidate(

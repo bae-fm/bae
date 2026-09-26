@@ -1440,6 +1440,20 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     CHECK ((kind = 'failed') = (failures_json IS NOT NULL))
 ) STRICT;
 
+-- An import a verdict owes: an automatic run settled on it as needing nothing
+-- while "Import automatically when identified" was on, and no import attempt
+-- has ended since. Written in the verdict's own transaction, so a verdict and
+-- what it owes land together; removed by the transaction that ends the attempt
+-- — the release's commit, or the failure it records — or by the decision not to
+-- import. Any later rewrite of the verdict drops it with the row it hangs off,
+-- and `metadata_revision` is the draft it is owed for, so an edit since leaves
+-- nothing owed.
+CREATE TABLE IF NOT EXISTS import_candidate_owed_import (
+    content_hash      TEXT PRIMARY KEY,
+    metadata_revision INTEGER NOT NULL CHECK (metadata_revision >= 0),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE
+) STRICT;
+
 -- Every release a run's lookups returned, in the order it listed them, with
 -- what the record said and which lookup found it.
 CREATE TABLE IF NOT EXISTS import_candidate_match (

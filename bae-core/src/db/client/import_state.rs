@@ -4,6 +4,7 @@ mod edit_rows;
 mod failure_rows;
 mod import_commit;
 mod lookup_choice_rows;
+mod owed_import_rows;
 mod pane_rows;
 mod preparation_rows;
 mod prepared_asset_rows;
@@ -16,7 +17,8 @@ mod watched_folder_removal;
 
 use edit_rows::{delete_file_edits, insert_file_edits};
 use failure_rows::load_failure_on;
-pub(super) use import_commit::require_import_commit_guard;
+pub(super) use import_commit::{end_owed_import_of_commit, require_import_commit_guard};
+use owed_import_rows::end_owed_import_on;
 pub(super) use pane_rows::{
     author_of, insert_draft, load_album_artist_assignments_on, load_covers_on, load_pane_rows_on,
 };

@@ -130,14 +130,31 @@ fn a_new_library_pre_fills_with_tags_and_identifies_automatically() {
     assert!(config.prefs.prefill_with_file_metadata);
 }
 
-/// Every identification step is taken until the person says otherwise: the
-/// defaults are what identification did before any of it was a setting.
+/// Every identification step is taken and nothing is imported on its own
+/// until the person says so: the defaults are what identification did before
+/// any of it was a setting.
 #[test]
-fn a_new_library_takes_every_identification_step() {
+fn a_new_library_takes_every_identification_step_and_imports_nothing_on_its_own() {
     let prefs = IdentificationPreferences::default();
     for step in IdentificationStep::ALL {
         assert!(prefs.steps.takes(step), "{step:?} starts on");
     }
+    assert!(!prefs.import_when_identified);
+    assert!(!prefs.imports_when_identified());
+}
+
+/// Importing when identified is read only while identification runs on its
+/// own, and kept while it does not.
+#[test]
+fn importing_when_identified_needs_automatic_identification() {
+    let mut prefs = IdentificationPreferences {
+        import_when_identified: true,
+        ..IdentificationPreferences::default()
+    };
+    assert!(prefs.imports_when_identified());
+    prefs.automatic = false;
+    assert!(!prefs.imports_when_identified());
+    assert!(prefs.import_when_identified, "the choice is kept");
 }
 
 /// The step accessors are total over the steps, and each flag is its own.
@@ -165,6 +182,30 @@ fn an_import_goes_to_the_cloud_only_with_a_home() {
     assert!(config.imports_to_cloud());
     config.prefs.import_storage.cloud = false;
     assert!(!config.imports_to_cloud());
+}
+
+/// An import goes where the stored choice says, pinned as it says.
+#[test]
+fn an_import_s_destination_is_the_stored_choice() {
+    let tmp = TempDir::new().unwrap();
+    let mut config = make_test_config("lib", tmp.path().to_path_buf());
+    config.cloud_home.provider = Some(CloudProvider::Dropbox);
+    assert_eq!(
+        config.import_destination(),
+        ImportDestination {
+            storage_mode: crate::import::StorageMode::Remote,
+            pin: true,
+        }
+    );
+    config.prefs.import_storage.cloud = false;
+    config.prefs.import_storage.pinned = false;
+    assert_eq!(
+        config.import_destination(),
+        ImportDestination {
+            storage_mode: crate::import::StorageMode::Local,
+            pin: false,
+        }
+    );
 }
 
 #[test]
@@ -362,6 +403,7 @@ import_storage:
   pinned: true
 identification:
   automatic: true
+  import_when_identified: false
   steps:
     read_cover_art: true
     look_up_disc_ids: true

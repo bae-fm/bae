@@ -287,6 +287,7 @@ object BridgeFixtures {
             maxConcurrentUploads = 3u,
             maxConcurrentDownloads = 3u,
             identifyAutomatically = true,
+            importWhenIdentified = false,
             identificationSteps =
                 listOf(
                     BridgeIdentificationStepSetting(

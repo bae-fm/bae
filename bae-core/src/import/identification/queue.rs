@@ -506,6 +506,10 @@ pub(super) async fn run(
                          what is already on the queue finishes"
                     );
                 }
+                // Importing when identified may have gone off, and what was
+                // owed under it goes with it — or it is on, and what a launch
+                // or an earlier pass left owed is paid.
+                pay_owed_imports(context, config).await;
             }
             Some(command) = commands.recv() => match command {
                 Command::Request { candidate_key } => {
@@ -547,6 +551,14 @@ pub(super) async fn run(
 
 fn automatic_is_on(config: &watch::Receiver<crate::config::Config>) -> bool {
     config.borrow().prefs.identification.automatic
+}
+
+fn imports_when_identified(config: &watch::Receiver<crate::config::Config>) -> bool {
+    config
+        .borrow()
+        .prefs
+        .identification
+        .imports_when_identified()
 }
 
 /// The one way onto the queue: place every candidate under `admission`, and

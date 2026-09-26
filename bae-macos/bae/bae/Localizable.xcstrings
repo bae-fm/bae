@@ -1,6 +1,354 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Import automatically when identified" : {
+      "comment" : "Import settings: whether a candidate identification settles on as needing nothing is imported straight away",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الاستيراد تلقائيًا عند تحديد الهوية"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоматичен импорт при идентифициране"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importovat automaticky po identifikaci"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importér automatisk, når den er identificeret"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach dem Identifizieren automatisch importieren"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αυτόματη εισαγωγή μετά την ταυτοποίηση"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import automatically when identified"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar automáticamente al identificar"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tuo automaattisesti, kun tunnistettu"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer automatiquement une fois identifié"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ייבוא אוטומטי לאחר זיהוי"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatski uvezi nakon identifikacije"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatikus importálás azonosítás után"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importa automaticamente dopo l'identificazione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "識別されたら自動で読み込む"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "식별되면 자동으로 가져오기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer automatisk når den er identifisert"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisch importeren na identificatie"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importuj automatycznie po identyfikacji"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar automaticamente ao identificar"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar automaticamente ao identificar"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importă automat după identificare"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importovať automaticky po identifikácii"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importera automatiskt när den har identifierats"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanımlanınca otomatik içe aktar"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Імпортувати автоматично після ідентифікації"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "识别后自动导入"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "識別後自動匯入"
+          }
+        }
+      }
+    },
+    "A candidate identified from then on that needs nothing from you is imported right away, where your last import went." : {
+      "comment" : "Import settings footer: what importing automatically when identified does",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يُستورد المرشح الذي تُحدَّد هويته من الآن فصاعدًا ولا يحتاج إلى شيء منك فورًا، إلى حيث ذهب آخر استيراد لك."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кандидат, идентифициран оттук нататък, който не се нуждае от нищо от вас, се импортира веднага там, където отиде последният ви импорт."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kandidát identifikovaný od té chvíle, který od vás nic nepotřebuje, se hned importuje tam, kam šel váš poslední import."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En kandidat, der identificeres fra da af og ikke behøver noget fra dig, importeres med det samme der, hvor din seneste import gik hen."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein ab dann identifizierter Kandidat, der nichts von dir braucht, wird sofort importiert – dorthin, wohin dein letzter Import ging."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ένας υποψήφιος που ταυτοποιείται από εκεί και πέρα και δεν χρειάζεται τίποτα από εσάς εισάγεται αμέσως, εκεί όπου πήγε η τελευταία σας εισαγωγή."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A candidate identified from then on that needs nothing from you is imported right away, where your last import went."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un candidato identificado a partir de entonces que no necesite nada de ti se importa enseguida, adonde fue tu última importación."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siitä lähtien tunnistettu ehdokas, joka ei tarvitse sinulta mitään, tuodaan heti sinne, minne viimeisin tuontisi meni."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un candidat identifié à partir de ce moment et qui n'a besoin de rien de votre part est importé aussitôt, là où est allée votre dernière importation."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מועמד שמזוהה מאותו רגע ואינו צריך דבר ממך מיובא מיד, למקום שאליו הלך הייבוא האחרון שלך."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kandidat identificiran od tada koji od vas ništa ne treba odmah se uvozi, onamo kamo je otišao vaš posljednji uvoz."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Az ettől kezdve azonosított jelölt, amelynek nincs szüksége semmire tőled, azonnal importálódik oda, ahová a legutóbbi importálásod került."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un candidato identificato da quel momento che non ha bisogno di nulla da te viene importato subito, dove è andata la tua ultima importazione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以降に識別された候補のうち、あなたの確認が不要なものはすぐに、前回の読み込みと同じ場所へ読み込まれます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이후 식별된 후보 중 확인이 필요 없는 항목은 마지막으로 가져온 곳으로 바로 가져옵니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En kandidat som identifiseres fra da av og ikke trenger noe fra deg, importeres med en gang dit den siste importen din gikk."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Een kandidaat die vanaf dan wordt geïdentificeerd en niets van je nodig heeft, wordt meteen geïmporteerd, naar waar je laatste import ging."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kandydat zidentyfikowany od tej chwili, który niczego od ciebie nie potrzebuje, jest od razu importowany tam, gdzie trafił twój ostatni import."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um candidato identificado a partir daí que não precise de nada de você é importado na hora, para onde foi sua última importação."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um candidato identificado a partir daí que não precise de nada de si é importado de imediato, para onde foi a sua última importação."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un candidat identificat de atunci încolo care nu are nevoie de nimic de la tine este importat imediat, acolo unde a mers ultimul tău import."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kandidát identifikovaný odvtedy, ktorý od vás nič nepotrebuje, sa hneď importuje tam, kam išiel váš posledný import."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En kandidat som identifieras från och med då och inte behöver något från dig importeras direkt, dit din senaste import gick."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bundan sonra tanımlanan ve sizden hiçbir şey gerektirmeyen bir aday, son içe aktarmanızın gittiği yere hemen aktarılır."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кандидат, ідентифікований відтоді, якому від вас нічого не потрібно, імпортується одразу туди, куди пішов ваш останній імпорт."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此后识别出且无需你处理的候选项会立即导入，位置与你上次导入相同。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此後識別出且無需你處理的候選項目會立即匯入，位置與你上次匯入相同。"
+          }
+        }
+      }
+    },
     "Identification" : {
       "comment" : "Import settings: header of the section listing the steps an identification takes",
       "extractionState" : "manual",

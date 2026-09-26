@@ -227,6 +227,7 @@ impl BridgeConfig {
 
         let bae_core::config::IdentificationPreferences {
             automatic,
+            import_when_identified,
             steps,
             // Read through `Config::metadata_sources()` above, which folds this
             // raw preference together with each catalog's credentials into the
@@ -251,6 +252,7 @@ impl BridgeConfig {
             max_concurrent_uploads: max_concurrent_uploads.get(),
             max_concurrent_downloads: max_concurrent_downloads.get(),
             identify_automatically: *automatic,
+            import_when_identified: *import_when_identified,
             identification_steps: bae_core::config::IdentificationStep::ALL
                 .into_iter()
                 .map(|step| BridgeIdentificationStepSetting {

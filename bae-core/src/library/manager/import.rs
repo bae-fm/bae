@@ -688,6 +688,44 @@ impl LibraryManager {
             .await?)
     }
 
+    /// The draft revision `content_hash`'s verdict owes an import for, or
+    /// `None` when it owes none.
+    pub(crate) async fn load_owed_import(
+        &self,
+        content_hash: &str,
+    ) -> Result<Option<u64>, LibraryError> {
+        Ok(self.database.load_owed_import(content_hash).await?)
+    }
+
+    /// Every content hash whose verdict owes an import.
+    pub(crate) async fn load_owed_imports(
+        &self,
+    ) -> Result<std::collections::HashSet<String>, LibraryError> {
+        Ok(self.database.load_owed_imports().await?)
+    }
+
+    /// Record that `content_hash`'s verdict owes an import, as the app leaves
+    /// it when it closes between storing the verdict and starting the import.
+    #[cfg(test)]
+    pub(crate) async fn owe_import_for_test(
+        &self,
+        content_hash: &str,
+        metadata_revision: u64,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .owe_import_for_test(content_hash, metadata_revision)
+            .await?)
+    }
+
+    /// Decide not to import what `content_hash`'s verdict owed.
+    pub(crate) async fn withdraw_owed_import(
+        &self,
+        content_hash: &str,
+    ) -> Result<(), LibraryError> {
+        Ok(self.database.withdraw_owed_import(content_hash).await?)
+    }
+
     /// Every candidate's user-set file decisions, keyed by content hash — what
     /// a folder scan needs so the roles it reports are the ones the user
     /// settled, not only the ones its filenames propose.

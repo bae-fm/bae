@@ -106,6 +106,7 @@ async fn save_verdict_with_ledger(
                 durations: crate::import::probe::SourceDurations::totalling(1_000),
             },
             metadata: None,
+            owes_import: false,
         })
         .await
         .unwrap());

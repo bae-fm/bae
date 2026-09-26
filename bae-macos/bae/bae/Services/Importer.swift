@@ -113,6 +113,8 @@ private struct ImportOperations: Sendable {
         @MainActor @Sendable (Bool) async throws -> Void
     let setMetadataSourceEnabled:
         @MainActor @Sendable (BridgeCatalog, Bool) async throws -> Void
+    let setImportWhenIdentified:
+        @MainActor @Sendable (Bool) async throws -> Void
     let setIdentificationStep:
         @MainActor @Sendable (BridgeIdentificationStep, Bool) async throws ->
             Void
@@ -336,6 +338,9 @@ extension ImportOperations {
                     enabled: $1
                 )
             },
+            setImportWhenIdentified: {
+                try await handle.setImportWhenIdentified(enabled: $0)
+            },
             setIdentificationStep: {
                 try await handle.setIdentificationStep(step: $0, enabled: $1)
             },
@@ -513,6 +518,9 @@ final class Importer: Sendable, Observable {
             @escaping @MainActor @Sendable (
                 BridgeCatalog, Bool
             ) async throws -> Void = { _, _ in },
+        setImportWhenIdentified:
+            @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
+            },
         setIdentificationStep:
             @escaping @MainActor @Sendable (
                 BridgeIdentificationStep, Bool
@@ -571,6 +579,7 @@ final class Importer: Sendable, Observable {
             setIdentifyAutomatically: setIdentifyAutomatically,
             setPrefillWithFileMetadata: setPrefillWithFileMetadata,
             setMetadataSourceEnabled: setMetadataSourceEnabled,
+            setImportWhenIdentified: setImportWhenIdentified,
             setIdentificationStep: setIdentificationStep,
             setImportToCloud: setImportToCloud,
             setImportPinned: setImportPinned
@@ -877,6 +886,12 @@ extension Importer {
         _ enabled: Bool
     ) async throws {
         try await operations.setMetadataSourceEnabled(source, enabled)
+    }
+
+    /// Import what an automatic run identifies as needing nothing, or stop.
+    @MainActor
+    func setImportWhenIdentified(_ enabled: Bool) async throws {
+        try await operations.setImportWhenIdentified(enabled)
     }
 
     /// Take, or stop taking, one step of every identification run.

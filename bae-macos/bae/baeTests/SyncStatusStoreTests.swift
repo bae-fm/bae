@@ -139,6 +139,7 @@ struct SyncStatusStoreTests {
             maxConcurrentUploads: 1,
             maxConcurrentDownloads: 1,
             identifyAutomatically: true,
+            importWhenIdentified: false,
             identificationSteps: [
                 .readCoverArt, .lookUpDiscIds, .lookUpBarcodes, .searchByTitle,
                 .followCatalogLinks,

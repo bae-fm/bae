@@ -16,6 +16,8 @@ pub use handle::ConfigHandle;
 pub use identification::{
     IdentificationPreferences, IdentificationStep, IdentificationSteps, LookupCatalogPreferences,
 };
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use import_storage::ImportDestination;
 pub use import_storage::ImportStoragePreferences;
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
@@ -354,8 +356,8 @@ pub struct Preferences {
     /// Where an import puts its release: the cloud or this device, and whether
     /// a cloud release stays downloaded here.
     pub import_storage: ImportStoragePreferences,
-    /// How identification runs: on its own or not, the steps every run takes,
-    /// and the catalogs it asks.
+    /// How identification runs: on its own or not, what an automatic run goes
+    /// on to do, the steps every run takes, and the catalogs it asks.
     pub identification: IdentificationPreferences,
     /// Whether a candidate's draft is created from the folder's own metadata.
     /// Defaults to `true`; off means the draft starts blank.

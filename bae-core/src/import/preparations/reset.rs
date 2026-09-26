@@ -53,6 +53,7 @@ impl CandidatePreparations {
                 expected: lookup_choices,
             },
             pane: CandidatePaneWrite::Keep,
+            owes_import: false,
         };
         match self
             .database

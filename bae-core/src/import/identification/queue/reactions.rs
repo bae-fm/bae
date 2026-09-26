@@ -37,6 +37,9 @@ pub(super) async fn handle_event(
             if automatic_is_on(config) {
                 admit_automatically(context, queue).await;
             }
+            // A launch's first scan is where an import owed before the app
+            // last closed is found again.
+            pay_owed_imports(context, config).await;
         }
         // A scan announces every candidate it walks, including ones the queue
         // is not responsible for — skipped, already in the library, or claimed
@@ -91,6 +94,7 @@ pub(super) async fn handle_event(
             if automatic_is_on(config) {
                 admit_automatically(context, queue).await;
             }
+            pay_owed_imports(context, config).await;
         }
         Some(Err(broadcast::error::RecvError::Closed)) | None => {
             info!("identification: the import event stream closed");
@@ -134,6 +138,10 @@ async fn advance(
     let job = &mut queue.jobs[index];
     let identity = job.identity.clone();
     let priority = job.priority();
+    // Settling is where a run's answer becomes the candidate's, so this is
+    // where it is decided whether the answer owes an import: only the
+    // automatic admission's own run, only while the setting is on.
+    let owes_import = job.admission() == Admission::Automatic && imports_when_identified(config);
     let JobState::Running {
         expected_metadata_revision,
         ..
@@ -169,6 +177,7 @@ async fn advance(
             expected_metadata_revision,
             state,
             priority,
+            owes_import,
             settle_token,
         )
         .await
@@ -200,6 +209,9 @@ pub(super) async fn finish(
             for key in &keys {
                 context.import.withdraw_identification(key);
             }
+            // The verdict is stored and nothing is running for it any more,
+            // so whatever it owes can be paid now.
+            pay_owed_import(context, config, &done.representative_key).await;
         }
         // Nothing was stored and nothing failed: the candidate changed while
         // its answer was being written, or the answer was given up. Every
@@ -251,6 +263,10 @@ async fn reconsider(
     config: &watch::Receiver<crate::config::Config>,
     key: &str,
 ) {
+    // What changed may be what its verdict owed an import for: a decision
+    // about the candidate is the person's, and a candidate set aside is not
+    // imported behind them.
+    pay_owed_import(context, config, key).await;
     let Some(candidate) = answerable_candidate(context, key).await else {
         // Not the queue's any more: set aside, already in the library, claimed
         // by an import, or gone.

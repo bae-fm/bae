@@ -26,7 +26,7 @@ struct ImportSettingsTabTests {
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
 
-            // The two settings, plus the identification steps and the
+            // The three settings, plus the identification steps and the
             // sources core reports — which are core's lists, not constants
             // this tab repeats.
             let config = PreviewData.configStore().config
@@ -34,7 +34,7 @@ struct ImportSettingsTabTests {
             #expect(config.lookupCatalogs.count == 2)
             #expect(
                 switches(in: host).count
-                    == 2 + config.identificationSteps.count
+                    == 3 + config.identificationSteps.count
                     + config.lookupCatalogs.count
             )
         }
@@ -49,8 +49,9 @@ struct ImportSettingsTabTests {
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
 
-            // Every switch starts on, so clicking each one writes `false` for the
-            // setting it names and says nothing about any other.
+            // Every switch starts on but importing when identified, so clicking
+            // each one writes the other value for the setting it names and
+            // says nothing about any other.
             for control in switches(in: host) {
                 HostedInput.press(control)
                 try await SnapshotTestSupport.settle(host)
@@ -58,6 +59,7 @@ struct ImportSettingsTabTests {
 
             #expect(recorder.prefillWrites == [false])
             #expect(recorder.identifyWrites == [false])
+            #expect(recorder.importWhenIdentifiedWrites == [true])
             #expect(
                 recorder.stepWrites.map(\.step)
                     == PreviewData.configStore().config.identificationSteps
@@ -91,6 +93,7 @@ struct ImportSettingsTabTests {
         for label in [
             String(localized: "Pre-fill from file metadata"),
             String(localized: "Identify automatically"),
+            String(localized: "Import automatically when identified"),
             String(localized: "Read cover art"),
             String(localized: "Search by title"),
         ] {
@@ -214,6 +217,7 @@ private final class ImportSettingRecorder {
     var prefillWrites: [Bool] = []
     var identifyWrites: [Bool] = []
     var sourceWrites: [(source: BridgeCatalog, enabled: Bool)] = []
+    var importWhenIdentifiedWrites: [Bool] = []
     var stepWrites: [(step: BridgeIdentificationStep, enabled: Bool)] = []
 
     var importer: Importer {
@@ -222,6 +226,9 @@ private final class ImportSettingRecorder {
             setPrefillWithFileMetadata: { [self] in prefillWrites.append($0) },
             setMetadataSourceEnabled: { [self] source, enabled in
                 sourceWrites.append((source: source, enabled: enabled))
+            },
+            setImportWhenIdentified: { [self] in
+                importWhenIdentifiedWrites.append($0)
             },
             setIdentificationStep: { [self] step, enabled in
                 stepWrites.append((step: step, enabled: enabled))

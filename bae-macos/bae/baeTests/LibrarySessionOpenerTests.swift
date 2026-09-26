@@ -236,6 +236,7 @@ extension LibrarySessionOpenerTests {
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
             identifyAutomatically: true,
+            importWhenIdentified: false,
             identificationSteps: [
                 .readCoverArt, .lookUpDiscIds, .lookUpBarcodes, .searchByTitle,
                 .followCatalogLinks,

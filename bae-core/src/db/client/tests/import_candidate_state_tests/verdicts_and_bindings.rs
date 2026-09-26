@@ -141,6 +141,7 @@ fn new_candidate_row(
         verdict: verdict.clone(),
         signals: sample_signals(),
         metadata: None,
+        owes_import: false,
     }
 }
 

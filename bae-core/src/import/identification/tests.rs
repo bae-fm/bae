@@ -327,6 +327,16 @@ fn fixed_now() -> chrono::DateTime<chrono::Utc> {
 
 impl Fixture {
     async fn new(name: &str) -> Self {
+        Self::with_ids(name, Arc::new(coven::SequentialIdProvider::new(name))).await
+    }
+
+    /// A fixture minting canonical ids, for a test whose import has to land:
+    /// the release rows an import writes refuse any other id.
+    async fn importing(name: &str) -> Self {
+        Self::with_ids(name, Arc::new(coven::UuidProvider)).await
+    }
+
+    async fn with_ids(name: &str, ids: coven::IdRef) -> Self {
         let _ = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
             .with_test_writer()
@@ -334,7 +344,6 @@ impl Fixture {
             .try_init();
         let temp = TempDir::new().unwrap();
         let clock: coven::ClockRef = Arc::new(coven::FixedClock(fixed_now()));
-        let ids: coven::IdRef = Arc::new(coven::SequentialIdProvider::new(name));
         let database =
             Database::new_test(temp.path().join("test.db").to_str().unwrap(), clock.clone())
                 .await
@@ -863,6 +872,7 @@ impl Fixture {
                             assets: crate::import::CandidatePreparedAssets::default(),
                         }
                     }),
+                    owes_import: false,
                 },
             )
             .await
@@ -934,3 +944,4 @@ include!("tests/cancelled.rs");
 include!("tests/requested.rs");
 include!("tests/admissions.rs");
 include!("tests/row_live_state.rs");
+include!("tests/auto_import.rs");

@@ -192,6 +192,7 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
             identifyAutomatically: true,
+            importWhenIdentified: false,
             identificationSteps: PreviewData.everyIdentificationStep,
             importStorage: BridgeImportStorage(
                 cloud: true,

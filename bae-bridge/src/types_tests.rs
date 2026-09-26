@@ -123,10 +123,10 @@ mod conversion_roundtrip {
     }
 
     /// Every step crosses as one switch, in the order a run takes them, each
-    /// saying whether runs take it; the storage choice crosses as it is
-    /// stored.
+    /// saying whether runs take it; the storage choice and importing when
+    /// identified cross as they are stored.
     #[test]
-    fn config_exposes_every_identification_step_and_the_storage_choice() {
+    fn config_exposes_every_identification_step_and_the_import_settings() {
         use bae_core::config::{Config, IdentificationStep};
 
         let mut config = Config::with_defaults(
@@ -140,6 +140,7 @@ mod conversion_roundtrip {
             .identification
             .steps
             .set(IdentificationStep::SearchByTitle, false);
+        config.prefs.identification.import_when_identified = true;
         config.prefs.import_storage.pinned = false;
 
         let bridge = BridgeConfig::from_core(&config);
@@ -157,6 +158,7 @@ mod conversion_roundtrip {
                 (BridgeIdentificationStep::FollowCatalogLinks, true),
             ]
         );
+        assert!(bridge.import_when_identified);
         assert_eq!(
             bridge.import_storage,
             BridgeImportStorage {

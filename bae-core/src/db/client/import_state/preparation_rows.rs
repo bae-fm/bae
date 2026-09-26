@@ -85,6 +85,12 @@ pub(crate) struct CandidateSaveExtras {
     pub reshaped_files: Option<Vec<(String, CategorizedFiles)>>,
     pub lookup_update: CandidateLookupUpdate,
     pub pane: CandidatePaneWrite,
+    /// Whether the verdict this save stores owes an import: an automatic run
+    /// settled on it while "Import automatically when identified" was on. Owed
+    /// only when the verdict needs nothing from anyone — one that asks
+    /// something owes nothing to answer — and owed for the draft this save
+    /// leaves.
+    pub owes_import: bool,
 }
 
 /// What this save does to where the candidate's pane stands.
@@ -117,6 +123,7 @@ impl Default for CandidateSaveExtras {
             reshaped_files: None,
             lookup_update: CandidateLookupUpdate::Keep,
             pane: CandidatePaneWrite::Keep,
+            owes_import: false,
         }
     }
 }
@@ -214,10 +221,24 @@ pub(super) fn save_preparation_on(
         .map(|scanned| scanned.verify(sql, content_hash, expected.edit_revision))
         .transpose()?;
 
-    // The matches hang off the verdict row, so this clears them too.
+    // The matches hang off the verdict row, so this clears them too — and
+    // the import it owed, which was owed for the verdict and draft this save
+    // replaces.
     delete_verdict(sql, content_hash)?;
     if let Some(identification) = &prep.identification {
         insert_verdict(sql, content_hash, identification)?;
+    }
+    if extras.owes_import {
+        let identification = prep.identification.as_ref().ok_or_else(|| {
+            DbError::Message(format!(
+                "candidate {content_hash} owes an import for a result it stores none of"
+            ))
+        })?;
+        if crate::identify::classify(&identification.verdict)
+            == crate::identify::QueueClassification::Ready
+        {
+            owed_import_rows::owe_import_on(sql, content_hash, next_metadata)?;
+        }
     }
     delete_signals(sql, content_hash)?;
     if let Some(signals) = &prep.signals {
