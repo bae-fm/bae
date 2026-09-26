@@ -98,8 +98,10 @@ async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
                         reader.read(&mut bytes).expect("the stream serves its file");
                         assert_eq!(bytes[0], path.file_name().unwrap().len() as u8);
                     }
-                    peak_seen_by_tracks
-                        .fetch_max(coven::open_files_under(&dir).len(), Ordering::SeqCst);
+                    peak_seen_by_tracks.fetch_max(
+                        crate::open_files_peak::open_together(&dir).len(),
+                        Ordering::SeqCst,
+                    );
                     std::thread::sleep(Duration::from_millis(15));
                 })
                 .await
