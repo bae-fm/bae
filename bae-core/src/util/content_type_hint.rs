@@ -70,7 +70,7 @@ impl ContentTypeHint {
             "webp" => Self::Webp,
             "bmp" => Self::Bmp,
             "svg" => Self::Svg,
-            "txt" | "cue" | "log" | "m3u" | "m3u8" => Self::PlainText,
+            "txt" | "cue" | "log" | "accurip" | "m3u" | "m3u8" => Self::PlainText,
             "pdf" => Self::Pdf,
             _ => Self::Unknown(ext),
         }
@@ -187,6 +187,7 @@ mod tests {
             ("txt", H::PlainText),
             ("cue", H::PlainText),
             ("log", H::PlainText),
+            ("accurip", H::PlainText),
             ("m3u", H::PlainText),
             ("m3u8", H::PlainText),
             ("pdf", H::Pdf),

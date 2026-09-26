@@ -40,6 +40,7 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
             &inner,
             &extraction,
             Signals {
+                rip: crate::signals::RipEvidence::Unproven,
                 disc_id: DiscIdSignal::Absent { track_count: 0 },
                 barcode: BarcodeSignal::Absent,
                 text: TextSignal::Settled {

@@ -121,6 +121,9 @@ pub enum DiscIdStepView {
     Reading,
     /// No LOG or CUE to read one off.
     Absent,
+    /// A CUE was there, and the audio it lays out is sampled at a rate no CD
+    /// plays at, so it was not read into a disc ID.
+    NotCdAudio { sample_rate_hz: u32 },
     /// A LOG or CUE was there and no disc ID could be derived from it.
     ReadFailed { failure: LookupFailure },
     Read {
@@ -462,6 +465,7 @@ fn live_findings(
         // on a list still being looked up.
         Vec::new(),
         &context.text,
+        &context.rip,
     )
 }
 

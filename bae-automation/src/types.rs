@@ -225,10 +225,40 @@ pub enum AutomationDiscIdSignal {
     Absent {
         track_count: u32,
     },
+    /// A CUE was there over audio sampled at a rate no CD plays at, so it was
+    /// not hashed.
+    NotCdAudio {
+        track_count: u32,
+        sample_rate_hz: u32,
+    },
     Failed {
         failure: AutomationLookupFailure,
         track_count: u32,
     },
+}
+
+/// Mirrors bae-core's `signals::CdProof`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationCdProof {
+    RipLog,
+    AccurateRipReport,
+    RipperSheet,
+}
+
+/// Mirrors bae-core's `signals::RipEvidence`: what the candidate's files say
+/// about the medium its audio was ripped from.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationRipEvidence {
+    Cd {
+        proof: AutomationCdProof,
+        file: Option<String>,
+    },
+    NotCd {
+        sample_rate_hz: u32,
+    },
+    Unproven,
 }
 
 /// Mirrors bae-core's `signals::BarcodeSignal`.
@@ -270,6 +300,7 @@ pub enum AutomationTextSignal {
 /// Mirrors bae-core's `signals::Signals`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationSignals {
+    pub rip: AutomationRipEvidence,
     pub disc_id: AutomationDiscIdSignal,
     pub barcode: AutomationBarcodeSignal,
     pub text: AutomationTextSignal,

@@ -1,25 +1,25 @@
 //! Extraction inputs for the `Release` source (re-identify): resolve a library
-//! release's files into a disc ID + track count, and the artwork paths for the
+//! release's files into a rip reading + track count, and the artwork paths for the
 //! OCR pass. Reading the rip artifacts themselves lives in `import::discid`.
 
 use std::path::PathBuf;
 use tracing::{debug, warn};
 
-/// What a release already in the library was copied from: the disc its rip
-/// artifacts identify, and how many tracks the library holds for it.
+/// What a release already in the library was copied from: what its rip
+/// artifacts say, and how many tracks the library holds for it.
 pub(crate) struct ReleaseIdentity {
-    pub(crate) disc_id: Option<crate::import::discid::ComputedDiscId>,
+    pub(crate) rip: crate::import::discid::RipReading,
     pub(crate) track_count: u32,
 }
 
-/// Resolve the release's local files, filter LOG / CUE / audio, and read them
-/// in the order folder imports use: LOG first (most accurate), then CUE+audio
-/// pairs. The track count comes from the DB's track rows, not the files —
-/// those rows are the user's truth.
+/// Resolve the release's local files, pick out its rip documents, track
+/// sheets and audio, and read them the way a folder's are read (see
+/// [`crate::import::discid::read_rip_artifacts_from_paths`]). The track count
+/// comes from the DB's track rows, not the files — those rows are the user's
+/// truth.
 ///
-/// No disc ID when no LOG/CUE artifact is available — a cloud-only release with
-/// no local copy, or one with track files but no rip metadata. The caller turns
-/// that into `DiscIdSignal::Absent`.
+/// A cloud-only release with no local copy has no files to read, so its
+/// reading proves nothing and computes no disc ID.
 pub(crate) async fn resolve_release_identity(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
@@ -41,7 +41,7 @@ pub(crate) async fn resolve_release_identity(
     // On-disk paths come from coven's external refs (a Local release's files are
     // the user's own, in place). A remote file has no external ref and is skipped,
     // so a cloud-only release yields no paths and thus no disc ID.
-    let mut log_paths = Vec::new();
+    let mut documents = Vec::new();
     let mut cue_paths = Vec::new();
     let mut audio_files = Vec::new();
     for f in &files {
@@ -53,14 +53,14 @@ pub(crate) async fn resolve_release_identity(
             if !path.exists() {
                 continue;
             }
-            match path.extension().and_then(|extension| extension.to_str()) {
-                Some(extension) if extension.eq_ignore_ascii_case("log") => {
-                    log_paths.push(path.clone());
-                }
-                Some(extension) if extension.eq_ignore_ascii_case("cue") => {
-                    cue_paths.push(path.clone());
-                }
-                _ => {}
+            if crate::import::discid::is_rip_document(&path) {
+                documents.push(path.clone());
+            } else if path
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("cue"))
+            {
+                cue_paths.push(path.clone());
             }
             if let Some(source_audio) = &f.source_audio {
                 let duration_ms = u64::try_from(source_audio.duration_ms).map_err(|_| {
@@ -69,21 +69,22 @@ pub(crate) async fn resolve_release_identity(
                         f.id
                     )
                 })?;
-                audio_files.push((path, duration_ms));
+                audio_files.push(crate::import::discid::ReleaseAudioFile {
+                    path,
+                    duration_ms,
+                    format: source_audio.format.clone(),
+                });
             }
         }
     }
 
-    let disc_id = tokio::task::spawn_blocking(move || {
-        crate::import::discid::read_rip_artifacts_from_paths(&log_paths, &cue_paths, &audio_files)
+    let rip = tokio::task::spawn_blocking(move || {
+        crate::import::discid::read_rip_artifacts_from_paths(&documents, &cue_paths, &audio_files)
     })
     .await
     .map_err(|e| format!("rip artifact read task failed: {e}"))?;
 
-    Ok(ReleaseIdentity {
-        disc_id,
-        track_count,
-    })
+    Ok(ReleaseIdentity { rip, track_count })
 }
 
 /// The artwork the re-identify OCR pass reads: the release's cover, plus every
@@ -468,10 +469,10 @@ mod tests {
         let identity = resolve_release_identity(&manager, &release.id)
             .await
             .unwrap();
-        let (disc_id, track_count) = (identity.disc_id, identity.track_count);
+        let (rip, track_count) = (identity.rip, identity.track_count);
 
         assert!(
-            disc_id.is_some(),
+            rip.disc_id.computed().is_some(),
             "LOG file in local folder must produce a disc ID"
         );
         assert_eq!(track_count, 2, "track count comes from the DB tracks");

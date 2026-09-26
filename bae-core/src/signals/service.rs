@@ -48,7 +48,8 @@ use crate::identify::IdentifyRunId;
 use crate::import::{ImportEvent, ImportEventBus, ScanEvent};
 use crate::library::LibraryManager;
 use crate::signals::{
-    ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextSignal,
+    ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, RipEvidence, Signals, SourcedValue,
+    TextSignal,
 };
 use crate::util::rate_limiter::CallPriority;
 use crate::util::session_cache::SessionCache;
@@ -334,6 +335,7 @@ async fn run_extraction(
                 token,
                 ExtractionInputs {
                     gathered: Gathered {
+                        rip: fast.rip,
                         disc_id: fast.disc_id,
                         barcodes: fast.cue_barcodes,
                         pool,
@@ -351,27 +353,23 @@ async fn run_extraction(
         // Re-identify: the rip artifacts and artwork come from the library, not
         // a folder scan. No non-OCR text sources.
         ExtractionSource::Release { release_id } => {
-            let disc_id = match resolve_release_identity(&inner.library_manager, &release_id).await
-            {
-                Ok(identity) => {
-                    let track_count = identity.track_count;
-                    match identity.disc_id {
-                        Some(computed) => DiscIdSignal::Computed {
-                            disc_id: computed.disc_id,
-                            track_count,
-                            // A library release's files are its own, not files
-                            // of a scanned folder, so there is no row to point
-                            // at.
-                            source_file: computed.source_file,
+            let (rip, disc_id) =
+                match resolve_release_identity(&inner.library_manager, &release_id).await {
+                    // A library release's files are its own, not files of a
+                    // scanned folder, so nothing the reading names has a row
+                    // to point at.
+                    Ok(identity) => (
+                        identity.rip.evidence,
+                        identity.rip.disc_id.into_signal(identity.track_count),
+                    ),
+                    Err(detail) => (
+                        RipEvidence::Unproven,
+                        DiscIdSignal::Failed {
+                            failure: crate::signals::LookupFailure::Diagnostic { detail },
+                            track_count: 0,
                         },
-                        None => DiscIdSignal::Absent { track_count },
-                    }
-                }
-                Err(detail) => DiscIdSignal::Failed {
-                    failure: crate::signals::LookupFailure::Diagnostic { detail },
-                    track_count: 0,
-                },
-            };
+                    ),
+                };
             if token.is_cancelled() {
                 return;
             }
@@ -422,6 +420,7 @@ async fn run_extraction(
                 token,
                 ExtractionInputs {
                     gathered: Gathered {
+                        rip,
                         disc_id,
                         barcodes: Vec::new(),
                         pool: Pool::default(),
@@ -472,10 +471,12 @@ where
     }
 }
 
-/// What the pass has gathered so far: the settled disc ID, every barcode found
+/// What the pass has gathered so far: the rip evidence and the settled disc
+/// ID, every barcode found
 /// (CUE first, then each image OCR adds to it), the text pool, and the folder's
 /// track durations. Every snapshot the pass emits is built from this.
 struct Gathered {
+    rip: RipEvidence,
     disc_id: DiscIdSignal,
     barcodes: Vec<SourcedValue>,
     pool: Pool,
@@ -647,6 +648,7 @@ async fn stream_extraction(
     };
     let settled = SignalsSnapshot {
         signals: Signals {
+            rip: gathered.rip,
             disc_id: gathered.disc_id,
             barcode,
             text: TextSignal::Settled {
@@ -687,6 +689,7 @@ fn emit_failed_ocr_signals(
         inner,
         extraction,
         Signals {
+            rip: gathered.rip,
             disc_id: gathered.disc_id,
             barcode,
             text: TextSignal::Failed {
@@ -715,6 +718,8 @@ fn emit_aborted_signals(
         inner,
         extraction,
         Signals {
+            // Nothing was read, so nothing is proven.
+            rip: RipEvidence::Unproven,
             disc_id,
             barcode: BarcodeSignal::Failed {
                 failure: failure.clone(),
@@ -746,6 +751,7 @@ fn scanning_signals(
 ) -> Signals {
     let text_pool = gathered.pool.text_lines();
     Signals {
+        rip: gathered.rip.clone(),
         disc_id: gathered.disc_id.clone(),
         barcode: BarcodeSignal::Scanning {
             codes: gathered.barcodes.clone(),

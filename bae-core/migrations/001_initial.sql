@@ -871,6 +871,8 @@ CREATE TABLE IF NOT EXISTS scan_cue_sheet (
     performer           TEXT,
     catalog             TEXT,
     date                TEXT,
+    -- The CD ripper that wrote the sheet, where its REM COMMENT names one.
+    ripper              TEXT CHECK (ripper IS NULL OR ripper IN ('exact_audio_copy')),
     PRIMARY KEY (watched_folder_path, candidate_path, sheet_relative_path),
     FOREIGN KEY (watched_folder_path, candidate_path, sheet_relative_path)
         REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE
@@ -1258,11 +1260,20 @@ CREATE TABLE IF NOT EXISTS import_candidate_artist_identity_conflict (
 
 -- ── Identification ────────────────────────────────────────────────────────────
 
--- What extraction read off a candidate: the disc's table of contents, and
--- whether the barcode and text passes settled or failed.
+-- What extraction read off a candidate: what its files say about the medium
+-- it was ripped from, the disc's table of contents, and whether the barcode
+-- and text passes settled or failed.
 CREATE TABLE IF NOT EXISTS import_candidate_signals (
     content_hash           TEXT PRIMARY KEY,
-    disc_id_state          TEXT NOT NULL CHECK (disc_id_state IN ('computed', 'absent', 'failed')),
+    -- A file proves a CD rip, the audio rules one out, or nothing says.
+    rip                    TEXT NOT NULL CHECK (rip IN ('cd', 'not_cd', 'unproven')),
+    rip_proof              TEXT CHECK (rip_proof IS NULL OR rip_proof IN ('rip_log', 'accurate_rip_report', 'ripper_sheet')),
+    -- The candidate-relative path of the file that proves it. NULL for a
+    -- re-identify pass over a library release.
+    rip_file               TEXT,
+    -- The rate the audio is sampled at, where it rules a CD out.
+    rip_sample_rate_hz     INTEGER CHECK (rip_sample_rate_hz IS NULL OR rip_sample_rate_hz > 0),
+    disc_id_state          TEXT NOT NULL CHECK (disc_id_state IN ('computed', 'absent', 'not_cd_audio', 'failed')),
     disc_id                TEXT,
     -- The candidate-relative path of the LOG or CUE the disc ID came from, so a
     -- surface can put it on that file's row. NULL for a re-identify pass over a
@@ -1282,6 +1293,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     text_failure_status    INTEGER,
     text_failure_detail    TEXT,
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK ((rip = 'cd') = (rip_proof IS NOT NULL)),
+    CHECK (rip_file IS NULL OR rip = 'cd'),
+    CHECK ((rip = 'not_cd') = (rip_sample_rate_hz IS NOT NULL)),
+    -- A sheet goes unhashed only when the audio rules a CD out.
+    CHECK (disc_id_state <> 'not_cd_audio' OR rip = 'not_cd'),
     CHECK ((disc_id_state = 'computed') = (disc_id IS NOT NULL)),
     -- A source file with no computed ID behind it is not a provenance.
     CHECK (disc_id_source_file IS NULL OR disc_id_state = 'computed'),

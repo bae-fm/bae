@@ -530,8 +530,8 @@ fn insert_cue_sheet(
     sql.execute(
         "INSERT INTO scan_cue_sheet \
              (watched_folder_path, candidate_path, sheet_relative_path, title, performer, \
-              catalog, date) \
-         VALUES (?, ?, ?, ?, ?, ?, ?)",
+              catalog, date, ripper) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             watched_folder_path,
             candidate_path,
@@ -540,6 +540,7 @@ fn insert_cue_sheet(
             sheet.performer,
             sheet.catalog,
             sheet.date,
+            sheet.ripper.map(crate::cue_flac::CdRipper::key),
         ],
     )?;
     for (position, track) in sheet.tracks.iter().enumerate() {

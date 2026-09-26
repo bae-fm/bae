@@ -100131,6 +100131,179 @@
         }
       }
     },
+    "Not read: the audio is %@, which no CD holds" : {
+      "comment" : "Find online ledger: help on the disc ID label when the folder's CUE was not read into a disc ID because its audio is at a sample rate no CD plays at; %@ is the rate, e.g. \"96 kHz\"",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not read: the audio is %@, which no CD holds"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لم تتم القراءة: الصوت بمعدل %@، وهو ما لا يحمله أي قرص CD"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не е прочетено: звукът е %@, какъвто нито един CD не съдържа"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenačteno: zvuk má %@, což žádné CD neobsahuje"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke læst: lyden er %@, hvilket ingen cd rummer"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht gelesen: Der Ton liegt in %@ vor, was keine CD enthält"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Δεν διαβάστηκε: ο ήχος είναι %@, κάτι που κανένα CD δεν περιέχει"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No leído: el audio está a %@, algo que ningún CD contiene"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ei luettu: ääni on %@, jota mikään CD ei sisällä"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non lu : l’audio est en %@, ce qu’aucun CD ne contient"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא נקרא: השמע הוא %@, ואף תקליטור CD אינו מכיל כזה"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije pročitano: zvuk je %@, a to nijedan CD ne sadrži"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nincs beolvasva: a hang %@, ilyet egy CD sem tartalmaz"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non letto: l’audio è a %@, che nessun CD contiene"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "読み取りなし: 音声は %@ で、CD には収録できません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "읽지 않음: 오디오가 %@이며, CD에는 이런 오디오가 담기지 않습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke lest: lyden er %@, noe ingen CD inneholder"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niet gelezen: de audio is %@, wat geen cd bevat"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie odczytano: dźwięk ma %@, czego żadna płyta CD nie zawiera"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não lido: o áudio está em %@, o que nenhum CD contém"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não lido: o áudio está em %@, o que nenhum CD contém"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Necitit: sunetul este la %@, ceea ce niciun CD nu conține"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenačítané: zvuk má %@, čo žiadne CD neobsahuje"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inte läst: ljudet är %@, vilket ingen cd innehåller"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Okunmadı: ses %@, hiçbir CD bu sesi taşımaz"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не прочитано: звук має %@, чого не містить жоден CD"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未读取：音频为 %@，CD 无法承载这种音频"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未讀取：音訊為 %@，CD 無法承載這種音訊"
+          }
+        }
+      }
+    },
     "No LOG or CUE in the folder" : {
       "comment" : "Find online ledger: help on the disc ID label when the folder has no LOG or CUE",
       "localizations" : {

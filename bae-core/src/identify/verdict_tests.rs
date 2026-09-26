@@ -17,6 +17,7 @@ fn mk_result(release_id: &str) -> MetadataResult {
 /// only that `Idle`/`Triangulating` carry one and still aren't terminal.
 fn mk_context(track_count: u32) -> SignalsContext {
     SignalsContext {
+        rip: crate::signals::RipEvidence::Unproven,
         providers: Vec::new(),
         artwork: crate::signals::ArtworkScan::Absent,
         disc: DiscIdEvidence {

@@ -80,7 +80,7 @@ pub(super) fn is_image_file(path: &Path) -> bool {
     ContentTypeHint::path_is_raster_image(path)
 }
 
-/// Check if a file is a document file (.cue, .log, .txt, .m3u)
+/// Check if a file is a document file (see `DOCUMENT_EXTENSIONS`)
 pub(super) fn is_document_file(path: &Path) -> bool {
     path.extension()
         .and_then(|ext| ext.to_str())

@@ -104,6 +104,7 @@ fn sample_findings() -> Findings {
 /// does not care what it was reached on.
 fn sample_signals() -> crate::signals::Signals {
     crate::signals::Signals {
+        rip: crate::signals::RipEvidence::Unproven,
         disc_id: crate::signals::DiscIdSignal::Absent { track_count: 0 },
         barcode: crate::signals::BarcodeSignal::Absent,
         text: crate::signals::TextSignal::Settled {
@@ -925,6 +926,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
         state,
         IdentifyEvent::SignalsUpdated {
             signals: Signals {
+                rip: crate::signals::RipEvidence::Unproven,
                 disc_id: DiscIdSignal::Computed {
                     disc_id: "disc-hash".to_string(),
                     track_count: 1,

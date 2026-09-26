@@ -95,6 +95,7 @@ async fn save_verdict_with_ledger(
             folder_path: candidate.path.to_string_lossy().into_owned(),
             verdict: verdict(release_id, ledger),
             signals: crate::signals::Signals {
+                rip: crate::signals::RipEvidence::Unproven,
                 disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {

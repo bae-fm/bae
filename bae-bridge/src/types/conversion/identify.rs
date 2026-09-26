@@ -237,6 +237,7 @@ mirror_enum! {
     variants: {
         Reading,
         Absent,
+        NotCdAudio { sample_rate_hz },
         ReadFailed { failure: (BridgeLookupFailure) },
         Read {
             disc_id,
@@ -399,6 +400,7 @@ mirror_enum! {
     variants: {
         Computed { disc_id, track_count, source_file },
         Absent { track_count },
+        NotCdAudio { track_count, sample_rate_hz },
         Failed { failure: (BridgeLookupFailure), track_count },
     },
 }
@@ -431,14 +433,17 @@ mirror_enum! {
     },
 }
 
-/// Not a `mirror_struct`: the measured durations and the candidate's own text
-/// lines do not cross. The durations are a Ready-rule input and the mapping
+/// Not a `mirror_struct`: the rip evidence, the measured durations and the
+/// candidate's own text lines do not cross. The rip evidence is what core
+/// sets rows aside by and whether it hashed a sheet, and both of those cross
+/// already: as the rows' order and as the disc ID's own state. The durations are a Ready-rule input and the mapping
 /// table's lengths, and the pane reads them through its own record; the text
 /// pool is what core judges and orders the rows by, and what it concluded is
 /// already on every row as its badges.
 impl BridgeSignals {
     pub(crate) fn from_core(s: bae_core::signals::Signals) -> Self {
         let bae_core::signals::Signals {
+            rip: _,
             disc_id,
             barcode,
             text,

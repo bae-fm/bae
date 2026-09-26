@@ -50,6 +50,16 @@ impl StatedMedia {
         }
     }
 
+    /// Every entry the record lists, as the carrier it names — `None` where
+    /// it names none bae knows. Empty for a record that describes no media.
+    pub fn entries(&self) -> Vec<Option<Medium>> {
+        match self {
+            Self::Undescribed => Vec::new(),
+            Self::PerMedium(media) => media.clone(),
+            Self::Formats(formats) => formats.iter().map(|format| format.medium).collect(),
+        }
+    }
+
     /// Whether any stated carrier is one `is` picks out.
     pub fn any(&self, is: impl Fn(Medium) -> bool) -> bool {
         match self {

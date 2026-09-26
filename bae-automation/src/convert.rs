@@ -648,6 +648,13 @@ impl AutomationDiscIdSignal {
                 track_count,
             },
             DiscIdSignal::Absent { track_count } => Self::Absent { track_count },
+            DiscIdSignal::NotCdAudio {
+                track_count,
+                sample_rate_hz,
+            } => Self::NotCdAudio {
+                track_count,
+                sample_rate_hz,
+            },
             DiscIdSignal::Failed {
                 failure,
                 track_count,
@@ -659,12 +666,31 @@ impl AutomationDiscIdSignal {
     }
 }
 
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationCdProof = bae_core::signals::CdProof,
+    from_core: pub(crate) fn,
+    variants: { RipLog, AccurateRipReport, RipperSheet },
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationRipEvidence = bae_core::signals::RipEvidence,
+    from_core: pub(crate) fn,
+    variants: {
+        Cd { proof: (AutomationCdProof), file },
+        NotCd { sample_rate_hz },
+        Unproven,
+    },
+}
+
 impl AutomationSignals {
     /// Not a copy: core's `durations` are what the Ready rule narrows with, not
     /// a lookup input a client reads.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn from_core(signals: bae_core::signals::Signals) -> Self {
         Self {
+            rip: AutomationRipEvidence::from_core(signals.rip),
             disc_id: AutomationDiscIdSignal::from_core(signals.disc_id),
             barcode: AutomationBarcodeSignal::from_core(signals.barcode),
             text: AutomationTextSignal::from_core(signals.text),

@@ -292,3 +292,72 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
         Some((FolderReleaseDecision::CombineAsOneRelease, crate::import::folder_scanner::FolderReleaseDecisionAuthor::User))
     );
 }
+
+/// The CD ripper a sheet names is kept with the scan, so a folder read back
+/// from a cold database still proves the CD rip its sheet does.
+#[tokio::test]
+async fn a_sheet_s_ripper_survives_a_relaunch() {
+    use crate::import::folder_scanner::{
+        collect_release_candidate_files_with_scope, FolderCandidate, ScanItem,
+        StoredCandidateEdits,
+    };
+
+    let (db, _tmp) = empty_db().await;
+    let folder = tempfile::TempDir::new().unwrap();
+    std::fs::copy(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/cue_flac/Test Album.flac"),
+        folder.path().join("cd.flac"),
+    )
+    .unwrap();
+    std::fs::write(
+        folder.path().join("cd.cue"),
+        "REM COMMENT \"ExactAudioCopy v1.1\"\nPERFORMER \"Artist One\"\nTITLE \"Album One\"\n\
+         FILE \"cd.wav\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n",
+    )
+    .unwrap();
+    let scanned = collect_release_candidate_files_with_scope(
+        folder.path(),
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    let root = folder.path().to_string_lossy().into_owned();
+    db.add_watched_import_folder(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
+    db.save_folder_scan_item(
+        &root,
+        generation,
+        &ScanItem::Valid(FolderCandidate {
+            path: folder.path().to_path_buf(),
+            file_root: folder.path().to_path_buf(),
+            name: "Release".to_string(),
+            files: scanned,
+            watched_folder_path: root.clone(),
+            scope: crate::import::ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            display_path: String::new(),
+            grouping: None,
+        }),
+    )
+    .await
+    .unwrap();
+    db.finish_folder_scan(&root, generation, None).await.unwrap();
+
+    let restored = db.load_folder_scan_snapshots().await.unwrap();
+    let ScanItem::Valid(restored) = &restored[0].items[0] else {
+        panic!("the persisted candidate keeps its valid variant");
+    };
+    let sheets: Vec<_> = restored
+        .files
+        .track_sheets()
+        .map(|sheet| sheet.sheet.ripper)
+        .collect();
+    assert_eq!(
+        sheets,
+        vec![Some(crate::cue_flac::CdRipper::ExactAudioCopy)]
+    );
+}

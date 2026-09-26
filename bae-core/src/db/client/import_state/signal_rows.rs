@@ -15,11 +15,12 @@ use super::super::read::stored_region;
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::signals::{
-    BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextLine,
-    TextSignal,
+    BarcodeSignal, CdProof, DiscIdSignal, LookupFailure, RipEvidence, SignalOrigin, Signals,
+    SourcedValue, TextLine, TextSignal,
 };
 
-const SIGNALS_COLUMNS: &str = "content_hash, disc_id_state, disc_id, disc_id_source_file, \
+const SIGNALS_COLUMNS: &str = "content_hash, rip, rip_proof, rip_file, rip_sample_rate_hz, \
+     disc_id_state, disc_id, disc_id_source_file, \
      track_count, \
      disc_id_failure, disc_id_failure_status, disc_id_failure_detail, \
      barcode_state, barcode_failure, barcode_failure_status, barcode_failure_detail, \
@@ -138,7 +139,14 @@ pub(super) fn insert_signals(
             None,
         ),
         DiscIdSignal::Absent { .. } => ("absent", None, None, None),
+        // The rate is the rip evidence's, stored once with it.
+        DiscIdSignal::NotCdAudio { .. } => ("not_cd_audio", None, None, None),
         DiscIdSignal::Failed { failure, .. } => ("failed", None, None, Some(failure)),
+    };
+    let (rip, rip_proof, rip_file, rip_sample_rate_hz) = match &signals.rip {
+        RipEvidence::Cd { proof, file } => ("cd", Some(proof.key()), file.clone(), None),
+        RipEvidence::NotCd { sample_rate_hz } => ("not_cd", None, None, Some(*sample_rate_hz)),
+        RipEvidence::Unproven => ("unproven", None, None, None),
     };
     let (barcode_state, barcode_failure) = match &signals.barcode {
         BarcodeSignal::Settled { .. } => ("settled", None),
@@ -166,10 +174,14 @@ pub(super) fn insert_signals(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
+            rip,
+            rip_proof,
+            rip_file,
+            rip_sample_rate_hz,
             disc_id_state,
             disc_id,
             disc_id_source_file,
@@ -333,6 +345,12 @@ pub(super) fn load_signals_on(
         |row| {
             Ok((
                 row.get::<_, String>("content_hash")?,
+                (
+                    row.get::<_, String>("rip")?,
+                    row.get::<_, Option<String>>("rip_proof")?,
+                    row.get::<_, Option<String>>("rip_file")?,
+                    row.get::<_, Option<i64>>("rip_sample_rate_hz")?,
+                ),
                 row.get::<_, String>("disc_id_state")?,
                 row.get::<_, Option<String>>("disc_id")?,
                 row.get::<_, Option<String>>("disc_id_source_file")?,
@@ -385,6 +403,7 @@ pub(super) fn load_signals_on(
         for row in rows {
             let (
                 content_hash,
+                (rip, rip_proof, rip_file, rip_sample_rate_hz),
                 disc_id_state,
                 disc_id,
                 disc_id_source_file,
@@ -405,6 +424,32 @@ pub(super) fn load_signals_on(
             let track_count = u32::try_from(track_count).map_err(|_| {
                 DbError::Message(format!("a stored signal counts {track_count} tracks"))
             })?;
+            let sample_rate_hz = rip_sample_rate_hz
+                .map(|rate| {
+                    u32::try_from(rate).map_err(|_| {
+                        DbError::Message(format!("a stored rip is sampled at {rate} Hz"))
+                    })
+                })
+                .transpose()?;
+            let rip = match rip.as_str() {
+                "cd" => {
+                    let proof = rip_proof.ok_or_else(|| {
+                        DbError::Message("a stored CD rip states no proof".into())
+                    })?;
+                    RipEvidence::Cd {
+                        proof: CdProof::from_key(&proof)
+                            .ok_or_else(|| unreadable("rip_proof", &proof))?,
+                        file: rip_file,
+                    }
+                }
+                "not_cd" => RipEvidence::NotCd {
+                    sample_rate_hz: sample_rate_hz.ok_or_else(|| {
+                        DbError::Message("a stored rip that is not a CD states no rate".into())
+                    })?,
+                },
+                "unproven" => RipEvidence::Unproven,
+                other => return Err(unreadable("rip", other)),
+            };
             let disc_id = match disc_id_state.as_str() {
                 "computed" => DiscIdSignal::Computed {
                     disc_id: disc_id.ok_or_else(|| {
@@ -414,6 +459,12 @@ pub(super) fn load_signals_on(
                     source_file: disc_id_source_file,
                 },
                 "absent" => DiscIdSignal::Absent { track_count },
+                "not_cd_audio" => DiscIdSignal::NotCdAudio {
+                    track_count,
+                    sample_rate_hz: sample_rate_hz.ok_or_else(|| {
+                        DbError::Message("an unhashed sheet states no rate".into())
+                    })?,
+                },
                 "failed" => DiscIdSignal::Failed {
                     failure: failure_of(
                         disc_id_failure,
@@ -458,6 +509,7 @@ pub(super) fn load_signals_on(
             out.insert(
                 content_hash,
                 Signals {
+                    rip,
                     disc_id,
                     barcode,
                     text,

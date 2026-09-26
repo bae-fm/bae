@@ -1,5 +1,8 @@
+use crate::album_detail::AudioFormat;
 use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::resolve_cue_audio_paths;
+use crate::signals::rip::rate_ruling_out_cd;
+use crate::signals::{CdProof, DiscIdSignal, RipEvidence};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::{debug, trace, warn};
@@ -243,29 +246,32 @@ fn calculate_mb_discid_from_cue(
     )
 }
 
-/// The disc a log's table of contents hashes to. `None` for a file that
-/// cannot be read and for a table of contents that does not parse.
-fn read_log(log_path: &Path) -> Option<String> {
-    trace!("Reading LOG file: {:?}", log_path);
-    let text = match crate::text_encoding::read_text_file(log_path) {
-        Ok(read) => read.text,
+/// A document's text, decoded whatever its encoding (an EAC log is UTF-16).
+/// `None` for a file that cannot be read, which is logged.
+fn read_document(path: &Path) -> Option<String> {
+    match crate::text_encoding::read_text_file(path) {
+        Ok(read) => Some(read.text),
         Err(e) => {
-            debug!("LOG {:?} could not be read: {}", log_path, e);
-            return None;
-        }
-    };
-    match discid_from_log_text(&text) {
-        Ok(id) => Some(id),
-        Err(e) => {
-            debug!("DiscID from LOG failed for {:?}: {}", log_path, e);
+            debug!("rip document {:?} could not be read: {}", path, e);
             None
         }
     }
 }
 
+/// Whether a document is an AccurateRip report that found the disc: a line
+/// `[AccurateRip ID: <id>] found.`, as CUETools writes into its `.accurip`
+/// report. AccurateRip's database holds CDs alone, so a disc found in it is
+/// a CD.
+fn reports_accuraterip_found(text: &str) -> bool {
+    text.lines().map(str::trim).any(|line| {
+        line.starts_with("[AccurateRip ID:") && line.ends_with("] found.")
+    })
+}
+
 /// A disc ID and the file it was derived from — the rip log, or the sheet that
 /// carves the tracks. The file rides along so a surface can put the disc ID on
 /// the row for that file rather than beside the release.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComputedDiscId {
     pub disc_id: String,
     /// The candidate-relative path of the LOG or CUE it came from. `None`
@@ -275,57 +281,244 @@ pub struct ComputedDiscId {
     pub source_file: Option<String>,
 }
 
-/// The disc ID of pre-resolved LOG/CUE/audio paths. LOG files come first —
-/// most accurate, since the EAC or XLD log carries the sector offsets
-/// directly — then CUE+audio pairs. Failures along the way log at `debug!` so
-/// the chain shows up in traces.
-pub fn read_rip_artifacts_from_paths(
-    log_paths: &[PathBuf],
-    cue_paths: &[PathBuf],
-    audio_files: &[(PathBuf, u64)],
-) -> Option<ComputedDiscId> {
-    if let Some(disc_id) = log_paths.iter().find_map(|log_path| read_log(log_path)) {
-        return Some(ComputedDiscId {
-            disc_id,
-            source_file: None,
-        });
-    }
+/// What a candidate's rip artifacts say: the medium they prove or rule out,
+/// and the disc they hash to. One reading, because the first decides the
+/// second — a track sheet laying out audio no CD could hold hashes to a disc
+/// that never existed, and is not asked about.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RipReading {
+    pub evidence: RipEvidence,
+    pub disc_id: DiscIdReading,
+}
 
-    let audio_paths = audio_files
-        .iter()
-        .map(|(path, _)| path.clone())
-        .collect::<Vec<_>>();
-    for cue_path in cue_paths {
-        let sheet = match crate::cue_flac::parse_cue_sheet(cue_path) {
-            Ok(s) => s,
-            Err(e) => {
-                debug!("Skipping unparseable CUE {:?}: {}", cue_path, e);
-                continue;
-            }
-        };
-        let Some(resolved) = resolve_cue_audio_paths(cue_path, &sheet, &audio_paths) else {
-            debug!("Skipping CUE with no matching audio file: {:?}", cue_path);
-            continue;
-        };
-        let durations: Vec<SheetAudioDuration<'_>> = resolved
-            .iter()
-            .map(|(file_reference, audio_path)| SheetAudioDuration {
-                file_reference,
-                duration_ms: audio_files
-                    .iter()
-                    .find_map(|(path, duration_ms)| (path == *audio_path).then_some(*duration_ms))
-                    .expect("a matched CUE audio path came from the retained-duration list"),
-            })
-            .collect();
-        if let Some(disc_id) = discid_from_cue_audio(&sheet, &durations, cue_path) {
-            return Some(ComputedDiscId {
-                disc_id,
-                source_file: None,
-            });
+/// The disc ID a candidate's rip artifacts hash to.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DiscIdReading {
+    Computed(ComputedDiscId),
+    /// No log or sheet hashes to one.
+    Absent,
+    /// A sheet was there and the audio rules a CD out (see
+    /// [`RipEvidence::NotCd`]), so it was not hashed.
+    NotCdAudio { sample_rate_hz: u32 },
+}
+
+impl DiscIdReading {
+    /// The disc ID, where one was computed.
+    pub fn computed(self) -> Option<ComputedDiscId> {
+        match self {
+            Self::Computed(computed) => Some(computed),
+            Self::Absent | Self::NotCdAudio { .. } => None,
         }
     }
 
-    None
+    /// The signal a candidate of `track_count` tracks carries.
+    pub fn into_signal(self, track_count: u32) -> DiscIdSignal {
+        match self {
+            Self::Computed(computed) => DiscIdSignal::Computed {
+                disc_id: computed.disc_id,
+                track_count,
+                source_file: computed.source_file,
+            },
+            Self::Absent => DiscIdSignal::Absent { track_count },
+            Self::NotCdAudio { sample_rate_hz } => DiscIdSignal::NotCdAudio {
+                track_count,
+                sample_rate_hz,
+            },
+        }
+    }
+}
+
+/// A document that may be a rip log or an AccurateRip report.
+struct RipDocument<'a> {
+    path: &'a Path,
+    /// The candidate-relative path, where the document is a folder's file.
+    file: Option<&'a str>,
+}
+
+impl RipDocument<'_> {
+    fn is_log(&self) -> bool {
+        has_extension(self.path, "log")
+    }
+}
+
+/// A track sheet with the measured length of every audio file it names.
+struct RipSheet<'a> {
+    sheet: &'a CueSheet,
+    audio: Vec<SheetAudioDuration<'a>>,
+    path: &'a Path,
+    file: Option<&'a str>,
+}
+
+/// Everything of a candidate's that speaks to where its audio came from.
+struct RipArtifacts<'a> {
+    /// The logs and AccurateRip reports, in the order found.
+    documents: Vec<RipDocument<'a>>,
+    /// The sheets that lay out the candidate's tracks.
+    sheets: Vec<RipSheet<'a>>,
+    /// The format of every one of the candidate's audio files.
+    audio: Vec<&'a AudioFormat>,
+}
+
+fn has_extension(path: &Path, expected: &str) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case(expected))
+}
+
+/// Whether a document is one a rip reading reads: a rip log, or an
+/// AccurateRip report.
+pub(crate) fn is_rip_document(path: &Path) -> bool {
+    has_extension(path, "log") || has_extension(path, "accurip")
+}
+
+/// Read the artifacts. A log whose table of contents reads is both the proof
+/// and the disc ID, and is read first — most accurate, since EAC and XLD put
+/// the disc's sector offsets in it directly. Otherwise the proof is an
+/// AccurateRip report or a sheet a CD ripper wrote, or the audio's rate rules
+/// a CD out; and the sheets are hashed unless it does. Failures along the
+/// way log at `debug!` so the chain shows up in traces.
+fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
+    // Logs first: a log's table of contents is the disc ID as well as the
+    // proof, which a report is not.
+    artifacts.documents.sort_by_key(|document| !document.is_log());
+    let mut report = None;
+    for document in &artifacts.documents {
+        let Some(text) = read_document(document.path) else {
+            continue;
+        };
+        if document.is_log() {
+            trace!("Reading LOG file: {:?}", document.path);
+            match discid_from_log_text(&text) {
+                Ok(disc_id) => {
+                    let file = document.file.map(str::to_string);
+                    return RipReading {
+                        evidence: RipEvidence::Cd {
+                            proof: CdProof::RipLog,
+                            file: file.clone(),
+                        },
+                        disc_id: DiscIdReading::Computed(ComputedDiscId {
+                            disc_id,
+                            source_file: file,
+                        }),
+                    };
+                }
+                Err(e) => debug!("DiscID from LOG failed for {:?}: {}", document.path, e),
+            }
+        }
+        if report.is_none() && reports_accuraterip_found(&text) {
+            report = Some(document.file);
+        }
+    }
+
+    let evidence = match report {
+        Some(file) => RipEvidence::Cd {
+            proof: CdProof::AccurateRipReport,
+            file: file.map(str::to_string),
+        },
+        None => match artifacts
+            .sheets
+            .iter()
+            .find(|sheet| sheet.sheet.ripper.is_some())
+        {
+            Some(sheet) => RipEvidence::Cd {
+                proof: CdProof::RipperSheet,
+                file: sheet.file.map(str::to_string),
+            },
+            None => match rate_ruling_out_cd(artifacts.audio.iter().copied()) {
+                Some(sample_rate_hz) => RipEvidence::NotCd { sample_rate_hz },
+                None => RipEvidence::Unproven,
+            },
+        },
+    };
+
+    let disc_id = match evidence {
+        RipEvidence::NotCd { sample_rate_hz } if !artifacts.sheets.is_empty() => {
+            debug!("not hashing a track sheet whose audio is at {sample_rate_hz} Hz");
+            DiscIdReading::NotCdAudio { sample_rate_hz }
+        }
+        RipEvidence::NotCd { .. } => DiscIdReading::Absent,
+        RipEvidence::Cd { .. } | RipEvidence::Unproven => artifacts
+            .sheets
+            .iter()
+            .find_map(|sheet| {
+                discid_from_cue_audio(sheet.sheet, &sheet.audio, sheet.path).map(|disc_id| {
+                    DiscIdReading::Computed(ComputedDiscId {
+                        disc_id,
+                        source_file: sheet.file.map(str::to_string),
+                    })
+                })
+            })
+            .unwrap_or(DiscIdReading::Absent),
+    };
+    RipReading { evidence, disc_id }
+}
+
+/// One of a library release's audio files: where it is, how long it plays,
+/// and its format.
+pub struct ReleaseAudioFile {
+    pub path: PathBuf,
+    pub duration_ms: u64,
+    pub format: AudioFormat,
+}
+
+/// Read a library release's rip artifacts from their resolved paths:
+/// `documents` its logs and AccurateRip reports, `cue_paths` its sheets, which
+/// are parsed here and matched to `audio` by the names their `FILE`
+/// directives give.
+pub fn read_rip_artifacts_from_paths(
+    documents: &[PathBuf],
+    cue_paths: &[PathBuf],
+    audio: &[ReleaseAudioFile],
+) -> RipReading {
+    let audio_paths = audio
+        .iter()
+        .map(|file| file.path.clone())
+        .collect::<Vec<_>>();
+    let parsed: Vec<(&PathBuf, CueSheet)> = cue_paths
+        .iter()
+        .filter_map(|cue_path| match crate::cue_flac::parse_cue_sheet(cue_path) {
+            Ok(sheet) => Some((cue_path, sheet)),
+            Err(e) => {
+                debug!("Skipping unparseable CUE {:?}: {}", cue_path, e);
+                None
+            }
+        })
+        .collect();
+    let sheets = parsed
+        .iter()
+        .filter_map(|(cue_path, sheet)| {
+            let Some(resolved) = resolve_cue_audio_paths(cue_path, sheet, &audio_paths) else {
+                debug!("Skipping CUE with no matching audio file: {:?}", cue_path);
+                return None;
+            };
+            let audio = resolved
+                .into_iter()
+                .map(|(file_reference, audio_path)| SheetAudioDuration {
+                    file_reference,
+                    duration_ms: audio
+                        .iter()
+                        .find(|file| &file.path == audio_path)
+                        .expect("a matched CUE audio path came from the release's audio")
+                        .duration_ms,
+                })
+                .collect();
+            Some(RipSheet {
+                sheet,
+                audio,
+                path: cue_path.as_path(),
+                file: None,
+            })
+        })
+        .collect();
+    read(RipArtifacts {
+        documents: documents
+            .iter()
+            .filter(|path| is_rip_document(path))
+            .map(|path| RipDocument { path, file: None })
+            .collect(),
+        sheets,
+        audio: audio.iter().map(|file| &file.format).collect(),
+    })
 }
 
 /// A MusicBrainz DiscID from an already-parsed CUE sheet and the lengths the
@@ -345,57 +538,58 @@ fn discid_from_cue_audio(
     }
 }
 
-/// The disc ID of already-categorized files, reusing the track sheets the
-/// folder scan parsed — no re-read, no re-parse. LOG first (most accurate),
-/// then the sheets that are bound to their audio; a folder whose sheet is
-/// unbound can still identify itself from its log.
+/// Read already-categorized files, reusing the track sheets the folder scan
+/// parsed — no re-read, no re-parse. Only the sheets that carve are read: one
+/// the person took out of the tracklist describes a disc this folder is no
+/// longer presenting. A folder whose sheet is unbound can still identify
+/// itself from its log.
 pub fn read_rip_artifacts(
     categorized: &crate::import::folder_scanner::CategorizedFiles,
-) -> Option<ComputedDiscId> {
-    for doc in categorized.documents() {
-        let is_log = doc
-            .path
-            .extension()
-            .and_then(|e| e.to_str())
-            .map(|e| e.eq_ignore_ascii_case("log"))
-            .unwrap_or(false);
-        if !is_log {
-            continue;
-        }
-        if let Some(disc_id) = read_log(&doc.path) {
-            return Some(ComputedDiscId {
-                disc_id,
-                source_file: Some(doc.relative_path.clone()),
-            });
-        }
-    }
-
-    // Only the sheets that carve: one the user took out of the tracklist
-    // describes a disc this folder is no longer presenting.
-    for bound in categorized.carving_sheets() {
-        let durations: Vec<SheetAudioDuration<'_>> = bound
-            .audio_files
-            .iter()
-            .map(|(file_reference, audio)| SheetAudioDuration {
-                file_reference,
-                duration_ms: audio
-                    .source_audio
-                    .as_ref()
-                    .expect("a categorized audio file retains its scan facts")
-                    .duration_ms,
-            })
-            .collect();
-        if let Some(disc_id) = discid_from_cue_audio(bound.sheet, &durations, &bound.file.path) {
-            return Some(ComputedDiscId {
-                disc_id,
-                source_file: Some(bound.file.relative_path.clone()),
-            });
-        }
-    }
-
-    None
+) -> RipReading {
+    let documents = categorized
+        .documents()
+        .filter(|doc| is_rip_document(&doc.path))
+        .map(|doc| RipDocument {
+            path: &doc.path,
+            file: Some(&doc.relative_path),
+        })
+        .collect();
+    let carving = categorized.carving_sheets();
+    let sheets = carving
+        .iter()
+        .map(|bound| RipSheet {
+            sheet: bound.sheet,
+            audio: bound
+                .audio_files
+                .iter()
+                .map(|(file_reference, audio)| SheetAudioDuration {
+                    file_reference,
+                    duration_ms: audio
+                        .source_audio
+                        .as_ref()
+                        .expect("a categorized audio file retains its scan facts")
+                        .duration_ms,
+                })
+                .collect(),
+            path: &bound.file.path,
+            file: Some(&bound.file.relative_path),
+        })
+        .collect();
+    read(RipArtifacts {
+        documents,
+        sheets,
+        audio: categorized
+            .audio()
+            .filter_map(|file| file.source_audio.as_ref())
+            .map(|audio| &audio.format)
+            .collect(),
+    })
 }
 
 #[cfg(test)]
 #[path = "discid_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "rip_reading_tests.rs"]
+mod rip_reading_tests;

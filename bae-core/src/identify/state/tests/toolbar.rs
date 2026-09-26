@@ -233,6 +233,7 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
         state,
         IdentifyEvent::SignalsUpdated {
             signals: Signals {
+                rip: crate::signals::RipEvidence::Unproven,
                 disc_id: DiscIdSignal::Absent { track_count: 5 },
                 barcode: BarcodeSignal::Scanning { codes: Vec::new() },
                 text: TextSignal::Scanning {

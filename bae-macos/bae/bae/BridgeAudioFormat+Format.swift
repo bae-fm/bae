@@ -17,18 +17,12 @@ extension BridgeAudioFormat {
         if bitsPerSample == nil, let kbps = bitrateKbps {
             parts.append(coreString("core.audio.bitrate_kbps", kbps))
         }
-        parts.append(sampleRateText)
+        parts.append(sampleRateText(hz: Double(sampleRateHz)))
         if let bits = bitsPerSample {
             parts.append(coreString("core.audio.bit_depth", bits))
         }
         parts.append(channelsText)
         return parts
-    }
-
-    private var sampleRateText: String {
-        let khz = Double(sampleRateHz) / 1000.0
-        let number = khz.formatted(.number.precision(.fractionLength(0...1)))
-        return coreString("core.audio.sample_rate_khz", number)
     }
 
     private var channelsText: String {
@@ -59,6 +53,13 @@ extension BridgeSourceAudioSummary {
             nonbreakingAudioFact(coreString("core.audio.mixed"))
         }
     }
+}
+
+/// A sample rate in kilohertz for the current locale, e.g. "44.1 kHz".
+func sampleRateText(hz: Double) -> String {
+    let number = (hz / 1000.0)
+        .formatted(.number.precision(.fractionLength(0...1)))
+    return coreString("core.audio.sample_rate_khz", number)
 }
 
 private func audioFactsText(_ parts: [String]) -> String {

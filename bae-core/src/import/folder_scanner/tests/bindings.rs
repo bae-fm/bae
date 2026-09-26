@@ -66,7 +66,10 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
         "cd.flac"
     );
     assert!(
-        crate::import::discid::read_rip_artifacts(&files).is_some(),
+        crate::import::discid::read_rip_artifacts(&files)
+            .disc_id
+            .computed()
+            .is_some(),
         "the automatically bound sheet and audio yield a disc ID",
     );
 }

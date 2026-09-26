@@ -21,25 +21,29 @@
 //! states about the row, which is one object whichever record says it.
 //!
 //! **Every row is scored, and the rows tied at the top are offered.** The
-//! score is `Support`: how many lookups returned the row, how many of the
-//! facts that name one pressing hold, whether the disc ID returned it, and
-//! whether the folder's text mentions the row at all. Every other row is set
-//! aside under "N more releases", which a person can open.
+//! score is `Support`: whether the row's media could have given the folder
+//! its audio, how many lookups returned the row, how many of the facts that
+//! name one pressing hold, whether the disc ID returned it, and whether the
+//! folder's text mentions the row at all. Every other row is set aside under
+//! "N more releases", which a person can open.
 //!
-//! Taking the highest score is what would otherwise be separate rules. Two
-//! lookups naming one release outrank one lookup naming another, which is the
-//! intersection of the answering lookups. A barcode and a catalog number name
-//! one pressing, where a disc ID names every pressing cut from one master. A
-//! row the folder never mentions, beside rows it does, came from a misread
-//! barcode. And a score always has a highest value, so the list is shortened
-//! and never emptied.
+//! Taking the highest score is what would otherwise be separate rules. A row
+//! made of vinyl beside a folder its rip log proves is a CD rip describes some
+//! other object. Two lookups naming one release outrank one lookup naming
+//! another, which is the intersection of the answering lookups. A barcode and
+//! a catalog number name one pressing, where a disc ID names every pressing
+//! cut from one master. A row the folder never mentions, beside rows it does,
+//! came from a misread barcode. And a score always has a highest value, so
+//! the list is shortened and never emptied.
 
 use super::agreements::{agreements_of, CandidateText};
+use super::medium::RippedFrom;
 use crate::db::LibraryStatus;
 use crate::import::album_links::Twin;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
 use crate::import::search::MetadataResult;
 use crate::import::Catalog;
+use crate::signals::RipEvidence;
 use std::collections::{HashMap, HashSet};
 
 /// Which lookup produced one result: the result came back from that signal's
@@ -208,6 +212,10 @@ type ReleaseKey = (Catalog, String);
 /// lookup did return names it as itself. Each joins the list beside the
 /// release that names it, and raises no row's lookup count.
 ///
+/// `rip` is what the folder's files say about the medium its audio was
+/// ripped from; with whether the disc ID returned anything, it is what a
+/// row's stated media are held against.
+///
 /// Every answer the run returned is paired into pressing rows first, then:
 ///
 /// 1. **Nothing.** Every set empty: empty findings.
@@ -226,7 +234,9 @@ pub fn combine_results(
     search_results: Results,
     twins: Vec<Twin>,
     text: &CandidateText,
+    rip: &RipEvidence,
 ) -> (Findings, LibraryStatuses) {
+    let ripped_from = RippedFrom::of(rip, !discid_results.is_empty());
     let by_signal = [
         &discid_results,
         &barcode_results,
@@ -301,7 +311,7 @@ pub fn combine_results(
         .into_iter()
         .flat_map(ReleaseGroup::into_pressings)
         .collect();
-    let (offered, set_aside) = split_rows(rows, &judgements, &returned_by);
+    let (offered, set_aside) = split_rows(rows, &judgements, &returned_by, ripped_from);
 
     let statuses: HashMap<ReleaseKey, LibraryStatus> = all
         .into_iter()
@@ -360,6 +370,15 @@ pub fn combine_results(
 /// between rows the field above it cannot tell apart.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 struct Support {
+    /// Whether what the row's records say it is made of could have given
+    /// the folder its audio — see [`RippedFrom::admits`].
+    ///
+    /// Read first because it is the one field that speaks to the object
+    /// rather than to how well the lookups agree: a vinyl pressing every
+    /// lookup returned is still not the CD the folder's rip log was read
+    /// off. It leaves every row admitted when the folder proves nothing and
+    /// when every row states nothing.
+    medium: bool,
     /// How many of the run's lookups returned this row: the disc ID, the
     /// barcodes, the chosen catalog numbers, the title search. A lookup that
     /// returned nothing counts for no row, so an unchecked lookup and one
@@ -401,12 +420,14 @@ struct Support {
     offered: bool,
 }
 
-/// What stands behind one row: its records' lookups taken together, and what
-/// the folder's text states about the row as a whole.
+/// What stands behind one row: whether its media fit the folder, its
+/// records' lookups taken together, and what the folder's text states about
+/// the row as a whole.
 fn support_of(
     row: &Pressing,
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
+    ripped_from: RippedFrom,
 ) -> Support {
     let mut returned = LookupProvenance::CHOSEN;
     // A twin on the row states no lookup of its own: every field is false.
@@ -422,6 +443,7 @@ fn support_of(
     let agreements = row.agreements(judgements);
     let offered = agreements.offered();
     Support {
+        medium: ripped_from.admits(row.releases.iter().map(|release| &release.media)),
         lookups: [
             returned.by_disc_id,
             returned.by_barcode,
@@ -444,10 +466,11 @@ fn split_rows(
     rows: Vec<Pressing>,
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
+    ripped_from: RippedFrom,
 ) -> (Vec<Pressing>, Vec<Pressing>) {
     let support: Vec<Support> = rows
         .iter()
-        .map(|row| support_of(row, judgements, provenance))
+        .map(|row| support_of(row, judgements, provenance, ripped_from))
         .collect();
     let Some(best) = support.iter().copied().max() else {
         return (Vec::new(), Vec::new());

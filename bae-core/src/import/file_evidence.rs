@@ -65,6 +65,7 @@ mod tests {
 
     fn signals() -> Signals {
         Signals {
+            rip: crate::signals::RipEvidence::Unproven,
             disc_id: DiscIdSignal::Computed {
                 disc_id: "XwqRcz4RhAqRTfhE5nRxRKF4iFY-".to_string(),
                 track_count: 14,

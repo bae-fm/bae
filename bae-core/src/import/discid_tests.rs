@@ -110,6 +110,7 @@ fn test_cue_duration_discid_matches_across_codecs() {
         performer: Some("Artist Name".to_string()),
         catalog: None,
         date: None,
+        ripper: None,
         tracks: vec![
             CueTrack {
                 number: 1,
@@ -207,6 +208,7 @@ fn cue_duration_discid_ignores_non_audio_tracks() {
         performer: Some("Artist Name".to_string()),
         catalog: None,
         date: None,
+        ripper: None,
         tracks: audio_tracks.clone(),
     };
     let with_data_track = CueSheet {
@@ -214,6 +216,7 @@ fn cue_duration_discid_ignores_non_audio_tracks() {
         performer: Some("Artist Name".to_string()),
         catalog: None,
         date: None,
+        ripper: None,
         tracks: audio_tracks
             .into_iter()
             .chain(std::iter::once(track(
@@ -362,6 +365,7 @@ fn test_cue_duration_discid_empty_tracks_is_error() {
         performer: None,
         catalog: None,
         date: None,
+        ripper: None,
         tracks: vec![],
     };
 
@@ -389,7 +393,10 @@ fn a_log_carves_its_disc_and_names_the_file_it_was_read_off() {
     )
     .unwrap();
 
-    let disc_id = read_rip_artifacts(&categorized).expect("the log carves a disc");
+    let disc_id = read_rip_artifacts(&categorized)
+        .disc_id
+        .computed()
+        .expect("the log carves a disc");
     assert_eq!(disc_id.source_file.as_deref(), Some("Album.log"));
 }
 
@@ -421,7 +428,10 @@ fn test_compute_discid_routes_cue_ape() {
     let audio_path = folder.join("Test Album.ape");
     let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
     let computed =
-        read_rip_artifacts(&categorized).expect("CUE+APE pair must compute a disc ID");
+        read_rip_artifacts(&categorized)
+            .disc_id
+            .computed()
+            .expect("CUE+APE pair must compute a disc ID");
     assert_eq!(
         crate::audio_codec::probe_opens_for(&audio_path),
         opens_before,
@@ -477,7 +487,20 @@ fn test_compute_discid_routes_cue_mp3() {
     let cue_path = folder.join("Test Album.cue");
     std::fs::write(&cue_path, cue_body).unwrap();
 
-    let disc_id = read_rip_artifacts_from_paths(&[], &[cue_path], &[(mp3_path, 9_000)])
+    let mp3 = ReleaseAudioFile {
+        path: mp3_path,
+        duration_ms: 9_000,
+        format: crate::album_detail::AudioFormat {
+            codec: "MP3".to_string(),
+            sample_rate_hz: 44_100,
+            bits_per_sample: None,
+            bitrate_kbps: Some(320),
+            channels: 2,
+        },
+    };
+    let disc_id = read_rip_artifacts_from_paths(&[], &[cue_path], &[mp3])
+        .disc_id
+        .computed()
         .expect("CUE+MP3 pair must compute a disc ID");
     assert_eq!(
         disc_id.disc_id.len(),
@@ -570,6 +593,7 @@ fn cue_sheet_with(tracks: Vec<crate::cue_flac::CueTrack>) -> CueSheet {
         performer: Some("Artist Name".to_string()),
         catalog: None,
         date: None,
+        ripper: None,
         tracks,
     }
 }

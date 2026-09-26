@@ -59,6 +59,7 @@ fn copy_fixture(source: &Path, target: &Path) {
 
 fn settled_signals(durations: crate::import::probe::SourceDurations) -> Signals {
     Signals {
+        rip: crate::signals::RipEvidence::Unproven,
         disc_id: DiscIdSignal::Absent { track_count: 0 },
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled {

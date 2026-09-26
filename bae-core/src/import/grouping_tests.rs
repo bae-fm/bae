@@ -224,6 +224,7 @@ fn sheets_take_discs_within_their_folders_run() {
                 performer: None,
                 catalog: None,
                 date: None,
+                ripper: None,
                 tracks: vec![CueTrack {
                     number: 1,
                     mode: CueTrackMode::Audio,

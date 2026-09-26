@@ -18,6 +18,7 @@ fn combine(discid: Results, barcode: Results, catalog: Results) -> Outcome {
         Results::new(),
         Vec::new(),
         &CandidateText::default(),
+        &RipEvidence::Unproven,
     )
 }
 
@@ -315,7 +316,15 @@ fn the_pressing_the_folder_describes_leads_the_disc_id_s_others() {
         pressing_of_album_one("rel-2003", 2003),
         pressing_of_album_one("rel-1976", 1976),
     ];
-    let outcome = combine_results(discid, vec![], vec![], vec![], Vec::new(), &text);
+    let outcome = combine_results(
+        discid,
+        vec![],
+        vec![],
+        vec![],
+        Vec::new(),
+        &text,
+        &RipEvidence::Unproven,
+    );
     let (matches, provenance, _) = found(outcome);
     assert_eq!(ids(&matches), vec!["rel-1976", "rel-1994", "rel-2003"]);
     assert!(provenance.iter().all(|lookup| lookup.by_disc_id));
@@ -334,6 +343,7 @@ fn a_barcode_naming_a_record_the_folder_never_mentions_folds() {
         vec![],
         Vec::new(),
         &text,
+        &RipEvidence::Unproven,
     );
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-1976"]);
@@ -363,6 +373,7 @@ fn the_pressing_whose_catalog_number_the_folder_states_folds_the_other() {
         vec![],
         Vec::new(),
         &text,
+        &RipEvidence::Unproven,
     );
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-stated"]);
@@ -384,6 +395,7 @@ fn two_pressings_the_folder_names_no_number_of_both_stay() {
         vec![],
         Vec::new(),
         &text,
+        &RipEvidence::Unproven,
     );
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-first", "rel-second"]);
@@ -406,7 +418,15 @@ fn pressings_that_differ_only_by_year_all_stay_on_the_list() {
         pressing_of_album_one("rel-2003", 2003),
         pressing_of_album_one("rel-1976", 1976),
     ];
-    let outcome = combine_results(discid, vec![], vec![], vec![], Vec::new(), &text);
+    let outcome = combine_results(
+        discid,
+        vec![],
+        vec![],
+        vec![],
+        Vec::new(),
+        &text,
+        &RipEvidence::Unproven,
+    );
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-1976", "rel-1994", "rel-2003"]);
     assert!(narrowed(outcome).is_empty());
@@ -429,6 +449,7 @@ fn a_disc_id_s_pressing_stays_however_the_folder_spells_its_label() {
         vec![],
         Vec::new(),
         &text,
+        &RipEvidence::Unproven,
     );
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-matched", "rel-reissue"]);
@@ -448,6 +469,7 @@ fn a_barcode_answering_alone_is_offered_however_little_the_folder_says() {
         vec![],
         Vec::new(),
         &text,
+        &RipEvidence::Unproven,
     ));
     assert_eq!(ids(&matches), vec!["rel-album-three"]);
 }
@@ -465,6 +487,7 @@ fn a_candidate_with_no_text_narrows_nothing_on_it() {
         vec![],
         Vec::new(),
         &CandidateText::default(),
+        &RipEvidence::Unproven,
     );
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(matches.len(), 2);
@@ -481,7 +504,15 @@ fn the_intersection_s_leftovers_and_the_folder_s_are_one_list() {
         pressing_of_album_one("rel-1994", 1994),
     ];
     let barcode = vec![pressing_of_album_one("rel-1976", 1976), unrelated_record()];
-    let outcome = combine_results(discid, barcode, vec![], vec![], Vec::new(), &text);
+    let outcome = combine_results(
+        discid,
+        barcode,
+        vec![],
+        vec![],
+        Vec::new(),
+        &text,
+        &RipEvidence::Unproven,
+    );
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-1976"]);
     let left_out = narrowed(outcome).matches;
@@ -608,6 +639,7 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
         vec![],
         Vec::new(),
         &text,
+        &RipEvidence::Unproven,
     );
     let (matches, provenance, pressings) = found(outcome.clone());
     let offered = rows(&matches, &provenance, &pressings, &text);
@@ -685,6 +717,7 @@ fn a_pressing_never_splits_across_the_two_lists() {
         vec![],
         Vec::new(),
         &text,
+        &RipEvidence::Unproven,
     );
     let (_, _, pressings) = found(outcome.clone());
     assert_eq!(crate::import::release_group::row_count(&pressings), 1);
@@ -708,6 +741,7 @@ fn a_lone_pressing_the_folder_describes_is_the_sole_match() {
         vec![],
         Vec::new(),
         &text,
+        &RipEvidence::Unproven,
     );
     let (_, _, pressings) = found(outcome);
     assert_eq!(crate::import::release_group::row_count(&pressings), 1);
@@ -725,6 +759,7 @@ fn a_search_that_answered_alone_is_offered_whole() {
         vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-y"))],
         Vec::new(),
         &CandidateText::default(),
+        &RipEvidence::Unproven,
     );
     let (matches, provenance, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-a", "rel-b"]);
@@ -758,6 +793,7 @@ fn a_twin_counts_for_no_lookup_and_sits_on_its_namer_s_row() {
         vec![],
         vec![twin("dg-twin", "mb-1"), twin("dg-orphan", "mb-gone")],
         &CandidateText::default(),
+        &RipEvidence::Unproven,
     );
     let (matches, provenance, pressings) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["mb-1", "dg-twin"]);

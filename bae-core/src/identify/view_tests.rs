@@ -562,6 +562,24 @@ fn a_manual_only_folder_with_catalog_numbers_offers_them() {
     ));
 }
 
+/// A sheet left unhashed because its audio is at a rate no CD plays at says
+/// so, with the rate, rather than reading as a folder with no sheet at all.
+#[test]
+fn a_sheet_over_audio_no_cd_holds_says_why_it_was_not_read() {
+    let mut context = context();
+    context.disc.signal = DiscIdSignal::NotCdAudio {
+        track_count: 9,
+        sample_rate_hz: 96_000,
+    };
+    let run = run_of(in_flight(context));
+    assert_eq!(
+        run.disc_id,
+        DiscIdStepView::NotCdAudio {
+            sample_rate_hz: 96_000
+        }
+    );
+}
+
 /// A found lookup carries the album cards its count stands for.
 #[test]
 fn a_found_lookup_names_its_releases() {

@@ -345,7 +345,7 @@ fn cue_alac_disc_id_is_stable() {
     )
     .expect("scan album dir");
     let track_count = categorized.track_count();
-    let disc_id = read_rip_artifacts(&categorized);
+    let disc_id = read_rip_artifacts(&categorized).disc_id.computed();
 
     assert_eq!(track_count, 3, "three tracks in the CUE sheet");
     let computed = disc_id.expect("CUE+ALAC pair must produce a disc ID");

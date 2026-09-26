@@ -881,6 +881,7 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
         search_results,
         context.twins(),
         &context.text,
+        &context.rip,
     );
     let track_count = context.track_count;
     let failures = context.active_failures();

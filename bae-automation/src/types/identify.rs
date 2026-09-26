@@ -75,6 +75,11 @@ pub struct AutomationDiscIdFile {
 pub enum AutomationDiscIdStep {
     Reading,
     Absent,
+    /// A CUE was there over audio sampled at a rate no CD plays at, so it was
+    /// not read into a disc ID.
+    NotCdAudio {
+        sample_rate_hz: u32,
+    },
     ReadFailed {
         failure: AutomationLookupFailure,
     },

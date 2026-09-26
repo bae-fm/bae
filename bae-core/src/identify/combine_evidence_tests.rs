@@ -1,9 +1,10 @@
-//! How the facts that speak to the object on the desk rank the rows: what
-//! names one pressing against what names every pressing cut from one master.
+//! How the facts that speak to the object on the desk rank the rows: the
+//! medium the folder's files prove or rule out, and what names one pressing
+//! against what names every pressing cut from one master.
 
 use super::*;
 use crate::pressing::{Medium, StatedMedia};
-use crate::signals::{TextLine, TextOrigin};
+use crate::signals::{CdProof, TextLine, TextOrigin};
 
 type Outcome = (Findings, LibraryStatuses);
 type Found = (MetadataResult, LibraryStatus);
@@ -41,6 +42,28 @@ fn made_of(media: &[Medium]) -> StatedMedia {
     StatedMedia::PerMedium(media.iter().copied().map(Some).collect())
 }
 
+const CD_RIP: RipEvidence = RipEvidence::Cd {
+    proof: CdProof::RipLog,
+    file: None,
+};
+
+const NOT_CD: RipEvidence = RipEvidence::NotCd {
+    sample_rate_hz: 96_000,
+};
+
+/// The catalog lookup returned `rows`, and the folder's files say `rip`.
+fn by_catalog(rows: Vec<Found>, rip: &RipEvidence) -> Outcome {
+    combine_results(
+        Vec::new(),
+        Vec::new(),
+        rows,
+        Vec::new(),
+        Vec::new(),
+        &folder(),
+        rip,
+    )
+}
+
 fn offered(outcome: &Outcome) -> Vec<&str> {
     outcome
         .0
@@ -60,6 +83,110 @@ fn set_aside(outcome: &Outcome) -> Vec<&str> {
         .collect()
 }
 
+/// A folder its rip log proves is a CD rip was not copied from a record, so
+/// the vinyl pressing goes behind the disclosure and the CD stays.
+#[test]
+fn a_cd_rip_sets_aside_a_vinyl_pressing() {
+    let outcome = by_catalog(
+        vec![
+            pressing("rel-vinyl", made_of(&[Medium::Vinyl])),
+            pressing("rel-cd", made_of(&[Medium::Cd])),
+        ],
+        &CD_RIP,
+    );
+    assert_eq!(offered(&outcome), vec!["rel-cd"]);
+    assert_eq!(set_aside(&outcome), vec!["rel-vinyl"]);
+}
+
+/// A pressing with a CD among its media, and one whose record says nothing
+/// about its media, could each be what a CD rip was read off.
+#[test]
+fn a_cd_rip_keeps_a_cd_and_dvd_pressing_and_one_stating_nothing() {
+    let outcome = by_catalog(
+        vec![
+            pressing("rel-cd", made_of(&[Medium::Cd])),
+            pressing("rel-cd-dvd", made_of(&[Medium::Cd, Medium::Dvd])),
+            pressing("rel-undescribed", StatedMedia::Undescribed),
+        ],
+        &CD_RIP,
+    );
+    assert_eq!(
+        offered(&outcome),
+        vec!["rel-cd", "rel-cd-dvd", "rel-undescribed"]
+    );
+    assert!(set_aside(&outcome).is_empty());
+}
+
+/// A folder whose files prove nothing about its medium sets nothing aside
+/// for it.
+#[test]
+fn a_folder_that_proves_nothing_sets_nothing_aside() {
+    let outcome = by_catalog(
+        vec![
+            pressing("rel-vinyl", made_of(&[Medium::Vinyl])),
+            pressing("rel-cd", made_of(&[Medium::Cd])),
+        ],
+        &RipEvidence::Unproven,
+    );
+    assert_eq!(offered(&outcome), vec!["rel-vinyl", "rel-cd"]);
+    assert!(set_aside(&outcome).is_empty());
+}
+
+/// Audio at a rate no CD plays at was not read off a CD, so a pressing made
+/// only of CDs goes behind the disclosure, while a record, a CD beside a DVD,
+/// and a pressing stating nothing stay.
+#[test]
+fn audio_no_cd_holds_sets_aside_a_cd_pressing() {
+    let outcome = by_catalog(
+        vec![
+            pressing("rel-cd", made_of(&[Medium::Cd])),
+            pressing("rel-vinyl", made_of(&[Medium::Vinyl])),
+            pressing("rel-cd-dvd", made_of(&[Medium::Cd, Medium::Dvd])),
+            pressing("rel-undescribed", StatedMedia::Undescribed),
+        ],
+        &NOT_CD,
+    );
+    assert_eq!(
+        offered(&outcome),
+        vec!["rel-vinyl", "rel-cd-dvd", "rel-undescribed"]
+    );
+    assert_eq!(set_aside(&outcome), vec!["rel-cd"]);
+}
+
+/// A disc ID a catalog knows matched the folder's layout to the frame, which
+/// proves a CD as surely as a rip log: the vinyl pressing the barcode and the
+/// catalog number both name goes behind the disclosure.
+#[test]
+fn a_matched_disc_id_proves_a_cd() {
+    let vinyl = pressing("rel-vinyl", made_of(&[Medium::Vinyl]));
+    let outcome = combine_results(
+        vec![pressing("rel-cd", made_of(&[Medium::Cd]))],
+        vec![vinyl.clone()],
+        vec![vinyl],
+        Vec::new(),
+        Vec::new(),
+        &folder(),
+        &RipEvidence::Unproven,
+    );
+    assert_eq!(offered(&outcome), vec!["rel-cd"]);
+    assert_eq!(set_aside(&outcome), vec!["rel-vinyl"]);
+}
+
+/// Every row contradicted is still every row the run found: the list is
+/// shortened, never emptied.
+#[test]
+fn rows_all_contradicted_all_stay() {
+    let outcome = by_catalog(
+        vec![
+            pressing("rel-vinyl", made_of(&[Medium::Vinyl])),
+            pressing("rel-cassette", made_of(&[Medium::Cassette])),
+        ],
+        &CD_RIP,
+    );
+    assert_eq!(offered(&outcome), vec!["rel-vinyl", "rel-cassette"]);
+    assert!(set_aside(&outcome).is_empty());
+}
+
 /// The folder's barcode and its catalog number both name one pressing; the
 /// disc ID names another with the same table of contents. A barcode and a
 /// catalog number are each printed on one pressing, where every pressing cut
@@ -77,6 +204,7 @@ fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
         Vec::new(),
         Vec::new(),
         &folder(),
+        &CD_RIP,
     );
     assert_eq!(offered(&outcome), vec!["rel-named"]);
     assert_eq!(set_aside(&outcome), vec!["rel-other"]);

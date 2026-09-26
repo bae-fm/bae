@@ -33,6 +33,7 @@ pub mod agreements;
 pub mod combine;
 pub mod discid;
 pub(crate) mod label;
+pub(crate) mod medium;
 pub mod ready;
 pub mod service;
 pub mod state;

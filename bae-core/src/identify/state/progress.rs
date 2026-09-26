@@ -487,7 +487,7 @@ pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
         };
     }
     match &context.disc.signal {
-        DiscIdSignal::Absent { .. } => SignalState::Skipped,
+        DiscIdSignal::Absent { .. } | DiscIdSignal::NotCdAudio { .. } => SignalState::Skipped,
         DiscIdSignal::Failed { failure, .. } => SignalState::Failed {
             failure: failure.clone(),
         },
@@ -570,9 +570,11 @@ pub(super) fn start_discid_progress(
             });
             DiscidProgress::LookingUp
         }
-        DiscIdSignal::Absent { track_count } => DiscidProgress::Skipped {
-            track_count: *track_count,
-        },
+        DiscIdSignal::Absent { track_count } | DiscIdSignal::NotCdAudio { track_count, .. } => {
+            DiscidProgress::Skipped {
+                track_count: *track_count,
+            }
+        }
         DiscIdSignal::Failed {
             failure,
             track_count,

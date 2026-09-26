@@ -189,7 +189,42 @@ pub struct CueSheet {
     /// Year or date string from `REM DATE <value>` (rippers write whatever they
     /// have: a year like "2001", a range like "2000 / 2004", or a full date).
     pub date: Option<String>,
+    /// The CD ripper that wrote the sheet, where its `REM COMMENT` names one.
+    /// A sheet on its own proves nothing about where its audio came from —
+    /// a sheet is written for a vinyl rip as readily as for a CD — but one a
+    /// CD ripper wrote was written from a CD.
+    pub ripper: Option<CdRipper>,
     pub tracks: Vec<CueTrack>,
+}
+
+/// A program that rips CDs and names itself in the sheets it writes.
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub enum CdRipper {
+    /// Exact Audio Copy, whose sheets carry `REM COMMENT "ExactAudioCopy v1.1"`.
+    ExactAudioCopy,
+}
+
+impl CdRipper {
+    /// The ripper a sheet's `REM COMMENT` names, if it names one this knows.
+    fn named_in(comment: &str) -> Option<Self> {
+        comment
+            .starts_with("ExactAudioCopy")
+            .then_some(Self::ExactAudioCopy)
+    }
+
+    /// The word a stored sheet keeps it as.
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::ExactAudioCopy => "exact_audio_copy",
+        }
+    }
+
+    pub fn from_key(key: &str) -> Option<Self> {
+        match key {
+            "exact_audio_copy" => Some(Self::ExactAudioCopy),
+            _ => None,
+        }
+    }
 }
 
 impl CueSheet {
@@ -330,10 +365,14 @@ pub fn parse_cue_sheet(cue_path: &Path) -> Result<CueSheet, CueFlacError> {
 ///
 /// A TRACK before any FILE, or a TRACK body without INDEX 01, is a parse error.
 fn parse_cue_content(input: &str) -> Result<CueSheet, CueFlacError> {
-    let mut title: Option<String> = None;
-    let mut performer: Option<String> = None;
-    let mut catalog: Option<String> = None;
-    let mut date: Option<String> = None;
+    let mut header = CueSheet {
+        title: None,
+        performer: None,
+        catalog: None,
+        date: None,
+        ripper: None,
+        tracks: Vec::new(),
+    };
     let mut current_file: Option<String> = None;
     let mut tracks: Vec<CueTrack> = Vec::new();
     let mut current_track: Option<PendingCueTrack> = None;
@@ -372,7 +411,7 @@ fn parse_cue_content(input: &str) -> Result<CueSheet, CueFlacError> {
                 apply_track_line(line, track, file_reference)?;
             }
             None => {
-                apply_header_line(line, &mut title, &mut performer, &mut catalog, &mut date);
+                apply_header_line(line, &mut header);
             }
         }
     }
@@ -411,41 +450,32 @@ fn parse_cue_content(input: &str) -> Result<CueSheet, CueFlacError> {
                 .map(|index| index.frames);
         }
     }
-    Ok(CueSheet {
-        title,
-        performer,
-        catalog,
-        date,
-        tracks,
-    })
+    Ok(CueSheet { tracks, ..header })
 }
 
-fn apply_header_line(
-    line: &str,
-    title: &mut Option<String>,
-    performer: &mut Option<String>,
-    catalog: &mut Option<String>,
-    date: &mut Option<String>,
-) {
+/// Read one line before the first track into the sheet's header fields.
+fn apply_header_line(line: &str, header: &mut CueSheet) {
     match keyword_and_rest(line) {
-        Some(("REM", rest)) => {
-            if let Some((keyword, value)) = keyword_and_rest(rest) {
-                if keyword == "DATE" {
-                    *date = Some(strip_optional_quotes(value).to_string());
-                }
+        Some(("REM", rest)) => match keyword_and_rest(rest) {
+            Some(("DATE", value)) => {
+                header.date = Some(strip_optional_quotes(value).to_string());
             }
-        }
+            Some(("COMMENT", value)) => {
+                header.ripper = CdRipper::named_in(strip_optional_quotes(value));
+            }
+            _ => {}
+        },
         Some(("CATALOG", rest)) => {
-            *catalog = Some(strip_optional_quotes(rest).to_string());
+            header.catalog = Some(strip_optional_quotes(rest).to_string());
         }
         Some(("TITLE", rest)) => {
             if let Some(value) = quoted_value(rest) {
-                *title = Some(value.to_string());
+                header.title = Some(value.to_string());
             }
         }
         Some(("PERFORMER", rest)) => {
             if let Some(value) = quoted_value(rest) {
-                *performer = Some(value.to_string());
+                header.performer = Some(value.to_string());
             }
         }
         Some((keyword, _)) if header_keyword_is_known_skipped(keyword) => {}

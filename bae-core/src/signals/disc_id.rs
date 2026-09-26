@@ -4,7 +4,8 @@
 use super::LookupFailure;
 
 /// Derived once during the extraction pass. Identify turns a `Computed` disc ID into
-/// a MusicBrainz lookup; `Absent` and `Failed` settle the signal with no results.
+/// a MusicBrainz lookup; `Absent`, `NotCdAudio` and `Failed` settle the signal with
+/// no results.
 ///
 /// `track_count` is the candidate's own count and rides every variant, so a barcode
 /// match can still report "N tracks here vs. M on the matched release."
@@ -22,6 +23,14 @@ pub enum DiscIdSignal {
     },
     /// No LOG/CUE artifact to derive one from.
     Absent { track_count: u32 },
+    /// A track sheet was there, and the audio it lays out is sampled at a
+    /// rate a CD does not play at (see [`super::RipEvidence::NotCd`]), so no
+    /// disc could have had the layout the sheet describes and none is hashed
+    /// to ask about.
+    NotCdAudio {
+        track_count: u32,
+        sample_rate_hz: u32,
+    },
     /// Derivation failed — a DB load, a "release not found", a compute task panic.
     /// Always local, so always a `LookupFailure::Diagnostic` in practice.
     Failed {
@@ -35,6 +44,7 @@ impl DiscIdSignal {
         match self {
             DiscIdSignal::Computed { track_count, .. }
             | DiscIdSignal::Absent { track_count }
+            | DiscIdSignal::NotCdAudio { track_count, .. }
             | DiscIdSignal::Failed { track_count, .. } => *track_count,
         }
     }
@@ -43,7 +53,9 @@ impl DiscIdSignal {
     pub fn discid_value(&self) -> Option<String> {
         match self {
             DiscIdSignal::Computed { disc_id, .. } => Some(disc_id.clone()),
-            DiscIdSignal::Absent { .. } | DiscIdSignal::Failed { .. } => None,
+            DiscIdSignal::Absent { .. }
+            | DiscIdSignal::NotCdAudio { .. }
+            | DiscIdSignal::Failed { .. } => None,
         }
     }
 }

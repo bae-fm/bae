@@ -6,6 +6,8 @@
 //! Three signal kinds, each its own module:
 //!
 //! * [`disc_id`] — a MusicBrainz disc ID from LOG/CUE artifacts.
+//! * [`rip`] — what the files prove or rule out about the medium the audio
+//!   was ripped from.
 //! * [`barcode`] — UPC/EAN codes from artwork (the bars, and the digits
 //!   printed under them) and CUE `CATALOG`.
 //! * [`text`] — catalog-number candidates and free text from artwork OCR,
@@ -42,6 +44,7 @@ desktop_only! {
     mod fast_pass;
     mod pool;
     mod release;
+    pub mod rip;
     pub mod service;
     pub mod text;
 
@@ -49,6 +52,7 @@ desktop_only! {
     pub use artwork::ArtworkScan;
     pub use barcode::BarcodeSignal;
     pub use disc_id::DiscIdSignal;
+    pub use rip::{CdProof, RipEvidence};
     pub use service::{
         ExtractionService, ExtractionServiceHandle, ExtractionSource, ExtractionWatch,
         SignalsSnapshot,
@@ -62,6 +66,11 @@ desktop_only! {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Signals {
+    /// What the files say about the medium the audio was ripped from. Not a
+    /// lookup input: it decides whether a track sheet's disc ID is worth
+    /// asking about (see [`DiscIdSignal::NotCdAudio`]), and it sets aside the
+    /// rows whose stated media it contradicts.
+    pub rip: RipEvidence,
     pub disc_id: DiscIdSignal,
     pub barcode: BarcodeSignal,
     pub text: TextSignal,

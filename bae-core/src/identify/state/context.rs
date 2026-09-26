@@ -27,7 +27,8 @@ use crate::identify::IdentifyFailure;
 use crate::import::album_links::{self, GroupReading, Twin};
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
-    ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextSignal,
+    ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, RipEvidence, Signals, SourcedValue,
+    TextSignal,
 };
 
 /// The disc-ID signal and what asking about it produced. The disc-ID endpoint
@@ -404,6 +405,10 @@ pub struct SignalsContext {
     /// a surface shows, not an input the lookups read; a context stood up
     /// from a stored verdict never saw a pass and reads `Absent`.
     pub artwork: ArtworkScan,
+    /// What the candidate's files say about the medium its audio was ripped
+    /// from — what the rows' stated media are held against. The candidate's,
+    /// like `text`.
+    pub rip: RipEvidence,
     pub disc: DiscIdEvidence,
     pub barcode: BarcodeEvidence,
     pub catalog: CatalogEvidence,
@@ -449,6 +454,7 @@ impl Default for SignalsContext {
         Self {
             providers: Vec::new(),
             artwork: ArtworkScan::Absent,
+            rip: RipEvidence::Unproven,
             disc: DiscIdEvidence::default(),
             barcode: BarcodeEvidence::default(),
             catalog: CatalogEvidence::default(),
@@ -506,6 +512,7 @@ impl SignalsContext {
     /// settle.
     pub(super) fn refresh_inputs(&mut self, signals: &Signals, artwork: ArtworkScan) {
         self.artwork = artwork;
+        self.rip = signals.rip.clone();
         self.disc.refresh_input(&signals.disc_id);
         self.barcode.refresh_input(&signals.barcode);
         self.catalog.refresh_input(&signals.text);

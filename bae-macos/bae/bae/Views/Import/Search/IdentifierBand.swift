@@ -89,6 +89,17 @@ struct IdentifierBand: View {
         case .absent:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No LOG or CUE in the folder")
+        // The folder's CUE lays out audio no CD holds, so it was not read
+        // into a disc ID: a dash like a folder with nothing to read, and the
+        // reason on hover.
+        case .notCdAudio(let sampleRateHz):
+            IdentifierChip(label: label) { IdentifierDash() }
+                .help(
+                    String(
+                        localized:
+                            "Not read: the audio is \(sampleRateText(hz: Double(sampleRateHz))), which no CD holds"
+                    )
+                )
         case .readFailed(let failure):
             IdentifierChip(label: label) { IdentifierWarning() }
                 .help(

@@ -544,6 +544,7 @@ mod tests {
     /// without touching MB or Discogs.
     fn absent_signals() -> Signals {
         Signals {
+            rip: crate::signals::RipEvidence::Unproven,
             disc_id: DiscIdSignal::Absent { track_count: 7 },
             barcode: BarcodeSignal::Absent,
             text: TextSignal::Settled {

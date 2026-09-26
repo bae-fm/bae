@@ -88,6 +88,11 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
                 _ => DiscIdStepView::Absent,
             }
         }
+        DiscIdSignal::NotCdAudio { sample_rate_hz, .. } => {
+            return DiscIdStepView::NotCdAudio {
+                sample_rate_hz: *sample_rate_hz,
+            }
+        }
         DiscIdSignal::Failed { failure, .. } => {
             return DiscIdStepView::ReadFailed {
                 failure: failure.clone(),

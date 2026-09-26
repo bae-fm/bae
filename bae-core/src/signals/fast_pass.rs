@@ -8,7 +8,7 @@ use crate::barcode::Barcode;
 use crate::import::discid::read_rip_artifacts;
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::probe::{source_durations, SourceDurations};
-use crate::signals::{DiscIdSignal, SourcedValue, TextOrigin};
+use crate::signals::{DiscIdSignal, RipEvidence, SourcedValue, TextOrigin};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::{debug, warn};
@@ -35,6 +35,7 @@ pub(super) struct FastPass {
     pub(super) lines: Vec<SourcedLine>,
     pub(super) bracket_catalogs: Vec<String>,
     pub(super) artwork: Vec<ArtworkImage>,
+    pub(super) rip: RipEvidence,
     pub(super) disc_id: DiscIdSignal,
     pub(super) cue_barcodes: Vec<SourcedValue>,
     /// What every one of the folder's audio units plays for, read off the same
@@ -43,12 +44,14 @@ pub(super) struct FastPass {
 }
 
 impl FastPass {
-    /// No disc ID, no sources — what a failed folder scan yields.
+    /// Nothing proven, no disc ID, no sources — what a failed folder scan
+    /// yields.
     pub(super) fn empty() -> Self {
         Self {
             lines: Vec::new(),
             bracket_catalogs: Vec::new(),
             artwork: Vec::new(),
+            rip: RipEvidence::Unproven,
             disc_id: DiscIdSignal::Absent { track_count: 0 },
             cue_barcodes: Vec::new(),
             durations: SourceDurations::default(),
@@ -121,18 +124,14 @@ pub(super) fn gather_non_ocr_sources(
         }
     }
 
-    // Disc ID, CUE-CATALOG barcodes, and the probed durations all come off the
-    // same parsed scan, no re-read and no second walk over the audio.
+    // The rip evidence and disc ID, CUE-CATALOG barcodes, and the probed
+    // durations all come off the same parsed scan, no re-read and no second
+    // walk over the audio.
     let track_count = categorized.track_count();
     pass.durations = source_durations(categorized)?;
-    pass.disc_id = match read_rip_artifacts(categorized) {
-        Some(computed) => DiscIdSignal::Computed {
-            disc_id: computed.disc_id,
-            track_count,
-            source_file: computed.source_file,
-        },
-        None => DiscIdSignal::Absent { track_count },
-    };
+    let rip = read_rip_artifacts(categorized);
+    pass.rip = rip.evidence;
+    pass.disc_id = rip.disc_id.into_signal(track_count);
     pass.cue_barcodes = cue_barcodes(categorized);
 
     // Image + document filenames only; `enumerate_filename_inputs` explains why.
@@ -324,6 +323,7 @@ mod tests {
                             performer: None,
                             catalog: None,
                             date: None,
+                            ripper: None,
                             tracks: Vec::new(),
                         },
                         binding: crate::import::folder_scanner::SheetBinding::Resolved {
@@ -345,7 +345,8 @@ mod tests {
                     file: cover.clone(),
                     role: FileRole::Artwork,
                 },
-            ], parts: Vec::new(), 
+            ],
+            parts: Vec::new(),
         };
 
         let inputs: Vec<PathBuf> = enumerate_filename_inputs(&categorized)
@@ -399,7 +400,9 @@ mod tests {
                 &crate::import::folder_scanner::StoredCandidateEdits::none(),
             )
             .unwrap();
-        let disc_id = crate::import::discid::read_rip_artifacts(&categorized);
+        let disc_id = crate::import::discid::read_rip_artifacts(&categorized)
+            .disc_id
+            .computed();
         let track_count = categorized.track_count();
 
         assert!(disc_id.is_some(), "LOG fixture should produce a disc ID");

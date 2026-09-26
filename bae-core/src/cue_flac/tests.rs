@@ -755,3 +755,22 @@ FILE "test.ape" WAVE
         "Bogus INDEX 00 should be removed from the raw index list"
     );
 }
+
+/// A sheet names the CD ripper that wrote it in its `REM COMMENT`; a comment
+/// that names nothing this knows — here a note a vinyl rip's sheet carries —
+/// names no ripper.
+#[test]
+fn a_sheet_names_the_cd_ripper_that_wrote_it() {
+    let sheet = |comment: &str| {
+        parse_cue_content(&format!(
+            "{comment}\nFILE \"Album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n"
+        ))
+        .unwrap()
+    };
+    assert_eq!(
+        sheet("REM COMMENT \"ExactAudioCopy v1.1\"").ripper,
+        Some(CdRipper::ExactAudioCopy)
+    );
+    assert_eq!(sheet("REM COMMENT \"Transferred from LP\"").ripper, None);
+    assert_eq!(sheet("REM Placeholder MONO").ripper, None);
+}

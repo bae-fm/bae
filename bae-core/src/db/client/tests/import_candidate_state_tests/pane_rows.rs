@@ -49,6 +49,7 @@ fn slice_unit(index: u32, duration_ms: u64) -> SourceDuration {
 
 fn signals_with(durations: SourceDurations) -> Signals {
     Signals {
+        rip: crate::signals::RipEvidence::Unproven,
         disc_id: DiscIdSignal::Absent { track_count: 2 },
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled {
@@ -231,9 +232,15 @@ async fn a_verdict_does_not_duplicate_the_scanned_durations() {
 /// each way a lookup can fail.
 #[tokio::test]
 async fn every_settled_signal_shape_round_trips() {
-    let cases: Vec<(&str, DiscIdSignal, BarcodeSignal, TextSignal)> = vec![
+    use crate::signals::{CdProof, RipEvidence};
+    let cases: Vec<(&str, RipEvidence, DiscIdSignal, BarcodeSignal, TextSignal)> = vec![
         (
             "computed disc ID, settled barcodes and text",
+            // The log that proves a CD rip rides with the proof.
+            RipEvidence::Cd {
+                proof: CdProof::RipLog,
+                file: Some("rip.log".to_string()),
+            },
             DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 track_count: 11,
@@ -262,6 +269,7 @@ async fn every_settled_signal_shape_round_trips() {
         ),
         (
             "absent everywhere",
+            RipEvidence::Unproven,
             DiscIdSignal::Absent { track_count: 0 },
             BarcodeSignal::Absent,
             TextSignal::Settled {
@@ -271,6 +279,10 @@ async fn every_settled_signal_shape_round_trips() {
         ),
         (
             "a network failure and a provider one",
+            RipEvidence::Cd {
+                proof: CdProof::AccurateRipReport,
+                file: None,
+            },
             DiscIdSignal::Failed {
                 failure: LookupFailure::Network,
                 track_count: 3,
@@ -292,7 +304,36 @@ async fn every_settled_signal_shape_round_trips() {
             },
         ),
         (
+            "a sheet a CD ripper wrote",
+            RipEvidence::Cd {
+                proof: CdProof::RipperSheet,
+                file: Some("Album.cue".to_string()),
+            },
+            DiscIdSignal::Absent { track_count: 2 },
+            BarcodeSignal::Absent,
+            TextSignal::Settled {
+                catalogs: Vec::new(),
+                free_text: Vec::new(),
+            },
+        ),
+        (
+            "a sheet left unhashed over audio no CD holds",
+            RipEvidence::NotCd {
+                sample_rate_hz: 96_000,
+            },
+            DiscIdSignal::NotCdAudio {
+                track_count: 4,
+                sample_rate_hz: 96_000,
+            },
+            BarcodeSignal::Absent,
+            TextSignal::Settled {
+                catalogs: Vec::new(),
+                free_text: Vec::new(),
+            },
+        ),
+        (
             "a diagnostic, an artwork failure, and a provider with no status",
+            RipEvidence::Unproven,
             DiscIdSignal::Failed {
                 failure: LookupFailure::Diagnostic {
                     detail: "the release was not found".to_string(),
@@ -311,10 +352,11 @@ async fn every_settled_signal_shape_round_trips() {
         ),
     ];
 
-    for (what, disc_id, barcode, text) in cases {
+    for (what, rip, disc_id, barcode, text) in cases {
         let (db, _tmp) = empty_db().await;
         let (_, hash) = stored_pane_candidate(&db).await;
         let signals = Signals {
+            rip,
             disc_id,
             barcode,
             text,
@@ -350,6 +392,7 @@ async fn every_settled_signal_shape_round_trips() {
 async fn a_scanning_signal_is_refused_and_writes_nothing() {
     for scanning in [
         Signals {
+            rip: crate::signals::RipEvidence::Unproven,
             disc_id: DiscIdSignal::Absent { track_count: 0 },
             barcode: BarcodeSignal::Scanning { codes: Vec::new() },
             text: TextSignal::Settled {
@@ -360,6 +403,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             durations: SourceDurations::default(),
         },
         Signals {
+            rip: crate::signals::RipEvidence::Unproven,
             disc_id: DiscIdSignal::Absent { track_count: 0 },
             barcode: BarcodeSignal::Absent,
             text: TextSignal::Scanning {

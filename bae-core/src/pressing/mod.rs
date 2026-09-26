@@ -27,7 +27,7 @@ desktop_only! {
 pub use area::{Region, ReleaseArea};
 pub use country::Country;
 pub use discogs_detail::DiscogsDetail;
-pub use medium::Medium;
+pub use medium::{CdAudio, Medium};
 pub use packaging::Packaging;
 pub use stated_media::{StatedFormat, StatedMedia};
 pub use status::ReleaseStatus;

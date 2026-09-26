@@ -104,6 +104,25 @@ impl Medium {
         }
     }
 
+    /// Whether what the carrier plays is CD audio — the 44.1 kHz stereo a CD
+    /// player reads and a CD ripper copies — which is what a folder's own
+    /// files can prove or rule out about the carrier it was ripped from.
+    pub fn cd_audio(self) -> CdAudio {
+        match self {
+            // A CD's audio, whatever else the disc is sold as. A Video CD's
+            // soundtrack is compressed video audio rather than a CD's, so it
+            // is not one of these.
+            Self::Cd | Self::Cdv => CdAudio::Only,
+            // A disc with a CD side or layer beside one that is not — and an
+            // SACD, which the catalogs' family name leaves open to having a
+            // CD layer or not.
+            Self::DualDisc | Self::VinylDisc | Self::DvdPlus | Self::CdRecord | Self::Sacd => {
+                CdAudio::Partly
+            }
+            _ => CdAudio::Never,
+        }
+    }
+
     /// Whether the carrier is played side by side, so a track's position
     /// letter names its side.
     pub fn is_sided(self) -> bool {
@@ -112,6 +131,19 @@ impl Medium {
             Some(PhysicalMedium::Record | PhysicalMedium::Cassette)
         )
     }
+}
+
+/// How much of what a carrier plays is CD audio. See [`Medium::cd_audio`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CdAudio {
+    /// Everything it plays is: a folder that cannot be a CD rip cannot have
+    /// been ripped from it.
+    Only,
+    /// Some of what it plays may be, beside audio that is not: a folder
+    /// ripped from it may be a CD rip or not.
+    Partly,
+    /// None of what it plays is: a CD rip cannot have been ripped from it.
+    Never,
 }
 
 desktop_only! {
@@ -454,5 +486,18 @@ mod tests {
         assert!(!Medium::Cd.is_sided());
         assert!(!Medium::Digital.is_sided());
         assert_eq!(Medium::Sacd.physical(), Some(PhysicalMedium::Cd));
+    }
+
+    /// A disc with a CD side plays CD audio among the rest, and an SACD may
+    /// or may not carry a CD layer, so neither is ruled in or out by a
+    /// folder's audio.
+    #[test]
+    fn a_carrier_plays_cd_audio_only_partly_or_never() {
+        assert_eq!(Medium::Cd.cd_audio(), CdAudio::Only);
+        assert_eq!(Medium::DualDisc.cd_audio(), CdAudio::Partly);
+        assert_eq!(Medium::Sacd.cd_audio(), CdAudio::Partly);
+        assert_eq!(Medium::VideoCd.cd_audio(), CdAudio::Never);
+        assert_eq!(Medium::Vinyl.cd_audio(), CdAudio::Never);
+        assert_eq!(Medium::Digital.cd_audio(), CdAudio::Never);
     }
 }

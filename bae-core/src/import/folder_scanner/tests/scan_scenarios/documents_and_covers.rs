@@ -209,7 +209,10 @@ fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
     let files = scan_files(&album);
     assert!(files.bound_sheets().is_empty());
     assert!(
-        crate::import::discid::read_rip_artifacts(&files).is_some(),
+        crate::import::discid::read_rip_artifacts(&files)
+            .disc_id
+            .computed()
+            .is_some(),
         "the rip log's TOC still yields a disc ID with the sheet unbound",
     );
 }
@@ -286,7 +289,7 @@ fn content_hash_covers_audio_no_sheet_references() {
 /// stay one set, or the fingerprint stops describing the payload it identifies.
 #[test]
 fn an_unrecognized_sidecar_is_carried_and_hashed() {
-    const SIDECARS: [&str; 5] = ["rip.accurip", "rip.ffp", "rip.md5", "rip.nfo", "rip.sfv"];
+    const SIDECARS: [&str; 5] = ["rip.ffp", "rip.md5", "rip.nfo", "rip.par2", "rip.sfv"];
 
     let tmp = tempfile::tempdir().unwrap();
     let bare = tmp.path().join("Bare");

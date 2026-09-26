@@ -33,7 +33,9 @@ pub use folder_date::FolderDate;
 pub(crate) use scan::file_modified_at_ns;
 pub use scan::*;
 
-const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "txt", "m3u", "m3u8"];
+/// The text files a folder carries beside its audio: track sheets, rip logs
+/// and the AccurateRip reports rippers write beside them, notes, playlists.
+const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "accurip", "txt", "m3u", "m3u8"];
 
 /// Extensions used by download clients and browsers to mark an
 /// in-progress download. Presence of any of these anywhere in a folder means

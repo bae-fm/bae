@@ -51,6 +51,7 @@ async fn services() -> (AppServices, TempDir) {
 
 fn extracted(catalog: &str) -> crate::signals::Signals {
     crate::signals::Signals {
+        rip: crate::signals::RipEvidence::Unproven,
         disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
         barcode: crate::signals::BarcodeSignal::Settled { codes: Vec::new() },
         text: crate::signals::TextSignal::Settled {

@@ -189,6 +189,7 @@ fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
         performer: Some("Artist Name".to_string()),
         catalog: None,
         date: Some("1970".to_string()),
+        ripper: None,
         tracks: vec![mk(1, "Track One"), mk(2, "Track Two"), mk(3, "Track Three")],
     };
     let clock = FixedClock(
@@ -244,6 +245,7 @@ fn cue_sheet(title: &str, tracks: Vec<crate::cue_flac::CueTrack>) -> CueSheet {
         performer: Some("Artist Name".to_string()),
         catalog: None,
         date: None,
+        ripper: None,
         tracks,
     }
 }

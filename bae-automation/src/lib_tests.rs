@@ -310,6 +310,7 @@ mod identify_mirrors {
         SignalsContext {
             providers: Vec::new(),
             artwork: bae_core::signals::ArtworkScan::Absent,
+            rip: bae_core::signals::RipEvidence::Unproven,
             disc: Default::default(),
             barcode: Default::default(),
             catalog: Default::default(),
@@ -580,6 +581,10 @@ mod identify_mirrors {
     #[test]
     fn signals_map_all_three_subsignals() {
         let signals = Signals {
+            rip: bae_core::signals::RipEvidence::Cd {
+                proof: bae_core::signals::CdProof::RipLog,
+                file: Some("Album.log".to_string()),
+            },
             disc_id: DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 track_count: 10,
@@ -602,6 +607,9 @@ mod identify_mirrors {
         };
 
         let json = serde_json::to_value(AutomationSignals::from_core(signals)).unwrap();
+        assert_eq!(json["rip"]["kind"], "cd");
+        assert_eq!(json["rip"]["proof"], "rip_log");
+        assert_eq!(json["rip"]["file"], "Album.log");
         assert_eq!(json["disc_id"]["kind"], "computed");
         assert_eq!(json["disc_id"]["disc_id"], "disc-hash");
         assert_eq!(json["disc_id"]["track_count"], 10);
