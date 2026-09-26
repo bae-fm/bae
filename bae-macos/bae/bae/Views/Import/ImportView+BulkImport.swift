@@ -7,7 +7,10 @@ extension ImportView {
     func cancelCandidateWork(_ key: String, _ action: BridgeCandidateAction) {
         switch action {
         case .cancelIdentification:
-            importer.cancelIdentification([key])
+            Task {
+                do { try await importer.cancelIdentification([key]) }
+                catch { uiStore.showError(error) }
+            }
         case .cancelImport:
             Task {
                 do { try await importer.cancelImport(key) }
@@ -49,7 +52,7 @@ extension ImportView {
             case .identify, .retryIdentification:
                 importer.rerunIdentifyForCandidate(key)
             case .cancelIdentification:
-                importer.cancelIdentification([key])
+                try await importer.cancelIdentification([key])
             case .cancelImport:
                 try await importer.cancelImport(key)
             case .resetToFileMetadata:

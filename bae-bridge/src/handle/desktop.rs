@@ -181,20 +181,6 @@ forward! {
             this.services.rerun_identify(candidate_key);
         }
 
-        /// Stop these candidates' identification however it was started —
-        /// queued, running, having its answer written, or a re-identify
-        /// sheet's own run. They are left unidentified — no verdict, no
-        /// failure — and are not picked up again on their own;
-        /// `rerun_identify_for_candidate` asks for one.
-        fn cancel_identification(candidate_keys: Vec<String>) {
-            this.services.cancel_identification(candidate_keys);
-        }
-
-        /// Take every candidate off the identification queue.
-        fn cancel_all_identification() {
-            this.services.cancel_all_identification();
-        }
-
         /// Cancel every import that has not begun writing its release.
         fn cancel_all_imports() {
             this.services.import_cancel_all();
@@ -291,6 +277,27 @@ forward! {
                 .await
                 .map(crate::types::BridgeChosenFolder::from_core)
                 .map_err(BridgeError::import)
+        }
+
+        /// Stop these candidates' identification however it was started —
+        /// queued, running, having its answer written, or a re-identify
+        /// sheet's own run. They are left unidentified — no verdict, no
+        /// failure — and the cancel is stored, so they are not picked up again
+        /// on their own, this launch or the next; `rerun_identify_for_candidate`
+        /// asks for one.
+        fn cancel_identification(candidate_keys: Vec<String>) -> () {
+            this.services
+                .cancel_identification(candidate_keys)
+                .await
+                .map_err(BridgeError::from)
+        }
+
+        /// Take every candidate off the identification queue.
+        fn cancel_all_identification() -> () {
+            this.services
+                .cancel_all_identification()
+                .await
+                .map_err(BridgeError::from)
         }
 
         /// Cancel the import of `candidate_key`, waiting or running. It writes

@@ -77,7 +77,13 @@ struct ReIdentifySheet: View {
             commitTask?.cancel()
             // Stop this release's identification: the identify driver and any
             // in-flight artwork OCR — the one cancel every identification has.
-            importer.cancelIdentification([key])
+            let importer = importer
+            let uiStore = uiStore
+            let key = key
+            Task {
+                do { try await importer.cancelIdentification([key]) }
+                catch { uiStore.showError(error) }
+            }
             // Drop the candidate so a future re-open starts cold rather
             // than replaying the prior session's terminal state.
             importStore.reIdentifyCandidates.removeValue(forKey: key)

@@ -187,6 +187,7 @@ struct StateRow {
     folder_path: String,
     edit_revision: i64,
     metadata_revision: i64,
+    identification_declined_revision: Option<i64>,
 }
 
 fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
@@ -195,10 +196,12 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
         folder_path: row.get("folder_path")?,
         edit_revision: row.get("edit_revision")?,
         metadata_revision: row.get("metadata_revision")?,
+        identification_declined_revision: row.get("identification_declined_revision")?,
     })
 }
 
-const STATE_COLUMNS: &str = "content_hash, folder_path, edit_revision, metadata_revision";
+const STATE_COLUMNS: &str =
+    "content_hash, folder_path, edit_revision, metadata_revision, identification_declined_revision";
 
 const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_id, title, artist, \
      year, label, catalog_number, country, region, status, packaging, discogs_details, \
@@ -437,6 +440,17 @@ pub(crate) fn load_states_rows_on(
                     state.content_hash
                 ))
             })?;
+            let identification_declined_at = state
+                .identification_declined_revision
+                .map(|revision| {
+                    u64::try_from(revision).map_err(|_| {
+                        DbError::Message(format!(
+                            "import candidate {} has a negative declined revision",
+                            state.content_hash
+                        ))
+                    })
+                })
+                .transpose()?;
             let provenance = provenances.remove(&state.content_hash);
             let author = authors.remove(&state.content_hash).ok_or_else(|| {
                 DbError::Message(format!(
@@ -463,6 +477,7 @@ pub(crate) fn load_states_rows_on(
                     folder_path: state.folder_path,
                     file_edits,
                     metadata_revision,
+                    identification_declined_at,
                 },
             );
         }

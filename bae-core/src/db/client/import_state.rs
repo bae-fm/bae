@@ -38,6 +38,77 @@ use std::collections::HashSet;
 use verdict_rows::{delete_verdict, insert_verdict};
 
 impl Database {
+    /// Record that a person cancelled identifying each candidate, at the
+    /// file-decision revision it was at. One write, so every candidate a
+    /// cancel names is declined or none is.
+    pub(crate) async fn decline_identification(
+        &self,
+        candidates: Vec<(String, u64)>,
+    ) -> Result<(), DbError> {
+        // A cancel of a run the queue never held declines nothing, and a
+        // write that writes nothing is refused.
+        if candidates.is_empty() {
+            return Ok(());
+        }
+        self.call(move |sql| {
+            for (content_hash, revision) in &candidates {
+                let revision = i64::try_from(*revision).map_err(|_| {
+                    DbError::Message(format!("candidate {content_hash}'s revision overflows"))
+                })?;
+                let updated = sql.execute(
+                    "UPDATE import_candidate_state SET identification_declined_revision = ? \
+                     WHERE content_hash = ?",
+                    params![revision, content_hash],
+                )?;
+                if updated != 1 {
+                    return Err(DbError::Message(format!(
+                        "declining identification of {content_hash} changed {updated} rows; \
+                         expected one"
+                    )));
+                }
+            }
+            Ok(())
+        })
+        .await
+    }
+
+    /// A person asked for the candidate to be identified: whatever they
+    /// cancelled before no longer stands.
+    pub(crate) async fn clear_declined_identification(
+        &self,
+        content_hash: &str,
+    ) -> Result<(), DbError> {
+        let content_hash = content_hash.to_string();
+        let read_hash = content_hash.clone();
+        let declined = self
+            .read(move |sql| {
+                Ok(sql
+                    .query_row(
+                        "SELECT 1 FROM import_candidate_state WHERE content_hash = ? \
+                         AND identification_declined_revision IS NOT NULL",
+                        [&read_hash],
+                        |_| Ok(()),
+                    )
+                    .optional()?
+                    .is_some())
+            })
+            .await?;
+        // Nothing declined is nothing to lift, and a write that writes
+        // nothing is refused.
+        if !declined {
+            return Ok(());
+        }
+        self.call(move |sql| {
+            sql.execute(
+                "UPDATE import_candidate_state SET identification_declined_revision = NULL \
+                 WHERE content_hash = ?",
+                [content_hash],
+            )?;
+            Ok(())
+        })
+        .await
+    }
+
     /// Whether a draft is already stored for `content_hash`. A candidate that
     /// has one is never re-seeded — a rescan re-reads files, not decisions —
     /// so this is what the pre-fill asks before reading any tags.

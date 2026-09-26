@@ -58,7 +58,7 @@ async fn a_cancelled_waiting_candidate_is_never_looked_up() {
         .clone();
     let waiting_key = waiting.to_string_lossy().into_owned();
 
-    fixture.identification().cancel(vec![waiting_key.clone()]);
+    fixture.identification().cancel(vec![waiting_key.clone()]).await.unwrap();
     await_not_identifying(&fixture, &waiting_key).await;
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(30), sweep)
@@ -96,7 +96,7 @@ async fn a_cancelled_run_leaves_the_candidate_unidentified_until_asked_again() {
     let sweep = fixture.sweep();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
-    fixture.identification().cancel(vec![key.clone()]);
+    fixture.identification().cancel(vec![key.clone()]).await.unwrap();
     tokio::time::timeout(Duration::from_secs(10), sweep)
         .await
         .expect("cancelling the only job drains the pass")
@@ -137,7 +137,7 @@ async fn cancelling_everything_empties_the_queue() {
     let sweep = fixture.sweep();
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
 
-    fixture.identification().cancel_all();
+    fixture.identification().cancel_all().await.unwrap();
     tokio::time::timeout(Duration::from_secs(10), sweep)
         .await
         .expect("cancelling everything drains the pass")
@@ -189,7 +189,7 @@ async fn a_cancelled_answer_is_not_written() {
         "the run answered and its answer is being written"
     );
 
-    fixture.identification().cancel(vec![key.clone()]);
+    fixture.identification().cancel(vec![key.clone()]).await.unwrap();
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(10), sweep)
         .await
@@ -229,9 +229,65 @@ async fn a_run_the_queue_did_not_start_ends_through_the_same_cancel() {
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     assert!(fixture.import.is_identifying(&key));
 
-    fixture.identification().cancel(vec![key.clone()]);
+    fixture.identification().cancel(vec![key.clone()]).await.unwrap();
     await_not_identifying(&fixture, &key).await;
     fixture.provider.release();
 
     assert!(fixture.identified_for(&dir).await.is_none());
+}
+
+/// A cancel is stored with the candidate: a queue started afresh — the next
+/// launch — leaves it alone too, until a person asks again.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cancel_outlives_the_queue_that_took_it() {
+    let fixture = Fixture::new("cancel-across-launches").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.provider.hold("/discid/");
+    fixture.scan(1).await;
+    let sweep = fixture.sweep();
+    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.identification().cancel(vec![key.clone()]).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(10), sweep)
+        .await
+        .expect("cancelling the only job drains the pass")
+        .unwrap();
+    fixture.provider.release();
+    let revision = fixture
+        .stored_for(&dir)
+        .await
+        .expect("the candidate keeps its state row")
+        .file_edits
+        .revision;
+    assert!(fixture
+        .stored_for(&dir)
+        .await
+        .unwrap()
+        .identification_declined(revision));
+
+    fixture.identification().stop();
+    let relaunched = super::start(fixture.import.clone(), fixture.manager.clone());
+    tokio::time::timeout(Duration::from_secs(30), relaunched.identify_the_queue_for_test())
+        .await
+        .expect("the relaunched queue's automatic admission drains");
+    assert_eq!(
+        fixture.provider.count_containing("/discid/"),
+        1,
+        "the relaunched queue does not take the cancelled candidate back up"
+    );
+
+    relaunched.rerun_identify(key.clone());
+    tokio::time::timeout(Duration::from_secs(15), fixture.await_identified_row(&dir))
+        .await
+        .expect("a person asking identifies it again");
+    assert!(
+        !fixture
+            .stored_for(&dir)
+            .await
+            .unwrap()
+            .identification_declined(revision),
+        "asking again lifts the cancel"
+    );
+    relaunched.stop();
 }

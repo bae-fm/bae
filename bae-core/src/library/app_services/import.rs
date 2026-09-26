@@ -147,13 +147,16 @@ impl AppServices {
     /// queue whether waiting or running, and a re-identify sheet's own run
     /// ended. They are left unidentified and the automatic admission does not
     /// take them back up; [`Self::rerun_identify`] asks for them again.
-    pub fn cancel_identification(&self, candidate_keys: Vec<String>) {
-        self.inner.identification.cancel(candidate_keys);
+    pub async fn cancel_identification(
+        &self,
+        candidate_keys: Vec<String>,
+    ) -> Result<(), crate::library::LibraryError> {
+        self.inner.identification.cancel(candidate_keys).await
     }
 
     /// Take every candidate off the identification queue.
-    pub fn cancel_all_identification(&self) {
-        self.inner.identification.cancel_all();
+    pub async fn cancel_all_identification(&self) -> Result<(), crate::library::LibraryError> {
+        self.inner.identification.cancel_all().await
     }
 
     /// Every key with something in flight right now.

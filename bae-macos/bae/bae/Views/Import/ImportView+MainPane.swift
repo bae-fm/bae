@@ -19,7 +19,12 @@ extension ImportView {
             onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
             onReveal: revealCandidateSources,
             onCancel: { key, action in cancelCandidateWork(key, action) },
-            onCancelAllIdentification: { importer.cancelAllIdentification() },
+            onCancelAllIdentification: {
+                Task {
+                    do { try await importer.cancelAllIdentification() }
+                    catch { uiStore.showError(error) }
+                }
+            },
             onCancelAllImports: { importer.cancelAllImports() }
         )
     }

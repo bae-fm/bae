@@ -96,6 +96,19 @@ pub struct DbImportCandidateState {
     /// cover mutation advances it so a source projection cannot overwrite a
     /// newer edit.
     pub metadata_revision: u64,
+    /// The file-decision revision at which a person cancelled this
+    /// candidate's identification. It declines the candidate only at that
+    /// revision — see [`Self::identification_declined`].
+    pub identification_declined_at: Option<u64>,
+}
+
+impl DbImportCandidateState {
+    /// Whether a person cancelled identifying the candidate as it stands now,
+    /// at file-decision revision `revision`: the automatic admission leaves
+    /// it alone until they ask again.
+    pub fn identification_declined(&self, revision: u64) -> bool {
+        self.identification_declined_at == Some(revision)
+    }
 }
 
 /// Everything a person settled about one candidate through its pane, keyed by

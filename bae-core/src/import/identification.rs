@@ -105,10 +105,16 @@ struct Context {
 enum Command {
     /// A person asked for this candidate to be identified now.
     Request { candidate_key: String },
-    /// A person cancelled these candidates' identification.
-    Cancel { candidate_keys: Vec<String> },
+    /// A person cancelled these candidates' identification. `done` hears
+    /// once the decline is stored and the jobs are gone, or why not.
+    Cancel {
+        candidate_keys: Vec<String>,
+        done: tokio::sync::oneshot::Sender<Result<(), crate::library::LibraryError>>,
+    },
     /// A person cancelled every identification the queue holds.
-    CancelAll,
+    CancelAll {
+        done: tokio::sync::oneshot::Sender<Result<(), crate::library::LibraryError>>,
+    },
     /// Run the automatic admission, and say when everything it is responsible
     /// for has ended. The events that trigger one in the app carry no
     /// acknowledgement, and nothing there waits for the queue to drain — it is

@@ -955,7 +955,14 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     metadata_revision INTEGER NOT NULL DEFAULT 0 CHECK (metadata_revision >= 0),
     -- Advances with every file decision, so a verdict derived from an older
     -- shape is refused.
-    edit_revision     INTEGER NOT NULL DEFAULT 0 CHECK (edit_revision >= 0)
+    edit_revision     INTEGER NOT NULL DEFAULT 0 CHECK (edit_revision >= 0),
+    -- The file-decision revision at which a person cancelled this candidate's
+    -- identification, so the automatic admission leaves it alone across
+    -- launches. It declines the candidate only while it equals
+    -- `edit_revision`: a file decision makes it a different question, which
+    -- nobody declined. Cleared when a person asks for identification again.
+    identification_declined_revision INTEGER
+        CHECK (identification_declined_revision IS NULL OR identification_declined_revision >= 0)
 ) STRICT;
 
 -- Which watched folders a candidate was found under — more than one when the

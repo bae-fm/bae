@@ -80,25 +80,49 @@ impl IdentificationHandle {
     }
 
     /// Stop identifying these candidates, whether they are waiting, running,
-    /// or having their answer written. Each one's whole job goes — candidates
-    /// with the same files share one run — and it is left unidentified: no
-    /// verdict and no failure are stored, and the automatic admission does not
-    /// take it back up. Identifying it again is a person's request.
-    pub fn cancel(&self, candidate_keys: Vec<String>) {
-        if self
-            .commands
-            .send(Command::Cancel { candidate_keys })
-            .is_err()
-        {
-            warn!("identification: the queue has stopped; there is nothing to cancel");
-        }
+    /// or having their answer written, or a run the queue did not start. Each
+    /// one's whole job goes — candidates with the same files share one run —
+    /// and it is left unidentified: no verdict and no failure are stored. The
+    /// cancel is stored with the candidate, so the automatic admission does
+    /// not take it back up, this launch or the next; a person asking for it
+    /// again, or a file decision that makes it a different question, lifts
+    /// it. Returns once the cancel is stored and the jobs are gone.
+    pub async fn cancel(
+        &self,
+        candidate_keys: Vec<String>,
+    ) -> Result<(), crate::library::LibraryError> {
+        let (done, cancelled) = tokio::sync::oneshot::channel();
+        self.send_cancel(Command::Cancel {
+            candidate_keys,
+            done,
+        })?;
+        Self::await_cancel(cancelled).await
     }
 
-    /// Stop every identification on the queue, as [`Self::cancel`] does for one.
-    pub fn cancel_all(&self) {
-        if self.commands.send(Command::CancelAll).is_err() {
-            warn!("identification: the queue has stopped; there is nothing to cancel");
-        }
+    /// Stop every identification on the queue, as [`Self::cancel`] does for
+    /// one.
+    pub async fn cancel_all(&self) -> Result<(), crate::library::LibraryError> {
+        let (done, cancelled) = tokio::sync::oneshot::channel();
+        self.send_cancel(Command::CancelAll { done })?;
+        Self::await_cancel(cancelled).await
+    }
+
+    fn send_cancel(&self, command: Command) -> Result<(), crate::library::LibraryError> {
+        self.commands.send(command).map_err(|_| {
+            crate::library::LibraryError::Internal(
+                "the identification queue has stopped".to_string(),
+            )
+        })
+    }
+
+    async fn await_cancel(
+        cancelled: tokio::sync::oneshot::Receiver<Result<(), crate::library::LibraryError>>,
+    ) -> Result<(), crate::library::LibraryError> {
+        cancelled.await.map_err(|_| {
+            crate::library::LibraryError::Internal(
+                "the identification queue stopped before the cancel ended".to_string(),
+            )
+        })?
     }
 
     /// Run the automatic admission now, and wait until every job it is

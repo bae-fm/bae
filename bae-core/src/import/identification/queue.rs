@@ -113,14 +113,6 @@ pub(super) struct Queue {
     /// The jobs in the order they run: the ones a person asked for at the
     /// front, each of them in the order it was admitted.
     jobs: VecDeque<Job>,
-    /// The identities a person took off the queue. The automatic admission
-    /// leaves them alone: without this, the next scan or setting change would
-    /// put a cancelled candidate straight back and the cancel would undo
-    /// itself. A person asking for one again takes it out of here, and files
-    /// that change give the candidate an identity nobody declined. Held for
-    /// the library session, not stored: nothing about the candidate changed,
-    /// only whether this session should spend lookups on it.
-    declined: std::collections::HashSet<CandidateIdentity>,
 }
 
 impl Queue {
@@ -207,13 +199,6 @@ impl Queue {
         for candidate in candidates {
             let key = candidate.key();
             let identity = candidate_identity(&candidate);
-            match admission {
-                Admission::Automatic if self.declined.contains(&identity) => continue,
-                Admission::Automatic => {}
-                Admission::Requested => {
-                    self.declined.remove(&identity);
-                }
-            }
             if let Some(index) = self.index_of_key(&key) {
                 if admission == Admission::Automatic && self.jobs[index].identity == identity {
                     continue;
@@ -314,9 +299,9 @@ impl Queue {
     }
 
     /// A person cancelled `key`'s identification: its whole job leaves the
-    /// queue — every member shares the one run, and it answers them all — and
-    /// the identity is declined, so the automatic admission does not put it
-    /// back. A run in flight is ended, and an answer being written is told to
+    /// queue — every member shares the one run, and it answers them all. The
+    /// caller has already stored the decline that keeps the automatic
+    /// admission from putting it back. A run in flight is ended, and an answer being written is told to
     /// give itself up before it writes, so the candidates are left as
     /// unidentified as they were: no verdict, no failure.
     ///
@@ -335,11 +320,19 @@ impl Queue {
         self.end_cancelled(context, job);
     }
 
-    /// Cancel every job the queue holds.
-    fn cancel_all(&mut self, context: &Context) {
-        for job in std::mem::take(&mut self.jobs) {
-            self.end_cancelled(context, job);
+    /// The identities of the jobs holding `keys`, each once — what a cancel
+    /// of those keys declines.
+    fn identities_of<'a>(&self, keys: impl IntoIterator<Item = &'a String>) -> Vec<CandidateIdentity> {
+        let mut identities: Vec<CandidateIdentity> = Vec::new();
+        for key in keys {
+            if let Some(index) = self.index_of_key(key) {
+                let identity = &self.jobs[index].identity;
+                if !identities.contains(identity) {
+                    identities.push(identity.clone());
+                }
+            }
         }
+        identities
     }
 
     fn end_cancelled(&mut self, context: &Context, job: Job) {
@@ -357,7 +350,6 @@ impl Queue {
             "identification: cancelled {} candidate(s) of one job",
             job.members.len()
         );
-        self.declined.insert(job.identity);
     }
 
     /// Every entry with this identity leaves: the answer that just stored
@@ -515,12 +507,19 @@ pub(super) async fn run(
                 Command::Request { candidate_key } => {
                     request(context, &mut queue, candidate_key).await;
                 }
-                Command::Cancel { candidate_keys } => {
-                    for key in &candidate_keys {
-                        queue.cancel(context, key);
+                Command::Cancel { candidate_keys, done } => {
+                    let cancelled = cancel(context, &mut queue, &candidate_keys).await;
+                    if done.send(cancelled).is_err() {
+                        debug!("identification: the cancel's caller left before it ended");
                     }
                 }
-                Command::CancelAll => queue.cancel_all(context),
+                Command::CancelAll { done } => {
+                    let keys: Vec<String> = queue.jobs.iter().flat_map(Job::keys).collect();
+                    let cancelled = cancel(context, &mut queue, &keys).await;
+                    if done.send(cancelled).is_err() {
+                        debug!("identification: the cancel's caller left before it ended");
+                    }
+                }
                 #[cfg(any(test, feature = "test-utils"))]
                 Command::AdmitAutomatic { drained } => {
                     if automatic_is_on(config) {
@@ -572,6 +571,25 @@ pub(super) async fn admit(
     opened
 }
 
+/// A person cancelled these candidates' identification. The decline is
+/// stored first, in one write, so the automatic admission cannot take them
+/// back up — across launches too; only then do their jobs leave the queue. A
+/// decline that does not store cancels nothing and is the caller's error.
+async fn cancel(
+    context: &Context,
+    queue: &mut Queue,
+    keys: &[String],
+) -> Result<(), crate::library::LibraryError> {
+    context
+        .library_manager
+        .decline_identification(queue.identities_of(keys))
+        .await?;
+    for key in keys {
+        queue.cancel(context, key);
+    }
+    Ok(())
+}
+
 /// A person asked for this candidate to be identified now.
 async fn request(context: &Context, queue: &mut Queue, candidate_key: String) {
     let Some(candidate) = answerable_candidate(context, &candidate_key).await else {
@@ -581,6 +599,23 @@ async fn request(context: &Context, queue: &mut Queue, candidate_key: String) {
         context.import.withdraw_identification(&candidate_key);
         return;
     };
+    // Asking again is what lifts a cancel. A lift that does not store leaves
+    // the candidate declined, so no run starts, and the row says why.
+    if let Err(error) = context
+        .library_manager
+        .clear_declined_identification(&candidate.files.content_hash())
+        .await
+    {
+        warn!("identification: cannot lift the cancel of {candidate_key} ({error})");
+        context.import.withdraw_identification(&candidate_key);
+        let run = context.import.new_identification_run();
+        context.import.fail_identification(
+            &candidate_key,
+            run,
+            format!("could not ask for identification again: {error}"),
+        );
+        return;
+    }
     admit(context, queue, vec![candidate], Admission::Requested).await;
 }
 

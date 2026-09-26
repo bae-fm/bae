@@ -11,6 +11,17 @@ pub(super) fn candidate_identity(candidate: &FolderCandidate) -> CandidateIdenti
     )
 }
 
+/// Whether the automatic admission is to identify this candidate: no run has
+/// answered the files it has right now, and no person cancelled identifying
+/// it as it stands. The one predicate both automatic paths read.
+pub(super) fn wants_automatic_identification(
+    row: Option<&DbImportCandidateState>,
+    candidate: &FolderCandidate,
+) -> bool {
+    !usable_stored_answer(row, candidate)
+        && !row.is_some_and(|row| row.identification_declined(candidate.file_edit_revision))
+}
+
 /// Whether a run has already finished for the files this candidate has right
 /// now. What its draft holds is not an answer — only a stored result is.
 ///
@@ -114,7 +125,7 @@ pub(super) async fn wants_an_answer(context: &Context, candidate: &FolderCandida
         .load_import_candidate_state(&candidate.files.content_hash())
         .await
     {
-        Ok(row) => !usable_stored_answer(row.as_ref(), candidate),
+        Ok(row) => wants_automatic_identification(row.as_ref(), candidate),
         Err(error) => {
             warn!(
                 "identification: cannot read the stored state of {} ({error}); leaving it as it \
@@ -171,7 +182,7 @@ pub(super) async fn admit_automatically(context: &Context, queue: &mut Queue) {
                 .is_none_or(|runtime| runtime.import.is_none() && runtime.save_failed.is_none())
         })
         .filter(|candidate| {
-            !usable_stored_answer(stored.get(&candidate.files.content_hash()), candidate)
+            wants_automatic_identification(stored.get(&candidate.files.content_hash()), candidate)
         })
         .collect();
     let planned = admitted.len();

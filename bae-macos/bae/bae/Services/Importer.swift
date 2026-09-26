@@ -73,8 +73,8 @@ private struct ImportOperations: Sendable {
     let setCandidateLookupChoices:
         @Sendable (String, BridgeLookupChoices) async throws -> Void
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
-    let cancelIdentification: @Sendable ([String]) -> Void
-    let cancelAllIdentification: @Sendable () -> Void
+    let cancelIdentification: @Sendable ([String]) async throws -> Void
+    let cancelAllIdentification: @Sendable () async throws -> Void
     let cancelImport: @Sendable (String) async throws -> Void
     let cancelAllImports: @Sendable () -> Void
     let setCandidatePresentation:
@@ -215,10 +215,10 @@ extension ImportOperations {
                 handle.rerunIdentifyForCandidate(candidateKey: $0)
             },
             cancelIdentification: {
-                handle.cancelIdentification(candidateKeys: $0)
+                try await handle.cancelIdentification(candidateKeys: $0)
             },
             cancelAllIdentification: {
-                handle.cancelAllIdentification()
+                try await handle.cancelAllIdentification()
             },
             cancelImport: {
                 try await handle.cancelImport(candidateKey: $0)
@@ -423,8 +423,9 @@ final class Importer: Sendable, Observable {
         rerunIdentifyForCandidate:
             @escaping @Sendable (String) -> Void = { _ in },
         cancelIdentification:
-            @escaping @Sendable ([String]) -> Void = { _ in },
-        cancelAllIdentification: @escaping @Sendable () -> Void = {},
+            @escaping @Sendable ([String]) async throws -> Void = { _ in },
+        cancelAllIdentification:
+            @escaping @Sendable () async throws -> Void = {},
         cancelImport: @escaping @Sendable (String) async throws -> Void = {
             _ in
         },
@@ -703,13 +704,13 @@ extension Importer {
     /// running, or a re-identify sheet's own run. They are left unidentified
     /// and are not picked up again on their own; `rerunIdentifyForCandidate`
     /// asks for one again.
-    func cancelIdentification(_ candidateKeys: [String]) {
-        operations.cancelIdentification(candidateKeys)
+    func cancelIdentification(_ candidateKeys: [String]) async throws {
+        try await operations.cancelIdentification(candidateKeys)
     }
 
     /// Take every candidate off the identification queue.
-    func cancelAllIdentification() {
-        operations.cancelAllIdentification()
+    func cancelAllIdentification() async throws {
+        try await operations.cancelAllIdentification()
     }
 
     /// Cancel the candidate's import, waiting or running. It writes nothing
