@@ -450,7 +450,9 @@ pub enum BridgeCatalogStep {
         scanning: bool,
         /// The chosen numbers, in the order they were chosen.
         rows: Vec<BridgeSignalValueRow>,
-        /// The numbers not chosen, in the order they were first seen.
+        /// The numbers not chosen, in the order they were first seen: once
+        /// the run settles, the ones no offered release confirms. Folded
+        /// behind their count.
         candidates: Vec<BridgeCatalogCandidate>,
     },
 }

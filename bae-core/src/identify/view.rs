@@ -205,7 +205,11 @@ pub enum CatalogStepView {
         /// The chosen numbers, in the order they were chosen, each with every
         /// provider's lookup of it.
         rows: Vec<SignalValueRow>,
-        /// The numbers not chosen, in the order they were first seen.
+        /// The numbers not chosen, in the order they were first seen. Once
+        /// the run settles, a number an offered release carries is its
+        /// catalog agreement instead, so these are the numbers nothing
+        /// confirmed: merely extracted, which a surface folds behind their
+        /// count.
         candidates: Vec<CatalogCandidateView>,
     },
 }

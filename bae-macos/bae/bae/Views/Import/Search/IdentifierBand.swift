@@ -6,7 +6,7 @@ import SwiftUI
 /// it. The three signals come in order — Disc ID, Barcode, Catalog # — then
 /// the title the run searched by once they named nothing, then the catalog
 /// numbers that rank the answers rather than drive a lookup, then the ones
-/// waiting to be looked up.
+/// waiting to be looked up, folded behind their count.
 ///
 /// Every provider answers on its own, so a person watches the run rather than
 /// waiting for it, and a provider that failed offers its own Retry while the
@@ -31,6 +31,12 @@ struct IdentifierBand: View {
     /// title chip. Both blank goes back to the draft's own.
     let onEditTitleSearch: (_ album: String, _ artist: String) -> Void
 
+    /// Whether the catalog numbers nothing confirmed are shown. Only the
+    /// numbers the run looks up and the ones an offered release carries are
+    /// shown by default; the rest wait behind their count.
+    @State
+    private var showsCatalogCandidates = false
+
     var body: some View {
         FlowLayout(spacing: 6) {
             discIdChip
@@ -43,10 +49,20 @@ struct IdentifierBand: View {
                     onToggle: { onToggleCatalogAgreement(agreement.value) }
                 )
             }
-            ForEach(catalogCandidates, id: \.value) { candidate in
-                CatalogCandidateChip(
-                    candidate: candidate,
-                    onActivate: { onToggleLookup(.catalog(candidate.value)) }
+            if showsCatalogCandidates {
+                ForEach(catalogCandidates, id: \.value) { candidate in
+                    CatalogCandidateChip(
+                        candidate: candidate,
+                        onActivate: {
+                            onToggleLookup(.catalog(candidate.value))
+                        }
+                    )
+                }
+            }
+            if !catalogCandidates.isEmpty {
+                CatalogCandidatesDisclosure(
+                    count: catalogCandidates.count,
+                    isExpanded: $showsCatalogCandidates
                 )
             }
             if isScanning {
@@ -301,6 +317,37 @@ struct IdentifierBand: View {
             return true
         }
         return false
+    }
+}
+
+/// The catalog numbers nothing confirmed, folded behind their count: a
+/// folder's leaflets can print a label's whole series, and only the numbers
+/// the run looks up or an offered release carries belong in view.
+private struct CatalogCandidatesDisclosure: View {
+    let count: Int
+    @Binding
+    var isExpanded: Bool
+
+    var body: some View {
+        Button {
+            isExpanded.toggle()
+        } label: {
+            Text(
+                isExpanded
+                    ? String(localized: "Fewer")
+                    : String(localized: "+\(count) more")
+            )
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(
+                Color.primary.opacity(0.035),
+                in: RoundedRectangle(cornerRadius: 6)
+            )
+        }
+        .buttonStyle(.plain)
+        .help("Catalog numbers found in the folder that no release confirms")
     }
 }
 
