@@ -172,6 +172,7 @@ pub enum AutomationSignalOrigin {
     DiscToc,
     CueSheet,
     Artwork,
+    ArtworkBarcode,
     FolderName,
     Filename,
     TextFile,

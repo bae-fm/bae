@@ -1,5 +1,5 @@
 use super::codes_in;
-use crate::signals::{ArtworkAnalysis, DetectedBarcode, ImageRegion, RecognizedLine};
+use crate::signals::{ArtworkAnalysis, DetectedBarcode, ImageRegion, RecognizedLine, SignalOrigin};
 
 fn region(y: f32) -> Option<ImageRegion> {
     ImageRegion::new(0.1, y, 0.5, 0.05)
@@ -12,9 +12,9 @@ fn line(text: &str, y: f32) -> RecognizedLine {
     }
 }
 
-fn codes(analysis: &ArtworkAnalysis) -> Vec<(String, Option<ImageRegion>)> {
+fn codes(analysis: &ArtworkAnalysis) -> Vec<(String, Option<ImageRegion>, SignalOrigin)> {
     codes_in(analysis)
-        .map(|(code, region)| (code.into_string(), region))
+        .map(|reading| (reading.code.into_string(), reading.region, reading.origin))
         .collect()
 }
 
@@ -35,12 +35,16 @@ fn the_digits_printed_under_the_bars_are_a_code_the_detector_missed() {
     };
     assert_eq!(
         codes(&analysis),
-        vec![("5012345678900".to_string(), region(0.8))]
+        vec![(
+            "5012345678900".to_string(),
+            region(0.8),
+            SignalOrigin::Artwork
+        )]
     );
 }
 
 /// The bars and the digits under them spell one code the same way, however
-/// each writes it — here a UPC-A the detector reports as its EAN-13 and the
+/// each writes it, and each says how it was read — here a UPC-A the detector reports as its EAN-13 and the
 /// line prints as twelve digits — and the detector's reading comes first.
 #[test]
 fn the_bars_and_their_printed_digits_spell_one_code() {
@@ -54,9 +58,21 @@ fn the_bars_and_their_printed_digits_spell_one_code() {
     assert_eq!(
         codes(&analysis),
         vec![
-            ("0012345678905".to_string(), region(0.7)),
-            ("0012345678905".to_string(), region(0.8)),
-            ("5012345678900".to_string(), region(0.9)),
+            (
+                "0012345678905".to_string(),
+                region(0.7),
+                SignalOrigin::ArtworkBarcode
+            ),
+            (
+                "0012345678905".to_string(),
+                region(0.8),
+                SignalOrigin::Artwork
+            ),
+            (
+                "5012345678900".to_string(),
+                region(0.9),
+                SignalOrigin::Artwork
+            ),
         ]
     );
 }
@@ -82,5 +98,8 @@ fn a_detector_payload_that_is_no_code_is_left_out() {
         ],
         text_lines: Vec::new(),
     };
-    assert_eq!(codes(&analysis), vec![("12345670".to_string(), None)]);
+    assert_eq!(
+        codes(&analysis),
+        vec![("12345670".to_string(), None, SignalOrigin::ArtworkBarcode)]
+    );
 }

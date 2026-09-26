@@ -1,6 +1,8 @@
 use super::*;
-use crate::signals::ArtworkScan;
-use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, DetectedBarcode, ImageRegion, RecognizedLine};
+use crate::signals::{ArtworkScan, SignalOrigin};
+use crate::signals::{
+    ArtworkAnalysis, ArtworkAnalyzer, DetectedBarcode, ImageRegion, RecognizedLine,
+};
 use crate::util::rate_limiter::CallPriority;
 use std::collections::HashMap;
 use std::fs;
@@ -135,12 +137,10 @@ async fn collect_snapshots(
 async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
     let tmp = TempDir::new().unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let database = crate::db::Database::new_test(
-        tmp.path().join("test.db").to_str().unwrap(),
-        clock.clone(),
-    )
-    .await
-    .unwrap();
+    let database =
+        crate::db::Database::new_test(tmp.path().join("test.db").to_str().unwrap(), clock.clone())
+            .await
+            .unwrap();
     let library_dir = coven::StoreDir::new(tmp.path());
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).
@@ -177,7 +177,7 @@ async fn make_service() -> (
     TempDir,
 ) {
     let tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
-        let rx = tx.subscribe();
+    let rx = tx.subscribe();
     let (library_manager, lib_tmp) = make_library_manager().await;
     let handle = ExtractionService::start(
         tokio::runtime::Handle::current(),
@@ -557,7 +557,10 @@ FILE \"audio.flac\" WAVE\n  \
         ]
     );
     assert!(
-        settled.text_pool.iter().any(|line| line.text == "Artist Alpha"),
+        settled
+            .text_pool
+            .iter()
+            .any(|line| line.text == "Artist Alpha"),
         "the image's text still reaches the pool, got {:?}",
         settled.text_pool,
     );
@@ -597,7 +600,7 @@ async fn the_bars_and_their_printed_digits_are_one_sighting() {
         signals[1].barcode.codes(),
         [SourcedValue::in_file(
             "5012345678900".to_string(),
-            SignalOrigin::Artwork,
+            SignalOrigin::ArtworkBarcode,
             "Back.jpg".to_string(),
         )
         .at(ImageRegion::new(0.6, 0.8, 0.3, 0.1))]
@@ -769,12 +772,10 @@ FILE "01 - Track.flac" WAVE
 "#;
     fs::write(folder.join("Album.cue"), cue).unwrap();
 
-    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
-        StubAnalyzer::new().with(
-            "Artist Alpha - Back Cover.jpg",
-            vec!["Made in US · 1976".to_string()],
-        ),
-    );
+    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new().with(
+        "Artist Alpha - Back Cover.jpg",
+        vec!["Made in US · 1976".to_string()],
+    ));
     let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 2).await;
@@ -799,8 +800,8 @@ FILE "01 - Track.flac" WAVE
     assert_eq!(cue_line.origin, SignalOrigin::CueSheet);
     assert_eq!(cue_line.file.as_deref(), Some("Album.cue"));
 
-    let text_file_line = found("Atlantic Records, Inc.")
-        .unwrap_or_else(|| panic!("the .txt line; got {pool:?}"));
+    let text_file_line =
+        found("Atlantic Records, Inc.").unwrap_or_else(|| panic!("the .txt line; got {pool:?}"));
     assert_eq!(text_file_line.origin, SignalOrigin::TextFile);
     assert_eq!(text_file_line.file.as_deref(), Some("info.txt"));
 
@@ -821,7 +822,10 @@ async fn a_line_read_twice_off_one_surface_is_pooled_once() {
     let folder = build_release(&tmp, "Some Folder", &["front.jpg"], &[]);
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new().with(
         "front.jpg",
-        vec!["Atlantic Records".to_string(), "Atlantic Records".to_string()],
+        vec![
+            "Atlantic Records".to_string(),
+            "Atlantic Records".to_string(),
+        ],
     ));
     let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 

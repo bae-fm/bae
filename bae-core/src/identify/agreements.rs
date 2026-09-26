@@ -288,6 +288,7 @@ impl NormalizedLine {
             SignalOrigin::DiscToc
             | SignalOrigin::CueSheet
             | SignalOrigin::Artwork
+            | SignalOrigin::ArtworkBarcode
             | SignalOrigin::TextFile => Vec::new(),
         };
         (!run.is_empty()).then_some(Self {

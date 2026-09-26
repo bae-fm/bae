@@ -566,7 +566,7 @@ mirror_enum! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationSignalOrigin = bae_core::signals::SignalOrigin,
     from_core: pub(crate) fn,
-    variants: { DiscToc, CueSheet, Artwork, FolderName, Filename, TextFile },
+    variants: { DiscToc, CueSheet, Artwork, ArtworkBarcode, FolderName, Filename, TextFile },
 }
 
 mirror_struct! {

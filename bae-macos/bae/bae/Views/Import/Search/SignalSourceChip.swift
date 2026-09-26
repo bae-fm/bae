@@ -15,7 +15,7 @@ struct SignalSourceChip: View {
         switch source.origin {
         // The cover scan the value was read off is not shown, so there is
         // nothing for a chip to name.
-        case .artwork:
+        case .artwork, .artworkBarcode:
             EmptyView()
         case .cueSheet:
             SignalTextChip(text: "CUE")

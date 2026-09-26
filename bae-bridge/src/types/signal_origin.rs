@@ -8,6 +8,7 @@ pub enum BridgeSignalOrigin {
     DiscToc,
     CueSheet,
     Artwork,
+    ArtworkBarcode,
     FolderName,
     Filename,
     TextFile,
@@ -16,12 +17,12 @@ pub enum BridgeSignalOrigin {
 mirror_enum! {
     BridgeSignalOrigin = bae_core::signals::SignalOrigin,
     from_core: pub(crate) fn,
-    variants: { DiscToc, CueSheet, Artwork, FolderName, Filename, TextFile },
+    variants: { DiscToc, CueSheet, Artwork, ArtworkBarcode, FolderName, Filename, TextFile },
 }
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
     BridgeSignalOrigin = bae_core::signals::SignalOrigin,
     into_core: pub(crate) fn,
-    variants: { DiscToc, CueSheet, Artwork, FolderName, Filename, TextFile },
+    variants: { DiscToc, CueSheet, Artwork, ArtworkBarcode, FolderName, Filename, TextFile },
 }

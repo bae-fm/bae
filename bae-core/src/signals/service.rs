@@ -48,8 +48,7 @@ use crate::identify::IdentifyRunId;
 use crate::import::{ImportEvent, ImportEventBus, ScanEvent};
 use crate::library::LibraryManager;
 use crate::signals::{
-    ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue,
-    TextSignal,
+    ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextSignal,
 };
 use crate::util::rate_limiter::CallPriority;
 use crate::util::session_cache::SessionCache;
@@ -579,22 +578,22 @@ async fn stream_extraction(
 
             // Accumulate barcodes — one sighting per image a code was read
             // off, a code read twice off one image once — and text lines.
-            for (code, region) in super::barcode::codes_in(&analysis) {
+            for reading in super::barcode::codes_in(&analysis) {
                 let seen_here = gathered
                     .barcodes
                     .iter()
-                    .any(|b| b.value == code.as_str() && &b.origin_path == file_id);
+                    .any(|b| b.value == reading.code.as_str() && &b.origin_path == file_id);
                 if !seen_here {
                     // The image it was read off, so a surface can put the
                     // barcode on that image rather than beside the release.
-                    let value = code.into_string();
+                    let value = reading.code.into_string();
                     let sighting = match file_id {
                         Some(file_id) => {
-                            SourcedValue::in_file(value, SignalOrigin::Artwork, file_id.clone())
+                            SourcedValue::in_file(value, reading.origin, file_id.clone())
                         }
-                        None => SourcedValue::new(value, SignalOrigin::Artwork),
+                        None => SourcedValue::new(value, reading.origin),
                     };
-                    gathered.barcodes.push(sighting.at(region));
+                    gathered.barcodes.push(sighting.at(reading.region));
                 }
             }
             for line in analysis.text_lines {

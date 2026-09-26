@@ -74,6 +74,7 @@ enum SignalBadgeStyle {
         case .discToc: String(localized: "Disc TOC")
         case .cueSheet: String(localized: "CUE sheet")
         case .artwork: String(localized: "Cover OCR")
+        case .artworkBarcode: String(localized: "Cover barcode")
         case .folderName: String(localized: "folder name")
         case .filename: String(localized: "file name")
         case .textFile: String(localized: "Text file")

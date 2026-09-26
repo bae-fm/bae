@@ -188,6 +188,7 @@ cs	e.g. 4943674251780
 cs	e.g. WPCR-80001
 de	Access Key
 de	Cloud sync
+de	Cover barcode
 de	S3-compatible
 de	Secret Key
 de	Separate discs
