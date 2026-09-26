@@ -36,7 +36,10 @@ pub struct SourceRelease {
     /// nothing.
     pub(crate) metadata: ReleaseMetadata,
     /// What the other catalogs say this release, or its album, is — never the
-    /// release's own catalog, whose record [`Self::records`] derives.
+    /// release's own catalog, whose record [`Self::records`] derives. Its
+    /// documents' statements, and, once stored, what reading its album's
+    /// MusicBrainz release group found the album to be where the documents
+    /// reach no record of that catalog (see [`crate::import::album_links`]).
     pub(crate) other_records: Vec<ReleaseRecord>,
     pub(crate) covers: ReleaseCovers,
     /// The MusicBrainz release whose Cover Art Archive gallery a picker asks

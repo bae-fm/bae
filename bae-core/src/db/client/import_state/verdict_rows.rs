@@ -7,7 +7,8 @@
 
 use super::*;
 use crate::identify::{IdentifyFailure, IdentifyRunView, LookupProvenance, TerminalVerdict};
-use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
+use super::super::album_link_rows::{AlbumLinkRow, StatementColumns};
+use crate::import::album_links::AlbumLinks;
 use crate::import::cover_art::{DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::search::{MetadataResult, SourceTracks, StatedMedia};
 use crate::import::{Catalog, MetadataRef};
@@ -290,19 +291,12 @@ fn insert_match(
         )?;
     }
     for (ordinal, link) in result.album_links.read().iter().enumerate() {
-        let (stated, wikidata_item, musicbrainz_release, twin) = match &link.stated {
-            AlbumStatement::Page => (STATED_PAGE, None, None, None),
-            AlbumStatement::Wikidata { item } => (STATED_WIKIDATA, Some(item.as_str()), None, None),
-            AlbumStatement::Release {
-                musicbrainz_release,
-                twin,
-            } => (
-                STATED_RELEASE,
-                None,
-                Some(musicbrainz_release.as_str()),
-                Some(twin),
-            ),
-        };
+        let StatementColumns {
+            stated,
+            wikidata_item,
+            musicbrainz_release,
+            twin,
+        } = StatementColumns::of(&link.stated);
         sql.execute(
             "INSERT INTO import_candidate_match_album_link \
                  (content_hash, position, ordinal, catalog, key, stated, wikidata_item, \
@@ -334,50 +328,6 @@ fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
 const ALBUM_LINKS_NOT_ASKED: &str = "not_asked";
 const ALBUM_LINKS_READ: &str = "read";
 const ALBUM_LINKS_UNREAD: &str = "unread";
-
-/// The stored album link `stated` values, one per [`AlbumStatement`] shape.
-const STATED_PAGE: &str = "page";
-const STATED_WIKIDATA: &str = "wikidata";
-const STATED_RELEASE: &str = "release";
-
-/// One stored album link row's columns, as read.
-pub(super) struct AlbumLinkRow {
-    pub(super) catalog: String,
-    pub(super) key: String,
-    pub(super) stated: String,
-    pub(super) wikidata_item: Option<String>,
-    pub(super) musicbrainz_release: Option<String>,
-    pub(super) twin_catalog: Option<String>,
-    pub(super) twin_key: Option<String>,
-}
-
-impl AlbumLinkRow {
-    /// The link the row states. The table's checks hold each statement's
-    /// columns to its kind, so a row that breaks them is unreadable.
-    fn link(self) -> Result<AlbumLink, DbError> {
-        let stated = match (
-            self.stated.as_str(),
-            self.wikidata_item,
-            self.musicbrainz_release,
-            self.twin_catalog,
-            self.twin_key,
-        ) {
-            (STATED_PAGE, None, None, None, None) => AlbumStatement::Page,
-            (STATED_WIKIDATA, Some(item), None, None, None) => AlbumStatement::Wikidata { item },
-            (STATED_RELEASE, None, Some(musicbrainz_release), Some(catalog), Some(key)) => {
-                AlbumStatement::Release {
-                    musicbrainz_release,
-                    twin: MetadataRef::new(source_of(&catalog)?, key),
-                }
-            }
-            (other, ..) => return Err(unreadable("stated", other)),
-        };
-        Ok(AlbumLink {
-            album: MetadataRef::new(source_of(&self.catalog)?, self.key),
-            stated,
-        })
-    }
-}
 
 /// The stored `media_kind` values, one per [`StatedMedia`] shape.
 pub(super) const MEDIA_UNDESCRIBED: &str = "undescribed";

@@ -1591,6 +1591,31 @@ CREATE TABLE IF NOT EXISTS source_release_record (
     CHECK (kind = 'pressing' OR album_key IS NULL)
 ) STRICT;
 
+-- What reading a MusicBrainz release group found it to be on another
+-- catalog, whichever list read it: each album a statement names, with the
+-- statement, in the columns import_candidate_match_album_link uses. A stored
+-- release of either album reads the other back as one of its records, so a
+-- release whose own documents never reach the join still names it.
+-- Device-local, like the releases: a later reading of the group replaces its
+-- rows.
+CREATE TABLE IF NOT EXISTS release_group_album_link (
+    release_group       TEXT NOT NULL CHECK (release_group <> ''),
+    catalog             TEXT NOT NULL CHECK (catalog <> '' AND catalog <> 'musicbrainz'),
+    key                 TEXT NOT NULL CHECK (key <> ''),
+    stated              TEXT NOT NULL CHECK (stated IN ('page', 'wikidata', 'release')),
+    wikidata_item       TEXT CHECK (wikidata_item IS NULL OR wikidata_item <> ''),
+    musicbrainz_release TEXT CHECK (musicbrainz_release IS NULL OR musicbrainz_release <> ''),
+    twin_catalog        TEXT CHECK (twin_catalog IS NULL OR twin_catalog <> ''),
+    twin_key            TEXT CHECK (twin_key IS NULL OR twin_key <> ''),
+    PRIMARY KEY (release_group, catalog, key),
+    CHECK ((stated = 'wikidata') = (wikidata_item IS NOT NULL)),
+    CHECK ((stated = 'release') = (musicbrainz_release IS NOT NULL)),
+    CHECK ((stated = 'release') = (twin_catalog IS NOT NULL)),
+    CHECK ((stated = 'release') = (twin_key IS NOT NULL))
+) STRICT;
+CREATE INDEX IF NOT EXISTS release_group_album_link_album
+    ON release_group_album_link (catalog, key);
+
 -- The images the release offers a picker: its pressing's own ('release'),
 -- then its album's ('album'), each in the order they are offered.
 CREATE TABLE IF NOT EXISTS source_release_cover (

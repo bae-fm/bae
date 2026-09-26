@@ -304,7 +304,7 @@ pub(crate) fn load_matches_rows_on(
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, i64>(1)?,
-                super::verdict_rows::AlbumLinkRow {
+                super::super::album_link_rows::AlbumLinkRow {
                     catalog: row.get(2)?,
                     key: row.get(3)?,
                     stated: row.get(4)?,

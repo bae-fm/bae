@@ -92,6 +92,29 @@ pub enum AlbumStatement {
     },
 }
 
+/// One statement read about a MusicBrainz release group, kept beyond the list
+/// that read it: `link.album` is the group's album on another catalog.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GroupStatement {
+    pub group: String,
+    pub link: AlbumLink,
+}
+
+impl GroupStatement {
+    /// The album this statement says `album` is, when it names `album` on
+    /// either side.
+    pub fn other_than(&self, album: &MetadataRef) -> Option<MetadataRef> {
+        let group = MetadataRef::new(Catalog::MusicBrainz, self.group.clone());
+        if *album == group {
+            Some(self.link.album.clone())
+        } else if *album == self.link.album {
+            Some(group)
+        } else {
+            None
+        }
+    }
+}
+
 /// What reading a list's albums takes from the list.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ToRead {

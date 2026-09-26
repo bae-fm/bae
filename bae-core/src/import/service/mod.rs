@@ -845,9 +845,21 @@ pub(crate) async fn prepare_release(
     let payloads = library_manager
         .fetch_release_payloads(release_ref, priority)
         .await?;
-    let release = payloads.extract()?;
-    library_manager.save_source_release(&release).await?;
-    Ok(release)
+    library_manager
+        .save_source_release(&payloads.extract()?)
+        .await?;
+    // Read back as every reader reads it: the stored release's records carry
+    // what reading its album's group found, which its documents may not.
+    library_manager
+        .load_source_release(release_ref)
+        .await?
+        .ok_or_else(|| crate::import::ImportError::Internal {
+            detail: format!(
+                "{} release {} was stored and did not read back",
+                release_ref.catalog.as_str(),
+                release_ref.key
+            ),
+        })
 }
 
 /// Prepare every partner release of this selection.

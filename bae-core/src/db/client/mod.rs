@@ -77,6 +77,7 @@ desktop_only! {
         CandidateLookupUpdate, CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
     };
     mod source_releases;
+    mod album_link_rows;
 }
 mod playback;
 pub(crate) use blobs::{OutboxDisplayContext, OutboxDisplayRequest};

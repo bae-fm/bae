@@ -234,3 +234,54 @@ async fn an_unfetched_release_reads_as_nothing() {
         None
     );
 }
+
+/// A Discogs release whose documents never reach a MusicBrainz album reads
+/// back naming the release group a reading found its master to be — the
+/// statement a list read through another pressing's link — and nothing a
+/// statement about another master names. A later reading of the group that
+/// names nothing takes the record away again.
+#[tokio::test]
+async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
+    use crate::import::album_links::{AlbumLink, AlbumStatement};
+    use crate::import::ReleaseRecord;
+
+    let (db, _tmp) = empty_db().await;
+    let discogs = discogs_documents().extract().unwrap();
+    db.save_source_release(&discogs).await.unwrap();
+    let through = |master: &str| AlbumLink {
+        album: MetadataRef::new(Catalog::Discogs, master),
+        stated: AlbumStatement::Release {
+            musicbrainz_release: "mb-other-pressing".to_string(),
+            twin: MetadataRef::new(Catalog::Discogs, "4243"),
+        },
+    };
+    db.replace_group_album_links(vec![
+        ("mb-group-same".to_string(), vec![through("909")]),
+        ("mb-group-other".to_string(), vec![through("910")]),
+    ])
+    .await
+    .unwrap();
+
+    let records = |release: Option<crate::import::source_release::SourceRelease>| {
+        release.expect("the saved release reads back").records()
+    };
+    assert_eq!(
+        records(db.load_source_release(discogs.release()).await.unwrap()),
+        vec![
+            ReleaseRecord::album(&MetadataRef::new(Catalog::MusicBrainz, "mb-group-same")),
+            ReleaseRecord::new(discogs.release(), Some("909".to_string()), true),
+        ]
+    );
+
+    db.replace_group_album_links(vec![("mb-group-same".to_string(), Vec::new())])
+        .await
+        .unwrap();
+    assert_eq!(
+        records(db.load_source_release(discogs.release()).await.unwrap()),
+        vec![ReleaseRecord::new(
+            discogs.release(),
+            Some("909".to_string()),
+            true
+        )]
+    );
+}

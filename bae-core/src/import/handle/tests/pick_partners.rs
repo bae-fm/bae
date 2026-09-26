@@ -225,8 +225,30 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
 
 /// A two-track Discogs release with no master, seeded into the release cache.
 fn seed_discogs_release(providers: &crate::providers::Providers, release_id: &str) {
+    seed_discogs_release_in(providers, release_id, None);
+}
+
+/// A two-track Discogs release filed under `master`, when it names one,
+/// seeded into the release cache; the master's own document and
+/// MusicBrainz's answer that no release group links it are seeded beside it.
+fn seed_discogs_release_in(
+    providers: &crate::providers::Providers,
+    release_id: &str,
+    master: Option<&str>,
+) {
+    if let Some(master) = master {
+        providers.discogs().seed_master_cache(
+            master,
+            serde_json::json!({ "id": master.parse::<u64>().unwrap(), "title": "Album Title" })
+                .to_string(),
+        );
+        providers
+            .musicbrainz()
+            .seed_discogs_master_url_lookup(master, None);
+    }
     let raw_release = serde_json::json!({
         "id": release_id.parse::<u64>().expect("a numeric test Discogs release id"),
+        "master_id": master.map(|master| master.parse::<u64>().unwrap()),
         "title": "Album Title",
         "year": 1996,
         "formats": [{ "name": "CD" }],
@@ -467,4 +489,78 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
             .map(|record| record.key()),
         Some("mw222")
     );
+}
+
+/// The case a pick has to carry a join its own documents never reach: a list
+/// read that a MusicBrainz release group's album is a Discogs master only
+/// through one of its pressings — its release links a Discogs release filed
+/// under the master. A pick of another release of that master names the
+/// release group among its records, from what the reading kept.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
+    use crate::import::album_links::{GroupToRead, ToRead};
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    handle
+        .library_manager
+        .set_discogs_key(
+            "test-discogs-token",
+            crate::config::DiscogsValidation::Valid,
+        ).await
+        .unwrap();
+    let providers = handle.library_manager.providers();
+    let group = "chain-mb-group";
+    providers.musicbrainz().seed_group_releases(
+        group,
+        serde_json::json!({"releases": [{
+            "id": "chain-mb-release",
+            "relations": [{"url": {"resource": "https://www.discogs.com/release/70000011"}}],
+            "release-group": {"id": group, "relations": []},
+        }]})
+        .to_string(),
+    );
+    seed_discogs_release_in(providers, "70000011", Some("909"));
+    seed_discogs_release_in(providers, "70000012", Some("909"));
+    let read = handle
+        .library_manager
+        .read_album_links(
+            &ToRead {
+                groups: vec![GroupToRead {
+                    group: group.to_string(),
+                    releases: vec![("chain-mb-release".to_string(), Vec::new())],
+                }],
+                on_list: vec![(
+                    crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000012"),
+                    Some("909".to_string()),
+                )],
+            },
+            crate::util::rate_limiter::CallPriority::Interactive,
+        )
+        .await;
+    assert!(read[0].links.names(&crate::import::MetadataRef::new(
+        crate::import::Catalog::Discogs,
+        "909"
+    )));
+
+    let picked = crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000012");
+    handle
+        .select_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::ExternalRelease {
+                record: picked.clone(),
+                partners: vec![],
+            },
+        )
+        .await
+        .unwrap();
+    let records = handle
+        .library_manager
+        .load_source_release(&picked)
+        .await
+        .unwrap()
+        .expect("the pick stores its release")
+        .records();
+    shut_down(handle).await;
+    assert!(records.contains(&crate::import::ReleaseRecord::album(
+        &crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, group)
+    )));
 }
