@@ -33,9 +33,17 @@ struct NowPlayingBar: View {
                     onToggleRemainingTime: {
                         // Write-through: the config subscription re-renders the
                         // bar, so nothing is flipped locally.
-                        try? playback.setShowRemainingTime(
-                            !configStore.config.showRemainingTime
-                        )
+                        let showRemaining = !configStore.config.showRemainingTime
+                        Task {
+                            do {
+                                try await playback.setShowRemainingTime(
+                                    showRemaining
+                                )
+                            }
+                            catch {
+                                configStore.showError(error)
+                            }
+                        }
                     }
                 )
             }

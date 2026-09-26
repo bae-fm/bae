@@ -23,7 +23,7 @@ pub async fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     library_manager: bae_core::library::LibraryManager,
 ) -> bae_core::import::ImportServiceHandle {
-    configure_test_discogs(&library_manager);
+    configure_test_discogs(&library_manager).await;
     library_manager
         .start_import_service(runtime_handle.clone())
         .await
@@ -32,12 +32,13 @@ pub async fn start_test_import(
 
 /// Configure the provider credential used by seeded Discogs fixtures through
 /// the same library-manager capability production uses.
-pub fn configure_test_discogs(library_manager: &bae_core::library::LibraryManager) {
+pub async fn configure_test_discogs(library_manager: &bae_core::library::LibraryManager) {
     library_manager
         .set_discogs_key(
             "test-discogs-token",
             bae_core::config::DiscogsValidation::Valid,
         )
+        .await
         .expect("test Discogs key is stored through the library manager");
 }
 
@@ -182,23 +183,20 @@ pub struct ImportedRelease {
 }
 
 /// Import one Discogs-identified release from a folder, on the calling test's
-/// runtime: open a fresh library, apply whatever settings the import must see
-/// with `configure`, seed `release` for the fake Discogs endpoint, write the
-/// audio with `generate_files`, run the import to completion, and read back the
-/// tracks it landed. The arrange every playback test binary starts from.
-pub async fn imported_release_setup<G, C>(
+/// runtime: open a fresh library, seed `release` for the fake Discogs
+/// endpoint, write the audio with `generate_files`, run the import to
+/// completion, and read back the tracks it landed. The arrange every playback
+/// test binary starts from.
+pub async fn imported_release_setup<G>(
     release: bae_core::discogs::DiscogsRelease,
     candidate_key: &str,
     import_id: String,
     generate_files: G,
-    configure: C,
 ) -> Result<(bae_core::library::LibraryManager, ImportedRelease), Box<dyn std::error::Error>>
 where
     G: FnOnce(&std::path::Path),
-    C: FnOnce(&bae_core::library::LibraryManager) -> Result<(), Box<dyn std::error::Error>>,
 {
     let (library_manager, album_dir, temp_dir) = setup_test_library_with_album_dir().await;
-    configure(&library_manager)?;
 
     let release_id_key = seed_discogs_test_release(library_manager.providers(), release);
     generate_files(&album_dir);

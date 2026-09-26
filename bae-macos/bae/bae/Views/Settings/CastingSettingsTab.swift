@@ -73,11 +73,13 @@ struct CastingSettingsTab: View {
     }
 
     private func setEnabled(_ enabled: Bool) {
-        do {
-            try cast.setEnabled(enabled)
-        }
-        catch {
-            uiStore.showError(error)
+        Task {
+            do {
+                try await cast.setEnabled(enabled)
+            }
+            catch {
+                uiStore.showError(error)
+            }
         }
     }
 }

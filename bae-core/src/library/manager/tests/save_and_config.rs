@@ -2,7 +2,7 @@
 async fn set_save_presets_rejects_removing_selected_default() {
     let (manager, _temp_dir) = setup_test_manager().await;
     manager
-        .set_default_track_save_preset("mp3".to_string())
+        .set_default_track_save_preset("mp3".to_string()).await
         .unwrap();
 
     let presets_without_mp3: Vec<_> = manager
@@ -11,7 +11,7 @@ async fn set_save_presets_rejects_removing_selected_default() {
         .filter(|preset| preset.id != "mp3")
         .collect();
     let err = manager
-        .set_save_presets(presets_without_mp3)
+        .set_save_presets(presets_without_mp3).await
         .expect_err("selected default preset cannot be removed");
 
     assert!(err.to_string().contains("unknown export preset mp3"));
@@ -45,23 +45,23 @@ async fn set_default_save_preset_rejects_unknown_and_wrong_level() {
 
     assert!(
         manager
-            .set_default_track_save_preset("no-such-preset".to_string())
+            .set_default_track_save_preset("no-such-preset".to_string()).await
             .is_err(),
         "an unknown preset id is rejected"
     );
 
     let mut presets = manager.save_presets();
     presets.push(release_only_image_preset());
-    manager.set_save_presets(presets).unwrap();
+    manager.set_save_presets(presets).await.unwrap();
 
     assert!(
         manager
-            .set_default_track_save_preset("flac-image".to_string())
+            .set_default_track_save_preset("flac-image".to_string()).await
             .is_err(),
         "a release-only preset can't be the track-save default"
     );
     manager
-        .set_default_release_save_preset("flac-image".to_string())
+        .set_default_release_save_preset("flac-image".to_string()).await
         .expect("a release-applicable preset is a valid release default");
 }
 
@@ -72,7 +72,7 @@ async fn save_track_rejects_release_only_preset() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let mut presets = manager.save_presets();
     presets.push(release_only_image_preset());
-    manager.set_save_presets(presets).unwrap();
+    manager.set_save_presets(presets).await.unwrap();
 
     let err = manager
         .save_track(
@@ -113,7 +113,7 @@ async fn enqueue_release_save_captures_the_preset() {
             preset
         })
         .collect();
-    manager.set_save_presets(edited).unwrap();
+    manager.set_save_presets(edited).await.unwrap();
 
     let snap = manager.output_snapshot();
     let crate::library::OutputKind::Save { preset } = &snap.ops[0].payload.kind else {
@@ -322,7 +322,7 @@ async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
         enabled: true,
         port: 0,
     };
-    assert!(manager.set_mcp_config(invalid).is_err());
+    assert!(manager.set_mcp_config(invalid).await.is_err());
     assert_eq!(
         manager.get_config().prefs.mcp,
         crate::config::McpConfig::disabled_default()
@@ -332,24 +332,24 @@ async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
         enabled: true,
         port: crate::config::MCP_DEFAULT_PORT + 1,
     };
-    manager.set_mcp_config(valid).unwrap();
+    manager.set_mcp_config(valid).await.unwrap();
     assert_eq!(manager.get_config().prefs.mcp, valid);
 }
 
 #[tokio::test]
 async fn mcp_token_is_keyring_backed_and_sets_target() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    assert!(manager.get_mcp_token().unwrap().is_none());
+    assert!(manager.get_mcp_token().await.unwrap().is_none());
 
-    let token = manager.ensure_mcp_token().unwrap();
+    let token = manager.ensure_mcp_token().await.unwrap();
     assert_eq!(token.len(), 64);
     assert!(token.chars().all(|ch| ch.is_ascii_hexdigit()));
-    assert_eq!(manager.ensure_mcp_token().unwrap(), token);
+    assert_eq!(manager.ensure_mcp_token().await.unwrap(), token);
 
     let replacement = "a".repeat(64);
-    manager.set_mcp_token(replacement.clone()).unwrap();
+    manager.set_mcp_token(replacement.clone()).await.unwrap();
     assert_eq!(
-        manager.get_mcp_token().unwrap().as_deref(),
+        manager.get_mcp_token().await.unwrap().as_deref(),
         Some(replacement.as_str())
     );
 }
@@ -357,19 +357,19 @@ async fn mcp_token_is_keyring_backed_and_sets_target() {
 #[tokio::test]
 async fn subsonic_password_is_keyring_backed() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    assert!(manager.get_subsonic_password().unwrap().is_none());
+    assert!(manager.get_subsonic_password().await.unwrap().is_none());
 
-    manager.set_subsonic_password("s3cret".to_string()).unwrap();
+    manager.set_subsonic_password("s3cret".to_string()).await.unwrap();
     assert_eq!(
-        manager.get_subsonic_password().unwrap().as_deref(),
+        manager.get_subsonic_password().await.unwrap().as_deref(),
         Some("s3cret")
     );
 
     manager
-        .set_subsonic_password("rotated".to_string())
+        .set_subsonic_password("rotated".to_string()).await
         .unwrap();
     assert_eq!(
-        manager.get_subsonic_password().unwrap().as_deref(),
+        manager.get_subsonic_password().await.unwrap().as_deref(),
         Some("rotated")
     );
 }
@@ -384,7 +384,7 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
         bind_address: "127.0.0.1".to_string(),
     };
     assert!(manager
-        .set_subsonic_config(enabled_without_username)
+        .set_subsonic_config(enabled_without_username).await
         .is_err());
     assert_eq!(
         manager.get_config().prefs.subsonic,
@@ -397,7 +397,7 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
         username: "listener".to_string(),
         bind_address: "0.0.0.0".to_string(),
     };
-    manager.set_subsonic_config(valid.clone()).unwrap();
+    manager.set_subsonic_config(valid.clone()).await.unwrap();
     assert_eq!(manager.get_config().prefs.subsonic, valid);
 }
 
@@ -425,7 +425,7 @@ async fn the_last_source_being_asked_cannot_be_switched_off() {
     );
 
     let refused = manager
-        .set_metadata_source_enabled(Catalog::MusicBrainz, false)
+        .set_metadata_source_enabled(Catalog::MusicBrainz, false).await
         .expect_err("the only source being asked cannot be switched off");
     assert!(
         refused.to_string().contains("MusicBrainz"),
@@ -449,7 +449,7 @@ async fn an_unreachable_source_keeps_the_switch_underneath_it() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     manager
-        .set_metadata_source_enabled(Catalog::Discogs, false)
+        .set_metadata_source_enabled(Catalog::Discogs, false).await
         .expect("switching off a source nothing is asking is allowed");
     assert_eq!(
         manager.metadata_sources()[1].state,

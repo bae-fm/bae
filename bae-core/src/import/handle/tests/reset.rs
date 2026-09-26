@@ -83,7 +83,7 @@ async fn reset_setup_restores_cue_choices_and_saves_complete_tags() {
                     .unwrap(),
                 _ => unreachable!(),
             }
-            manager.set_prefill_with_file_metadata(prefill).unwrap();
+            manager.set_prefill_with_file_metadata(prefill).await.unwrap();
             handle.file_tags = Arc::new(CountingFileTagReader::with_embedded_cover(cover_jpeg()));
             handle
                 .set_candidate_cover(
@@ -204,7 +204,7 @@ async fn reset_setup_preserves_combination_members_and_disc_layout() {
             )
             .await
             .unwrap();
-        manager.set_prefill_with_file_metadata(prefill).unwrap();
+        manager.set_prefill_with_file_metadata(prefill).await.unwrap();
         handle.reset_candidate_setup(&key).await.unwrap();
         let reset = pane(&handle, &key).await;
         assert_eq!(reset.candidate.files, source.files);
@@ -269,7 +269,7 @@ async fn reset_setup_tag_failure_keeps_source_preparation_and_snapshot() {
         .await
         .unwrap()
         .unwrap();
-    manager.set_prefill_with_file_metadata(true).unwrap();
+    manager.set_prefill_with_file_metadata(true).await.unwrap();
     handle.file_tags = Arc::new(CountingFileTagReader::failing(1));
     assert!(handle
         .reset_candidate_setup(&key)
@@ -330,7 +330,7 @@ async fn reset_setup_prepared_before_an_edit_cannot_replace_it_or_its_snapshot()
         key,
         tmp: _tmp,
     } = stored_candidate().await;
-    manager.set_prefill_with_file_metadata(true).unwrap();
+    manager.set_prefill_with_file_metadata(true).await.unwrap();
     let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(1);
     let resume = Arc::new(std::sync::Barrier::new(2));
     handle.file_tags = Arc::new(CountingFileTagReader::blocking(entered_tx, resume.clone()));
@@ -437,7 +437,7 @@ async fn reset_setup_discards_selected_release_assets_and_identification() {
         .set_discogs_key(
             "test-discogs-token",
             crate::config::DiscogsValidation::Valid,
-        )
+        ).await
         .unwrap();
     let id = "70000107";
     manager.providers().discogs().seed_release_cache(
@@ -809,7 +809,7 @@ async fn reset_setup_prepared_before_a_lookup_choice_cannot_erase_it() {
         key,
         tmp: _tmp,
     } = stored_candidate().await;
-    manager.set_prefill_with_file_metadata(true).unwrap();
+    manager.set_prefill_with_file_metadata(true).await.unwrap();
     let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(1);
     let resume = Arc::new(std::sync::Barrier::new(2));
     handle.file_tags = Arc::new(CountingFileTagReader::blocking(entered_tx, resume.clone()));
@@ -872,7 +872,7 @@ async fn reset_setup_without_tags_keeps_a_combination_snapshot_ineligible_until_
         .combine_candidates(vec![first_key, second_key])
         .await
         .unwrap();
-    manager.set_prefill_with_file_metadata(true).unwrap();
+    manager.set_prefill_with_file_metadata(true).await.unwrap();
     handle.file_tags = Arc::new(CountingFileTagReader::with_embedded_cover(cover_jpeg()));
     handle.reset_candidate_setup(&key).await.unwrap();
     let source = handle.get_release_candidate(&key).await.unwrap().unwrap();
@@ -895,7 +895,7 @@ async fn reset_setup_without_tags_keeps_a_combination_snapshot_ineligible_until_
             .cover,
         Some(crate::import::CoverSelection::Local(file_id)) if file_id.ends_with("/cover.jpg")
     ));
-    manager.set_prefill_with_file_metadata(false).unwrap();
+    manager.set_prefill_with_file_metadata(false).await.unwrap();
     handle.reset_candidate_setup(&key).await.unwrap();
     let reset = pane(&handle, &key).await;
     assert_eq!(reset.candidate.files, source.files);

@@ -9,19 +9,22 @@ impl AppHandle {
     }
 }
 
-forward! { sync this => {
-    fn get_mcp_token() -> Result<String, BridgeError> {
-        Ok(this.services.ensure_mcp_token()?)
+forward! { async this => {
+    /// The MCP bearer token, created the first time it is asked for. A
+    /// keychain call, so it runs off the caller's thread.
+    fn get_mcp_token() -> String {
+        Ok(this.services.ensure_mcp_token().await?)
     }
 
-    fn set_mcp_token(token: String) -> Result<(), BridgeError> {
-        this.services.set_mcp_token(token)?;
+    fn set_mcp_token(token: String) -> () {
+        this.services.set_mcp_token(token).await?;
         Ok(())
     }
 
-    fn remove_discogs_token() -> Result<(), BridgeError> {
+    fn remove_discogs_token() -> () {
         this.services
             .import_remove_discogs_token()
+            .await
             .map_err(BridgeError::config)
     }
 } }

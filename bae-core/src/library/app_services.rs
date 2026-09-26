@@ -228,21 +228,21 @@ impl AppServices {
     }
 
     delegate_sync!(manager, get_config => get_config() -> crate::config::Config);
-    delegate_sync!(manager, ensure_mcp_token => ensure_mcp_token() -> Result<String, crate::library::LibraryError>);
-    delegate_sync!(manager, set_mcp_token => set_mcp_token(token: String) -> Result<(), crate::library::LibraryError>);
-    delegate_sync!(manager, set_mcp_config => set_mcp_config(config: crate::config::McpConfig) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, get_subsonic_password => get_subsonic_password() -> Result<Option<String>, crate::library::LibraryError>);
-    delegate_sync!(manager, set_subsonic_password => set_subsonic_password(password: String) -> Result<(), crate::library::LibraryError>);
-    delegate_sync!(manager, set_subsonic_config => set_subsonic_config(config: crate::config::SubsonicConfig) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, set_cast_enabled => set_cast_enabled(enabled: bool) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, ensure_mcp_token => ensure_mcp_token() -> Result<String, crate::library::LibraryError>);
+    delegate_async!(manager, set_mcp_token => set_mcp_token(token: String) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, set_mcp_config => set_mcp_config(config: crate::config::McpConfig) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, get_subsonic_password => get_subsonic_password() -> Result<Option<String>, crate::library::LibraryError>);
+    delegate_async!(manager, set_subsonic_password => set_subsonic_password(password: String) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, set_subsonic_config => set_subsonic_config(config: crate::config::SubsonicConfig) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_cast_enabled => set_cast_enabled(enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, cloud_home_key_state => cloud_home_key_state() -> Result<coven::CloudHomeKeyState, crate::library::LibraryError>);
-    delegate_sync!(manager, set_max_concurrent_uploads => set_max_concurrent_uploads(n: u32) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, set_max_concurrent_downloads => set_max_concurrent_downloads(n: u32) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, set_side_pause_countdown => set_side_pause_countdown(countdown: crate::config::SidePauseCountdown) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, set_show_remaining_time => set_show_remaining_time(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, set_library_full_width => set_library_full_width(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, set_identify_automatically => set_identify_automatically(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, set_prefill_with_file_metadata => set_prefill_with_file_metadata(enabled: bool) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_max_concurrent_uploads => set_max_concurrent_uploads(n: u32) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_max_concurrent_downloads => set_max_concurrent_downloads(n: u32) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_side_pause_countdown => set_side_pause_countdown(countdown: crate::config::SidePauseCountdown) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_show_remaining_time => set_show_remaining_time(enabled: bool) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_library_full_width => set_library_full_width(enabled: bool) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_identify_automatically => set_identify_automatically(enabled: bool) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_prefill_with_file_metadata => set_prefill_with_file_metadata(enabled: bool) -> Result<(), crate::config::ConfigError>);
 
     /// Ask, or stop asking, one metadata source — the switch on the Find online
     /// header and in Settings, which are two views of this one preference.
@@ -259,14 +259,15 @@ impl AppServices {
     /// Switching a source *on* re-runs nothing: the next run or search asks it.
     /// Re-dispatching a settled run because a source became available would
     /// throw away an answer the person is reading.
-    pub fn set_metadata_source_enabled(
+    pub async fn set_metadata_source_enabled(
         &self,
         source: crate::import::Catalog,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
         self.inner
             .manager
-            .set_metadata_source_enabled(source, enabled)?;
+            .set_metadata_source_enabled(source, enabled)
+            .await?;
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         {
             if !enabled {
@@ -290,13 +291,13 @@ impl AppServices {
         Ok(())
     }
 
-    delegate_sync!(manager, set_save_presets => set_save_presets(presets: Vec<crate::config::SavePreset>) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, rename_library => rename_library(library_id: &str, name: &crate::library_name::LibraryName) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, set_save_presets => set_save_presets(presets: Vec<crate::config::SavePreset>) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, rename_library => rename_library(library_id: &str, name: &crate::library_name::LibraryName) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, forget_encryption_key => forget_encryption_key() -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(manager, get_discogs_token => get_discogs_token() -> Result<Option<String>, crate::library::LibraryError>);
+    delegate_async!(manager, get_discogs_token => get_discogs_token() -> Result<Option<String>, crate::library::LibraryError>);
     delegate_async!(manager, disconnect_cloud_provider => disconnect_cloud_provider() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, close => close() -> ());
     delegate_async!(manager, unlock_cloud_home => unlock_cloud_home(serialized_master_key: &str) -> Result<(), crate::library::LibraryError>);
@@ -540,8 +541,11 @@ impl AppServices {
     /// track to cross gaplessly. Turning it off needs no follow-up — the
     /// drain-time gate (`side_pause_for_queue_front`) already re-reads the
     /// config before every boundary.
-    pub fn set_pause_between_sides(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
-        self.inner.manager.set_pause_between_sides(enabled)?;
+    pub async fn set_pause_between_sides(
+        &self,
+        enabled: bool,
+    ) -> Result<(), crate::config::ConfigError> {
+        self.inner.manager.set_pause_between_sides(enabled).await?;
         if enabled {
             self.inner.playback.reevaluate_side_pause_staging();
         }

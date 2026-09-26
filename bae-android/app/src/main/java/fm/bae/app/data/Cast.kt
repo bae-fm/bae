@@ -49,5 +49,5 @@ class Cast(
      * discovery and ends a session in flight — core does both off the write, so
      * the settings toggle only has to make this call.
      */
-    fun setEnabled(enabled: Boolean) = appHandle.setCastEnabled(enabled)
+    suspend fun setEnabled(enabled: Boolean) = appHandle.setCastEnabled(enabled)
 }

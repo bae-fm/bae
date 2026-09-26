@@ -42,7 +42,7 @@ struct TransfersSettingsTab: View {
     private func control(
         label: LocalizedStringKey,
         value: UInt32,
-        setValue: @escaping @Sendable (UInt32) throws -> Void
+        setValue: @escaping @Sendable (UInt32) async throws -> Void
     ) -> some View {
         LabeledContent(label) {
             TransferConcurrencyPicker(

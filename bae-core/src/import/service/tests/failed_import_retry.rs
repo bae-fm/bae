@@ -67,7 +67,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
     let test = setup_import_service().await;
     test.service
         .library_manager
-        .set_prefill_with_file_metadata(false)
+        .set_prefill_with_file_metadata(false).await
         .unwrap();
     let folder = test.temp.path().join("box-set");
     let fixture =

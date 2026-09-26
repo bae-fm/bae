@@ -26,10 +26,12 @@ final class Outputs: Sendable, Observable {
     /// in-flight one (a partial copy never lands its destination file).
     let cancelOutput: @Sendable (_ releaseId: String) -> Void
     /// Replace configured export presets.
-    let setSavePresets: @Sendable (_ presets: [BridgeSavePreset]) throws -> Void
-    let setDefaultTrackSavePreset: @Sendable (_ presetId: String) throws -> Void
+    let setSavePresets:
+        @Sendable (_ presets: [BridgeSavePreset]) async throws -> Void
+    let setDefaultTrackSavePreset:
+        @Sendable (_ presetId: String) async throws -> Void
     let setDefaultReleaseSavePreset:
-        @Sendable (_ presetId: String) throws -> Void
+        @Sendable (_ presetId: String) async throws -> Void
 
     init(
         enqueueExport:
@@ -45,13 +47,14 @@ final class Outputs: Sendable, Observable {
         setOutputsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
         cancelOutput: @escaping @Sendable (String) -> Void = { _ in },
         setSavePresets:
-            @escaping @Sendable ([BridgeSavePreset]) throws -> Void = { _ in
+            @escaping @Sendable ([BridgeSavePreset]) async throws -> Void = {
+                _ in
             },
         setDefaultTrackSavePreset:
-            @escaping @Sendable (String) throws -> Void = { _ in
+            @escaping @Sendable (String) async throws -> Void = { _ in
             },
         setDefaultReleaseSavePreset:
-            @escaping @Sendable (String) throws -> Void = { _ in
+            @escaping @Sendable (String) async throws -> Void = { _ in
             }
     ) {
         self.enqueueExport = enqueueExport
@@ -77,12 +80,12 @@ final class Outputs: Sendable, Observable {
             },
             setOutputsPaused: { handle.setOutputsPaused(paused: $0) },
             cancelOutput: { handle.cancelOutput(releaseId: $0) },
-            setSavePresets: { try handle.setSavePresets(presets: $0) },
+            setSavePresets: { try await handle.setSavePresets(presets: $0) },
             setDefaultTrackSavePreset: {
-                try handle.setDefaultTrackSavePreset(presetId: $0)
+                try await handle.setDefaultTrackSavePreset(presetId: $0)
             },
             setDefaultReleaseSavePreset: {
-                try handle.setDefaultReleaseSavePreset(presetId: $0)
+                try await handle.setDefaultReleaseSavePreset(presetId: $0)
             }
         )
     }

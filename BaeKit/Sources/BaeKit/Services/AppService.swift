@@ -234,8 +234,8 @@ open class AppService: @unchecked Sendable, Observable {
     public nonisolated func renameLibrary(
         _ libraryId: String,
         to name: String
-    ) throws {
-        try sync.renameLibrary(libraryId, name)
+    ) async throws {
+        try await sync.renameLibrary(libraryId, name)
     }
 
     public nonisolated func lockActiveLibrary() async throws {

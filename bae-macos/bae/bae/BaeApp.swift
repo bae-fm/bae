@@ -882,7 +882,9 @@ extension AppDelegate {
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         renameSlot.replace(
             "rename of \(libraryId)",
-            work: { try appService.renameLibrary(libraryId, to: trimmed) },
+            work: {
+                try await appService.renameLibrary(libraryId, to: trimmed)
+            },
             onSuccess: {
                 self.renameLibrarySheet = nil
                 self.reloadLibraries()

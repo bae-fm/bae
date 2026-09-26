@@ -20,7 +20,11 @@ use bae_core::server::{ServerController, ServerError, ServerStatus};
 
 /// Reads the Subsonic password from the keyring. `Ok(None)` means no password is
 /// stored (an unconfigured server); `Err` is a real keyring failure.
-type SubsonicPasswordProvider = dyn Fn() -> Result<Option<String>, String> + Send + Sync;
+/// Async, because a keychain read can wait on the system.
+type SubsonicPasswordProvider = dyn Fn() -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Option<String>, String>> + Send>,
+    > + Send
+    + Sync;
 
 pub type SubsonicServerStatus = ServerStatus<SubsonicServerError>;
 
@@ -116,7 +120,7 @@ impl SubsonicServerController {
     }
 
     async fn start(&self, binding: Binding) -> SubsonicServerStatus {
-        let password = match self.password_provider.as_ref()() {
+        let password = match self.password_provider.as_ref()().await {
             Ok(password) => password.unwrap_or_default(),
             Err(detail) => {
                 return self
@@ -245,7 +249,10 @@ mod tests {
 
     fn password_provider(password: Option<&str>) -> Arc<SubsonicPasswordProvider> {
         let password = password.map(str::to_string);
-        Arc::new(move || Ok(password.clone()))
+        Arc::new(move || {
+            let password = password.clone();
+            Box::pin(async move { Ok(password) })
+        })
     }
 
     fn controller(services: &AppServices, password: Option<&str>) -> SubsonicServerController {
@@ -313,7 +320,7 @@ mod tests {
         let (services, _temp) = test_manager().await;
         let controller = SubsonicServerController::new(
             services.clone(),
-            Arc::new(|| Err("keyring is locked".to_string())),
+            Arc::new(|| Box::pin(async { Err("keyring is locked".to_string()) })),
         );
         let config = enabled_config(free_port(), "listener");
         let status = controller.apply_config(config).await;

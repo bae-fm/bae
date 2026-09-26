@@ -9,8 +9,8 @@ final class Discogs: Sendable, Observable {
     let saveDiscogsToken:
         @Sendable (_ token: String) async throws -> BridgeDiscogsSaveOutcome
     let revalidateDiscogsToken: @Sendable () async throws -> Void
-    let removeDiscogsToken: @Sendable () throws -> Void
-    let getDiscogsToken: @Sendable () throws -> String?
+    let removeDiscogsToken: @Sendable () async throws -> Void
+    let getDiscogsToken: @Sendable () async throws -> String?
 
     init(
         saveDiscogsToken:
@@ -20,8 +20,10 @@ final class Discogs: Sendable, Observable {
             },
         revalidateDiscogsToken: @escaping @Sendable () async throws -> Void = {
         },
-        removeDiscogsToken: @escaping @Sendable () throws -> Void = {},
-        getDiscogsToken: @escaping @Sendable () throws -> String? = { nil }
+        removeDiscogsToken: @escaping @Sendable () async throws -> Void = {},
+        getDiscogsToken: @escaping @Sendable () async throws -> String? = {
+            nil
+        }
     ) {
         self.saveDiscogsToken = saveDiscogsToken
         self.revalidateDiscogsToken = revalidateDiscogsToken
@@ -35,8 +37,8 @@ final class Discogs: Sendable, Observable {
             revalidateDiscogsToken: {
                 try await handle.revalidateDiscogsToken()
             },
-            removeDiscogsToken: { try handle.removeDiscogsToken() },
-            getDiscogsToken: { try handle.getDiscogsToken() }
+            removeDiscogsToken: { try await handle.removeDiscogsToken() },
+            getDiscogsToken: { try await handle.getDiscogsToken() }
         )
     }
 

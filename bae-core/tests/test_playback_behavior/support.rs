@@ -406,7 +406,6 @@ static PLAYBACK_FIXTURE_TEMPLATE: std::sync::LazyLock<PlaybackFixtureTemplate> =
                 |album_dir| {
                     let _track_data = generate_test_flac_files(album_dir);
                 },
-                |_| Ok(()),
             )
             .await
             .expect("import the playback fixture template release");

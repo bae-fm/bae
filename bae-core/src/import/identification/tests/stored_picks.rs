@@ -536,7 +536,7 @@ fn discogs_release_json_stating_pressing(release_id: &str, label: &str, year: u3
 #[tokio::test(flavor = "multi_thread")]
 async fn a_picked_row_states_what_each_claimed_source_says() {
     let fixture = Fixture::new("pick-reading").await;
-    fixture.use_discogs();
+    fixture.use_discogs().await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;

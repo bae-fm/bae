@@ -301,7 +301,6 @@ impl CueApeTestFixture {
             "test",
             uuid::Uuid::new_v4().to_string(),
             copy_cue_ape_fixture,
-            |_| Ok(()),
         )
         .await?;
         assert_eq!(

@@ -11,7 +11,7 @@ import SwiftUI
 public struct TransferConcurrencyPicker: View {
     public let title: LocalizedStringKey
     public let value: UInt32
-    public let setValue: @Sendable (UInt32) throws -> Void
+    public let setValue: @Sendable (UInt32) async throws -> Void
     /// Takes the error, not a rendered line: whether a failure is worth showing
     /// is core's answer, and the sink is the one place that drops it.
     public let showError: @MainActor (any Error) -> Void
@@ -19,7 +19,7 @@ public struct TransferConcurrencyPicker: View {
     public init(
         title: LocalizedStringKey,
         value: UInt32,
-        setValue: @escaping @Sendable (UInt32) throws -> Void,
+        setValue: @escaping @Sendable (UInt32) async throws -> Void,
         showError: @escaping @MainActor (any Error) -> Void
     ) {
         self.title = title
@@ -45,11 +45,15 @@ public struct TransferConcurrencyPicker: View {
         Binding(
             get: { value },
             set: { n in
-                do {
-                    try setValue(n)
-                }
-                catch {
-                    showError(error)
+                // The write is a durable file replace, awaited off the main
+                // thread; the config mirror re-renders once it lands.
+                Task {
+                    do {
+                        try await setValue(n)
+                    }
+                    catch {
+                        showError(error)
+                    }
                 }
             }
         )

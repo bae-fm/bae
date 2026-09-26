@@ -96,14 +96,16 @@ struct ImportSettingsTab: View {
             isOn: Binding(
                 get: { setting.availability == .on },
                 set: { enabled in
-                    do {
-                        try importer.setMetadataSourceEnabled(
-                            setting.catalog,
-                            enabled
-                        )
-                    }
-                    catch {
-                        uiStore.showError(error)
+                    Task {
+                        do {
+                            try await importer.setMetadataSourceEnabled(
+                                setting.catalog,
+                                enabled
+                            )
+                        }
+                        catch {
+                            uiStore.showError(error)
+                        }
                     }
                 }
             )
@@ -115,11 +117,13 @@ struct ImportSettingsTab: View {
         Binding(
             get: { configStore.config.identifyAutomatically },
             set: { enabled in
-                do {
-                    try importer.setIdentifyAutomatically(enabled)
-                }
-                catch {
-                    uiStore.showError(error)
+                Task {
+                    do {
+                        try await importer.setIdentifyAutomatically(enabled)
+                    }
+                    catch {
+                        uiStore.showError(error)
+                    }
                 }
             }
         )
@@ -129,11 +133,13 @@ struct ImportSettingsTab: View {
         Binding(
             get: { configStore.config.prefillWithFileMetadata },
             set: { enabled in
-                do {
-                    try importer.setPrefillWithFileMetadata(enabled)
-                }
-                catch {
-                    uiStore.showError(error)
+                Task {
+                    do {
+                        try await importer.setPrefillWithFileMetadata(enabled)
+                    }
+                    catch {
+                        uiStore.showError(error)
+                    }
                 }
             }
         )

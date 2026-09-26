@@ -295,7 +295,7 @@ async fn switching_automatic_identification_off_lets_a_settling_write_land() {
     let mut pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/release/mb-settling?", 1).await;
 
-    fixture.manager.set_identify_automatically(false).unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
 
     assert!(
         tokio::time::timeout(Duration::from_secs(1), &mut pass)

@@ -94,7 +94,7 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
     let fixture = Fixture::new("restart-drops-a-source").await;
-    fixture.use_discogs();
+    fixture.use_discogs().await;
     fixture
         .import
         .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
@@ -138,7 +138,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
 
     fixture
         .manager
-        .set_metadata_source_enabled(crate::import::Catalog::Discogs, false)
+        .set_metadata_source_enabled(crate::import::Catalog::Discogs, false).await
         .expect("MusicBrainz is still asked, so Discogs can be switched off");
     fixture.identification().rerun_identify(key.clone());
     await_run_state(&mut events, &key, |run, _| run != asked_both).await;
@@ -289,7 +289,7 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
         release_json("mb-interactive-off", "rg-interactive-off", &[probed, 0]),
     );
     fixture.scan(1).await;
-    fixture.manager.set_identify_automatically(false).unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
 
     fixture.start_explicit_lookup(&dir);
 

@@ -903,8 +903,8 @@ async fn transfer_concurrency_settings_apply_to_the_open_store() {
     let (manager, _temp) = setup_test_manager().await;
     let before = manager.transfer_limits();
 
-    manager.set_max_concurrent_uploads(5).unwrap();
-    manager.set_max_concurrent_downloads(2).unwrap();
+    manager.set_max_concurrent_uploads(5).await.unwrap();
+    manager.set_max_concurrent_downloads(2).await.unwrap();
 
     let after = manager.transfer_limits();
     assert_eq!(after.uploads.get(), 5);
@@ -913,7 +913,7 @@ async fn transfer_concurrency_settings_apply_to_the_open_store() {
     assert_eq!(manager.get_config().prefs.max_concurrent_uploads.get(), 5);
     assert_eq!(manager.get_config().prefs.max_concurrent_downloads.get(), 2);
 
-    assert!(manager.set_max_concurrent_uploads(0).is_err());
+    assert!(manager.set_max_concurrent_uploads(0).await.is_err());
     assert_eq!(
         manager.transfer_limits().uploads.get(),
         5,

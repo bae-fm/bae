@@ -16,14 +16,14 @@ public final class Cast: Sendable, Observable {
     /// Whether casting is available at all. Turning it off is what stops
     /// discovery and ends a session in flight — core does both off the write, so
     /// the settings toggle only has to make this call.
-    public let setEnabled: @Sendable (_ enabled: Bool) throws -> Void
+    public let setEnabled: @Sendable (_ enabled: Bool) async throws -> Void
 
     public init(
         startDiscovery: @escaping @Sendable () -> Void = {},
         stopDiscovery: @escaping @Sendable () -> Void = {},
         castTo: @escaping @Sendable (String) async throws -> Void = { _ in },
         stopCasting: @escaping @Sendable () -> Void = {},
-        setEnabled: @escaping @Sendable (Bool) throws -> Void = { _ in }
+        setEnabled: @escaping @Sendable (Bool) async throws -> Void = { _ in }
     ) {
         self.startDiscovery = startDiscovery
         self.stopDiscovery = stopDiscovery
@@ -38,7 +38,7 @@ public final class Cast: Sendable, Observable {
             stopDiscovery: { handle.stopCastDiscovery() },
             castTo: { try await handle.castTo(deviceId: $0) },
             stopCasting: { handle.stopCasting() },
-            setEnabled: { try handle.setCastEnabled(enabled: $0) }
+            setEnabled: { try await handle.setCastEnabled(enabled: $0) }
         )
     }
 

@@ -7,14 +7,14 @@ import SwiftUI
 public struct SidePauseCountdownPicker: View {
     private let configStore: ConfigStore
     private let setCountdown:
-        @Sendable (BridgeSidePauseCountdown) throws -> Void
+        @Sendable (BridgeSidePauseCountdown) async throws -> Void
     /// Takes the error, not a rendered line, like `PauseBetweenSidesToggle`.
     private let showError: @MainActor (any Error) -> Void
 
     public init(
         configStore: ConfigStore,
         setCountdown:
-            @escaping @Sendable (BridgeSidePauseCountdown) throws -> Void,
+            @escaping @Sendable (BridgeSidePauseCountdown) async throws -> Void,
         showError: @escaping @MainActor (any Error) -> Void
     ) {
         self.configStore = configStore
@@ -50,11 +50,15 @@ public struct SidePauseCountdownPicker: View {
         Binding(
             get: { configStore.config.sidePauseCountdown },
             set: { countdown in
-                do {
-                    try setCountdown(countdown)
-                }
-                catch {
-                    showError(error)
+                // The write is a durable file replace, awaited off the main
+                // thread; the config mirror re-renders once it lands.
+                Task {
+                    do {
+                        try await setCountdown(countdown)
+                    }
+                    catch {
+                        showError(error)
+                    }
                 }
             }
         )

@@ -69,7 +69,7 @@ async fn cd_setting_changes_mid_track_apply_at_disc_boundary() {
         let first = fixture.track_ids[0].clone();
         let second = fixture.track_ids[1].clone();
         fixture.play_track_and_wait(0, &first).await;
-        fixture.set_pause_between_sides_mid_track(enabled);
+        fixture.set_pause_between_sides_mid_track(enabled).await;
         fixture.seek_to_auto_advance();
         if enabled {
             fixture

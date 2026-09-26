@@ -289,9 +289,10 @@ impl LibraryManager {
     /// this through the cloud-setup wizard). The connected home's cipher must match
     /// — `Plaintext` for browsable, `Encrypted` for opaque.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn set_home_storage(&self, storage: crate::config::HomeStorage) {
+    pub async fn set_home_storage(&self, storage: crate::config::HomeStorage) {
         self.config_handle
-            .update_store(|c| c.cloud_home.storage = storage)
+            .update_store(move |c| c.cloud_home.storage = storage)
+            .await
             .expect("set test home storage mode");
     }
 

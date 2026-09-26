@@ -4,7 +4,7 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         let fixture = Fixture::new("cue-audio-replacement").await;
         fixture
             .manager
-            .set_prefill_with_file_metadata(prefill)
+            .set_prefill_with_file_metadata(prefill).await
             .unwrap();
         let dir = fixture.seed_cue_album("Album");
         fixture.scan(1).await;

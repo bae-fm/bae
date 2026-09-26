@@ -6,14 +6,19 @@ use super::*;
 
 forward! {
     #[cfg(feature = "cast")]
-    sync this => {
+    async this => {
         /// Whether casting is available at all. Turning it off stops discovery and
         /// disconnects any session in flight; the config subscription then hides the
         /// Cast control — no app keeps its own copy.
-        fn set_cast_enabled(enabled: bool) -> Result<(), BridgeError> {
-            Ok(this.services.set_cast_enabled(enabled)?)
+        fn set_cast_enabled(enabled: bool) -> () {
+            Ok(this.services.set_cast_enabled(enabled).await?)
         }
+    }
+}
 
+forward! {
+    #[cfg(feature = "cast")]
+    sync this => {
         /// Start browsing for Cast devices (call when the device picker opens).
         fn start_cast_discovery() {
             this.cast.start_discovery();
@@ -126,11 +131,18 @@ impl AppHandle {
 
 forward! {
     #[cfg(feature = "desktop")]
-    sync this => {
-        fn get_discogs_token() -> Result<Option<String>, BridgeError> {
-            Ok(this.services.get_discogs_token()?)
+    async this => {
+        /// The stored Discogs key, read from the keychain off the caller's
+        /// thread.
+        fn get_discogs_token() -> Option<String> {
+            Ok(this.services.get_discogs_token().await?)
         }
+    }
+}
 
+forward! {
+    #[cfg(feature = "desktop")]
+    sync this => {
         /// Start re-identifying an existing library release. Extraction resolves
         /// the release's disc ID and artwork from the library. Events stream
         /// through the same identify channel — the UI consumes them by candidate

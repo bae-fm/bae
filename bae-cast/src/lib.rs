@@ -570,7 +570,7 @@ mod tests {
             "casting is off: a session must be refused"
         );
 
-        services.set_cast_enabled(true).unwrap();
+        runtime.block_on(services.set_cast_enabled(true)).unwrap();
         controller.start_discovery();
         assert!(browsing(&controller), "casting is on: browsing may run");
         // The device is not on this test's network, so the request reaches the
@@ -588,13 +588,13 @@ mod tests {
     /// watcher does this, so writing the setting is all a caller has to do.
     #[test]
     fn turning_casting_off_stops_browsing() {
-        let (_runtime, controller, services, _tmp) = test_controller(RendererDiscovery::builtin());
+        let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::builtin());
 
-        services.set_cast_enabled(true).unwrap();
+        runtime.block_on(services.set_cast_enabled(true)).unwrap();
         controller.start_discovery();
         assert!(browsing(&controller));
 
-        services.set_cast_enabled(false).unwrap();
+        runtime.block_on(services.set_cast_enabled(false)).unwrap();
         wait_until("browsing to stop after casting is turned off", || {
             !browsing(&controller)
         });
@@ -615,7 +615,7 @@ mod tests {
             "casting is off: nothing browses and no report is taken"
         );
 
-        services.set_cast_enabled(true).unwrap();
+        runtime.block_on(services.set_cast_enabled(true)).unwrap();
         controller.start_discovery();
         controller.renderer_found(reported_cast_service("Kitchen", "cast-1"));
         controller.renderer_found(reported_cast_service("Study", "cast-2"));

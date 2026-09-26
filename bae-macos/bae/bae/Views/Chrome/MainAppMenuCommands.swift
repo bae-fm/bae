@@ -338,11 +338,14 @@ struct MainAppMenuCommands: Commands {
                     isOn: Binding(
                         get: { target.configStore.config.libraryFullWidth },
                         set: { enabled in
-                            do {
-                                try target.library.setLibraryFullWidth(enabled)
-                            }
-                            catch {
-                                target.uiStore.showError(error)
+                            Task {
+                                do {
+                                    try await target.library
+                                        .setLibraryFullWidth(enabled)
+                                }
+                                catch {
+                                    target.uiStore.showError(error)
+                                }
                             }
                         }
                     )
@@ -435,11 +438,13 @@ struct MainAppMenuCommands: Commands {
                 isOn: target?.configStore.config.pauseBetweenSides == true
             ) { enabled in
                 let target = requireTarget()
-                do {
-                    try target.playback.setPauseBetweenSides(enabled)
-                }
-                catch {
-                    target.uiStore.showError(error)
+                Task {
+                    do {
+                        try await target.playback.setPauseBetweenSides(enabled)
+                    }
+                    catch {
+                        target.uiStore.showError(error)
+                    }
                 }
             }
             .disabled(target == nil)

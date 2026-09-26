@@ -30,7 +30,7 @@ public final class Sync: Sendable, Observable {
     /// library the on-disk `config.yaml` is edited in place. The sidebar
     /// can rename either the active row or any inactive local row.
     public let renameLibrary:
-        @Sendable (_ libraryId: String, _ newName: String) throws -> Void
+        @Sendable (_ libraryId: String, _ newName: String) async throws -> Void
     /// Cancel whatever transition a release is mid-flight — pin, upload, or
     /// unmanage — leaving it in its prior state. A no-op if nothing's running.
     public let cancelReleaseTransition:
@@ -68,7 +68,8 @@ public final class Sync: Sendable, Observable {
     /// device-local config write, unlike the runtime pause control: it throws on
     /// an out-of-range value or a failed write, so the picker can snap back.
     /// Takes effect the next time the library's coven handle opens.
-    public let setMaxConcurrentUploads: @Sendable (_ n: UInt32) throws -> Void
+    public let setMaxConcurrentUploads:
+        @Sendable (_ n: UInt32) async throws -> Void
 
     public init(
         disconnectCloudProvider: @escaping @Sendable () async throws -> Void = {
@@ -96,11 +97,12 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable () async throws
             -> UInt64 = { throw StubError.notImplemented },
         retryOutbox: @escaping @Sendable () async throws -> Void = {},
-        renameLibrary: @escaping @Sendable (String, String) throws -> Void = {
-            _,
-            _ in
-            throw StubError.notImplemented
-        },
+        renameLibrary:
+            @escaping @Sendable (String, String) async throws -> Void = {
+                _,
+                _ in
+                throw StubError.notImplemented
+            },
         cancelReleaseTransition:
             @escaping @Sendable (String) async throws -> Void = { _ in },
         setSyncPaused: @escaping @Sendable (Bool) async throws -> Void = { _ in
@@ -112,9 +114,10 @@ public final class Sync: Sendable, Observable {
         lockActiveLibrary: @escaping @Sendable () async throws -> Void = {
             throw StubError.notImplemented
         },
-        setMaxConcurrentUploads: @escaping @Sendable (UInt32) throws -> Void = {
-            _ in
-        }
+        setMaxConcurrentUploads:
+            @escaping @Sendable (UInt32) async throws -> Void = {
+                _ in
+            }
     ) {
         self.disconnectCloudProvider = disconnectCloudProvider
         self.saveSyncConfig = saveSyncConfig
@@ -149,7 +152,7 @@ public final class Sync: Sendable, Observable {
             },
             retryOutbox: { try await handle.retryOutbox() },
             renameLibrary: {
-                try handle.renameLibrary(libraryId: $0, name: $1)
+                try await handle.renameLibrary(libraryId: $0, name: $1)
             },
             cancelReleaseTransition: {
                 try await handle.cancelReleaseTransition(releaseId: $0)
@@ -162,7 +165,7 @@ public final class Sync: Sendable, Observable {
             },
             lockActiveLibrary: { try await handle.lockActiveLibrary() },
             setMaxConcurrentUploads: {
-                try handle.setMaxConcurrentUploads(n: $0)
+                try await handle.setMaxConcurrentUploads(n: $0)
             }
         )
     }

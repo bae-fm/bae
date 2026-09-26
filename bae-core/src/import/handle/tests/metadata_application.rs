@@ -77,7 +77,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
         .set_discogs_key(
             "test-discogs-token",
             crate::config::DiscogsValidation::Valid,
-        )
+        ).await
         .unwrap();
     handle
         .set_candidate_edit_field(&key, CandidateEditField::Barcode, "5099749".to_string())

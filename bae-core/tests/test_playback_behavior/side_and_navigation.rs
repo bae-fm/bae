@@ -118,7 +118,7 @@ async fn enabling_setting_mid_track_pauses_at_the_imminent_boundary() {
 
     fixture.play_track_and_wait(1, &side_a_track_id).await;
 
-    fixture.set_pause_between_sides_mid_track(true);
+    fixture.set_pause_between_sides_mid_track(true).await;
 
     fixture.seek_to_auto_advance();
 
@@ -141,7 +141,7 @@ async fn disabling_setting_mid_track_keeps_playing_across_the_boundary() {
 
     fixture.play_track_and_wait(1, &side_a_track_id).await;
 
-    fixture.set_pause_between_sides_mid_track(false);
+    fixture.set_pause_between_sides_mid_track(false).await;
 
     fixture.seek_to_auto_advance();
 

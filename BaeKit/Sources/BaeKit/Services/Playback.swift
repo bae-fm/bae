@@ -30,13 +30,15 @@ public final class Playback: Sendable, Observable {
     /// Play the whole library in a freshly seeded shuffle. An empty library is a
     /// no-op (logged in core).
     public let playLibraryShuffled: @Sendable () -> Void
-    public let setPauseBetweenSides: @Sendable (_ enabled: Bool) throws -> Void
+    public let setPauseBetweenSides:
+        @Sendable (_ enabled: Bool) async throws -> Void
     public let setSidePauseCountdown:
-        @Sendable (_ countdown: BridgeSidePauseCountdown) throws -> Void
+        @Sendable (_ countdown: BridgeSidePauseCountdown) async throws -> Void
     /// Whether the seek bar's leading label counts down the time remaining.
     /// A synced preference, so the bar writes it here rather than to a local
     /// store, and reads it back off the config mirror.
-    public let setShowRemainingTime: @Sendable (_ enabled: Bool) throws -> Void
+    public let setShowRemainingTime:
+        @Sendable (_ enabled: Bool) async throws -> Void
 
     public init(
         pause: @escaping @Sendable () -> Void = {},
@@ -57,16 +59,19 @@ public final class Playback: Sendable, Observable {
         },
         playReleases: @escaping @Sendable ([String]) -> Void = { _ in },
         playLibraryShuffled: @escaping @Sendable () -> Void = {},
-        setPauseBetweenSides: @escaping @Sendable (Bool) throws -> Void = {
-            _ in
-        },
-        setSidePauseCountdown:
-            @escaping @Sendable (BridgeSidePauseCountdown) throws -> Void = {
+        setPauseBetweenSides: @escaping @Sendable (Bool) async throws -> Void =
+            {
                 _ in
             },
-        setShowRemainingTime: @escaping @Sendable (Bool) throws -> Void = {
-            _ in
-        }
+        setSidePauseCountdown:
+            @escaping @Sendable (BridgeSidePauseCountdown) async throws -> Void =
+            {
+                _ in
+            },
+        setShowRemainingTime: @escaping @Sendable (Bool) async throws -> Void =
+            {
+                _ in
+            }
     ) {
         self.pause = pause
         self.resume = resume
@@ -106,13 +111,13 @@ public final class Playback: Sendable, Observable {
             playReleases: { handle.playReleases(releaseIds: $0) },
             playLibraryShuffled: { handle.playLibraryShuffled() },
             setPauseBetweenSides: {
-                try handle.setPauseBetweenSides(enabled: $0)
+                try await handle.setPauseBetweenSides(enabled: $0)
             },
             setSidePauseCountdown: {
-                try handle.setSidePauseCountdown(countdown: $0)
+                try await handle.setSidePauseCountdown(countdown: $0)
             },
             setShowRemainingTime: {
-                try handle.setShowRemainingTime(enabled: $0)
+                try await handle.setShowRemainingTime(enabled: $0)
             }
         )
     }
@@ -147,11 +152,13 @@ extension Playback {
     /// next side now; Close stays paused and stops any countdown, so the next
     /// side waits for Play. Either happens even when the setting write fails —
     /// the failure is thrown after, for the caller to show.
-    public func answerSidePausePrompt(keepPausing: Bool, play: Bool) throws {
+    public func answerSidePausePrompt(keepPausing: Bool, play: Bool)
+        async throws
+    {
         var writeError: (any Error)?
         if !keepPausing {
             do {
-                try setPauseBetweenSides(false)
+                try await setPauseBetweenSides(false)
             }
             catch {
                 writeError = error

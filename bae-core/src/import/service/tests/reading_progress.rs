@@ -8,7 +8,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
     // stored reading this import is not carrying.
     test.service
         .library_manager
-        .set_prefill_with_file_metadata(false)
+        .set_prefill_with_file_metadata(false).await
         .unwrap();
     let folder = test.temp.path().join("reading-progress-candidate");
     std::fs::create_dir(&folder).unwrap();

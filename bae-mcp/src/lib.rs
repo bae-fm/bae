@@ -25,7 +25,11 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::warn;
 
-type McpTokenProvider = dyn Fn() -> Result<String, String> + Send + Sync;
+/// Reads the MCP bearer token from the keychain. Async, because a keychain read
+/// can wait on the system and the server asks on every request.
+type McpTokenProvider = dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, String>> + Send>>
+    + Send
+    + Sync;
 
 pub type McpServerStatus = ServerStatus<McpServerError>;
 
@@ -90,7 +94,7 @@ impl McpServerController {
     }
 
     async fn start(&self, port: u16) -> McpServerStatus {
-        if let Err(e) = self.token_provider.as_ref()() {
+        if let Err(e) = self.token_provider.as_ref()().await {
             return self
                 .server
                 .record_error(McpServerError::TokenUnavailable { detail: e })
@@ -148,7 +152,7 @@ async fn bearer_auth(
     request: Request<Body>,
     next: Next,
 ) -> Response {
-    let expected = match state.token_provider.as_ref()() {
+    let expected = match state.token_provider.as_ref()().await {
         Ok(token) => format!("Bearer {token}"),
         Err(e) => {
             return (StatusCode::SERVICE_UNAVAILABLE, e).into_response();

@@ -374,7 +374,6 @@ impl CueFlacCaptureFixture {
             "test",
             uuid::Uuid::new_v4().to_string(),
             copy_cue_flac_fixture_with_seektable,
-            |_| Ok(()),
         )
         .await?;
         assert_eq!(

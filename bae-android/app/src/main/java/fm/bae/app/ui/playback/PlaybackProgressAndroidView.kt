@@ -14,18 +14,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
 import fm.bae.app.BaeLogger
+import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.clockText
 import fm.bae.app.currentLocale
+import fm.bae.app.performBridgeAction
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackPosition
-import fm.bae.app.runLoggedBridgeCommand
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -74,6 +76,7 @@ fun PlaybackProgressAndroidView(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val config by session.configStore.config.collectAsState()
     val showRemaining = config.showRemainingTime
     // One flow instance per (player, context, preference): the view rebinds only
@@ -104,8 +107,15 @@ fun PlaybackProgressAndroidView(
                 // Write-through: the config subscription re-renders the bar, so
                 // nothing is flipped locally.
                 onToggleRemaining = {
-                    runLoggedBridgeCommand(logger, "setShowRemainingTime") {
-                        session.appHandle.setShowRemainingTime(!showRemaining)
+                    scope.launch {
+                        performBridgeAction(
+                            logger = logger,
+                            operation = "update show-remaining-time setting",
+                            errors = LocaleErrorLines(context),
+                            showError = session.configStore::showError,
+                        ) {
+                            session.appHandle.setShowRemainingTime(!showRemaining)
+                        }
                     }
                 },
             )

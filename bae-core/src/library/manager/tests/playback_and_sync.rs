@@ -6,7 +6,7 @@ async fn discogs_operations_withheld_when_rejected() {
         .set_discogs_key(
             "f7228aaf-52b3-40ea-8526-a7e8aa0bf5da",
             DiscogsValidation::Valid,
-        )
+        ).await
         .unwrap();
 
     assert!(
@@ -15,7 +15,7 @@ async fn discogs_operations_withheld_when_rejected() {
     );
 
     manager
-        .set_discogs_validation(DiscogsValidation::Unvalidated)
+        .set_discogs_validation(DiscogsValidation::Unvalidated).await
         .unwrap();
     assert!(
         manager.discogs_available_for_test().unwrap(),
@@ -23,7 +23,7 @@ async fn discogs_operations_withheld_when_rejected() {
     );
 
     manager
-        .set_discogs_validation(DiscogsValidation::Rejected)
+        .set_discogs_validation(DiscogsValidation::Rejected).await
         .unwrap();
     assert!(
         !manager.discogs_available_for_test().unwrap(),
@@ -58,7 +58,7 @@ async fn set_and_clear_discogs_key_move_both_stores() {
     let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-atomic").await;
 
     manager
-        .set_discogs_key("the-key", DiscogsValidation::Valid)
+        .set_discogs_key("the-key", DiscogsValidation::Valid).await
         .unwrap();
     assert_eq!(manager.discogs_validation(), Some(DiscogsValidation::Valid));
     assert_eq!(
@@ -71,7 +71,7 @@ async fn set_and_clear_discogs_key_move_both_stores() {
     );
     assert!(manager.discogs_available_for_test().unwrap());
 
-    manager.clear_discogs_key().unwrap();
+    manager.clear_discogs_key().await.unwrap();
     assert_eq!(manager.discogs_validation(), None);
     assert_eq!(
         manager
@@ -94,7 +94,7 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
     // Config claims an Unvalidated key; the keyring has none — the torn state.
     manager
         .config_handle
-        .update_preferences(|prefs| prefs.discogs = Some(DiscogsValidation::Unvalidated))
+        .update_preferences(|prefs| prefs.discogs = Some(DiscogsValidation::Unvalidated)).await
         .unwrap();
 
     let handle = manager
@@ -116,20 +116,20 @@ async fn discogs_validation_signals_confirm_and_reject() {
     // A success confirms a stored Unvalidated key.
     manager
         .config_handle
-        .update_preferences(|prefs| prefs.discogs = Some(DiscogsValidation::Unvalidated))
+        .update_preferences(|prefs| prefs.discogs = Some(DiscogsValidation::Unvalidated)).await
         .unwrap();
-    manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted);
+    manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted).await;
     assert_eq!(manager.discogs_validation(), Some(DiscogsValidation::Valid));
 
     // A 401 rejects, from any prior state.
-    manager.record_discogs_validation_for_test(DiscogsKeySignal::Rejected);
+    manager.record_discogs_validation_for_test(DiscogsKeySignal::Rejected).await;
     assert_eq!(
         manager.discogs_validation(),
         Some(DiscogsValidation::Rejected)
     );
 
     // A success does NOT flip an already-Rejected key back to Valid.
-    manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted);
+    manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted).await;
     assert_eq!(
         manager.discogs_validation(),
         Some(DiscogsValidation::Rejected)
@@ -137,9 +137,9 @@ async fn discogs_validation_signals_confirm_and_reject() {
 
     // A success while already Valid is a no-op (only Unvalidated -> Valid).
     manager
-        .set_discogs_validation(DiscogsValidation::Valid)
+        .set_discogs_validation(DiscogsValidation::Valid).await
         .unwrap();
-    manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted);
+    manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted).await;
     assert_eq!(manager.discogs_validation(), Some(DiscogsValidation::Valid));
 }
 

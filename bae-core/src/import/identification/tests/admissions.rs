@@ -202,7 +202,7 @@ async fn automatic_off_leaves_the_queue_to_finish() {
     let sweep = fixture.sweep();
     wait_for_request(&fixture.provider, "/discid/", 2).await;
 
-    fixture.manager.set_identify_automatically(false).unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
 
     assert!(
         fixture.import.is_identifying(&automatic_key),
@@ -242,7 +242,7 @@ async fn a_requested_run_is_counted() {
         release_json("mb-counted", "rg-counted", &[probed, 0]),
     );
     fixture.scan(1).await;
-    fixture.manager.set_identify_automatically(false).unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
 
     let mut events = fixture.import.subscribe_events();
     fixture.start_explicit_lookup(&dir);

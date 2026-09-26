@@ -9,7 +9,7 @@ async fn automatic_lookup_off_runs_none_of_the_identification_pipeline() {
         }));
     let dir = fixture.barcode_candidate("Candidate");
     fixture.scan(1).await;
-    fixture.manager.set_identify_automatically(false).unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
 
     fixture.sweep_once().await;
 
@@ -319,7 +319,7 @@ async fn disabling_automatic_lookup_lets_what_it_queued_finish() {
 
     // A preference is not a cancel: the run the setting admitted is still
     // running after it turns off, and answers.
-    fixture.manager.set_identify_automatically(false).unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     assert!(fixture.import.is_identifying(&key));
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(20), pass)
@@ -356,7 +356,7 @@ async fn disabling_automatic_lookup_preserves_a_settled_result() {
         .await
         .expect("identification stores its settled result");
 
-    fixture.manager.set_identify_automatically(false).unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.sweep_once().await;
 
     let after = fixture
@@ -369,7 +369,7 @@ async fn disabling_automatic_lookup_preserves_a_settled_result() {
 #[tokio::test(flavor = "multi_thread")]
 async fn enabling_automatic_lookup_schedules_unresolved_candidates() {
     let fixture = Fixture::new("enable-schedules-unresolved").await;
-    fixture.manager.set_identify_automatically(false).unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     // Started while automatic identification is off, so it admits nothing
     // until the setting turns on.
     fixture.identification();
@@ -388,7 +388,7 @@ async fn enabling_automatic_lookup_schedules_unresolved_candidates() {
     fixture.scan(1).await;
     assert!(fixture.provider.requests().is_empty());
 
-    fixture.manager.set_identify_automatically(true).unwrap();
+    fixture.manager.set_identify_automatically(true).await.unwrap();
 
     tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
         .await

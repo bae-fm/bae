@@ -98,7 +98,7 @@ async fn picked_candidate(
     // preview, the stored snapshot, and what a person's pick does to the
     // draft. A draft the pre-fill already wrote would answer those questions
     // before the test asked them.
-    manager.set_prefill_with_file_metadata(false).unwrap();
+    manager.set_prefill_with_file_metadata(false).await.unwrap();
     rescan_into(manager, candidate.clone()).await;
 
     let key = folder.to_string_lossy().into_owned();

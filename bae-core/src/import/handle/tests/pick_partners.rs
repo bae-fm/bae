@@ -11,7 +11,7 @@ async fn linked_cover_gallery_can_be_empty() {
         .set_discogs_key(
             "test-discogs-token",
             crate::config::DiscogsValidation::Valid,
-        )
+        ).await
         .unwrap();
     let release_id = "70000003";
     seed_discogs_release(handle.library_manager.providers(), release_id);
@@ -57,7 +57,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         .set_discogs_key(
             "test-discogs-token",
             crate::config::DiscogsValidation::Valid,
-        )
+        ).await
         .unwrap();
 
     let discogs_release_id = "70000001";
@@ -400,7 +400,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
         .set_discogs_key(
             "test-discogs-token",
             crate::config::DiscogsValidation::Valid,
-        )
+        ).await
         .unwrap();
     let primary = "70000004";
     let partner = "refetched-partner-release";

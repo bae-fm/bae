@@ -38,9 +38,9 @@ final class Automation: Sendable, Observable {
                 try await handle.setMcpServerConfig(enabled: $0, port: port)
             },
             getMcpServerStatus: { try await handle.getMcpServerStatus() },
-            getMcpToken: { try handle.getMcpToken() },
+            getMcpToken: { try await handle.getMcpToken() },
             generateMcpToken: { handle.generateMcpToken() },
-            setMcpToken: { try handle.setMcpToken(token: $0) }
+            setMcpToken: { try await handle.setMcpToken(token: $0) }
         )
     }
 }

@@ -195,7 +195,7 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
         applies_to_release: false,
         embed_cover: true,
     });
-    f.mgr.set_save_presets(presets).unwrap();
+    f.mgr.set_save_presets(presets).await.unwrap();
 
     let title_only = f
         .mgr
@@ -312,7 +312,7 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
     };
     let mut presets = f.mgr.save_presets();
     presets.push(image_preset.clone());
-    f.mgr.set_save_presets(presets).unwrap();
+    f.mgr.set_save_presets(presets).await.unwrap();
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
@@ -426,7 +426,7 @@ async fn peak_sources_open_saving(
 ) -> usize {
     let mut presets = f.mgr.save_presets();
     presets.push(preset.clone());
-    f.mgr.set_save_presets(presets).unwrap();
+    f.mgr.set_save_presets(presets).await.unwrap();
     let target = f.temp_path().join(format!("export-{}", preset.id));
     fs::create_dir_all(&target).unwrap();
 

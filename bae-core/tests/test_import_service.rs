@@ -56,7 +56,7 @@ impl ImportFixture {
         )
         .await;
         let ids: Arc<dyn coven::IdProvider> = Arc::new(coven::UuidProvider);
-        support::configure_test_discogs(&library_manager);
+        support::configure_test_discogs(&library_manager).await;
 
         let handle = library_manager
             .start_import_service(tokio::runtime::Handle::current())

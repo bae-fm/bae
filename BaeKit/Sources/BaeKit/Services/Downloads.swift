@@ -28,7 +28,8 @@ public final class Downloads: Sendable, Observable {
     /// config write, unlike the runtime pause/cancel controls: it throws on an
     /// out-of-range value or a failed write, so the picker can snap back. Takes
     /// effect the next time the library's coven handle opens.
-    public let setMaxConcurrentDownloads: @Sendable (_ n: UInt32) throws -> Void
+    public let setMaxConcurrentDownloads:
+        @Sendable (_ n: UInt32) async throws -> Void
 
     public init(
         queuePins: @escaping @Sendable ([String]) async throws -> Void = { _ in
@@ -39,7 +40,8 @@ public final class Downloads: Sendable, Observable {
         setDownloadsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
         cancelDownload: @escaping @Sendable (String) -> Void = { _ in },
         retryDownloads: @escaping @Sendable () -> Void = {},
-        setMaxConcurrentDownloads: @escaping @Sendable (UInt32) throws -> Void =
+        setMaxConcurrentDownloads:
+            @escaping @Sendable (UInt32) async throws -> Void =
             {
                 _ in
             }
@@ -60,7 +62,7 @@ public final class Downloads: Sendable, Observable {
             cancelDownload: { handle.cancelDownload(releaseId: $0) },
             retryDownloads: { handle.retryDownloads() },
             setMaxConcurrentDownloads: {
-                try handle.setMaxConcurrentDownloads(n: $0)
+                try await handle.setMaxConcurrentDownloads(n: $0)
             }
         )
     }

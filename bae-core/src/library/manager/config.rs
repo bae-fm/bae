@@ -13,8 +13,10 @@ use super::*;
 macro_rules! pref_setter {
     ($(#[$doc:meta])* $name:ident, $field:ident: $ty:ty) => {
         $(#[$doc])*
-        pub fn $name(&self, value: $ty) -> Result<(), crate::config::ConfigError> {
-            self.config_handle.update_preferences(|prefs| prefs.$field = value)
+        pub async fn $name(&self, value: $ty) -> Result<(), crate::config::ConfigError> {
+            self.config_handle
+                .update_preferences(move |prefs| prefs.$field = value)
+                .await
         }
     };
 }
@@ -77,7 +79,7 @@ impl LibraryManager {
     /// Writes the preference only. Re-laying live runs and searches over the
     /// new list is [`AppServices::set_metadata_source_enabled`](crate::library::AppServices::set_metadata_source_enabled)'s
     /// job — this layer owns config and knows nothing about what is running.
-    pub fn set_metadata_source_enabled(
+    pub async fn set_metadata_source_enabled(
         &self,
         source: crate::import::Catalog,
         enabled: bool,
@@ -89,7 +91,8 @@ impl LibraryManager {
             )));
         }
         self.config_handle
-            .update_preferences(|prefs| prefs.metadata_sources.set(source, enabled))
+            .update_preferences(move |prefs| prefs.metadata_sources.set(source, enabled))
+            .await
     }
 
     pref_setter!(
@@ -110,20 +113,28 @@ impl LibraryManager {
     /// 1..=[`MAX_CONCURRENT_TRANSFERS`](crate::config::MAX_CONCURRENT_TRANSFERS):
     /// zero would leave the drain admitting nothing. Durable in the config and
     /// applied to the open store at once: the next drain pass runs under it.
-    pub fn set_max_concurrent_uploads(&self, n: u32) -> Result<(), crate::config::ConfigError> {
+    pub async fn set_max_concurrent_uploads(
+        &self,
+        n: u32,
+    ) -> Result<(), crate::config::ConfigError> {
         let n = crate::config::validate_concurrency(n)?;
         self.config_handle
-            .update_preferences(|prefs| prefs.max_concurrent_uploads = n)?;
+            .update_preferences(move |prefs| prefs.max_concurrent_uploads = n)
+            .await?;
         self.apply_transfer_limits();
         Ok(())
     }
 
     /// How many blob downloads a pin fetches at once. Same bounds and
     /// application as [`Self::set_max_concurrent_uploads`].
-    pub fn set_max_concurrent_downloads(&self, n: u32) -> Result<(), crate::config::ConfigError> {
+    pub async fn set_max_concurrent_downloads(
+        &self,
+        n: u32,
+    ) -> Result<(), crate::config::ConfigError> {
         let n = crate::config::validate_concurrency(n)?;
         self.config_handle
-            .update_preferences(|prefs| prefs.max_concurrent_downloads = n)?;
+            .update_preferences(move |prefs| prefs.max_concurrent_downloads = n)
+            .await?;
         self.apply_transfer_limits();
         Ok(())
     }
@@ -148,7 +159,7 @@ impl LibraryManager {
         self.config_handle.config().prefs.save_presets.clone()
     }
 
-    pub fn set_save_presets(
+    pub async fn set_save_presets(
         &self,
         presets: Vec<crate::config::SavePreset>,
     ) -> Result<(), crate::config::ConfigError> {
@@ -176,10 +187,11 @@ impl LibraryManager {
         Self::validate_default_save_preset(&default_track, &presets, true)?;
         Self::validate_default_save_preset(&default_release, &presets, false)?;
         self.config_handle
-            .update_preferences(|prefs| prefs.save_presets = presets)
+            .update_preferences(move |prefs| prefs.save_presets = presets)
+            .await
     }
 
-    pub fn set_default_track_save_preset(
+    pub async fn set_default_track_save_preset(
         &self,
         preset_id: String,
     ) -> Result<(), crate::config::ConfigError> {
@@ -189,10 +201,11 @@ impl LibraryManager {
             true,
         )?;
         self.config_handle
-            .update_preferences(|prefs| prefs.default_track_save_preset = preset_id)
+            .update_preferences(move |prefs| prefs.default_track_save_preset = preset_id)
+            .await
     }
 
-    pub fn set_default_release_save_preset(
+    pub async fn set_default_release_save_preset(
         &self,
         preset_id: String,
     ) -> Result<(), crate::config::ConfigError> {
@@ -202,7 +215,8 @@ impl LibraryManager {
             false,
         )?;
         self.config_handle
-            .update_preferences(|prefs| prefs.default_release_save_preset = preset_id)
+            .update_preferences(move |prefs| prefs.default_release_save_preset = preset_id)
+            .await
     }
 
     /// A save default must name a preset that exists and applies to its level
@@ -235,55 +249,80 @@ impl LibraryManager {
     /// Set the local MCP server config. Port 0 means "ask the OS for any port",
     /// which would make the configured endpoint false, so reject it before
     /// persisting.
-    pub fn set_mcp_config(
+    pub async fn set_mcp_config(
         &self,
         config: crate::config::McpConfig,
     ) -> Result<(), crate::config::ConfigError> {
         config.validate()?;
         self.config_handle
-            .update_preferences(|prefs| prefs.mcp = config)
+            .update_preferences(move |prefs| prefs.mcp = config)
+            .await
     }
 
-    pub fn get_mcp_token(&self) -> Result<Option<String>, LibraryError> {
-        Ok(self.database.host_secret(crate::keys::MCP_BEARER_TOKEN)?)
+    /// The MCP bearer token, read from the keychain on a blocking thread.
+    pub async fn get_mcp_token(&self) -> Result<Option<String>, LibraryError> {
+        self.host_secret(crate::keys::MCP_BEARER_TOKEN).await
     }
 
-    pub fn ensure_mcp_token(&self) -> Result<String, LibraryError> {
-        match self.get_mcp_token()? {
+    /// The MCP bearer token, generated and stored the first time it is asked
+    /// for.
+    pub async fn ensure_mcp_token(&self) -> Result<String, LibraryError> {
+        match self.get_mcp_token().await? {
             Some(token) => Ok(token),
             None => {
                 let token = super::generate_mcp_token();
-                self.set_mcp_token(token.clone())?;
+                self.set_mcp_token(token.clone()).await?;
                 Ok(token)
             }
         }
     }
 
-    pub fn set_mcp_token(&self, token: String) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .set_host_secret(crate::keys::MCP_BEARER_TOKEN, &token)?)
+    pub async fn set_mcp_token(&self, token: String) -> Result<(), LibraryError> {
+        self.set_host_secret(crate::keys::MCP_BEARER_TOKEN, token)
+            .await
     }
 
     /// Set the Subsonic server config. Rejects `port == 0` (no real endpoint)
     /// and an enabled server with no username (it could authenticate no one)
     /// before persisting.
-    pub fn set_subsonic_config(
+    pub async fn set_subsonic_config(
         &self,
         config: crate::config::SubsonicConfig,
     ) -> Result<(), crate::config::ConfigError> {
         config.validate()?;
         self.config_handle
-            .update_preferences(|prefs| prefs.subsonic = config)
+            .update_preferences(move |prefs| prefs.subsonic = config)
+            .await
     }
 
-    pub fn get_subsonic_password(&self) -> Result<Option<String>, LibraryError> {
-        Ok(self.database.host_secret(crate::keys::SUBSONIC_PASSWORD)?)
+    pub async fn get_subsonic_password(&self) -> Result<Option<String>, LibraryError> {
+        self.host_secret(crate::keys::SUBSONIC_PASSWORD).await
     }
 
-    pub fn set_subsonic_password(&self, password: String) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .set_host_secret(crate::keys::SUBSONIC_PASSWORD, &password)?)
+    pub async fn set_subsonic_password(&self, password: String) -> Result<(), LibraryError> {
+        self.set_host_secret(crate::keys::SUBSONIC_PASSWORD, password)
+            .await
+    }
+
+    /// A host secret, read from the keychain on a blocking thread: a keychain
+    /// call can wait on the system, and on a prompt.
+    pub(super) async fn host_secret(
+        &self,
+        name: &'static str,
+    ) -> Result<Option<String>, LibraryError> {
+        let database = self.database.clone();
+        match tokio::task::spawn_blocking(move || database.host_secret(name)).await {
+            Ok(secret) => Ok(secret?),
+            Err(error) => std::panic::resume_unwind(error.into_panic()),
+        }
+    }
+
+    /// Store a host secret in the keychain on a blocking thread.
+    async fn set_host_secret(&self, name: &'static str, value: String) -> Result<(), LibraryError> {
+        let database = self.database.clone();
+        match tokio::task::spawn_blocking(move || database.set_host_secret(name, &value)).await {
+            Ok(stored) => Ok(stored?),
+            Err(error) => std::panic::resume_unwind(error.into_panic()),
+        }
     }
 }

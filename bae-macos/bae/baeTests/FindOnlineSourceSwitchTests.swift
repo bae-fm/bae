@@ -18,12 +18,12 @@ struct FindOnlineSourceSwitchTests {
     /// Absolute, not a flip, so two windows disagreeing cannot leave the
     /// setting inverted.
     @Test("the write carries the source and the value it is being set to")
-    func theWriteCarriesTheValueItIsSetTo() throws {
+    func theWriteCarriesTheValueItIsSetTo() async throws {
         let recorder = SourceSwitchRecorder()
         let importer = recorder.importer
 
-        try importer.setMetadataSourceEnabled(.discogs, false)
-        try importer.setMetadataSourceEnabled(.musicBrainz, true)
+        try await importer.setMetadataSourceEnabled(.discogs, false)
+        try await importer.setMetadataSourceEnabled(.musicBrainz, true)
 
         #expect(recorder.writes.map(\.source) == [.discogs, .musicBrainz])
         #expect(recorder.writes.map(\.enabled) == [false, true])
@@ -32,12 +32,15 @@ struct FindOnlineSourceSwitchTests {
     /// A refusal from core reaches the surface, which is what puts the checkbox
     /// back where it was and shows the reason.
     @Test("a refused write is thrown, not swallowed")
-    func aRefusedWriteIsThrown() {
+    func aRefusedWriteIsThrown() async {
         let recorder = SourceSwitchRecorder()
         recorder.refusal = StubError.notImplemented
 
-        #expect(throws: StubError.self) {
-            try recorder.importer.setMetadataSourceEnabled(.discogs, false)
+        await #expect(throws: StubError.self) {
+            try await recorder.importer.setMetadataSourceEnabled(
+                .discogs,
+                false
+            )
         }
     }
 

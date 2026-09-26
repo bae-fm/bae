@@ -128,7 +128,6 @@ static MULTI_WINDOW_TEMPLATE: std::sync::LazyLock<MultiWindowTemplate> =
                 "multi-window-template",
                 import_ids.new_id(),
                 generate_multi_window_cue_flac_files,
-                |_| Ok(()),
             )
             .await
             .expect("import the multi-window template release");
@@ -746,7 +745,6 @@ async fn stopping_playback_closes_the_files_it_streamed() {
         |album_dir| {
             let _track_data = generate_test_flac_files(album_dir);
         },
-        |_| Ok(()),
     )
     .await
     .expect("import the release to play");

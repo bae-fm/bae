@@ -262,11 +262,13 @@ struct SettingsView: View {
     }
 
     private func setCastEnabled(_ enabled: Bool) {
-        do {
-            try cast.setEnabled(enabled)
-        }
-        catch {
-            configStore.showError(error)
+        Task {
+            do {
+                try await cast.setEnabled(enabled)
+            }
+            catch {
+                configStore.showError(error)
+            }
         }
     }
 }

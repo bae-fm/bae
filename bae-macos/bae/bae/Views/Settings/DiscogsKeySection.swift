@@ -42,7 +42,7 @@ struct DiscogsKeySection: View {
             onRemove: { removeToken() },
         )
         .task {
-            seedDraftFromStoredKey()
+            await seedDraftFromStoredKey()
             // Core no-ops unless the stored key is `Unvalidated`, so call
             // unconditionally rather than inspecting the status here.
             revalidate()
@@ -52,12 +52,13 @@ struct DiscogsKeySection: View {
 
     /// Form-state seeding: render the stored key into the editable draft when a
     /// key is configured. The empty string is the input's "no value".
-    private func seedDraftFromStoredKey() {
+    /// The keychain read is awaited off the main thread.
+    private func seedDraftFromStoredKey() async {
         guard configStore.config.discogsTokenStatus != .notConfigured else {
             return
         }
         do {
-            if let stored = try discogs.getDiscogsToken() {
+            if let stored = try await discogs.getDiscogsToken() {
                 draft = stored
             }
             else {
@@ -133,13 +134,17 @@ struct DiscogsKeySection: View {
     private func removeToken() {
         saveError = nil
         readError = nil
-        do {
-            try discogs.removeDiscogsToken()
-            draft = ""
-        }
-        catch {
-            saveError = error.displayLine.map { line in
-                String(localized: "Couldn't remove the Discogs key: \(line)")
+        Task {
+            do {
+                try await discogs.removeDiscogsToken()
+                draft = ""
+            }
+            catch {
+                saveError = error.displayLine.map { line in
+                    String(
+                        localized: "Couldn't remove the Discogs key: \(line)"
+                    )
+                }
             }
         }
     }

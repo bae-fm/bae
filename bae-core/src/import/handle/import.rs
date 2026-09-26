@@ -383,11 +383,11 @@ impl ImportServiceHandle {
                 .await,
         ) {
             DiscogsValidation::Valid => {
-                self.persist_discogs_key(token, DiscogsValidation::Valid)?;
+                self.persist_discogs_key(token, DiscogsValidation::Valid).await?;
                 Ok(DiscogsSaveOutcome::Valid)
             }
             DiscogsValidation::Unvalidated => {
-                self.persist_discogs_key(token, DiscogsValidation::Unvalidated)?;
+                self.persist_discogs_key(token, DiscogsValidation::Unvalidated).await?;
                 Ok(DiscogsSaveOutcome::Unvalidated)
             }
             DiscogsValidation::Rejected => Ok(DiscogsSaveOutcome::Rejected),
@@ -397,13 +397,14 @@ impl ImportServiceHandle {
     /// Write the key to the keyring and record its validation in config, as one
     /// atomic operation. The shared persist path for the two outcomes that keep
     /// the key.
-    fn persist_discogs_key(
+    async fn persist_discogs_key(
         &self,
         token: &str,
         validation: crate::config::DiscogsValidation,
     ) -> Result<(), crate::import::ImportError> {
         self.library_manager
             .set_discogs_key(token, validation)
+            .await
             .map_err(|e| crate::import::ImportError::Config {
                 detail: e.to_string(),
             })
@@ -427,9 +428,10 @@ impl ImportServiceHandle {
 
     /// Remove the Discogs API token from the OS keyring and clear the
     /// stored-key hint.
-    pub fn remove_discogs_token(&self) -> Result<(), crate::import::ImportError> {
+    pub async fn remove_discogs_token(&self) -> Result<(), crate::import::ImportError> {
         self.library_manager
             .clear_discogs_key()
+            .await
             .map_err(|e| crate::import::ImportError::Config {
                 detail: e.to_string(),
             })

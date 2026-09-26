@@ -114,23 +114,33 @@ impl DiscogsSession {
 
 /// Fold one Discogs call's outcome into the stored key's validation: a 401
 /// rejects it, and a success confirms a key nothing had confirmed yet.
+/// Blocking — it persists the change — so the client's observer runs it on a
+/// blocking thread.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn record_discogs_validation_signal(config_handle: &ConfigHandle, signal: DiscogsKeySignal) {
-    let Some(current) = config_handle.config().prefs.discogs else {
-        debug!("discogs validation signal ignored: no key stored");
+    let next_of = |current: Option<DiscogsValidation>| match (current, &signal) {
+        (None, _) => None,
+        (Some(_), DiscogsKeySignal::Rejected) => Some(DiscogsValidation::Rejected),
+        (Some(DiscogsValidation::Unvalidated), DiscogsKeySignal::Accepted) => {
+            Some(DiscogsValidation::Valid)
+        }
+        (Some(_), DiscogsKeySignal::Accepted) => None,
+    };
+    let current = config_handle.config().prefs.discogs;
+    let Some(next) = next_of(current) else {
+        debug!("discogs validation signal changes nothing");
         return;
     };
-    let next = match signal {
-        DiscogsKeySignal::Rejected => DiscogsValidation::Rejected,
-        DiscogsKeySignal::Accepted if current == DiscogsValidation::Unvalidated => {
-            DiscogsValidation::Valid
-        }
-        _ => return,
-    };
-    if current == next {
+    if current == Some(next) {
         return;
     }
-    if let Err(error) = config_handle.update_preferences(|prefs| prefs.discogs = Some(next)) {
+    // Re-decided under the writer lock against the value it edits, so a
+    // signal racing a key change applies to the key it finds.
+    if let Err(error) = config_handle.update_preferences_now(|prefs| {
+        if let Some(next) = next_of(prefs.discogs) {
+            prefs.discogs = Some(next);
+        }
+    }) {
         warn!("failed to persist discogs validation {next:?}: {error}");
     }
 }
@@ -158,59 +168,74 @@ pub(crate) fn discogs_validation_from_result(
 }
 
 impl LibraryManager {
-    pub fn get_discogs_token(&self) -> Result<Option<String>, LibraryError> {
-        Ok(self.database.host_secret(crate::keys::DISCOGS_API_KEY)?)
+    pub async fn get_discogs_token(&self) -> Result<Option<String>, LibraryError> {
+        self.host_secret(crate::keys::DISCOGS_API_KEY).await
     }
 
     /// Store the keyring bytes before recording the config state. A failure
     /// between those writes leaves Discogs disabled until the caller retries;
-    /// config never claims a key that the keyring lacks.
-    pub fn set_discogs_key(
+    /// config never claims a key that the keyring lacks. Both writes block,
+    /// so they run on a blocking thread.
+    pub async fn set_discogs_key(
         &self,
         token: &str,
         validation: DiscogsValidation,
     ) -> Result<(), LibraryError> {
-        // Held across the writes, so no call builds a client from a key
-        // halfway through being replaced.
+        let database = self.database.clone();
+        let config_handle = Arc::clone(&self.config_handle);
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let mut client = self.discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
-        self.database
-            .set_host_secret(crate::keys::DISCOGS_API_KEY, token)?;
-        // The cached client asks with the key just replaced.
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        {
-            *client = None;
-        }
-        self.config_handle
-            .update_preferences(|prefs| prefs.discogs = Some(validation))?;
-        Ok(())
+        let discogs_client = Arc::clone(&self.discogs_client);
+        let token = token.to_string();
+        blocking(move || {
+            // Held across the writes, so no call builds a client from a key
+            // halfway through being replaced.
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            let mut client = discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
+            database.set_host_secret(crate::keys::DISCOGS_API_KEY, &token)?;
+            // The cached client asks with the key just replaced.
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            {
+                *client = None;
+            }
+            config_handle.update_preferences_now(|prefs| prefs.discogs = Some(validation))?;
+            Ok(())
+        })
+        .await
     }
 
     /// Clear the config state before deleting the keyring bytes, so a failure
     /// between the writes leaves Discogs disabled rather than half-enabled.
-    pub fn clear_discogs_key(&self) -> Result<(), LibraryError> {
+    pub async fn clear_discogs_key(&self) -> Result<(), LibraryError> {
+        let database = self.database.clone();
+        let config_handle = Arc::clone(&self.config_handle);
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let mut client = self.discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
-        self.config_handle
-            .update_preferences(|prefs| prefs.discogs = None)?;
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        {
-            *client = None;
-        }
-        self.database
-            .delete_host_secret(crate::keys::DISCOGS_API_KEY)?;
-        Ok(())
+        let discogs_client = Arc::clone(&self.discogs_client);
+        blocking(move || {
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            let mut client = discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
+            config_handle.update_preferences_now(|prefs| prefs.discogs = None)?;
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            {
+                *client = None;
+            }
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            database.delete_host_secret(crate::keys::DISCOGS_API_KEY)?;
+            Ok(())
+        })
+        .await
     }
 
-    pub fn set_discogs_validation(
+    pub async fn set_discogs_validation(
         &self,
         validation: DiscogsValidation,
     ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle.update_preferences(|prefs| {
-            if prefs.discogs.is_some() {
-                prefs.discogs = Some(validation);
-            }
-        })
+        self.config_handle
+            .update_preferences(move |prefs| {
+                if prefs.discogs.is_some() {
+                    prefs.discogs = Some(validation);
+                }
+            })
+            .await
     }
 
     pub fn discogs_validation(&self) -> Option<DiscogsValidation> {
@@ -357,7 +382,7 @@ impl LibraryManager {
             return Ok(());
         }
         let validation = self.discogs_session()?.validate().await?;
-        self.set_discogs_validation(validation)?;
+        self.set_discogs_validation(validation).await?;
         Ok(())
     }
 
@@ -367,8 +392,14 @@ impl LibraryManager {
     }
 
     #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
-    pub(super) fn record_discogs_validation_for_test(&self, signal: DiscogsKeySignal) {
-        record_discogs_validation_signal(&self.config_handle, signal);
+    pub(super) async fn record_discogs_validation_for_test(&self, signal: DiscogsKeySignal) {
+        let config_handle = Arc::clone(&self.config_handle);
+        blocking(move || {
+            record_discogs_validation_signal(&config_handle, signal);
+            Ok(())
+        })
+        .await
+        .expect("recording a validation signal does not fail");
     }
 
     /// Discogs as this library may ask it right now. No client while no key is
@@ -405,8 +436,14 @@ impl LibraryManager {
         }
         if cached.is_none() {
             let config_handle = Arc::clone(&self.config_handle);
+            // The client reports from its request path; persisting the
+            // signal is a file write, so it goes to a blocking thread, and a
+            // failure to persist is logged there.
             let observer = Arc::new(move |signal| {
-                record_discogs_validation_signal(&config_handle, signal);
+                let config_handle = Arc::clone(&config_handle);
+                tokio::task::spawn_blocking(move || {
+                    record_discogs_validation_signal(&config_handle, signal);
+                });
             });
             *cached = self
                 .database
@@ -431,5 +468,15 @@ impl LibraryManager {
             .discogs_client(key.to_string(), None)
             .validate_token(priority)
             .await
+    }
+}
+
+/// Run keychain and config writes on a blocking thread.
+async fn blocking(
+    work: impl FnOnce() -> Result<(), LibraryError> + Send + 'static,
+) -> Result<(), LibraryError> {
+    match tokio::task::spawn_blocking(work).await {
+        Ok(result) => result,
+        Err(error) => std::panic::resume_unwind(error.into_panic()),
     }
 }

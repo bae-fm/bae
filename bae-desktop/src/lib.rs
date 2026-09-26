@@ -37,7 +37,15 @@ impl DesktopServices {
         let token_manager = services.clone();
         let controller = McpServerController::new(
             automation,
-            Arc::new(move || token_manager.ensure_mcp_token().map_err(|e| e.to_string())),
+            Arc::new(move || {
+                let token_manager = token_manager.clone();
+                Box::pin(async move {
+                    token_manager
+                        .ensure_mcp_token()
+                        .await
+                        .map_err(|e| e.to_string())
+                })
+            }),
         );
         let initial = services.get_config().prefs.mcp;
         controller.apply_config(initial).await;
@@ -49,9 +57,13 @@ impl DesktopServices {
         let subsonic_controller = SubsonicServerController::new(
             services.clone(),
             Arc::new(move || {
-                password_manager
-                    .get_subsonic_password()
-                    .map_err(|e| e.to_string())
+                let password_manager = password_manager.clone();
+                Box::pin(async move {
+                    password_manager
+                        .get_subsonic_password()
+                        .await
+                        .map_err(|e| e.to_string())
+                })
             }),
         );
         let initial_subsonic = services.get_config().prefs.subsonic;
@@ -134,6 +146,7 @@ impl DesktopServices {
     ) -> Result<(), DesktopConfigError<SubsonicServerError>> {
         self.services
             .set_subsonic_password(password.to_string())
+            .await
             .map_err(|e| DesktopConfigError::Config(ConfigError::Config(e.to_string())))?;
         let config = self.services.get_config().prefs.subsonic;
         if let SubsonicServerStatus::Error { error } =
@@ -157,24 +170,25 @@ impl DesktopServices {
 /// both the server and the stored config on `previous` — no half-applied
 /// change. A free function so the rollback contract is testable against a bare
 /// controller + manager, without a full app bootstrap.
-async fn apply_service_config<C, E, F>(
+async fn apply_service_config<C, E, F, P>(
     label: &str,
     config: C,
     previous: C,
     apply: impl Fn(C) -> F,
-    persist: impl FnOnce(C) -> Result<(), ConfigError>,
+    persist: impl FnOnce(C) -> P,
 ) -> Result<(), DesktopConfigError<E>>
 where
     C: Clone,
     E: ServerError,
     F: std::future::Future<Output = ServerStatus<E>>,
+    P: std::future::Future<Output = Result<(), ConfigError>>,
 {
     if let ServerStatus::Error { error } = apply(config.clone()).await {
         apply(previous).await;
         return Err(DesktopConfigError::Server(error));
     }
 
-    match persist(config) {
+    match persist(config).await {
         Ok(()) => Ok(()),
         Err(error) => {
             if let ServerStatus::Error {
@@ -232,17 +246,21 @@ mod tests {
     #[test]
     fn set_subsonic_config_rolls_back_persisted_config_on_runtime_error() {
         let (runtime, services, _tmp) = support::runtime_with_services();
-        services
-            .set_subsonic_password("s3cret".to_string())
+        runtime
+            .block_on(services.set_subsonic_password("s3cret".to_string()))
             .expect("seed keyring password");
 
         let password_services = services.clone();
         let controller = SubsonicServerController::new(
             services.clone(),
             Arc::new(move || {
-                password_services
-                    .get_subsonic_password()
-                    .map_err(|e| e.to_string())
+                let password_services = password_services.clone();
+                Box::pin(async move {
+                    password_services
+                        .get_subsonic_password()
+                        .await
+                        .map_err(|e| e.to_string())
+                })
             }),
         );
 

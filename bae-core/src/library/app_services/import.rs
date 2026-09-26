@@ -31,7 +31,7 @@ impl AppServices {
     delegate_async!(import, import_merge_candidate_artist_identity_conflict => merge_candidate_artist_identity_conflict(candidate_key: &str, surviving_artist_id: &str) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<crate::import::DiscogsSaveOutcome, crate::import::ImportError>);
     delegate_async!(import, import_revalidate_discogs_token => revalidate_discogs_token() -> Result<(), crate::import::ImportError>);
-    delegate_sync!(import, import_remove_discogs_token => remove_discogs_token() -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_remove_discogs_token => remove_discogs_token() -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_select_candidate_metadata_provenance => select_candidate_metadata_provenance(candidate_key: String, provenance: crate::import::MetadataProvenance) -> Result<u64, crate::import::ImportError>);
     delegate_async!(import, import_reset_candidate_setup => reset_candidate_setup(candidate_key: &str) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_clear_candidate_metadata => clear_candidate_metadata(candidate_key: String) -> Result<u64, crate::import::ImportError>);

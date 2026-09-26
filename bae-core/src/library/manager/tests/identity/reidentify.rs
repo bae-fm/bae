@@ -649,7 +649,7 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
         .set_discogs_key(
             "test-discogs-token",
             crate::config::DiscogsValidation::Valid,
-        )
+        ).await
         .unwrap();
 
     let album = create_test_album();

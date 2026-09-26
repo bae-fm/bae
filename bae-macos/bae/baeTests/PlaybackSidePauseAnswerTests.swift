@@ -70,9 +70,9 @@ struct PlaybackSidePauseAnswerTests {
     }
 
     @Test("Close with the box checked only stops the countdown")
-    func closeCheckedOnlyStopsTheCountdown() throws {
+    func closeCheckedOnlyStopsTheCountdown() async throws {
         let sent = Sent()
-        try Self.playback(sent)
+        try await Self.playback(sent)
             .answerSidePausePrompt(keepPausing: true, play: false)
         #expect(sent.snapshot.writes.isEmpty)
         #expect(sent.snapshot.resumes == 0)
@@ -80,9 +80,9 @@ struct PlaybackSidePauseAnswerTests {
     }
 
     @Test("Play with the box checked only resumes")
-    func playCheckedOnlyResumes() throws {
+    func playCheckedOnlyResumes() async throws {
         let sent = Sent()
-        try Self.playback(sent)
+        try await Self.playback(sent)
             .answerSidePausePrompt(keepPausing: true, play: true)
         #expect(sent.snapshot.writes.isEmpty)
         #expect(sent.snapshot.resumes == 1)
@@ -92,9 +92,9 @@ struct PlaybackSidePauseAnswerTests {
     @Test(
         "Close with the box unchecked turns the setting off and stops the countdown"
     )
-    func closeUncheckedTurnsSettingOff() throws {
+    func closeUncheckedTurnsSettingOff() async throws {
         let sent = Sent()
-        try Self.playback(sent)
+        try await Self.playback(sent)
             .answerSidePausePrompt(keepPausing: false, play: false)
         #expect(sent.snapshot.writes == [false])
         #expect(sent.snapshot.resumes == 0)
@@ -102,9 +102,9 @@ struct PlaybackSidePauseAnswerTests {
     }
 
     @Test("Play with the box unchecked turns the setting off and resumes")
-    func playUncheckedTurnsSettingOffAndResumes() throws {
+    func playUncheckedTurnsSettingOffAndResumes() async throws {
         let sent = Sent()
-        try Self.playback(sent)
+        try await Self.playback(sent)
             .answerSidePausePrompt(keepPausing: false, play: true)
         #expect(sent.snapshot.writes == [false])
         #expect(sent.snapshot.resumes == 1)
@@ -112,10 +112,10 @@ struct PlaybackSidePauseAnswerTests {
     }
 
     @Test("a failed write still resumes, then throws")
-    func failedWriteStillResumes() {
+    func failedWriteStillResumes() async {
         let sent = Sent()
-        #expect(throws: WriteFailed.self) {
-            try Self.playback(sent, writeFails: true)
+        await #expect(throws: WriteFailed.self) {
+            try await Self.playback(sent, writeFails: true)
                 .answerSidePausePrompt(keepPausing: false, play: true)
         }
         #expect(sent.snapshot.resumes == 1)

@@ -5,7 +5,7 @@ async fn regrouping_disc_folders_probes_each_audio_file_once() {
     let test = setup_import_service().await;
     test.service
         .library_manager
-        .set_prefill_with_file_metadata(false)
+        .set_prefill_with_file_metadata(false).await
         .unwrap();
     let root = test.temp.path().join("watched");
     let album = root.join("Album");

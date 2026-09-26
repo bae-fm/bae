@@ -324,7 +324,7 @@ const PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT: &str = "012 345 678901 2";
 #[tokio::test(flavor = "multi_thread")]
 async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
     let fixture = Fixture::new("paired-settle").await;
-    fixture.use_discogs();
+    fixture.use_discogs().await;
     fixture
         .import
         .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
@@ -416,7 +416,7 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
     let fixture = Fixture::new("disc-id-partner").await;
-    fixture.use_discogs();
+    fixture.use_discogs().await;
     fixture
         .import
         .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
@@ -513,7 +513,7 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
 #[tokio::test(flavor = "multi_thread")]
 async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
     let fixture = Fixture::new("evidence-lead").await;
-    fixture.use_discogs();
+    fixture.use_discogs().await;
     fixture
         .import
         .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {

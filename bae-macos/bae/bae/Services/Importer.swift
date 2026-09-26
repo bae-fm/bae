@@ -102,10 +102,12 @@ private struct ImportOperations: Sendable {
     let importReady: @Sendable (ImportCommitRequest) async throws -> Void
     let mergeCandidateArtistIdentityConflict:
         @Sendable (String, String) async throws -> Void
-    let setIdentifyAutomatically: @MainActor @Sendable (Bool) throws -> Void
-    let setPrefillWithFileMetadata: @MainActor @Sendable (Bool) throws -> Void
+    let setIdentifyAutomatically:
+        @MainActor @Sendable (Bool) async throws -> Void
+    let setPrefillWithFileMetadata:
+        @MainActor @Sendable (Bool) async throws -> Void
     let setMetadataSourceEnabled:
-        @MainActor @Sendable (BridgeCatalog, Bool) throws -> Void
+        @MainActor @Sendable (BridgeCatalog, Bool) async throws -> Void
 }
 
 extension ImportOperations {
@@ -298,13 +300,16 @@ extension ImportOperations {
                 )
             },
             setIdentifyAutomatically: {
-                try handle.setIdentifyAutomatically(enabled: $0)
+                try await handle.setIdentifyAutomatically(enabled: $0)
             },
             setPrefillWithFileMetadata: {
-                try handle.setPrefillWithFileMetadata(enabled: $0)
+                try await handle.setPrefillWithFileMetadata(enabled: $0)
             },
             setMetadataSourceEnabled: {
-                try handle.setMetadataSourceEnabled(source: $0, enabled: $1)
+                try await handle.setMetadataSourceEnabled(
+                    source: $0,
+                    enabled: $1
+                )
             }
         )
     }
@@ -454,13 +459,15 @@ final class Importer: Sendable, Observable {
                 _ in
             },
         setIdentifyAutomatically:
-            @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
+            @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
+            },
         setPrefillWithFileMetadata:
-            @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
+            @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
+            },
         setMetadataSourceEnabled:
             @escaping @MainActor @Sendable (
                 BridgeCatalog, Bool
-            ) throws -> Void = { _, _ in }
+            ) async throws -> Void = { _, _ in }
     ) {
         operations = ImportOperations(
             candidateSourceFolders: candidateSourceFolders,
@@ -759,13 +766,13 @@ extension Importer {
     }
 
     @MainActor
-    func setIdentifyAutomatically(_ enabled: Bool) throws {
-        try operations.setIdentifyAutomatically(enabled)
+    func setIdentifyAutomatically(_ enabled: Bool) async throws {
+        try await operations.setIdentifyAutomatically(enabled)
     }
 
     @MainActor
-    func setPrefillWithFileMetadata(_ enabled: Bool) throws {
-        try operations.setPrefillWithFileMetadata(enabled)
+    func setPrefillWithFileMetadata(_ enabled: Bool) async throws {
+        try await operations.setPrefillWithFileMetadata(enabled)
     }
 
     /// Ask, or stop asking, one metadata source — the same write behind the
@@ -775,8 +782,8 @@ extension Importer {
     func setMetadataSourceEnabled(
         _ source: BridgeCatalog,
         _ enabled: Bool
-    ) throws {
-        try operations.setMetadataSourceEnabled(source, enabled)
+    ) async throws {
+        try await operations.setMetadataSourceEnabled(source, enabled)
     }
 
     convenience init(handle: any AppHandleProtocol) {

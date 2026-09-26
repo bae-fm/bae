@@ -159,14 +159,17 @@ private struct SidePausePromptCard: View {
 
     private func answer(play: Bool) {
         playbackStore.dismissSidePausePrompt(prompt)
-        do {
-            try playback.answerSidePausePrompt(
-                keepPausing: keepPausing,
-                play: play
-            )
-        }
-        catch {
-            showError(error)
+        let keepPausing = keepPausing
+        Task {
+            do {
+                try await playback.answerSidePausePrompt(
+                    keepPausing: keepPausing,
+                    play: play
+                )
+            }
+            catch {
+                showError(error)
+            }
         }
     }
 }

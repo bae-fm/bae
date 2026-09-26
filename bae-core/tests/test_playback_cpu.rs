@@ -285,7 +285,6 @@ impl PlaybackTestFixture {
             "test",
             uuid::Uuid::new_v4().to_string(),
             generate_files,
-            |_| Ok(()),
         )
         .await?;
         assert_eq!(

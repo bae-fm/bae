@@ -111,12 +111,12 @@ struct FormatsSettingsTab: View {
         let presets = configStore.config.savePresets.map {
             $0.id == preset.id ? preset : $0
         }
-        set { try outputs.setSavePresets(presets) }
+        set { try await outputs.setSavePresets(presets) }
     }
 
     private func deletePreset(id: String) {
         let presets = configStore.config.savePresets.filter { $0.id != id }
-        set { try outputs.setSavePresets(presets) }
+        set { try await outputs.setSavePresets(presets) }
     }
 
     /// The filename pattern a newly added preset starts with — the zero-padded
@@ -142,10 +142,9 @@ struct FormatsSettingsTab: View {
             appliesToRelease: true,
             embedCover: true
         )
+        let presets = configStore.config.savePresets + [preset]
         set {
-            try outputs.setSavePresets(
-                configStore.config.savePresets + [preset]
-            )
+            try await outputs.setSavePresets(presets)
             editingPreset = EditingPreset(id: preset.id)
         }
     }
@@ -154,7 +153,7 @@ struct FormatsSettingsTab: View {
         Binding(
             get: { configStore.config.defaultTrackSavePreset },
             set: { id in
-                set { try outputs.setDefaultTrackSavePreset(id) }
+                set { try await outputs.setDefaultTrackSavePreset(id) }
             }
         )
     }
@@ -163,17 +162,21 @@ struct FormatsSettingsTab: View {
         Binding(
             get: { configStore.config.defaultReleaseSavePreset },
             set: { id in
-                set { try outputs.setDefaultReleaseSavePreset(id) }
+                set { try await outputs.setDefaultReleaseSavePreset(id) }
             }
         )
     }
 
-    private func set(_ apply: () throws -> Void) {
-        do {
-            try apply()
-        }
-        catch {
-            uiStore.showError(error)
+    /// Run a config write off the main thread — each is a durable file
+    /// replace — and show a failure.
+    private func set(_ apply: @escaping @MainActor () async throws -> Void) {
+        Task {
+            do {
+                try await apply()
+            }
+            catch {
+                uiStore.showError(error)
+            }
         }
     }
 }

@@ -48,7 +48,8 @@ public final class Library: Sendable, Observable {
     /// Whether the library page spans the window's full width instead of
     /// centering its content in a width-capped column. The write's config
     /// config subscription re-renders the page through `ConfigStore`.
-    public let setLibraryFullWidth: @Sendable (_ enabled: Bool) throws -> Void
+    public let setLibraryFullWidth:
+        @Sendable (_ enabled: Bool) async throws -> Void
 
     public init(
         albumBrowse:
@@ -108,7 +109,7 @@ public final class Library: Sendable, Observable {
             @escaping @Sendable ([String]) async throws -> [String] = {
                 _ in throw StubError.notImplemented
             },
-        setLibraryFullWidth: @escaping @Sendable (Bool) throws -> Void = {
+        setLibraryFullWidth: @escaping @Sendable (Bool) async throws -> Void = {
             _ in throw StubError.notImplemented
         }
     ) {
@@ -186,7 +187,7 @@ public final class Library: Sendable, Observable {
                     try await handle.resolveToTrackIds(ids: $0)
                 },
                 setLibraryFullWidth: {
-                    try handle.setLibraryFullWidth(enabled: $0)
+                    try await handle.setLibraryFullWidth(enabled: $0)
                 }
             )
         }

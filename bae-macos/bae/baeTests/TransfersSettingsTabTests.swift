@@ -82,12 +82,12 @@ private final class TransferConcurrencyRecorder {
     var uploadWrites: [UInt32] = []
     var downloadWrites: [UInt32] = []
 
-    /// Both setters are plain `@Sendable`; the picker calls them from the main
-    /// actor, which is where this recorder's state lives.
+    /// Both setters are plain `@Sendable` async closures; each hops to the
+    /// main actor, where this recorder's state lives.
     var sync: Sync {
         Sync(
             setMaxConcurrentUploads: { [self] n in
-                MainActor.assumeIsolated { uploadWrites.append(n) }
+                await MainActor.run { uploadWrites.append(n) }
             }
         )
     }
@@ -95,7 +95,7 @@ private final class TransferConcurrencyRecorder {
     var downloads: Downloads {
         Downloads(
             setMaxConcurrentDownloads: { [self] n in
-                MainActor.assumeIsolated { downloadWrites.append(n) }
+                await MainActor.run { downloadWrites.append(n) }
             }
         )
     }

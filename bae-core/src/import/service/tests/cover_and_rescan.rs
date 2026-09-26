@@ -249,7 +249,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
     // stored reading this import is not carrying.
     service
         .library_manager
-        .set_prefill_with_file_metadata(false)
+        .set_prefill_with_file_metadata(false).await
         .unwrap();
     let folder = tmp.path().join("release");
     std::fs::create_dir(&folder).unwrap();
@@ -725,7 +725,7 @@ async fn without_pre_fill_the_discovered_candidate_starts_blank() {
     let test = setup_import_service().await;
     test.service
         .library_manager
-        .set_prefill_with_file_metadata(false)
+        .set_prefill_with_file_metadata(false).await
         .unwrap();
     let root = test.temp.path().join("watched");
     let album = root.join("Candidate");

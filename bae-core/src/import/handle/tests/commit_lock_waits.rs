@@ -129,7 +129,7 @@ async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
     let (_candidate, key, _hash) = picked_candidate(&manager, &tmp, "Album").await;
     // The scan below seeds a new folder's draft from its tags, which is the
     // read under test.
-    manager.set_prefill_with_file_metadata(true).unwrap();
+    manager.set_prefill_with_file_metadata(true).await.unwrap();
     let slow_root = tmp.path().join("slow share");
     audio_folder(&slow_root, "Other Album");
     let (reader, mut entered) = HeldTagReader::new();
@@ -245,7 +245,7 @@ async fn a_pane_edit_lands_while_a_file_decision_reads_another_folders_tags() {
         .unwrap();
     handle
         .library_manager
-        .set_prefill_with_file_metadata(true)
+        .set_prefill_with_file_metadata(true).await
         .unwrap();
     reader.hold(&held_folder);
     let decision = tokio::spawn({

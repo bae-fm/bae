@@ -49,9 +49,15 @@ struct NowPlayingBarContainer: View {
             onToggleRemainingTime: {
                 // Write-through: the config subscription re-renders the
                 // bar, so there is nothing to flip locally.
-                try? playback.setShowRemainingTime(
-                    !configStore.config.showRemainingTime
-                )
+                let showRemaining = !configStore.config.showRemainingTime
+                Task {
+                    do {
+                        try await playback.setShowRemainingTime(showRemaining)
+                    }
+                    catch {
+                        uiStore.showError(error)
+                    }
+                }
             },
             onVolumeChange: { playback.setVolume($0) },
             onToggleMute: { playback.setMuted(!playbackStore.isMuted) },

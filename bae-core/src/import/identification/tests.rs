@@ -662,12 +662,12 @@ impl Fixture {
     /// Configure the fake Discogs key, so lookups ask both providers rather
     /// than MusicBrainz alone. The client is already pointed at this fixture's
     /// fake provider.
-    fn use_discogs(&self) {
+    async fn use_discogs(&self) {
         self.manager
             .set_discogs_key(
                 "test-discogs-token",
                 crate::config::DiscogsValidation::Valid,
-            )
+            ).await
             .expect("the fake Discogs key is stored");
     }
 

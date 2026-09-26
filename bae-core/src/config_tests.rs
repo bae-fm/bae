@@ -692,16 +692,17 @@ fn find_library_by_id_scans_libraries_dir() {
     assert!(find_library_by_id(&app_dir, "nonexistent").is_none());
 }
 
-#[test]
-fn rename_library_updates_config_yaml() {
+#[tokio::test]
+async fn rename_library_updates_config_yaml() {
     let tmp = TempDir::new().unwrap();
     let library_path = tmp.path().to_path_buf();
     let config = make_test_config("lib-1", library_path.clone());
     config.save_store_config().unwrap();
-    let handle = ConfigHandle::new(config);
+    let handle = Arc::new(ConfigHandle::new(config));
 
     handle
         .rename_library(&crate::library_name::LibraryName::parse("New Name").unwrap())
+        .await
         .unwrap();
     assert_eq!(handle.config().store_name, "New Name");
 
@@ -714,16 +715,17 @@ fn rename_library_updates_config_yaml() {
 /// same `Config` the bridge reads to build the UI's Discogs token status. If
 /// a write only reached an on-disk copy or a side cache, the bridge would
 /// keep reporting "not configured" until the next load.
-#[test]
-fn update_is_reflected_by_config() {
+#[tokio::test]
+async fn update_is_reflected_by_config() {
     let tmp = TempDir::new().unwrap();
     let config = make_test_config("lib-update", tmp.path().to_path_buf());
     config.save_store_config().unwrap();
-    let handle = ConfigHandle::new(config);
+    let handle = Arc::new(ConfigHandle::new(config));
 
     assert!(handle.config().prefs.discogs.is_none());
     handle
         .update_preferences(|prefs| prefs.discogs = Some(DiscogsValidation::Valid))
+        .await
         .unwrap();
     assert_eq!(
         handle.config().prefs.discogs,
@@ -748,7 +750,7 @@ fn update_serializes_concurrent_edits() {
         std::thread::spawn(move || {
             start.wait();
             handle
-                .update_store(|store| {
+                .update_store_now(|store| {
                     std::thread::sleep(Duration::from_millis(100));
                     store.store_name = "Renamed Library".to_string();
                 })
@@ -761,7 +763,7 @@ fn update_serializes_concurrent_edits() {
         std::thread::spawn(move || {
             start.wait();
             handle
-                .update_preferences(|prefs| {
+                .update_preferences_now(|prefs| {
                     std::thread::sleep(Duration::from_millis(100));
                     prefs.pause_between_sides = false;
                 })
@@ -826,15 +828,16 @@ fn a_library_coven_wrote_opens_with_default_preferences() {
 
 /// `config.yaml` stays in coven's format after bae changes a setting, so coven
 /// can still read it back (join reads it as its completion marker).
-#[test]
-fn changing_a_preference_leaves_coven_config_readable_by_coven() {
+#[tokio::test]
+async fn changing_a_preference_leaves_coven_config_readable_by_coven() {
     let tmp = TempDir::new().unwrap();
     let config = make_test_config("lib-owned", tmp.path().to_path_buf());
     config.save_store_config().unwrap();
-    let handle = ConfigHandle::new(config.clone());
+    let handle = Arc::new(ConfigHandle::new(config.clone()));
 
     handle
         .update_preferences(|prefs| prefs.pause_between_sides = false)
+        .await
         .unwrap();
 
     let store_dir = coven::StoreDir::new(tmp.path());
@@ -846,8 +849,8 @@ fn changing_a_preference_leaves_coven_config_readable_by_coven() {
 
 /// Every countdown choice a person can pick is written to `preferences.yaml`
 /// and read back unchanged.
-#[test]
-fn side_pause_countdown_round_trips_through_preferences_yaml() {
+#[tokio::test]
+async fn side_pause_countdown_round_trips_through_preferences_yaml() {
     for countdown in [
         SidePauseCountdown::Off,
         SidePauseCountdown::Seconds5,
@@ -859,10 +862,11 @@ fn side_pause_countdown_round_trips_through_preferences_yaml() {
         let tmp = TempDir::new().unwrap();
         let config = make_test_config("lib-countdown", tmp.path().to_path_buf());
         config.save_store_config().unwrap();
-        let handle = ConfigHandle::new(config);
+        let handle = Arc::new(ConfigHandle::new(config));
 
         handle
-            .update_preferences(|prefs| prefs.side_pause_countdown = countdown)
+            .update_preferences(move |prefs| prefs.side_pause_countdown = countdown)
+            .await
             .unwrap();
 
         assert_eq!(

@@ -97,7 +97,7 @@ async fn restoring_middle_audio_initializes_only_that_row_from_current_preferenc
             candidate,
             tmp: _tmp,
         } = three_track_candidate().await;
-        manager.set_prefill_with_file_metadata(prefill).unwrap();
+        manager.set_prefill_with_file_metadata(prefill).await.unwrap();
         handle
             .file_tag_snapshot_with_reader(&key, Arc::new(SourceTags { number }))
             .await
@@ -347,7 +347,7 @@ async fn restoration_uses_the_combined_candidate_disc_and_number() {
             .combine_candidates(vec![first, second])
             .await
             .unwrap();
-        manager.set_prefill_with_file_metadata(prefill).unwrap();
+        manager.set_prefill_with_file_metadata(prefill).await.unwrap();
         let before = pane(&handle, &key).await;
         let removed = before.metadata_draft.tracks[2].clone();
         assert_eq!((removed.side, removed.track_number), (Some(2), Some(1)));
@@ -416,7 +416,7 @@ async fn restoring_cue_slices_preserves_their_exact_file_index_and_initial_metad
             candidate,
             tmp: _tmp,
         } = cue_candidate().await;
-        manager.set_prefill_with_file_metadata(prefill).unwrap();
+        manager.set_prefill_with_file_metadata(prefill).await.unwrap();
         let rows = pane(&handle, &key).await.metadata_draft.tracks;
         assert_eq!(rows.len(), 3);
         for index in [1, 2] {
@@ -577,7 +577,7 @@ async fn restoring_audio_keeps_the_applied_release_without_claiming_its_removed_
         .set_discogs_key(
             "test-discogs-token",
             crate::config::DiscogsValidation::Valid,
-        )
+        ).await
         .unwrap();
     let release_id = "70000106";
     handle.library_manager.providers().discogs().seed_release_cache(release_id, serde_json::json!({
@@ -643,7 +643,7 @@ async fn restoration_prepared_before_a_newer_edit_cannot_overwrite_it() {
     let removed = pane(&handle, &key).await.metadata_draft.tracks[0].clone();
     handle.drop_candidate_track(&key, removed.id).await.unwrap();
     let offer = as_read(&pane(&handle, &key).await);
-    manager.set_prefill_with_file_metadata(true).unwrap();
+    manager.set_prefill_with_file_metadata(true).await.unwrap();
     let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(1);
     let resume = Arc::new(std::sync::Barrier::new(2));
     handle.file_tags = Arc::new(CountingFileTagReader::blocking(entered_tx, resume.clone()));

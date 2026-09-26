@@ -292,7 +292,7 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
     let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
     // Make the home browsable BEFORE importing, so finalize computes readable keys.
     f.library_manager
-        .set_home_storage(bae_core::config::HomeStorage::Browsable);
+        .set_home_storage(bae_core::config::HomeStorage::Browsable).await;
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();

@@ -254,7 +254,6 @@ impl CueFlacTestFixture {
             "test",
             uuid::Uuid::new_v4().to_string(),
             generate_cue_flac_files,
-            |_| Ok(()),
         )
         .await?;
         assert_eq!(
@@ -334,13 +333,14 @@ impl SidePauseTestFixture {
             |album_dir| {
                 let _track_data = generate_test_flac_files(album_dir);
             },
-            |library_manager| {
-                library_manager.set_pause_between_sides(pause_between_sides)?;
-                library_manager.set_side_pause_countdown(countdown)?;
-                Ok(())
-            },
         )
         .await?;
+        // Settled before the playback service starts, so its first preload
+        // already reads them.
+        library_manager
+            .set_pause_between_sides(pause_between_sides)
+            .await?;
+        library_manager.set_side_pause_countdown(countdown).await?;
         assert_eq!(
             imported.track_ids.len(),
             3,
@@ -380,9 +380,9 @@ impl SidePauseTestFixture {
     /// directly from this fixture since it drives `PlaybackService` without an
     /// `AppServices`): write the config, then — turning it on — notify the
     /// playback service to re-evaluate its already-staged preload.
-    fn set_pause_between_sides_mid_track(&self, enabled: bool) {
+    async fn set_pause_between_sides_mid_track(&self, enabled: bool) {
         self.library_manager
-            .set_pause_between_sides(enabled)
+            .set_pause_between_sides(enabled).await
             .expect("set_pause_between_sides");
         if enabled {
             self.playback_handle.reevaluate_side_pause_staging();

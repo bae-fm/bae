@@ -373,7 +373,7 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
         .set_discogs_key(
             "test-discogs-token",
             crate::config::DiscogsValidation::Valid,
-        )
+        ).await
         .unwrap();
 
     let numeric_id = || (uuid::Uuid::new_v4().as_u128() % u128::from(u64::MAX)) as u64;

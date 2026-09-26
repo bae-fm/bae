@@ -33,7 +33,7 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
         ),
     );
     fixture.scan(1).await;
-    fixture.use_discogs();
+    fixture.use_discogs().await;
     fixture
         .import
         .set_candidate_lookup_choices(
