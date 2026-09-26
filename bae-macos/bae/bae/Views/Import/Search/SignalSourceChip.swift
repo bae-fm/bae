@@ -1,34 +1,30 @@
 import BaeKit
 import SwiftUI
 
-/// Where a value came from, as a chip beside it: `LOG`, `CUE`, `TXT`, the
-/// folder or the file name, naming its file on hover. A value read off the
-/// cover artwork gets no chip at all.
+/// Where a value came from, as a chip beside it: `CUE`, `TXT`, the folder
+/// or the file name, `OCR` for text read off an image, or the bars a barcode
+/// was decoded from — naming its file on hover. Every origin has a chip, so a
+/// person can always tell where a value was read.
 struct SignalSourceChip: View {
     let source: BridgeValueSource
 
-    private var fileName: String? {
-        source.file.map(lastPathComponent)
+    var body: some View {
+        SignalTextChip(text: tag)
+            .help(
+                source.file.map(lastPathComponent)
+                    ?? SignalBadgeStyle.originLabel(for: source.origin)
+            )
     }
 
-    var body: some View {
+    /// The chip's text. Formats keep their names; the rest are words.
+    private var tag: String {
         switch source.origin {
-        // The cover scan the value was read off is not shown, so there is
-        // nothing for a chip to name.
-        case .text(origin: .artwork), .artworkBarcode:
-            EmptyView()
-        case .text(origin: .cueSheet):
-            SignalTextChip(text: "CUE")
-                .help(fileName ?? SignalBadgeStyle.originLabel(for: .cueSheet))
-        case .text(origin: .textFile):
-            SignalTextChip(text: "TXT")
-                .help(fileName ?? SignalBadgeStyle.originLabel(for: .textFile))
-        case .text(origin: .folderName):
-            SignalTextChip(text: String(localized: "Folder"))
-                .help(SignalBadgeStyle.originLabel(for: .folderName))
-        case .text(origin: .filename):
-            SignalTextChip(text: String(localized: "File"))
-                .help(fileName ?? SignalBadgeStyle.originLabel(for: .filename))
+        case .text(origin: .cueSheet): "CUE"
+        case .text(origin: .textFile): "TXT"
+        case .text(origin: .artwork): "OCR"
+        case .text(origin: .folderName): String(localized: "Folder")
+        case .text(origin: .filename): String(localized: "File")
+        case .artworkBarcode: String(localized: "Bars")
         }
     }
 }
@@ -98,6 +94,20 @@ func lastPathComponent(_ path: String) -> String {
                 source: BridgeValueSource(
                     origin: .text(origin: .textFile),
                     file: "info.txt",
+                    region: nil
+                )
+            )
+            SignalSourceChip(
+                source: BridgeValueSource(
+                    origin: .text(origin: .artwork),
+                    file: "Artwork/back.jpg",
+                    region: nil
+                )
+            )
+            SignalSourceChip(
+                source: BridgeValueSource(
+                    origin: .artworkBarcode,
+                    file: "Artwork/back.jpg",
                     region: nil
                 )
             )

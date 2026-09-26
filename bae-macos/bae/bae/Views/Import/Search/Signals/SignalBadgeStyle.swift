@@ -67,8 +67,16 @@ enum SignalBadgeStyle {
         }
     }
 
-    /// The surface a value was read off: what a source chip says on hover
-    /// when it has no file to name.
+    /// Where a value was read: what a source chip says on hover when it has
+    /// no file to name.
+    static func originLabel(for origin: BridgeSignalOrigin) -> String {
+        switch origin {
+        case .text(let surface): originLabel(for: surface)
+        case .artworkBarcode: String(localized: "Cover barcode")
+        }
+    }
+
+    /// The surface a line of text was read off.
     static func originLabel(for surface: BridgeTextOrigin) -> String {
         switch surface {
         case .cueSheet: String(localized: "CUE sheet")
