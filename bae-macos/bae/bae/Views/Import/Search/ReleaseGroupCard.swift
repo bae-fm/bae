@@ -4,8 +4,9 @@ import SwiftUI
 
 /// Header for a release group: the album's cover, its title and the artist and
 /// label beneath it, and on the right one outbound link per source carrying
-/// it. A source whose page linking the album to the other catalog could not be
-/// read says so under the title, since the album may then be listed twice.
+/// it. A source whose album could not be read to be one on the other catalog —
+/// its page, or a document a statement about it needed — says so under the
+/// title, since the album may then be listed twice.
 /// The group's pressing rows render beneath.
 struct ReleaseGroupCard: View {
     let group: ReleaseGroup

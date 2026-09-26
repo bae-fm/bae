@@ -106,8 +106,9 @@ pub struct BridgeReleaseGroupSource {
     /// Editorial URL for the group on this source (release-group on
     /// MusicBrainz, master on Discogs). `None` for an ungrouped result.
     pub group_url: Option<String>,
-    /// Whether this album's page, which states the other catalog's album it
-    /// is, could not be read — so it may also be listed as a card of its own.
+    /// Whether what this album is on the other catalog could not be read —
+    /// its page, or a document a statement about it needed — so it may also
+    /// be listed as a card of its own.
     pub album_links_unread: bool,
 }
 
