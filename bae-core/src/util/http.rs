@@ -127,8 +127,8 @@ pub(crate) fn client_builder() -> reqwest::ClientBuilder {
 /// shares. Built once when the app starts and handed to each provider.
 ///
 /// Requests are always built against the real addresses. A test builds one
-/// whose requests go to local servers instead — [`Http::for_test`] sends every
-/// host to a port nothing listens on, and [`Http::serve`] routes a host to a
+/// whose requests go to local servers instead — `Http::for_test` sends every
+/// host to a port nothing listens on, and `Http::serve` routes a host to a
 /// fake — so a test never reaches the network, and the URLs a response is
 /// cached under, or a cover is stored under, are the ones production uses.
 #[derive(Clone)]

@@ -411,6 +411,7 @@ impl AppServices {
     delegate_sync!(manager, set_outputs_paused => set_outputs_paused(paused: bool) -> ());
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(manager, cancel_output => cancel_output(release_id: &str) -> ());
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(manager, cancel_all_outputs => cancel_all_outputs() -> ());
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(manager, retry_outputs => retry_outputs() -> ());

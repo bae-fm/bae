@@ -19,9 +19,10 @@
 //! country, while a sleeve that means a country prints its name ("Made in
 //! Japan"). The exception is a sleeve's statement of where the product was
 //! made, where an abbreviation is no word of prose: "Made in the EU" states
-//! Europe (see [`super::made_in`]). A label is the other: a folder writes
-//! "Warner Bros." and a source writes "Warner Bros. Records", so the trade word
-//! a label's name trails is dropped from it first, through the label table.
+//! Europe (read by the identify module's `made_in` reader). A label is the
+//! other: a folder writes "Warner Bros." and a source writes "Warner Bros.
+//! Records", so the trade word a label's name trails is dropped from it
+//! first, through the label table.
 //!
 //! Not every number printed on a folder is a catalog number — a phone number
 //! on a sleeve, a serial on a label, the year twice — so a person can strike

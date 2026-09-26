@@ -20,6 +20,8 @@ pub(crate) fn squash(text: &str) -> String {
 /// A catalog number as two of them are compared: squashed, and only when
 /// that leaves a number. `[none]` on MusicBrainz and `none` on Discogs state
 /// that a release has no catalog number, which is no number to compare.
+/// Its readers — lookups and pressing evidence — are desktop-only.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn catalog_key(stated: &str) -> Option<String> {
     let key = squash(stated);
     (!key.is_empty() && key != "none").then_some(key)
