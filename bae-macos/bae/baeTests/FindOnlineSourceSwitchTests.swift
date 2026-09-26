@@ -71,7 +71,8 @@ struct FindOnlineSourceSwitchTests {
         for key in [
             "Search %@",
             "No source to search",
-            "Add a %@ token to look up its releases too.",
+            "Add %@ to find more pressings",
+            "Many regional releases, reissues and vinyl pressings are only on %@. Tokens are free: create one in your %@ account settings.",
         ] {
             #expect(try locales(key) == reference, "\(key) is missing locales")
         }
