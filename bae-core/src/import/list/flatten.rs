@@ -272,7 +272,7 @@ impl OrderedEntry {
     }
 }
 
-fn natural_path(left: &str, right: &str) -> std::cmp::Ordering {
+pub(super) fn natural_path(left: &str, right: &str) -> std::cmp::Ordering {
     natord::compare_ignore_case(left, right).then_with(|| left.cmp(right))
 }
 
@@ -351,7 +351,7 @@ fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
 
 /// One settled candidate's row, as the tables place it. `matched` is the
 /// verdict's lead — the window fills it in for the items it materialises.
-fn place_row(
+pub(super) fn place_row(
     rows: &ImportQueueRows,
     row: &ScanCandidateListRow,
 ) -> Result<TriageRow, LibraryError> {

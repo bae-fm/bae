@@ -95,6 +95,14 @@ impl LibraryManager {
             .await?)
     }
 
+    pub(crate) async fn load_chosen_folder(
+        &self,
+        root: String,
+        chosen: std::path::PathBuf,
+    ) -> Result<crate::import::list::ChosenFolderRead, LibraryError> {
+        Ok(self.database.load_chosen_folder(root, chosen).await?)
+    }
+
     pub(crate) async fn first_import_candidate_among(
         &self,
         request: crate::import::ImportListRequest,

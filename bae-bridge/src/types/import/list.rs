@@ -86,6 +86,20 @@ pub struct BridgeImportCandidateListLocation {
     pub visible_position: u64,
 }
 
+/// Where a folder someone chose to import stands once it has been read —
+/// which is where the person is taken.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeChosenFolder {
+    /// Every release the folder holds is already in the library; show this
+    /// album.
+    InLibrary { album_id: String },
+    /// Releases the folder holds are not in the library yet; select these
+    /// candidates, in path order.
+    InImportQueue { candidate_keys: Vec<String> },
+    /// The read found no release in the folder.
+    NoReleases,
+}
+
 /// Everything the chrome around the list shows. All but the folder scans is
 /// computed in the same pass as the items, so none of it can drift from them;
 /// the scans are read on their own, since a scan's progress moves no row.

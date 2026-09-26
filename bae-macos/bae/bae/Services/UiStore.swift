@@ -64,6 +64,25 @@ struct LibraryNavigationRequest {
     let seq: Int
 }
 
+/// A pending "show these import candidates" command, consumed exactly once by
+/// the import candidate list. Durable for the same reason as
+/// `PendingAlbumReveal`: a producer outside the import tab — a folder chosen
+/// from the library — records it before the list that scrolls to it is
+/// mounted. `candidateKey` is the row scrolled to; `selection` is what is
+/// selected once it is there. `seq` lets a repeat request run again.
+struct PendingImportCandidateReveal {
+    let candidateKey: String
+    let selection: Set<String>
+    let seq: Int
+}
+
+/// A folder someone chose to import that is still being read, for the status
+/// line the window shows until it is.
+struct FolderBeingRead: Identifiable {
+    let id = UUID()
+    let name: String
+}
+
 struct ReleaseGroupDisclosureID: Hashable {
     let key: BridgeFolderReleaseDecisionKey
 
@@ -118,6 +137,12 @@ class UiStore: @unchecked Sendable {
     /// — so it survives an import-tab remount.
     private(set) var selectedFolderCandidates: Set<String> = []
 
+    /// The pending candidate-list reveal, or `nil` before any or once the list
+    /// has taken it. Durable until consumed — see
+    /// `PendingImportCandidateReveal`.
+    private(set) var pendingImportCandidateReveal: PendingImportCandidateReveal?
+    private var importCandidateRevealSeq = 0
+
     /// The candidate list sidebar's active tab and filter text. UI-originated
     /// session state, alongside `selectedFolderCandidates` — surviving a
     /// remount so the sidebar doesn't reset to its defaults on every
@@ -147,6 +172,8 @@ class UiStore: @unchecked Sendable {
     // ── Overlays ────────────────────────────────────────────────────────
 
     var lightbox: Cursor<LightboxItem>?
+    /// The folders chosen to import that are still being read, oldest first.
+    private(set) var foldersBeingRead: [FolderBeingRead] = []
     private(set) var modalBuilder: (() -> AnyView)?
     private(set) var isImportFolderPickerPresented = false
 
@@ -200,6 +227,30 @@ class UiStore: @unchecked Sendable {
 
     func navigateToImport() {
         activeSection = .importing
+    }
+
+    /// Go to the import tab with `selection` selected, scrolled to
+    /// `candidateKey` wherever the list places it.
+    func navigateToImportCandidate(
+        _ candidateKey: String,
+        selecting selection: Set<String>
+    ) {
+        activeSection = .importing
+        setFolderCandidateSelection(selection)
+        importCandidateRevealSeq += 1
+        pendingImportCandidateReveal = PendingImportCandidateReveal(
+            candidateKey: candidateKey,
+            selection: selection,
+            seq: importCandidateRevealSeq
+        )
+    }
+
+    /// Clear the pending candidate-list reveal once the list has taken it. A
+    /// no-op if a newer request already superseded it.
+    func consumeImportCandidateReveal(seq: Int) {
+        if pendingImportCandidateReveal?.seq == seq {
+            pendingImportCandidateReveal = nil
+        }
     }
 
     func navigateToArtist(_ artistId: String) {
@@ -398,6 +449,16 @@ class UiStore: @unchecked Sendable {
 
     func setImportFolderPickerPresented(_ presented: Bool) {
         isImportFolderPickerPresented = presented
+    }
+
+    func beginReadingFolder(named name: String) -> FolderBeingRead.ID {
+        let folder = FolderBeingRead(name: name)
+        foldersBeingRead.append(folder)
+        return folder.id
+    }
+
+    func endReadingFolder(_ id: FolderBeingRead.ID) {
+        foldersBeingRead.removeAll { $0.id == id }
     }
 
     // MARK: - Find online notice methods

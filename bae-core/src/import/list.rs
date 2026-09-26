@@ -41,12 +41,15 @@ use crate::library::{LibraryPageWindow, LibraryPageWindows};
 use crate::signals::Signals;
 use std::collections::{BTreeMap, BTreeSet};
 
+mod chosen_folder;
 mod flatten;
 mod subscription;
 
 #[cfg(test)]
 mod tests;
 
+pub use chosen_folder::ChosenFolder;
+pub(crate) use chosen_folder::{chosen_folder, ChosenFolderRead};
 pub(crate) use flatten::{first_candidate_among, flatten, locate_candidate, Flattened, ItemRef};
 pub use subscription::{ImportListSubscription, ImportListSubscriptionError};
 

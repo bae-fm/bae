@@ -1,5 +1,4 @@
 import BaeKit
-import Combine
 import Foundation
 import Testing
 
@@ -29,16 +28,6 @@ struct ImportCandidateCombineActionTests {
         uiStore.setFolderCandidateSelection([
             "/music/Volume B", "/music/Volume A",
         ])
-        let listSlot = ImportListSlot.preview(
-            importStore: ImportStore(),
-            uiStore: uiStore,
-            items: []
-        )
-        let revealed = Recorder<String>()
-        let reveals = listSlot.candidateRevealRequests.sink {
-            revealed.record($0)
-        }
-        defer { reveals.cancel() }
         let requested = Recorder<[String]>()
 
         await ImportCandidateCombineAction(
@@ -46,8 +35,7 @@ struct ImportCandidateCombineActionTests {
                 requested.record(keys)
                 return "grouping-new"
             }),
-            uiStore: uiStore,
-            listSlot: listSlot
+            uiStore: uiStore
         )
         .run()
 
@@ -55,7 +43,9 @@ struct ImportCandidateCombineActionTests {
         // crosses is the selection.
         #expect(requested.all == [["/music/Volume A", "/music/Volume B"]])
         #expect(uiStore.selectedFolderCandidates == ["grouping-new"])
-        #expect(revealed.all == ["grouping-new"])
+        #expect(
+            uiStore.pendingImportCandidateReveal?.candidateKey == "grouping-new"
+        )
         #expect(uiStore.lastError == nil)
     }
 
@@ -64,29 +54,18 @@ struct ImportCandidateCombineActionTests {
         let uiStore = UiStore()
         let selected: Set<String> = ["/music/Volume B", "/music/Volume A"]
         uiStore.setFolderCandidateSelection(selected)
-        let listSlot = ImportListSlot.preview(
-            importStore: ImportStore(),
-            uiStore: uiStore,
-            items: []
-        )
-        let revealed = Recorder<String>()
-        let reveals = listSlot.candidateRevealRequests.sink {
-            revealed.record($0)
-        }
-        defer { reveals.cancel() }
 
         let importer = Importer(combineCandidates: { _ in
             throw CombineRefused()
         })
         await ImportCandidateCombineAction(
             importer: importer,
-            uiStore: uiStore,
-            listSlot: listSlot
+            uiStore: uiStore
         )
         .run()
 
         #expect(uiStore.selectedFolderCandidates == selected)
-        #expect(revealed.all.isEmpty)
+        #expect(uiStore.pendingImportCandidateReveal == nil)
         #expect(uiStore.lastError != nil)
     }
 }

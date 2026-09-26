@@ -44,6 +44,7 @@ struct MainAppView: View {
             VStack(spacing: 0) {
                 TitleBar(searchText: $searchText)
                 ArtworkLoadingBanner()
+                FolderReadingBanner()
 
                 HStack(spacing: 0) {
                     // Only the active section is in the view tree: SwiftUI's

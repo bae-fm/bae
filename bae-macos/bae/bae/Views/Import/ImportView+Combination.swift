@@ -21,8 +21,7 @@ extension ImportView {
         let taskKey = "combine-selected"
         let action = ImportCandidateCombineAction(
             importer: importer,
-            uiStore: uiStore,
-            listSlot: listSlot
+            uiStore: uiStore
         )
         candidateMutationTasks[taskKey]?.cancel()
         candidateMutationTasks[taskKey] = Task {
@@ -64,8 +63,7 @@ extension ImportView {
             do {
                 let release = try await importer.combineFolder(key)
                 try Task.checkCancellation()
-                uiStore.setFolderCandidateSelection([release])
-                listSlot.requestCandidateReveal(release)
+                uiStore.navigateToImportCandidate(release, selecting: [release])
             }
             catch is CancellationError {}
             catch {

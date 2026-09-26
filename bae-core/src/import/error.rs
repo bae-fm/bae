@@ -215,6 +215,13 @@ pub enum ImportError {
     #[error("folder watch failed: {detail}")]
     Watch { detail: String },
 
+    /// A folder someone chose to import could not be read: the read of its
+    /// watched root failed, so what is stored for it says nothing about what
+    /// it holds now.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("{path} could not be read: {detail}")]
+    FolderUnread { path: String, detail: String },
+
     /// Config/keyring plumbing failed (Discogs key store/read).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("configuration error: {detail}")]

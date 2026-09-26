@@ -301,3 +301,4 @@ include!("test_import_service/reimports.rs");
 include!("test_import_service/works_and_covers.rs");
 include!("test_import_service/identity.rs");
 include!("test_import_service/validation_and_mapping.rs");
+include!("test_import_service/chosen_folder.rs");

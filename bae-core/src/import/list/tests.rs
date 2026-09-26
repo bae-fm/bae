@@ -15,6 +15,7 @@ use crate::import::ImportedRelease;
 use crate::import::{TriageImportStatus, TriagePlacement};
 
 mod actions;
+mod chosen_folder;
 mod dates;
 mod flatten;
 mod flatten_groups;

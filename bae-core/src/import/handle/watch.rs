@@ -45,13 +45,74 @@ impl ImportServiceHandle {
     /// be read stayed invisible however many times it was picked.
     pub async fn add_watched_folder(&self, path: String) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        self.committed(async move { this.add_watched_folder_write(path).await })
+        self.committed(async move { this.add_watched_folder_write(path, None).await })
             .await
     }
 
+    /// Take in a folder someone chose to import, and say what it is to the
+    /// library once it has been read.
+    ///
+    /// A folder at or below a watched folder is already covered by it: that
+    /// root is read again rather than a second, overlapping one added. Any
+    /// other folder is added. Either way this returns once the read is over,
+    /// so the answer is about what is on disk now — and a read that failed is
+    /// that answer, as an error, rather than a conclusion drawn from what an
+    /// earlier read left stored.
+    pub async fn choose_folder(
+        &self,
+        path: String,
+    ) -> Result<crate::import::ChosenFolder, crate::import::ImportError> {
+        let chosen = crate::import::watched_folder::canonical_absolute_root(&path)?;
+        let covering = self
+            .watched_folders()
+            .await?
+            .into_iter()
+            .find(|folder| std::path::Path::new(&chosen).starts_with(&folder.path));
+        let (completion, read) = tokio::sync::oneshot::channel();
+        let root = match covering {
+            Some(folder) => {
+                self.send_watcher_command(
+                    WatcherCommand::Refresh {
+                        path: std::path::PathBuf::from(&folder.path),
+                        completion,
+                    },
+                    "failed to request folder refresh",
+                )?;
+                folder.path
+            }
+            None => {
+                let this = self.clone();
+                let added = chosen.clone();
+                self.committed(async move {
+                    this.add_watched_folder_write(added, Some(completion)).await
+                })
+                .await?;
+                chosen.clone()
+            }
+        };
+        read.await
+            .map_err(|_| crate::import::ImportError::Internal {
+                detail: "folder read ended without a result".to_string(),
+            })?
+            .map_err(|detail| crate::import::ImportError::Watch { detail })?;
+        match self
+            .library_manager
+            .load_chosen_folder(root.clone(), std::path::PathBuf::from(chosen))
+            .await?
+        {
+            crate::import::list::ChosenFolderRead::Read(folder) => Ok(folder),
+            crate::import::list::ChosenFolderRead::ScanFailed(detail) => {
+                Err(crate::import::ImportError::FolderUnread { path: root, detail })
+            }
+        }
+    }
+
+    /// Store `path` as watched and ask for it to be read. `completion`, when
+    /// given, hears when that read is over.
     async fn add_watched_folder_write(
         &self,
         path: String,
+        completion: Option<tokio::sync::oneshot::Sender<Result<(), String>>>,
     ) -> Result<(), crate::import::ImportError> {
         let path = crate::import::watched_folder::canonical_absolute_root(&path)?;
         let _commit = self.folder_state_commit.lock("add a watched folder").await;
@@ -59,17 +120,18 @@ impl ImportServiceHandle {
             .library_manager
             .add_watched_import_folder(&path)
             .await?;
+        let read = match completion {
+            Some(completion) => WatcherCommand::Refresh {
+                path: std::path::PathBuf::from(&path),
+                completion,
+            },
+            None => WatcherCommand::Rescan(std::path::PathBuf::from(&path)),
+        };
         if !added {
             info!("{path} is already watched; re-reading it");
-            return self.send_watcher_command(
-                WatcherCommand::Rescan(std::path::PathBuf::from(&path)),
-                "Failed to start watching folder",
-            );
+            return self.send_watcher_command(read, "Failed to start watching folder");
         }
-        if let Err(error) = self.send_watcher_command(
-            WatcherCommand::Rescan(std::path::PathBuf::from(&path)),
-            "Failed to start watching folder",
-        ) {
+        if let Err(error) = self.send_watcher_command(read, "Failed to start watching folder") {
             self.library_manager
                 .remove_watched_import_folder(&path)
                 .await?;

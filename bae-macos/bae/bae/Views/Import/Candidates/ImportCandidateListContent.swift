@@ -160,6 +160,14 @@ struct ImportCandidateListViewport {
     }
 }
 
+// periphery:ignore
+/// What restarts the list's take of a pending reveal: a new request, or the
+/// list it scrolls coming into existence under one already waiting.
+private struct PendingRevealID: Hashable {
+    let seq: Int?
+    let listLoaded: Bool
+}
+
 @MainActor
 private final class ImportCandidateRevealOperation {
     var task: Task<Void, Never>?
@@ -389,14 +397,27 @@ struct ImportCandidateListContent: View {
             .onDisappear {
                 cancelReveal()
             }
-            .onReceive(listSlot.candidateRevealRequests) { candidateKey in
+            .task(
+                id: PendingRevealID(
+                    seq: uiStore.pendingImportCandidateReveal?.seq,
+                    listLoaded: listSlot.list != nil
+                )
+            ) {
+                // A reveal waits for the list to exist: one taken before it
+                // does would find nowhere to scroll and be lost.
+                guard listSlot.list != nil,
+                    let request = uiStore.pendingImportCandidateReveal
+                else { return }
+                // Taken as soon as the list has it: the reveal is then this
+                // list's, and what the person does next cancels it.
+                uiStore.consumeImportCandidateReveal(seq: request.seq)
                 startReveal(using: proxy) {
                     guard
                         let position = try await listSlot.revealCandidate(
-                            candidateKey
+                            request.candidateKey
                         )
                     else { return nil }
-                    return (candidateKey, position)
+                    return (request.selection, position)
                 }
             }
         }
@@ -699,6 +720,9 @@ extension ImportCandidateListContent {
         {
             startReveal(using: proxy) {
                 try await listSlot.revealFirstIdentifying()
+                    .map {
+                        ([$0.candidateKey], $0.position)
+                    }
             }
         }
     }
@@ -707,7 +731,7 @@ extension ImportCandidateListContent {
         using proxy: ScrollViewProxy,
         locate:
             @escaping @MainActor () async throws
-            -> (candidateKey: String, position: Int)?
+            -> (selection: Set<String>, position: Int)?
     ) {
         revealOperation?.cancel()
         let operation = ImportCandidateRevealOperation()
@@ -722,7 +746,7 @@ extension ImportCandidateListContent {
                 guard let target = try await locate(), !Task.isCancelled else {
                     return
                 }
-                selectedKeys = [target.candidateKey]
+                selectedKeys = target.selection
                 proxy.scrollTo(target.position, anchor: .center)
                 await Task.yield()
             }

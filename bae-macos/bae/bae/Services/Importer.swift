@@ -50,7 +50,7 @@ private struct ImportOperations: Sendable {
     let combineFolder:
         @Sendable (BridgeFolderReleaseDecisionKey) async throws -> String
     let separateCandidate: @Sendable (String) async throws -> Void
-    let addWatchedFolder: @Sendable (String) async throws -> Void
+    let chooseFolder: @Sendable (String) async throws -> BridgeChosenFolder
     let removeWatchedFolder: @Sendable (String) async throws -> Void
     let refreshWatchedFolder: @Sendable (String) async throws -> Void
     let setCandidateSkipped: @Sendable (String, Bool) async throws -> Void
@@ -129,8 +129,8 @@ extension ImportOperations {
             separateCandidate: {
                 try await handle.separateCandidate(key: $0)
             },
-            addWatchedFolder: {
-                try await handle.addWatchedFolder(path: $0)
+            chooseFolder: {
+                try await handle.chooseImportFolder(path: $0)
             },
             removeWatchedFolder: {
                 try await handle.removeWatchedFolder(path: $0)
@@ -352,9 +352,10 @@ final class Importer: Sendable, Observable {
             -> String = { _ in throw StubError.notImplemented },
         separateCandidate: @escaping @Sendable (String) async throws -> Void =
             { _ in throw StubError.notImplemented },
-        addWatchedFolder: @escaping @Sendable (String) async throws -> Void = {
-            _ in
-        },
+        chooseFolder:
+            @escaping @Sendable (String) async throws -> BridgeChosenFolder = {
+                _ in .noReleases
+            },
         removeWatchedFolder: @escaping @Sendable (String) async throws -> Void =
             {
                 _ in
@@ -485,7 +486,7 @@ final class Importer: Sendable, Observable {
             combineCandidates: combineCandidates,
             combineFolder: combineFolder,
             separateCandidate: separateCandidate,
-            addWatchedFolder: addWatchedFolder,
+            chooseFolder: chooseFolder,
             removeWatchedFolder: removeWatchedFolder,
             refreshWatchedFolder: refreshWatchedFolder,
             setCandidateSkipped: setCandidateSkipped,
@@ -551,8 +552,10 @@ extension Importer {
         try await operations.separateCandidate(key)
     }
 
-    func addWatchedFolder(_ path: String) async throws {
-        try await operations.addWatchedFolder(path)
+    /// Take in the folder at `path` and say, once it has been read, where its
+    /// releases stand.
+    func chooseFolder(_ path: String) async throws -> BridgeChosenFolder {
+        try await operations.chooseFolder(path)
     }
 
     func removeWatchedFolder(_ path: String) async throws {

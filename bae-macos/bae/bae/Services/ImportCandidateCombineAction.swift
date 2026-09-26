@@ -12,7 +12,6 @@ import Foundation
 struct ImportCandidateCombineAction {
     let importer: Importer
     let uiStore: UiStore
-    let listSlot: ImportListSlot
 
     func run() async {
         do {
@@ -20,8 +19,7 @@ struct ImportCandidateCombineAction {
                 uiStore.selectedFolderCandidates.sorted()
             )
             try Task.checkCancellation()
-            uiStore.setFolderCandidateSelection([key])
-            listSlot.requestCandidateReveal(key)
+            uiStore.navigateToImportCandidate(key, selecting: [key])
         }
         catch is CancellationError {}
         catch {

@@ -504,6 +504,12 @@ impl crate::types::BridgeImportQueueSummary {
     }
 }
 
+mirror_enum! {
+    crate::types::BridgeChosenFolder = bae_core::import::ChosenFolder,
+    from_core: pub(super) fn,
+    variants: { InLibrary { album_id }, InImportQueue { candidate_keys }, NoReleases },
+}
+
 mirror_struct! {
     crate::types::BridgeImportCandidateListLocation
         = bae_core::import::ImportCandidateListLocation,

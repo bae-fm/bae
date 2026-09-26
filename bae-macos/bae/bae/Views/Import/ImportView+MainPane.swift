@@ -145,7 +145,7 @@ extension ImportView {
                 selectCover(selection, for: candidate)
             },
             onNavigateToPlacement: { key in
-                listSlot.requestCandidateReveal(key)
+                uiStore.navigateToImportCandidate(key, selecting: [key])
             },
         )
         .animation(nil, value: uiStore.selectedFolderCandidates)

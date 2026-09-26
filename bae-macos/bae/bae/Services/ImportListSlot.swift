@@ -1,5 +1,4 @@
 import BaeKit
-import Combine
 import Foundation
 import OSLog
 import Observation
@@ -38,8 +37,6 @@ final class ImportListSlot {
     @ObservationIgnored
     private let firstIdentifyingCandidate:
         @Sendable (BridgeImportListView) async throws -> String?
-    @ObservationIgnored
-    private let candidateRevealSubject = PassthroughSubject<String, Never>()
     @ObservationIgnored
     private var pages: ImportListPages?
     @ObservationIgnored
@@ -102,14 +99,6 @@ final class ImportListSlot {
             collapsedGroups: uiStore.collapsedReleaseGroupKeys,
             order: initialOrder
         )
-    }
-
-    var candidateRevealRequests: AnyPublisher<String, Never> {
-        candidateRevealSubject.eraseToAnyPublisher()
-    }
-
-    func requestCandidateReveal(_ candidateKey: String) {
-        candidateRevealSubject.send(candidateKey)
     }
 
     /// Build the list and read its first page. Called once the app's

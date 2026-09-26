@@ -567,6 +567,39 @@ impl Database {
             .await
     }
 
+    /// What `chosen`, under the watched root `root`, is to the library — read
+    /// once a read of `root` is over. A read that failed leaves the root's
+    /// stored releases those of the read before it, so the failure is the
+    /// answer rather than anything concluded from them.
+    pub(crate) async fn load_chosen_folder(
+        &self,
+        root: String,
+        chosen: std::path::PathBuf,
+    ) -> Result<crate::import::list::ChosenFolderRead, DbError> {
+        let failed_root = root.clone();
+        self.read(move |sql| {
+            let failure: Option<String> = sql
+                .query(
+                    "SELECT error FROM folder_scan_roots \
+                     WHERE watched_folder_path = ? AND status = 'failed'",
+                    params![failed_root],
+                    |row| row.get::<_, String>(0),
+                )?
+                .into_iter()
+                .next();
+            // Nothing tests a Done row's text: the answer names releases, not
+            // what they show.
+            Ok((failure, load_import_queue_on(&sql, DoneRowText::Skip)?))
+        })
+        .process(move |(failure, rows)| match failure {
+            Some(error) => Ok(crate::import::list::ChosenFolderRead::ScanFailed(error)),
+            None => crate::import::list::chosen_folder(&rows, &root, &chosen)
+                .map(crate::import::list::ChosenFolderRead::Read)
+                .map_err(|error| DbError::Message(error.to_string())),
+        })
+        .await
+    }
+
     /// The first of `keys` in the queue's own order under `request`'s view,
     /// read from the tables. `None` when the queue holds none of them.
     pub(crate) async fn first_import_candidate_among(
