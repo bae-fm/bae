@@ -428,10 +428,10 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         }
     }
 
-    /// A blank draft keeps its title and album year beside the cover and
-    /// the release's four text fields — year, label, catalog number, barcode
-    /// — below it, ready to edit. The typed facts (media, country, status,
-    /// packaging, details) are menus beside them, not text fields.
+    /// A blank draft keeps its title and album year beside the cover and the
+    /// release's text fields — year, one blank label row, barcode — below it.
+    /// The label row's catalog number is hinted "Catalog #" rather than a
+    /// dash, so it is told apart from the label name beside it.
     func testIdentityFieldsSitBesideTheCoverAndReleaseFieldsUnderIt()
         async throws
     {
@@ -466,11 +466,16 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             }
             // The empty mark is an attributed placeholder: it carries its own
             // colour and the field's plain font.
-            let releaseFields = fields.filter {
+            let dashed = fields.filter {
                 $0.placeholderAttributedString?.string == "\u{2014}"
             }
-            XCTAssertEqual(releaseFields.count, 4)
-            for field in releaseFields {
+            XCTAssertEqual(dashed.count, 3)
+            let catalog = try XCTUnwrap(
+                fields.first {
+                    $0.placeholderString == String(localized: "Catalog #")
+                }
+            )
+            for field in dashed + [catalog] {
                 let frame = field.convert(field.bounds, to: host)
                 XCTAssertTrue(
                     host.isFlipped
