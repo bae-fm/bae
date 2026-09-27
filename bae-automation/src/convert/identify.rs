@@ -7,16 +7,22 @@ use super::*;
 
 mirror_enum! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationNotAskedReason = bae_core::identify::NotAskedReason,
+    from_core: pub(crate) fn,
+    variants: { LeftOut, SwitchedOff, NoCatalog },
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationLookupState = bae_core::identify::LookupView,
     from_core: pub(crate) fn,
     variants: {
         Queued,
-        NotAsked,
+        NotAsked { reason: (AutomationNotAskedReason) },
         LookingUp,
         Found { count, groups: (each AutomationReleaseGroup) },
         NoMatch,
         Failed { failure: (AutomationLookupFailure) },
-        Off,
     },
 }
 
@@ -78,14 +84,6 @@ mirror_enum! {
             source: (opt AutomationDiscIdFile),
             lookup: (AutomationLookupState),
         },
-        ReadNotAsked {
-            disc_id,
-            source: (opt AutomationDiscIdFile),
-        },
-        LeftOut {
-            disc_id,
-            source: (opt AutomationDiscIdFile),
-        },
     },
 }
 
@@ -136,7 +134,7 @@ mirror_enum! {
     AutomationSearchStep = bae_core::identify::SearchStepView,
     from_core: pub(crate) fn,
     variants: {
-        Off,
+        NotAsked { reason: (AutomationNotAskedReason) },
         NotNeeded,
         NoTitle,
         Waiting { album, artist },
@@ -154,20 +152,11 @@ mirror_struct! {
         barcode: (AutomationBarcodeStep),
         catalog: (AutomationCatalogStep),
         search: (AutomationSearchStep),
-        album_links: (AutomationAlbumLinksStep),
     },
 }
 
-mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationAlbumLinksStep = bae_core::identify::AlbumLinksStepView,
-    from_core: pub(crate) fn,
-    variants: { Followed, Off },
-}
-
 impl AutomationIdentifyFailure {
-    /// Not a copy: core carries the source and the failure of a per-provider
-    /// lookup as one `SourceFailure` payload, which this names as two fields.
+    /// Names core's one `SourceFailure` payload as two fields.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn from_core(failure: bae_core::identify::IdentifyFailure) -> Self {
         use bae_core::identify::IdentifyFailure;
@@ -197,8 +186,7 @@ impl AutomationIdentifyFailure {
     }
 }
 
-/// Not a copy: core keys the agreements as `(release_id, Agreements)` pairs,
-/// which this names inside each entry.
+/// Moves each pair's release id inside its entry.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn automation_agreements(
     agreements: Vec<(String, bae_core::identify::Agreements)>,
@@ -323,7 +311,6 @@ pub(crate) fn automation_identify_state(
     }
 }
 
-/// The narrowed-out rows, field for field.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn automation_narrowed_out(
     narrowed_out: bae_core::identify::NarrowedOutView,

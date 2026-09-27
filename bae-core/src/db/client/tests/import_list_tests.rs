@@ -1,9 +1,5 @@
-//! The list read, end to end against a database.
-//!
-//! The rules that place a row are tested over row literals in
-//! `import::list::tests`; what these check is the read that produces those
-//! rows — which columns it gathers, which documents it follows, and which
-//! tables it deliberately never touches.
+//! The list read against a database: which columns and documents it reads,
+//! and which tables it never touches.
 
 use super::super::*;
 use crate::identify::{LookupProvenance, TerminalVerdict};
@@ -77,8 +73,7 @@ async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &s
     save_verdict_with_ledger(db, candidate, release_id, None).await;
 }
 
-/// Store a verdict and the ledger its run recorded, beside the signals
-/// extraction read — the group one write lands.
+/// Store a verdict with its recorded ledger and settled signals.
 async fn save_verdict_with_ledger(
     db: &Database,
     candidate: &FolderCandidate,
@@ -122,9 +117,8 @@ fn musicbrainz_release(release_id: &str, title: &str) -> serde_json::Value {
     })
 }
 
-/// A MusicBrainz release whose own document links a Discogs release and whose
-/// release group links AllMusic and Wikidata — the shape a release editors
-/// have linked out from reads back in.
+/// A MusicBrainz release linking a Discogs release, in a group linking
+/// AllMusic and Wikidata.
 fn musicbrainz_release_linked_out(release_id: &str, group_id: &str) -> serde_json::Value {
     let mut release = musicbrainz_release(release_id, "Linked Album");
     release["release-group"] = serde_json::json!({ "id": group_id });
@@ -226,9 +220,7 @@ async fn a_picked_row_leads_with_the_stored_release() {
     assert_eq!(matched.title, "Picked Album");
 }
 
-/// A pick names only a release bae fetched and stored: writing one for a
-/// release nothing stored is refused, so no row can lead with a pick it cannot
-/// draw.
+/// A pick of a release nothing stored is refused and leaves nothing behind.
 #[tokio::test]
 async fn a_pick_of_a_release_nothing_stored_is_refused() {
     let (db, _tmp, root) = watched_root().await;
@@ -267,8 +259,7 @@ async fn a_pick_of_a_release_nothing_stored_is_refused() {
     );
 }
 
-/// A row with a verdict and no pick leads with the verdict's own lead match,
-/// read off its stored columns.
+/// A row with a verdict and no pick leads with the verdict's lead match.
 #[tokio::test]
 async fn a_row_without_a_pick_leads_with_the_verdicts_lead_match() {
     let (db, _tmp, root) = watched_root().await;
@@ -288,8 +279,8 @@ async fn a_row_without_a_pick_leads_with_the_verdicts_lead_match() {
     assert_eq!(matched.artist.as_deref(), Some("Verdict Artist"));
 }
 
-/// A verdict whose releases the folder's own files rule out stores what they
-/// prove, and the list reads it back into the question the row asks.
+/// A verdict whose releases the folder's files rule out reads back as the
+/// row's question.
 #[tokio::test]
 async fn a_verdict_the_folder_rules_out_reads_back_as_its_question() {
     let (db, _tmp, root) = watched_root().await;
@@ -357,9 +348,8 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_question() {
     );
 }
 
-/// The list places a row from `scan_candidate`'s own columns and the stored
-/// verdict — never from the folder's files. Deleting every file row leaves the
-/// list unchanged, which is what "reads columns, decodes nothing" means.
+/// The list places rows without reading their files: deleting every file row
+/// changes nothing.
 #[tokio::test]
 async fn the_list_places_a_row_without_reading_its_files() {
     let (db, _tmp, root) = watched_root().await;
@@ -380,9 +370,8 @@ async fn the_list_places_a_row_without_reading_its_files() {
     assert_eq!(before.summary, after.summary);
 }
 
-/// The pane's read stands the stored verdict back up with the live library
-/// status of every release it names, aligned with its matches — the answer a
-/// candidate shows when no run is in flight.
+/// The detail resumes the stored verdict with live library statuses aligned
+/// to its matches.
 #[tokio::test]
 async fn the_detail_resumes_the_stored_verdict_with_live_statuses() {
     let (db, _tmp, root) = watched_root().await;
@@ -424,9 +413,7 @@ async fn the_detail_resumes_the_stored_verdict_with_live_statuses() {
     );
 }
 
-/// The ledger stored with the verdict is what a resumed candidate shows: the
-/// disc ID on its row, with what MusicBrainz answered about it, rather than
-/// the matches alone.
+/// The detail resumes the ledger stored with the verdict.
 #[tokio::test]
 async fn the_detail_resumes_the_ledger_the_run_recorded() {
     let (db, _tmp, root) = watched_root().await;
@@ -453,7 +440,6 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         barcode: crate::identify::BarcodeStepView::Absent,
         catalog: crate::identify::CatalogStepView::NoneFound,
         search: crate::identify::SearchStepView::NotNeeded,
-        album_links: crate::identify::AlbumLinksStepView::Followed,
     };
     save_verdict_with_ledger(&db, &candidate, "mb-verdict", Some(ledger.clone())).await;
 
@@ -492,9 +478,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
     ));
 }
 
-/// A verdict stored for an earlier file-edit revision describes files the
-/// candidate no longer has; it does not resume, and the row goes back to
-/// waiting on identification.
+/// A verdict stored for another file-edit revision does not resume.
 #[tokio::test]
 async fn a_verdict_from_another_revision_does_not_resume() {
     let (db, _tmp, root) = watched_root().await;
@@ -522,9 +506,8 @@ async fn a_verdict_from_another_revision_does_not_resume() {
     assert!(detail.verdict.is_none());
 }
 
-/// The sidebar owns the compact applied-draft projection. Closing the detail
-/// subscription therefore cannot erase the title or effective cover from the
-/// row.
+/// The list row carries the applied draft's title and the chosen cover,
+/// which a rescan keeps.
 #[tokio::test]
 async fn the_list_projects_the_applied_draft_and_cover() {
     let (db, _tmp, root) = watched_root().await;
@@ -667,8 +650,8 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     );
 }
 
-/// A scan stores the cover the folder gives the candidate, so the pane, the
-/// row and the commit all read one value rather than each deriving one.
+/// A scan stores the folder's own cover, and the row shows it over a cover a
+/// verdict found.
 #[tokio::test]
 async fn the_scan_stores_the_folders_own_cover() {
     let (db, _tmp, root) = watched_root().await;
@@ -817,10 +800,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
     );
 }
 
-/// The failure the last attempt stored is a placement fact, so the list reads
-/// it: after a relaunch, with nothing running, the row that failed is still on
-/// Pending — the folder is not in the library and the work is waiting on
-/// another attempt — but saying what went wrong rather than looking untried.
+/// A stored import failure keeps the row on Pending, saying what went wrong.
 #[tokio::test]
 async fn a_stored_failure_keeps_the_row_pending_saying_why() {
     let (db, _tmp, root) = watched_root().await;

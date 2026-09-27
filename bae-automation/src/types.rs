@@ -63,21 +63,16 @@ pub enum AutomationCandidate {
         track_count: u32,
         source_audio: Option<AutomationSourceAudioSummary>,
         content_hash: String,
-        /// What the identify and import pipelines have recorded against this
-        /// candidate. Every scanned folder carries one — idle until something
-        /// runs — because the import service keeps it alongside the candidate.
+        /// What identification and import have recorded for this candidate.
         runtime: AutomationCandidateRuntime,
-        /// The release this candidate is picked as, described by the documents
-        /// the pick archived. `None` while nothing is picked, and for a folder
-        /// read as its own tags.
+        /// The release this candidate is picked as; `None` while nothing is
+        /// picked, and for a folder read as its own tags.
         picked_release: Option<AutomationReleaseDetail>,
-        /// What identified the picked release, pinned to the candidate file
-        /// each piece of evidence was read off — the same chips the pane puts
-        /// on that image's tile or that file's row.
+        /// What identified the picked release, with the file each piece was
+        /// read off.
         file_evidence: Vec<AutomationFileEvidence>,
-        /// The metadata this candidate will commit with: the pick's own values
-        /// with whatever has been typed over them. `None` while nothing is
-        /// picked.
+        /// The metadata this candidate will commit with; `None` while nothing
+        /// is picked.
         edit: Option<AutomationReleaseUserEdit>,
         /// The last import of this candidate that failed.
         failure: Option<AutomationImportFailure>,
@@ -135,9 +130,7 @@ pub struct AutomationCandidateCommon {
     pub is_added: bool,
 }
 
-/// What the import tab shows for one candidate beyond its folder: the run in
-/// flight or the answer stored for it, that state's signals toolbar, the
-/// signals extraction settled on, and where its import stands.
+/// A candidate's identify state, badges, signals and import status.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationCandidateRuntime {
     pub identify_state: AutomationIdentifyState,
@@ -146,8 +139,7 @@ pub struct AutomationCandidateRuntime {
     pub import_status: Option<AutomationImportStatus>,
 }
 
-/// An import that failed, as the candidate still records it after a relaunch.
-/// `failed_at` is RFC 3339.
+/// A candidate's last failed import; `failed_at` is RFC 3339.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationImportFailure {
     pub error: String,
@@ -225,8 +217,7 @@ pub enum AutomationDiscIdSignal {
     Absent {
         track_count: u32,
     },
-    /// A CUE was there over audio sampled at a rate no CD plays at, so it was
-    /// not hashed.
+    /// A CUE over audio sampled at a rate no CD plays at.
     NotCdAudio {
         track_count: u32,
         sample_rate_hz: u32,
@@ -246,8 +237,7 @@ pub enum AutomationCdProof {
     RipperSheet,
 }
 
-/// Mirrors bae-core's `signals::RipEvidence`: what the candidate's files say
-/// about the medium its audio was ripped from.
+/// Mirrors bae-core's `signals::RipEvidence`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationRipEvidence {
@@ -325,15 +315,16 @@ pub enum AutomationSignalState {
     },
     NoMatch,
     Skipped,
-    /// The signal's lookup is switched off in the identification settings.
-    Off,
+    /// The signal holds a value and nobody was asked about it, for `reason`.
+    NotAsked {
+        reason: AutomationNotAskedReason,
+    },
     Failed {
         failure: AutomationLookupFailure,
     },
 }
 
-/// Mirrors bae-core's `identify::SignalOption` — one of the values a signal
-/// could take, for the signals that offer a choice.
+/// Mirrors bae-core's `identify::SignalOption`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationSignalOption {
     pub value: String,
@@ -500,22 +491,17 @@ pub struct AutomationAlbumHeading {
     pub source: AutomationReleaseGroupSource,
 }
 
-/// One source carrying a group, and its editorial page for it.
+/// One source carrying a group, and its page for it.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationReleaseGroupSource {
     pub source: AutomationCatalog,
     pub group_url: Option<String>,
-    /// Whether what this album is on the other catalog could not be read —
-    /// its page, or a document a statement about it needed.
+    /// Whether what this album is on the other catalog could not be read.
     pub album_links_unread: bool,
 }
 
-/// One physical pressing, on every source that lists it.
-///
-/// A row is picked whole. `releases` is what the row shows, its extra entries
-/// naming the other sources carrying the same pressing rather than offering
-/// separate picks; `pick` is what picking the row means and can be handed
-/// straight back as a candidate's metadata provenance.
+/// One physical pressing, on every source that lists it, picked whole: `pick`
+/// can be handed straight back as a candidate's metadata provenance.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationPressing {
     pub releases: Vec<AutomationMetadataResult>,
@@ -579,15 +565,13 @@ pub struct AutomationDownscaledCopy {
     pub max_edge: u32,
 }
 
-/// One signal that identified the picked release, and the candidate file it
-/// was read off. It explains the pick and decides nothing: a pick claims the
-/// pressing whatever turned it up.
+/// One signal that identified the picked release, and the file it was read
+/// off. It explains the pick and decides nothing.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationFileEvidence {
     pub signal: AutomationEvidenceSignal,
-    /// The value itself — the barcode digits, the disc ID.
     pub value: String,
-    /// The file's identity within the release: its candidate-relative path.
+    /// The candidate-relative path of the file.
     pub file_id: String,
 }
 
@@ -660,8 +644,8 @@ pub enum AutomationImportPhase {
     Finalizing,
 }
 
-/// Where a candidate's import stands, mirroring bae-core's
-/// `import::CandidateImportStatus` with the running attempt's progress joined in.
+/// Mirrors bae-core's `import::CandidateImportStatus`, with the running
+/// attempt's progress.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationImportStatus {
@@ -678,8 +662,7 @@ pub enum AutomationImportStatus {
     },
 }
 
-/// Mirrors bae-core's `import::ImportStep`: the preparation step before the
-/// running phases, or the running phase itself.
+/// Mirrors bae-core's `import::ImportStep`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationImportStep {
@@ -718,8 +701,8 @@ pub enum AutomationMetadataProvenance {
     ExternalRelease {
         /// The catalog's release the draft is read from.
         record: AutomationMetadataRef,
-        /// The other catalogs' releases the picked pressing paired with. The
-        /// pick claims these too.
+        /// The other catalogs' releases the picked pressing paired with,
+        /// which the pick claims too.
         partners: Vec<AutomationMetadataRef>,
     },
     FileMetadata,
@@ -783,25 +766,19 @@ pub struct ReleaseIdInput {
     pub release_id: String,
 }
 
-/// Which storage transition to run, with whatever that transition needs. The
-/// names are the Storage Manager's, not the core enum's: a caller asks to move a
-/// release to the cloud, not to "make remote".
+/// Which storage transition to run, named as the Storage Manager names them.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationStorageAction {
-    /// Local → Cloud. `pin` keeps the uploaded blobs offline on this device,
-    /// the same choice the desktop's move-to-cloud sheet asks for.
+    /// Local → Cloud; `pin` keeps the uploaded files offline on this device.
     MoveToCloud { pin: bool },
     /// Keep a cloud release offline on this device.
     Pin,
     /// Stop keeping a cloud release offline. Its bytes stay in the cloud.
     Unpin,
-    /// Cloud → Local: move the files back out into `destination_dir`, which the
-    /// desktop asks for with a folder panel and a caller must supply here.
+    /// Cloud → Local, into `destination_dir`.
     MakeLocal { destination_dir: String },
-    /// Cancel whichever transition is in flight — upload, pin, or make-local.
-    /// Core dispatches on what is actually running, and does nothing when
-    /// nothing is.
+    /// Cancel whichever transition is in flight; nothing running is no error.
     Cancel,
 }
 
@@ -811,33 +788,28 @@ pub struct ReleaseStorageActionInput {
     pub action: AutomationStorageAction,
 }
 
-/// What a storage action left behind. Each transition reports the durable thing
-/// it produced rather than a bare acknowledgement: a move to the cloud yields the
-/// outbox revision its uploads were queued at, which is what a caller waits on.
+/// What a storage action left behind.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationStorageActionOutcome {
-    /// The uploads are queued and draining; `outbox_revision` is the durable
-    /// queue revision they were committed at. Poll the release to see it land.
+    /// The uploads are queued at `outbox_revision`; poll the release to see
+    /// them land.
     CloudUploadQueued {
         release_id: String,
         outbox_revision: u64,
     },
-    /// The pin joined the download queue, which serializes and reports it. The
-    /// bytes are not offline yet when this returns.
+    /// The pin is queued; the files are not offline yet.
     PinQueued {
         release_id: String,
     },
     Unpinned {
         release_id: String,
     },
-    /// The files are at their new path and the release no longer names its cloud
-    /// copies — this one completes before it returns.
+    /// Done before returning: the files are at their new path.
     MadeLocal {
         release_id: String,
     },
-    /// Whatever was in flight was told to stop. A release with nothing running
-    /// reports this too: core treats the cancel as a no-op rather than an error.
+    /// Whatever was in flight was told to stop, if anything was.
     Cancelled {
         release_id: String,
     },
@@ -849,8 +821,7 @@ pub struct ReleaseExportInput {
     pub target_dir: String,
 }
 
-/// Acknowledges that an export was enqueued. The copy runs on the background
-/// export queue; poll `output_status` for progress.
+/// An export was queued; poll `output_status` for progress.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationReleaseExport {
     pub release_id: String,
@@ -865,8 +836,7 @@ pub enum AutomationOutputState {
     Failed { error: String },
 }
 
-/// What a queued release output produces. Mirrors bae-core's `OutputKind`; a
-/// save carries its preset's display name (resolved at enqueue).
+/// Mirrors bae-core's `OutputKind`; a save carries its preset's name.
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum AutomationOutputKind {
@@ -884,7 +854,6 @@ pub struct AutomationOutputOp {
     pub total_size: i64,
     pub created_at: i64,
     pub state: AutomationOutputState,
-    /// Whether this row is a verbatim export or a preset save.
     pub kind: AutomationOutputKind,
 }
 

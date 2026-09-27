@@ -1,42 +1,14 @@
-//! The signal-extraction service: one pass over a candidate's files producing a
-//! streamed [`Signals`] snapshot (disc ID, barcodes, classified text), consumed
-//! by the identify pipeline and the search UI.
+//! The signal-extraction service: one pass over a candidate's files that
+//! streams whole [`Signals`] snapshots to the run it feeds (through an
+//! [`ExtractionWatch`]) and to the import event bus.
 //!
-//! Emission is streamed so slow OCR doesn't gate the fast signals:
+//! Everything that needs no OCR is read first, so the disc-ID lookup need not
+//! wait on the artwork; then the images are read one at a time, a snapshot per
+//! image, and the barcode and text signals settle at the end.
 //!
-//! 1. **Fast pass.** Everything that resolves without OCR — the disc ID
-//!    (LOG/CUE), CUE `CATALOG` barcodes, and the non-OCR text sources
-//!    (folder-name brackets, path components, filenames, CUE, text files) — is
-//!    gathered up front and emitted as the first `Signals`, so the disc-ID
-//!    lookup and the autocomplete populate before the first image OCR finishes.
-//! 2. **OCR stream.** Artwork images are analyzed one at a time (a single
-//!    `analyze` pass per image yields both barcodes and text). Every image
-//!    read re-emits the cumulative `Signals` with the pass's position moved
-//!    on, so a surface can show which image is being read; the barcode and
-//!    text signals settle at the end.
-//!
-//! A `Release` re-identify resolves its disc ID and artwork from the library.
-//! Every snapshot carries the whole `Signals`; the reducer and the UI overwrite
-//! wholesale.
-//!
-//! Every snapshot goes two ways. The run the extraction feeds reads it off a
-//! [`ExtractionWatch`] handed out at `start`, which holds the latest snapshot
-//! and nothing else: however far behind the run looks, it sees what its own
-//! extraction last said. The bus carries the same snapshot, named for the
-//! run, to everything that watches candidates rather than drives one — the
-//! candidate runtime, which holds the snapshot beside the run it was extracted
-//! for so that run's verdict stores with it, and the UI.
-//!
-//! An extraction that cannot gather its inputs — a blocking task that died,
-//! a folder whose timing does not read, a library release whose files do not
-//! resolve — says so with one snapshot that fails every signal, so the run it
-//! feeds settles as a failure rather than waiting on a snapshot that is not
-//! coming.
-//!
-//! A snapshot goes out only while its extraction is the key's current one.
-//! Starting a run replaces the extraction behind the previous run of the same
-//! candidate, and that one may still be mid-pass; nothing it has left to say
-//! reaches the bus or its watch.
+//! An extraction that cannot gather its inputs sends one snapshot that fails
+//! every signal, so its run settles as a failure instead of waiting. A
+//! replaced extraction sends nothing more.
 
 use super::analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
 use super::cancellation::CancellationRegistry;
@@ -80,11 +52,8 @@ pub struct SignalsSnapshot {
     pub artwork: ArtworkScan,
 }
 
-/// A run's view of the extraction feeding it: the latest snapshot, replaced
-/// wholesale as the pass goes, `None` until the first. A watch rather than the
-/// bus, so the run reads what its extraction last said however late it looks,
-/// and never what another extraction said. The sender goes with the
-/// extraction, so a run can also tell that its extraction is over.
+/// The latest snapshot of the extraction feeding a run, `None` until the
+/// first; the sender dropping tells the run its extraction is over.
 pub type ExtractionWatch = watch::Receiver<Option<SignalsSnapshot>>;
 
 /// Thread-safe handle to the running signal-extraction service.
@@ -96,40 +65,27 @@ pub struct ExtractionServiceHandle {
 struct ExtractionServiceInner {
     runtime_handle: tokio::runtime::Handle,
     event_tx: ImportEventBus,
-    /// The platform's artwork analyzer, registered at boot. `None` on a platform
-    /// that ships none: artwork is then not a barcode or text source, and
-    /// extraction says exactly that (`BarcodeSignal::Absent`) rather than
-    /// reporting a decode that never ran.
+    /// The platform's artwork analyzer; `None` where the platform has none, so
+    /// artwork is no source at all.
     analyzer: Mutex<Option<Arc<dyn ArtworkAnalyzer>>>,
-    /// Resolves a release's library files for the `Release` re-identify path.
+    /// Resolves a release's files for the `Release` re-identify path.
     library_manager: LibraryManager,
-    /// The settled snapshot of every folder read this session, by the content
-    /// hash of its files. The same files read the same way, so a later run
-    /// over an unchanged folder — a person changing what it looks up, say —
-    /// takes this rather than reading every image again.
+    /// Each folder's settled snapshot this session, so a later run over the
+    /// same files does not read every image again.
     settled: SessionCache<SignalsSnapshot>,
-    /// Per-candidate cancellation. `start` registers a new entry (cancelling any
-    /// prior one for the key); a task releases its own entry on the way out only
-    /// when the generation still matches. `ExtractionService::start` also spawns
-    /// a bus listener that cancels a key on `ScanEvent::CandidateRemoved`, so a
-    /// removed candidate's in-flight OCR stops rather than running to completion.
+    /// Per-candidate cancellation; a removed or rebound candidate is cancelled
+    /// by the bus listener `ExtractionService::start` spawns.
     cancellation: CancellationRegistry,
 }
 
-/// One extraction in flight: the run it feeds, the candidate, the registry
-/// generation that says whether it is still the current one, the run's
-/// priority, whether the run reads cover art, and the watch the run reads its
-/// snapshots off.
+/// One extraction in flight.
 struct RunningExtraction {
     run: IdentifyRunId,
     key: String,
+    /// The registry generation that says whether this is still the key's
+    /// current extraction.
     generation: u64,
     priority: CallPriority,
-    /// The run's [`IdentificationSteps::read_cover_art`]: off, no image is
-    /// read, and the pass says so rather than reading as art with nothing on
-    /// it.
-    ///
-    /// [`IdentificationSteps::read_cover_art`]: crate::config::IdentificationSteps::read_cover_art
     read_cover_art: bool,
     snapshots: watch::Sender<Option<SignalsSnapshot>>,
 }
@@ -148,11 +104,9 @@ impl Drop for ExtractionRelease {
     }
 }
 
-/// How many folders' settled snapshots a session keeps. One per candidate a
-/// person works through; eviction costs one more read of that folder.
+/// How many folders' settled snapshots a session keeps.
 const SETTLED_CAPACITY: usize = 1024;
 
-/// Builder / entry point for constructing the service.
 pub struct ExtractionService;
 
 impl ExtractionService {
@@ -170,9 +124,7 @@ impl ExtractionService {
             cancellation: CancellationRegistry::default(),
         });
 
-        // Subscribe before returning the handle: no extraction can start before
-        // this listener is receiving, so a removal naming an in-flight run is
-        // never missed.
+        // Subscribed before any extraction can start, so no removal is missed.
         let mut removal_rx = inner.event_tx.subscribe();
         let removal_inner = inner.clone();
         inner.runtime_handle.spawn(async move {
@@ -227,21 +179,15 @@ impl ExtractionServiceInner {
 }
 
 impl ExtractionServiceHandle {
-    /// Register the platform's artwork analyzer. Called once at boot from the
-    /// bridge's `register_artwork_analyzer`, on the platforms that have one.
+    /// Register the platform's artwork analyzer, once at boot.
     pub fn register_analyzer(&self, analyzer: Arc<dyn ArtworkAnalyzer>) {
         *self.inner.analyzer.lock().unwrap() = Some(analyzer);
     }
 
-    /// Kick off extraction for candidate `key` from `source`, feeding `run`,
-    /// and hand back the watch the run reads its snapshots off. Cancels any
-    /// prior in-flight extraction for the same key, and from here on that one
-    /// emits nothing: its snapshots would name a run that is over.
-    /// `priority` is the run's, not a call's — extraction makes no provider
-    /// calls. It rides the `SignalsUpdated` snapshots so a consumer can tell a
-    /// candidate a person opened from one the automatic admission picked up.
-    /// `steps` is the run's too: the extraction reads the cover art only when
-    /// the run takes that step.
+    /// Start extraction for candidate `key` from `source`, feeding `run`, and
+    /// return the watch the run reads its snapshots off. Replaces any
+    /// extraction in flight for the key. `priority` is the run's, carried on
+    /// each snapshot; extraction itself calls no provider.
     pub fn start(
         &self,
         run: IdentifyRunId,
@@ -271,18 +217,13 @@ impl ExtractionServiceHandle {
         watch
     }
 
-    /// Cancel a candidate's in-flight extraction. For the bridge's candidate
-    /// teardown (the re-identify dismissal) and for the import handle's
-    /// cancellation of a decided candidate's identification, which ends its
-    /// extraction beside its run; a removed or
-    /// reshaped candidate cancels through the bus listener instead.
+    /// Cancel a candidate's in-flight extraction.
     pub fn cancel(&self, key: &str) {
         self.inner.cancellation.cancel(key);
     }
 }
 
-/// Drive extraction for one candidate. Builds the inputs for its source, then
-/// streams `Signals` snapshots as the disc ID, barcodes, and text settle.
+/// Drive extraction for one candidate from its source.
 async fn run_extraction(
     inner: Arc<ExtractionServiceInner>,
     extraction: RunningExtraction,
@@ -300,11 +241,7 @@ async fn run_extraction(
     }
 
     match source {
-        // One scan derives every non-OCR signal in a single blocking hop, then
-        // the artwork OCR streams.
         ExtractionSource::Candidate { candidate } => {
-            // A reading taken with the cover art left unread is not the reading
-            // of a run that reads it, nor the other way round.
             let settled_key =
                 settled_reading_key(&candidate.files.content_hash(), extraction.read_cover_art);
             if let Some(settled) = inner.settled.get_cloned(&settled_key) {
@@ -342,11 +279,8 @@ async fn run_extraction(
             for catalog in fast.bracket_catalogs {
                 pool.push_bracket(catalog);
             }
-            let artwork = Artwork::plan(
-                extraction.read_cover_art,
-                inner.has_artwork_analyzer(),
-                fast.artwork,
-            );
+            let artwork = Artwork::unread(extraction.read_cover_art, inner.has_artwork_analyzer())
+                .unwrap_or_else(|| Artwork::read(fast.artwork));
             let settled = stream_extraction(
                 inner.clone(),
                 extraction,
@@ -369,14 +303,11 @@ async fn run_extraction(
             }
         }
 
-        // Re-identify: the rip artifacts and artwork come from the library, not
-        // a folder scan. No non-OCR text sources.
+        // A library release has no folder text; its rip files and artwork come
+        // from the library.
         ExtractionSource::Release { release_id } => {
             let (rip, mono_audio, disc_id) =
                 match resolve_release_identity(&inner.library_manager, &release_id).await {
-                    // A library release's files are its own, not files of a
-                    // scanned folder, so nothing the reading names has a row
-                    // to point at.
                     Ok(identity) => (
                         identity.rip.evidence,
                         identity.rip.mono,
@@ -394,26 +325,18 @@ async fn run_extraction(
             if token.is_cancelled() {
                 return;
             }
-            // The release's artwork is resolved only when there's an analyzer to
-            // decode it with — staging a cover blob nothing will read is pure
-            // cost. A run that leaves the cover art unread still resolves it,
-            // so it says how many images it left unread rather than none.
-            //
-            // `_cover_staging` holds the temp dir the cover was staged into and
-            // must stay bound until `stream_extraction` returns. A resolve error
-            // means the release's files can't be read at all (a missing cover is
-            // already a skip inside), so abort rather than emit a misleading
-            // settled-with-no-signals result.
-            let (artwork, _cover_staging) = match inner.has_artwork_analyzer() {
-                true => {
+            // The artwork is resolved only when it will be read.
+            // `_cover_staging` holds the staged cover's temp dir until
+            // `stream_extraction` returns; a resolve error means the release's
+            // files cannot be read at all, so the extraction aborts.
+            let unread = Artwork::unread(extraction.read_cover_art, inner.has_artwork_analyzer());
+            let (artwork, _cover_staging) = match unread {
+                Some(unread) => (unread, None),
+                None => {
                     match resolve_release_artwork_paths(&inner.library_manager, &release_id).await {
-                        // A library release's images are stored blobs, not
-                        // files of a scanned folder, so nothing here has a
-                        // file id for a signal to point at.
+                        // A library release's images have no file id.
                         Ok((paths, staging)) => (
-                            Artwork::plan(
-                                extraction.read_cover_art,
-                                true,
+                            Artwork::read(
                                 paths
                                     .into_iter()
                                     .map(|path| ArtworkImage {
@@ -436,7 +359,6 @@ async fn run_extraction(
                         }
                     }
                 }
-                false => (Artwork::Absent, None),
             };
             stream_extraction(
                 inner,
@@ -449,8 +371,6 @@ async fn run_extraction(
                         disc_id,
                         barcodes: Vec::new(),
                         pool: Pool::default(),
-                        // A library release has no candidate folder to walk, so
-                        // nothing is probed on this path.
                         durations: crate::import::probe::SourceDurations::default(),
                     },
                     artwork,
@@ -461,8 +381,7 @@ async fn run_extraction(
     }
 }
 
-/// The fast pass, or why it could not be had: the task died, or the folder's
-/// timing does not read.
+/// The fast pass, or why the task died or the folder's timing does not read.
 async fn run_fast_pass_blocking<F>(runtime_handle: &Handle, task: F) -> Result<FastPass, String>
 where
     F: FnOnce() -> Result<FastPass, crate::import::ImportError> + Send + 'static,
@@ -476,8 +395,7 @@ where
     }
 }
 
-/// The blocking task's value, or why there is none: it panicked or was
-/// cancelled with the runtime.
+/// The blocking task's value, or why it panicked or was cancelled.
 async fn run_blocking<T, F>(
     runtime_handle: &Handle,
     failure_context: &str,
@@ -496,10 +414,8 @@ where
     }
 }
 
-/// What the pass has gathered so far: the rip evidence and the settled disc
-/// ID, every barcode found
-/// (CUE first, then each image OCR adds to it), the text pool, and the folder's
-/// track durations. Every snapshot the pass emits is built from this.
+/// What the pass has gathered so far, which every snapshot is built from.
+/// Barcodes are the CUE's first, then each image's.
 struct Gathered {
     rip: RipEvidence,
     mono_audio: bool,
@@ -509,9 +425,8 @@ struct Gathered {
     durations: crate::import::probe::SourceDurations,
 }
 
-/// What the streaming pass consumes: what is already gathered, and the artwork
-/// that adds to it. A folder scan and a release re-identify each build one,
-/// differing only in which fields are populated.
+/// What the streaming pass consumes: what is already gathered, and the
+/// artwork that adds to it.
 struct ExtractionInputs {
     gathered: Gathered,
     artwork: Artwork,
@@ -519,42 +434,43 @@ struct ExtractionInputs {
 
 /// What the pass does with the candidate's artwork.
 enum Artwork {
-    /// Artwork is no signal source for this candidate — either it has no
-    /// images, or the platform has no analyzer. The two are one fact to
-    /// everything downstream.
+    /// No images, or no analyzer to read them with.
     Absent,
-    /// There are `total` images to read and the run does not read cover art:
-    /// nothing is read off them, which is not the same as reading them and
-    /// finding nothing.
-    Off { total: u32 },
-    /// The images to read, and the analyzer to read them with.
+    /// The run does not read cover art.
+    Off,
     Read(ArtworkPass),
 }
 
 impl Artwork {
-    fn plan(read_cover_art: bool, analyzer_available: bool, images: Vec<ArtworkImage>) -> Self {
-        if images.is_empty() || !analyzer_available {
-            return Artwork::Absent;
+    /// What the pass does when it will read no image, decided before the
+    /// images are looked for; `None` when they are to be read.
+    fn unread(read_cover_art: bool, analyzer_available: bool) -> Option<Self> {
+        if !analyzer_available {
+            return Some(Artwork::Absent);
         }
         if !read_cover_art {
-            return Artwork::Off {
-                total: images.len() as u32,
-            };
+            return Some(Artwork::Off);
+        }
+        None
+    }
+
+    /// The pass over `images`, once [`Self::unread`] says they are to be read.
+    fn read(images: Vec<ArtworkImage>) -> Self {
+        if images.is_empty() {
+            return Artwork::Absent;
         }
         Artwork::Read(ArtworkPass { images })
     }
 }
 
-/// The artwork OCR pass: the images to decode. Built only when there is an
-/// analyzer to decode them with, which makes "images to scan, but nothing to
-/// scan them with" unrepresentable.
+/// The images to read, built only when there is an analyzer to read them.
 struct ArtworkPass {
-    /// Non-empty by construction.
+    /// Never empty.
     images: Vec<ArtworkImage>,
 }
 
 /// The session cache's key for a folder's settled reading: its files, and
-/// whether the reading read the cover art.
+/// whether the cover art was read.
 fn settled_reading_key(content_hash: &str, read_cover_art: bool) -> String {
     if read_cover_art {
         content_hash.to_string()
@@ -563,10 +479,9 @@ fn settled_reading_key(content_hash: &str, read_cover_art: bool) -> String {
     }
 }
 
-/// Stream `Signals` over the artwork OCR pass: emit the fast-pass snapshot,
-/// then one cumulative snapshot per image that adds a barcode or text line,
-/// then a final settled snapshot, which it also returns. `None` when the pass
-/// was cancelled or an image failed to read: there is no settled reading.
+/// Stream snapshots over the artwork pass — one before the first image and
+/// one after each image but the last — then send and return the settled one.
+/// `None` when the pass was cancelled or an image failed to read.
 async fn stream_extraction(
     inner: Arc<ExtractionServiceInner>,
     extraction: RunningExtraction,
@@ -577,18 +492,16 @@ async fn stream_extraction(
         mut gathered,
         artwork,
     } = inputs;
-    // Where the pass will have got to once it is over: every image read, or
-    // none read because the run leaves them unread, or nothing to read.
     let finished = match &artwork {
         Artwork::Absent => ArtworkScan::Absent,
-        Artwork::Off { total } => ArtworkScan::Off { total: *total },
+        Artwork::Off => ArtworkScan::Off,
         Artwork::Read(pass) => ArtworkScan::Done {
             total: pass.images.len() as u32,
         },
     };
     let artwork = match artwork {
         Artwork::Read(pass) => Some(pass),
-        Artwork::Absent | Artwork::Off { .. } => None,
+        Artwork::Absent | Artwork::Off => None,
     };
     let total = artwork.as_ref().map_or(0, |pass| pass.images.len() as u32);
     let has_artwork = artwork.is_some();
@@ -602,11 +515,8 @@ async fn stream_extraction(
         return None;
     }
 
-    // First snapshot, only when there is artwork to read: disc ID and CUE
-    // barcodes are settled and the autocomplete pool is populated, while
-    // barcode/text stay `Scanning` until the OCR pass has been over every
-    // image. Without artwork nothing is scanned, so the settled snapshot below
-    // is the first and only one: `Scanning` means artwork is being read.
+    // Without artwork the settled snapshot is the only one, so `Scanning`
+    // always means images are being read.
     if let Some(pass) = &artwork {
         let classification = gathered.pool.classify();
         emit_signals(
@@ -646,16 +556,13 @@ async fn stream_extraction(
                 return None;
             }
 
-            // Accumulate barcodes — one sighting per image a code was read
-            // off, a code read twice off one image once — and text lines.
+            // One sighting per image a code was read off.
             for reading in super::barcode::codes_in(&analysis) {
                 let seen_here = gathered
                     .barcodes
                     .iter()
                     .any(|b| b.value == reading.code.as_str() && &b.origin_path == file_id);
                 if !seen_here {
-                    // The image it was read off, so a surface can put the
-                    // barcode on that image rather than beside the release.
                     let value = reading.code.into_string();
                     let sighting = match file_id {
                         Some(file_id) => {
@@ -677,22 +584,16 @@ async fn stream_extraction(
                 });
             }
 
-            // The last image's snapshot is the settled one below: nothing is
-            // being read any more, and saying so twice would be one snapshot
-            // too many.
+            // The last image's snapshot is the settled one below.
             if index + 1 == images.len() {
                 break;
             }
 
-            // Re-check cancellation before emitting; a successor's `start()` can
-            // flip the token during the synchronous push/classify window.
             if token.is_cancelled() {
                 return None;
             }
 
-            // Every image read is a snapshot, whether or not it added anything:
-            // the pass has moved on to the next image, and that is what a
-            // surface watching the run is shown.
+            // Every image read is a snapshot, whether or not it added anything.
             let classification = gathered.pool.classify();
             emit_signals(
                 &inner,
@@ -771,10 +672,8 @@ fn emit_failed_ocr_signals(
     );
 }
 
-/// Say that extraction could not gather its inputs at all: one snapshot with
-/// every signal failed and the artwork pass failed before it read anything.
-/// The run it feeds settles on it as a failure, which is the loud end an
-/// extraction that went silent would deny it.
+/// Send one snapshot with every signal failed, for an extraction that could
+/// not gather its inputs, so its run settles as a failure.
 fn emit_aborted_signals(
     inner: &ExtractionServiceInner,
     extraction: &RunningExtraction,
@@ -785,7 +684,6 @@ fn emit_aborted_signals(
         inner,
         extraction,
         Signals {
-            // Nothing was read, so nothing is proven.
             rip: RipEvidence::Unproven,
             mono_audio: false,
             disc_id,
@@ -809,9 +707,7 @@ fn emit_aborted_signals(
     );
 }
 
-/// Build a `Scanning`-phase `Signals` snapshot: what has been read so far
-/// while the artwork pass is still going. Only an extraction with artwork
-/// emits one; barcode and text both stay `Scanning` until the pass is over.
+/// What has been read so far while the artwork pass is still going.
 fn scanning_signals(
     gathered: &Gathered,
     catalogs: Vec<SourcedValue>,
@@ -834,13 +730,9 @@ fn scanning_signals(
     }
 }
 
-/// Put a `Signals` snapshot, with where the artwork pass has got to, on the
-/// run's watch and on the import event bus — only while the extraction is
-/// still its key's current one. The cancellation checks along the pass are
-/// not enough on their own: a successor's `start` can land between a check
-/// and the send, and a snapshot sent then would follow the successor's own on
-/// the bus, naming a run that is over. The registry decides and sends under
-/// one lock, so it cannot.
+/// Send a snapshot to the run's watch and the bus while the extraction is
+/// still its key's current one, checked under the registry's lock so a
+/// successor starting mid-pass never sees a stale snapshot after its own.
 fn emit_signals(
     inner: &ExtractionServiceInner,
     extraction: &RunningExtraction,
@@ -867,8 +759,6 @@ fn emit_signals(
         debug!("signals: {key} extraction was replaced; its snapshot is not sent");
     }
 }
-
-// ── Tests ───────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests;

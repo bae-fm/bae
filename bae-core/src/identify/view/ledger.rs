@@ -1,11 +1,8 @@
-//! The run as a ledger: one row per value extraction found, with where it
-//! was found beside it and one cell per provider asked about it. Built while
-//! the run goes, and recorded once as it ends.
+//! Builds the run's ledger, one step at a time.
 
 use super::*;
 
-/// Whether any identifier has already found a release, whether or not the
-/// others have finished looking.
+/// Whether any identifier has found a release yet.
 pub(super) fn identifiers_found_something(
     discid: &DiscidProgress,
     barcode: &BarcodeProgress,
@@ -20,26 +17,17 @@ pub(super) fn identifiers_found_something(
     disc || code || number
 }
 
-/// The title-search step: the words the run searched by, from the context,
-/// and how far each provider's lookup of them has got, from the pipe.
-///
-/// A step that has not run says which of the two reasons applies: the
-/// candidate's draft states no title, or there was a title and the
-/// identifiers answered before it was needed. An identifier that has already
-/// found something while the rest are still looking has answered too: the
-/// search runs only when all of them find nothing, so it is not needed. Only
-/// while nothing has been found yet is the step waiting on them.
+/// The title-search step. Once any identifier has found something the search
+/// is not needed, even while others are still looking.
 pub(super) fn search_step(
     progress: &SearchProgress,
     identifiers_found_something: bool,
     context: &SignalsContext,
 ) -> SearchStepView {
-    // A run that does not search by title says so from its start, whatever
-    // the identifiers go on to find.
-    if !context.steps.search_by_title {
-        return SearchStepView::Off;
-    }
     let providers = match (progress, &context.search.query) {
+        (SearchProgress::NotAsked { reason }, _) => {
+            return SearchStepView::NotAsked { reason: *reason }
+        }
         (_, None) => return SearchStepView::NoTitle,
         (SearchProgress::Pending, Some(_)) if identifiers_found_something => {
             return SearchStepView::NotNeeded
@@ -51,9 +39,6 @@ pub(super) fn search_step(
             }
         }
         (SearchProgress::Skipped, Some(_)) => return SearchStepView::NotNeeded,
-        (SearchProgress::Off, Some(_)) => {
-            unreachable!("a run that searches by title never settles its search as off")
-        }
         (SearchProgress::Lookups { providers }, Some(_)) => providers,
     };
     let query = context
@@ -80,8 +65,7 @@ pub(super) fn search_step(
     }
 }
 
-/// The disc-ID step: what extraction read, from the context, and how far
-/// MusicBrainz's lookup of it has got, from the pipe.
+/// The disc-ID step: the value from the context, its lookup from the pipe.
 pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) -> DiscIdStepView {
     let (disc_id, source_file) = match &context.disc.signal {
         DiscIdSignal::Computed {
@@ -106,25 +90,13 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
             }
         }
     };
-    // Two things leave a read disc ID unasked, and they are not the same thing
-    // to a person looking at it: they took it out of the run, or no provider
-    // the run asks answers disc IDs at all.
-    if let DiscidProgress::NotAsked { .. } = progress {
-        let source = source_file.map(disc_id_file);
-        return if context.disc.excluded {
-            DiscIdStepView::LeftOut { disc_id, source }
-        } else {
-            DiscIdStepView::ReadNotAsked { disc_id, source }
-        };
-    }
     let lookup = match progress {
-        // The track count is a settled-state concern — it reaches a surface
-        // through the terminal state, not through progress.
+        // The track count reaches a surface through the terminal state.
         DiscidProgress::Computing | DiscidProgress::LookingUp => LookupView::LookingUp,
         DiscidProgress::Done { results, .. } => found_or_no_match(results),
-        DiscidProgress::Off { .. } => LookupView::Off,
-        DiscidProgress::Skipped { .. } | DiscidProgress::NotAsked { .. } => {
-            unreachable!("a computed disc ID is skipped only by the early return above")
+        DiscidProgress::NotAsked { reason, .. } => LookupView::NotAsked { reason: *reason },
+        DiscidProgress::Skipped { .. } => {
+            unreachable!("only a disc ID that was never computed is skipped")
         }
         DiscidProgress::Failed { failure, .. } => LookupView::Failed {
             failure: failure.clone(),
@@ -137,9 +109,7 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
     }
 }
 
-/// The file a disc ID was read off, by the kind of artifact it is. A disc ID
-/// is derived from a rip log or a cue sheet and nothing else, so a file that
-/// is not a log is a sheet.
+/// The file a disc ID was read off; a file that is not a log is a cue sheet.
 fn disc_id_file(file: String) -> DiscIdFile {
     let is_log = std::path::Path::new(&file)
         .extension()
@@ -167,8 +137,7 @@ pub(super) fn barcode_step(
         cells,
     };
     match progress {
-        // The codes are asked once they settle: every code read so far is a
-        // row whose cells wait, and more rows may still come.
+        // The codes are asked once they settle, so every cell waits.
         BarcodeProgress::Scanning => BarcodeStepView::Rows {
             scanning: true,
             rows: context
@@ -182,15 +151,12 @@ pub(super) fn barcode_step(
         BarcodeProgress::ScanFailed { failure } => BarcodeStepView::ScanFailed {
             failure: failure.clone(),
         },
-        // Nothing was read: say whether that is because the run leaves the
-        // cover art unread, which may well carry a code.
-        BarcodeProgress::Skipped if matches!(context.artwork, ArtworkScan::Off { .. }) => {
+        // Nothing was read: say so when cover art is left unread.
+        BarcodeProgress::Skipped if matches!(context.artwork, ArtworkScan::Off) => {
             BarcodeStepView::CoverArtOff
         }
         BarcodeProgress::Skipped => BarcodeStepView::Absent,
-        // Every code is the run's and the run does not look barcodes up: every
-        // row stands with its cells saying so.
-        BarcodeProgress::Off { codes } => BarcodeStepView::Rows {
+        BarcodeProgress::NotAsked { codes, reason } => BarcodeStepView::Rows {
             scanning: false,
             rows: codes
                 .iter()
@@ -199,31 +165,12 @@ pub(super) fn barcode_step(
                     row(
                         code.clone(),
                         excluded,
-                        uniform_cells(context, LookupView::Off),
+                        uniform_cells(context, LookupView::NotAsked { reason: *reason }),
                     )
                 })
                 .collect(),
         },
-        // Every code is the run's and nobody was asked about any of them: every
-        // row stands with its cells saying so, rather than reading as a lookup
-        // that found nothing.
-        BarcodeProgress::NotAsked { codes } => BarcodeStepView::Rows {
-            scanning: false,
-            rows: codes
-                .iter()
-                .map(|code| {
-                    row(
-                        code.clone(),
-                        true,
-                        uniform_cells(context, LookupView::NotAsked),
-                    )
-                })
-                .collect(),
-        },
-        // Every code the candidate carries is a row. The ones the run asks
-        // about take their cells from their own lookup, each provider's count
-        // its own; the rest were never asked, and the person's own choices say
-        // which of them they left out.
+        // A code without a lookup is one the person left out.
         BarcodeProgress::Lookups { codes } => BarcodeStepView::Rows {
             scanning,
             rows: context
@@ -233,7 +180,12 @@ pub(super) fn barcode_step(
                 .map(|code| {
                     let cells = match codes.iter().find(|asked| asked.value == code) {
                         Some(lookup) => lookup_cells(lookup),
-                        None => uniform_cells(context, LookupView::NotAsked),
+                        None => uniform_cells(
+                            context,
+                            LookupView::NotAsked {
+                                reason: NotAskedReason::LeftOut,
+                            },
+                        ),
                     };
                     let excluded = context.barcode.excluded.contains(&code);
                     row(code, excluded, cells)
@@ -243,8 +195,7 @@ pub(super) fn barcode_step(
     }
 }
 
-/// One cell per provider the run asks, all saying the same thing: a row whose
-/// codes are still queued, or one nobody was asked about.
+/// One identical cell per provider the run asks.
 fn uniform_cells(context: &SignalsContext, lookup: LookupView) -> Vec<ProviderCell> {
     context
         .providers
@@ -263,7 +214,7 @@ pub(super) fn catalog_step(
 ) -> CatalogStepView {
     let numbers = context.catalog.number_values();
     if numbers.is_empty() && !scanning {
-        return if matches!(context.artwork, ArtworkScan::Off { .. }) {
+        return if matches!(context.artwork, ArtworkScan::Off) {
             CatalogStepView::CoverArtOff
         } else {
             CatalogStepView::NoneFound
@@ -289,8 +240,7 @@ pub(super) fn catalog_step(
     }
 }
 
-/// One cell per provider asked about a value, each saying how its own part of
-/// the lookup went.
+/// One cell per provider asked about a value.
 fn lookup_cells(lookup: &ValueLookup) -> Vec<ProviderCell> {
     lookup
         .providers
@@ -312,14 +262,13 @@ fn catalog_row(lookup: &ValueLookup, context: &SignalsContext) -> SignalValueRow
     SignalValueRow {
         value: lookup.value.clone(),
         sources: sources_of(&context.catalog.numbers, &lookup.value),
-        // A catalog row exists only for a number the run looks up: taking one
-        // out drops its row and leaves the number offered as a candidate.
+        // A catalog row exists only while its number is looked up.
         excluded: false,
         cells: lookup_cells(lookup),
     }
 }
 
-/// Every place `value` was read, in the order it was read there.
+/// Every place `value` was read.
 fn sources_of(sightings: &[crate::signals::SourcedValue], value: &str) -> Vec<ValueSource> {
     sightings
         .iter()
@@ -332,9 +281,8 @@ fn sources_of(sightings: &[crate::signals::SourcedValue], value: &str) -> Vec<Va
         .collect()
 }
 
-/// What a settled lookup turned up: its releases folded into album cards, or
-/// nothing. One cell of the ledger — what this lookup alone saw, before
-/// anything else narrowed it — so the rows are the lookup's own order.
+/// A settled lookup's cell: its releases in album cards, in the lookup's own
+/// order, or no match.
 fn found_or_no_match(results: &LookupResults) -> LookupView {
     if results.is_empty() {
         return LookupView::NoMatch;

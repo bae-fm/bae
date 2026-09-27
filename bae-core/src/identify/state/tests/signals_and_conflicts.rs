@@ -30,14 +30,12 @@ fn discogs_pair(release_id: &str, group_id: Option<&str>) -> (MetadataResult, Li
 const MB: Catalog = Catalog::MusicBrainz;
 const DG: Catalog = Catalog::Discogs;
 
-/// Drive `Idle` → `Triangulating` via `Started` with MusicBrainz as the only
-/// provider (no effects yet — the reducer waits for `SignalsUpdated`).
+/// A run started with MusicBrainz as its only provider, waiting for signals.
 fn started() -> IdentifyState {
     started_with(vec![MB])
 }
 
-/// `Started` with the given providers in the run, and nothing chosen or
-/// excluded.
+/// A run started with `providers`, nothing chosen or left out.
 fn started_with(providers: Vec<Catalog>) -> IdentifyState {
     let (state, effects) = started_with_choices(providers, LookupChoices::default());
     assert!(
@@ -47,9 +45,7 @@ fn started_with(providers: Vec<Catalog>) -> IdentifyState {
     state
 }
 
-/// `Started` with what the person decided this candidate's identification
-/// asks about. The chosen numbers' lookups go out with the run, so this hands
-/// back the effects too.
+/// A run started with `choices`, with the chosen numbers' lookups as effects.
 fn started_with_choices(
     providers: Vec<Catalog>,
     choices: LookupChoices,
@@ -65,8 +61,7 @@ fn started_with_choices(
     )
 }
 
-/// The choices a run reads when the person left the disc ID and the named
-/// barcodes out, and chose no catalog number.
+/// Choices leaving out the disc ID (when `disc_id`) and the named barcodes.
 fn excluding(disc_id: bool, barcodes: &[&str]) -> LookupChoices {
     LookupChoices {
         disc_id_excluded: disc_id,
@@ -77,8 +72,7 @@ fn excluding(disc_id: bool, barcodes: &[&str]) -> LookupChoices {
     }
 }
 
-/// The choices a run reads when the person chose catalog numbers and excluded
-/// nothing.
+/// Choices picking the named catalog numbers and leaving nothing out.
 fn choosing(catalogs: &[&str]) -> LookupChoices {
     LookupChoices {
         disc_id_excluded: false,
@@ -89,7 +83,7 @@ fn choosing(catalogs: &[&str]) -> LookupChoices {
     }
 }
 
-/// The badge for one signal, out of the toolbar a state projects.
+/// The toolbar badge for one signal.
 fn badge(state: &IdentifyState, kind: SignalKind) -> ToolbarSignal {
     state
         .toolbar()
@@ -142,8 +136,7 @@ fn lookup_barcode(source: Catalog, barcode: &str) -> Effect {
     }
 }
 
-/// Barcode codes with an arbitrary `Artwork` origin — the state machine reads only
-/// `.value` from them, so the origin doesn't matter here.
+/// Barcodes read off the artwork; the reducer reads only their values.
 fn artwork_codes(values: &[&str]) -> Vec<SourcedValue> {
     values
         .iter()
@@ -181,8 +174,7 @@ fn signals_with_catalogs(
     }
 }
 
-/// A disc ID computed for `track_count` tracks. `source_file` stays `None`
-/// throughout these tests — the reducer never reads it.
+/// A disc ID computed for `track_count` tracks, from no named file.
 fn disc(disc_id: &str, track_count: u32) -> DiscIdSignal {
     DiscIdSignal::Computed {
         disc_id: disc_id.to_string(),
@@ -191,19 +183,17 @@ fn disc(disc_id: &str, track_count: u32) -> DiscIdSignal {
     }
 }
 
-/// The disc ID computed for five tracks and nothing else scanned: no barcode,
-/// and only the named catalog numbers on offer.
+/// A disc ID for five tracks, no barcode source, and the named catalog numbers.
 fn disc_only(catalogs: &[&str]) -> Signals {
     signals(disc("d", 5), BarcodeSignal::Absent, catalogs)
 }
 
-/// The opener most tests share: a MusicBrainz run given the disc ID alone.
+/// A MusicBrainz run given the disc ID alone.
 fn disc_only_started() -> (IdentifyState, Vec<Effect>) {
     update(started(), disc_only(&[]))
 }
 
-/// The disc ID computed, with the given barcode codes settled — both providers'
-/// walks start on the first code.
+/// A disc ID for five tracks, with the given barcodes settled.
 fn disc_and_codes(disc_id: &str, codes: &[&str]) -> Signals {
     signals(
         disc(disc_id, 5),
@@ -266,10 +256,7 @@ fn no_disc_no_barcode_is_manual_only() {
     }
 }
 
-/// Extraction's first snapshot carries the text gathered so far and says the
-/// text is still scanning. A run with nothing to look up is not answered on
-/// it: the verdict stores the snapshot it settled on, and a scanning one is
-/// refused at the write. The settled snapshot that follows answers it.
+/// A run with nothing to look up waits for the settled text before it settles.
 #[test]
 fn nothing_to_run_waits_for_the_settled_text() {
     let scanning = Signals {
@@ -306,9 +293,7 @@ fn nothing_to_run_waits_for_the_settled_text() {
     );
 }
 
-/// An extraction that could not gather its inputs fails every signal in its
-/// one snapshot. The run settles on it as a failure with nothing dispatched:
-/// a loud end, where a snapshot that never came would have left it waiting.
+/// An aborted extraction settles the run as failed, with nothing asked.
 #[test]
 fn an_aborted_extraction_settles_the_run_as_failed() {
     let failure = LookupFailure::Diagnostic {
@@ -352,17 +337,8 @@ fn an_aborted_extraction_settles_the_run_as_failed() {
     );
 }
 
-/// The two empty-code barcode signals mean opposite things and must settle
-/// differently. `Absent` (no barcode source at all — no CUE catalog, and no
-/// artwork *or* no analyzer to read it with) leaves the pipe `Skipped` and, with
-/// no disc ID either, offers manual search. `Settled { codes: [] }` means the
-/// artwork was decoded and held no barcode — a real no-match, which combines to
-/// `NotFoundAnywhere`.
-///
-/// A platform with no artwork analyzer has no barcode source, so it must produce
-/// the first, not the second: claiming "we read the cover and it holds no
-/// barcode" of a cover nothing decoded sends the user to a dead end instead of
-/// the search box.
+/// No barcode source offers manual search, while artwork read and holding no
+/// code is a no-match.
 #[test]
 fn absent_barcode_offers_manual_search_where_scanned_and_empty_is_a_no_match() {
     let settle = |barcode: BarcodeSignal| {
@@ -389,10 +365,10 @@ fn absent_barcode_offers_manual_search_where_scanned_and_empty_is_a_no_match() {
     );
 }
 
-/// The barcode walks start only once the codes settle — never from a
-/// still-`Scanning` snapshot — so every provider walks a stable list.
+/// Barcode lookups go out only once the codes have settled, never while
+/// scanning.
 #[test]
-fn barcode_walks_start_only_from_settled() {
+fn barcode_lookups_start_only_from_settled() {
     let (state, effects) = update(
         started_with(vec![MB, DG]),
         signals(
@@ -500,10 +476,8 @@ fn both_signals_intersect_to_found_combined() {
     }
 }
 
-/// The disc ID and the barcode named different releases. The disc ID is
-/// computed from the audio itself, so its answer is offered and the
-/// barcode's waits under the disclosure. Each lookup's own results stay in
-/// the context, so switching one off ranks the rest again.
+/// When the disc ID and barcode name different releases, the disc ID's is
+/// offered and both lookups' results stay in the context.
 #[test]
 fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
     let (state, _) = update(started(), disc_and_codes("d", &["BAR"]));
@@ -543,9 +517,8 @@ fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
     }
 }
 
-/// Every code is asked of every provider at once: a match on one code stops
-/// nothing, since a folder carrying two codes may be two releases combined,
-/// and each code names its own.
+/// Every code is asked of every provider at once, and a match on one stops
+/// nothing.
 #[test]
 fn every_code_is_asked_of_every_provider() {
     let (state, effects) = update(
@@ -568,8 +541,7 @@ fn every_code_is_asked_of_every_provider() {
         ]
     );
 
-    // A match lands at once and asks nothing more; the run stays open for
-    // the answers still out.
+    // A match asks nothing more, and the run waits for the other answers.
     let (state, effects) = step(
         state,
         barcode_matched(DG, "A", vec![discogs_pair("dg-a", Some("g-x"))]),
@@ -578,7 +550,7 @@ fn every_code_is_asked_of_every_provider() {
     assert!(matches!(state, IdentifyState::Triangulating { .. }));
     let (state, _) = step(state, barcode_missed(MB, "A"));
     let (state, _) = step(state, barcode_missed(DG, "B"));
-    // The last answer settles the run, which reads the albums it found.
+    // The last answer settles the lookups, and the run reads the albums' links.
     let (state, _) = step(
         state,
         barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]),
@@ -605,8 +577,7 @@ fn every_code_is_asked_of_every_provider() {
     assert_eq!(context.barcode.matched.as_deref(), Some("A"));
 }
 
-/// An answer lands on its own code's lookup, once: a second answer from the
-/// same provider about the same code changes nothing.
+/// A second answer from the same provider about the same code changes nothing.
 #[test]
 fn a_repeated_barcode_answer_is_ignored() {
     let (state, _) = update(
@@ -640,8 +611,8 @@ fn a_repeated_barcode_answer_is_ignored() {
     }
 }
 
-/// A provider failing one code leaves its answers about the others standing,
-/// and the run settles once every code is answered.
+/// A provider failing one code settles the barcode lookup failed once every
+/// code has answered.
 #[test]
 fn barcode_lookup_failure_settles_failed() {
     let (state, effects) = update(started(), disc_and_codes("d", &["A", "B"]));
@@ -668,8 +639,7 @@ fn barcode_lookup_failure_settles_failed() {
     }
 }
 
-/// One provider failing does not hide what the other finds: it is offered
-/// beside the failure.
+/// One provider failing does not hide what the other found.
 #[test]
 fn a_failed_provider_does_not_hide_the_other_s_answer() {
     let (state, _) = update(
@@ -744,8 +714,7 @@ fn failed_discid_lookup_preserves_track_count() {
     }
 }
 
-/// An extracted catalog number nobody checked narrows nothing: it is an option
-/// on the catalog badge, not a filter the run applies on its own.
+/// A catalog number nobody chose narrows nothing.
 #[test]
 fn an_unchosen_catalog_number_narrows_nothing() {
     let (state, _) = update(started(), disc_only(&["LBL 001"]));
@@ -801,9 +770,8 @@ fn cancellation_returns_to_idle() {
     assert!(effects.is_empty());
 }
 
-/// One source answers disc IDs, and a run that is not asking it has no
-/// disc-ID lookup to make. Nothing is dispatched, and the step records that
-/// it never asked rather than waiting on an answer that is not coming.
+/// A run not asking MusicBrainz asks nobody about the disc ID, says why, and
+/// with nothing else to go on offers manual search.
 #[test]
 fn a_run_without_the_disc_id_source_dispatches_no_disc_id_lookup() {
     let state = started_with(vec![Catalog::Discogs]);
@@ -817,4 +785,20 @@ fn a_run_without_the_disc_id_source_dispatches_no_disc_id_lookup() {
     );
     let context = next.context().expect("a started run carries its context");
     assert_eq!(context.providers, vec![Catalog::Discogs]);
+    assert!(
+        matches!(next, IdentifyState::ManualOnly { .. }),
+        "nobody was asked anything, got {next:?}"
+    );
+    let no_catalog = crate::identify::NotAskedReason::NoCatalog;
+    assert!(matches!(
+        ledger_of(&next).disc_id,
+        crate::identify::DiscIdStepView::Read {
+            lookup: crate::identify::LookupView::NotAsked { reason },
+            ..
+        } if reason == no_catalog
+    ));
+    assert_eq!(
+        badge(&next, SignalKind::DiscId).state,
+        SignalState::NotAsked { reason: no_catalog }
+    );
 }

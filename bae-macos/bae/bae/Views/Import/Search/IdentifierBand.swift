@@ -1,38 +1,24 @@
 import BaeKit
 import SwiftUI
 
-/// The run as one wrapping band of chips: what identification has to go on,
-/// each identifier with every provider's answer about it. The three signals come in order — Disc ID, Barcode, Catalog # — then
-/// the title the run searched by once they named nothing, then the catalog
-/// numbers that rank the answers rather than drive a lookup, then the ones
-/// waiting to be looked up, folded behind their count.
-///
-/// Every provider answers on its own, so a person watches the run rather than
-/// waiting for it, and a provider that failed offers its own Retry while the
-/// others carry on.
+/// The run as one wrapping band of chips — Disc ID, Barcode, Catalog #, Title,
+/// then the catalog numbers that rank the answers, then the unused numbers
+/// folded behind their count — each with every provider's answer.
 struct IdentifierBand: View {
     let run: BridgeIdentifyRun
-    /// The numbers one of the offered releases carries, which rank the list
-    /// rather than drive a lookup. Empty while the run is still going: which
-    /// numbers these are follows from the releases it settles on.
+    /// The numbers an offered release carries; empty while the run is going.
     let catalogAgreements: [BridgeCatalogAgreement]
-    /// Turn one identifier in the band over: a disc ID or a barcode the run
-    /// asks about is left out and one left out is asked about again, a waiting
-    /// catalog number starts being looked up and a running one stops.
+    /// Leave an identifier out of the run, or ask about it again.
     let onToggleLookup: (LookupToggle) -> Void
-    /// Count a catalog number the folder states, or stop counting it. Nothing
-    /// is looked up either way.
+    /// Count a catalog number the folder states, or stop counting it.
     let onToggleCatalogAgreement: (String) -> Void
     /// Re-ask only the lookups that failed.
     let onRetryFailed: () -> Void
-    /// Search by these words instead of what the draft calls the release:
-    /// the album title and the artist name as the person left them in the
-    /// title chip. Both blank goes back to the draft's own.
+    /// Search by these words instead of the draft's; both blank goes back to
+    /// the draft's.
     let onEditTitleSearch: (_ album: String, _ artist: String) -> Void
 
-    /// Whether the catalog numbers nothing confirmed are shown. Only the
-    /// numbers the run looks up and the ones an offered release carries are
-    /// shown by default; the rest wait behind their count.
+    /// Whether the catalog numbers nothing confirmed are shown.
     @State
     private var showsCatalogCandidates = false
 
@@ -42,7 +28,6 @@ struct IdentifierBand: View {
             barcodeChips
             catalogChips
             titleChip
-            albumLinksChip
             ForEach(catalogAgreements, id: \.value) { agreement in
                 CatalogAgreementChip(
                     agreement: agreement,
@@ -75,10 +60,8 @@ struct IdentifierBand: View {
 
     // MARK: - Disc ID
 
-    /// One chip, whatever the step has reached. The disc-ID endpoint is
-    /// MusicBrainz's alone, so the chip carries that one provider's capsule.
-    /// A disc ID that was read is a button: clicking it leaves it out of the
-    /// run, and clicking it again asks about it.
+    /// One chip with MusicBrainz's capsule, the only catalog that answers disc
+    /// IDs; a read disc ID toggles in and out of the run.
     @ViewBuilder
     private var discIdChip: some View {
         let label = SignalBadgeStyle.label(for: BridgeSignalKind.discId)
@@ -89,9 +72,7 @@ struct IdentifierBand: View {
         case .absent:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No LOG or CUE in the folder")
-        // The folder's CUE lays out audio no CD holds, so it was not read
-        // into a disc ID: a dash like a folder with nothing to read, and the
-        // reason on hover.
+        // The CUE's audio is at a rate no CD holds, so no disc ID was read.
         case .notCdAudio(let sampleRateHz):
             IdentifierChip(label: label) { IdentifierDash() }
                 .help(
@@ -108,27 +89,20 @@ struct IdentifierBand: View {
                             "Couldn't read the disc layout: \(failure.briefLine)"
                     )
                 )
-        case .read(let discId, let lookup):
-            discIdButton(label: label, discId: discId, lookup: lookup)
-        // The person took the disc ID out, so the chip reads as off and the
-        // way back is the chip itself.
-        case .leftOut(let discId):
+        // Left out: clicking the chip asks about it again.
+        case .read(let discId, .notAsked(reason: .leftOut)):
             discIdButton(label: label, discId: discId, lookup: nil)
-        // The one source that answers disc IDs is not being asked, so the
-        // value stands with a dash where a count would be — nothing looked,
-        // which is not the same as looking and finding none. There is nothing
-        // here for a person to switch: which sources a run asks is a Settings
-        // switch, not this chip.
-        case .readNotAsked(let discId):
+        // Only Settings can switch on the catalog that answers disc IDs.
+        case .read(let discId, .notAsked(reason: .noCatalog)):
             IdentifierChip(label: label, value: discId) {
                 IdentifierDash()
             }
+        case .read(let discId, let lookup):
+            discIdButton(label: label, discId: discId, lookup: lookup)
         }
     }
 
-    /// The disc ID as a switch. `lookup` is MusicBrainz's answer about it, and
-    /// is `nil` for a disc ID the person left out: nobody was asked, so there
-    /// is no answer to carry and the chip reads as off.
+    /// The disc ID as a toggle; `lookup` is `nil` when the person left it out.
     private func discIdButton(
         label: String,
         discId: String,
@@ -161,9 +135,7 @@ struct IdentifierBand: View {
 
     // MARK: - Barcode
 
-    /// A chip per code the folder carries. Each is a button: clicking a code
-    /// the run asks about leaves it out, and clicking one left out asks about
-    /// it again.
+    /// A chip per code the folder carries, each toggling in and out of the run.
     @ViewBuilder
     private var barcodeChips: some View {
         let label = SignalBadgeStyle.label(for: BridgeSignalKind.barcode)
@@ -171,8 +143,7 @@ struct IdentifierBand: View {
         case .absent:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No barcode source")
-        // Nothing was read a code off: the art may carry one, and reading it
-        // is switched off.
+        // The art may carry a code, but reading it is switched off.
         case .coverArtOff:
             IdentifierChip(label: label) { IdentifierOff() }
                 .help(
@@ -199,8 +170,7 @@ struct IdentifierBand: View {
                         value: row.value,
                         style: row.excluded ? .outlined : .filled
                     ) {
-                        // A code nobody was asked about has no answer to
-                        // carry, so the chip is the value alone.
+                        // A left-out code has no answers to show.
                         if !row.excluded {
                             capsules(row.cells)
                         }
@@ -218,9 +188,7 @@ struct IdentifierBand: View {
 
     // MARK: - Catalog #
 
-    /// A chip per number the run is looking up. Each is the chip it was
-    /// activated from: clicking it takes the number back out of the run and
-    /// drops its results from the list.
+    /// A chip per number the run looks up; clicking it takes the number out.
     @ViewBuilder
     private var catalogChips: some View {
         let label = String(localized: "Catalog #")
@@ -263,9 +231,7 @@ struct IdentifierBand: View {
         }
     }
 
-    /// The numbers extraction found that the run is not looking up and no
-    /// release came back carrying. Each waits to be activated: one number can
-    /// name thirty releases, so none of them runs on its own.
+    /// The numbers found that the run doesn't look up and no release carries.
     private var catalogCandidates: [BridgeCatalogCandidate] {
         guard case .numbers(_, _, let candidates) = run.catalog else {
             return []
@@ -273,8 +239,7 @@ struct IdentifierBand: View {
         return candidates
     }
 
-    /// Whether the artwork is still being read, so more chips may join the
-    /// band. Both steps read the same scan, so one spinner answers for both.
+    /// Whether the artwork is still being read, so more chips may come.
     private var isScanning: Bool {
         if case .rows(scanning: true, rows: _) = run.barcode { return true }
         if case .numbers(scanning: true, rows: _, candidates: _) = run.catalog {
@@ -287,32 +252,28 @@ struct IdentifierBand: View {
 extension IdentifierBand {
     // MARK: - Title
 
-    /// The words the run searched by once its identifiers had named nothing,
-    /// with every provider's answer about them. The words are the person's
-    /// to change: leaving the field with different words searches by them.
-    ///
-    /// A run whose identifiers answered draws no chip at all — the step was
-    /// never part of what that run did.
+    /// The words the run searches by when the identifiers name nothing, with
+    /// each provider's answer; editing them searches again.
     @ViewBuilder
     private var titleChip: some View {
         switch run.search {
         case .notNeeded:
             EmptyView()
-        // The step never runs, whatever the identifiers find, and the chip
-        // says so from the start.
-        case .off:
+        case .notAsked(reason: .switchedOff):
             IdentifierChip(label: String(localized: "Title")) {
                 IdentifierOff()
             }
             .help("Searching by title is switched off in Import settings")
+        // Never reached: a title is never left out, and every catalog searches.
+        case .notAsked(reason: .leftOut), .notAsked(reason: .noCatalog):
+            EmptyView()
         case .noTitle:
             TitleSearchChip(album: "", artist: "", onCommit: onEditTitleSearch)
             {
                 EmptyView()
             }
             .help("No title to search by")
-        // The words stay where the person left them, not editable, until the
-        // run gets to them.
+        // Not editable until the run reaches the search.
         case .waiting(let album, let artist):
             TitleSearchChip(
                 album: album,
@@ -332,29 +293,9 @@ extension IdentifierBand {
             }
         }
     }
-
-    /// Joining the two catalogs' records of one album by the links their
-    /// pages state: a chip only when that is switched off, since a run that
-    /// follows them shows what they joined in the list itself.
-    @ViewBuilder
-    private var albumLinksChip: some View {
-        switch run.albumLinks {
-        case .followed:
-            EmptyView()
-        case .off:
-            IdentifierChip(label: String(localized: "Catalog links")) {
-                IdentifierOff()
-            }
-            .help(
-                "Joining records across catalogs is switched off in Import settings"
-            )
-        }
-    }
 }
 
-/// The catalog numbers nothing confirmed, folded behind their count: a
-/// folder's leaflets can print a label's whole series, and only the numbers
-/// the run looks up or an offered release carries belong in view.
+/// The catalog numbers nothing confirmed, folded behind their count.
 private struct CatalogCandidatesDisclosure: View {
     let count: Int
     @Binding
@@ -383,15 +324,12 @@ private struct CatalogCandidatesDisclosure: View {
     }
 }
 
-/// The title chip: the artist name and album title the run searches by, each
-/// a labeled field, with the providers' answers beside them. Leaving either
-/// field with its words changed commits both — the whole query goes back,
-/// since a title without its artist is a different search.
+/// The artist and title fields the run searches by; leaving a changed field
+/// commits both.
 private struct TitleSearchChip<Trailing: View>: View {
     let album: String
     let artist: String
-    /// The run has not reached the title search yet: the words show, and
-    /// cannot be changed until it does.
+    /// The run has not reached the search yet, so the fields are read-only.
     let isWaiting: Bool
     let onCommit: (_ album: String, _ artist: String) -> Void
     let trailing: Trailing
@@ -431,19 +369,16 @@ private struct TitleSearchChip<Trailing: View>: View {
             field("Title", text: $albumText, field: .album)
             trailing
         }
-        // A new run's words replace what was typed: what the chip shows is
-        // what was searched.
+        // A new run's words replace what was typed.
         .onChange(of: album) { _, now in albumText = now }
         .onChange(of: artist) { _, now in artistText = now }
-        // Leaving a field searches, including moving from one field to the
-        // other.
+        // Leaving a field searches, including moving to the other one.
         .onChange(of: focused) { was, now in
             if was != nil, was != now { commit() }
         }
     }
 
-    /// A field its label already names, so it shows no placeholder; `name`
-    /// is what accessibility reads.
+    /// A field with no placeholder; `name` is what accessibility reads.
     private func field(
         _ name: LocalizedStringKey,
         text: Binding<String>,
@@ -483,9 +418,7 @@ private struct TitleSearchChip<Trailing: View>: View {
         .windowBackground()
     }
 
-    /// One source asked: one capsule per chip, and a disc ID with a dash where
-    /// a count would be because the source that answers disc IDs is not being
-    /// asked.
+    /// One source asked, which does not answer disc IDs.
     #Preview("Run on one source") {
         IdentifierBand(
             run: PreviewData.identifyRunOneSource,
@@ -528,9 +461,7 @@ private struct TitleSearchChip<Trailing: View>: View {
         .windowBackground()
     }
 
-    /// The same run as "A provider failed", with its catalog number taken back
-    /// out: the number's chip loses its capsules and joins the outlined ones,
-    /// beside the numbers the answers themselves carry.
+    /// "A provider failed" with its catalog number taken back out.
     #Preview("A catalog number waiting to be used") {
         IdentifierBand(
             run: PreviewData.identifyRunCatalogWaiting,
@@ -545,9 +476,8 @@ private struct TitleSearchChip<Trailing: View>: View {
         .windowBackground()
     }
 
-    /// The off chips: a disc ID the person took out of the run, and one of two
-    /// barcodes left out beside the one still being looked up — over the same
-    /// two barcodes both asked about, for the difference.
+    /// A disc ID left out, then two barcodes both asked about, then one of
+    /// them left out.
     #Preview("Identifiers left out of the run") {
         VStack(alignment: .leading, spacing: 0) {
             IdentifierBand(

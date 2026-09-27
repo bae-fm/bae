@@ -39,7 +39,7 @@ fn context() -> SignalsContext {
     }
 }
 
-/// One code's lookup, each provider's part of it as given.
+/// One code's lookup, with each provider's state as given.
 fn code(value: &str, providers: Vec<(Catalog, LookupState)>) -> ValueLookup {
     ValueLookup {
         value: value.to_string(),
@@ -94,8 +94,7 @@ fn cells(row: &SignalValueRow) -> Vec<&LookupView> {
     row.cells.iter().map(|cell| &cell.lookup).collect()
 }
 
-/// What one provider found shows while the other is still looking, badged as
-/// the settled verdict will badge it.
+/// One provider's matches show, badged, while the other is still looking.
 #[test]
 fn a_landed_provider_s_matches_show_before_the_other_answers() {
     let IdentifyStateView::Triangulating {
@@ -114,9 +113,8 @@ fn a_landed_provider_s_matches_show_before_the_other_answers() {
     assert!(agreements[0].1.barcode);
 }
 
-/// Every code the candidate carries is a row, whether the run asks about it or
-/// not: a code left out is a row saying so, with nothing run against it, beside
-/// the code the walks did ask about.
+/// A code left out is still a row, its cells saying it was left out, beside the
+/// code that was asked.
 #[test]
 fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
     let mut context = context();
@@ -143,15 +141,20 @@ fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
             .collect::<Vec<_>>(),
         vec![("BOXSET", true), ("DISC", false)]
     );
-    assert_eq!(cells(&rows[0]), vec![&LookupView::NotAsked]);
+    assert_eq!(
+        cells(&rows[0]),
+        vec![&LookupView::NotAsked {
+            reason: NotAskedReason::LeftOut
+        }]
+    );
     assert!(matches!(
         cells(&rows[1]).as_slice(),
         [LookupView::Found { count: 1, .. }]
     ));
 }
 
-/// Every code left out settles the pipe unasked, and each row still stands with
-/// its places beside it.
+/// With every code left out, each code is still a row whose cells say it was
+/// left out.
 #[test]
 fn every_code_left_out_lists_them_all_unasked() {
     let mut context = context();
@@ -164,6 +167,7 @@ fn every_code_left_out_lists_them_all_unasked() {
         discid: DiscidProgress::Skipped { track_count: 9 },
         barcode: BarcodeProgress::NotAsked {
             codes: vec!["BOXSET".to_string(), "DISC".to_string()],
+            reason: NotAskedReason::LeftOut,
         },
         catalog: CatalogProgress::Skipped,
         search: SearchProgress::Pending,
@@ -172,60 +176,54 @@ fn every_code_left_out_lists_them_all_unasked() {
     let run = run_of(state);
     let rows = barcode_rows(&run);
     assert!(rows.iter().all(|row| row.excluded));
+    let left_out = LookupView::NotAsked {
+        reason: NotAskedReason::LeftOut,
+    };
     assert!(rows
         .iter()
-        .all(|row| cells(row) == vec![&LookupView::NotAsked, &LookupView::NotAsked]));
+        .all(|row| cells(row) == vec![&left_out, &left_out]));
 }
 
-/// A disc ID nothing looked up is two different situations, and the step tells
-/// them apart: the person left it out, or no provider the run asks answers disc
-/// IDs at all.
+/// A disc ID nobody looked up still reads as read, with its lookup saying why.
 #[test]
-fn a_left_out_disc_id_reads_apart_from_one_no_provider_answers() {
-    let unasked = |excluded: bool| {
+fn a_disc_id_nobody_looked_up_says_why() {
+    for reason in [
+        NotAskedReason::LeftOut,
+        NotAskedReason::SwitchedOff,
+        NotAskedReason::NoCatalog,
+    ] {
         let mut context = context();
         context.disc.signal = DiscIdSignal::Computed {
             disc_id: "d".to_string(),
             track_count: 9,
             source_file: Some("rip/Album.LOG".to_string()),
         };
-        context.disc.excluded = excluded;
-        run_of(IdentifyState::Triangulating {
-            discid: DiscidProgress::NotAsked { track_count: 9 },
+        let step = run_of(IdentifyState::Triangulating {
+            discid: DiscidProgress::NotAsked {
+                track_count: 9,
+                reason,
+            },
             barcode: BarcodeProgress::NoCodes,
             catalog: CatalogProgress::Skipped,
             search: SearchProgress::Pending,
             context,
         })
-        .disc_id
-    };
-    let source = Some(DiscIdFile {
-        kind: DiscIdFileKind::Log,
-        file: "rip/Album.LOG".to_string(),
-    });
-    assert_eq!(
-        unasked(true),
-        DiscIdStepView::LeftOut {
-            disc_id: "d".to_string(),
-            source: source.clone(),
-        }
-    );
-    assert_eq!(
-        unasked(false),
-        DiscIdStepView::ReadNotAsked {
-            disc_id: "d".to_string(),
-            source,
-        }
-    );
+        .disc_id;
+        assert_eq!(
+            step,
+            DiscIdStepView::Read {
+                disc_id: "d".to_string(),
+                source: Some(DiscIdFile {
+                    kind: DiscIdFileKind::Log,
+                    file: "rip/Album.LOG".to_string(),
+                }),
+                lookup: LookupView::NotAsked { reason },
+            }
+        );
+    }
 }
 
-/// Each code is a row, and each provider's walk fills the row's cell from
-/// where the walk is: the codes it passed missed, the one it is on is being
-/// asked, the ones ahead wait; a walk that matched names its count on the
-/// code that matched and never needed the rest.
-/// Every code is its own lookup, so each row's cells say how each provider
-/// answered about that code alone: a count where it found something, however
-/// many other codes found something too.
+/// Each code's row shows how each provider answered about that code alone.
 #[test]
 fn each_code_fills_its_own_cells() {
     let mut context = context();
@@ -331,8 +329,8 @@ fn a_code_seen_in_two_places_is_one_row_with_two_sources() {
     );
 }
 
-/// While the artwork is still being read, every code read so far is a row
-/// with waiting cells, and the step says more may come.
+/// While the artwork is being read, each code read so far is a row of queued
+/// cells.
 #[test]
 fn codes_read_so_far_wait_while_the_artwork_is_still_being_read() {
     let mut context = context();
@@ -364,8 +362,7 @@ fn codes_read_so_far_wait_while_the_artwork_is_still_being_read() {
     ));
 }
 
-/// The chosen numbers are rows with cells; the rest are tiles. A number seen
-/// twice is one tile.
+/// Chosen catalog numbers are rows and the rest are tiles, one per number.
 #[test]
 fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
     let mut context = context();
@@ -437,9 +434,8 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
     );
 }
 
-/// The ledger a settled state carries is the frame the run last showed, with
-/// whatever was still being asked settled onto it. Nothing is rebuilt, so a
-/// cell that had landed does not move when the run ends.
+/// A settled state's ledger is the run's last frame with the last answers
+/// filled in.
 #[test]
 fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
     let mut context = context();
@@ -500,8 +496,7 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
     ));
 }
 
-/// A folder that carries nothing to look up records no ledger: there is no
-/// run to lay out, so the pane offers manual search on its own.
+/// A folder with nothing to look up records no ledger.
 #[test]
 fn a_run_with_no_inputs_records_no_ledger() {
     let blank = SignalsContext {
@@ -522,8 +517,8 @@ fn a_run_with_no_inputs_records_no_ledger() {
     ));
 }
 
-/// A folder with nothing to look up automatically but catalog numbers to
-/// offer still records a run: the tiles, waiting to be activated.
+/// A folder with only catalog numbers still records a run that offers them as
+/// tiles.
 #[test]
 fn a_manual_only_folder_with_catalog_numbers_offers_them() {
     let mut context = SignalsContext {
@@ -554,8 +549,7 @@ fn a_manual_only_folder_with_catalog_numbers_offers_them() {
     ));
 }
 
-/// A sheet left unhashed because its audio is at a rate no CD plays at says
-/// so, with the rate, rather than reading as a folder with no sheet at all.
+/// A CUE over audio no CD holds says so, with the sample rate.
 #[test]
 fn a_sheet_over_audio_no_cd_holds_says_why_it_was_not_read() {
     let mut context = context();
@@ -614,9 +608,8 @@ fn a_found_lookup_names_its_releases() {
 
 // ── Resuming a stored verdict ───────────────────────────────────────────────
 
-/// One run's recorded ledger: a disc ID read off a rip log that named one
-/// release, and one barcode both providers were asked about — MusicBrainz
-/// finding nothing, Discogs finding a release of its own.
+/// A recorded ledger: a disc ID that found one release, and a barcode
+/// MusicBrainz found nothing for and Discogs found one.
 fn recorded_ledger() -> IdentifyRunView {
     IdentifyRunView {
         providers: vec![MB, DG],
@@ -666,7 +659,6 @@ fn recorded_ledger() -> IdentifyRunView {
         },
         catalog: CatalogStepView::NoneFound,
         search: SearchStepView::NotNeeded,
-        album_links: crate::identify::AlbumLinksStepView::Followed,
     }
 }
 
@@ -674,9 +666,8 @@ pub(super) fn not_in_library(result: &MetadataResult) -> LibraryStatus {
     LibraryStatus::absent(&result.release_id)
 }
 
-/// A stored verdict shows the ledger its run recorded, cell for cell — every
-/// provider the run asked has its column, including one whose every answer
-/// the agreement then narrowed out of the matches.
+/// A resumed verdict shows its recorded ledger unchanged, including a provider
+/// whose answers were narrowed out.
 #[test]
 fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
     let verdict = TerminalVerdict::Found {
@@ -715,8 +706,7 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
     ));
 }
 
-/// A verdict with no recorded ledger has none to show, and the pane offers
-/// the re-run in the failure lines instead.
+/// A verdict with no recorded ledger resumes without one.
 #[test]
 fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
     let verdict = TerminalVerdict::Failed {
@@ -733,10 +723,8 @@ fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
 
 // ── What agreement narrowed out ─────────────────────────────────────────────
 
-/// Agreement is what shortens the list, so what it discarded stays on the
-/// state — on the same card as the matches when it is the same album, with
-/// its own status and the badges saying which signal named it. An album none
-/// of whose rows is offered is a card of its own behind the disclosure.
+/// Rows agreement set aside stay on their album's card, badged and with a
+/// status; an album with no offered row is its own card behind the disclosure.
 #[test]
 fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
     let mut context = context();
@@ -804,9 +792,8 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
     assert!(!only.1.barcode);
 }
 
-/// Signals that share nothing still rank against each other: the disc ID is
-/// computed from the audio, so its release is the one offered and the
-/// barcode's goes behind the disclosure.
+/// When the disc ID and barcode name different releases, the disc ID's is
+/// offered and the barcode's is set aside.
 #[test]
 fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
     let mut context = context();

@@ -12,6 +12,7 @@ pub mod combine;
 pub mod discid;
 pub(crate) mod label;
 pub(crate) mod medium;
+mod not_asked;
 pub mod ready;
 pub mod service;
 pub mod state;
@@ -22,6 +23,7 @@ pub mod view;
 pub use agreements::{agreements_of, judged_results, Agreements, CandidateText};
 pub use combine::{Findings, LibraryStatuses, LookupProvenance, NarrowedOut};
 pub use medium::MediumConflict;
+pub use not_asked::NotAskedReason;
 pub use ready::{
     classify, classify_summary, FolderCheck, LeadMatch, QueueClassification, VerdictKind,
     VerdictSummary,
@@ -36,10 +38,9 @@ pub use toolbar::{
 };
 pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use view::{
-    AlbumLinksStepView, BarcodeStepView, CatalogAgreementView, CatalogCandidateView,
-    CatalogStepView, DiscIdFile, DiscIdFileKind, DiscIdStepView, IdentifyRunView,
-    IdentifyStateView, LookupView, NarrowedOutView, ProviderCell, SearchStepView, SignalValueRow,
-    ValueSource,
+    BarcodeStepView, CatalogAgreementView, CatalogCandidateView, CatalogStepView, DiscIdFile,
+    DiscIdFileKind, DiscIdStepView, IdentifyRunView, IdentifyStateView, LookupView,
+    NarrowedOutView, ProviderCell, SearchStepView, SignalValueRow, ValueSource,
 };
 
 use crate::db::{LibraryCheck, LibraryStatus};

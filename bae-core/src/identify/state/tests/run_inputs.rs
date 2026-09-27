@@ -1,6 +1,5 @@
-/// A run started with the disc ID left out never asks about it: no disc-ID
-/// lookup goes out, the badge says the person took it out, and the answer is
-/// the barcode's alone.
+/// A disc ID left out is never asked about, its badge says so, and the answer
+/// is the barcode's alone.
 #[test]
 fn a_run_that_leaves_the_disc_id_out_never_asks_about_it() {
     let (state, effects) = started_with_choices(vec![MB], excluding(true, &[]));
@@ -18,7 +17,12 @@ fn a_run_that_leaves_the_disc_id_out_never_asks_about_it() {
 
     let disc = badge(&state, SignalKind::DiscId);
     assert!(disc.excluded, "the disc badge reads as left out");
-    assert_eq!(disc.state, SignalState::Skipped);
+    assert_eq!(
+        disc.state,
+        SignalState::NotAsked {
+            reason: crate::identify::NotAskedReason::LeftOut
+        }
+    );
 
     let (state, _) = step(
         state,
@@ -45,8 +49,8 @@ fn a_run_that_leaves_the_disc_id_out_never_asks_about_it() {
     }
 }
 
-/// The same for the barcode: nothing is asked about the codes, and the disc
-/// ID's answer stands alone.
+/// A barcode left out is never asked about, and the answer is the disc ID's
+/// alone.
 #[test]
 fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
     let (state, _) = started_with_choices(vec![MB], excluding(false, &["BAR"]));
@@ -63,7 +67,12 @@ fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
 
     let barcode = badge(&state, SignalKind::Barcode);
     assert!(barcode.excluded, "the barcode badge reads as left out");
-    assert_eq!(barcode.state, SignalState::Skipped);
+    assert_eq!(
+        barcode.state,
+        SignalState::NotAsked {
+            reason: crate::identify::NotAskedReason::LeftOut
+        }
+    );
 
     let (state, _) = step(
         state,
@@ -89,9 +98,8 @@ fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
     }
 }
 
-/// A signal the run left out contributes no failure either: the barcode
-/// answered, the disc ID's excluded lookup could not have run, and the run
-/// lands on the barcode's answer rather than on a failure.
+/// A disc ID left out adds no failure, so the run lands on the barcode's
+/// answer.
 #[test]
 fn an_excluded_disc_id_cannot_fail_the_barcode_answer() {
     let (state, _) = started_with_choices(vec![MB], excluding(true, &[]));
@@ -115,9 +123,7 @@ fn an_excluded_disc_id_cannot_fail_the_barcode_answer() {
     ));
 }
 
-/// The run asks the providers it started with and no others. An answer from a
-/// source this run never asked lands on no cell, so it changes nothing — the
-/// run is not reopened on a provider it is not asking.
+/// An answer from a provider the run never asked changes nothing.
 #[test]
 fn an_answer_from_a_source_the_run_never_asked_lands_nowhere() {
     let (state, effects) = update(started_with(vec![DG]), disc_and_codes("d", &["BAR"]));
@@ -144,9 +150,8 @@ fn an_answer_from_a_source_the_run_never_asked_lands_nowhere() {
     assert_eq!(after, state, "the unasked source's answer changed nothing");
 }
 
-/// A sleeve prints the box set's code beside the disc's. Leaving one of the two
-/// out asks only about the other: the walks start on the code the run still
-/// asks about, and the badge's options say which of the two that is.
+/// Leaving one of two codes out asks only about the other, and the badge's
+/// options say which.
 #[test]
 fn leaving_one_of_two_codes_out_asks_only_about_the_other() {
     let (state, _) = started_with_choices(vec![MB], excluding(false, &["BOXSET"]));
@@ -175,9 +180,8 @@ fn leaving_one_of_two_codes_out_asks_only_about_the_other() {
     );
 }
 
-/// Leaving every code out asks about none of them. The codes are still the
-/// run's, so the pipe settles carrying them with nothing run against them, and
-/// the badge reads as left out.
+/// Leaving every code out asks about none, keeps the codes, and the badge says
+/// they were left out.
 #[test]
 fn leaving_every_code_out_asks_about_none_of_them() {
     let (state, _) = started_with_choices(vec![MB], excluding(false, &["BOXSET", "DISC"]));
@@ -193,6 +197,7 @@ fn leaving_every_code_out_asks_about_none_of_them() {
             barcode,
             &BarcodeProgress::NotAsked {
                 codes: vec!["BOXSET".to_string(), "DISC".to_string()],
+                reason: crate::identify::NotAskedReason::LeftOut,
             }
         ),
         other => panic!("expected the barcode pipe settled unasked, got {other:?}"),
@@ -203,6 +208,11 @@ fn leaving_every_code_out_asks_about_none_of_them() {
         barcode.excluded,
         "no code is asked about, so the badge says so"
     );
-    assert_eq!(barcode.state, SignalState::Skipped);
+    assert_eq!(
+        barcode.state,
+        SignalState::NotAsked {
+            reason: crate::identify::NotAskedReason::LeftOut
+        }
+    );
     assert!(barcode.options.iter().all(|option| !option.chosen));
 }

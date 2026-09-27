@@ -1,21 +1,29 @@
-//! The identify pipeline's shapes as an MCP client reads them: per-signal
-//! progress, the failures a lookup can end on, and the state that carries them.
-//!
-//! Held apart from the rest of the automation types because they mirror one
-//! bae-core projection (`identify::IdentifyStateView`) rather than the surface
-//! an individual tool answers with.
+//! The identify pipeline's shapes as an MCP client reads them, mirroring
+//! bae-core's `identify::IdentifyStateView`.
 
 use super::*;
 
-/// Mirrors bae-core's `identify::LookupView` — how one provider's lookup of
-/// one value is going, one cell of the run's ledger.
+/// Mirrors bae-core's `identify::NotAskedReason`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationNotAskedReason {
+    /// The person left the value out of the run.
+    LeftOut,
+    /// The step is switched off in the identification settings.
+    SwitchedOff,
+    /// No catalog the run asks answers this lookup.
+    NoCatalog,
+}
+
+/// Mirrors bae-core's `identify::LookupView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationLookupState {
-    /// Not asked yet: the provider's walk has not reached this code.
+    /// Not asked yet: the codes are still being read off the artwork.
     Queued,
-    /// Never asked: the provider's walk ended at an earlier code.
-    NotAsked,
+    NotAsked {
+        reason: AutomationNotAskedReason,
+    },
     LookingUp,
     Found {
         count: u32,
@@ -25,12 +33,9 @@ pub enum AutomationLookupState {
     Failed {
         failure: AutomationLookupFailure,
     },
-    /// Never asked: the lookup's step is switched off in the identification
-    /// settings.
-    Off,
 }
 
-/// Mirrors bae-core's `identify::ValueSource` — one place a value was read.
+/// Mirrors bae-core's `identify::ValueSource`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationValueSource {
     pub origin: AutomationSignalOrigin,
@@ -45,14 +50,12 @@ pub struct AutomationProviderCell {
     pub lookup: AutomationLookupState,
 }
 
-/// Mirrors bae-core's `identify::SignalValueRow` — one value extraction
-/// found, where it was found, and every provider's lookup of it.
+/// Mirrors bae-core's `identify::SignalValueRow`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationSignalValueRow {
     pub value: String,
     pub sources: Vec<AutomationValueSource>,
-    /// Whether the person left this value out of the run, so no provider was
-    /// asked about it.
+    /// Whether the person left this value out of the run.
     pub excluded: bool,
     pub cells: Vec<AutomationProviderCell>,
 }
@@ -78,8 +81,7 @@ pub struct AutomationDiscIdFile {
 pub enum AutomationDiscIdStep {
     Reading,
     Absent,
-    /// A CUE was there over audio sampled at a rate no CD plays at, so it was
-    /// not read into a disc ID.
+    /// A CUE over audio sampled at a rate no CD plays at.
     NotCdAudio {
         sample_rate_hz: u32,
     },
@@ -90,16 +92,6 @@ pub enum AutomationDiscIdStep {
         disc_id: String,
         source: Option<AutomationDiscIdFile>,
         lookup: AutomationLookupState,
-    },
-    /// A disc ID was read and no provider the run asks answers disc IDs.
-    ReadNotAsked {
-        disc_id: String,
-        source: Option<AutomationDiscIdFile>,
-    },
-    /// A disc ID was read and the person left it out of the run.
-    LeftOut {
-        disc_id: String,
-        source: Option<AutomationDiscIdFile>,
     },
 }
 
@@ -120,8 +112,7 @@ pub enum AutomationBarcodeStep {
     },
 }
 
-/// Mirrors bae-core's `identify::CatalogCandidateView` — a number offered
-/// but not looked up.
+/// Mirrors bae-core's `identify::CatalogCandidateView`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationCatalogCandidate {
     pub value: String,
@@ -133,8 +124,8 @@ pub struct AutomationCatalogCandidate {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationCatalogStep {
     NoneFound,
-    /// Nothing the folder's own text states is a catalog number, and the cover
-    /// art was left unread.
+    /// No catalog number in the folder's own text, and the cover art was left
+    /// unread.
     CoverArtOff,
     Numbers {
         scanning: bool,
@@ -143,22 +134,20 @@ pub enum AutomationCatalogStep {
     },
 }
 
-/// Mirrors bae-core's `identify::CatalogAgreementView` — one catalog number
-/// the candidate's text states about a release the run is offering, and
-/// whether the person struck it out.
+/// Mirrors bae-core's `identify::CatalogAgreementView`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationCatalogAgreement {
     pub value: String,
     pub discounted: bool,
 }
 
-/// Mirrors bae-core's `identify::SearchStepView` — the title search the run
-/// falls back on when its identifiers name nothing.
+/// Mirrors bae-core's `identify::SearchStepView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationSearchStep {
-    /// The run does not search by title.
-    Off,
+    NotAsked {
+        reason: AutomationNotAskedReason,
+    },
     NotNeeded,
     NoTitle,
     Waiting {
@@ -172,8 +161,7 @@ pub enum AutomationSearchStep {
     },
 }
 
-/// Mirrors bae-core's `identify::IdentifyRunView` — the run as its ledger,
-/// each provider's part of each signal reported on its own.
+/// Mirrors bae-core's `identify::IdentifyRunView`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationIdentifyRun {
     pub providers: Vec<AutomationCatalog>,
@@ -181,16 +169,6 @@ pub struct AutomationIdentifyRun {
     pub barcode: AutomationBarcodeStep,
     pub catalog: AutomationCatalogStep,
     pub search: AutomationSearchStep,
-    pub album_links: AutomationAlbumLinksStep,
-}
-
-/// Mirrors bae-core's `identify::AlbumLinksStepView` — whether the run joins
-/// the two catalogs' albums by the links their pages state.
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AutomationAlbumLinksStep {
-    Followed,
-    Off,
 }
 
 /// Mirrors bae-core's `identify::Agreements`, with the release id it belongs
@@ -214,7 +192,7 @@ pub enum AutomationIdentifyFailure {
     DiscId {
         failure: AutomationLookupFailure,
     },
-    /// Reading the candidate's barcodes failed, so no provider was asked.
+    /// Reading the candidate's barcodes failed.
     BarcodeScan {
         failure: AutomationLookupFailure,
     },
@@ -226,7 +204,6 @@ pub enum AutomationIdentifyFailure {
         source: AutomationCatalog,
         failure: AutomationLookupFailure,
     },
-    /// One provider could not answer the title search.
     Search {
         source: AutomationCatalog,
         failure: AutomationLookupFailure,
@@ -236,10 +213,6 @@ pub enum AutomationIdentifyFailure {
     },
 }
 
-/// The rows agreement left out of a state's matches. A card the matches are
-/// on carries its own rows set aside as each section's `narrowed_out`; only an
-/// album none of whose rows is offered is a card here, and every row's status
-/// and badges are in the state's own lists. Empty when nothing was narrowed.
 /// Mirrors `bae_core::identify::NarrowedOutView`.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct AutomationNarrowedOut {
@@ -249,15 +222,12 @@ pub struct AutomationNarrowedOut {
     pub count: u32,
 }
 
-/// Projects bae-core's `identify::IdentifyState`. The `SignalsContext`
-/// internals that drive core triangulation don't cross; terminal states carry
-/// the full match data an MCP client acts on.
+/// Mirrors bae-core's `identify::IdentifyStateView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationIdentifyState {
     Idle,
-    /// Lookups in flight, with the matches the answered lookups have combined
-    /// to so far, shaped as `Found`'s are.
+    /// Lookups in flight, with the matches the answers so far combine to.
     Triangulating {
         run: AutomationIdentifyRun,
         groups: Vec<AutomationReleaseGroup>,
@@ -265,9 +235,8 @@ pub enum AutomationIdentifyState {
         agreements: Vec<AutomationAgreements>,
         narrowed_out: AutomationNarrowedOut,
     },
-    /// A settled state carries the run it settled as; none when extraction
-    /// handed the run nothing to lay out, or the verdict was stood back up
-    /// from the store.
+    /// A settled state carries the run it settled as, or none when there was
+    /// nothing to lay out.
     Found {
         run: Option<AutomationIdentifyRun>,
         groups: Vec<AutomationReleaseGroup>,
@@ -284,10 +253,7 @@ pub enum AutomationIdentifyState {
         track_count: u32,
         run: Option<AutomationIdentifyRun>,
     },
-    /// A lookup failed, with whatever the surviving evidence still found: one
-    /// provider failing leaves the other's matches standing, live or resumed
-    /// from the stored verdict. Empty groups mean nothing that answered
-    /// returned anything.
+    /// A lookup failed, with whatever the lookups that answered still found.
     Failed {
         run: Option<AutomationIdentifyRun>,
         failures: Vec<AutomationIdentifyFailure>,

@@ -1,17 +1,11 @@
-//! How each signal's lookup progresses, and what the toolbar makes of it.
+//! How each step's lookup progresses, and the toolbar badge each one shows.
 //!
-//! The reducer in the parent module drives these: it starts a lookup and
-//! records what came back. Nothing here decides anything about the candidate —
-//! that is `super::step`'s.
-//!
-//! The barcode and catalog lookups ask every provider in the run, and each
-//! provider answers for itself: one still looking never holds up what another
-//! already found, and one failing leaves the others' answers standing. So a
-//! pipe holds one entry per provider, and settles only once every one of them
-//! has.
+//! Every provider answers for itself, so a lookup holds one entry per provider
+//! and settles once all of them have.
 
 use super::{Effect, LookupOutcome, SignalState, SignalsContext};
 use crate::db::LibraryStatus;
+use crate::identify::NotAskedReason;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::Catalog;
 use crate::signals::{DiscIdSignal, LookupFailure};
@@ -19,9 +13,8 @@ use crate::signals::{DiscIdSignal, LookupFailure};
 /// What one lookup produced: each match paired with its library status.
 pub type LookupResults = Vec<(MetadataResult, LibraryStatus)>;
 
-/// The disc-ID signal's progress. `Done` / `Skipped` / `Failed` are the settled
-/// variants — combine fires once every signal is settled. The disc-ID endpoint
-/// is MusicBrainz's alone, so this pipe has one provider and no list.
+/// The disc-ID lookup's progress. Only MusicBrainz answers disc IDs, so there
+/// is one provider and no list.
 #[derive(Clone, Debug, PartialEq)]
 pub enum DiscidProgress {
     Computing,
@@ -30,22 +23,14 @@ pub enum DiscidProgress {
         results: LookupResults,
         track_count: u32,
     },
-    /// No LOG/CUE to derive a disc ID from. Still carries the local track count,
-    /// so a barcode match can report "N tracks here vs. M on the matched release."
+    /// No disc ID was derived; the local track count still stands.
     Skipped {
         track_count: u32,
     },
-    /// A disc ID was derived and the one source that answers disc IDs is not
-    /// among this run's providers, so no lookup was dispatched. Settled: the
-    /// run is not waiting on anything, and it contributes no results — which
-    /// is different from having looked and found none.
+    /// A disc ID was derived and nobody was asked about it, for `reason`.
     NotAsked {
         track_count: u32,
-    },
-    /// A disc ID was derived and the run does not look disc IDs up: the step
-    /// is switched off. Settled, contributing no results, and not a no-match.
-    Off {
-        track_count: u32,
+        reason: NotAskedReason,
     },
     Failed {
         failure: LookupFailure,
@@ -60,7 +45,6 @@ impl DiscidProgress {
             DiscidProgress::Done { .. }
                 | DiscidProgress::Skipped { .. }
                 | DiscidProgress::NotAsked { .. }
-                | DiscidProgress::Off { .. }
                 | DiscidProgress::Failed { .. }
         )
     }
@@ -73,8 +57,7 @@ impl DiscidProgress {
     }
 }
 
-/// One provider's part of a lookup with a single value to ask about — one
-/// chosen catalog number.
+/// One provider's part of a lookup.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProviderLookup {
     pub source: Catalog,
@@ -99,29 +82,20 @@ impl LookupState {
 pub enum BarcodeProgress {
     /// The artwork is still being read for codes.
     Scanning,
-    /// There was a barcode source and it held no code: a no-match with
-    /// nothing to ask.
+    /// There was a barcode source and it held no code.
     NoCodes,
-    /// One lookup per code the run asks about, in the order they were first
-    /// seen, each asked of every provider at once. Every code is asked
-    /// whatever the others answer: a folder that carries two codes may be two
-    /// releases combined, and a code that matched nothing on one provider may
-    /// name the release on another. Settled once every provider's part of
-    /// every code is.
+    /// One lookup per code the run asks about, in first-seen order; every code
+    /// is asked, since a folder may hold two releases.
     Lookups { codes: Vec<ValueLookup> },
-    /// The candidate has barcodes and the person left every one of them out of
-    /// the run, so no provider was asked about any of them. Settled: nothing is
-    /// in flight and nothing was found, which is different from having asked
-    /// and found nothing.
-    NotAsked { codes: Vec<String> },
-    /// The candidate has barcodes and the run does not look barcodes up: the
-    /// step is switched off. Settled, with the codes still the run's to show.
-    Off { codes: Vec<String> },
-    /// Reading the candidate's barcodes failed, so no provider was ever asked.
-    /// Not a provider's failure, and not a skip either: there was artwork to
-    /// read and reading it did not work.
+    /// The candidate has barcodes and nobody was asked about any of them, for
+    /// `reason`; the codes are still listed.
+    NotAsked {
+        codes: Vec<String>,
+        reason: NotAskedReason,
+    },
+    /// Reading the candidate's barcodes failed, so no provider was asked.
     ScanFailed { failure: LookupFailure },
-    /// No barcode source at all. Combine treats it like a no-match.
+    /// No barcode source at all.
     Skipped,
 }
 
@@ -132,14 +106,12 @@ impl BarcodeProgress {
             BarcodeProgress::Lookups { codes } => codes.iter().all(ValueLookup::is_settled),
             BarcodeProgress::NoCodes
             | BarcodeProgress::NotAsked { .. }
-            | BarcodeProgress::Off { .. }
             | BarcodeProgress::ScanFailed { .. }
             | BarcodeProgress::Skipped => true,
         }
     }
 
-    /// What every code's lookup found, in code order and provider order
-    /// within it.
+    /// What every code's lookup found, in code then provider order.
     pub fn results(&self) -> LookupResults {
         self.lookups()
             .iter()
@@ -147,8 +119,7 @@ impl BarcodeProgress {
             .collect()
     }
 
-    /// Every provider that failed any code's lookup, whether or not the others
-    /// answered.
+    /// Every provider that failed any code's lookup.
     pub fn failures(&self) -> Vec<SourceFailure> {
         self.lookups()
             .iter()
@@ -156,15 +127,13 @@ impl BarcodeProgress {
             .collect()
     }
 
-    /// The codes' lookups, in the order the codes were first seen; none
-    /// before any is asked.
+    /// The codes' lookups, in first-seen order.
     pub fn lookups(&self) -> &[ValueLookup] {
         match self {
             BarcodeProgress::Lookups { codes } => codes,
             BarcodeProgress::Scanning
             | BarcodeProgress::NoCodes
             | BarcodeProgress::NotAsked { .. }
-            | BarcodeProgress::Off { .. }
             | BarcodeProgress::ScanFailed { .. }
             | BarcodeProgress::Skipped => &[],
         }
@@ -178,8 +147,7 @@ impl BarcodeProgress {
         }
     }
 
-    /// The code the badge names: the earliest in the list any provider
-    /// found something for.
+    /// The earliest code any provider found something for.
     pub fn matched_barcode(&self) -> Option<String> {
         self.lookups()
             .iter()
@@ -188,23 +156,17 @@ impl BarcodeProgress {
     }
 }
 
-/// The title search's progress — the run's fourth step.
-///
-/// It rests at `Pending` while the three identifier pipes run, because what it
-/// does is decided by what they found: identifiers that named a release leave
-/// nothing to search for, and a candidate whose draft states no title leaves
-/// nothing to search by. Either way it settles as `Skipped`; a run that does
-/// not search by title settles as `Off`; otherwise every provider in the run is
-/// asked the candidate's own title.
+/// The title search's progress: the run's last step, decided once the three
+/// identifiers have settled.
 #[derive(Clone, Debug, PartialEq)]
 pub enum SearchProgress {
-    /// Waiting for the three identifier pipes: nothing decided yet.
+    /// Waiting for the three identifiers.
     Pending,
     /// The identifiers answered, or there was nothing to search by.
     Skipped,
-    /// The run does not search by title: the step is switched off.
-    Off,
-    /// One lookup per provider in the run. Settled once every one of them is.
+    /// Nobody is asked the title, for `reason`.
+    NotAsked { reason: NotAskedReason },
+    /// One lookup per provider in the run.
     Lookups { providers: Vec<ProviderLookup> },
 }
 
@@ -212,7 +174,7 @@ impl SearchProgress {
     pub fn is_settled(&self) -> bool {
         match self {
             SearchProgress::Pending => false,
-            SearchProgress::Skipped | SearchProgress::Off => true,
+            SearchProgress::Skipped | SearchProgress::NotAsked { .. } => true,
             SearchProgress::Lookups { providers } => providers.iter().all(|l| l.state.is_settled()),
         }
     }
@@ -228,11 +190,13 @@ impl SearchProgress {
                 })
                 .flatten()
                 .collect(),
-            SearchProgress::Pending | SearchProgress::Skipped | SearchProgress::Off => Vec::new(),
+            SearchProgress::Pending | SearchProgress::Skipped | SearchProgress::NotAsked { .. } => {
+                Vec::new()
+            }
         }
     }
 
-    /// The providers that failed, whether or not the others answered.
+    /// The providers that failed.
     pub fn failures(&self) -> Vec<SourceFailure> {
         match self {
             SearchProgress::Lookups { providers } => providers
@@ -245,22 +209,24 @@ impl SearchProgress {
                     _ => None,
                 })
                 .collect(),
-            SearchProgress::Pending | SearchProgress::Skipped | SearchProgress::Off => Vec::new(),
+            SearchProgress::Pending | SearchProgress::Skipped | SearchProgress::NotAsked { .. } => {
+                Vec::new()
+            }
         }
     }
 
-    /// The lookups, in provider order; none while the step is pending or was
-    /// never run.
+    /// The lookups, in provider order.
     pub fn lookups(&self) -> &[ProviderLookup] {
         match self {
             SearchProgress::Lookups { providers } => providers,
-            SearchProgress::Pending | SearchProgress::Skipped | SearchProgress::Off => &[],
+            SearchProgress::Pending | SearchProgress::Skipped | SearchProgress::NotAsked { .. } => {
+                &[]
+            }
         }
     }
 }
 
-/// One value's lookup — a chosen catalog number, or one of the candidate's
-/// barcodes: every provider's part of it.
+/// Every provider's lookup of one value: a barcode or a chosen catalog number.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ValueLookup {
     pub value: String,
@@ -333,15 +299,12 @@ impl ValueLookup {
     }
 }
 
-/// The chosen catalog numbers' lookups. `Skipped` is the resting state: the
-/// catalog runs only once the user picks out of the extracted numbers, and
-/// each picked number is looked up on its own.
+/// The chosen catalog numbers' lookups, each number on its own.
 #[derive(Clone, Debug, PartialEq)]
 pub enum CatalogProgress {
     /// No catalog number chosen, so nothing to look up.
     Skipped,
-    /// One lookup per chosen number, in the order they were chosen. Settled
-    /// once every provider's part of every one is.
+    /// One lookup per chosen number, in the order they were chosen.
     Lookups { values: Vec<ValueLookup> },
 }
 
@@ -363,8 +326,7 @@ impl CatalogProgress {
         }
     }
 
-    /// Every provider that failed any chosen number's lookup, whether or not
-    /// any answered.
+    /// Every provider that failed any chosen number's lookup.
     pub fn failures(&self) -> Vec<SourceFailure> {
         match self {
             CatalogProgress::Lookups { values } => {
@@ -395,7 +357,7 @@ impl CatalogProgress {
             .unwrap_or_default()
     }
 
-    /// The chosen numbers' lookups, in chosen order; none when nothing is chosen.
+    /// The chosen numbers' lookups, in chosen order.
     pub fn lookups(&self) -> &[ValueLookup] {
         match self {
             CatalogProgress::Lookups { values } => values,
@@ -403,8 +365,7 @@ impl CatalogProgress {
         }
     }
 
-    /// This progress with only the lookups `keep` admits. Nothing left to look
-    /// up is the resting state.
+    /// This progress with only the lookups `keep` admits.
     pub(super) fn keeping(self, keep: impl Fn(&ValueLookup) -> bool) -> Self {
         match self {
             CatalogProgress::Lookups { mut values } => {
@@ -426,18 +387,15 @@ pub(super) fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
     match progress {
         DiscidProgress::Computing | DiscidProgress::LookingUp => SignalState::LookingUp,
         DiscidProgress::Done { results, .. } => found_or_no_match(results.len() as u32),
-        DiscidProgress::Skipped { .. } | DiscidProgress::NotAsked { .. } => SignalState::Skipped,
-        DiscidProgress::Off { .. } => SignalState::Off,
+        DiscidProgress::Skipped { .. } => SignalState::Skipped,
+        DiscidProgress::NotAsked { reason, .. } => SignalState::NotAsked { reason: *reason },
         DiscidProgress::Failed { failure, .. } => SignalState::Failed {
             failure: failure.clone(),
         },
     }
 }
 
-/// A lookup that got results from one provider and a failure from another is
-/// `Found`: the badge says what the signal turned up, and the failure is named
-/// where the pane names failures. Only a lookup that turned up nothing reads
-/// as failed, and its badge carries the first provider's reason.
+/// Results beat failures: only a lookup that found nothing reads as failed.
 pub(super) fn barcode_progress_state(progress: &BarcodeProgress) -> SignalState {
     match progress {
         BarcodeProgress::Scanning => SignalState::LookingUp,
@@ -449,8 +407,8 @@ pub(super) fn barcode_progress_state(progress: &BarcodeProgress) -> SignalState 
         BarcodeProgress::ScanFailed { failure } => SignalState::Failed {
             failure: failure.clone(),
         },
-        BarcodeProgress::NotAsked { .. } | BarcodeProgress::Skipped => SignalState::Skipped,
-        BarcodeProgress::Off { .. } => SignalState::Off,
+        BarcodeProgress::NotAsked { reason, .. } => SignalState::NotAsked { reason: *reason },
+        BarcodeProgress::Skipped => SignalState::Skipped,
     }
 }
 
@@ -464,9 +422,8 @@ pub(super) fn catalog_progress_state(progress: &CatalogProgress) -> SignalState 
     }
 }
 
-/// The badge for a settled multi-provider lookup: what it found, else why it
-/// found nothing. Failures with no results carry the first provider's reason;
-/// no results and no failures is a no-match.
+/// A settled lookup's badge: what it found, else the first provider's
+/// failure, else no match.
 fn settled_lookup_state(n_results: usize, failures: &[SourceFailure]) -> SignalState {
     if n_results > 0 {
         return found_or_no_match(n_results as u32);
@@ -479,16 +436,10 @@ fn settled_lookup_state(n_results: usize, failures: &[SourceFailure]) -> SignalS
     }
 }
 
-// ── The badges a settled run wears ──────────────────────────────────────────
-//
-// A run that has ended is read off what it recorded, signal by signal. No pipe
-// is stood back up: the ledger the run recorded is what lays it out, and these
-// say only what each badge shows.
+// ── The badges a settled run wears, read off what it recorded ───────────────
 
-/// The disc-ID badge of a settled run. The recorded lookup failure is checked
-/// first: the signal only ever reports whether a disc ID could be *computed*
-/// (a readable TOC), so a lookup that ran against a perfectly good disc ID and
-/// then hit a network/provider error would otherwise read as a clean no-match.
+/// The disc-ID badge of a settled run. The lookup's failure comes first, since
+/// the signal only says whether a disc ID could be computed.
 pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
     if let Some(failure) = &context.disc.failure {
         return SignalState::Failed {
@@ -500,18 +451,14 @@ pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
         DiscIdSignal::Failed { failure, .. } => SignalState::Failed {
             failure: failure.clone(),
         },
-        // A disc ID the run does not look up was never asked about, and says
-        // why; one the run was told to leave out says it was skipped. Neither
-        // found nothing.
-        DiscIdSignal::Computed { .. } if !context.steps.look_up_disc_ids => SignalState::Off,
-        DiscIdSignal::Computed { .. } if context.disc.excluded => SignalState::Skipped,
-        DiscIdSignal::Computed { .. } => found_or_no_match(context.disc.results.len() as u32),
+        DiscIdSignal::Computed { .. } => match context.disc.not_asked {
+            Some(reason) => SignalState::NotAsked { reason },
+            None => found_or_no_match(context.disc.results.len() as u32),
+        },
     }
 }
 
-/// The barcode badge of a settled run. Scanned and found nothing is a
-/// no-match; nothing to scan at all, and a run told to leave every code out,
-/// are skips.
+/// The barcode badge of a settled run.
 pub(super) fn barcode_settled_state(context: &SignalsContext) -> SignalState {
     let barcode = &context.barcode;
     if let Some(failure) = &barcode.scan_failure {
@@ -526,17 +473,13 @@ pub(super) fn barcode_settled_state(context: &SignalsContext) -> SignalState {
             SignalState::Skipped
         };
     }
-    if !context.steps.look_up_barcodes {
-        return SignalState::Off;
-    }
-    if barcode.every_code_excluded() {
-        return SignalState::Skipped;
+    if let Some(reason) = barcode.not_asked {
+        return SignalState::NotAsked { reason };
     }
     settled_lookup_state(barcode.results.len(), &barcode.failures)
 }
 
-/// The catalog badge of a settled run: how every chosen number's lookup went
-/// together. Nothing chosen means nothing ran.
+/// The catalog badge of a settled run, over every chosen number.
 pub(super) fn catalog_settled_state(context: &SignalsContext) -> SignalState {
     if context.catalog.chosen.is_empty() {
         return SignalState::Skipped;
@@ -570,20 +513,20 @@ pub(super) fn start_discid_progress(
             track_count,
             ..
         } => {
-            // A run that does not look disc IDs up asks nobody, whatever else
-            // is true of this one.
-            if !look_up {
-                return DiscidProgress::Off {
-                    track_count: *track_count,
-                };
-            }
-            // One catalog answers disc IDs. A run that is not asking it — or
-            // that the person took the disc ID out of — has no disc-ID lookup
-            // to dispatch, and says so rather than waiting on an answer that
-            // is never coming.
-            if excluded || !providers.contains(&Catalog::DISC_ID_CATALOG) {
+            // The reason nearest the value wins: see `NotAskedReason`.
+            let reason = if excluded {
+                Some(NotAskedReason::LeftOut)
+            } else if !look_up {
+                Some(NotAskedReason::SwitchedOff)
+            } else if !providers.contains(&Catalog::DISC_ID_CATALOG) {
+                Some(NotAskedReason::NoCatalog)
+            } else {
+                None
+            };
+            if let Some(reason) = reason {
                 return DiscidProgress::NotAsked {
                     track_count: *track_count,
+                    reason,
                 };
             }
             effects.push(Effect::LookupDiscid {
@@ -607,14 +550,7 @@ pub(super) fn start_discid_progress(
     }
 }
 
-/// Ask every provider about every code the run asks about. A scan that
-/// failed has no codes to ask about and never gets a lookup, so it settles as
-/// the failure it is rather than as the no-match an empty list would otherwise
-/// read as.
-///
-/// `codes` is every code the candidate carries, each once, in the order they
-/// were first seen; `excluded` is the values the person left out. Every other
-/// code is asked of every provider at once.
+/// Ask every provider about every code in `codes` the person did not leave out.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn start_barcode_progress(
     codes: Vec<String>,
@@ -631,30 +567,28 @@ pub(super) fn start_barcode_progress(
         };
     }
     if codes.is_empty() {
-        // Nothing to look up. Whether that settles as "looked, found no match" or
-        // "never looked" turns on whether a barcode source existed — the empty
-        // list alone cannot say.
+        // Whether there was a source is what tells "found none" from "never looked".
         return if had_source {
             BarcodeProgress::NoCodes
         } else {
             BarcodeProgress::Skipped
         };
     }
-    if !look_up {
-        // The codes are the folder's whatever the run asks: they stay listed,
-        // with nobody asked about any of them.
-        return BarcodeProgress::Off { codes };
-    }
     let asked: Vec<String> = codes
         .iter()
         .filter(|code| !excluded.contains(code))
         .cloned()
         .collect();
-    if asked.is_empty() {
-        // Every code the folder carries is left out, so nobody is asked about
-        // any of them — and the codes are still the run's, so they stay listed
-        // with nothing run against them.
-        return BarcodeProgress::NotAsked { codes };
+    // The reason nearest the value wins: see `NotAskedReason`.
+    let reason = if asked.is_empty() {
+        Some(NotAskedReason::LeftOut)
+    } else if !look_up {
+        Some(NotAskedReason::SwitchedOff)
+    } else {
+        None
+    };
+    if let Some(reason) = reason {
+        return BarcodeProgress::NotAsked { codes, reason };
     }
     BarcodeProgress::Lookups {
         codes: asked
@@ -702,20 +636,23 @@ pub(super) fn start_catalog_progress(
     }
 }
 
-/// What the settled identifiers leave the title search to do: ask every
-/// provider the candidate's own title, or nothing at all.
-///
-/// Nothing at all in two cases, and they mean different things to the run that
-/// ends on them: the identifiers named a release, so there is no question
-/// left; or the candidate's draft states no title, so there is nothing to ask.
-/// The second is what leaves a run with nothing run against it.
+/// Where a run's title search starts.
+pub(super) fn search_progress_at_start(search_by_title: bool) -> SearchProgress {
+    if search_by_title {
+        SearchProgress::Pending
+    } else {
+        SearchProgress::NotAsked {
+            reason: NotAskedReason::SwitchedOff,
+        }
+    }
+}
+
+/// Ask every provider the candidate's title, unless the identifiers already
+/// answered or there is no title.
 pub(super) fn start_search_progress(
     context: &SignalsContext,
     effects: &mut Vec<Effect>,
 ) -> SearchProgress {
-    if !context.steps.search_by_title {
-        return SearchProgress::Off;
-    }
     let identifiers_answered = !context.disc.results.is_empty()
         || !context.barcode.results.is_empty()
         || !context.catalog.active_results().is_empty();
@@ -743,15 +680,12 @@ pub(super) fn start_search_progress(
     }
 }
 
-/// The track count is whatever the disc-ID signal reported — every one of its
-/// settled variants carries the local count, whether or not a disc ID was derived.
+/// The local track count every settled disc-ID variant carries.
 pub(super) fn settled_track_count(discid: &DiscidProgress) -> u32 {
     match discid {
         DiscidProgress::Done { track_count, .. } => *track_count,
         DiscidProgress::Skipped { track_count } => *track_count,
-        DiscidProgress::NotAsked { track_count } | DiscidProgress::Off { track_count } => {
-            *track_count
-        }
+        DiscidProgress::NotAsked { track_count, .. } => *track_count,
         DiscidProgress::Failed { track_count, .. } => *track_count,
         DiscidProgress::Computing | DiscidProgress::LookingUp => 0,
     }

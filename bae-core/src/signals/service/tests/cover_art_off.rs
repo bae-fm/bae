@@ -1,5 +1,4 @@
-//! A run that leaves the cover art unread: no image reaches the analyzer, and
-//! the pass says how many it left unread rather than that there were none.
+//! A run that leaves the cover art unread reads no image and says so.
 
 use super::*;
 
@@ -27,7 +26,7 @@ async fn a_run_that_leaves_the_cover_art_unread_reads_no_image() {
 
     let snapshots = collect_snapshots(&mut rx, 1).await;
     let (signals, artwork) = &snapshots[0];
-    assert_eq!(artwork, &ArtworkScan::Off { total: 2 });
+    assert_eq!(artwork, &ArtworkScan::Off);
     assert_eq!(
         signals.barcode,
         BarcodeSignal::Absent,
@@ -46,8 +45,7 @@ async fn a_run_that_leaves_the_cover_art_unread_reads_no_image() {
     assert_no_more_snapshots(&mut rx, "the only snapshot").await;
     assert_eq!(analyzer.calls(), 0, "no image reached the analyzer");
 
-    // The same files under a run that reads the art are read afresh: the
-    // reading taken without it answers nothing about what the art says.
+    // A run that reads the art does not reuse the reading taken without it.
     handle.start(
         IdentifyRunId::for_test(2),
         "cand-1".to_string(),
@@ -58,4 +56,27 @@ async fn a_run_that_leaves_the_cover_art_unread_reads_no_image() {
     let snapshots = collect_snapshots(&mut rx, 3).await;
     assert_eq!(snapshots[2].1, ArtworkScan::Done { total: 2 });
     assert_eq!(analyzer.calls(), 2, "both images are read this time");
+}
+
+/// Re-identifying a release with cover art unread never resolves its images.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_re_identify_that_leaves_the_cover_art_unread_resolves_no_image() {
+    let analyzer = Arc::new(StubAnalyzer::new());
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer.clone());
+
+    handle.start(
+        IdentifyRunId::for_test(1),
+        "release-1".to_string(),
+        ExtractionSource::Release {
+            release_id: "release-1".to_string(),
+        },
+        CallPriority::Interactive,
+        without_cover_art(),
+    );
+
+    let snapshots = collect_snapshots(&mut rx, 1).await;
+    assert_eq!(snapshots[0].1, ArtworkScan::Off);
+    assert_no_more_snapshots(&mut rx, "the only snapshot").await;
+    assert_eq!(analyzer.calls(), 0, "no image reached the analyzer");
 }

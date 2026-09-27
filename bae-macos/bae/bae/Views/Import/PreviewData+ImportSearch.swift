@@ -8,8 +8,7 @@
     extension PreviewData {
         // MARK: - Album cards
 
-        /// Two pressings of one album, the later one carried by both sources —
-        /// the cross-linked case the pane's row tags render.
+        /// Two pressings of one album, the later one carried by both sources.
         static let exactPressings: [BridgePressing] = [
             BridgePressing(
                 releases: [
@@ -127,8 +126,7 @@
             bridge: searchGroupExactBridge
         )
 
-        /// The exact album as a list shows it when its MusicBrainz page could
-        /// not be read.
+        /// The exact album when its MusicBrainz page could not be read.
         static let searchGroupLinksUnread: ReleaseGroup = {
             var group = searchGroupExactBridge
             group.sources = [
@@ -142,9 +140,7 @@
             return ReleaseGroup(bridge: group)
         }()
 
-        /// The disc ID named the first pressing and the folder's text states
-        /// its catalog number, label and year; the barcode named the second,
-        /// which the folder says nothing else about.
+        /// What the folder's text agrees with about each exact-album pressing.
         static let searchAgreementsExact: [String: BridgeAgreements] = [
             "rel-123": BridgeAgreements(
                 discId: true,
@@ -335,8 +331,7 @@
         static let searchGroupsManual: [ReleaseGroup] =
             searchGroupsManualBridge.map(ReleaseGroup.init(bridge:))
 
-        /// The albums the disc ID and the barcode each named when they share
-        /// none — one card per album.
+        /// One card per album when the disc ID and the barcode share none.
         static let discidOnlyGroup = BridgeReleaseGroup(
             id: "group-disc",
             title: "Album Title",
@@ -444,8 +439,7 @@
             ]
         )
 
-        /// Each row says what stands behind it — the whole of what tells the
-        /// two apart once they are one list.
+        /// What each disagreeing row's lookups and text agree with.
         static let disagreementAgreements: [String: BridgeAgreements] = [
             "rel-disc-1": BridgeAgreements(
                 discId: true,
@@ -479,8 +473,7 @@
             )
         )
 
-        /// The numbers one of the offered releases carries and the folder
-        /// states: chips that rank the list, one of them struck out.
+        /// Catalog-number chips that rank the list, one of them struck out.
         static let catalogAgreements: [BridgeCatalogAgreement] = [
             BridgeCatalogAgreement(value: "BST 84055", discounted: false),
             BridgeCatalogAgreement(value: "7243 8 21152 2 3", discounted: true),
@@ -494,7 +487,7 @@
             BridgeCatalogCandidate(value: "CDP 546"),
         ]
 
-        /// Both providers' cells for one value, as the walks stand.
+        /// Both providers' cells for one value.
         static func cells(
             _ musicBrainz: BridgeLookupState,
             _ discogs: BridgeLookupState
@@ -605,8 +598,7 @@
             signals: settledSignals
         )
 
-        /// `group` as a run lists it when agreement set every one of its rows
-        /// aside.
+        /// `group` with every row set aside.
         static func setAside(_ group: BridgeReleaseGroup) -> BridgeReleaseGroup
         {
             var group = group
@@ -620,8 +612,7 @@
             return group
         }
 
-        /// The exact album with its earlier pressing set aside: the matches'
-        /// own card, holding a row behind the disclosure.
+        /// The exact album with its earlier pressing set aside.
         static let searchGroupExactWithSetAside: ReleaseGroup = {
             var group = searchGroupExactBridge
             group.sections = [
@@ -634,9 +625,7 @@
             return ReleaseGroup(bridge: group)
         }()
 
-        /// The signals agreed on one release. Agreement set aside another
-        /// pressing of the same album, which stays on its card, and each named
-        /// an album of its own — the disclosure's own case.
+        /// One release agreed on, with other pressings and albums set aside.
         static let searchStateNarrowedOut = searchState(
             identifyState: .found(
                 run: identifyRunFound,
@@ -657,14 +646,12 @@
             signals: settledSignals
         )
 
-        /// The disc ID and the barcode named different albums: every one of
-        /// them is offered.
+        /// The disc ID and the barcode named different albums, all offered.
         static let searchStateDisagreement = searchState(
             identifyState: IdentifyState(bridge: bridgeDisagreementState)
         )
 
-        /// The bridge shape of the disagreement above — what a run in flight
-        /// carries across, for a surface driven by the runtime signal.
+        /// The bridge shape of the disagreement above.
         static let bridgeDisagreementState = BridgeIdentifyState.found(
             run: identifyRunFound,
             groups: [discidOnlyGroup, barcodeOnlyGroup],
@@ -734,8 +721,7 @@
                         ]
                     ),
                     catalog: .noneFound,
-                    search: .notNeeded,
-                    albumLinks: .followed
+                    search: .notNeeded
                 ),
                 failures: [
                     .discId(failure: .network),
@@ -749,9 +735,7 @@
             )
         )
 
-        /// A failure with no ledger to put it on: the folder carried nothing
-        /// to lay out, or the verdict was stored before its signals were. The
-        /// reasons are the whole pane, so the retry sits under them.
+        /// A failure with no run to show, so the reasons fill the pane.
         static let searchStateFailedWithoutRun = searchState(
             identifyState: .failed(
                 run: nil,
@@ -767,8 +751,7 @@
             )
         )
 
-        /// A sole match core is picking on its own: its row holds the
-        /// spinner while its details fetch and the answer saves.
+        /// A sole match being picked automatically, its row spinning.
         static let searchStateFinalizing = searchState(
             identifyState: .found(
                 run: identifyRunFound,
@@ -863,8 +846,7 @@
             signals: settledSignals
         )
 
-        /// The pane's state with only the situation each preview is about
-        /// stated; everything else is the inert default.
+        /// The pane's state with everything but the given parts left default.
         static func searchState(
             identifyState: IdentifyState,
             search: BridgeCandidateSearch? = nil,

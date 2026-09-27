@@ -1,24 +1,18 @@
 import BaeKit
 import SwiftUI
 
-// The pieces the band is built from: one identifier's chip, a provider's
-// answer inside it, and the marks a chip carries when there is no answer to
-// show.
+// The pieces the identifier band is built from.
 
-/// How a chip reads: filled for an identifier the run has an answer about,
-/// outlined and dimmed for a number waiting to be looked up.
+/// Filled for a value the run asks about, outlined for one it does not.
 enum IdentifierChipStyle {
     case filled
     case outlined
 }
 
-/// The widest a chip's value is drawn before it truncates in the middle: a
-/// disc ID is far longer than a barcode, and the band reads as chips rather
-/// than as one long line.
+/// The widest a chip's value is drawn before it truncates in the middle.
 private let identifierValueWidth: CGFloat = 92
 
-/// One identifier in the band: what kind it is, the value, and what the
-/// providers say about it.
+/// One identifier in the band: its kind, its value, and the providers' answers.
 struct IdentifierChip<Trailing: View>: View {
     let label: String
     var value: String?
@@ -74,8 +68,7 @@ struct IdentifierChip<Trailing: View>: View {
 }
 
 extension IdentifierChip where Trailing == EmptyView {
-    /// A chip with nothing after its value: a number nobody has asked about
-    /// yet.
+    /// A chip with nothing after its value.
     init(
         label: String,
         value: String? = nil,
@@ -87,9 +80,7 @@ extension IdentifierChip where Trailing == EmptyView {
     }
 }
 
-/// One provider's answer about one value, inside that value's chip: the
-/// provider's name and its lookup's glyph, on one ground so they read as one
-/// unit.
+/// One provider's name and its lookup's glyph, inside a value's chip.
 struct ProviderCapsule: View {
     let source: BridgeCatalog
     let lookup: BridgeLookupState
@@ -112,7 +103,7 @@ struct ProviderCapsule: View {
     }
 }
 
-/// The short dash that says nothing ran here.
+/// The dash that says nothing ran here.
 struct IdentifierDash: View {
     var body: some View {
         RoundedRectangle(cornerRadius: 1)
@@ -121,9 +112,7 @@ struct IdentifierDash: View {
     }
 }
 
-/// The mark a step carries when it is switched off in Settings: nothing ran
-/// here because the person turned it off, which is not the same as running
-/// and finding nothing. Why is the chip's hover.
+/// The mark a step carries when it is switched off in Settings.
 struct IdentifierOff: View {
     var body: some View {
         Text("Off")
@@ -133,8 +122,7 @@ struct IdentifierOff: View {
     }
 }
 
-/// The mark a signal carries when reading its own input failed, before any
-/// provider was asked. What went wrong is the chip's hover.
+/// The mark a signal carries when reading its input failed.
 struct IdentifierWarning: View {
     var body: some View {
         Image(systemName: "exclamationmark.triangle")
@@ -153,8 +141,7 @@ struct ChipSpinner: View {
     }
 }
 
-/// A chip of nothing but a spinner, closing the band: the artwork is still
-/// being read, so more chips may still join it.
+/// A spinner closing the band while the artwork is still being read.
 struct ScanningChip: View {
     var body: some View {
         ChipSpinner()
@@ -167,10 +154,7 @@ struct ScanningChip: View {
     }
 }
 
-/// One provider's lookup of one value, as a glyph: spinner looking up, green
-/// count matched, gray 0 answered empty, a small dot queued, a dash never
-/// needed, a warning with its own Retry failed, "Off" switched off in
-/// Settings.
+/// One provider's lookup of one value as a glyph.
 struct LookupCellView: View {
     let lookup: BridgeLookupState
     let onRetry: () -> Void
@@ -181,11 +165,11 @@ struct LookupCellView: View {
             Circle()
                 .fill(Color.primary.opacity(0.18))
                 .frame(width: 5, height: 5)
-        case .notAsked:
-            IdentifierDash()
-        case .off:
+        case .notAsked(reason: .switchedOff):
             IdentifierOff()
                 .help("Switched off in Import settings")
+        case .notAsked(reason: .leftOut), .notAsked(reason: .noCatalog):
+            IdentifierDash()
         case .lookingUp:
             ProgressView()
                 .controlSize(.small)
@@ -211,9 +195,7 @@ struct LookupCellView: View {
     }
 }
 
-/// A match count, with the releases it stands for a hover away: year,
-/// label, catalog number, region and format, sectioned by album when the
-/// lookup spans several.
+/// A match count that shows the releases it stands for on hover.
 struct LookupCountView: View {
     let count: Int
     let groups: [BridgeReleaseGroup]
@@ -230,8 +212,7 @@ struct LookupCountView: View {
     }
 }
 
-/// The releases one lookup found. One album lists its pressings alone;
-/// several list each album's cover, title and artist, then its pressings.
+/// The releases one lookup found, headed by album when there are several.
 struct LookupReleasesPopover: View {
     let groups: [ReleaseGroup]
 
@@ -349,8 +330,7 @@ struct LookupReleaseLine: View {
     }
 #endif
 
-/// The caption naming what the value after it is — the one a chip opens
-/// with, and the one before each further value a chip carries.
+/// The caption naming the value after it.
 struct IdentifierLabel: View {
     let text: String
 

@@ -10,25 +10,21 @@ impl BridgeMetadataResult {
             labels,
             barcodes,
             source_group_id,
-            // Dropped: the card carries the album's title/artist/cover, so a
-            // pressing projection keeps only pressing-distinguishing fields.
+            // The album card carries these.
             title: _,
             artist: _,
             cover_art: _,
-            // The source's own tracklist is Ready-rule evidence, not something
-            // a pressing row renders; the sidebar reads the classification the
-            // rule produced from it.
+            // Ready-rule evidence, not something a row renders.
             source_tracks: _,
-            // What the record said about the pressing is the facts read above;
-            // its media in their own shape and its counterparts are pairing
-            // evidence, and the pairing they fed is already the row.
+            // Read into `facts` above, or pairing evidence the row already
+            // reflects.
             area: _,
             status: _,
             packaging: _,
             discogs_details: _,
             media: _,
             links: _,
-            // Which cards the albums join is already the grouping's answer.
+            // Already applied by the grouping.
             album_links: _,
         } = r;
         BridgeMetadataResult {
@@ -51,8 +47,7 @@ impl BridgeRemoteCover {
             image,
             label,
             source,
-            // Core already chose which covers to offer by it; a surface
-            // draws the covers it is handed.
+            // Core already chose which covers to offer by it.
             standing: _,
         } = c;
         let image = BridgeRemoteImageSet::from_core(image);
@@ -92,8 +87,7 @@ impl BridgeReleaseDetail {
             track_count,
             tracks,
             cover_art,
-            // Pairing evidence the result a pick becomes carries; the picker
-            // renders the facts.
+            // Pairing evidence; the picker renders the facts.
             media: _,
             links: _,
         } = d;
@@ -182,16 +176,21 @@ mirror_struct! {
 }
 
 mirror_enum! {
+    BridgeNotAskedReason = bae_core::identify::NotAskedReason,
+    from_core: fn,
+    variants: { LeftOut, SwitchedOff, NoCatalog },
+}
+
+mirror_enum! {
     BridgeLookupState = bae_core::identify::LookupView,
     from_core: fn,
     variants: {
         Queued,
-        NotAsked,
+        NotAsked { reason: (BridgeNotAskedReason) },
         LookingUp,
         Found { count, groups: (each BridgeReleaseGroup) },
         NoMatch,
         Failed { failure: (BridgeLookupFailure) },
-        Off,
     },
 }
 
@@ -205,8 +204,7 @@ impl BridgeSignalValueRow {
     fn from_core(row: bae_core::identify::SignalValueRow) -> Self {
         let bae_core::identify::SignalValueRow {
             value,
-            // Where the value was read is automation's to report; no surface
-            // shows it.
+            // No surface shows where the value was read.
             sources: _,
             excluded,
             cells,
@@ -223,8 +221,7 @@ impl BridgeSignalValueRow {
 }
 
 impl BridgeDiscIdStep {
-    // The file a disc ID was read off is automation's to report; no surface
-    // shows it.
+    // No surface shows the file a disc ID was read off.
     fn from_core(step: bae_core::identify::DiscIdStepView) -> Self {
         use bae_core::identify::DiscIdStepView;
         match step {
@@ -242,8 +239,6 @@ impl BridgeDiscIdStep {
                 disc_id,
                 lookup: BridgeLookupState::from_core(lookup),
             },
-            DiscIdStepView::ReadNotAsked { disc_id, source: _ } => Self::ReadNotAsked { disc_id },
-            DiscIdStepView::LeftOut { disc_id, source: _ } => Self::LeftOut { disc_id },
         }
     }
 }
@@ -264,8 +259,7 @@ impl BridgeCatalogCandidate {
     fn from_core(candidate: bae_core::identify::CatalogCandidateView) -> Self {
         let bae_core::identify::CatalogCandidateView {
             value,
-            // Where the number was read is automation's to report; no surface
-            // shows it.
+            // No surface shows where the number was read.
             sources: _,
         } = candidate;
         Self { value }
@@ -296,7 +290,7 @@ mirror_enum! {
     BridgeSearchStep = bae_core::identify::SearchStepView,
     from_core: fn,
     variants: {
-        Off,
+        NotAsked { reason: (BridgeNotAskedReason) },
         NotNeeded,
         NoTitle,
         Waiting { album, artist },
@@ -313,14 +307,7 @@ mirror_struct! {
         barcode: (BridgeBarcodeStep),
         catalog: (BridgeCatalogStep),
         search: (BridgeSearchStep),
-        album_links: (BridgeAlbumLinksStep),
     },
-}
-
-mirror_enum! {
-    BridgeAlbumLinksStep = bae_core::identify::AlbumLinksStepView,
-    from_core: fn,
-    variants: { Followed, Off },
 }
 
 mirror_struct! {
@@ -680,9 +667,7 @@ mod tests {
         }
     }
 
-    /// A code crosses as one row: where it was read, and one cell per
-    /// provider — the one still looking beside the one that failed, so a
-    /// surface can say which to retry while the other keeps going.
+    /// A code crosses as one row with one cell per provider, each its own.
     #[test]
     fn a_code_crosses_as_a_row_with_one_cell_per_provider() {
         let step = barcode_step(in_flight(BarcodeProgress::Lookups {
@@ -726,9 +711,7 @@ mod tests {
         ));
     }
 
-    /// Every part of what a candidate's identification asks about crosses, and
-    /// crosses back: the signals it leaves out, the numbers it looks up, and
-    /// the numbers struck out of the candidate's own text so they rank nothing.
+    /// Every part of the lookup choices crosses and crosses back.
     #[test]
     fn every_part_of_what_identification_asks_about_crosses() {
         let choices = bae_core::import::LookupChoices {
@@ -748,13 +731,12 @@ mod tests {
         assert_eq!(crossed.into_core(), choices);
     }
 
-    /// A code the person left out crosses as a row that says so, beside the
-    /// codes the run asked about — the surface draws it as the off chip it is
-    /// rather than as a lookup that found nothing.
+    /// A code the person left out crosses as a row whose cells say so.
     #[test]
     fn a_code_left_out_crosses_as_a_row_that_says_so() {
         let mut state = in_flight(BarcodeProgress::NotAsked {
             codes: vec!["0123456789012".to_string()],
+            reason: bae_core::identify::NotAskedReason::LeftOut,
         });
         let IdentifyState::Triangulating { context, .. } = &mut state else {
             panic!("a run in flight");
@@ -766,17 +748,19 @@ mod tests {
         };
         assert_eq!(rows.len(), 1);
         assert!(rows[0].excluded);
-        assert!(rows[0]
-            .cells
-            .iter()
-            .all(|cell| matches!(cell.lookup, BridgeLookupState::NotAsked)));
+        assert!(rows[0].cells.iter().all(|cell| matches!(
+            cell.lookup,
+            BridgeLookupState::NotAsked {
+                reason: BridgeNotAskedReason::LeftOut
+            }
+        )));
     }
 
-    /// A disc ID nothing looked up crosses as which of the two it is: the
-    /// person left it out, or no provider the run asks answers disc IDs.
+    /// A disc ID nobody looked up crosses as read, with why.
     #[test]
-    fn a_left_out_disc_id_crosses_apart_from_one_no_provider_answers() {
-        let step = |excluded: bool| {
+    fn a_disc_id_nobody_looked_up_crosses_with_why() {
+        use bae_core::identify::NotAskedReason;
+        let step = |reason: NotAskedReason| {
             let mut state = in_flight(BarcodeProgress::Skipped);
             let IdentifyState::Triangulating {
                 discid, context, ..
@@ -784,24 +768,39 @@ mod tests {
             else {
                 panic!("a run in flight");
             };
-            *discid = DiscidProgress::NotAsked { track_count: 9 };
+            *discid = DiscidProgress::NotAsked {
+                track_count: 9,
+                reason,
+            };
             context.disc.signal = DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 9,
                 source_file: None,
             };
-            context.disc.excluded = excluded;
             match BridgeIdentifyState::from_core(state) {
                 BridgeIdentifyState::Triangulating { run, .. } => run.disc_id,
                 other => panic!("expected a run in flight, got {other:?}"),
             }
         };
-        assert!(matches!(step(true), BridgeDiscIdStep::LeftOut { .. }));
-        assert!(matches!(step(false), BridgeDiscIdStep::ReadNotAsked { .. }));
+        for (reason, crossed) in [
+            (NotAskedReason::LeftOut, BridgeNotAskedReason::LeftOut),
+            (
+                NotAskedReason::SwitchedOff,
+                BridgeNotAskedReason::SwitchedOff,
+            ),
+            (NotAskedReason::NoCatalog, BridgeNotAskedReason::NoCatalog),
+        ] {
+            assert!(matches!(
+                step(reason),
+                BridgeDiscIdStep::Read {
+                    lookup: BridgeLookupState::NotAsked { reason },
+                    ..
+                } if reason == crossed
+            ));
+        }
     }
 
-    /// Reading the candidate's barcodes failing is not a provider's failure,
-    /// and crosses as its own variant rather than as an unattributed one.
+    /// A failed barcode scan crosses as its own variant, not a provider's.
     #[test]
     fn a_failed_barcode_scan_crosses_as_its_own_variant() {
         let step = barcode_step(in_flight(BarcodeProgress::ScanFailed {

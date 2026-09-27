@@ -1,10 +1,9 @@
-// Included by `tests.rs`; shares the helpers of `signals_and_conflicts.rs`.
-//
-// A step switched off in the identification settings: no lookup goes out for
-// it, and it says it is off — never that it looked and found nothing.
+// Steps switched off in the identification settings ask nobody and say so.
+// Included by `tests.rs`, sharing the helpers of `signals_and_conflicts.rs`.
 
-/// `Started` with every step taken but `off`, asking `providers`, searching
-/// by "Album" when the identifiers name nothing.
+const SWITCHED_OFF: crate::identify::NotAskedReason = crate::identify::NotAskedReason::SwitchedOff;
+
+/// A run started with every step on but `off`, with a title to search by.
 fn started_without(providers: Vec<Catalog>, off: crate::config::IdentificationStep) -> IdentifyState {
     let mut steps = crate::config::IdentificationSteps::default();
     steps.set(off, false);
@@ -34,8 +33,8 @@ fn ledger_of(state: &IdentifyState) -> crate::identify::IdentifyRunView {
     }
 }
 
-/// A disc ID read under a run that does not look disc IDs up is asked of
-/// nobody, and its row and badge say the lookup is off.
+/// A disc ID under a run that does not look disc IDs up is asked of nobody,
+/// and its row and badge say the step is switched off.
 #[test]
 fn a_disc_id_the_run_does_not_look_up_is_off_not_a_no_match() {
     let state = started_without(vec![MB], crate::config::IdentificationStep::LookUpDiscIds);
@@ -49,15 +48,56 @@ fn a_disc_id_the_run_does_not_look_up_is_off_not_a_no_match() {
     assert!(matches!(
         ledger_of(&state).disc_id,
         crate::identify::DiscIdStepView::Read {
-            lookup: crate::identify::LookupView::Off,
+            lookup: crate::identify::LookupView::NotAsked {
+                reason: SWITCHED_OFF
+            },
             ..
         }
     ));
-    assert_eq!(badge(&state, SignalKind::DiscId).state, SignalState::Off);
+    assert_eq!(
+        badge(&state, SignalKind::DiscId).state,
+        SignalState::NotAsked {
+            reason: SWITCHED_OFF
+        }
+    );
 }
 
-/// Barcodes read under a run that does not look barcodes up stay listed, each
-/// cell off, and no provider is asked about any of them.
+/// A disc ID left out says so even when its step is off, and the run offers
+/// manual search.
+#[test]
+fn a_left_out_disc_id_says_it_was_left_out_whatever_its_step() {
+    let mut steps = crate::config::IdentificationSteps::default();
+    steps.set(crate::config::IdentificationStep::LookUpDiscIds, false);
+    let (state, _) = step(
+        IdentifyState::Idle,
+        IdentifyEvent::Started {
+            providers: vec![MB],
+            steps,
+            choices: excluding(true, &[]),
+            title_search: None,
+        },
+    );
+    let (state, effects) = update(state, disc_only(&[]));
+    assert!(effects.is_empty(), "nothing is asked: {effects:?}");
+    let left_out = crate::identify::NotAskedReason::LeftOut;
+    assert!(matches!(
+        ledger_of(&state).disc_id,
+        crate::identify::DiscIdStepView::Read {
+            lookup: crate::identify::LookupView::NotAsked { reason },
+            ..
+        } if reason == left_out
+    ));
+    let disc = badge(&state, SignalKind::DiscId);
+    assert!(disc.excluded);
+    assert_eq!(disc.state, SignalState::NotAsked { reason: left_out });
+    assert!(
+        matches!(state, IdentifyState::ManualOnly { .. }),
+        "got {state:?}"
+    );
+}
+
+/// Barcodes under a run that does not look them up stay listed, each cell
+/// saying the step is switched off.
 #[test]
 fn barcodes_the_run_does_not_look_up_are_listed_with_every_cell_off() {
     let state = started_without(vec![MB, DG], crate::config::IdentificationStep::LookUpBarcodes);
@@ -87,17 +127,27 @@ fn barcodes_the_run_does_not_look_up_are_listed_with_every_cell_off() {
     assert!(rows
         .iter()
         .flat_map(|row| &row.cells)
-        .all(|cell| cell.lookup == crate::identify::LookupView::Off));
-    assert_eq!(badge(&state, SignalKind::Barcode).state, SignalState::Off);
+        .all(|cell| cell.lookup
+            == crate::identify::LookupView::NotAsked {
+                reason: SWITCHED_OFF
+            }));
+    assert_eq!(
+        badge(&state, SignalKind::Barcode).state,
+        SignalState::NotAsked {
+            reason: SWITCHED_OFF
+        }
+    );
 }
 
-/// A run that does not search by title never sends the title out, however
-/// empty-handed its identifiers come back, and says the step is off from the
+/// A run that does not search by title never asks it, and says so from the
 /// start.
 #[test]
 fn a_run_that_does_not_search_by_title_never_asks_the_title() {
+    let not_asked = crate::identify::SearchStepView::NotAsked {
+        reason: SWITCHED_OFF,
+    };
     let state = started_without(vec![MB], crate::config::IdentificationStep::SearchByTitle);
-    assert_eq!(ledger_of(&state).search, crate::identify::SearchStepView::Off);
+    assert_eq!(ledger_of(&state).search, not_asked);
     let (state, effects) = update(state, one_code("BAR"));
     assert_eq!(effects, vec![lookup_barcode(MB, "BAR")]);
     let (state, effects) = step(state, barcode_missed(MB, "BAR"));
@@ -109,11 +159,10 @@ fn a_run_that_does_not_search_by_title_never_asks_the_title() {
         matches!(state, IdentifyState::NotFoundAnywhere { .. }),
         "the barcode was asked and named nothing, got {state:?}"
     );
-    assert_eq!(ledger_of(&state).search, crate::identify::SearchStepView::Off);
+    assert_eq!(ledger_of(&state).search, not_asked);
 }
 
-/// A run whose only lookup was switched off asked nobody anything, so it
-/// offers manual search rather than claiming nothing matched.
+/// A run whose lookups are all switched off offers manual search.
 #[test]
 fn a_run_whose_lookups_are_all_off_offers_manual_search() {
     let mut steps = crate::config::IdentificationSteps::default();
@@ -140,8 +189,8 @@ fn a_run_whose_lookups_are_all_off_offers_manual_search() {
     );
 }
 
-/// A run that does not follow catalog links reads no album links, even when
-/// what it found holds both catalogs' releases, and says so.
+/// A run that does not follow catalog links reads none, even with both
+/// catalogs' releases found.
 #[test]
 fn a_run_that_does_not_follow_catalog_links_reads_none() {
     let state = started_without(
@@ -170,16 +219,18 @@ fn a_run_that_does_not_follow_catalog_links_reads_none() {
         effects.is_empty(),
         "no album links read goes out: {effects:?}"
     );
-    assert!(matches!(state, IdentifyState::Found { .. }), "got {state:?}");
+    let IdentifyState::Found { context, .. } = &state else {
+        panic!("the barcode named a release on each catalog, got {state:?}");
+    };
     assert_eq!(
-        ledger_of(&state).album_links,
-        crate::identify::AlbumLinksStepView::Off
+        context.album_links,
+        AlbumLinkReading::NotAsked {
+            reason: SWITCHED_OFF
+        }
     );
 }
 
-/// A run with the cover art left unread and nothing else to read a code off
-/// says the art was left unread — not that there was no barcode source, and
-/// not that it read the art and found none. The catalog step says the same.
+/// With the cover art left unread, the barcode and catalog steps say so.
 #[test]
 fn cover_art_left_unread_says_so_in_the_barcode_and_catalog_steps() {
     let state = started_without(vec![MB], crate::config::IdentificationStep::ReadCoverArt);
@@ -191,7 +242,7 @@ fn cover_art_left_unread_says_so_in_the_barcode_and_catalog_steps() {
                 BarcodeSignal::Absent,
                 &[],
             ),
-            artwork: crate::signals::ArtworkScan::Off { total: 2 },
+            artwork: crate::signals::ArtworkScan::Off,
         },
     );
     let ledger = ledger_of(&state);

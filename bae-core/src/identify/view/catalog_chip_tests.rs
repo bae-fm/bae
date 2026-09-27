@@ -1,6 +1,5 @@
-//! The Catalog # row's agreement chips: which numbers the folder states about
-//! the offered releases, and what striking one out does to the ranking. The
-//! states they are read from are built by the view tests' fixtures.
+//! The Catalog # row's chips: which numbers they are, and what striking one
+//! out does to the ranking.
 
 use super::tests::*;
 use super::*;
@@ -26,8 +25,7 @@ fn folder(lines: &[&str], struck_out: &[&str]) -> CandidateText {
     CandidateText::of(&pool, &struck_out)
 }
 
-/// One pressing as a provider states it — whichever of its fields the folder
-/// then turns out to state is what ranks it.
+/// One pressing with the fields the folder's text may agree with.
 fn pressing(
     release_id: &str,
     group_id: &str,
@@ -50,8 +48,7 @@ fn pressing(
     }
 }
 
-/// A stored verdict read back: the matches it settled on, what it narrowed
-/// out, and the candidate's own text as the person has left it.
+/// A stored verdict read back against the candidate's text.
 fn resumed(
     matches: Vec<MetadataResult>,
     narrowed_out: Vec<MetadataResult>,
@@ -73,8 +70,7 @@ fn resumed(
     let verdict = TerminalVerdict::Found {
         findings: Findings {
             provenance: by_disc_id(matches.len()),
-            // A stored verdict carries the rows its run built; a test that
-            // stands one up forms them over each list the way a run would.
+            // Rows formed the way a run forms them.
             pressings: crate::import::release_group::form_rows(&matches),
             matches,
             narrowed_out: NarrowedOut {
@@ -117,10 +113,8 @@ fn card_ids(view: &IdentifyStateView) -> Vec<&str> {
         .collect()
 }
 
-/// The chips are the numbers the folder states about a release it is
-/// offering. A number the folder states about one it set aside is not one of
-/// them: that release is behind the disclosure, and nothing it says ranks the
-/// list.
+/// The chips are the numbers the folder states about offered releases, not
+/// set-aside ones.
 #[test]
 fn the_chips_are_the_numbers_the_offered_releases_carry() {
     let view = resumed(
@@ -165,9 +159,8 @@ fn a_number_the_folder_never_states_is_no_chip() {
     assert!(chips(&view).is_empty());
 }
 
-/// Striking a number out takes the agreement off every release that carried
-/// it and re-orders the list, from the same stored verdict — and the chip
-/// stays, checked off, so it can be taken back.
+/// Striking a number out drops its agreement and re-ranks the list, and the
+/// chip stays, struck out.
 #[test]
 fn striking_a_number_out_drops_its_agreement_and_re_ranks() {
     let lines = &["Dirty Deeds [16033-2]", "Atlantic 1976 US"];
@@ -207,9 +200,7 @@ fn striking_a_number_out_drops_its_agreement_and_re_ranks() {
     assert_eq!(chips(&struck), vec![("16033-2", true)]);
 }
 
-/// A number one of the offered releases carries is a chip that ranks them, so
-/// it is not also a tile that would look it up: the tiles under the table are
-/// the numbers nothing came back carrying.
+/// A number an offered release carries is a chip, not also a tile.
 #[test]
 fn a_number_an_offered_release_carries_is_a_chip_rather_than_a_tile() {
     let ledger = IdentifyRunView {
@@ -231,7 +222,6 @@ fn a_number_an_offered_release_carries_is_a_chip_rather_than_a_tile() {
             ],
         },
         search: SearchStepView::NotNeeded,
-        album_links: crate::identify::AlbumLinksStepView::Followed,
     };
     let view = resumed(
         vec![pressing("rel-a", "rg-a", Some("16033-2"), None, None, None)],

@@ -1,32 +1,11 @@
-//! Pure state machine for the identify pipeline.
+//! The identify pipeline's pure state machine: `step` takes a state and an
+//! event and returns the next state and the lookups for the service to run.
 //!
-//! Triangulation: the disc-ID, barcode and catalog signals run in parallel,
-//! each reporting progress live so the UI can render them side by side. The
-//! barcode and catalog lookups ask every provider in the run, and each provider
-//! answers for itself — MusicBrainz landing never waits on Discogs, and one
-//! failing leaves the other's matches standing.
-//!
-//! The identifiers naming nothing is not the end of the run. A release whose
-//! identifiers no catalog holds — a box set listed with neither a barcode nor
-//! a disc ID — is still found by its title, so once the three settle empty the
-//! run asks every provider the candidate's own album title and artist. That
-//! search is the fourth step, and it runs last because it is the weakest
-//! claim: an exact code beats a name, so a name is only asked when no code
-//! answered.
-//!
-//! Once every step settles, and what they found holds both catalogs'
-//! releases, the run reads what its MusicBrainz albums are on Discogs — the
-//! statements that put the two catalogs' albums on one card, and the Discogs
-//! releases a MusicBrainz release names where that is the statement (see
-//! [`crate::import::album_links`]). Then the reducer hands the results to
-//! `combine` and lands on `Found`, `NotFoundAnywhere`, or `Failed`.
-//!
-//! Settling also records the run's ledger — the layout every surface has been
-//! drawing while it ran — onto the terminal state, so what the run showed
-//! survives the run.
-//!
-//! `step` takes a state and an event and returns the next state plus the side
-//! effects for the service to run. No I/O, no async, nothing outside itself.
+//! The disc-ID, barcode and catalog lookups run in parallel, each provider
+//! answering for itself. When they name nothing, the run searches by the
+//! candidate's title. Once every lookup settles, the run reads its MusicBrainz
+//! albums' links to Discogs (see [`crate::import::album_links`]), combines the
+//! results into a terminal state, and records the ledger it showed.
 
 use super::combine::{combine_results, Findings, LibraryStatuses};
 use super::toolbar::{
@@ -40,25 +19,13 @@ use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{ArtworkScan, BarcodeSignal, LookupFailure, Signals, SourcedValue};
 
-/// One candidate's identify state.
-///
-/// Every state but `Idle` carries a [`SignalsContext`], so the toolbar
-/// projection always has its signal values.
-///
-/// Every settled state carries the ledger its run recorded as it ended — the
-/// last frame the run showed, with the lookups that were still in flight
-/// settled onto it. `None` when extraction handed the run nothing to lay out,
-/// and for a state stood back up from a verdict whose row records none.
+/// One candidate's identify state. Every settled state carries the ledger its
+/// run recorded as it ended, `None` when there was nothing to lay out.
 #[derive(Clone, Debug, PartialEq)]
 pub enum IdentifyState {
     Idle,
 
-    /// Lookups in flight. Each identifier signal progresses independently;
-    /// `settle_if_ready` combines them into a terminal state once all three
-    /// are settled and the title search they leave has settled too, and
-    /// records the ledger they settled as. The catalog pipe rests at `Skipped`
-    /// until a number is chosen, and the search rests at `Pending` until the
-    /// three say whether it is needed.
+    /// Lookups in flight.
     Triangulating {
         discid: DiscidProgress,
         barcode: BarcodeProgress,
@@ -67,7 +34,7 @@ pub enum IdentifyState {
         context: SignalsContext,
     },
 
-    /// The run settled on its findings, every lookup having answered.
+    /// The run settled on its findings.
     Found {
         findings: Findings,
         /// The live library check of every release `findings` names.
@@ -82,25 +49,15 @@ pub enum IdentifyState {
         context: SignalsContext,
     },
 
-    /// Nothing to look up: no disc-ID artifact (LOG/CUE) and no barcode source
-    /// (artwork, CUE `CATALOG`), or the lookups there were to run are switched
-    /// off in the identification settings. Distinct from `NotFoundAnywhere`,
-    /// where signals ran and matched nothing — here none ran, so the UI offers
-    /// manual search.
+    /// No lookup ran — nothing to look up, or nobody was asked about what
+    /// there was — so the UI offers manual search rather than "not found".
     ManualOnly {
         track_count: u32,
         ledger: Option<IdentifyRunView>,
         context: SignalsContext,
     },
 
-    /// An automatic lookup failed, either in the live reducer or resumed from
-    /// its stored verdict after the run ended.
-    ///
-    /// It carries what the lookups that did answer found, which is usually not
-    /// nothing: one provider failing on the title search leaves the other
-    /// provider's results standing, and a person looking at the pane should see
-    /// them rather than an empty result area. They are stored with the
-    /// failures, so a resumed failure shows what the live one did.
+    /// A lookup failed; carries what the lookups that did answer found.
     Failed {
         failures: Vec<super::IdentifyFailure>,
         findings: Findings,
@@ -112,8 +69,7 @@ pub enum IdentifyState {
 }
 
 impl IdentifyState {
-    /// The carried context; `None` only for `Idle`. One access path shared by
-    /// `step`, the toolbar projection, and the signal actions.
+    /// The carried context; `None` only for `Idle`.
     fn context(&self) -> Option<&SignalsContext> {
         match self {
             IdentifyState::Triangulating { context, .. }
@@ -125,26 +81,15 @@ impl IdentifyState {
         }
     }
 
-    /// The candidate's own text this run judged its results against. `Idle`
-    /// carries no context and judged nothing.
-    ///
-    /// A terminal state is projected into a [`super::TerminalVerdict`], which
-    /// keeps the matches and the lookups that returned them but not the text —
-    /// that is stored on the candidate. A caller that must re-judge those
-    /// matches, as the sweep's settle step does to find the record a row leads
-    /// with, takes the text from here before the projection drops it.
+    /// The candidate's own text this run judged its results against, which a
+    /// [`super::TerminalVerdict`] does not keep.
     pub fn candidate_text(&self) -> super::CandidateText {
         self.context()
             .map(|context| context.text.clone())
             .unwrap_or_default()
     }
 
-    /// Whether the machine has stopped moving on its own: nothing is in
-    /// flight, so this run has nothing left to do. The driver ends here, and
-    /// what a person asks for next is a run of its own.
-    ///
-    /// A lookup failure is terminal too; conversion preserves it as a failed
-    /// verdict rather than misclassifying its partial evidence.
+    /// Whether the run has nothing left in flight.
     pub fn is_terminal(&self) -> bool {
         match self {
             IdentifyState::Found { .. }
@@ -155,9 +100,7 @@ impl IdentifyState {
         }
     }
 
-    /// The badge list the UI renders: the disc ID, the barcode, and the
-    /// catalog — three, whatever the candidate turned up. `Idle` has no
-    /// toolbar.
+    /// The disc-ID, barcode and catalog badges; none for `Idle`.
     pub fn toolbar(&self) -> Vec<ToolbarSignal> {
         let Some(context) = self.context() else {
             return Vec::new();
@@ -169,8 +112,6 @@ impl IdentifyState {
         ]
     }
 
-    /// State comes from the live `DiscidProgress` while triangulating, else from
-    /// the context's settled results.
     fn disc_badge(&self, context: &SignalsContext) -> ToolbarSignal {
         let state = match self {
             IdentifyState::Triangulating { discid, .. } => discid_progress_state(discid),
@@ -192,11 +133,7 @@ impl IdentifyState {
         }
     }
 
-    /// The badge shows the matched code, or the first one when nothing has
-    /// matched yet, and takes its origin from that code. Every code the folder
-    /// carries is behind it as the list to choose from, each marked when the
-    /// run asks about it; the badge reads as left out only once no code is
-    /// asked about.
+    /// Shows the matched code, else the first, with every code as an option.
     fn barcode_badge(&self, context: &SignalsContext) -> ToolbarSignal {
         let code = context
             .barcode
@@ -219,10 +156,7 @@ impl IdentifyState {
         }
     }
 
-    /// One badge for the catalog, whatever the candidate turned up: the first
-    /// number chosen and how the chosen numbers' lookups went together, with
-    /// every extracted number behind it as the list to choose from, each
-    /// marked when it is chosen. Nothing chosen means nothing ran.
+    /// Shows the first chosen number, with every extracted number as an option.
     fn catalog_badge(&self, context: &SignalsContext) -> ToolbarSignal {
         let first_chosen = context.catalog.chosen.first().and_then(|chosen| {
             context
@@ -255,9 +189,7 @@ fn shown_value(sighting: &SourcedValue) -> ToolbarValue {
     }
 }
 
-/// The values one signal offers, each once, in the order they were first seen,
-/// with `chosen` saying whether the run asks about each. A value seen in two
-/// places is one option and names where it was first seen.
+/// The values one signal offers, each once, in first-seen order.
 fn signal_options(sightings: &[SourcedValue], chosen: impl Fn(&str) -> bool) -> Vec<SignalOption> {
     let mut options: Vec<SignalOption> = Vec::new();
     for sighting in sightings {
@@ -273,30 +205,14 @@ fn signal_options(sightings: &[SourcedValue], chosen: impl Fn(&str) -> bool) -> 
     options
 }
 
-/// One provider's answer to one lookup, with each match paired with its
-/// library status.
+/// One provider's answer to one lookup.
 pub type LookupOutcome = Result<LookupResults, LookupFailure>;
 
-/// What feeds the reducer: the external triggers, plus the completions of the
-/// lookup effects the service ran on the previous step.
+/// What feeds the reducer: triggers, and the answers to its effects.
 #[derive(Debug, Clone)]
 pub enum IdentifyEvent {
-    /// Begin. Enters `Triangulating` and waits for the first `SignalsUpdated` —
-    /// extraction owns scanning and OCR, not the reducer. `providers` is what
-    /// this run asks: MusicBrainz, and Discogs when it is configured.
-    ///
-    /// `steps` is which of its steps the run takes, read from the settings
-    /// when it started; a step switched off since is still taken by this run.
-    ///
-    /// `choices` is what the person decided this candidate's identification
-    /// asks about, read from the candidate when the run started. It is the
-    /// only way a choice enters a run: nothing changes one while the run is
-    /// going, so a different decision is a different run.
-    ///
-    /// `title_search` is what the candidate's draft says about the release —
-    /// read once at the start, like the choices — which the run falls back on
-    /// when the identifiers name nothing. `None` when the draft states no
-    /// title.
+    /// Begin a run. Its catalogs, steps, choices and title are fixed here; a
+    /// different one is a different run.
     Started {
         providers: Vec<Catalog>,
         steps: IdentificationSteps,
@@ -305,18 +221,13 @@ pub enum IdentifyEvent {
     },
     Cancelled,
 
-    /// The candidate's latest signals, and where the artwork pass feeding
-    /// them has got to. The reducer dispatches the disc-ID lookup once the
-    /// disc ID is `Computed` and the barcode lookups once the codes have
-    /// `Settled`, and refreshes the catalog filter from every snapshot.
-    /// Snapshots stream, so this is idempotent: each signal's progress guards
-    /// its own lookup against being dispatched twice.
+    /// The candidate's latest signals and where the artwork pass has got to.
+    /// Snapshots stream, so handling one is idempotent.
     SignalsUpdated {
         signals: Signals,
         artwork: ArtworkScan,
     },
 
-    // ── DiscID lookup completion ────────────────────────────────────
     DiscidLookupCompleted {
         results: LookupResults,
         track_count: u32,
@@ -326,9 +237,7 @@ pub enum IdentifyEvent {
         track_count: u32,
     },
 
-    /// One provider answered about one barcode: matches, none, or why not.
-    /// The answer lands on that provider's part of that code's lookup and
-    /// leaves the others alone.
+    /// One provider answered about one barcode.
     BarcodeLookupAnswered {
         source: Catalog,
         for_barcode: String,
@@ -342,24 +251,19 @@ pub enum IdentifyEvent {
         outcome: LookupOutcome,
     },
 
-    /// One provider answered the title search. There is one query and one
-    /// lookup per provider, so this names no value to land on.
+    /// One provider answered the title search.
     SearchAnswered {
         source: Catalog,
         outcome: LookupOutcome,
     },
 
-    /// What reading the groups `Effect::ReadAlbumLinks` named answered, each
-    /// read or unread.
+    /// What reading the groups `Effect::ReadAlbumLinks` named answered.
     AlbumLinksRead {
         read: Vec<GroupReading>,
     },
 }
 
-/// The side effects the service performs — the provider lookups, one per
-/// provider. Each one finishing feeds an `IdentifyEvent` back into `step`.
-/// Scanning, OCR, and disc-ID derivation belong to the extraction service, not
-/// here.
+/// The lookups the service runs, each answering with an `IdentifyEvent`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Effect {
     LookupDiscid {
@@ -374,7 +278,7 @@ pub enum Effect {
         source: Catalog,
         catalog: String,
     },
-    /// Ask one provider the same query the Search section's General tab asks.
+    /// Ask one provider for the title.
     SearchTitle {
         source: Catalog,
         query: TitleSearch,
@@ -402,23 +306,21 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             },
         ) => {
             let context = SignalsContext::started(providers, steps, choices, title_search);
-            // The chosen numbers are the person's decision about this
-            // candidate, not something read off a snapshot, so their lookups
-            // go out with the run rather than waiting for extraction to offer
-            // the numbers again. A number the settled snapshot no longer
-            // offers loses its lookup then, in `apply_signals`.
+            // Chosen numbers are looked up at once, without waiting for a
+            // snapshot to offer them again.
             let mut effects = Vec::new();
             let catalog = start_catalog_progress(
                 &context.catalog.chosen_values(),
                 &context.providers,
                 &mut effects,
             );
+            let search = search_progress_at_start(context.steps.search_by_title);
             (
                 IdentifyState::Triangulating {
                     discid: DiscidProgress::Computing,
                     barcode: BarcodeProgress::Scanning,
                     catalog,
-                    search: SearchProgress::Pending,
+                    search,
                     context,
                 },
                 effects,
@@ -436,7 +338,6 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             IdentifyEvent::SignalsUpdated { signals, artwork },
         ) => apply_signals(discid, barcode, catalog, search, context, signals, artwork),
 
-        // ── DiscID lookup completion ───────────────────────────────────
         (
             IdentifyState::Triangulating {
                 discid: DiscidProgress::Computing | DiscidProgress::LookingUp,
@@ -483,9 +384,6 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             context,
         }),
 
-        // ── One provider's barcode answer ──────────────────────────────
-        // The answer lands on the lookup of the code it was asked about; the
-        // other codes, and the other providers, are untouched.
         (
             IdentifyState::Triangulating {
                 discid,
@@ -512,10 +410,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             })
         }
 
-        // ── One provider's catalog answer ──────────────────────────────
-        // The answer lands on the lookup of the number it was asked about. A
-        // number the user has since taken out of the run has no lookup any
-        // more, so its late answer lands nowhere.
+        // A number since taken out of the run has no lookup for its answer.
         (
             IdentifyState::Triangulating {
                 discid,
@@ -542,8 +437,6 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             })
         }
 
-        // ── One provider's answer to the title search ──────────────────
-        // One query, so the answer lands on that provider's one lookup.
         (
             IdentifyState::Triangulating {
                 discid,
@@ -572,7 +465,6 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             })
         }
 
-        // ── The album links, read once every lookup settled ────────────
         (
             IdentifyState::Triangulating {
                 discid,
@@ -593,21 +485,14 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             })
         }
 
-        // An event Triangulating doesn't act on — a stale barcode response, say.
+        // A stale answer, or an event this state does not act on.
         (state @ IdentifyState::Triangulating { .. }, _) => (state, vec![]),
-
-        // Any other (state, event) pair leaves the state alone.
         (state, _) => (state, vec![]),
     }
 }
 
-/// Fold the latest snapshot into the two signals.
-///
-/// Idempotent under streaming, because each signal's own progress guards it: the
-/// disc ID dispatches `LookupDiscid` only while still `Computing`, and the barcode
-/// lookups are started only while still `Scanning` *and* once the codes have
-/// `Settled` — so every provider is asked a complete, stable list. The catalog
-/// filter refreshes from every snapshot.
+/// Fold the latest snapshot in. Each lookup starts once, from its first
+/// settled input: the disc ID while `Computing`, the barcodes once `Settled`.
 #[allow(clippy::too_many_arguments)]
 fn apply_signals(
     discid: DiscidProgress,
@@ -629,7 +514,6 @@ fn apply_signals(
             &context.providers,
             &mut effects,
         ),
-        // Past Computing: the lookup is in flight or settled.
         (discid, _) => discid,
     };
 
@@ -649,12 +533,10 @@ fn apply_signals(
                 failure: failure.clone(),
             }
         }
-        // Codes not settled yet, or already iterating/settled.
         (barcode, _) => barcode,
     };
 
-    // A snapshot that no longer offers a chosen number drops the choice, so
-    // the lookup waiting on it has nothing left to wait for.
+    // A chosen number the snapshot no longer offers loses its lookup.
     let catalog = catalog.keeping(|lookup| context.catalog.is_chosen(&lookup.value));
 
     let next = IdentifyState::Triangulating {
@@ -673,12 +555,8 @@ fn apply_signals(
     }
 }
 
-/// Once every step has settled, record its results into the context and
-/// combine into a terminal state. Until then, stay in `Triangulating`.
-///
-/// The three identifiers settle first, and what they found decides the fourth:
-/// naming nothing between them is what sends the candidate's own title to
-/// every provider, and the run stays in flight until that answers too.
+/// Once every step has settled, record the results and combine them into a
+/// terminal state; until then, stay in `Triangulating`.
 fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     let IdentifyState::Triangulating {
         discid,
@@ -690,9 +568,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     else {
         return (state, vec![]);
     };
-    // The text is an input too: results are judged against it, and the
-    // verdict stores the snapshot it settled on. A run with nothing to look up
-    // still waits for the settled snapshot rather than answering on the first.
+    // Results are judged against the text, so wait for its final snapshot.
     if !context.text_settled
         || !discid.is_settled()
         || !barcode.is_settled()
@@ -714,8 +590,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     context.track_count = track_count;
     context.record_results(&discid, &barcode, &catalog);
 
-    // The fourth step, decided once the three that feed it are in: either it
-    // goes out now and the run waits on it, or it never runs at all.
+    // The title search goes out now or never.
     let search = if matches!(search, SearchProgress::Pending) {
         let mut effects = Vec::new();
         let started = start_search_progress(&context, &mut effects);
@@ -748,13 +623,8 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     };
     context.record_search(&search);
 
-    // Every lookup is in, so what the run found is final: read its
-    // MusicBrainz albums' links when it holds both catalogs' releases, and
-    // settle once they are read.
+    // Every lookup is in: read the albums' links, where there are any to read.
     match context.album_links {
-        AlbumLinkReading::Pending if !context.steps.follow_catalog_links => {
-            context.album_links = AlbumLinkReading::Off;
-        }
         AlbumLinkReading::Pending => {
             let found = context.lookup_results();
             let to_read =
@@ -787,28 +657,26 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                 vec![],
             )
         }
-        AlbumLinkReading::Read(_) | AlbumLinkReading::Off => {}
+        AlbumLinkReading::Read(_) | AlbumLinkReading::NotAsked { .. } => {}
     }
 
-    // The ledger this run showed, as its last frame showed it: the same
-    // layout the driver has been publishing, with every lookup now settled.
-    // It is computed here and nowhere else — every later reader shows what
-    // was recorded rather than standing the pipes back up.
+    // The only place a ledger is recorded; later readers show this one.
     let ledger = context
         .has_inputs()
         .then(|| run_view(&discid, &barcode, &catalog, &search, &context));
 
-    // Nothing had anything to run, the title included — or what there was
-    // to run is switched off. Offer manual search rather than claim we looked
-    // and found nothing.
+    // Nothing was asked of anyone, so nothing was found wanting.
     if matches!(
         discid,
-        DiscidProgress::Skipped { .. } | DiscidProgress::Off { .. }
+        DiscidProgress::Skipped { .. } | DiscidProgress::NotAsked { .. }
     ) && matches!(
         barcode,
-        BarcodeProgress::Skipped | BarcodeProgress::Off { .. }
+        BarcodeProgress::Skipped | BarcodeProgress::NotAsked { .. }
     ) && matches!(catalog, CatalogProgress::Skipped)
-        && matches!(search, SearchProgress::Skipped | SearchProgress::Off)
+        && matches!(
+            search,
+            SearchProgress::Skipped | SearchProgress::NotAsked { .. }
+        )
     {
         return (
             IdentifyState::ManualOnly {
@@ -823,17 +691,9 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     (re_derive(context, ledger), vec![])
 }
 
-/// Re-combine over the evidence the run's choices still admit and lift the
-/// outcome into a state. The one combine path: every way triangulation settles
-/// arrives here once the results are in the context.
-///
-/// Every side empty — because the lookups found nothing, or because the run was
-/// told to ask about nothing — lands on `NotFoundAnywhere`.
+/// Combine the recorded results into `Failed`, `NotFoundAnywhere` or `Found`.
 fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> IdentifyState {
-    // Combine first, whatever failed: a provider that did not answer never
-    // invalidates what the others found, and a failed state that hid those
-    // matches would leave a person looking at an empty pane while one source
-    // had the answer.
+    // Combine whatever failed: one provider failing leaves the others' matches.
     let [discid_results, barcode_results, catalog_results, search_results] =
         context.lookup_results();
     let (findings, library_statuses) = combine_results(
@@ -881,8 +741,8 @@ pub use context::{
 };
 use progress::{
     barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,
-    discid_progress_state, settled_identity_state, settled_track_count, start_barcode_progress,
-    start_catalog_progress, start_discid_progress, start_search_progress,
+    discid_progress_state, search_progress_at_start, settled_identity_state, settled_track_count,
+    start_barcode_progress, start_catalog_progress, start_discid_progress, start_search_progress,
 };
 pub use progress::{
     BarcodeProgress, CatalogProgress, DiscidProgress, LookupResults, LookupState, ProviderLookup,
@@ -894,18 +754,14 @@ pub use progress::{
 #[cfg(test)]
 mod tests;
 
-/// `re_derive` for tests in sibling modules: the one path that turns a settled
-/// context into a terminal state, so a test can build the state a real run
-/// would reach rather than hand-assembling one. It records no ledger — a test
-/// that wants one drives the pipes through [`step`].
+/// `re_derive` for tests in sibling modules; records no ledger.
 #[cfg(test)]
 pub(crate) fn re_derive_for_tests(context: SignalsContext) -> IdentifyState {
     re_derive(context, None)
 }
 
-/// The terminal state these settled pipes land on, ledger and all — the one
-/// path a run ends by, for tests in sibling modules that want the run
-/// recorded as a real one would record it.
+/// The terminal state these settled pipes land on, ledger and all, for tests
+/// in sibling modules.
 #[cfg(test)]
 pub(crate) fn settle_for_tests(
     discid: DiscidProgress,

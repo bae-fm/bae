@@ -2,15 +2,10 @@
     import BaeKit
     import Foundation
 
-    /// Preview fixtures for the band an identify run draws: one
-    /// `BridgeIdentifyRun` per shape a run reaches — in flight, settled,
-    /// failed, and with an identifier the person left out of it. The signals
-    /// they are built from, and the pane states that carry them, are in
-    /// `PreviewData+ImportSearch`.
+    /// One `BridgeIdentifyRun` per shape the identifier band draws.
     extension PreviewData {
-        /// Auto-lookup in progress: the disc ID has landed, Discogs has
-        /// answered the first barcode while MusicBrainz is still on it, the
-        /// second barcode waits, and the catalog numbers wait to be picked.
+        /// In flight: the disc ID matched, the first barcode is half
+        /// answered, and the second is left out.
         static let identifyRunInFlight = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
             discId: .read(
@@ -27,8 +22,8 @@
                     ),
                     BridgeSignalValueRow(
                         value: "9999999999999",
-                        excluded: false,
-                        cells: cells(.queued, .notAsked)
+                        excluded: true,
+                        cells: cells(leftOut, leftOut)
                     ),
                 ]
             ),
@@ -37,19 +32,15 @@
                 rows: [],
                 candidates: catalogCandidates
             ),
-            search: .notNeeded,
-            albumLinks: .followed
+            search: .notNeeded
         )
 
-        /// Every step a person can switch off, switched off: the disc ID and
-        /// the CUE's barcode are read and nobody is asked about them, the
-        /// cover art is left unread, the title is never searched, and the
-        /// catalogs' records are not joined.
+        /// Every step that can be switched off, switched off.
         static let identifyRunStepsOff = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
             discId: .read(
                 discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                lookup: .off
+                lookup: switchedOff
             ),
             barcode: .rows(
                 scanning: false,
@@ -57,34 +48,29 @@
                     BridgeSignalValueRow(
                         value: "0123456789012",
                         excluded: false,
-                        cells: cells(.off, .off)
+                        cells: cells(switchedOff, switchedOff)
                     )
                 ]
             ),
             catalog: .coverArtOff,
-            search: .off,
-            albumLinks: .off
+            search: .notAsked(reason: .switchedOff)
         )
 
-        /// A run that has only just started: nothing read yet, the artwork
-        /// still being read for barcodes and numbers.
+        /// Just started, with the artwork still being read.
         static let identifyRunStarting = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
             discId: .reading,
             barcode: .rows(scanning: true, rows: []),
             catalog: .numbers(scanning: true, rows: [], candidates: []),
-            search: .notNeeded,
-            albumLinks: .followed
+            search: .notNeeded
         )
 
-        /// MusicBrainz switched off, so the run asks Discogs alone: one column,
-        /// one rail, and a disc ID nothing looked up — disc IDs are a
-        /// MusicBrainz identifier, so with it unasked the value stands with no
-        /// count beside it.
+        /// Discogs alone, which does not answer disc IDs.
         static let identifyRunOneSource = BridgeIdentifyRun(
             providers: [.discogs],
-            discId: .readNotAsked(
-                discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT="
+            discId: .read(
+                discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT=",
+                lookup: .notAsked(reason: .noCatalog)
             ),
             barcode: .rows(
                 scanning: false,
@@ -102,27 +88,22 @@
                 ]
             ),
             catalog: .numbers(scanning: false, rows: [], candidates: []),
-            search: .notNeeded,
-            albumLinks: .followed
+            search: .notNeeded
         )
 
-        /// The one-source run with its disc ID taken out of the run instead
-        /// of unasked for want of a provider: the same value, the off chip,
-        /// and the way back.
+        /// The one-source run with its disc ID left out.
         static let identifyRunDiscIdLeftOut = BridgeIdentifyRun(
             providers: identifyRunOneSource.providers,
-            discId: .leftOut(
-                discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT="
+            discId: .read(
+                discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT=",
+                lookup: leftOut
             ),
             barcode: identifyRunOneSource.barcode,
             catalog: identifyRunOneSource.catalog,
-            search: identifyRunOneSource.search,
-            albumLinks: .followed
+            search: identifyRunOneSource.search
         )
 
-        /// Two codes on the sleeve and only one of them the disc's: the box
-        /// set's is left out, so it stands as an off chip with nothing run
-        /// against it while the other is looked up.
+        /// Two barcodes, one left out.
         static let identifyRunBarcodeLeftOut = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
             discId: .absent,
@@ -137,17 +118,15 @@
                     BridgeSignalValueRow(
                         value: "9999999999999",
                         excluded: true,
-                        cells: cells(.notAsked, .notAsked)
+                        cells: cells(leftOut, leftOut)
                     ),
                 ]
             ),
             catalog: .numbers(scanning: false, rows: [], candidates: []),
-            search: .notNeeded,
-            albumLinks: .followed
+            search: .notNeeded
         )
 
-        /// The same two codes with both of them asked about — what the
-        /// left-out one is drawn against.
+        /// The same two barcodes, both asked about.
         static let identifyRunBothBarcodesAsked = BridgeIdentifyRun(
             providers: identifyRunBarcodeLeftOut.providers,
             discId: identifyRunBarcodeLeftOut.discId,
@@ -162,18 +141,15 @@
                     BridgeSignalValueRow(
                         value: "9999999999999",
                         excluded: false,
-                        cells: cells(.notAsked, .notAsked)
+                        cells: cells(.noMatch, .lookingUp)
                     ),
                 ]
             ),
             catalog: identifyRunBarcodeLeftOut.catalog,
-            search: identifyRunBarcodeLeftOut.search,
-            albumLinks: .followed
+            search: identifyRunBarcodeLeftOut.search
         )
 
-        /// No disc ID; Discogs failed the first barcode while MusicBrainz
-        /// moved on to the second, and one chosen catalog number is out at
-        /// MusicBrainz and empty at Discogs.
+        /// Discogs failed the first barcode while other lookups carry on.
         static let identifyRunProviderFailed = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
             discId: .absent,
@@ -188,7 +164,7 @@
                     BridgeSignalValueRow(
                         value: "0123456789012",
                         excluded: false,
-                        cells: cells(.lookingUp, .notAsked)
+                        cells: cells(.lookingUp, .lookingUp)
                     ),
                 ]
             ),
@@ -203,12 +179,10 @@
                 ],
                 candidates: Array(catalogCandidates.dropFirst())
             ),
-            search: .notNeeded,
-            albumLinks: .followed
+            search: .notNeeded
         )
 
-        /// The provider-failed run with its chosen catalog number back among
-        /// the tiles — what taking it out of the run leaves.
+        /// The provider-failed run with its catalog number taken back out.
         static let identifyRunCatalogWaiting = BridgeIdentifyRun(
             providers: identifyRunProviderFailed.providers,
             discId: identifyRunProviderFailed.discId,
@@ -218,8 +192,7 @@
                 rows: [],
                 candidates: catalogCandidates
             ),
-            search: identifyRunProviderFailed.search,
-            albumLinks: .followed
+            search: identifyRunProviderFailed.search
         )
 
         /// Every lookup answered empty.
@@ -248,13 +221,10 @@
                 album: "Album Title One",
                 artist: "Artist Name",
                 cells: cells(.noMatch, .noMatch)
-            ),
-            albumLinks: .followed
+            )
         )
 
-        /// A settled run in which both signals matched: the disc ID's one
-        /// release and the barcode's two, the artwork scanned clean of catalog
-        /// numbers but the folder name carrying one.
+        /// Settled, with the disc ID and the barcode both matched.
         static let identifyRunFound = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
             discId: .read(
@@ -276,12 +246,10 @@
                 rows: [],
                 candidates: Array(catalogCandidates.prefix(1))
             ),
-            search: .notNeeded,
-            albumLinks: .followed
+            search: .notNeeded
         )
 
-        /// Nothing to look up on its own — no LOG, no CUE, no barcode — but
-        /// catalog numbers a person can still activate.
+        /// No disc ID or barcode, only catalog numbers to pick from.
         static let identifyRunAwaitingCatalog = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
             discId: .absent,
@@ -291,8 +259,15 @@
                 rows: [],
                 candidates: Array(catalogCandidates.prefix(2))
             ),
-            search: .noTitle,
-            albumLinks: .followed
+            search: .noTitle
+        )
+
+        /// A cell nobody was asked because the person left its value out.
+        static let leftOut = BridgeLookupState.notAsked(reason: .leftOut)
+
+        /// A cell nobody was asked because its step is switched off.
+        static let switchedOff = BridgeLookupState.notAsked(
+            reason: .switchedOff
         )
     }
 #endif

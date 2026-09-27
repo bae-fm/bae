@@ -25,8 +25,8 @@ pub(super) fn to_value<T: Serialize>(value: T) -> Result<Value, AutomationError>
     serde_json::to_value(value).map_err(|e| AutomationError::internal(e.to_string()))
 }
 
-/// Wrap a list result under a named key. MCP `structuredContent` must be a JSON
-/// object, so a tool returning a bare `Vec` has to nest it under a field.
+/// Wrap a list result under a named key: MCP `structuredContent` must be an
+/// object.
 pub(super) fn to_list_value<T: Serialize>(
     key: &str,
     values: Vec<T>,
@@ -42,10 +42,7 @@ pub(super) fn schema_object<T: JsonSchema>() -> Map<String, Value> {
         Value::Object(map) => map,
         _ => unreachable!("JSON schema is an object"),
     };
-    // MCP requires the root inputSchema to declare `type: "object"`. Struct
-    // schemas already do; internally-tagged enum schemas emit a root `oneOf`
-    // with no root type. Every automation tool input is an object in all
-    // variants, so assert it at the root.
+    // MCP requires a root `type: "object"`, which tagged-enum schemas omit.
     map.entry("type".to_string())
         .or_insert_with(|| Value::String("object".to_string()));
     map
@@ -102,10 +99,8 @@ pub(super) fn automation_output_snapshot(
     }
 }
 
-/// Refuse a transition the release does not currently offer, naming what core
-/// says it does offer. The available set is core's — read off the release — so
-/// this decides nothing, it only declines to call a transfer the desktop would
-/// not have offered either.
+/// Refuse a transition core does not offer for the release, naming the ones it
+/// does.
 pub(super) fn require_action(
     summary: &AutomationReleaseSummary,
     action: AutomationReleaseStorageAction,
@@ -130,8 +125,7 @@ pub(super) fn require_action(
     )))
 }
 
-/// The request name for a transition core reports as available, so a refusal
-/// lists what a caller may actually ask for.
+/// The request name a caller uses for a transition.
 fn storage_action_name(action: &AutomationReleaseStorageAction) -> &'static str {
     match action {
         AutomationReleaseStorageAction::MakeRemote => "move_to_cloud",
@@ -141,10 +135,7 @@ fn storage_action_name(action: &AutomationReleaseStorageAction) -> &'static str 
     }
 }
 
-/// The typed query and the one source to ask it of. The query itself no longer
-/// names a source — every configured provider answers a person's search — so an
-/// automation client's single-source request splits into the two arguments the
-/// one-shot search takes.
+/// Split a single-source request into the query and the source to ask.
 pub(super) fn search_query(query: AutomationSearchQuery) -> (SearchQuery, Catalog) {
     match query {
         AutomationSearchQuery::General {
@@ -162,8 +153,7 @@ pub(super) fn search_query(query: AutomationSearchQuery) -> (SearchQuery, Catalo
     }
 }
 
-/// Not a copy: core's `ExternalRelease` carries the catalog and its key as one
-/// `MetadataRef`, which the automation shape spells as two fields.
+/// Joins the catalog and key into core's one `MetadataRef`.
 pub(super) fn release_reseed(choice: AutomationReleaseReseed) -> ReleaseReseed {
     match choice {
         AutomationReleaseReseed::ExternalRelease {
@@ -192,7 +182,7 @@ mirror_struct! {
 }
 
 impl AutomationReleaseRecord {
-    /// Core supplies each page URL in addition to the catalog identity.
+    /// Adds core's page URL beside the catalog identity.
     pub(crate) fn from_core(record: bae_core::import::ReleaseRecord) -> Self {
         let url = record.url();
         match record {
@@ -276,8 +266,7 @@ mirror_struct! {
 }
 
 impl AutomationPressing {
-    /// Not a copy: `pick` is what core derives from the row's releases — what
-    /// picking the row claims — rather than a field it stores.
+    /// `pick` is derived by core from the row's releases, not stored.
     pub(crate) fn from_core(pressing: bae_core::import::release_group::Pressing) -> Self {
         Self {
             pick: AutomationMetadataProvenance::from_core(pressing.pick()),
@@ -323,9 +312,8 @@ mirror_struct! {
 }
 
 impl AutomationMetadataResult {
-    /// Not a copy: core's `source_tracks` is the settle marker for a stored
-    /// verdict, and its `media` and `links` are the evidence the pressing
-    /// rows were paired by — neither is something an MCP client reads.
+    /// Keeps what an MCP client reads; the rest is core's pairing and ranking
+    /// evidence.
     pub(crate) fn from_core(result: MetadataResult) -> Self {
         let facts = result.facts();
         Self {
@@ -393,8 +381,7 @@ mirror_struct! {
 }
 
 impl AutomationReleaseDetail {
-    /// Not a copy: core's `media` and `links` are pairing evidence the
-    /// result a pick becomes carries, not something an MCP client reads.
+    /// Drops core's `media` and `links`, which are pairing evidence.
     pub(crate) fn from_core(detail: ImportSearchReleaseDetail) -> Self {
         Self {
             release_id: detail.release_id,
@@ -428,7 +415,6 @@ mirror_struct! {
     fields: { year, labels, barcode, facts },
 }
 
-/// Converts editable values and their artist assignments across the automation boundary.
 impl AutomationReleaseUserEdit {
     pub(crate) fn from_core(edit: bae_core::import::ReleaseUserEdit) -> Self {
         Self {
@@ -468,8 +454,7 @@ impl AutomationReleaseUserEdit {
 }
 
 impl AutomationTrackUserEdit {
-    /// Not a copy: core's `file` says which of the folder's audio backs the
-    /// track, which automation neither reads nor sets.
+    /// Drops core's `file`, which automation neither reads nor sets.
     pub(crate) fn from_core(track: TrackUserEdit) -> Self {
         Self {
             title: track.title,
@@ -487,9 +472,7 @@ impl AutomationTrackUserEdit {
             side: self.side,
             track_number: self.track_number,
             artist_assignments: self.artist_assignments.into_core(),
-            // Automation edits a release's metadata, never which of the
-            // folder's audio backs each track; an import it starts gets the
-            // track slots the folder and the tracklist produce.
+            // Automation never sets which audio backs a track.
             file: None,
         }
     }
@@ -535,8 +518,7 @@ mirror_enum! {
     },
 }
 
-/// Not a copy: core's `Remote` carries the URL and the source as two unnamed
-/// payloads, which the automation shape names.
+/// Fills core's unnamed `Remote` payloads from the named fields.
 pub(super) fn cover_selection(selection: AutomationCoverSelection) -> CoverSelection {
     match selection {
         AutomationCoverSelection::Remote { image, source } => {
@@ -562,7 +544,7 @@ mirror_enum! {
         Found { count },
         NoMatch,
         Skipped,
-        Off,
+        NotAsked { reason: (AutomationNotAskedReason) },
         Failed { failure: (AutomationLookupFailure) },
     },
 }
@@ -607,8 +589,7 @@ mirror_enum! {
 }
 
 impl AutomationRelease {
-    /// Not a copy: core's `source_audio` summary belongs to the candidate view,
-    /// which reads it off the folder rather than off a stored release.
+    /// Drops core's `source_audio`, which the candidate view reports.
     pub(crate) fn from_core(release: ReleaseDetail) -> Self {
         Self {
             summary: AutomationReleaseSummary::from_core(release.summary),
@@ -652,8 +633,7 @@ impl AutomationRelease {
 }
 
 impl AutomationTrackGroup {
-    /// Not a copy: core's per-group `total_duration_ms` is a display total the
-    /// automation shape leaves to the client.
+    /// Drops core's display-only `total_duration_ms`.
     pub(crate) fn from_core(group: bae_core::album_detail::TrackGroup) -> Self {
         Self {
             side: AutomationTrackSide::from_core(group.side),
@@ -684,8 +664,7 @@ mirror_struct! {
 }
 
 impl AutomationImageRef {
-    /// Not a copy: core's `image_type` says which image table the id lives in,
-    /// which the automation fetch does not take.
+    /// Drops core's `image_type`, which the automation fetch does not take.
     pub(crate) fn from_core(image: ImageRef) -> Self {
         Self {
             id: image.id,
@@ -695,8 +674,7 @@ impl AutomationImageRef {
 }
 
 impl AutomationTrackDetail {
-    /// Not a copy: core's `display_artist` is the row-label decision for a
-    /// compilation, which is a rendering call rather than a fact.
+    /// Drops core's `display_artist`, a rendering choice.
     pub(crate) fn from_core(track: TrackDetail) -> Self {
         Self {
             id: track.id,
@@ -735,8 +713,7 @@ mirror_enum! {
 }
 
 impl AutomationFileDetail {
-    /// Not a copy: the automation shape carries the source file's format
-    /// directly, where core nests it under the whole scan record.
+    /// Lifts the audio format out of core's nested scan record.
     pub(crate) fn from_core(file: FileDetail) -> Self {
         Self {
             id: file.id,
@@ -779,8 +756,7 @@ mirror_struct! {
 }
 
 impl AutomationLibrarySearchResults {
-    /// Not a copy: core's search also answers with artists, composers and
-    /// works, which the automation surface does not expose.
+    /// Keeps albums and tracks; automation does not expose the other hits.
     pub(crate) fn from_core(results: SearchResults) -> Self {
         Self {
             albums: results
@@ -804,8 +780,7 @@ mirror_struct! {
 }
 
 impl AutomationTrackSearchResult {
-    /// Not a copy: a track hit's cover is its release's, which the album hit
-    /// beside it already carries.
+    /// Drops the cover, which the album hit already carries.
     pub(crate) fn from_core(track: bae_core::album_detail::TrackSearchResult) -> Self {
         Self {
             id: track.id,

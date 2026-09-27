@@ -1,22 +1,7 @@
-//! What a settled identify run carries forward: the raw signals it ran
-//! against, the user's exclusions, and every provider's answer.
-//!
-//! Held apart from the reducer because it is what makes a re-combine free:
-//! each answer that lands folds into it instead of re-fetching what the others
-//! found, and it is what tells "nothing was learned" apart from "the lookup
-//! ran and found nothing".
-//!
-//! It belongs to the run. A state stood back up from a stored verdict carries
-//! an empty one: that run is over, and what it showed is the ledger the state
-//! carries.
-//!
-//! One type per signal, each holding that signal's input, how much of it the
-//! current selection uses, what its lookup returned, and how it failed — the
-//! four facts every caller here reads together. The three are not the same
-//! shape and so are not one type parameterised over the signal: the disc ID is
-//! one value left in or out, the barcode is several codes each left in or out
-//! and can fail before any provider is asked, and the catalog has nothing to
-//! leave out at all — choosing a number is what turns it on.
+//! What a run carries forward: the signals it ran against, what the person
+//! left out or chose, and every provider's answer, so answers re-combine
+//! without re-fetching. A state stood back up from a stored verdict carries an
+//! empty one.
 
 use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, LibraryStatus, MetadataResult,
@@ -24,7 +9,7 @@ use super::{
 };
 use crate::config::IdentificationSteps;
 use crate::identify::agreements::CandidateText;
-use crate::identify::IdentifyFailure;
+use crate::identify::{IdentifyFailure, NotAskedReason};
 use crate::import::album_links::{self, GroupReading, Twin};
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
@@ -32,49 +17,36 @@ use crate::signals::{
     TextSignal,
 };
 
-/// The disc-ID signal and what asking about it produced. The disc-ID endpoint
-/// is MusicBrainz's alone, so there is one failure here, not a per-provider
-/// list.
+/// The disc-ID signal and what asking about it produced; one provider, so one
+/// failure.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DiscIdEvidence {
-    /// The disc-ID signal (value + its inherent `DiscToc` origin).
     pub signal: DiscIdSignal,
-    /// Whether the user unchecked the disc ID.
+    /// Whether the person left the disc ID out.
     pub excluded: bool,
-    /// The lookup's results, once settled. Empty while looking up or when the
-    /// disc-ID pipe was skipped / found nothing.
+    /// The lookup's results, once settled.
     pub results: Vec<(MetadataResult, LibraryStatus)>,
-    /// Whatever failure settled the disc-ID pipe into `DiscidProgress::Failed`
-    /// (see `record`), if any. Two things can put it there:
-    /// `start_discid_progress` copies it straight from
-    /// [`crate::signals::DiscIdSignal::Failed`] when the disc ID itself
-    /// couldn't be computed (no readable TOC — reachable only on the
-    /// re-identify path today, `signals/service.rs`, not on the import-scan
-    /// path that feeds this pipeline), or a `DiscidLookupFailed` event closes
-    /// out a lookup that ran against a disc ID that computed fine. Either way
-    /// `results` is left empty exactly as it would be for a clean no-match, so
-    /// this is what lets a caller lifting a settled state into a stored verdict
-    /// tell "nothing was learned" apart from "the lookup ran and found nothing"
-    /// (see [`crate::identify::TerminalVerdict`]).
+    /// Why the disc ID could not be computed or looked up, which tells
+    /// "nothing was learned" from an empty `results`.
     pub failure: Option<LookupFailure>,
+    /// Why nobody was asked about the disc ID, where nobody was.
+    pub not_asked: Option<NotAskedReason>,
 }
 
 impl Default for DiscIdEvidence {
-    /// Nothing known yet: no disc artifact seen, nothing excluded, nothing
-    /// asked.
     fn default() -> Self {
         Self {
             signal: DiscIdSignal::Absent { track_count: 0 },
             excluded: false,
             results: Vec::new(),
             failure: None,
+            not_asked: None,
         }
     }
 }
 
 impl DiscIdEvidence {
-    /// Take the input from a new snapshot. The exclusion is the user's and the
-    /// results are the lookup's; neither is an input, so both stand.
+    /// Take the input from a new snapshot, keeping the exclusion and results.
     fn refresh_input(&mut self, signal: &DiscIdSignal) {
         self.signal = signal.clone();
     }
@@ -86,12 +58,13 @@ impl DiscIdEvidence {
             DiscidProgress::Failed { failure, .. } => Some(failure.clone()),
             _ => None,
         };
+        self.not_asked = match progress {
+            DiscidProgress::NotAsked { reason, .. } => Some(*reason),
+            _ => None,
+        };
     }
 
-    /// The disc ID's failure, where it has one. A disc ID the run was told to
-    /// leave out is never looked up — a run reads what it asks about once, at
-    /// its start, and changing that starts another run — so a failure in hand
-    /// is always one the selection asked for.
+    /// The disc ID's failure, where it has one.
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
         if let Some(failure) = &self.failure {
             into.push(IdentifyFailure::DiscId(failure.clone()));
@@ -99,43 +72,33 @@ impl DiscIdEvidence {
     }
 }
 
-/// The candidate's barcodes and what asking about them produced. Every
-/// configured provider is asked about every code on its own, so failures are
-/// per provider — and reading the codes off the artwork can itself fail, before any
-/// provider is asked.
+/// The candidate's barcodes and what asking every provider about them
+/// produced.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct BarcodeEvidence {
-    /// Every sighting of a barcode in the candidate's files, with its origin.
-    /// One code read off two images is two entries; each code is asked about
-    /// once.
+    /// Every sighting of a barcode in the candidate's files; a code seen twice
+    /// is two entries but asked about once.
     pub codes: Vec<SourcedValue>,
-    /// Whether there was a barcode source at all. Empty `codes` is ambiguous on
-    /// its own — artwork scanned that held no barcode, and nothing to scan,
-    /// both produce an empty vec but settle differently — so the distinction
-    /// `BarcodeSignal` draws between `Settled { codes: [] }` and `Absent` has
-    /// to be carried, not re-derived.
+    /// Whether there was a barcode source at all, which tells "found none"
+    /// from "nothing to read" when `codes` is empty.
     pub had_source: bool,
-    /// The code values the person left out of the run, as the choices named
-    /// them. A code in here is asked of no provider; a code the folder does
-    /// not carry names nothing and leaves out nothing.
+    /// The codes the person left out of the run.
     pub excluded: Vec<String>,
     /// The lookup's results, once settled.
     pub results: Vec<(MetadataResult, LibraryStatus)>,
-    /// The providers that did not answer. Independent of `results`: one
-    /// provider can answer while another fails, and the pane shows what was
-    /// found while naming what did not.
+    /// The providers that failed; others may still have answered.
     pub failures: Vec<SourceFailure>,
-    /// Why reading the candidate's barcodes failed, where it did — an artwork
-    /// analysis that did not finish, not a provider's answer. No lookup ran, so
-    /// this is not one of `failures`.
+    /// Why reading the barcodes off the artwork failed, before any provider
+    /// was asked.
     pub scan_failure: Option<LookupFailure>,
     /// Which barcode produced `results`. `None` until matched.
     pub matched: Option<String>,
+    /// Why nobody was asked about any of the codes, where nobody was.
+    pub not_asked: Option<NotAskedReason>,
 }
 
 impl BarcodeEvidence {
-    /// Take the inputs from a new snapshot: the codes, whether there was
-    /// anything to read them off, and why reading them failed where it did.
+    /// Take the inputs from a new snapshot.
     fn refresh_input(&mut self, signal: &BarcodeSignal) {
         self.codes = signal.codes().to_vec();
         self.had_source = !matches!(signal, BarcodeSignal::Absent);
@@ -147,24 +110,24 @@ impl BarcodeEvidence {
         };
     }
 
-    /// Record what the settled pipe found. Both settled shapes carry provider
-    /// failures: a lookup one provider answered and another failed is `Done`
-    /// with failures on it.
+    /// Record what the settled pipe found.
     fn record(&mut self, progress: &BarcodeProgress) {
         self.results = progress.results();
         self.failures = progress.failures();
         self.scan_failure = progress.scan_failure().cloned();
         self.matched = progress.matched_barcode();
+        self.not_asked = match progress {
+            BarcodeProgress::NotAsked { reason, .. } => Some(*reason),
+            _ => None,
+        };
     }
 
-    /// The codes the candidate carries, each once, in the order they were
-    /// first seen — every row the barcode step lists, asked about or not.
+    /// The codes the candidate carries, each once, in first-seen order.
     pub fn code_values(&self) -> Vec<String> {
         unique_values(&self.codes)
     }
 
-    /// The codes the run asks about: `code_values` less the ones the person left
-    /// out, in the same order.
+    /// `code_values` less the ones the person left out.
     pub fn asked_code_values(&self) -> Vec<String> {
         self.code_values()
             .into_iter()
@@ -172,17 +135,12 @@ impl BarcodeEvidence {
             .collect()
     }
 
-    /// Whether the candidate carries codes and the run asks about none of
-    /// them. A candidate with no codes at all is not "left out" — there was
-    /// nothing to leave.
+    /// Whether the candidate carries codes and the person left out every one.
     pub fn every_code_excluded(&self) -> bool {
         !self.codes.is_empty() && self.asked_code_values().is_empty()
     }
 
-    /// Failures belonging to evidence the current selection still uses. Every
-    /// failure in hand came from a code the run asked about — a run reads what
-    /// it asks about once, at its start, and changing that starts another run
-    /// — so there is nothing here to leave out.
+    /// The scan failure and every provider failure.
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
         if let Some(failure) = &self.scan_failure {
             into.push(IdentifyFailure::BarcodeScan(failure.clone()));
@@ -196,14 +154,11 @@ impl BarcodeEvidence {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ChosenCatalog {
     pub value: String,
-    /// The number's lookup results, once settled.
     pub results: Vec<(MetadataResult, LibraryStatus)>,
-    /// The providers that did not answer about it.
     pub failures: Vec<SourceFailure>,
 }
 
 impl ChosenCatalog {
-    /// A number the run looks up, before its lookup has run.
     pub(crate) fn new(value: String) -> Self {
         Self {
             value,
@@ -214,34 +169,21 @@ impl ChosenCatalog {
 }
 
 /// The catalog numbers extracted from the candidate and what asking about the
-/// chosen ones produced. There is no checkbox: choosing a number is what turns
-/// it on, and choosing it again turns it back off. Several can be on at once,
-/// each with its own lookup, because one number can name thirty releases and
-/// the next one none — which of them is the disc's is the person's to see.
+/// chosen ones produced; a number is looked up only once the person chooses it.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CatalogEvidence {
-    /// Every sighting of a catalog number in the candidate's files, with its
-    /// origin. One number read off two images is two entries.
+    /// Every sighting of a catalog number in the candidate's files.
     pub numbers: Vec<SourcedValue>,
-    /// The numbers the run looks up, in the order they were chosen. Empty — the
-    /// resting state — keeps the catalog out of the combine entirely.
+    /// The numbers the run looks up, in the order they were chosen.
     pub chosen: Vec<ChosenCatalog>,
-    /// The numbers the person struck out of the candidate's text, so that a
-    /// result carrying one of them earns no catalog agreement from it. Read
-    /// at the run's start beside the chosen ones, and applied to the text
-    /// every snapshot rebuilds.
+    /// The numbers the person struck out of the candidate's text, so a result
+    /// carrying one earns no catalog agreement from it.
     pub struck_out: Vec<String>,
 }
 
 impl CatalogEvidence {
-    /// Take the extracted numbers from a new snapshot. A choice has to be one
-    /// of the values on the list, so once the list is final a chosen number it
-    /// does not offer is dropped along with its lookup.
-    ///
-    /// Only once it is final. The numbers stream out of the artwork pass, so a
-    /// snapshot taken while it is still reading offers only what has been read
-    /// so far — and dropping a stored choice against a half-read list would
-    /// take a number out of the run because the OCR had not reached it yet.
+    /// Take the extracted numbers from a new snapshot, dropping a chosen
+    /// number the list no longer offers — but only once the list is final.
     fn refresh_input(&mut self, text: &TextSignal) {
         self.numbers = text.catalogs().to_vec();
         if matches!(text, TextSignal::Scanning { .. }) {
@@ -264,7 +206,7 @@ impl CatalogEvidence {
         self.chosen.iter().any(|chosen| chosen.value == value)
     }
 
-    /// The values the run looks up, each once, in the order they were chosen.
+    /// The values the run looks up, in the order they were chosen.
     pub fn chosen_values(&self) -> Vec<String> {
         self.chosen
             .iter()
@@ -272,15 +214,12 @@ impl CatalogEvidence {
             .collect()
     }
 
-    /// The numbers offered, each once, in the order they were first seen —
-    /// a number's sightings fold into one tile.
+    /// The numbers offered, each once, in first-seen order.
     pub fn number_values(&self) -> Vec<String> {
         unique_values(&self.numbers)
     }
 
-    /// The results combine sees: every chosen number's, in chosen order.
-    /// Nothing chosen means nothing ran, so they are empty and the catalog
-    /// takes no part.
+    /// Every chosen number's results, in chosen order.
     pub(super) fn active_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
         self.chosen
             .iter()
@@ -296,8 +235,7 @@ impl CatalogEvidence {
             .collect()
     }
 
-    /// Failures belonging to evidence the current selection still uses: every
-    /// chosen number's.
+    /// Every chosen number's failures.
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
         for chosen in &self.chosen {
             into.extend(
@@ -311,22 +249,16 @@ impl CatalogEvidence {
     }
 }
 
-/// What the candidate says about the release in its own words, as a run
-/// searches by them — the same two fields the Search section's General tab
-/// asks.
+/// The album title and artist a run searches by.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TitleSearch {
     pub album: String,
-    /// The first album artist's name, or blank where the draft names none.
-    /// Both providers answer a title-only query.
+    /// The first album artist's name, or blank.
     pub artist: String,
 }
 
 impl TitleSearch {
-    /// What a draft offers a search: its album title, with the first album
-    /// artist's name beside it. `None` when the draft states no title — there
-    /// is then nothing to search by, which is the one thing that leaves the
-    /// step unrun.
+    /// The search for these words; `None` when there is no title.
     pub fn of(album: &str, artist: &str) -> Option<Self> {
         let album = album.trim();
         (!album.is_empty()).then(|| Self {
@@ -335,11 +267,8 @@ impl TitleSearch {
         })
     }
 
-    /// What a draft's own title offers a search: its bracketed tails —
-    /// the catalog number, the edition — taken off, since a catalog files
-    /// the release under its words and a phrase carrying `[MR2002]` matches
-    /// nothing. A title that is nothing but brackets searches as it is.
-    /// Words a person typed are never read this way; see [`Self::of`].
+    /// The search for a draft's own title, with trailing bracketed parts such
+    /// as `[MR2002]` taken off, since catalogs match nothing with them.
     pub fn of_draft(album: &str, artist: &str) -> Option<Self> {
         let words = crate::signals::candidate_text::strip_trailing_brackets(album);
         let album = if words.is_empty() { album } else { &words };
@@ -347,32 +276,22 @@ impl TitleSearch {
     }
 }
 
-/// The title the run can search by, and what asking every provider about it
-/// produced.
-///
-/// The search is the run's last step: it goes out only once the three
-/// identifier pipes have settled naming nothing, so a run whose identifiers
-/// answered records a query here and no results.
+/// The title the run can search by, and what asking every provider produced.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct SearchEvidence {
-    /// What the candidate's draft offered when the run started. `None` when it
-    /// stated no title.
+    /// What the draft offered when the run started.
     pub query: Option<TitleSearch>,
-    /// The search's results, once settled.
     pub results: Vec<(MetadataResult, LibraryStatus)>,
-    /// The providers that did not answer. Independent of `results`, as the
-    /// barcode's are: one provider can answer while another fails.
+    /// The providers that failed; others may still have answered.
     pub failures: Vec<SourceFailure>,
 }
 
 impl SearchEvidence {
-    /// Record what the settled step found.
     fn record(&mut self, progress: &SearchProgress) {
         self.results = progress.results();
         self.failures = progress.failures();
     }
 
-    /// The search's provider failures. A search that never ran has none.
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
         into.extend(self.failures.iter().cloned().map(IdentifyFailure::Search));
     }
@@ -389,76 +308,51 @@ fn unique_values(sightings: &[SourcedValue]) -> Vec<String> {
     out
 }
 
-/// Everything a state needs to re-derive its outcome as answers land —
-/// carried unchanged through every non-`Idle` state.
-///
-/// The three signals' evidence drives the toolbar badges, and the results each
-/// one recorded let a re-combine happen without re-fetching. What the run was
-/// told to ask about survives every new snapshot: it is the person's decision
-/// about the candidate, not something a snapshot states.
+/// Everything a state needs to re-derive its outcome as answers land, carried
+/// through every non-`Idle` state.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SignalsContext {
-    /// The providers this run asks — MusicBrainz, and Discogs when it is
-    /// configured. Fixed when the run starts, so a lookup that starts later,
-    /// like a chosen catalog number's, asks the same ones.
+    /// The catalogs this run asks, fixed when it starts.
     pub providers: Vec<Catalog>,
-    /// The steps this run takes, fixed when it starts as the providers are:
-    /// each lookup reads its own step's flag as it would start.
+    /// The steps this run takes, fixed when it starts.
     pub steps: IdentificationSteps,
-    /// Where the artwork pass has got to, from the latest snapshot. Progress
-    /// a surface shows, not an input the lookups read; a context stood up
-    /// from a stored verdict never saw a pass and reads `Absent`.
+    /// Where the artwork pass has got to, from the latest snapshot.
     pub artwork: ArtworkScan,
     /// What the candidate's files say about the medium its audio was ripped
-    /// from — what the rows' stated media are held against. The candidate's,
-    /// like `text`.
+    /// from.
     pub rip: RipEvidence,
     /// Whether every one of the candidate's audio files carries one channel.
     pub mono_audio: bool,
     pub disc: DiscIdEvidence,
     pub barcode: BarcodeEvidence,
     pub catalog: CatalogEvidence,
-    /// The title the run searches by when the three identifiers name nothing,
-    /// and what that search found.
     pub search: SearchEvidence,
-    /// The candidate's own text, normalized for lookup — what a result is
-    /// judged against. The candidate's, not the run's: it is read off the
-    /// folder rather than produced by anything the run asked, and a state
-    /// stood back up from a stored verdict carries the stored pool so its rows
-    /// badge and order exactly as they did while the run went.
+    /// The candidate's own text, normalized — what a result is judged against.
     pub text: CandidateText,
-    /// Whether `text` is the candidate's final text. Extraction streams its
-    /// snapshots while the artwork pass reads, and each one carries the text
-    /// gathered so far; only the settled snapshot carries all of it. A run
-    /// judges its results against the text, so it does not settle on less.
+    /// Whether `text` is final; a run does not settle before it is.
     pub text_settled: bool,
     /// The candidate's local track count.
     pub track_count: u32,
-    /// What the MusicBrainz albums the run found are on the other catalog,
-    /// read once every lookup has settled, with the twins that reading read.
+    /// What the run's MusicBrainz albums are on Discogs, read once every
+    /// lookup has settled.
     pub album_links: AlbumLinkReading,
 }
 
 /// Where a run is with the album links of what its lookups returned.
 #[derive(Clone, Debug, PartialEq)]
 pub enum AlbumLinkReading {
-    /// Not started: a lookup is still out, so what the run found is not final.
+    /// Waiting for every lookup to settle.
     Pending,
     /// The links of these groups are being read.
     Reading,
-    /// Read, group by group — empty when what the run found held nothing to
-    /// join.
+    /// Read, group by group; empty when there was nothing to join.
     Read(Vec<GroupReading>),
-    /// Not read: the run does not follow catalog links, so each catalog's
-    /// records stand on their own.
-    Off,
+    /// Not read, for `reason`.
+    NotAsked { reason: NotAskedReason },
 }
 
 impl Default for SignalsContext {
-    /// Nothing read, nobody asked. Two states hold it: a run before its first
-    /// snapshot, and a state stood back up from a stored verdict — that run is
-    /// over, and what it showed is the ledger the state carries, not anything
-    /// re-derived from here.
+    /// Nothing read, nobody asked.
     fn default() -> Self {
         Self {
             providers: Vec::new(),
@@ -479,14 +373,7 @@ impl Default for SignalsContext {
 }
 
 impl SignalsContext {
-    /// No signals known yet — the context on entry to `Triangulating`, before
-    /// the first `SignalsUpdated`. `providers` is what the run will ask,
-    /// `steps` is which of its steps it takes, and `choices` is what the
-    /// person decided it asks about: the exclusions are
-    /// set and every chosen catalog number is chosen, with nothing found for
-    /// any of them yet. `title_search` is what the candidate's draft says
-    /// about the release, which the run falls back on when the identifiers
-    /// name nothing.
+    /// The context a run starts with, before its first snapshot.
     pub(super) fn started(
         providers: Vec<Catalog>,
         steps: IdentificationSteps,
@@ -496,6 +383,13 @@ impl SignalsContext {
         Self {
             providers,
             steps,
+            album_links: if steps.follow_catalog_links {
+                AlbumLinkReading::Pending
+            } else {
+                AlbumLinkReading::NotAsked {
+                    reason: NotAskedReason::SwitchedOff,
+                }
+            },
             search: SearchEvidence {
                 query: title_search,
                 ..Default::default()
@@ -521,9 +415,7 @@ impl SignalsContext {
         }
     }
 
-    /// Take the inputs from a new snapshot, keeping what the run was told to
-    /// ask about. Results aren't touched — they're recorded as the lookups
-    /// settle.
+    /// Take the inputs from a new snapshot, keeping choices and results.
     pub(super) fn refresh_inputs(&mut self, signals: &Signals, artwork: ArtworkScan) {
         self.artwork = artwork;
         self.rip = signals.rip.clone();
@@ -547,24 +439,23 @@ impl SignalsContext {
         self.catalog.record(catalog);
     }
 
-    /// Record what the title search found. Separate from the three
-    /// identifiers' results because it settles after them: whether it runs at
-    /// all is decided from what they recorded.
+    /// Record what the title search found; it settles after the identifiers.
     pub(super) fn record_search(&mut self, search: &SearchProgress) {
         self.search.record(search);
     }
 
-    /// What reading the run's albums answered — nothing until it has.
+    /// What reading the run's albums answered, once it has.
     fn album_readings(&self) -> &[GroupReading] {
         match &self.album_links {
             AlbumLinkReading::Read(read) => read,
-            AlbumLinkReading::Pending | AlbumLinkReading::Reading | AlbumLinkReading::Off => &[],
+            AlbumLinkReading::Pending
+            | AlbumLinkReading::Reading
+            | AlbumLinkReading::NotAsked { .. } => &[],
         }
     }
 
-    /// What every lookup the current selection still uses returned, each
-    /// release with what was read about its album's links — the four sets
-    /// combine takes, in its order.
+    /// Every lookup's results with their album links applied, in the order
+    /// combine takes them.
     pub(super) fn lookup_results(&self) -> [Vec<(MetadataResult, LibraryStatus)>; 4] {
         let read = self.album_readings();
         [
@@ -584,9 +475,7 @@ impl SignalsContext {
         })
     }
 
-    /// The releases no lookup returned that reading the run's albums read,
-    /// each named by a release a lookup did return. Combine puts each beside
-    /// the release that names it.
+    /// The releases reading the albums found that no lookup returned.
     pub(super) fn twins(&self) -> Vec<Twin> {
         self.album_readings()
             .iter()
@@ -594,7 +483,6 @@ impl SignalsContext {
             .collect()
     }
 
-    /// Failures belonging to evidence the current selection still uses.
     pub(super) fn active_failures(&self) -> Vec<IdentifyFailure> {
         let mut failures = Vec::new();
         self.disc.active_failures(&mut failures);
@@ -604,10 +492,8 @@ impl SignalsContext {
         failures
     }
 
-    /// Whether extraction handed this run anything at all: a disc ID it read
-    /// or failed to read, a barcode source, a catalog number. A context with
-    /// none was stood up from a stored verdict, or belongs to a folder that
-    /// carries nothing to look up — either way there is no run to lay out.
+    /// Whether extraction gave this run anything to lay out: a disc ID, a
+    /// barcode source, or a catalog number.
     pub fn has_inputs(&self) -> bool {
         !matches!(self.disc.signal, DiscIdSignal::Absent { .. })
             || self.barcode.had_source

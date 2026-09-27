@@ -9,12 +9,7 @@ use crate::import::watched_folder::host_root;
 use coven::FixedClock;
 use std::path::PathBuf;
 
-/// The instant `empty_db`'s injected clock always returns. Fixed rather
-/// than `SystemClock` so `identified_at` can be asserted exactly — which is
-/// why `CandidatePreparations::store_verdict` stamps it from the injected clock
-/// instead of taking it from the caller.
-/// A folder of plain track files (no track sheet) named
-/// `(relative_path, size)`.
+/// A folder of plain track files, each `(relative_path, size)`.
 fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
     CategorizedFiles {
         files: files
@@ -30,8 +25,8 @@ fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
     }
 }
 
-/// The ledger the sample verdict's run recorded: one disc ID, read off a rip
-/// log, that named the release the verdict settled on.
+/// The sample verdict's ledger: a disc ID read off a rip log that named its
+/// release.
 fn sample_ledger() -> IdentifyRunView {
     IdentifyRunView {
         providers: vec![Catalog::MusicBrainz],
@@ -51,7 +46,6 @@ fn sample_ledger() -> IdentifyRunView {
         barcode: crate::identify::BarcodeStepView::Absent,
         catalog: crate::identify::CatalogStepView::NoneFound,
         search: crate::identify::SearchStepView::NotNeeded,
-        album_links: crate::identify::AlbumLinksStepView::Followed,
     }
 }
 
@@ -101,8 +95,7 @@ fn sample_findings() -> Findings {
     }
 }
 
-/// Settled signals with nothing found — what a verdict carries when a test
-/// does not care what it was reached on.
+/// Settled signals with nothing found.
 fn sample_signals() -> crate::signals::Signals {
     crate::signals::Signals {
         rip: crate::signals::RipEvidence::Unproven,
@@ -118,8 +111,8 @@ fn sample_signals() -> crate::signals::Signals {
     }
 }
 
-/// The same row, concluding one release: what a run that settled writes, and
-/// the only shape that replaces the draft it lands on.
+/// The row with a draft picking `release_id`, as a run that settled on it
+/// writes.
 fn concluding(mut row: NewImportCandidateVerdict, release_id: &str) -> NewImportCandidateVerdict {
     row.metadata = Some(crate::import::CandidateMetadataDraft {
         draft: candidate_draft("", ""),
@@ -146,10 +139,7 @@ file_edit_revision: 0,
     }
 }
 
-/// Save a verdict, read it back, and check the provenance and the run's
-/// ledger survived the JSON round trip along with everything else — a
-/// stripped `by_disc_id`, a dropped catalog number, or a ledger cell that
-/// lost its release cards wouldn't show up in a looser comparison.
+/// A stored verdict reads back exactly, provenance and ledger included.
 #[tokio::test]
 async fn round_trip_preserves_the_verdict_including_provenance() {
     let (db, _tmp) = empty_db().await;
@@ -174,8 +164,7 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
         .identify
         .as_ref()
         .expect("a stored verdict reads back as an identify result");
-    // Stamped by the write path from the injected clock, not something
-    // `new_candidate_row` had any way to supply.
+    // The write stamps it from the injected clock.
     assert_eq!(identify.identified_at, fixed_now());
     assert_eq!(
         identify.verdict, verdict,
@@ -183,11 +172,8 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
     );
 }
 
-/// Every barcode, every medium entry — stated or not — every link a match
-/// carries, its cover with the copies the catalog serves, what reading its
-/// album's links answered with each statement, and a twin's naming release
-/// store and read back, so the rows and cards a stored verdict groups into are
-/// the ones the run grouped into.
+/// Everything the rows and cards are grouped by reads back, so a stored verdict
+/// groups as its run did.
 #[tokio::test]
 async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
@@ -350,10 +336,8 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     assert_eq!(crate::import::release_group::pressing_count(matches), 4);
 }
 
-/// The candidate's own text stores and reads back whole — every line, in the
-/// order the pass read it, each still naming where it came from. It is what
-/// the rows are judged and ordered against, so a resumed candidate has to be
-/// able to say exactly what it said while the run went.
+/// The candidate's text reads back whole, line by line, in order and with where
+/// each was read.
 #[tokio::test]
 async fn the_candidate_s_text_round_trips_line_by_line() {
     let (db, _tmp) = empty_db().await;
@@ -393,9 +377,7 @@ async fn the_candidate_s_text_round_trips_line_by_line() {
     assert_eq!(stored.text_pool, pool);
 }
 
-/// A failed verdict stores what the lookups that answered found beside the
-/// lookups that failed, and reads both back: a failed candidate opened later
-/// shows the results its run showed rather than an empty pane.
+/// A failed verdict reads back with what its answering lookups found.
 #[tokio::test]
 async fn a_failed_verdict_round_trips_what_its_answering_lookups_found() {
     let (db, _tmp) = empty_db().await;
@@ -430,8 +412,7 @@ async fn a_failed_verdict_round_trips_what_its_answering_lookups_found() {
     assert_eq!(identify.verdict, verdict);
 }
 
-/// A verdict recorded with no ledger reads back with none: the column is
-/// empty, and the pane draws the settled lists without a run beside them.
+/// A verdict recorded with no ledger reads back with none.
 #[tokio::test]
 async fn a_verdict_with_no_ledger_reads_back_without_one() {
     let (db, _tmp) = empty_db().await;
@@ -461,10 +442,7 @@ async fn a_verdict_with_no_ledger_reads_back_without_one() {
     assert_eq!(identify.verdict, verdict);
 }
 
-/// The releases agreement narrowed out are stored under the same verdict as
-/// its matches and read back apart from them: they are what the run rejected,
-/// never what it settled on, so a reader that merged the two lists would
-/// offer a rejected release as an answer.
+/// Narrowed-out releases read back apart from the matches.
 #[tokio::test]
 async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches() {
     let (db, _tmp) = empty_db().await;
@@ -535,10 +513,8 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
     );
 }
 
-/// Resizing one file changes `content_hash`, which is the whole
-/// invalidation mechanism: the new hash finds nothing (so it gets
-/// re-identified) while the old row is left behind, unreachable, under its
-/// own key.
+/// Resizing a file changes `content_hash`, so the new hash finds no row and the
+/// old row stays under its own key.
 #[tokio::test]
 async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
     let (db, _tmp) = empty_db().await;
@@ -573,8 +549,8 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
     );
 }
 
-/// Store the MusicBrainz release `release_id` as a fetch would: a pick names
-/// only a release bae fetched and stored.
+/// Store MusicBrainz release `release_id` as a fetch would, so a pick can name
+/// it.
 async fn fetched(db: &Database, release_id: &str) {
     db.save_source_release(
         &crate::import::payloads::ReleasePayloads::for_test(
@@ -669,10 +645,7 @@ fn found_nothing() -> TerminalVerdict {
     TerminalVerdict::NotFoundAnywhere { ledger: None }
 }
 
-/// A re-run that settles on no release replaces the result and nothing else.
-/// The draft it lands on stands whoever wrote it — an earlier run included —
-/// because "we looked again and found nothing" says what the candidate is not,
-/// and a release already named is not unmade by that.
+/// A re-run that finds nothing leaves the draft an earlier run wrote.
 #[tokio::test]
 async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
     let (db, _tmp) = empty_db().await;
@@ -707,9 +680,7 @@ async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
     );
 }
 
-/// A run that found nothing says what the candidate is not. That is no reason
-/// to unmake a release somebody chose, so the choice stands and the pane
-/// reopens on it.
+/// A re-run that finds nothing leaves a person's pick in place.
 #[tokio::test]
 async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
     let (db, _tmp) = empty_db().await;
@@ -749,8 +720,8 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
     );
 }
 
-/// And a re-run that settles on a *different* single match replaces the
-/// pick its predecessor made, rather than leaving the older release named.
+/// A re-run that settles on a different release replaces the earlier run's
+/// pick.
 #[tokio::test]
 async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
     let (db, _tmp) = empty_db().await;
@@ -788,8 +759,8 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
     );
 }
 
-/// File decisions invalidate identification results, while applied metadata
-/// keeps its provenance regardless of who applied it.
+/// A file decision clears the verdict and keeps applied metadata's provenance,
+/// whoever applied it.
 #[tokio::test]
 async fn a_file_decision_preserves_applied_metadata_from_either_author() {
     let (db, _tmp) = empty_db().await;
@@ -863,10 +834,7 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
     );
 }
 
-/// Same files, same relative paths and sizes, under a different parent
-/// directory: `content_hash` never looks at the absolute path, so the row
-/// saved for the folder at its old location is still the row found for it
-/// at the new one.
+/// A moved folder hashes the same, so its saved row is still found.
 #[tokio::test]
 async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
     let (db, _tmp) = empty_db().await;
@@ -902,8 +870,7 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
     );
 }
 
-/// A transport failure is a stored terminal answer rather than absence that
-/// an automatic sweep interprets as permission to retry.
+/// A transport failure is stored as a failed verdict.
 #[tokio::test]
 async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     use crate::identify::state::step as identify_step;
