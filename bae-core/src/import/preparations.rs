@@ -74,11 +74,11 @@ impl CandidatePreparations {
             prep.metadata = metadata;
             prep.metadata_revision += 1;
         }
-        // A run that applied its own pick and whose result asks nothing has
-        // left only the draft and its Import to see, so the pane opens there.
-        // A result that asks something leaves the pane where it was.
+        // A run that applied its own pick and whose release passed every check
+        // against the folder has left only the draft and its Import to see, so
+        // the pane opens there. Otherwise the pane stays where it was.
         let pane = if verdict.metadata.is_some() {
-            CandidatePaneWrite::OpenOnDraftIfReady
+            CandidatePaneWrite::OpenOnDraftUnlessCheckFailed
         } else {
             CandidatePaneWrite::Keep
         };

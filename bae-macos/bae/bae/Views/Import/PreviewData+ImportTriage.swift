@@ -40,7 +40,6 @@
         static func triageRow(
             for candidate: Candidate,
             placement: BridgeTriagePlacement,
-            selectable: Bool = false,
             matched: BridgeMatchedRelease?,
             metadataSummary: BridgeTriageMetadataSummary? = nil,
             cover: BridgeCoverImageSource? = nil,
@@ -58,13 +57,13 @@
                 actionBasis: BridgeCandidateActionBasis(
                     actionable: true,
                     placement: placement,
+                    draftValid: metadataSummary != nil,
                     lookupFailed: false,
                     separable: false
                 ),
                 matched: matched,
                 metadataSummary: metadataSummary,
                 cover: cover,
-                selectable: selectable,
                 importStatus: importStatus,
                 metadataProvenance: metadataProvenance,
                 reading: reading
@@ -312,8 +311,7 @@
         /// A pick that paired two catalogs' releases; the row names both.
         static let triageRowIdentifiedOnline = triageRow(
             for: importTabIdentifiedCandidate,
-            placement: .ready,
-            selectable: true,
+            placement: .pending,
             matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Thirteen",
@@ -338,7 +336,7 @@
         /// Identified, and still asked which of several pressings it is.
         static let triageRowIdentifiedSeveralMatches = triageRow(
             for: importTabIdentifiedSeveralMatchesCandidate,
-            placement: .needsYou(folderCheck: nil),
+            placement: .pending,
             matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Fourteen",
@@ -361,10 +359,9 @@
         )
 
         @MainActor
-        static let triageRowReady = triageRow(
+        static let triageRowIdentified = triageRow(
             for: importTabCandidate,
-            placement: .ready,
-            selectable: true,
+            placement: .pending,
             matched: triageMatch(
                 releaseId: releaseDetailBridge.releaseId,
                 title: releaseDetailBridge.title,
@@ -385,7 +382,7 @@
 
         static let triageRowPickAPressing = triageRow(
             for: importTabSeveralMatchesCandidate,
-            placement: .needsYou(folderCheck: nil),
+            placement: .pending,
             // Several matches leave the pressing unsettled.
             matched: BridgeMatchedRelease(
                 releaseId: "rel-lead",
@@ -405,16 +402,14 @@
         /// Two signals that named different releases.
         static let triageRowSeveralMatchesFromSignals = triageRow(
             for: importTabDisagreementCandidate,
-            placement: .needsYou(folderCheck: nil),
+            placement: .pending,
             matched: nil,
             metadataSummary: nil
         )
 
         static let triageRowTrackMismatch = triageRow(
             for: importTabTrackMismatchCandidate,
-            placement: .needsYou(
-                folderCheck: .trackCountDisagrees(local: 1, source: 10)
-            ),
+            placement: .pending,
             matched: triageMatch(
                 releaseId: "rel-track-mismatch",
                 title: "Album Title Seven",
@@ -424,11 +419,10 @@
             metadataSummary: nil
         )
 
-        /// A release already in the library, Ready like any other.
+        /// A release already in the library, importable like any other.
         static let triageRowAlreadyInLibrary = triageRow(
             for: importTabAlreadyInLibraryCandidate,
-            placement: .ready,
-            selectable: true,
+            placement: .pending,
             matched: triageMatch(
                 releaseId: releaseDetailBridge.releaseId,
                 title: "Album Title (Reissue)",
@@ -448,7 +442,7 @@
 
         static let triageRowNoMatch = triageRow(
             for: importTabNoMatchCandidate,
-            placement: .needsYou(folderCheck: nil),
+            placement: .pending,
             matched: nil,
             metadataSummary: nil
         )
@@ -470,11 +464,10 @@
             step: .running(phase: .measuringLoudness)
         )
 
-        /// Ready until its running import writes the release.
+        /// Pending until its running import writes the release.
         static let triageRowImporting = triageRow(
             for: importTabImportingCandidate,
-            placement: .ready,
-            selectable: true,
+            placement: .pending,
             matched: triageMatch(
                 releaseId: "rel-importing",
                 title: importTabImportingCandidate.displayName,
@@ -534,6 +527,7 @@
                 actionBasis: BridgeCandidateActionBasis(
                     actionable: true,
                     placement: .done,
+                    draftValid: false,
                     lookupFailed: false,
                     separable: false
                 ),
@@ -572,8 +566,7 @@
         private static let triageGroupedRows = [
             triageRow(
                 for: importTabGroupedReadyCandidate,
-                placement: .ready,
-                selectable: true,
+                placement: .pending,
                 matched: triageMatch(
                     releaseId: releaseDetailBridge.releaseId,
                     title: releaseDetailBridge.title,
@@ -593,7 +586,7 @@
             ),
             triageRow(
                 for: importTabGroupedCandidates[1],
-                placement: .needsYou(folderCheck: nil),
+                placement: .pending,
                 matched: nil,
                 metadataSummary: nil
             ),
@@ -622,7 +615,7 @@
 
         @MainActor
         private static let importTabPendingRows = [
-            triageRowReady,
+            triageRowIdentified,
             triageRowPickAPressing,
             triageRowSeveralMatchesFromSignals,
             triageRowTrackMismatch,
@@ -671,7 +664,9 @@
             skipped: 1 + UInt32(invalidCandidates.count),
             watchedFolders: [importWatchedFolder],
             groupKeys: [importTabGroupKey],
-            ready: readyRows(importTabPendingRows + triageGroupedRows)
+            pendingCovers: pendingCovers(
+                importTabPendingRows + triageGroupedRows
+            )
         )
 
         /// A preview row's live state offering `actions`.
@@ -699,8 +694,8 @@
         {
             let entries: [(BridgeTriageRow, BridgeCandidateLiveState)] = [
                 (
-                    triageRowReady,
-                    triageLive([.importReady] + everyDraftCommand)
+                    triageRowIdentified,
+                    triageLive([.import] + everyDraftCommand)
                 ),
                 (triageRowPickAPressing, triageLive(everyDraftCommand)),
                 (
@@ -710,7 +705,7 @@
                 (triageRowTrackMismatch, triageLive(everyDraftCommand)),
                 (
                     triageRowAlreadyInLibrary,
-                    triageLive([.importReady] + everyDraftCommand)
+                    triageLive([.import] + everyDraftCommand)
                 ),
                 (triageRowNoMatch, triageLive(everyDraftCommand)),
                 (
@@ -726,7 +721,7 @@
                 ),
                 (
                     triageGroupedRows[0],
-                    triageLive([.importReady] + everyDraftCommand)
+                    triageLive([.import] + everyDraftCommand)
                 ),
                 (triageGroupedRows[1], triageLive(everyDraftCommand)),
                 (triageRowDoneImported, triageLive([])),
@@ -750,6 +745,14 @@
             )
         }
 
+        /// The failed folder check the pane states for a preview candidate.
+        static let importTabFolderChecks: [String: BridgeFolderCheck] = [
+            importTabTrackMismatchCandidate.key: .trackCountDisagrees(
+                local: 1,
+                source: 10
+            )
+        ]
+
         /// Where the pane places a preview candidate, from its list row.
         static func panePlacement(
             of row: BridgeTriageRow
@@ -758,9 +761,12 @@
                 if case .identified(let records) = row.reading { records }
                 else { [] }
             return switch row.placement {
-            case .needsYou(let folderCheck):
-                .pending(folderCheck: folderCheck, records: records)
-            case .pending, .ready, .failed:
+            case .pending:
+                .pending(
+                    folderCheck: importTabFolderChecks[row.candidateKey],
+                    records: records
+                )
+            case .failed:
                 .pending(folderCheck: nil, records: records)
             case .skipped: .skipped(records: records)
             case .done: .done

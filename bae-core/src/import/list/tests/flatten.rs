@@ -227,7 +227,7 @@ fn the_filter_finds_a_done_row_by_its_library_release() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Folder"), candidate("Other")];
     rows.states
-        .insert("hash-Folder".to_string(), ready_state("mb-1"));
+        .insert("hash-Folder".to_string(), auto_importable_state("mb-1"));
     rows.states.insert(
         "hash-Other".to_string(),
         CandidateStateListRow {
@@ -235,7 +235,7 @@ fn the_filter_finds_a_done_row_by_its_library_release() {
                 album_title: "Draft".to_string(),
                 album_artist_assignments: vec![],
             }),
-            ..ready_state("mb-2")
+            ..auto_importable_state("mb-2")
         },
     );
     imported(&mut rows, "Folder", "rel-1", 100);
@@ -384,7 +384,7 @@ fn the_first_candidate_among_keys_follows_the_queue_order() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release 1"), candidate("Release 2")];
     rows.states
-        .insert("hash-Release 1".to_string(), ready_state("mb-1"));
+        .insert("hash-Release 1".to_string(), auto_importable_state("mb-1"));
 
     assert_eq!(
         first_among(&rows, view(TriageTab::Pending), &["Release 2"]),
@@ -479,7 +479,7 @@ fn candidate_location_follows_an_import_from_pending_to_done() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
-        .insert("hash-Release".to_string(), ready_state("mb-1"));
+        .insert("hash-Release".to_string(), auto_importable_state("mb-1"));
     imported(&mut rows, "Release", "mb-1", 100);
 
     let location = locate_candidate(&rows, &request(view(TriageTab::Pending)), &key("Release"))
@@ -490,16 +490,25 @@ fn candidate_location_follows_an_import_from_pending_to_done() {
     assert_eq!(location.visible_position, 0);
 }
 
-/// The Ready set is filtered — it is what a bulk import of what is on screen
-/// would act on — while the counts and the group keys are the whole queue's.
+/// Pending's covers are the filtered rows' — what is about to be on screen —
+/// while the counts and the group keys are the whole queue's.
 #[test]
-fn the_summary_filters_ready_and_keeps_the_counts_whole() {
+fn the_summary_filters_pending_covers_and_keeps_the_counts_whole() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Group/Wanted"), candidate("Group/Other")];
     rows.states
-        .insert("hash-Group/Wanted".to_string(), ready_state("mb-1"));
-    rows.states
-        .insert("hash-Group/Other".to_string(), ready_state("mb-2"));
+        .insert("hash-Group/Wanted".to_string(), auto_importable_state("mb-1"));
+    rows.states.insert(
+        "hash-Group/Other".to_string(),
+        with_verdict(auto_importable_state("mb-2"), |verdict| {
+            verdict.lead = Some(LeadMatch {
+                cover: Some(crate::import::cover_art::RemoteImageSet::original(
+                    "https://example.test/other.jpg".to_string(),
+                )),
+                ..lead("mb-2")
+            });
+        }),
+    );
 
     let flat = flattened(
         &rows,
@@ -511,12 +520,10 @@ fn the_summary_filters_ready_and_keeps_the_counts_whole() {
 
     assert_eq!(flat.summary.counts.pending, 2);
     assert_eq!(
-        flat.summary
-            .ready
-            .iter()
-            .map(|row| row.candidate_key.clone())
-            .collect::<Vec<_>>(),
-        vec![key("Group/Wanted")]
+        flat.summary.pending_covers,
+        vec![crate::import::cover_art::RemoteImageSet::original(
+            "https://example.test/front.jpg".to_string(),
+        )]
     );
     assert_eq!(flat.summary.group_keys.len(), 1);
 }

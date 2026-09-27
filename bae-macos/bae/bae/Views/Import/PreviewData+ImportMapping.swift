@@ -437,7 +437,7 @@
                         identification: nil,
                         importing: false,
                         actions: (metadataProvenance == nil
-                            && edit.albumTitle.isEmpty ? [] : [.importReady])
+                            && edit.albumTitle.isEmpty ? [] : [.import])
                             + [
                                 .identify, .resetToFileMetadata,
                                 .clearMetadata, .combine, .skip, .revealFolder,

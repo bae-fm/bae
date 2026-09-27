@@ -146,14 +146,12 @@ pub(super) async fn finish(
         context.import.withdraw_identification(key);
     }
     match done.settled {
-        Settled::Stored { classification } => {
+        Settled::Stored { auto_importable } => {
             info!(
                 "identification: stored the verdict for {}",
                 done.representative_key
             );
-            if job.admission() == Admission::Automatic
-                && classification == crate::identify::QueueClassification::Ready
-            {
+            if job.admission() == Admission::Automatic && auto_importable {
                 import_when_identified(context, config, &done.representative_key).await;
             }
         }
@@ -178,7 +176,7 @@ pub(super) async fn finish(
     }
 }
 
-/// Import `key`, whose automatic run just stored a Ready verdict, when "Import
+/// Import `key`, whose automatic run just stored an auto-importable verdict, when "Import
 /// automatically when identified" is on.
 async fn import_when_identified(
     context: &Context,

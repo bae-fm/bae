@@ -116,7 +116,7 @@ fn discid_json_stating_barcode(
 }
 
 /// A search hit as `ws/2/release?query=…` returns it: no `media`, hence no
-/// count, so the Ready rule has nothing to check until the lead is settled.
+/// count, so the auto-import check has nothing to check until the lead is settled.
 fn search_json(release_id: &str, group_id: &str) -> String {
     format!(
         r#"{{"releases":[{{"id":"{release_id}","title":"Album",

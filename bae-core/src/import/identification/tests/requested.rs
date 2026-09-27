@@ -230,8 +230,8 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
         "and its documents are archived under the release they describe"
     );
     assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::Ready,
+        fixture.judgement_for(&dir).await,
+        (true, None),
         "so the row is admitted on evidence that was actually checked"
     );
 }

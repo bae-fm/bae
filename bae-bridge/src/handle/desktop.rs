@@ -425,12 +425,11 @@ forward! {
                 .map_err(BridgeError::import)
         }
 
-        /// Import one row of a bulk import of the Ready set. Refused, with a
-        /// reason the row can be told, for a candidate an import already owns
-        /// or identification is still answering at the moment it is reached.
-        fn import_ready(candidate_key: String) -> () {
+        /// Import one row of a bulk import of a selection, refused for a
+        /// candidate an import already owns or identification is answering.
+        fn import_selected(candidate_key: String) -> () {
             this.services
-                .import_ready(&candidate_key)
+                .import_selected(&candidate_key)
                 .await
                 .map(|_| ())
                 .map_err(BridgeError::import)

@@ -65,7 +65,7 @@ final class ImportCandidateActionRun {
             switch action {
             // The candidate is gone from where it was selected: into the
             // library, off the queue, or read as other releases.
-            case .importReady, .skip, .restore, .separate:
+            case .import, .skip, .restore, .separate:
                 uiStore.removeFolderCandidateSelection(successful)
             case .identify, .cancelIdentification, .retryIdentification,
                 .resetToFileMetadata, .clearMetadata, .cancelImport, .combine,

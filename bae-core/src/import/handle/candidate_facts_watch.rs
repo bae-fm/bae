@@ -4,6 +4,7 @@
 use super::ImportServiceHandle;
 use crate::import::triage::{CandidateActionBasis, CandidateLiveState, TriageRuntimeFacts};
 use crate::import::CandidateRuntimeChange;
+use crate::import::candidate_runtime::RuntimeFactsWatch;
 use tokio::sync::broadcast;
 
 /// One candidate's runtime facts, kept current from the runtime stream.
@@ -75,6 +76,11 @@ impl CandidateFactsWatch {
 }
 
 impl ImportServiceHandle {
+    /// Every candidate's facts as they stand, and each later change to them.
+    pub(crate) fn watch_runtime_facts(&self) -> RuntimeFactsWatch {
+        RuntimeFactsWatch::of(&self.runtime)
+    }
+
     /// One candidate's facts as they stand, and each later change to them. The
     /// runtime stream is taken before the facts are read, so no change lands
     /// between the two.

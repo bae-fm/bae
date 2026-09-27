@@ -29,7 +29,7 @@ impl AppServices {
     delegate_sync!(import, import_retry_candidate_search => retry_candidate_search(candidate_key: String) -> ());
     delegate_sync!(import, import_clear_candidate_search => clear_candidate_search(candidate_key: String) -> ());
     delegate_async!(import, import_start_import => start_import(candidate_key: &str) -> Result<String, crate::import::ImportError>);
-    delegate_async!(import, import_ready => import_ready(candidate_key: &str) -> Result<String, crate::import::ImportError>);
+    delegate_async!(import, import_selected => import_selected(candidate_key: &str) -> Result<String, crate::import::ImportError>);
     delegate_async!(import, import_merge_candidate_artist_identity_conflict => merge_candidate_artist_identity_conflict(candidate_key: &str, surviving_artist_id: &str) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<crate::import::DiscogsSaveOutcome, crate::import::ImportError>);
     delegate_async!(import, import_revalidate_discogs_token => revalidate_discogs_token() -> Result<(), crate::import::ImportError>);
@@ -198,17 +198,22 @@ impl AppServices {
 
     /// The import list, reconfigurable by view and by window.
     ///
-    /// The list reads the tables and the upload standing the Done tab is
-    /// ordered by, which the subscription keeps current on its own. What is
-    /// running for each candidate is its row's
-    /// [`Self::subscribe_candidate_live_state`].
+    /// The list reads the tables, the upload standing the Done tab is ordered
+    /// by, and what is running for the candidates a live filter keeps, which
+    /// the subscription keeps current on its own. What is running for each
+    /// row is its [`Self::subscribe_candidate_live_state`].
     pub fn subscribe_import_list(
         &self,
         view: ImportListView,
         runtime_handle: &tokio::runtime::Handle,
     ) -> ImportListSubscription {
         let outbox = self.subscribe_outbox_values();
+        let runtime_facts = self.inner.import.watch_runtime_facts();
         let request = ImportListRequest {
+            live_matches: crate::import::PendingFilter::live_matches(
+                view.pending_filter,
+                runtime_facts.facts(),
+            ),
             view,
             windows: crate::library::LibraryPageWindows::new(),
             upload_standing: upload_standing_of(&outbox),
@@ -219,8 +224,29 @@ impl AppServices {
             self.inner.manager.subscribe_folder_scan_progress(),
             request,
             outbox,
+            runtime_facts,
             runtime_handle,
         )
+    }
+
+    /// The list request for one read of `view`: the upload standing and what
+    /// is running, as they stand now.
+    fn import_list_request(
+        &self,
+        view: ImportListView,
+        windows: crate::library::LibraryPageWindows,
+    ) -> ImportListRequest {
+        let facts: std::collections::HashMap<String, TriageRuntimeFacts> = self
+            .candidate_runtimes()
+            .iter()
+            .map(|(key, runtime)| (key.clone(), TriageRuntimeFacts::of(runtime)))
+            .collect();
+        ImportListRequest {
+            live_matches: crate::import::PendingFilter::live_matches(view.pending_filter, &facts),
+            view,
+            windows,
+            upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
+        }
     }
 
     /// One read of the list, for a caller with no subscription.
@@ -231,11 +257,7 @@ impl AppServices {
     ) -> Result<ImportListProjection, crate::library::LibraryError> {
         self.inner
             .manager
-            .load_import_list(ImportListRequest {
-                view,
-                windows,
-                upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
-            })
+            .load_import_list(self.import_list_request(view, windows))
             .await
     }
 
@@ -250,11 +272,7 @@ impl AppServices {
         self.inner
             .manager
             .locate_import_candidate(
-                ImportListRequest {
-                    view,
-                    windows: crate::library::LibraryPageWindows::new(),
-                    upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
-                },
+                self.import_list_request(view, crate::library::LibraryPageWindows::new()),
                 candidate_key,
             )
             .await
@@ -283,11 +301,7 @@ impl AppServices {
         self.inner
             .manager
             .first_import_candidate_among(
-                ImportListRequest {
-                    view,
-                    windows: crate::library::LibraryPageWindows::new(),
-                    upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
-                },
+                self.import_list_request(view, crate::library::LibraryPageWindows::new()),
                 identifying,
             )
             .await

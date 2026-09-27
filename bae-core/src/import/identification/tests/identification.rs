@@ -1,8 +1,8 @@
 /// The whole point of the task: nothing is selected, no view is open, and the
-/// candidate still ends up with a stored verdict that classifies as Ready.
+/// candidate still ends up with a stored verdict that is auto-importable.
 ///
 /// The provider answers the disc-ID lookup with exactly one release listing as
-/// many tracks as the fixture holds, so the Ready rule's every clause is
+/// many tracks as the fixture holds, so every clause of the auto-import check is
 /// exercised for real: one match, counts agreeing.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_candidate_nobody_selected_acquires_a_verdict() {
@@ -13,17 +13,17 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
         "/discid/",
         200,
         discid_json(
-            "mb-ready-1",
-            "rg-ready-1",
+            "mb-auto-1",
+            "rg-auto-1",
             &[probed / 2, probed - probed / 2],
         ),
     );
     fixture.provider.route(
-        "/release/mb-ready-1?",
+        "/release/mb-auto-1?",
         200,
         release_json(
-            "mb-ready-1",
-            "rg-ready-1",
+            "mb-auto-1",
+            "rg-auto-1",
             &[probed / 2, probed - probed / 2],
         ),
     );
@@ -45,8 +45,8 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
         "the row is stamped from the injected clock"
     );
     assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::Ready,
+        fixture.judgement_for(&dir).await,
+        (true, None),
         "one match, counts agreeing"
     );
 }
@@ -348,7 +348,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
     }
 }
 
-/// A source's lengths never keep a match out of Ready. The release parsed here
+/// A source's lengths never keep a match from being auto-importable. The release parsed here
 /// states lengths that match nothing about the rip, and all the rule reads off
 /// it is the count: three tracks, as the folder holds.
 #[test]
@@ -362,8 +362,8 @@ fn the_lengths_a_source_states_do_not_decide() {
     let source = payloads.extract().unwrap().source_tracks_for_audio(&[]);
     assert_eq!(source, SourceTracks::Listed { count: 3 });
     assert_eq!(
-        classify(&found_verdict(3, Some(source))),
-        QueueClassification::Ready,
+        crate::identify::VerdictSummary::of(&found_verdict(3, Some(source))).judgement(),
+        (true, None),
         "the counts agree, whatever the lengths"
     );
 }
@@ -372,8 +372,8 @@ fn the_lengths_a_source_states_do_not_decide() {
 #[test]
 fn a_count_disagreement_is_named_as_one() {
     assert_eq!(
-        classify(&found_verdict(11, Some(SourceTracks::Listed { count: 12 })),),
-        QueueClassification::NeedsYou(Some(FolderCheck::TrackCountDisagrees {
+        crate::identify::VerdictSummary::of(&found_verdict(11, Some(SourceTracks::Listed { count: 12 })),).judgement(),
+        (false, Some(FolderCheck::TrackCountDisagrees {
             local: 11,
             source: 12
         }))

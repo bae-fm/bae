@@ -10,9 +10,9 @@
 //! ordered vector of item references, and only the references inside the
 //! requested windows are turned into items.
 //!
-//! Everything the chrome around the list shows — the tab counts, the Ready
-//! rows a bulk import acts on, the group keys disclosure state is retained
-//! against — is computed in that same pass, so none of it can disagree with
+//! Everything the chrome around the list shows — the tab counts, Pending's
+//! covers, the group keys disclosure state is retained against — is computed
+//! in that same pass, so none of it can disagree with
 //! the rows.
 //!
 //! The read is of the tables and nothing else. What is running for a candidate
@@ -27,15 +27,16 @@ use super::mapping::MappingTable;
 use super::folder_scanner::FolderCandidate;
 use super::search::ImportSearchReleaseDetail;
 use super::triage::{
-    import_status_of, place, CandidateActionBasis, CandidateLiveState, ImportedRow,
-    TriageGroup, TriageImportStatus, TriageMetadataSummary, TriageRow,
+    import_status_of, place, stated_folder_check, CandidateActionBasis, CandidateLiveState, ImportedRow,
+    TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement, TriageReading,
+    TriageRow,
     TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{MetadataProvenance, RawReleaseEdit};
 use super::watched_folder::WatchedFolder;
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
 use crate::db::LibraryStatus;
-use crate::identify::{classify_summary, IdentifyState, VerdictKind, VerdictSummary};
+use crate::identify::{IdentifyState, VerdictKind, VerdictSummary};
 use crate::import::CandidateSession;
 use crate::library::{LibraryPageWindow, LibraryPageWindows};
 use crate::signals::Signals;
@@ -62,10 +63,9 @@ pub use super::triage::TriageTab;
 pub struct ImportListView {
     pub tab: TriageTab,
     pub filter_text: String,
-    /// Which of Pending's rows the list shows, by what each one's stored
-    /// lookup result says; `None` shows every row. Done and Skipped rows are
-    /// past identification, so it leaves them alone.
-    pub identification: Option<IdentificationOutcome>,
+    /// Which of Pending's rows the list shows; `None` shows every row. Done and
+    /// Skipped rows are past identification, so it leaves them alone.
+    pub pending_filter: Option<PendingFilter>,
     pub collapsed_groups: BTreeSet<FolderReleaseDecisionKey>,
     pub order: ImportListOrder,
 }
@@ -77,18 +77,6 @@ impl ImportListView {
         !self.filter_text.is_empty()
     }
 
-    /// Whether the Identification filter keeps a row in `tab` whose stored
-    /// lookup result reads `outcome`.
-    pub(crate) fn keeps_identification(
-        &self,
-        tab: TriageTab,
-        outcome: IdentificationOutcome,
-    ) -> bool {
-        match tab {
-            TriageTab::Pending => self.identification.is_none_or(|wanted| wanted == outcome),
-            TriageTab::Done | TriageTab::Skipped => true,
-        }
-    }
 }
 
 impl Default for ImportListView {
@@ -96,55 +84,83 @@ impl Default for ImportListView {
         Self {
             tab: TriageTab::Pending,
             filter_text: String::new(),
-            identification: None,
+            pending_filter: None,
             collapsed_groups: BTreeSet::new(),
             order: ImportListOrder::NewestFirst,
         }
     }
 }
 
-/// What a candidate's stored lookup result says, as the list's Identification
-/// filter names it. Read off the stored verdict rather than the Ready rule: the
-/// question is what identification found, not whether that may be imported
-/// unattended.
+/// Which of Pending's rows the list shows. A row can match more than one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IdentificationOutcome {
-    /// No lookup has finished: never identified, or waiting or running for
-    /// its first result.
-    NotIdentified,
-    /// The lookups found exactly one pressing.
-    OneRelease,
-    /// The lookups found more than one pressing.
-    SeveralReleases,
-    /// The lookups finished and matched nothing, or there was nothing to look
-    /// up. Either way the person searches by hand.
-    NoMatch,
-    /// A lookup failed.
-    LookupFailed,
+pub enum PendingFilter {
+    /// A catalog release is matched: the draft was read from one.
+    Identified,
+    /// The lookup found several releases and none is picked yet.
+    NeedsYou,
+    /// An identification is queued, running, or writing its answer.
+    Identifying,
+    /// An import is queued or running.
+    Importing,
+    /// A lookup failed to answer.
+    LookupError,
+    /// The candidate's last import failed.
+    ImportError,
 }
 
-impl IdentificationOutcome {
-    /// Every outcome, in the order a filter lists them.
-    pub const ALL: [Self; 5] = [
-        Self::NotIdentified,
-        Self::OneRelease,
-        Self::SeveralReleases,
-        Self::NoMatch,
-        Self::LookupFailed,
+impl PendingFilter {
+    /// Every filter, in the order the menu lists them.
+    pub const ALL: [Self; 6] = [
+        Self::Identified,
+        Self::NeedsYou,
+        Self::Identifying,
+        Self::Importing,
+        Self::LookupError,
+        Self::ImportError,
     ];
 
-    /// The outcome a candidate's stored verdict reads as, or `NotIdentified`
-    /// with none. A failed verdict reads as the failure whatever its
-    /// answering lookups found: the one that failed may have named more.
-    pub(crate) fn of(verdict: Option<&VerdictSummary>) -> Self {
-        let Some(verdict) = verdict else {
-            return Self::NotIdentified;
+    /// The candidates `filter` keeps by what is running for them, from every
+    /// candidate's runtime facts; empty for a filter the tables answer.
+    pub(crate) fn live_matches<'a>(
+        filter: Option<Self>,
+        facts: impl IntoIterator<Item = (&'a String, &'a TriageRuntimeFacts)>,
+    ) -> BTreeSet<String> {
+        let keeps: fn(&TriageRuntimeFacts) -> bool = match filter {
+            Some(Self::Identifying) => TriageRuntimeFacts::identifying,
+            Some(Self::Importing) => TriageRuntimeFacts::importing,
+            Some(Self::Identified | Self::NeedsYou | Self::LookupError | Self::ImportError)
+            | None => return BTreeSet::new(),
         };
-        match verdict.kind {
-            VerdictKind::Found if verdict.pressing_count == 1 => Self::OneRelease,
-            VerdictKind::Found => Self::SeveralReleases,
-            VerdictKind::NotFound | VerdictKind::ManualOnly => Self::NoMatch,
-            VerdictKind::Failed => Self::LookupFailed,
+        facts
+            .into_iter()
+            .filter(|(_, facts)| keeps(facts))
+            .map(|(key, _)| key.clone())
+            .collect()
+    }
+
+    fn keeps(
+        self,
+        row: &TriageRow,
+        verdict: Option<&VerdictSummary>,
+        live_matches: &BTreeSet<String>,
+    ) -> bool {
+        let identified = matches!(row.reading, TriageReading::Identified { .. });
+        match self {
+            Self::Identified => identified,
+            Self::NeedsYou => {
+                !identified
+                    && verdict.is_some_and(|verdict| {
+                        verdict.kind == VerdictKind::Found && verdict.pressing_count > 1
+                    })
+            }
+            Self::LookupError => {
+                verdict.is_some_and(|verdict| verdict.kind == VerdictKind::Failed)
+            }
+            Self::ImportError => matches!(
+                row.import_status,
+                Some(TriageImportStatus::Error { .. })
+            ),
+            Self::Identifying | Self::Importing => live_matches.contains(&row.candidate_key),
         }
     }
 }
@@ -210,16 +226,38 @@ impl UploadStanding {
 
 /// Everything the list query is a function of.
 ///
-/// `upload_standing` is filled in by [`ImportListSubscription`], never by a
-/// caller: an outstanding upload moves a Done row within its tab, and whether
-/// one is moving or waiting is the upload pipeline's, held in memory rather
-/// than in a table this query reads.
+/// `upload_standing` and `live_matches` are held in memory rather than in a
+/// table this query reads — by the upload pipeline and the candidate runtime —
+/// so whoever builds the request reads them in: [`ImportListSubscription`]
+/// keeps them current.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ImportListRequest {
     pub view: ImportListView,
     pub windows: LibraryPageWindows,
     /// Only the releases the cloud outbox still holds work for, by release id.
     pub upload_standing: BTreeMap<String, UploadStanding>,
+    /// The candidates the view's pending filter keeps by what is running for
+    /// them now; empty for a filter the tables answer.
+    pub live_matches: BTreeSet<String>,
+}
+
+impl ImportListRequest {
+    /// Whether the pending filter keeps `row`, placed in `tab`, whose stored
+    /// lookup result is `verdict`.
+    pub(crate) fn keeps_pending(
+        &self,
+        tab: TriageTab,
+        row: &TriageRow,
+        verdict: Option<&VerdictSummary>,
+    ) -> bool {
+        match tab {
+            TriageTab::Pending => self
+                .view
+                .pending_filter
+                .is_none_or(|filter| filter.keeps(row, verdict, &self.live_matches)),
+            TriageTab::Done | TriageTab::Skipped => true,
+        }
+    }
 }
 
 /// One item in the list, at one offset.
@@ -310,17 +348,6 @@ pub struct ImportListWindow {
     pub items: Vec<ImportListItem>,
 }
 
-/// One Ready row, as the surfaces that act on the whole Ready set need it: the
-/// foot bar's count, select-all, the bulk import's claims, and the covers to
-/// decode before Pending opens. Ready as the tables place it: a bulk import
-/// checks what is running for each row when it gets to it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ReadyRowRef {
-    pub candidate_key: String,
-    /// The lead match's cover, which Pending's rows draw.
-    pub cover: Option<crate::import::cover_art::RemoteImageSet>,
-}
-
 /// Everything the chrome around the list shows, computed in the same pass as
 /// the items so none of it can drift from them.
 #[derive(Debug, Clone, PartialEq)]
@@ -330,8 +357,9 @@ pub struct ImportQueueSummary {
     /// Every group header the whole queue has, across all tabs — what
     /// disclosure state is retained against.
     pub group_keys: Vec<FolderReleaseDecisionKey>,
-    /// The Ready rows matching the view's filter, in queue order.
-    pub ready: Vec<ReadyRowRef>,
+    /// The lead-match covers of the Pending rows the view's filters keep, in
+    /// queue order, to decode before Pending opens.
+    pub pending_covers: Vec<crate::import::cover_art::RemoteImageSet>,
 }
 
 /// Where each watched folder's scan stands, for the chrome around the list.
@@ -525,17 +553,12 @@ impl ImportCandidateDetailProjection {
             failure
         };
         let verdict = verdict.as_ref().filter(|_| actionable);
-        let placement = place(
-            skipped,
-            is_added,
-            import_status.as_ref(),
-            metadata_author,
-            metadata_draft.clone().shape().is_ok(),
-            verdict.map(classify_summary).as_ref(),
-        );
+        let draft_valid = metadata_draft.clone().shape().is_ok();
+        let placement = place(skipped, is_added, import_status.as_ref());
         let action_basis = CandidateActionBasis::of(
             actionable,
             &placement,
+            draft_valid,
             verdict.map(|verdict| verdict.kind),
             candidate.grouping.is_some(),
         );
@@ -556,7 +579,9 @@ impl ImportCandidateDetailProjection {
         };
         let pane_placement = match placement.tab() {
             TriageTab::Pending => CandidatePanePlacement::Pending {
-                folder_check: placement.folder_check().cloned(),
+                folder_check: (placement == TriagePlacement::Pending)
+                    .then(|| stated_folder_check(metadata_author, draft_valid, verdict))
+                    .flatten(),
                 records: draft_records(),
             },
             TriageTab::Skipped => CandidatePanePlacement::Skipped {

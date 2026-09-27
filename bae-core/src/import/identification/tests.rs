@@ -7,7 +7,7 @@ use crate::config::{Config, ConfigHandle};
 use crate::db::{
     Database, DbCandidateIdentifyResult, DbImportCandidateState, NewImportCandidateVerdict,
 };
-use crate::identify::ready::{classify, FolderCheck, QueueClassification};
+use crate::identify::{FolderCheck, VerdictSummary};
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::{FolderCandidate, ImportCandidateSnapshot};
 use crate::library::LibraryManager;
@@ -809,10 +809,11 @@ impl Fixture {
         assert!(wrote, "the seeded verdict lands");
     }
 
-    /// The classification derived from a stored row's verdict.
-    async fn classification_for(&self, dir: &Path) -> QueueClassification {
+    /// Whether a stored row's verdict is auto-importable, and the check
+    /// against the folder it failed.
+    async fn judgement_for(&self, dir: &Path) -> (bool, Option<FolderCheck>) {
         let row = self.stored_for(dir).await.expect("a row was stored");
-        classify(&identify_result(&row).verdict)
+        VerdictSummary::of(&identify_result(&row).verdict).judgement()
     }
 }
 

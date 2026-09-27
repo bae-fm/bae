@@ -407,13 +407,13 @@ extension ImportCandidateViewportTests {
                 actionBasis: BridgeCandidateActionBasis(
                     actionable: true,
                     placement: .skipped,
+                    draftValid: false,
                     lookupFailed: false,
                     separable: false
                 ),
                 matched: nil,
                 metadataSummary: nil,
                 cover: nil,
-                selectable: false,
                 importStatus: nil,
                 metadataProvenance: nil,
                 reading: .unidentified,

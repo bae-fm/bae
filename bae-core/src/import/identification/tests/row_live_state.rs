@@ -54,12 +54,14 @@ async fn a_claimed_import_reaches_its_row_and_not_the_list() {
         })
         .collect(),
         upload_standing: Default::default(),
+        live_matches: Default::default(),
     };
     let list = crate::import::ImportListSubscription::start(
         fixture.manager.subscribe_import_list(request.clone()),
         fixture.manager.subscribe_folder_scan_progress(),
         request,
         fixture.manager.subscribe_outbox_values(),
+        fixture.import.watch_runtime_facts(),
         &tokio::runtime::Handle::current(),
     );
     let initial = list.next().await.expect("the list answers");

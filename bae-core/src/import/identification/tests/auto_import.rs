@@ -1,6 +1,6 @@
 // ── Importing when identified ───────────────────────────────────────────────
 //
-// An automatic run that stores a Ready verdict, while "Import automatically
+// An automatic run that stores an auto-importable verdict, while "Import automatically
 // when identified" is on, starts its candidate's import right then — the same
 // start a person's Import press makes. Nothing else imports on its own.
 
@@ -92,15 +92,15 @@ impl Fixture {
         );
     }
 
-    /// An automatic run's Ready verdict for `dir`, stored while importing when
+    /// An automatic run's auto-importable verdict for `dir`, stored while importing when
     /// identified is off.
     async fn identify_ready(&self, dir: &Path, release_id: &str, group_id: &str) {
         self.route_disc_id_match(dir, release_id, group_id, 2);
         self.scan(1).await;
         self.drain_automatic().await;
         assert_eq!(
-            self.classification_for(dir).await,
-            QueueClassification::Ready
+            self.judgement_for(dir).await,
+            (true, None)
         );
     }
 
@@ -115,8 +115,8 @@ impl Fixture {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn an_automatic_run_that_settles_ready_imports_its_candidate_once() {
-    let fixture = Fixture::importing("auto-import-ready").await;
+async fn an_automatic_run_that_settles_auto_importable_imports_its_candidate_once() {
+    let fixture = Fixture::importing("auto-importable").await;
     fixture.manager.set_import_when_identified(true).await.unwrap();
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
@@ -126,8 +126,8 @@ async fn an_automatic_run_that_settles_ready_imports_its_candidate_once() {
 
     fixture.drain_automatic().await;
     assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::Ready
+        fixture.judgement_for(&dir).await,
+        (true, None)
     );
 
     let (imports, failure) = await_import_ending(&mut events, &key).await;
@@ -139,9 +139,9 @@ async fn an_automatic_run_that_settles_ready_imports_its_candidate_once() {
     assert_no_import(&mut events, &key, "the watched folder was read again").await;
 }
 
-/// With the setting off, a Ready verdict waits for a person.
+/// With the setting off, an auto-importable verdict waits for a person.
 #[tokio::test(flavor = "multi_thread")]
-async fn an_automatic_run_that_settles_ready_with_the_setting_off_imports_nothing() {
+async fn an_automatic_run_that_settles_auto_importable_with_the_setting_off_imports_nothing() {
     let fixture = Fixture::new("auto-import-setting-off").await;
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
@@ -152,8 +152,8 @@ async fn an_automatic_run_that_settles_ready_with_the_setting_off_imports_nothin
     fixture.drain_automatic().await;
 
     assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::Ready
+        fixture.judgement_for(&dir).await,
+        (true, None)
     );
     assert_no_import(&mut events, &key, "the run settled with the setting off").await;
 }
@@ -184,8 +184,8 @@ async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
     fixture.drain_automatic().await;
 
     assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::NeedsYou(None)
+        fixture.judgement_for(&dir).await,
+        (false, None)
     );
     assert_no_import(&mut events, &key, "the run settled needing a person").await;
 }
@@ -211,8 +211,8 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
     fixture.drain_automatic().await;
 
     assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::NeedsYou(Some(FolderCheck::MediumDisagrees {
+        fixture.judgement_for(&dir).await,
+        (false, Some(FolderCheck::MediumDisagrees {
             folder: crate::identify::MediumConflict::CdRip
         }))
     );
@@ -232,7 +232,7 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
 /// Turning the setting on imports only what settles from then on: a candidate
 /// already identified and ready stays where it is for the person.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_candidate_ready_before_the_setting_was_on_is_not_imported() {
+async fn a_candidate_auto_importable_before_the_setting_was_on_is_not_imported() {
     let fixture = Fixture::new("auto-import-earlier").await;
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
@@ -266,8 +266,8 @@ async fn a_run_a_person_asked_for_imports_nothing() {
     fixture.await_identified_row(&dir).await;
 
     assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::Ready
+        fixture.judgement_for(&dir).await,
+        (true, None)
     );
     assert_no_import(&mut events, &key, "the person's run settled").await;
 }

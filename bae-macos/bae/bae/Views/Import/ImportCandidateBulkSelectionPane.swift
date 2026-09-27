@@ -70,8 +70,8 @@ struct ImportCandidateBulkSelectionCard: View {
     let selectedCount: Int
     let offers: [ImportCandidateActionOffer]
     let isRunning: Bool
-    /// Whether the library has a cloud home, which is what gives Import ready
-    /// its storage choices.
+    /// Whether the library has a cloud home, which is what gives Import its
+    /// storage choices.
     let showsStorageChoices: Bool
     @Binding
     var storageCloud: Bool
@@ -122,7 +122,7 @@ struct ImportCandidateBulkSelectionCard: View {
                 ForEach(rows(in: group)) { offer in
                     BulkActionRow(offer: offer) { onPerform(offer) }
                         .disabled(isRunning || !offer.enabled)
-                    if offer.action == .importReady, showsStorageChoices {
+                    if offer.action == .import, showsStorageChoices {
                         storageChoices
                     }
                 }
@@ -167,7 +167,7 @@ struct ImportCandidateBulkSelectionCard: View {
 extension ImportCandidateActionOffer {
     /// Whether the row gets folders into the library, which is what the
     /// accent and the heavier name mark.
-    var isConstructive: Bool { action == .importReady || action == .combine }
+    var isConstructive: Bool { action == .import || action == .combine }
 }
 
 /// The groups a selection's actions are listed in, in the order both the card
@@ -190,7 +190,7 @@ enum ImportBulkActionGroup: CaseIterable, Identifiable {
 
     var actions: [BridgeCandidateAction] {
         switch self {
-        case .importing: [.importReady, .cancelImport, .combine, .separate]
+        case .importing: [.import, .cancelImport, .combine, .separate]
         case .metadata:
             [
                 .identify, .cancelIdentification, .retryIdentification,

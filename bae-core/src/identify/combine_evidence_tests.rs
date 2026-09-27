@@ -405,7 +405,7 @@ fn mono_audio_does_not_outrank_what_the_lookups_agree_on() {
 }
 
 /// Where every pressing is listed as stereo, one-channel files leave them all
-/// offered with no conflict, so a single one is Ready like any other.
+/// offered with no conflict, so a single one is auto-importable like any other.
 #[test]
 fn mono_audio_against_stereo_listings_can_still_be_ready() {
     let (result, status) = stated_stereo("rel-stereo", made_of(&[Medium::Vinyl]));
@@ -432,8 +432,8 @@ fn mono_audio_against_stereo_listings_can_still_be_ready() {
         ledger: None,
     };
     assert_eq!(
-        crate::identify::classify(&verdict),
-        crate::identify::QueueClassification::Ready
+        crate::identify::VerdictSummary::of(&verdict).judgement(),
+        (true, None)
     );
 }
 

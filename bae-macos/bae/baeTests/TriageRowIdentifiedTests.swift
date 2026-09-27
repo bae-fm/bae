@@ -63,29 +63,6 @@ struct TriageRowIdentifiedTests {
         )
     }
 
-    /// A failed folder check is the pane's to state: a Needs-you row draws
-    /// the same whichever check it carries, or none, and the same as a Ready
-    /// row.
-    @MainActor
-    @Test(
-        "a row draws no badge for the folder check it failed",
-        arguments: [
-            nil,
-            BridgeFolderCheck.trackCountDisagrees(local: 13, source: 12),
-            .sourceTracksUnknown,
-            .mediumDisagrees(folder: .cdRip),
-        ]
-    )
-    func aRowDrawsNoBadgeForTheFolderCheckItFailed(
-        _ folderCheck: BridgeFolderCheck?
-    ) async throws {
-        var ready = PreviewData.triageRowReadFromRecord
-        ready.placement = .ready
-        var needsYou = ready
-        needsYou.placement = .needsYou(folderCheck: folderCheck)
-        #expect(try await pixels(of: needsYou) == pixels(of: ready))
-    }
-
     /// Every folder check resolves to a sentence from the app's `Core` table
     /// rather than falling back to its key.
     @Test(

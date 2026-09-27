@@ -14,7 +14,7 @@ import SwiftUI
 /// here and drawn by `TriageRowContent`.
 struct TriageRowView: View {
     /// The cover's edge, in points. Named because it is also the size the
-    /// sidebar warms Ready covers at — a decode cached at another size is a
+    /// sidebar warms Pending's covers at — a decode cached at another size is a
     /// different entry and would not spare this row its placeholder.
     static let coverPointSize: CGFloat = 50
 
@@ -179,7 +179,7 @@ struct TriageRowContent: View {
 /// and the layout it composes stay readable as one piece.
 extension TriageRowContent {
     /// State that belongs below the release summary: an import failure, or a
-    /// write of an identification result that failed. What a Ready check found
+    /// write of an identification result that failed. What a folder check found
     /// is the pane's to state, beside the Import it bears on; identification
     /// activity belongs to the trailing indicator's tooltip.
     private var statusLine: String? {
@@ -187,7 +187,7 @@ extension TriageRowContent {
             return error.displayLine
         }
         switch row.placement {
-        case .pending, .ready, .skipped, .needsYou:
+        case .pending, .skipped:
             return nil
         case .failed, .done:
             return importStatusLine
@@ -235,11 +235,6 @@ extension TriageRowContent {
     private var placementTrailing: some View {
         switch row.placement {
         case .pending:
-            EmptyView()
-        case .ready:
-            EmptyView()
-        case .needsYou:
-            // The question is the pane's to state.
             EmptyView()
         case .failed, .done:
             importTrailing
@@ -340,9 +335,9 @@ extension TriageRowContent {
                 isGroupMember: false
             )
             TriageRowView(
-                row: PreviewData.triageRowReady,
+                row: PreviewData.triageRowIdentified,
                 coverContent: importStore.sidebarCover(
-                    for: PreviewData.triageRowReady
+                    for: PreviewData.triageRowIdentified
                 ),
                 isGroupMember: false
             )

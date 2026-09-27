@@ -2,21 +2,18 @@ use super::*;
 use crate::import::triage::{CandidateAction, CandidateLiveState};
 use crate::import::IdentificationStatus;
 
-/// The Ready set is the tables': a Ready row a run is identifying again stays
-/// in it, and only its own live state keeps a bulk import off it while the
-/// run is in flight.
+/// A row a run is identifying again stays where the tables place it, and only
+/// its own live state keeps an import off it while the run is in flight.
 #[test]
-fn a_ready_candidate_under_identification_stays_in_the_ready_set() {
+fn a_candidate_under_identification_offers_only_its_cancel_and_skip() {
     let mut rows = queue();
     rows.candidates.push(candidate("Release"));
     rows.states
-        .insert("hash-Release".to_string(), ready_state("mb-1"));
+        .insert("hash-Release".to_string(), auto_importable_state("mb-1"));
 
     let flat = flattened(&rows, &view(TriageTab::Pending));
     let row = row_for(&flat, "Release");
-    assert_eq!(row.placement, TriagePlacement::Ready);
-    assert!(row.selectable);
-    assert_eq!(flat.summary.ready.len(), 1);
+    assert_eq!(row.placement, TriagePlacement::Pending);
 
     for status in [
         IdentificationStatus::Queued,
@@ -42,6 +39,6 @@ fn a_ready_candidate_under_identification_stays_in_the_ready_set() {
     assert!(
         CandidateLiveState::of(&row.action_basis, TriageRuntimeFacts::default())
             .actions
-            .contains(&CandidateAction::ImportReady)
+            .contains(&CandidateAction::Import)
     );
 }

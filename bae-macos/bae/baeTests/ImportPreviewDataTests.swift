@@ -37,17 +37,17 @@ struct ImportPreviewDataTests {
     }
 
     @MainActor
-    @Test("smoke preview includes a selectable ready child")
-    func smokePreviewExercisesReadyGroupMember() {
-        let hasReadyGroupMember = PreviewData.importTabItems(.pending)
+    @Test("smoke preview includes a pending group member")
+    func smokePreviewExercisesPendingGroupMember() {
+        let hasPendingGroupMember = PreviewData.importTabItems(.pending)
             .contains { item in
                 guard case .candidate(_, let row, true) = item else {
                     return false
                 }
-                return row.placement == .ready && row.selectable
+                return row.placement == .pending
             }
 
-        #expect(hasReadyGroupMember)
+        #expect(hasPendingGroupMember)
     }
 
     @MainActor
@@ -178,7 +178,7 @@ struct ImportPreviewDataTests {
             return row
         }
         let live = scene.store.selectedCandidates.values.compactMap(\.live)
-        #expect(rows.contains { $0.placement == .ready })
+        #expect(rows.contains { $0.placement == .pending })
         #expect(live.contains { $0.importing })
         #expect(rows.contains { $0.placement == .failed })
         #expect(
@@ -188,10 +188,10 @@ struct ImportPreviewDataTests {
             }
         )
         #expect(rows.contains { $0.placement == .skipped })
-        #expect(rows.contains { $0.placement == .needsYou(folderCheck: nil) })
         #expect(
-            rows.contains { row in
-                if case .needsYou(.trackCountDisagrees) = row.placement {
+            scene.store.selectedCandidates.values.contains { candidate in
+                if case .pending(.trackCountDisagrees, _) = candidate.placement
+                {
                     return true
                 }
                 return false

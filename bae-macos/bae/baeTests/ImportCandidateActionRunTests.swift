@@ -106,13 +106,13 @@ struct ImportCandidateActionRunTests {
     @Test("A bulk import reports a row it skipped for being identified")
     func bulkImportReportsARowBeingIdentified() async {
         let identifying = PreviewData.importTabCandidate
-        let ready = PreviewData.importTabDisagreementCandidate
+        let other = PreviewData.importTabDisagreementCandidate
         let uiStore = UiStore()
-        uiStore.setFolderCandidateSelection([identifying.key, ready.key])
+        uiStore.setFolderCandidateSelection([identifying.key, other.key])
         var attempted: [String] = []
         await uiStore.candidateActionRun.perform(
-            action: .importReady,
-            targets: [identifying, ready].map(\.actionTarget),
+            action: .import,
+            targets: [identifying, other].map(\.actionTarget),
             uiStore: uiStore
         ) { key in
             attempted.append(key)
@@ -123,7 +123,7 @@ struct ImportCandidateActionRunTests {
                 )
             }
         }
-        #expect(attempted == [identifying.key, ready.key])
+        #expect(attempted == [identifying.key, other.key])
         #expect(uiStore.selectedFolderCandidates == [identifying.key])
         let line = uiStore.lastError?.line ?? ""
         #expect(line.contains(identifying.displayName))
@@ -167,7 +167,7 @@ struct ImportCandidateActionRunTests {
                 ($0.action, $0.targets.count)
             }
         )
-        #expect(targetCounts[.importReady] == 1)
+        #expect(targetCounts[.import] == 1)
         #expect(targetCounts[.skip] == 2)
         #expect(targetCounts[.restore] == nil)
         #expect(targetCounts[.combine] == 2)

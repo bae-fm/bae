@@ -73,7 +73,7 @@ pub enum IdentifyFailure {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum TerminalVerdict {
     /// One or more results — what `combine` produced, and what the sidebar and
-    /// the Ready rule both work from directly.
+    /// the auto-import check both work from directly.
     Found {
         findings: Findings,
         track_count: u32,

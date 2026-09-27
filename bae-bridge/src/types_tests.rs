@@ -324,12 +324,8 @@ mod conversion_roundtrip {
     fn candidate_action_basis_round_trips() {
         let core = bae_core::import::CandidateActionBasis {
             actionable: true,
-            placement: bae_core::import::TriagePlacement::NeedsYou {
-                folder_check: Some(bae_core::identify::FolderCheck::TrackCountDisagrees {
-                    local: 13,
-                    source: 12,
-                }),
-            },
+            placement: bae_core::import::TriagePlacement::Failed,
+            draft_valid: true,
             lookup_failed: true,
             separable: true,
         };

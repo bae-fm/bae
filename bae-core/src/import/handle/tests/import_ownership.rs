@@ -49,7 +49,7 @@ async fn repeated_imports_of_one_candidate_make_one_release() {
         .unwrap_or_else(|error| panic!("import failed: {error}"));
 
     let after = handle.start_import(&key).await;
-    let ready = handle.import_ready(&key).await;
+    let selected = handle.import_selected(&key).await;
     let releases = release_count(&handle).await;
     shut_down(handle).await;
 
@@ -58,7 +58,7 @@ async fn repeated_imports_of_one_candidate_make_one_release() {
         Err(crate::import::ImportError::CandidateAlreadyImported)
     ));
     assert!(matches!(
-        ready,
+        selected,
         Err(crate::import::ImportError::CandidateAlreadyImported)
     ));
     assert_eq!(releases, 1);

@@ -1,7 +1,7 @@
 // ── Where the pane stands once a result lands ──────────────────────────────
 
-/// A run that applied its own pick and whose result asks nothing leaves the
-/// draft and its Import as all there is to see, so the stored pane moves to
+/// A run that applied its own pick and whose release passed every check
+/// against the folder leaves the draft and its Import as all there is to see, so the stored pane moves to
 /// the draft in the same write — from Find online, where the person was
 /// watching the run.
 #[tokio::test(flavor = "multi_thread")]
@@ -25,8 +25,8 @@ async fn a_settled_pick_that_asks_nothing_opens_the_pane_on_the_draft() {
         .await;
 
     assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::Ready
+        fixture.judgement_for(&dir).await,
+        (true, None)
     );
     assert_eq!(
         fixture
@@ -39,8 +39,9 @@ async fn a_settled_pick_that_asks_nothing_opens_the_pane_on_the_draft() {
     );
 }
 
-/// A result that asks something — here, the release lists three tracks
-/// against the folder's two — leaves the pane where the person left it.
+/// A picked release that failed a check against the folder — here, it lists
+/// three tracks against the folder's two — leaves the pane where the person
+/// left it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
     let fixture = Fixture::new("settled-asks").await;
@@ -66,8 +67,8 @@ async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
         .await;
 
     assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::NeedsYou(Some(crate::identify::FolderCheck::TrackCountDisagrees {
+        fixture.judgement_for(&dir).await,
+        (false, Some(crate::identify::FolderCheck::TrackCountDisagrees {
             local: 2,
             source: 3
         }))

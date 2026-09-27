@@ -22,34 +22,38 @@ pub enum BridgeImportListOrder {
 pub struct BridgeImportListView {
     pub tab: BridgeTriageTab,
     pub filter_text: String,
-    /// Which of Pending's rows the list shows, by what each one's stored
-    /// lookup result says; `None` shows every row.
-    pub identification: Option<BridgeIdentificationOutcome>,
+    /// Which of Pending's rows the list shows; `None` shows every row.
+    pub pending_filter: Option<BridgePendingFilter>,
     /// The groups folded shut. Their entries are not in the list at all, which
     /// is why this is part of the request rather than a rendering decision.
     pub collapsed_groups: Vec<BridgeFolderReleaseDecisionKey>,
     pub order: BridgeImportListOrder,
 }
 
-/// What a candidate's stored lookup result says, as the list's Identification
-/// filter names it. Mirrors `bae_core::import::IdentificationOutcome`.
+/// Which of Pending's rows the list shows. Mirrors
+/// `bae_core::import::PendingFilter`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
-pub enum BridgeIdentificationOutcome {
-    /// No lookup has finished: never identified, or waiting or running.
-    NotIdentified,
-    OneRelease,
-    SeveralReleases,
-    /// Matched nothing, or there was nothing to look up.
-    NoMatch,
-    LookupFailed,
+pub enum BridgePendingFilter {
+    /// A catalog release is matched.
+    Identified,
+    /// Several releases were found and none is picked yet.
+    NeedsYou,
+    /// An identification is queued, running, or writing its answer.
+    Identifying,
+    /// An import is queued or running.
+    Importing,
+    /// A lookup failed to answer.
+    LookupError,
+    /// The last import failed.
+    ImportError,
 }
 
-/// Every outcome, in the order the Identification filter lists them.
+/// Every pending filter, in the order the menu lists them.
 #[cfg(feature = "desktop")]
 #[uniffi::export]
-pub fn bridge_identification_outcomes() -> Vec<BridgeIdentificationOutcome> {
-    bae_core::import::IdentificationOutcome::ALL
-        .map(BridgeIdentificationOutcome::from_core)
+pub fn bridge_pending_filters() -> Vec<BridgePendingFilter> {
+    bae_core::import::PendingFilter::ALL
+        .map(BridgePendingFilter::from_core)
         .to_vec()
 }
 
@@ -90,17 +94,6 @@ pub struct BridgeImportListWindow {
     pub items: Vec<BridgeImportListItem>,
 }
 
-/// One Ready row, for the surfaces that act on the whole Ready set: the foot
-/// bar's count, select-all, the bulk import's claims, and the covers to decode
-/// before Pending opens.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReadyRowRef {
-    pub candidate_key: String,
-    /// The lead match's cover, which the row draws — decoded ahead so Pending
-    /// opens with its art.
-    pub cover: Option<BridgeRemoteImageSet>,
-}
-
 /// The list view and position that reveal one candidate at its current
 /// placement.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -124,8 +117,9 @@ pub struct BridgeImportQueueSummary {
     /// Every group header the whole queue has, across all tabs — what
     /// disclosure state is retained against.
     pub group_keys: Vec<BridgeFolderReleaseDecisionKey>,
-    /// The Ready rows matching the view's filter, in queue order.
-    pub ready: Vec<BridgeReadyRowRef>,
+    /// The lead-match covers of the Pending rows the view's filters keep, in
+    /// queue order, to decode before Pending opens.
+    pub pending_covers: Vec<BridgeRemoteImageSet>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

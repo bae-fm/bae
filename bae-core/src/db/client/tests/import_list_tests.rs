@@ -150,6 +150,7 @@ async fn request(tab: TriageTab) -> ImportListRequest {
         })
         .collect(),
         upload_standing: Default::default(),
+        live_matches: Default::default(),
     }
 }
 
@@ -278,10 +279,10 @@ async fn a_row_without_a_pick_leads_with_the_verdicts_lead_match() {
 }
 
 /// A verdict whose releases the folder's files rule out reads back as the
-/// row's question, and the pane reads the rate that rules a CD out off the
-/// folder's files, where alone it is stored.
+/// check the pane states beside Import, and the pane reads the rate that
+/// rules a CD out off the folder's files, where alone it is stored.
 #[tokio::test]
-async fn a_verdict_the_folder_rules_out_reads_back_as_its_question() {
+async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
     let (db, _tmp, root) = watched_root().await;
     let mut candidate = candidate(&root, "Album");
     for file in &mut candidate.files.files {
@@ -346,14 +347,17 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_question() {
         state.identify.expect("the verdict reads back").verdict,
         stored
     );
-    let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+    let pane = db
+        .load_import_candidate(&candidate.path.to_string_lossy())
         .await
-        .unwrap();
+        .unwrap()
+        .expect("the scanned candidate reads back")
+        .resolve(&crate::import::TriageRuntimeFacts::default());
     assert_eq!(
-        rows(&projection)[0].placement,
-        crate::import::TriagePlacement::NeedsYou {
-            folder_check: Some(crate::identify::FolderCheck::MediumDisagrees { folder: conflict })
+        pane.placement,
+        crate::import::CandidatePanePlacement::Pending {
+            folder_check: Some(crate::identify::FolderCheck::MediumDisagrees { folder: conflict }),
+            records: Vec::new(),
         }
     );
     let detail = db

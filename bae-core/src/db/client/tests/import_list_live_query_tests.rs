@@ -22,6 +22,7 @@ pub(super) fn list_request(
             .map(|(offset, limit)| crate::library::LibraryPageWindow { offset, limit })
             .collect(),
         upload_standing: Default::default(),
+        live_matches: Default::default(),
     }
 }
 
@@ -263,7 +264,7 @@ async fn import_list_filter_finds_a_done_row_by_its_library_title() {
 }
 
 /// The pane of a candidate its import put in the library is placed Done, which
-/// carries nothing of the candidate's draft: its Ready check and its draft's
+/// carries nothing of the candidate's draft: its folder check and its draft's
 /// catalogs belong to a candidate still in the queue.
 #[tokio::test]
 async fn the_pane_of_an_imported_candidate_is_placed_done() {

@@ -11,7 +11,7 @@ pub struct IdentificationPreferences {
     /// Changing it affects no candidate already found or queued. Defaults to
     /// `true`.
     pub automatic: bool,
-    /// Whether a candidate an automatic run settles as Ready is imported
+    /// Whether a candidate an automatic run settles as auto-importable is imported
     /// straight away. Defaults to `false`, and is read only through
     /// [`Self::imports_when_identified`].
     pub import_when_identified: bool,
@@ -23,7 +23,7 @@ pub struct IdentificationPreferences {
 }
 
 impl IdentificationPreferences {
-    /// Whether an automatic run imports what it settles as Ready.
+    /// Whether an automatic run imports what it settles as auto-importable.
     pub fn imports_when_identified(&self) -> bool {
         self.automatic && self.import_when_identified
     }

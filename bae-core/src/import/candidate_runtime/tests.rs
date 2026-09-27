@@ -52,7 +52,7 @@ fn claim(runtime: &CandidateRuntime, key: &str) {
     runtime.claim_for_import(key, "imp-1").unwrap();
 }
 
-fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
+pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
     crate::identify::state::SignalsContext {
         rip: crate::signals::RipEvidence::Unproven,
         providers: Vec::new(),
@@ -88,7 +88,8 @@ fn identify(key: &str, run: u64, state: crate::identify::IdentifyState) -> Impor
     }
 }
 
-fn triangulating() -> crate::identify::IdentifyState {
+/// A run's state partway through, which the runtime records as running.
+pub(crate) fn triangulating() -> crate::identify::IdentifyState {
     crate::identify::IdentifyState::Triangulating {
         discid: crate::identify::DiscidProgress::Computing,
         barcode: crate::identify::BarcodeProgress::Scanning,

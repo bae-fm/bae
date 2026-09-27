@@ -25,8 +25,7 @@
         ) -> BridgeTriageRow {
             triageRow(
                 for: glyphCandidate(folder),
-                placement: .ready,
-                selectable: true,
+                placement: .pending,
                 matched: nil,
                 metadataSummary: glyphSummary,
                 cover: .local(path: previewArtPath("Front.png")),

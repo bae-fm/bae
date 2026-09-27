@@ -67,7 +67,7 @@ pub struct MetadataResult {
     /// albums on one card.
     pub album_links: AlbumLinks,
     /// What the source says about this release's own tracklist — the other half
-    /// of the Ready rule, which admits a single match only when the source's
+    /// of the auto-import check, which admits a single match only when the source's
     /// track count agrees with the candidate's.
     ///
     /// **`None` means nobody has asked yet** — not that the source has

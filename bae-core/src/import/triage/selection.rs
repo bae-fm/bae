@@ -80,11 +80,11 @@ mod tests {
     fn one_member_offers_its_own_actions_in_order() {
         let offers = selection_offers(&[member(
             "Album",
-            &[A::RevealFolder, A::Skip, A::Combine, A::Identify, A::ImportReady],
+            &[A::RevealFolder, A::Skip, A::Combine, A::Identify, A::Import],
         )]);
         assert_eq!(
             actions(&offers),
-            vec![A::ImportReady, A::Identify, A::Skip, A::RevealFolder]
+            vec![A::Import, A::Identify, A::Skip, A::RevealFolder]
         );
         assert!(offers.iter().all(|offer| offer.enabled));
     }
@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn each_action_applies_to_the_members_that_offer_it() {
         let offers = selection_offers(&[
-            member("Ready Album", &[A::ImportReady, A::Identify, A::RevealFolder]),
+            member("Identified Album", &[A::Import, A::Identify, A::RevealFolder]),
             member("Other Album", &[A::Identify, A::RevealFolder]),
         ]);
         let keys = |action| {
@@ -102,10 +102,10 @@ mod tests {
                 .find(|offer| offer.action == action)
                 .map(|offer| offer.candidate_keys.clone())
         };
-        assert_eq!(keys(A::ImportReady), Some(vec!["Ready Album".to_string()]));
+        assert_eq!(keys(A::Import), Some(vec!["Identified Album".to_string()]));
         assert_eq!(
             keys(A::Identify),
-            Some(vec!["Ready Album".to_string(), "Other Album".to_string()])
+            Some(vec!["Identified Album".to_string(), "Other Album".to_string()])
         );
         assert_eq!(keys(A::Skip), None);
     }

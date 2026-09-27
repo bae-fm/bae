@@ -2,7 +2,7 @@
 
 /// Deciding an identity persists it and the pane reads it back — the whole of
 /// "resume" — with the provider gone. A settled single match wrote the same
-/// record, so a Ready candidate reads identically.
+/// record, so an auto-importable candidate reads identically.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_reads_back_as_the_same_answer() {
     let fixture = Fixture::new("pick-answer").await;

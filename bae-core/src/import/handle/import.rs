@@ -49,8 +49,9 @@ enum ImportRequest {
     /// This candidate itself, by a person or by its just-settled automatic run;
     /// the claim ends whatever identification it had.
     Candidate,
-    /// A bulk import of the Ready set; refused while the row is being identified.
-    ReadySet,
+    /// One row of a bulk import of a selection; refused while the row is being
+    /// identified.
+    Selection,
 }
 
 impl ImportServiceHandle {
@@ -178,26 +179,24 @@ impl ImportServiceHandle {
         .await
     }
 
-    /// Import one row of a bulk import of the Ready set: the same import as
-    /// [`Self::start_import`], refused for a candidate an import already owns
-    /// or identification is still answering. The Ready set is what the tables
-    /// say; what is running is checked here, under the lock the claim is taken
-    /// under, so a refusal is the state at the moment the row is reached.
-    pub async fn import_ready(
+    /// Import one row of a bulk import of a selection: the same import as
+    /// [`Self::start_import`], refused for a candidate identification is still
+    /// answering, checked under the claim's lock as the row is reached.
+    pub async fn import_selected(
         &self,
         candidate_key: &str,
     ) -> Result<String, crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
         self.committed(async move {
-            this.start_import_write(&candidate_key, ImportRequest::ReadySet)
+            this.start_import_write(&candidate_key, ImportRequest::Selection)
                 .await
         })
         .await
     }
 
     /// [`Self::start_import`] for a candidate its automatic run just settled as
-    /// Ready. Nobody sees the refusal, so it is recorded as the candidate's
+    /// auto-importable. Nobody sees the refusal, so it is recorded as the candidate's
     /// failed import, unless another import already owns the candidate.
     pub(crate) async fn import_identified(
         &self,
@@ -263,7 +262,7 @@ impl ImportServiceHandle {
         let commit = self.folder_state_commit.lock("start an import").await;
         match request {
             ImportRequest::Candidate => {}
-            ImportRequest::ReadySet => {
+            ImportRequest::Selection => {
                 let facts = self
                     .runtime
                     .get(candidate_key)

@@ -84,7 +84,7 @@ async fn a_candidate_with_no_pick_has_no_author() {
 }
 
 /// A person editing the draft identification wrote makes it theirs: after the
-/// edit it is their answer, not the run's pick waiting on the Ready rule.
+/// edit it is their answer, not the run's pick waiting on the auto-import check.
 #[tokio::test]
 async fn an_edit_to_identification_s_draft_makes_the_person_its_author() {
     let (db, _tmp) = empty_db().await;

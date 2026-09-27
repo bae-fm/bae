@@ -24,7 +24,7 @@ extension ImportView {
         case .revealFolder:
             offer.keys.forEach(revealCandidateSources)
             return
-        case .importReady, .identify, .cancelIdentification, .cancelImport,
+        case .import, .identify, .cancelIdentification, .cancelImport,
             .retryIdentification, .resetToFileMetadata, .clearMetadata,
             .separate, .skip, .restore:
             break
@@ -45,11 +45,11 @@ extension ImportView {
         on key: String
     ) async throws {
         switch action {
-        // The Ready set is what the tables say; a row being identified
-        // or already importing when the run reaches it is refused by
-        // core, and the refusal joins the run's report beside its name.
-        case .importReady:
-            try await importer.importReady(key)
+        // A row being identified or already importing when the run
+        // reaches it is refused by core, and the refusal joins the run's
+        // report beside its name.
+        case .import:
+            try await importer.importSelected(key)
         // Re-asking what failed is the same command as identifying
         // again: the run reads the candidate's inputs afresh, and the
         // response cache answers the lookups that had succeeded. The two

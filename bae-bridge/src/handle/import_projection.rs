@@ -180,7 +180,6 @@ impl crate::types::BridgeTriageRow {
             matched,
             metadata_summary,
             cover,
-            selectable,
             import_status,
             metadata_provenance,
             reading,
@@ -197,7 +196,6 @@ impl crate::types::BridgeTriageRow {
             metadata_summary: metadata_summary
                 .map(crate::types::BridgeTriageMetadataSummary::from_core),
             cover: cover.map(crate::types::BridgeCoverImageSource::from_core),
-            selectable,
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
@@ -236,7 +234,7 @@ mirror_enum! {
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
-        ImportReady,
+        Import,
         Identify,
         CancelIdentification,
         CancelImport,
@@ -262,14 +260,7 @@ mirror_enum! {
     crate::types::BridgeTriagePlacement = bae_core::import::TriagePlacement,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    variants: {
-        Pending,
-        Ready,
-        NeedsYou { folder_check: (opt crate::types::BridgeFolderCheck) },
-        Failed,
-        Done,
-        Skipped,
-    },
+    variants: { Pending, Failed, Done, Skipped },
 }
 
 mirror_struct! {
@@ -279,6 +270,7 @@ mirror_struct! {
     fields: {
         actionable,
         placement: (crate::types::BridgeTriagePlacement),
+        draft_valid,
         lookup_failed,
         separable,
     },
@@ -317,14 +309,9 @@ impl crate::types::BridgeIdentificationStatus {
     }
 }
 
-// Not copies: audio no CD holds crosses with the rate its files state, which
+// Not a copy: audio no CD holds crosses with the rate its files state, which
 // only the pane has at hand.
 impl crate::types::BridgeFolderCheck {
-    /// A row's check, where the audio's files are not at hand.
-    pub(crate) fn from_core(check: bae_core::identify::FolderCheck) -> Self {
-        Self::with_rate(check, None)
-    }
-
     /// A check with the rate of the audio's files.
     fn with_rate(check: bae_core::identify::FolderCheck, rate: Option<u32>) -> Self {
         use bae_core::identify::FolderCheck;
@@ -342,26 +329,6 @@ impl crate::types::BridgeFolderCheck {
                         crate::types::BridgeMediumConflict::NotCdAudio {
                             sample_rate_hz: rate,
                         }
-                    }
-                },
-            },
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::identify::FolderCheck {
-        use bae_core::identify::FolderCheck;
-        match self {
-            Self::TrackCountDisagrees { local, source } => {
-                FolderCheck::TrackCountDisagrees { local, source }
-            }
-            Self::SourceTracksUnknown => FolderCheck::SourceTracksUnknown,
-            Self::MediumDisagrees { folder } => FolderCheck::MediumDisagrees {
-                folder: match folder {
-                    crate::types::BridgeMediumConflict::CdRip => {
-                        bae_core::identify::MediumConflict::CdRip
-                    }
-                    crate::types::BridgeMediumConflict::NotCdAudio { sample_rate_hz: _ } => {
-                        bae_core::identify::MediumConflict::NotCdAudio
                     }
                 },
             },
@@ -421,10 +388,10 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    crate::types::BridgeIdentificationOutcome = bae_core::import::IdentificationOutcome,
+    crate::types::BridgePendingFilter = bae_core::import::PendingFilter,
     from_core: pub(crate) fn,
     into_core: fn,
-    variants: { NotIdentified, OneRelease, SeveralReleases, NoMatch, LookupFailed },
+    variants: { Identified, NeedsYou, Identifying, Importing, LookupError, ImportError },
 }
 
 mirror_struct! {
@@ -433,7 +400,7 @@ mirror_struct! {
     fields: {
         tab: (crate::types::BridgeTriageTab),
         filter_text,
-        identification: (opt crate::types::BridgeIdentificationOutcome),
+        pending_filter: (opt crate::types::BridgePendingFilter),
         collapsed_groups: (each crate::types::BridgeFolderReleaseDecisionKey),
         order: (crate::types::BridgeImportListOrder),
     },
@@ -504,12 +471,6 @@ mirror_struct! {
     },
 }
 
-mirror_struct! {
-    crate::types::BridgeReadyRowRef = bae_core::import::ReadyRowRef,
-    from_core: fn,
-    fields: { candidate_key, cover: (opt crate::types::BridgeRemoteImageSet) },
-}
-
 impl crate::types::BridgeImportQueueSummary {
     /// The list's summary and where the folder scans stand.
     fn from_core(
@@ -520,7 +481,7 @@ impl crate::types::BridgeImportQueueSummary {
             counts,
             watched_folders,
             group_keys,
-            ready,
+            pending_covers,
         } = summary;
         let bae_core::import::FolderScanProgress { statuses, activity } = folder_scans;
         Self {
@@ -538,9 +499,9 @@ impl crate::types::BridgeImportQueueSummary {
                 .into_iter()
                 .map(crate::types::BridgeFolderReleaseDecisionKey::from_core)
                 .collect(),
-            ready: ready
+            pending_covers: pending_covers
                 .into_iter()
-                .map(crate::types::BridgeReadyRowRef::from_core)
+                .map(crate::types::BridgeRemoteImageSet::from_core)
                 .collect(),
         }
     }

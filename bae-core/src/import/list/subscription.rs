@@ -1,12 +1,12 @@
-//! The list's live query, with where imported releases' uploads stand folded
-//! into its request, delivered beside where the folder scans stand.
+//! The list's live query, with what the process holds in memory folded into
+//! its request, delivered beside where the folder scans stand.
 //!
 //! Upload standing orders the Done tab — what is moving now, then what is
-//! waiting, then what is settled — and the upload pipeline holds it in memory
-//! rather than in a table the query reads, so the subscription keeps it in the
-//! request. Nothing else the process holds is: what is running for a candidate
-//! moves no row, and each row reads it from its own subscription. The bridge
-//! and the UIs never see the request's upload standing.
+//! waiting, then what is settled — and the upload pipeline holds it. What is
+//! running for each candidate is the candidate runtime's; the request carries
+//! only the candidates the view's live filter keeps, so a run starting or
+//! ending reruns the list only while such a filter is chosen. The bridge and
+//! the UIs never see either.
 //!
 //! The folder scans are a second live query the subscription reads beside the
 //! list: a scan moves its found count with every folder it walks, and that
@@ -14,8 +14,11 @@
 
 use super::{
     FolderScanProgress, ImportListProjection, ImportListRequest, ImportListSnapshot,
-    ImportListView, UploadStanding,
+    ImportListView, PendingFilter, UploadStanding,
 };
+use crate::import::candidate_runtime::RuntimeFactsWatch;
+use crate::import::triage::TriageRuntimeFacts;
+use std::collections::HashMap;
 use crate::library::{LibraryPageWindows, OutboxSnapshot};
 use crate::live_query::CancellableLiveQuery;
 use std::sync::{Arc, Mutex};
@@ -31,25 +34,39 @@ pub enum ImportListSubscriptionError {
 
 /// The request as it stands, and the query it reconfigures.
 struct StandingRequest {
-    request: Mutex<ImportListRequest>,
+    standing: Mutex<Standing>,
     query: CancellableLiveQuery<ImportListRequest, ImportListProjection>,
 }
 
+/// The request, and every candidate's runtime facts its live matches are read
+/// from.
+struct Standing {
+    request: ImportListRequest,
+    runtime_facts: HashMap<String, TriageRuntimeFacts>,
+}
+
 impl StandingRequest {
-    /// Replace part of the request and hand the whole of it to the query.
+    /// Replace part of the standing and hand the whole request to the query,
+    /// its live matches read afresh.
     ///
     /// Handed over under the lock, so two changes reach the query in the order
     /// they were made to the request. Repeating the request the query already
     /// has keeps its revision and reruns nothing.
     fn update(
         &self,
-        change: impl FnOnce(&mut ImportListRequest),
+        change: impl FnOnce(&mut Standing),
     ) -> Result<u64, ImportListSubscriptionError> {
-        let mut request = self
-            .request
+        let mut standing = self
+            .standing
             .lock()
             .expect("import list request mutex poisoned");
-        change(&mut request);
+        change(&mut standing);
+        let Standing {
+            request,
+            runtime_facts,
+        } = &mut *standing;
+        request.live_matches =
+            PendingFilter::live_matches(request.view.pending_filter, runtime_facts.iter());
         self.query
             .set(request.clone())
             .map_err(|_| ImportListSubscriptionError::Cancelled)
@@ -116,22 +133,27 @@ enum Arrival {
 }
 
 impl ImportListSubscription {
-    /// Start the subscription and the merge that keeps its upload standing
-    /// current. A watch channel always holds its current value, so the merge
-    /// reads it once before it waits.
+    /// Start the subscription and the merges that keep its upload standing
+    /// and live matches current. A watch channel always holds its current
+    /// value, so the outbox merge reads it once before it waits; `initial`'s
+    /// live matches were read from `runtime_facts` as it stands.
     pub(crate) fn start(
         query: coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection>,
         folder_scans: coven::LiveQuery<FolderScanProgress>,
         initial: ImportListRequest,
         outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
+        runtime_facts: RuntimeFactsWatch,
         runtime_handle: &tokio::runtime::Handle,
     ) -> Self {
         let request = Arc::new(StandingRequest {
-            request: Mutex::new(initial),
+            standing: Mutex::new(Standing {
+                request: initial,
+                runtime_facts: runtime_facts.facts().clone(),
+            }),
             query: CancellableLiveQuery::new(query),
         });
         let merge = runtime_handle
-            .spawn(merge_outbox(request.clone(), outbox))
+            .spawn(merge(request.clone(), outbox, runtime_facts))
             .abort_handle();
         Self {
             request,
@@ -144,7 +166,7 @@ impl ImportListSubscription {
     /// Show a different tab, filter, order, or set of folded groups. The
     /// windows are kept: the query reruns and the list re-ingests them.
     pub fn set_view(&self, view: ImportListView) -> Result<u64, ImportListSubscriptionError> {
-        self.request.update(|request| request.view = view)
+        self.request.update(|standing| standing.request.view = view)
     }
 
     pub fn set_windows(
@@ -152,7 +174,7 @@ impl ImportListSubscription {
         windows: LibraryPageWindows,
     ) -> Result<(), ImportListSubscriptionError> {
         self.request
-            .update(|request| request.windows = windows)
+            .update(|standing| standing.request.windows = windows)
             .map(|_| ())
     }
 
@@ -244,37 +266,48 @@ impl Drop for ImportListSubscription {
     }
 }
 
-/// Keep the request's upload standing current with the cloud outbox.
+/// Keep the request's upload standing current with the cloud outbox, and its
+/// live matches with the candidate runtime.
 ///
-/// Byte progress republishes the whole snapshot several times a second; one
-/// that moves no release between working, queued and settled hands the query
-/// the request it already has, which reruns nothing.
+/// Byte progress republishes the whole outbox snapshot several times a second;
+/// one that moves no release between working, queued and settled hands the
+/// query the request it already has, which reruns nothing — as does a run
+/// starting or ending while no live filter is chosen.
 ///
 /// A failed outbox read says nothing about where an upload stands, so the order
 /// keeps what it had rather than reporting everything settled.
-async fn merge_outbox(
+async fn merge(
     request: Arc<StandingRequest>,
     mut outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
+    mut runtime_facts: RuntimeFactsWatch,
 ) {
+    let mut outbox_changed = true;
     loop {
-        let next = match &*outbox.borrow_and_update() {
-            Some(Ok(snapshot)) => Some(UploadStanding::of_outbox(snapshot)),
-            Some(Err(_)) | None => None,
-        };
-        if let Some(next) = next {
-            if request
-                .update(|current| current.upload_standing = next)
-                .is_err()
-            {
-                return;
+        let result = if outbox_changed {
+            match &*outbox.borrow_and_update() {
+                Some(Ok(snapshot)) => {
+                    let next = UploadStanding::of_outbox(snapshot);
+                    request.update(|standing| standing.request.upload_standing = next)
+                }
+                Some(Err(_)) | None => Ok(0),
             }
-        }
-        let changed = tokio::select! {
-            () = request.query.cancelled() => return,
-            changed = outbox.changed() => changed,
+        } else {
+            let facts = runtime_facts.facts().clone();
+            request.update(|standing| standing.runtime_facts = facts)
         };
-        if changed.is_err() {
+        if result.is_err() {
             return;
         }
+        outbox_changed = tokio::select! {
+            () = request.query.cancelled() => return,
+            changed = outbox.changed() => match changed {
+                Ok(()) => true,
+                Err(_) => return,
+            },
+            changed = runtime_facts.changed() => match changed {
+                true => false,
+                false => return,
+            },
+        };
     }
 }

@@ -131,8 +131,8 @@ struct ImportCandidateSelectionTests {
             items: [
                 .candidate(
                     stableKey:
-                        "candidate:\(PreviewData.triageRowReady.candidateKey)",
-                    row: PreviewData.triageRowReady,
+                        "candidate:\(PreviewData.triageRowIdentified.candidateKey)",
+                    row: PreviewData.triageRowIdentified,
                     isGroupMember: isGroupMember
                 )
             ]
@@ -178,7 +178,7 @@ struct ImportCandidateSelectionTests {
 
             #expect(
                 uiStore.selectedFolderCandidates
-                    == [PreviewData.triageRowReady.candidateKey]
+                    == [PreviewData.triageRowIdentified.candidateKey]
             )
         }
     }

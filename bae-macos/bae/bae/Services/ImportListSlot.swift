@@ -96,7 +96,7 @@ final class ImportListSlot {
         view = BridgeImportListView(
             tab: uiStore.importCandidateTab,
             filterText: uiStore.importCandidateFilterText,
-            identification: uiStore.importCandidateIdentificationFilter,
+            pendingFilter: uiStore.importCandidatePendingFilter,
             collapsedGroups: uiStore.collapsedReleaseGroupKeys,
             order: initialOrder
         )
@@ -122,11 +122,10 @@ final class ImportListSlot {
         updateView { $0.filterText = text }
     }
 
-    /// Show only the Pending rows whose stored lookup result reads as
-    /// `filter`, or every row for `nil`.
-    func setIdentificationFilter(_ filter: BridgeIdentificationOutcome?) {
-        uiStore.setImportCandidateIdentificationFilter(filter)
-        updateView { $0.identification = filter }
+    /// Show only the Pending rows `filter` keeps, or every row for `nil`.
+    func setPendingFilter(_ filter: BridgePendingFilter?) {
+        uiStore.setImportCandidatePendingFilter(filter)
+        updateView { $0.pendingFilter = filter }
     }
 
     func setSortOrder(_ order: BridgeImportListOrder) {
@@ -155,7 +154,7 @@ final class ImportListSlot {
         }
         uiStore.setImportCandidateTab(location.tab)
         uiStore.setImportCandidateFilterText("")
-        uiStore.setImportCandidateIdentificationFilter(nil)
+        uiStore.setImportCandidatePendingFilter(nil)
         if let groupKey = location.groupKey {
             uiStore.setReleaseGroupExpanded(
                 releaseGroupDisclosureID(groupKey),
@@ -165,7 +164,7 @@ final class ImportListSlot {
         var next = view
         next.tab = location.tab
         next.filterText = ""
-        next.identification = nil
+        next.pendingFilter = nil
         next.collapsedGroups = uiStore.collapsedReleaseGroupKeys
         view = next
         guard let pages, let list else { return nil }

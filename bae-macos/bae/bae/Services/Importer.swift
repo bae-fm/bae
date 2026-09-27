@@ -96,7 +96,7 @@ private struct ImportOperations: Sendable {
         ) -> any LiveSubscriptionProtocol
     let candidateSignals: @Sendable (String) -> Signals?
     let startImport: @Sendable (String) async throws -> Void
-    let importReady: @Sendable (String) async throws -> Void
+    let importSelected: @Sendable (String) async throws -> Void
     let mergeCandidateArtistIdentityConflict:
         @Sendable (String, String) async throws -> Void
     let setIdentifyAutomatically:
@@ -307,8 +307,8 @@ extension ImportOperations {
             startImport: {
                 try await handle.startImport(candidateKey: $0)
             },
-            importReady: {
-                try await handle.importReady(candidateKey: $0)
+            importSelected: {
+                try await handle.importSelected(candidateKey: $0)
             },
             mergeCandidateArtistIdentityConflict: {
                 try await handle.mergeCandidateArtistIdentityConflict(
@@ -494,7 +494,8 @@ final class Importer: Sendable, Observable {
         },
         startImport: @escaping @Sendable (String) async throws -> Void = { _ in
         },
-        importReady: @escaping @Sendable (String) async throws -> Void = { _ in
+        importSelected: @escaping @Sendable (String) async throws -> Void = {
+            _ in
         },
         setIdentifyAutomatically:
             @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
@@ -561,7 +562,7 @@ final class Importer: Sendable, Observable {
             subscribeCandidateLiveState: subscribeCandidateLiveState,
             candidateSignals: candidateSignals,
             startImport: startImport,
-            importReady: importReady,
+            importSelected: importSelected,
             mergeCandidateArtistIdentityConflict: { _, _ in
                 throw StubError.notImplemented
             },
@@ -848,11 +849,11 @@ extension Importer {
         try await operations.startImport(candidateKey)
     }
 
-    /// Import one row of a bulk import of the Ready set. Core refuses a row an
-    /// import already owns or identification is still answering, and the
-    /// refusal says which.
-    func importReady(_ candidateKey: String) async throws {
-        try await operations.importReady(candidateKey)
+    /// Import one row of a bulk import of a selection. Core refuses a row an
+    /// import already owns or identification is still answering, and says
+    /// which.
+    func importSelected(_ candidateKey: String) async throws {
+        try await operations.importSelected(candidateKey)
     }
 
     func mergeCandidateArtistIdentityConflict(

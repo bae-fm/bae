@@ -1,35 +1,40 @@
 //! Where each candidate's row lands, and what it carries there.
 //!
 //! One pass places every row from the stored columns alone, so these are the
-//! placement rules over row literals: what a stored verdict, a pick, a skip
-//! and an import's rows each make of a candidate, and in which order they
-//! outrank one another. What is running for a candidate places nothing; it is
-//! the row's live state.
+//! placement rules over row literals: what a skip, an import's rows and a
+//! failed attempt each make of a candidate, and in which order they outrank
+//! one another. What identification found places nothing; neither does what
+//! is running for a candidate, which is the row's live state.
 
 use super::*;
-use crate::identify::FolderCheck;
-use crate::import::MetadataAuthor;
+use crate::import::{CandidateAction, CandidateLiveState, MetadataAuthor};
 
+/// Whether the row, with nothing running for it, offers to import.
+fn offers_import(row: &TriageRow) -> bool {
+    CandidateLiveState::of(&row.action_basis, TriageRuntimeFacts::default())
+        .actions
+        .contains(&CandidateAction::Import)
+}
+
+/// A stored verdict places nothing: an identified row is Pending, offers to
+/// import, and hands its lead's cover to Pending's warm-up.
 #[test]
-fn a_stored_verdict_that_classifies_ready_makes_a_selectable_row() {
+fn an_identified_row_is_pending_and_offers_import() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
-        .insert("hash-Release".to_string(), ready_state("mb-1"));
+        .insert("hash-Release".to_string(), auto_importable_state("mb-1"));
 
     let flat = flattened(&rows, &view(TriageTab::Pending));
 
     let row = row_for(&flat, "Release");
-    assert_eq!(row.placement, TriagePlacement::Ready);
-    assert!(row.selectable);
+    assert_eq!(row.placement, TriagePlacement::Pending);
+    assert!(offers_import(row));
     assert_eq!(
-        flat.summary.ready,
-        vec![ReadyRowRef {
-            candidate_key: key("Release"),
-            cover: Some(crate::import::cover_art::RemoteImageSet::original(
-                "https://example.test/front.jpg".to_string(),
-            )),
-        }]
+        flat.summary.pending_covers,
+        vec![crate::import::cover_art::RemoteImageSet::original(
+            "https://example.test/front.jpg".to_string(),
+        )]
     );
 }
 /// A verdict derived from a file shape the candidate has moved past is not the
@@ -42,14 +47,13 @@ fn a_verdict_at_a_stale_edit_revision_is_not_the_row_s_answer() {
         ..candidate("Release")
     }];
     rows.states
-        .insert("hash-Release".to_string(), ready_state("mb-1"));
+        .insert("hash-Release".to_string(), auto_importable_state("mb-1"));
 
     let flat = flattened(&rows, &view(TriageTab::Pending));
 
-    assert_eq!(
-        row_for(&flat, "Release").placement,
-        TriagePlacement::Pending
-    );
+    let row = row_for(&flat, "Release");
+    assert_eq!(row.placement, TriagePlacement::Pending);
+    assert!(!offers_import(row), "a draft for other files is not this row's");
 }
 #[test]
 fn an_imported_content_hash_puts_its_row_in_done() {
@@ -88,19 +92,19 @@ fn a_skipped_candidate_lands_in_skipped() {
     assert_eq!(flat.summary.counts.skipped, 1);
 }
 /// An import running for a candidate places nothing: until it writes the
-/// release, the tables put the row where its draft does, and the import is the
-/// row's live state — which offers no command at all while it runs.
+/// release the row is Pending, and the import is the row's live state — which
+/// offers nothing but its cancel while it runs.
 #[test]
-fn a_claimed_import_leaves_the_row_where_its_draft_puts_it() {
+fn a_claimed_import_leaves_the_row_pending() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
-        .insert("hash-Release".to_string(), ready_state("mb-1"));
+        .insert("hash-Release".to_string(), auto_importable_state("mb-1"));
 
     let flat = flattened(&rows, &view(TriageTab::Pending));
 
     let row = row_for(&flat, "Release");
-    assert_eq!(row.placement, TriagePlacement::Ready);
+    assert_eq!(row.placement, TriagePlacement::Pending);
     assert_eq!(row.import_status, None);
     assert_eq!(flat.summary.counts.pending, 1);
     let importing = crate::import::CandidateLiveState::of(
@@ -119,15 +123,14 @@ fn a_claimed_import_leaves_the_row_where_its_draft_puts_it() {
     );
 }
 /// The failure is a row, so it survives the session that produced it: a
-/// relaunched queue still says why the attempt failed. It stays Pending —
-/// nothing was imported, and the folder is waiting on another attempt — and it
-/// is not Ready, so a bulk import does not sweep it back up.
+/// relaunched queue still says why the attempt failed. It stays on Pending —
+/// nothing was imported — and importing it again is the ordinary import.
 #[test]
 fn a_failed_import_stays_pending_and_reads_its_error_from_its_row() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
-        .insert("hash-Release".to_string(), ready_state("mb-1"));
+        .insert("hash-Release".to_string(), auto_importable_state("mb-1"));
     rows.failures
         .insert("hash-Release".to_string(), "boom".to_string());
 
@@ -143,22 +146,17 @@ fn a_failed_import_stays_pending_and_reads_its_error_from_its_row() {
     );
     assert_eq!(flat.summary.counts.pending, 1);
     assert_eq!(flat.summary.counts.done, 0);
-    assert!(
-        !row.selectable,
-        "the attempt that just failed is not what makes a row safe to sweep up"
-    );
-    assert!(flat.summary.ready.is_empty());
+    assert!(offers_import(row));
 }
 /// Retrying is the ordinary import. Queuing it clears the failure row, which
-/// leaves the row where its draft puts it while the import runs; when the
-/// import lands, the release outranks any leftover failure and the row is
-/// Done.
+/// leaves the row Pending while the import runs; when the import lands, the
+/// release outranks any leftover failure and the row is Done.
 #[test]
-fn retrying_a_failed_import_moves_it_back_to_its_draft_then_to_done() {
+fn retrying_a_failed_import_moves_it_back_to_pending_then_to_done() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
-        .insert("hash-Release".to_string(), ready_state("mb-1"));
+        .insert("hash-Release".to_string(), auto_importable_state("mb-1"));
     rows.failures
         .insert("hash-Release".to_string(), "boom".to_string());
     assert_eq!(
@@ -168,7 +166,7 @@ fn retrying_a_failed_import_moves_it_back_to_its_draft_then_to_done() {
 
     rows.failures.clear();
     let flat = flattened(&rows, &view(TriageTab::Pending));
-    assert_eq!(row_for(&flat, "Release").placement, TriagePlacement::Ready);
+    assert_eq!(row_for(&flat, "Release").placement, TriagePlacement::Pending);
     assert_eq!(flat.summary.counts.pending, 1);
 
     rows.imported.insert(
@@ -207,240 +205,53 @@ fn an_imported_release_outranks_a_leftover_failure() {
         Some(TriageImportStatus::Complete { .. })
     ));
 }
-/// A row's placement is what its preparation says; a run queued for it is
-/// its live state. A tag-prefilled draft is ready to import whether or not
-/// identification is about to answer the folder again.
+/// Import is offered by one rule, whoever wrote the draft and whatever
+/// identification found: a draft that would import offers it, and one that
+/// would not does not.
 #[test]
-fn a_ready_row_stays_ready_with_identification_queued_for_it() {
-    let mut rows = queue();
-    rows.candidates = vec![candidate("Release")];
-    rows.states
-        .insert("hash-Release".to_string(), prefilled_from_tags_state());
-
-    let flat = flattened(&rows, &view(TriageTab::Pending));
-
-    let row = row_for(&flat, "Release");
-    assert_eq!(row.placement, TriagePlacement::Ready);
-    assert!(row.selectable);
-}
-/// A draft a person typed in, read from no catalog and no tags, is their
-/// answer as soon as it would import.
-#[test]
-fn a_valid_draft_a_person_typed_is_ready_and_bulk_importable() {
-    let mut rows = queue();
-    rows.candidates = vec![candidate("Release")];
-    rows.states.insert(
-        "hash-Release".to_string(),
-        CandidateStateListRow {
-            edit_revision: 0,
-            verdict: None,
-            metadata_provenance: None,
-            metadata_author: MetadataAuthor::Person,
-            metadata_draft_valid: true,
-            metadata_summary: None,
-        },
-    );
-
-    let flat = flattened(&rows, &view(TriageTab::Pending));
-    let row = row_for(&flat, "Release");
-    assert_eq!(row.placement, TriagePlacement::Ready);
-    assert!(row.selectable);
-    assert_eq!(
-        flat.summary.ready,
-        vec![ReadyRowRef {
-            candidate_key: key("Release"),
-            cover: None,
-        }]
-    );
-}
-
-/// Whatever question the verdict was going to put, a person's pick has
-/// answered it: the row is Ready and takes a bulk-import checkbox, rather than
-/// keeping the question's tag forever after it was answered.
-#[test]
-fn a_person_s_pick_answers_whatever_the_verdict_asked() {
+fn a_row_offers_import_exactly_when_its_draft_would_import() {
     let cases = [
-        ("several pressings matched", several_matches_state()),
-        ("nothing matched anywhere", not_found_state()),
-    ];
-    for (name, state) in cases {
-        // Without an answer the row states the question.
-        let mut rows = queue();
-        rows.candidates = vec![candidate("Release")];
-        rows.states
-            .insert("hash-Release".to_string(), state.clone());
-        assert!(
-            matches!(
-                row_for(&flattened(&rows, &view(TriageTab::Pending)), "Release").placement,
-                TriagePlacement::NeedsYou { .. }
-            ),
-            "{name}: unanswered, the row asks"
-        );
-
-        // The person picks a release; the row is Ready.
-        let mut rows = queue();
-        rows.candidates = vec![candidate("Release")];
-        rows.states
-            .insert("hash-Release".to_string(), picked_by_the_person(state));
-
-        let flat = flattened(&rows, &view(TriageTab::Pending));
-        let row = row_for(&flat, "Release");
-        assert_eq!(row.placement, TriagePlacement::Ready, "{name}: answered");
-        assert!(row.selectable, "{name}: a Ready row takes a checkbox");
-        assert_eq!(
-            row.metadata_provenance,
-            Some(MetadataProvenance::ExternalRelease {
-                record: crate::import::MetadataRef::new(
-                    Catalog::MusicBrainz,
-                    "mb-picked".to_string()
-                ),
-                partners: vec![],
-            }),
-            "{name}: the row carries what a bulk import would commit"
-        );
-    }
-}
-
-/// Identification applying its own pick is not an answer: the Ready rule's
-/// checks decide the row, so every check against the folder they fail lands
-/// it in Needs you with that check named.
-#[test]
-fn identification_s_own_pick_is_judged_by_the_ready_rule() {
-    let cases = [
+        ("the tags seeded it", prefilled_from_tags_state(), true),
         (
-            queue(),
-            with_verdict(ready_state("mb-1"), |verdict| {
-                verdict.track_count = Some(10);
-            }),
-            FolderCheck::TrackCountDisagrees {
-                local: 10,
-                source: 11,
-            },
-        ),
-        (
-            queue(),
-            with_verdict(ready_state("mb-1"), |verdict| {
-                verdict.lead = Some(LeadMatch {
-                    source_tracks: None,
-                    ..lead("mb-1")
-                });
-            }),
-            FolderCheck::SourceTracksUnknown,
-        ),
-        (
-            queue(),
-            with_verdict(ready_state("mb-1"), |verdict| {
-                verdict.lead = Some(LeadMatch {
-                    source_tracks: Some(SourceTracks::Nothing),
-                    ..lead("mb-1")
-                });
-            }),
-            FolderCheck::SourceTracksUnknown,
-        ),
-    ];
-    for (mut rows, state, check) in cases {
-        assert_eq!(state.metadata_author, MetadataAuthor::Identification);
-        assert!(state.metadata_draft_valid);
-        rows.candidates = vec![candidate("Release")];
-        rows.states.insert("hash-Release".to_string(), state);
-
-        let flat = flattened(&rows, &view(TriageTab::Pending));
-        let row = row_for(&flat, "Release");
-        assert_eq!(
-            row.placement,
-            TriagePlacement::NeedsYou {
-                folder_check: Some(check.clone())
-            },
-            "{check:?}"
-        );
-        assert!(!row.selectable, "{check:?}: a question is not swept up");
-        assert!(flat.summary.ready.is_empty(), "{check:?}");
-    }
-}
-
-/// A draft the folder's tags seeded is what the person chose to start from:
-/// once it would import, it is Ready whatever the verdict asks.
-#[test]
-fn a_valid_draft_the_tags_seeded_answers_the_row() {
-    let mut rows = queue();
-    rows.candidates = vec![candidate("Release")];
-    rows.states.insert(
-        "hash-Release".to_string(),
-        CandidateStateListRow {
-            metadata_provenance: Some(MetadataProvenance::FileMetadata),
-            metadata_author: MetadataAuthor::Prefill,
-            metadata_draft_valid: true,
-            ..several_matches_state()
-        },
-    );
-
-    let flat = flattened(&rows, &view(TriageTab::Pending));
-    let row = row_for(&flat, "Release");
-    assert_eq!(row.placement, TriagePlacement::Ready);
-    assert!(row.selectable);
-    assert_eq!(
-        row.metadata_provenance,
-        Some(MetadataProvenance::FileMetadata)
-    );
-}
-
-/// Ready means a bulk import can commit the row. A tag-seeded draft that
-/// would not import is not Ready: the verdict's question stands, and with no
-/// verdict the row is Pending.
-#[test]
-fn a_draft_the_tags_seeded_that_would_not_import_is_not_ready() {
-    let invalid = CandidateStateListRow {
-        metadata_provenance: Some(MetadataProvenance::FileMetadata),
-        metadata_author: MetadataAuthor::Prefill,
-        metadata_draft_valid: false,
-        ..several_matches_state()
-    };
-    let cases = [
-        (
-            invalid.clone(),
-            TriagePlacement::NeedsYou { folder_check: None },
-        ),
-        (
+            "a person typed it",
             CandidateStateListRow {
+                edit_revision: 0,
                 verdict: None,
-                ..invalid
+                metadata_provenance: None,
+                metadata_author: MetadataAuthor::Person,
+                metadata_draft_valid: true,
+                metadata_summary: None,
             },
-            TriagePlacement::Pending,
+            true,
+        ),
+        ("a person picked among several", picked_by_the_person(several_matches_state()), true),
+        (
+            "identification picked, the track count differs",
+            with_verdict(auto_importable_state("mb-1"), |verdict| verdict.track_count = Some(10)),
+            true,
+        ),
+        ("several matched and none is picked", several_matches_state(), false),
+        ("nothing matched", not_found_state(), false),
+        (
+            "a person's draft would not import",
+            CandidateStateListRow {
+                metadata_author: MetadataAuthor::Person,
+                metadata_draft_valid: false,
+                ..auto_importable_state("mb-1")
+            },
+            false,
         ),
     ];
-    for (state, expected) in cases {
+    for (name, state, offers) in cases {
         let mut rows = queue();
         rows.candidates = vec![candidate("Release")];
         rows.states.insert("hash-Release".to_string(), state);
 
         let flat = flattened(&rows, &view(TriageTab::Pending));
         let row = row_for(&flat, "Release");
-        assert_eq!(row.placement, expected);
-        assert!(!row.selectable);
-        assert!(flat.summary.ready.is_empty());
+        assert_eq!(row.placement, TriagePlacement::Pending, "{name}");
+        assert_eq!(offers_import(row), offers, "{name}");
     }
-}
-
-/// Not even a verdict with nothing to ask makes an invalid draft Ready: a
-/// person's draft that would not import leaves the row Pending.
-#[test]
-fn a_verdict_with_nothing_to_ask_does_not_make_an_invalid_draft_ready() {
-    let mut rows = queue();
-    rows.candidates = vec![candidate("Release")];
-    rows.states.insert(
-        "hash-Release".to_string(),
-        CandidateStateListRow {
-            metadata_author: MetadataAuthor::Person,
-            metadata_draft_valid: false,
-            ..ready_state("mb-1")
-        },
-    );
-
-    let flat = flattened(&rows, &view(TriageTab::Pending));
-    assert_eq!(
-        row_for(&flat, "Release").placement,
-        TriagePlacement::Pending
-    );
 }
 
 /// A pick belongs to the file shape it was chosen against. Editing the folder

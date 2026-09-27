@@ -1,7 +1,7 @@
 //! One catalog release bae fetched, as bae keeps it.
 //!
 //! Everything an import surface reads about a release — the picker's detail,
-//! the draft a pick projects, the tracklist the Ready rule checks, the records
+//! the draft a pick projects, the tracklist the auto-import check reads, the records
 //! a commit writes, the covers a picker offers — is extracted from the
 //! release's documents once, when it is fetched, into a [`SourceRelease`].
 //! What depends on the folder's audio is not extracted: which of the release's
@@ -284,7 +284,7 @@ impl SourceRelease {
     /// The mediums of this release the audio is a rip of — the CD layer of a
     /// hybrid SACD, one disc of a box. Every reading below reads those
     /// mediums' tracks and no others, so the draft, the picker's tracklist,
-    /// and the Ready rule all describe the same discs.
+    /// and the auto-import check all describe the same discs.
     pub(crate) fn coverage(&self, audio_durations_ms: &[u64]) -> MediumCoverage {
         crate::import::medium_coverage::choose(&self.medium_lengths(), audio_durations_ms)
     }
@@ -302,7 +302,7 @@ impl SourceRelease {
     }
 
     /// What the source says about this release's own tracklist — the half of
-    /// the Ready rule the folder's track count is checked against.
+    /// the auto-import check the folder's track count is checked against.
     pub fn source_tracks_for_audio(&self, audio_durations_ms: &[u64]) -> SourceTracks {
         let coverage = self.coverage(audio_durations_ms);
         let count = match self.release.catalog {

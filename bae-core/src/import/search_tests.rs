@@ -203,7 +203,7 @@ fn discid_metadata_links_the_releases_its_document_names() {
 }
 
 /// A disc ID names one medium of a release that has several. The matching
-/// medium's tracks are what the Ready rule counts, but the pressing is made of
+/// medium's tracks are what the auto-import check counts, but the pressing is made of
 /// every medium the response lists: the Discogs record of the same two media
 /// is this object and one naming a cassette is not, whichever medium the
 /// response lists first.

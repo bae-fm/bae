@@ -1,14 +1,11 @@
-//! The Ready rule: whether a candidate's stored verdict is strong enough to
-//! import in bulk without anyone looking at it.
+//! What the queue reads of a stored verdict, and the two judgements made from
+//! it: which check against the folder the found release failed, which the pane
+//! states beside Import, and whether automatic import may take the candidate.
 //!
-//! Derived on read, never stored: the verdict's own columns are the rule's
-//! whole input. Whether the release is already in the library is not part of
-//! it — importing a second copy is the person's to moderate.
-//!
-//! Nothing here blocks an import. Failing the rule means the candidate lands in
-//! Needs you — with the check against the folder it failed named, when that is
-//! why — and importing it from there is one click; the rule only decides what
-//! may be imported unattended.
+//! Derived on read, never stored: the verdict's own columns are the whole
+//! input. Whether the release is already in the library is not part of either —
+//! importing a second copy is the person's to moderate. Nothing here blocks an
+//! import a person asks for.
 
 use super::combine::LookupProvenance;
 use super::verdict::TerminalVerdict;
@@ -16,20 +13,6 @@ use super::MediumConflict;
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::Catalog;
-
-/// Whether the queue may import one candidate unattended, derived from its
-/// stored verdict. `Ready` is the only bulk-importable answer.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum QueueClassification {
-    /// Exactly one pressing, and the source lists as many tracks as the
-    /// folder holds.
-    Ready,
-    /// Not Ready. Carries the check against the folder the found release did
-    /// not pass, when that is why; `None` when the lookup result itself is —
-    /// nothing matched, nothing to look up, a lookup failed, or several
-    /// pressings to choose between — which the identify steps already show.
-    NeedsYou(Option<FolderCheck>),
-}
 
 /// A check of the found release against the folder that did not pass,
 /// carrying what it takes to state the disagreement beside Import.
@@ -61,7 +44,7 @@ pub enum VerdictKind {
 ///
 /// One row of `import_candidate_match` at `list = 'found'`, `position = 0`.
 /// Everything the queue asks of a verdict's matches is asked of this one: the
-/// Ready rule consults the lead and nothing else (it only reaches the
+/// judgements consult the lead and nothing else (they only reach the
 /// tracklist comparison when the matches make a single pressing), and the row
 /// leads with the lead's title, artist and cover whatever the count.
 ///
@@ -70,7 +53,7 @@ pub enum VerdictKind {
 /// tracklist. The matches are stored in the order the pressings put them, so
 /// position 0 is that lead; a pressing holds at most one release per source,
 /// so a second release from the same source would be a second pressing and the
-/// rule would never have reached the tracklist.
+/// check would never have reached the tracklist.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LeadMatch {
     pub release_id: String,
@@ -148,7 +131,7 @@ impl VerdictSummary {
             TerminalVerdict::NotFoundAnywhere { .. } => None,
         };
         // A failed verdict leads with what its answering lookups found, as a
-        // found one does; its kind is what keeps it from being Ready.
+        // found one does; its kind is what keeps it from being auto-importable.
         let findings = verdict.findings();
         Self {
             kind,
@@ -167,58 +150,67 @@ impl VerdictSummary {
     }
 }
 
-/// Classify one candidate.
-pub fn classify(verdict: &TerminalVerdict) -> QueueClassification {
-    classify_summary(&VerdictSummary::of(verdict))
-}
-
-/// Classify one candidate from the columns its stored row holds.
-pub fn classify_summary(summary: &VerdictSummary) -> QueueClassification {
-    let track_count = match summary.kind {
-        VerdictKind::Found => summary.track_count.unwrap_or_default(),
-        VerdictKind::NotFound | VerdictKind::ManualOnly | VerdictKind::Failed => {
-            return QueueClassification::NeedsYou(None)
+impl VerdictSummary {
+    /// The check against the folder the found release did not pass, when one
+    /// failed. Only a found verdict has a release to check.
+    pub fn folder_check(&self) -> Option<FolderCheck> {
+        if self.kind != VerdictKind::Found {
+            return None;
         }
-    };
+        let track_count = self.track_count.unwrap_or_default();
 
-    // A release the folder's own files rule out is never picked unattended,
-    // however well the lookups agree on it: the person reads the evidence and
-    // picks, or does not. Checked before the pressing count, so it is named
-    // over several pressings too.
-    if let Some(folder) = summary.medium_conflict {
-        return QueueClassification::NeedsYou(Some(FolderCheck::MediumDisagrees { folder }));
-    }
+        // A release the folder's own files rule out is never picked unattended,
+        // however well the lookups agree on it: the person reads the evidence
+        // and picks, or does not. Checked before the pressing count, so it is
+        // named over several pressings too.
+        if let Some(folder) = self.medium_conflict {
+            return Some(FolderCheck::MediumDisagrees { folder });
+        }
 
-    // "An exact signal is not the same as a unique result" — a disc ID or a
-    // barcode routinely returns several pressings of one release group, and
-    // picking between them is the user's job. Two sources' records of the same
-    // pressing are not that choice: they are one row on the list, picked whole,
-    // so they count once here and the candidate is still answered.
-    let (Some(lead), 1) = (summary.lead.as_ref(), summary.pressing_count) else {
-        return QueueClassification::NeedsYou(None);
-    };
+        // Several pressings are a choice, not a failed check: the tracklist is
+        // only compared once the matches make a single pressing.
+        let (Some(lead), 1) = (self.lead.as_ref(), self.pressing_count) else {
+            return None;
+        };
 
-    // `None` (nobody has asked the source yet) and `Nothing` (it answered and
-    // listed no tracks) are different facts about the queue — one is waiting on
-    // a lookup, the other is finished — but they ask the user the same
-    // question, so they classify alike.
-    let Some(SourceTracks::Listed { count }) = &lead.source_tracks else {
-        return QueueClassification::NeedsYou(Some(FolderCheck::SourceTracksUnknown));
-    };
+        // `None` (nobody has asked the source yet) and `Nothing` (it answered
+        // and listed no tracks) are different facts about the queue, but they
+        // leave the same count unchecked, so they fail alike.
+        let Some(SourceTracks::Listed { count }) = &lead.source_tracks else {
+            return Some(FolderCheck::SourceTracksUnknown);
+        };
 
-    // The count, never the lengths. A source's lengths are whatever it
-    // transcribed — rounded to whole seconds, counted with or without a
-    // pre-gap, missing for some tracks — so disagreeing lengths say more about
-    // the source than about the match. The mapping pane shows both durations
-    // per row for a person who wants to read them.
-    if *count != track_count {
-        return QueueClassification::NeedsYou(Some(FolderCheck::TrackCountDisagrees {
+        // The count, never the lengths. A source's lengths are whatever it
+        // transcribed — rounded to whole seconds, counted with or without a
+        // pre-gap, missing for some tracks — so disagreeing lengths say more
+        // about the source than about the match. The mapping pane shows both
+        // durations per row for a person who wants to read them.
+        (*count != track_count).then_some(FolderCheck::TrackCountDisagrees {
             local: track_count,
             source: *count,
-        }));
+        })
     }
 
-    QueueClassification::Ready
+    /// Whether automatic import may take the candidate unattended. Auto-
+    /// importable means unambiguously identified given the information we
+    /// have: one pressing found, and no check against the folder failed.
+    ///
+    /// "An exact signal is not the same as a unique result" — a disc ID or a
+    /// barcode routinely returns several pressings of one release group, and
+    /// picking between them is the person's job. Two sources' records of the
+    /// same pressing are not that choice: they are one row, so they count once.
+    pub fn auto_importable(&self) -> bool {
+        self.kind == VerdictKind::Found
+            && self.pressing_count == 1
+            && self.lead.is_some()
+            && self.folder_check().is_none()
+    }
+
+    /// Both judgements at once, for a test to compare in one assertion.
+    #[cfg(test)]
+    pub(crate) fn judgement(&self) -> (bool, Option<FolderCheck>) {
+        (self.auto_importable(), self.folder_check())
+    }
 }
 
 #[cfg(test)]

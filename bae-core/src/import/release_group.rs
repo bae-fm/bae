@@ -328,7 +328,7 @@ impl Bucket {
 /// The list shows one row per physical pressing and a row is picked whole, so
 /// "how many pressings did this candidate match" is this number rather than
 /// how many result rows came back: a MusicBrainz release and a Discogs release
-/// describing the same object are one answer, not two. The Ready rule and the
+/// describing the same object are one answer, not two. The auto-import check and the
 /// sweep's settle step both ask it.
 ///
 /// The rows are the run's own, so nothing counts one thing and shows another

@@ -138,8 +138,8 @@ private func matchedRelease(
     )
 }
 
-/// A Ready row: matched, selectable, no import status.
-private func readyRow(
+/// An identified Pending row: matched, no import status.
+private func identifiedRow(
     _ key: String,
     title: String,
     matchedCover: BridgeRemoteImageSet? = nil,
@@ -152,10 +152,11 @@ private func readyRow(
         watchedFolderPath: "/w",
         displayPath: title,
         actionable: true,
-        placement: .ready,
+        placement: .pending,
         actionBasis: BridgeCandidateActionBasis(
             actionable: true,
-            placement: .ready,
+            placement: .pending,
+            draftValid: true,
             lookupFailed: false,
             separable: false
         ),
@@ -166,7 +167,6 @@ private func readyRow(
         ),
         metadataSummary: metadataSummary,
         cover: cover,
-        selectable: true,
         importStatus: nil,
         metadataProvenance: .externalRelease(
             record: BridgeMetadataRef(catalog: .musicBrainz, key: "rel-\(key)"),
@@ -194,13 +194,13 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         actionBasis: BridgeCandidateActionBasis(
             actionable: true,
             placement: .skipped,
+            draftValid: false,
             lookupFailed: false,
             separable: false
         ),
         matched: nil,
         metadataSummary: nil,
         cover: nil,
-        selectable: false,
         importStatus: nil,
         metadataProvenance: nil,
         reading: .unidentified,
@@ -231,7 +231,7 @@ private func detail(
             identification: nil,
             importing: false,
             actions: [
-                .importReady, .identify, .resetToFileMetadata, .clearMetadata,
+                .import, .identify, .resetToFileMetadata, .clearMetadata,
                 .skip,
             ]
         ),
@@ -371,7 +371,7 @@ struct ImportStoreSidebarCoverTests {
             try #require(localArtwork.coverChoice),
         ]
         for choice in choices {
-            let row = readyRow(
+            let row = identifiedRow(
                 key,
                 title: "Subject",
                 matchedCover: BridgeRemoteImageSet(
@@ -404,7 +404,7 @@ struct ImportStoreSidebarCoverTests {
 
     @Test("the sidebar renders only the cover resolved by core")
     func sidebarDoesNotDeriveACoverFromMatchMetadata() {
-        let row = readyRow(
+        let row = identifiedRow(
             "/w/subject",
             title: "Subject",
             matchedCover: BridgeRemoteImageSet(
@@ -547,7 +547,7 @@ struct ImportListPageSourceTests {
     private func item(_ key: String) -> BridgeImportListItem {
         .candidate(
             stableKey: "candidate:\(key)",
-            row: readyRow(key, title: key),
+            row: identifiedRow(key, title: key),
             isGroupMember: false
         )
     }
@@ -575,7 +575,7 @@ struct ImportListPageSourceTests {
                 folderScanStatuses: [],
                 folderScanActivity: nil,
                 groupKeys: [],
-                ready: []
+                pendingCovers: []
             ),
             requestRevision: requestRevision,
             cause: .requestChanged
@@ -595,7 +595,7 @@ extension ImportListPageSourceTests {
         let view = BridgeImportListView(
             tab: .pending,
             filterText: "",
-            identification: nil,
+            pendingFilter: nil,
             collapsedGroups: [],
             order: .pathAscending
         )
@@ -640,7 +640,7 @@ extension ImportListPageSourceTests {
                 BridgeImportListView(
                     tab: .pending,
                     filterText: "",
-                    identification: nil,
+                    pendingFilter: nil,
                     collapsedGroups: [],
                     order: .pathAscending
                 )
@@ -672,7 +672,7 @@ extension ImportListPageSourceTests {
                 BridgeImportListView(
                     tab: .pending,
                     filterText: "",
-                    identification: nil,
+                    pendingFilter: nil,
                     collapsedGroups: [],
                     order: .pathAscending
                 )
@@ -716,7 +716,7 @@ extension ImportListPageSourceTests {
                 BridgeImportListView(
                     tab: .pending,
                     filterText: "",
-                    identification: nil,
+                    pendingFilter: nil,
                     collapsedGroups: [],
                     order: .pathAscending
                 )

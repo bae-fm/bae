@@ -259,10 +259,8 @@ struct ImportCandidateListContent: View {
         importStore.summary
     }
 
-    private var readyCovers: [ImageContent] {
-        summary.ready.compactMap { row in
-            row.cover.map { .remote($0) }
-        }
+    private var pendingCovers: [ImageContent] {
+        summary.pendingCovers.map { .remote($0) }
     }
 
     /// True when the active tab has nothing to show — drives the empty state.
@@ -364,13 +362,12 @@ struct ImportCandidateListContent: View {
                                 cancelReveal()
                                 listSlot.setSortOrder(order)
                             },
-                            identificationFilter: uiStore
-                                .importCandidateIdentificationFilter,
-                            identificationFilterApplies: uiStore
+                            pendingFilter: uiStore.importCandidatePendingFilter,
+                            pendingFilterApplies: uiStore
                                 .importCandidateTab == .pending,
-                            onSetIdentificationFilter: { filter in
+                            onSetPendingFilter: { filter in
                                 cancelReveal()
-                                listSlot.setIdentificationFilter(filter)
+                                listSlot.setPendingFilter(filter)
                             },
                             onAddFolder: onAddFolder,
                             onSetAllGroupsExpanded: { expanded in
@@ -405,12 +402,12 @@ struct ImportCandidateListContent: View {
             .task(id: summary.groupKeys) {
                 listSlot.retainGroups(summary.groupKeys)
             }
-            // Importable rows are covers this app has already downloaded once.
-            // Decoding them as the queue lands keeps Pending's first frame from
-            // being a grid of spinners.
-            .task(id: readyCovers) {
+            // Pending's matched covers were downloaded once already. Decoding
+            // them as the queue lands keeps Pending's first frame from being a
+            // grid of spinners.
+            .task(id: pendingCovers) {
                 await imageStore.warm(
-                    readyCovers,
+                    pendingCovers,
                     pointSize: TriageRowView.coverPointSize,
                     displayScale: displayScale
                 )

@@ -54,7 +54,7 @@ import Foundation
     /// The bridge object takes a set of windows and answers with one value holding
     /// every one of them, so the pages a `PaginatedList` asks for are registered
     /// here and handed the window that matches them. The chrome around the list —
-    /// the tab counts, the Ready set, the group keys — rides on the same value and
+    /// the tab counts, Pending's covers, the group keys — rides on the same value and
     /// goes to `onSummary`.
     public final class ImportListPageSource: PageSource, @unchecked Sendable {
         public typealias Row = BridgeImportListItem

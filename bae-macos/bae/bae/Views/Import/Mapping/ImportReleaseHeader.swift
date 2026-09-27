@@ -172,7 +172,7 @@ struct ImportReleaseHeader: View {
 
     /// The card's one row of actions: the two ways into identification on the
     /// left and, once there is something to commit, the commit on the right —
-    /// the Ready check the candidate did not pass, the unanswered tally,
+    /// the folder check the candidate did not pass, the unanswered tally,
     /// storage, and the Import action.
     ///
     /// The two entries differ in what they start, not in where they go: both

@@ -99,10 +99,10 @@ pub(crate) struct CandidateSaveExtras {
 pub(crate) enum CandidatePaneWrite {
     /// The pane stays where the person left it.
     Keep,
-    /// The pane opens on the draft when the result this save stores asks
-    /// nothing: identification applied its own pick, and the draft and its
-    /// Import are all there is left to see.
-    OpenOnDraftIfReady,
+    /// The pane opens on the draft identification just applied its pick to,
+    /// unless the picked release failed a check against the folder: that is a
+    /// question, and the pane stays where the person left it.
+    OpenOnDraftUnlessCheckFailed,
 }
 
 impl Default for CandidateSaveExtras {
@@ -256,14 +256,15 @@ pub(super) fn save_preparation_on(
 
     match extras.pane {
         CandidatePaneWrite::Keep => {}
-        CandidatePaneWrite::OpenOnDraftIfReady => {
+        CandidatePaneWrite::OpenOnDraftUnlessCheckFailed => {
             let identification = prep.identification.as_ref().ok_or_else(|| {
                 DbError::Message(format!(
                     "candidate {content_hash} opens on a result it stores none of"
                 ))
             })?;
-            if crate::identify::classify(&identification.verdict)
-                == crate::identify::QueueClassification::Ready
+            if crate::identify::VerdictSummary::of(&identification.verdict)
+                .folder_check()
+                .is_none()
             {
                 super::session_rows::present_on(
                     sql,

@@ -18,7 +18,7 @@ mod actions;
 mod dates;
 mod flatten;
 mod flatten_groups;
-mod identification_filter;
+mod pending_filter;
 mod placement;
 mod subscription;
 mod window;
@@ -111,9 +111,9 @@ fn with_verdict(
     }
 }
 
-/// A stored verdict that classifies Ready: one match, counts and lengths
+/// A stored verdict that is auto-importable: one match, counts and lengths
 /// agreeing, and identification's seed for that match.
-fn ready_state(release_id: &str) -> CandidateStateListRow {
+fn auto_importable_state(release_id: &str) -> CandidateStateListRow {
     CandidateStateListRow {
         edit_revision: 0,
         verdict: Some(VerdictSummary {

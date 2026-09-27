@@ -55,12 +55,12 @@ async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
         fixture.provider.requests()
     );
     assert_eq!(
-        fixture.classification_for(&disc_dir).await,
-        QueueClassification::Ready
+        fixture.judgement_for(&disc_dir).await,
+        (true, None)
     );
     assert_eq!(
-        fixture.classification_for(&barcode_dir).await,
-        QueueClassification::Ready
+        fixture.judgement_for(&barcode_dir).await,
+        (true, None)
     );
 }
 
@@ -376,8 +376,8 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
         "and so are the partner's, so every source the pick claims reads offline"
     );
     assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::Ready,
+        fixture.judgement_for(&dir).await,
+        (true, None),
         "one pressing, counts agreeing — the two \
          records are one row, so nothing is left to ask"
     );
@@ -478,8 +478,8 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
         "and the partner's documents are archived with the primary's"
     );
     assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::Ready,
+        fixture.judgement_for(&dir).await,
+        (true, None),
         "one pressing, counts agreeing — nothing is left to ask"
     );
 }
@@ -641,8 +641,8 @@ async fn two_distinct_pressings_do_not_settle() {
         fixture.provider.requests()
     );
     assert_eq!(
-        fixture.classification_for(&dir).await,
-        QueueClassification::NeedsYou(None)
+        fixture.judgement_for(&dir).await,
+        (false, None)
     );
 }
 

@@ -1,9 +1,8 @@
 //! The import sidebar's rows, decided once in core.
 //!
 //! The sidebar asks the same questions of every candidate — which tab it
-//! belongs to, whether it is Ready, what it leads with, and which
-//! commands it offers — and every one of them is a rule rather
-//! than a rendering. [`crate::identify::view`] is the precedent: shape the
+//! belongs to, what it leads with, and which commands it offers — and every
+//! one of them is a rule rather than a rendering. [`crate::identify::view`] is the precedent: shape the
 //! state for the surfaces once, here, so both desktop UIs render the same
 //! decisions instead of each re-deriving them from a
 //! [`FolderCandidate`](crate::import::FolderCandidate) and a
@@ -14,9 +13,9 @@
 //! [`FolderCheck`] variant carrying its operands, so each platform builds the
 //! sentence in its own locale.
 //!
-//! **Nothing here re-classifies.** [`crate::identify::ready::classify`] already
-//! answers what the queue needs from the user; this module decides where that
-//! answer puts the row and what the row shows. Which rows exist and in what
+//! **Nothing here re-judges a verdict.** [`crate::identify::VerdictSummary`]
+//! already says which check against the folder its release failed; this module
+//! decides where the row goes and what it shows. Which rows exist and in what
 //! order is [`crate::import::list`]'s.
 
 use super::folder_scanner::FolderReleaseDecisionKey;
@@ -24,7 +23,7 @@ use super::search::{ImportSearchReleaseDetail, SourceTracks};
 use super::types::{Catalog, MetadataProvenance};
 use super::MetadataAuthor;
 use super::{CandidateRuntimeSnapshot, ImportedRelease};
-use crate::identify::{FolderCheck, LeadMatch, QueueClassification, VerdictSummary};
+use crate::identify::{FolderCheck, LeadMatch, VerdictSummary};
 
 mod actions;
 mod model;
@@ -34,46 +33,21 @@ pub use actions::{CandidateAction, CandidateActionBasis, CandidateLiveState};
 pub use model::*;
 pub use selection::{selection_offers, SelectionMember, SelectionOffer};
 
-/// Which tab a candidate belongs to, and why a Pending row still needs input.
-///
-/// A total function of what the tables hold, checked in one order:
+/// Which tab a candidate belongs to, checked in one order:
 ///
 /// 1. **Done first**, which is an import that completed, or a folder a
-///    previous session already imported. Not awaiting triage, whatever its
-///    verdict says and whether or not it was ever skipped.
-/// 2. **Then Skipped**, which is a decision the user already made.
-/// 3. **Then a failed attempt**, which is Pending work: the folder is not in
-///    the library and the only thing standing between it and being there is
-///    another attempt. It comes before the draft because a failed candidate
-///    always has one — read the draft first and the row would say Ready, and
-///    join the set a bulk import sweeps up, on the strength of the attempt
-///    that just failed.
-/// 4. **Then a valid draft a person or the tags wrote**, which is Ready. A
-///    person's draft is their answer to whatever the verdict was going to
-///    ask; a draft the folder's tags seeded is what the person chose to start
-///    from. Either way nothing is left to ask.
-/// 5. **Then what its stored verdict classified to.** This is where a draft
-///    identification wrote lands: a run applying its own pick is not an
-///    answer, so the Ready rule's checks — which pressing, the track count —
-///    decide whether it is Ready or Needs you.
+///    previous session already imported, whether or not it was ever skipped.
+/// 2. **Then Skipped**, which is a decision the person already made.
+/// 3. **Then a failed attempt**, which is Pending work with its failure
+///    stated.
+/// 4. **Otherwise Pending.**
 ///
-/// An invalid draft is never Ready, whoever wrote it and whatever the verdict
-/// says: Ready means a bulk import can commit it. With no verdict, or with one
-/// classified Ready over a draft that would not import, the row is Pending.
-///
-/// Nothing running is one of these facts. A run is true of a candidate
-/// wherever that candidate is placed — a Ready row somebody asked to identify
-/// again is still Ready, and still running — and so is an import: the tables
-/// place a candidate being imported where its draft puts it until the import
-/// writes the release that makes it Done. Both are the row's
-/// [`CandidateLiveState`], read beside the list.
+/// Nothing running is one of these facts: a run and an import are true of a
+/// candidate wherever it is placed, and are the row's [`CandidateLiveState`].
 pub fn place(
     skipped: bool,
     is_added: bool,
     import_status: Option<&TriageImportStatus>,
-    author: MetadataAuthor,
-    draft_valid: bool,
-    answer: Option<&QueueClassification>,
 ) -> TriagePlacement {
     // Spelled out rather than `is_some()`: each variant places the row
     // somewhere different, and a new one should have to be placed here on
@@ -92,22 +66,26 @@ pub fn place(
     if failed {
         return TriagePlacement::Failed;
     }
-    // Spelled out for the same reason: who wrote the draft decides whether it
-    // answers the verdict or is judged by it.
+    TriagePlacement::Pending
+}
+
+/// The failed check against the folder the pane states beside Import: the
+/// found release's, unless a person or the tags wrote a valid draft, which is
+/// their answer and not judged by the verdict.
+pub fn stated_folder_check(
+    author: MetadataAuthor,
+    draft_valid: bool,
+    verdict: Option<&VerdictSummary>,
+) -> Option<FolderCheck> {
+    // Spelled out: who wrote the draft decides whether the verdict judges it.
     let answered = match author {
         MetadataAuthor::Person | MetadataAuthor::Prefill => draft_valid,
         MetadataAuthor::Identification | MetadataAuthor::Nobody => false,
     };
     if answered {
-        return TriagePlacement::Ready;
+        return None;
     }
-    match answer {
-        Some(QueueClassification::Ready) if draft_valid => TriagePlacement::Ready,
-        Some(QueueClassification::Ready) | None => TriagePlacement::Pending,
-        Some(QueueClassification::NeedsYou(folder_check)) => TriagePlacement::NeedsYou {
-            folder_check: folder_check.clone(),
-        },
-    }
+    verdict.and_then(VerdictSummary::folder_check)
 }
 
 /// What the last import of a candidate left in the tables.
@@ -218,37 +196,56 @@ impl TriageRuntimeFacts {
 mod tests {
     use super::*;
 
-    /// A candidate nobody has answered is Pending whatever identification is
-    /// doing for it: the run is the row's, not the placement's.
+    /// A candidate nobody has imported or skipped is Pending whatever
+    /// identification found or is doing for it: the run is the row's, not the
+    /// placement's.
     #[test]
-    fn an_unanswered_candidate_is_pending() {
-        assert_eq!(
-            place(false, false, None, MetadataAuthor::Nobody, false, None),
-            TriagePlacement::Pending
-        );
+    fn an_unimported_candidate_is_pending() {
+        assert_eq!(place(false, false, None), TriagePlacement::Pending);
     }
 
-    /// A classification that names a failed folder check places the row in
-    /// Needs you with that check, which is what the pane states beside
-    /// Import; one that names none places it there with nothing to state.
+    /// The pane states the found release's failed check while identification's
+    /// pick or nobody's draft stands; a person's or the tags' valid draft is
+    /// their answer and states none.
     #[test]
-    fn needs_you_carries_the_folder_check_it_failed() {
-        let disagrees = FolderCheck::TrackCountDisagrees {
-            local: 13,
-            source: 12,
+    fn a_person_s_draft_states_no_folder_check() {
+        let disagrees = VerdictSummary {
+            kind: crate::identify::VerdictKind::Found,
+            track_count: Some(12),
+            pressing_count: 1,
+            lead: Some(LeadMatch {
+                release_id: "mb-1".to_string(),
+                source: Catalog::MusicBrainz,
+                source_group_id: None,
+                title: "Album".to_string(),
+                artist: None,
+                year: None,
+                media: Vec::new(),
+                cover: None,
+                source_tracks: Some(SourceTracks::Listed { count: 13 }),
+                by_disc_id: true,
+                by_barcode: false,
+                by_search: false,
+            }),
+            medium_conflict: None,
         };
-        for folder_check in [Some(disagrees), None] {
-            let placement = place(
-                false,
-                false,
-                None,
-                MetadataAuthor::Identification,
-                true,
-                Some(&QueueClassification::NeedsYou(folder_check.clone())),
+        let check = Some(FolderCheck::TrackCountDisagrees {
+            local: 12,
+            source: 13,
+        });
+        for (author, draft_valid, stated) in [
+            (MetadataAuthor::Identification, true, check.clone()),
+            (MetadataAuthor::Nobody, false, check.clone()),
+            (MetadataAuthor::Person, false, check.clone()),
+            (MetadataAuthor::Person, true, None),
+            (MetadataAuthor::Prefill, true, None),
+        ] {
+            assert_eq!(
+                stated_folder_check(author, draft_valid, Some(&disagrees)),
+                stated,
+                "{author:?}, valid: {draft_valid}"
             );
-            assert_eq!(placement.folder_check(), folder_check.as_ref());
         }
-        assert_eq!(TriagePlacement::Ready.folder_check(), None);
     }
 
     fn a_draft() -> TriageMetadataSummary {

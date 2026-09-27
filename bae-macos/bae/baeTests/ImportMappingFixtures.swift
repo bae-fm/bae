@@ -459,7 +459,7 @@ extension MappingFixtures {
                 identification: nil,
                 importing: false,
                 actions: (metadataProvenance == nil && edit.albumTitle.isEmpty
-                    ? [] : [.importReady])
+                    ? [] : [.import])
                     + [
                         .identify, .resetToFileMetadata, .clearMetadata,
                         .combine, .skip, .revealFolder,

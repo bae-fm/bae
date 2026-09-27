@@ -512,7 +512,12 @@ impl ImportServiceHandle {
         &self,
         view: crate::import::ImportListView,
     ) -> crate::import::ImportListSubscription {
+        let runtime_facts = self.watch_runtime_facts();
         let request = crate::import::ImportListRequest {
+            live_matches: crate::import::PendingFilter::live_matches(
+                view.pending_filter,
+                runtime_facts.facts(),
+            ),
             view,
             windows: std::iter::once(crate::library::LibraryPageWindow {
                 offset: 0,
@@ -527,6 +532,7 @@ impl ImportServiceHandle {
             self.library_manager.subscribe_folder_scan_progress(),
             request,
             self.library_manager.subscribe_outbox_values(),
+            runtime_facts,
             &self.runtime_handle,
         )
     }

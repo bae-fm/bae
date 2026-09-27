@@ -123,6 +123,7 @@ impl DecisionFixture {
                 .into_iter()
                 .collect(),
                 upload_standing: Default::default(),
+                live_matches: Default::default(),
             });
         let (seen_tx, mut seen_rx) = tokio::sync::mpsc::unbounded_channel();
         let watcher = tokio::spawn(async move {

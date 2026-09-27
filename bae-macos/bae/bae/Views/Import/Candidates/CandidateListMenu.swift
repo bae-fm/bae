@@ -29,13 +29,11 @@ struct CandidateListMenu: View, Equatable {
     let hasGroups: Bool
     let sortOrder: BridgeImportListOrder
     let onSetSortOrder: (BridgeImportListOrder) -> Void
-    /// Which of Pending's rows the list shows, by what each one's stored
-    /// lookup result says; `nil` shows them all.
-    let identificationFilter: BridgeIdentificationOutcome?
-    /// Whether the tab on show is filtered by identification: only Pending
-    /// is.
-    let identificationFilterApplies: Bool
-    let onSetIdentificationFilter: (BridgeIdentificationOutcome?) -> Void
+    /// Which of Pending's rows the list shows; `nil` shows them all.
+    let pendingFilter: BridgePendingFilter?
+    /// Whether the tab on show is Pending, the one tab the filter applies to.
+    let pendingFilterApplies: Bool
+    let onSetPendingFilter: (BridgePendingFilter?) -> Void
     let onAddFolder: () -> Void
     /// Fold every folder group in the queue open (`true`) or shut (`false`).
     let onSetAllGroupsExpanded: (_ expanded: Bool) -> Void
@@ -56,9 +54,8 @@ struct CandidateListMenu: View, Equatable {
             && lhs.networkFolders == rhs.networkFolders
             && lhs.hasGroups == rhs.hasGroups
             && lhs.sortOrder == rhs.sortOrder
-            && lhs.identificationFilter == rhs.identificationFilter
-            && lhs.identificationFilterApplies
-                == rhs.identificationFilterApplies
+            && lhs.pendingFilter == rhs.pendingFilter
+            && lhs.pendingFilterApplies == rhs.pendingFilterApplies
             && hasFailedScan(in: lhs.scanStatuses)
                 == hasFailedScan(in: rhs.scanStatuses)
             && lhs.watchedFolders.allSatisfy { folder in
@@ -116,11 +113,11 @@ struct CandidateListMenu: View, Equatable {
                     .tag(BridgeImportListOrder.pathDescending)
             }
             .pickerStyle(.inline)
-            IdentificationFilterPicker(
-                selection: identificationFilter,
-                onSelect: onSetIdentificationFilter
+            PendingFilterPicker(
+                selection: pendingFilter,
+                onSelect: onSetPendingFilter
             )
-            .disabled(!identificationFilterApplies)
+            .disabled(!pendingFilterApplies)
             Section("Folders") {
                 Button {
                     onAddFolder()
@@ -151,7 +148,7 @@ struct CandidateListMenu: View, Equatable {
                 .overlay(alignment: .topTrailing) {
                     // A filter hiding Pending rows marks the trigger, so a
                     // short list never reads as a short queue.
-                    if identificationFilter != nil && !hasFailedScan {
+                    if pendingFilter != nil && !hasFailedScan {
                         Circle()
                             .fill(Color.accentColor)
                             .frame(width: 6, height: 6)
@@ -269,9 +266,9 @@ struct CandidateListMenu: View, Equatable {
             hasGroups: true,
             sortOrder: .newestFirst,
             onSetSortOrder: { _ in },
-            identificationFilter: .oneRelease,
-            identificationFilterApplies: true,
-            onSetIdentificationFilter: { _ in },
+            pendingFilter: .identified,
+            pendingFilterApplies: true,
+            onSetPendingFilter: { _ in },
             onAddFolder: {},
             onSetAllGroupsExpanded: { _ in },
             onRefreshFolder: { _ in },

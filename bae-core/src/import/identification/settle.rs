@@ -6,9 +6,10 @@ use super::*;
 /// What became of one run's answer.
 #[derive(Debug)]
 pub(super) enum Settled {
-    /// The row landed, classified by the Ready rule.
+    /// The row landed.
     Stored {
-        classification: crate::identify::QueueClassification,
+        /// Whether automatic import may take the candidate unattended.
+        auto_importable: bool,
     },
     /// The write ran and refused the answer: the candidate can no longer be
     /// answered, or its files are not the ones the run read.
@@ -240,7 +241,7 @@ pub(super) async fn save(
         return Settled::Refused;
     }
     Settled::Stored {
-        classification: crate::identify::classify(verdict),
+        auto_importable: crate::identify::VerdictSummary::of(verdict).auto_importable(),
     }
 }
 
@@ -331,7 +332,7 @@ async fn settle_lead(
             }
         };
     // `SourceTracks::Nothing` is an answer: the release states no tracklist,
-    // which the Ready rule sends to Needs you. The primary's row carries it.
+    // which is not auto-importable. The primary's row carries it.
     findings
         .matches
         .iter_mut()

@@ -223,17 +223,17 @@
                 watchedFolderPath: releaseQueueRoot,
                 displayPath: displayPath,
                 actionable: true,
-                placement: .ready,
+                placement: .pending,
                 actionBasis: BridgeCandidateActionBasis(
                     actionable: true,
-                    placement: .ready,
+                    placement: .pending,
+                    draftValid: true,
                     lookupFailed: false,
                     separable: separable
                 ),
                 matched: nil,
                 metadataSummary: nil,
                 cover: nil,
-                selectable: true,
                 importStatus: nil,
                 metadataProvenance: nil,
                 reading: .unidentified,
@@ -292,7 +292,7 @@
             skipped: 0,
             watchedFolders: [releaseQueueWatchedFolder],
             groupKeys: [releaseQueueGroupKey],
-            ready: readyRows(releaseQueueRows)
+            pendingCovers: pendingCovers(releaseQueueRows)
         )
 
         private static let releaseQueueResolvedRow = releaseQueueRow(
@@ -354,7 +354,7 @@
                         ]
                     ),
                     groupKeys: [releaseQueueGroupKey],
-                    ready: readyRows(releaseQueueRows)
+                    pendingCovers: pendingCovers(releaseQueueRows)
                 )
             )
             scene.store.identificationProgress = (identified: 27, total: 40)
@@ -370,7 +370,7 @@
                     done: 0,
                     skipped: 0,
                     watchedFolders: [releaseQueueWatchedFolder],
-                    ready: readyRows([releaseQueueResolvedRow])
+                    pendingCovers: pendingCovers([releaseQueueResolvedRow])
                 )
             )
         }
@@ -390,7 +390,7 @@
                         + [releaseQueueWatchedFolder],
                     folderScanStatuses: base.folderScanStatuses,
                     groupKeys: base.groupKeys,
-                    ready: base.ready
+                    pendingCovers: base.pendingCovers
                 )
             )
             // Counted off the scene's rows, with the one still identifying

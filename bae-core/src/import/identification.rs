@@ -17,7 +17,7 @@
 //! follows the import bus, and hands each answer to a settle task, which
 //! fetches the matched pressing's documents and writes the verdict. The queue
 //! is the only writer of verdicts. A result writes the draft only when it
-//! found one release, and an automatic run that stores a Ready verdict starts
+//! found one release, and an automatic run that stores an auto-importable verdict starts
 //! the candidate's import when "Import automatically when identified" is on.
 
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};

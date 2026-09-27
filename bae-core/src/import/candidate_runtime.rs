@@ -68,9 +68,11 @@ use tokio::sync::broadcast;
 use tracing::{debug, info};
 
 mod batch;
+mod facts_watch;
+pub(crate) use facts_watch::RuntimeFactsWatch;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 use batch::IdentificationBatch;
 

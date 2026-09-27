@@ -95,13 +95,13 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             actionBasis: BridgeCandidateActionBasis(
                 actionable: true,
                 placement: .skipped,
+                draftValid: false,
                 lookupFailed: false,
                 separable: false
             ),
             matched: nil,
             metadataSummary: nil,
             cover: nil,
-            selectable: false,
             importStatus: nil,
             metadataProvenance: nil,
             reading: .unidentified,

@@ -7,7 +7,7 @@ extension BridgeCandidateAction {
     /// own, beside the name.
     var label: String {
         switch self {
-        case .importReady: String(localized: "Import ready")
+        case .import: String(localized: "Import")
         case .identify: String(localized: "Identify selected")
         case .cancelIdentification:
             String(localized: "Stop identifying selected")
@@ -35,13 +35,13 @@ extension BridgeCandidateAction {
     /// candidate rather than a selection.
     var rowLabel: String {
         switch self {
-        case .importReady: String(localized: "Import")
         case .identify: String(localized: "Identify")
         case .cancelIdentification: String(localized: "Stop Identifying")
         case .cancelImport: String(localized: "Cancel Import")
         case .skip: String(localized: "Skip")
         case .restore: String(localized: "Unskip")
-        case .retryIdentification, .resetToFileMetadata, .clearMetadata,
+        case .import, .retryIdentification, .resetToFileMetadata,
+            .clearMetadata,
             .combine, .separate, .revealFolder:
             label
         }
@@ -52,7 +52,7 @@ extension BridgeCandidateAction {
     var needsConfirmation: Bool {
         switch self {
         case .resetToFileMetadata, .clearMetadata: true
-        case .importReady, .identify, .cancelIdentification, .cancelImport,
+        case .import, .identify, .cancelIdentification, .cancelImport,
             .retryIdentification, .combine, .separate, .skip, .restore,
             .revealFolder:
             false
@@ -61,7 +61,7 @@ extension BridgeCandidateAction {
 
     var symbol: String {
         switch self {
-        case .importReady: "square.and.arrow.down"
+        case .import: "square.and.arrow.down"
         case .identify: "magnifyingglass"
         case .cancelIdentification, .cancelImport: "xmark.circle"
         case .retryIdentification: "arrow.clockwise"

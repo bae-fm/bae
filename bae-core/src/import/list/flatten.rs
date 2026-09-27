@@ -4,15 +4,14 @@
 //! The filter matches only the text each row shows.
 
 use super::{
-    GroupHeaderRow, IdentificationOutcome, ImportCandidateListLocation, ImportListItem,
-    ImportListOrder, ImportListRequest, ImportListView, ImportQueueSummary, PlacedRow,
-    ReadyRowRef, UploadStanding,
+    GroupHeaderRow, ImportCandidateListLocation, ImportListItem, ImportListOrder, ImportListRequest, ImportListView, ImportQueueSummary, PlacedRow,
+    UploadStanding,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
-use crate::identify::classify_summary;
+use crate::identify::VerdictSummary;
 use crate::import::triage::{
     import_status_of, place, CandidateActionBasis, MatchedRelease, TriageGroup,
-    TriageImportStatus, TriageReading, TriageRow, TriageTab, TriageTabCounts,
+    TriageImportStatus, TriagePlacement, TriageReading, TriageRow, TriageTab, TriageTabCounts,
 };
 use crate::import::watched_folder::candidate_relative_path;
 use crate::import::FolderReleaseDecisionKey;
@@ -136,10 +135,10 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
             // what encloses it.
             ScanCandidateKind::Tentative => {}
             ScanCandidateKind::Valid => {
-                let (triage_row, identification) = place_row(rows, row)?;
+                let (triage_row, verdict) = place_row(rows, row)?;
                 let tab = triage_row.placement.tab();
                 counts.bump(tab);
-                let matches_filter = view.keeps_identification(tab, identification)
+                let matches_filter = request.keeps_pending(tab, &triage_row, verdict)
                     && filter.keeps(|| shown_text(rows, &triage_row))?;
                 ordered.push(OrderedEntry {
                     watched_folder_path: row.watched_folder_path.clone(),
@@ -323,16 +322,17 @@ pub(crate) fn locate_candidate(
 fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
     let mut request = request.clone();
     request.view.filter_text.clear();
-    request.view.identification = None;
+    request.view.pending_filter = None;
+    request.live_matches.clear();
     request
 }
 
-/// One settled candidate's row, as the tables place it, and what its stored
-/// lookup result reads as for the Identification filter.
-pub(super) fn place_row(
-    rows: &ImportQueueRows,
+/// One settled candidate's row, as the tables place it, and its stored lookup
+/// result.
+pub(super) fn place_row<'a>(
+    rows: &'a ImportQueueRows,
     row: &ScanCandidateListRow,
-) -> Result<(TriageRow, IdentificationOutcome), LibraryError> {
+) -> Result<(TriageRow, Option<&'a VerdictSummary>), LibraryError> {
     let content_hash = row.content_hash.as_deref().ok_or_else(|| {
         LibraryError::Internal(format!(
             "scanned candidate {} states no content hash",
@@ -350,7 +350,6 @@ pub(super) fn place_row(
         row.error(),
         rows.failures.get(content_hash).map(String::as_str),
     );
-    let answer = verdict.map(classify_summary);
     let skipped = match &row.grouping {
         Some(grouping) => grouping.skipped,
         None => rows.skipped.contains(&(
@@ -360,20 +359,13 @@ pub(super) fn place_row(
         )),
     };
     let metadata_provenance = state.and_then(|state| state.metadata_provenance.clone());
-    let placement = place(
-        skipped,
-        imported.is_some(),
-        import_status.as_ref(),
-        state.map_or(crate::import::MetadataAuthor::Nobody, |state| {
-            state.metadata_author
-        }),
-        state.is_some_and(|state| state.metadata_draft_valid),
-        answer.as_ref(),
-    );
+    let draft_valid = state.is_some_and(|state| state.metadata_draft_valid);
+    let placement = place(skipped, imported.is_some(), import_status.as_ref());
     let actionable = row.error().is_none();
     let action_basis = CandidateActionBasis::of(
         actionable,
         &placement,
+        draft_valid,
         verdict.map(|verdict| verdict.kind),
         row.grouping.is_some(),
     );
@@ -383,7 +375,6 @@ pub(super) fn place_row(
         watched_folder_path: row.watched_folder_path.clone(),
         display_path: row.display_path.clone(),
         actionable,
-        selectable: action_basis.importable_at_rest(),
         action_basis,
         matched: verdict.and_then(MatchedRelease::of_summary),
         // The window that builds the row reads the pick's records and
@@ -399,7 +390,7 @@ pub(super) fn place_row(
         import_status,
         metadata_provenance,
     };
-    Ok((triage_row, IdentificationOutcome::of(verdict)))
+    Ok((triage_row, verdict))
 }
 
 /// The order tabs' entries run in the sorted list.
@@ -555,7 +546,7 @@ fn shown_text<'a>(
     rows: &'a ImportQueueRows,
     triage_row: &'a TriageRow,
 ) -> Result<Vec<Cow<'a, str>>, LibraryError> {
-    if triage_row.placement != crate::import::TriagePlacement::Done {
+    if triage_row.placement != TriagePlacement::Done {
         return Ok(triage_row
             .shown_text()
             .into_iter()
@@ -583,7 +574,7 @@ fn shown_text<'a>(
     Ok(text.shown_text())
 }
 
-/// The whole queue's tab counts, Ready set and group keys.
+/// The whole queue's tab counts, Pending's covers and group keys.
 fn summarise(
     rows: &ImportQueueRows,
     ordered: &[OrderedEntry],
@@ -592,7 +583,7 @@ fn summarise(
 ) -> ImportQueueSummary {
     let mut group_keys = Vec::new();
     let mut seen_groups = HashSet::new();
-    let mut ready = Vec::new();
+    let mut pending_covers = Vec::new();
     for entry in ordered {
         if let Some(group) = &entry.group {
             if seen_groups.insert(group.key.clone()) {
@@ -603,21 +594,15 @@ fn summarise(
             continue;
         };
         let row = &placed[index].row;
-        if entry.matches_filter && row.selectable {
-            ready.push(ReadyRowRef {
-                candidate_key: row.candidate_key.clone(),
-                cover: row
-                    .matched
-                    .as_ref()
-                    .and_then(|matched| matched.cover.clone()),
-            });
+        if entry.matches_filter && entry.tab == TriageTab::Pending {
+            pending_covers.extend(row.matched.as_ref().and_then(|matched| matched.cover.clone()));
         }
     }
     ImportQueueSummary {
         counts,
         watched_folders: rows.watched_folders.clone(),
         group_keys,
-        ready,
+        pending_covers,
     }
 }
 

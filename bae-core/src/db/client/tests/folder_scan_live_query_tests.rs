@@ -227,6 +227,7 @@ async fn import_list_subscription_delivers_scan_progress_beside_its_last_read() 
         db.subscribe_folder_scan_progress(),
         request,
         outbox,
+        crate::import::candidate_runtime::RuntimeFactsWatch::of(&Default::default()),
         &tokio::runtime::Handle::current(),
     );
     let initial = subscription.next().await.unwrap();

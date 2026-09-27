@@ -182,17 +182,11 @@ pub enum BridgeTriageTab {
     Skipped,
 }
 
-/// Where a row sits, read from the tables alone; what is running for it is its
-/// `BridgeCandidateLiveState`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+/// Which tab a row belongs to, and whether its last import failed, read from
+/// the tables alone; what is running for it is its `BridgeCandidateLiveState`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTriagePlacement {
     Pending,
-    Ready,
-    /// Classified short of Ready, with the check against the folder its found
-    /// release did not pass when that is why.
-    NeedsYou {
-        folder_check: Option<BridgeFolderCheck>,
-    },
     /// The last import attempt failed; why is the row's import status.
     Failed,
     Done,
@@ -202,7 +196,8 @@ pub enum BridgeTriagePlacement {
 /// Every command a candidate can take.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeCandidateAction {
-    ImportReady,
+    /// Import the candidate from its draft, wherever Pending places it.
+    Import,
     Identify,
     CancelIdentification,
     CancelImport,
@@ -224,6 +219,8 @@ pub enum BridgeCandidateAction {
 pub struct BridgeCandidateActionBasis {
     pub actionable: bool,
     pub placement: BridgeTriagePlacement,
+    /// Whether the draft shapes into a release an import can commit.
+    pub draft_valid: bool,
     pub lookup_failed: bool,
     pub separable: bool,
 }
@@ -314,8 +311,8 @@ pub enum BridgeMediumConflict {
     /// The folder is a CD rip, and no release could be a CD.
     CdRip,
     /// The folder's audio is at a rate no CD plays at, and every release is
-    /// a CD. The rate is the audio's, read off its files; `None` on a row,
-    /// where they are not at hand.
+    /// a CD. The rate is the audio's, read off its files; `None` when they
+    /// are not at hand.
     NotCdAudio { sample_rate_hz: Option<u32> },
 }
 
@@ -371,7 +368,7 @@ pub struct BridgeMatchedPressing {
 /// The release identification matched for a row, kept on Skipped rows too.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMatchedRelease {
-    /// The lead match's release id, which a bulk import commits on.
+    /// The lead match's release id.
     pub release_id: String,
     /// The lead match's title, standing in for the album when several
     /// pressings matched.
@@ -477,8 +474,6 @@ pub struct BridgeTriageRow {
     pub metadata_summary: Option<BridgeTriageMetadataSummary>,
     /// The cover the row draws, even when its draft is otherwise blank.
     pub cover: Option<BridgeCoverImageSource>,
-    /// Whether a bulk import can take this row when nothing is running for it.
-    pub selectable: bool,
     pub import_status: Option<BridgeTriageImportStatus>,
     pub metadata_provenance: Option<BridgeMetadataProvenance>,
     pub reading: BridgeTriageReading,

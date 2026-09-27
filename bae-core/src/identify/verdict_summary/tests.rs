@@ -1,4 +1,4 @@
-//! The Ready rule's own tests. What a candidate's verdict *is* comes from the
+//! The verdict summary's judgements. What a candidate's verdict *is* comes from the
 //! sweep's tests; these are about what the queue asks of the user given one.
 
 use super::*;
@@ -72,12 +72,12 @@ fn failed_with_findings(matches: Vec<MetadataResult>, track_count: u32) -> Termi
     }
 }
 
-/// A failed lookup keeps a candidate out of Ready however good what the other
+/// A failed lookup keeps a candidate from being auto-importable however good what the other
 /// lookups found looks: the one that failed may have named other pressings.
 #[test]
-fn a_failed_verdict_is_never_ready_whatever_it_found() {
+fn a_failed_verdict_is_never_auto_importable_whatever_it_found() {
     let verdict = failed_with_findings(vec![result("rel-a", listing(11))], 11);
-    assert_eq!(classify(&verdict), QueueClassification::NeedsYou(None));
+    assert_eq!(VerdictSummary::of(&verdict).judgement(), (false, None));
 }
 
 /// The barcode printed on the sleeve, which both sources state.
@@ -104,17 +104,17 @@ fn listing(count: u32) -> Option<SourceTracks> {
     Some(SourceTracks::Listed { count })
 }
 
-/// Every clause of the rule holding at once is the only way to Ready.
+/// Every clause holding at once is the only way to be auto-importable.
 #[test]
-fn one_verified_match_is_ready() {
+fn one_verified_match_is_auto_importable() {
     let verdict = found(vec![result("mb-1", listing(11))], 11);
-    assert_eq!(classify(&verdict), QueueClassification::Ready);
+    assert_eq!(VerdictSummary::of(&verdict).judgement(), (true, None));
 }
 
 /// A lone match the title search found is admitted like any other: the
 /// tracklist check is what guards it.
 #[test]
-fn a_lone_match_found_by_title_is_ready() {
+fn a_lone_match_found_by_title_is_auto_importable() {
     let mut verdict = found(vec![result("mb-1", listing(11))], 11);
     let TerminalVerdict::Found {
         findings: Findings { provenance, .. },
@@ -130,11 +130,11 @@ fn a_lone_match_found_by_title_is_ready() {
         by_search: true,
         named_by: None,
     };
-    assert_eq!(classify(&verdict), QueueClassification::Ready);
+    assert_eq!(VerdictSummary::of(&verdict).judgement(), (true, None));
 }
 
-/// The releases agreement narrowed out are not answers: the rule counts the
-/// matches alone, so a sole verified match is still Ready however many the
+/// The releases agreement narrowed out are not answers: only the matches
+/// count, so a sole verified match is still auto-importable however many the
 /// agreement discarded on the way to it.
 #[test]
 fn what_agreement_narrowed_out_is_not_a_match() {
@@ -173,13 +173,13 @@ fn what_agreement_narrowed_out_is_not_a_match() {
         track_count,
         ledger: None,
     };
-    assert_eq!(classify(&verdict), QueueClassification::Ready);
+    assert_eq!(VerdictSummary::of(&verdict).judgement(), (true, None));
 }
 
 /// Two sources' records of one physical pressing are one row on the list,
 /// picked whole — so a verdict naming both is one answer, not a choice, and a
-/// settled lead makes it Ready exactly as a lone match does. The Discogs row
-/// states no tracklist of its own and is not asked for one: the rule reads the
+/// settled lead makes it auto-importable exactly as a lone match does. The
+/// Discogs row states no tracklist of its own and is not asked for one: the check reads the
 /// release the draft is read from.
 #[test]
 fn two_sources_agreeing_on_a_barcode_are_one_pressing() {
@@ -190,7 +190,7 @@ fn two_sources_agreeing_on_a_barcode_are_one_pressing() {
         ],
         11,
     );
-    assert_eq!(classify(&verdict), QueueClassification::Ready);
+    assert_eq!(VerdictSummary::of(&verdict).judgement(), (true, None));
 }
 
 /// The count is the rows the run recorded, not the rows this list would form
@@ -227,7 +227,7 @@ fn the_pressing_count_is_the_rows_the_run_recorded() {
         ledger: None,
     };
     assert_eq!(VerdictSummary::of(&verdict).pressing_count, 2);
-    assert_eq!(classify(&verdict), QueueClassification::NeedsYou(None));
+    assert_eq!(VerdictSummary::of(&verdict).judgement(), (false, None));
 }
 
 /// Two sources naming *different* pressings is still the user's choice, and
@@ -241,7 +241,7 @@ fn two_sources_naming_different_pressings_stay_a_choice() {
         ],
         11,
     );
-    assert_eq!(classify(&verdict), QueueClassification::NeedsYou(None));
+    assert_eq!(VerdictSummary::of(&verdict).judgement(), (false, None));
 }
 
 /// An exact signal is not a unique result: a disc ID routinely returns several
@@ -253,19 +253,18 @@ fn several_matches_are_a_choice_for_the_user() {
         vec![result("mb-1", listing(11)), result("mb-2", listing(11))],
         11,
     );
-    assert_eq!(classify(&verdict), QueueClassification::NeedsYou(None));
+    assert_eq!(VerdictSummary::of(&verdict).judgement(), (false, None));
 }
 
 /// A release that lists no tracks has no count to check the folder's against,
 /// whether nobody has asked the source yet or it answered with nothing. A
-/// single match the source cannot corroborate goes to Needs you rather than
-/// being admitted.
+/// single match the source cannot corroborate is not auto-importable.
 #[test]
 fn a_match_listing_no_tracks_is_never_admitted() {
     for source_tracks in [None, Some(SourceTracks::Nothing)] {
         assert_eq!(
-            classify(&found(vec![result("mb-1", source_tracks.clone())], 11)),
-            QueueClassification::NeedsYou(Some(FolderCheck::SourceTracksUnknown)),
+            VerdictSummary::of(&found(vec![result("mb-1", source_tracks.clone())], 11)).judgement(),
+            (false, Some(FolderCheck::SourceTracksUnknown)),
             "{source_tracks:?}"
         );
     }
@@ -276,40 +275,45 @@ fn a_match_listing_no_tracks_is_never_admitted() {
 #[test]
 fn a_count_mismatch_names_both_counts() {
     assert_eq!(
-        classify(&found(vec![result("mb-1", listing(12))], 11)),
-        QueueClassification::NeedsYou(Some(FolderCheck::TrackCountDisagrees {
-            local: 11,
-            source: 12
-        }))
+        VerdictSummary::of(&found(vec![result("mb-1", listing(12))], 11)).judgement(),
+        (
+            false,
+            Some(FolderCheck::TrackCountDisagrees {
+                local: 11,
+                source: 12
+            })
+        )
     );
 }
 
-/// A verdict that found nothing to check the folder against is never Ready,
+/// A verdict that found nothing to check the folder against is never
+/// auto-importable,
 /// and names no folder check: the lookup result is the whole story, and the
 /// identify steps already state it.
 #[test]
 fn a_verdict_that_found_nothing_fails_no_folder_check() {
     assert_eq!(
-        classify(&TerminalVerdict::NotFoundAnywhere { ledger: None }),
-        QueueClassification::NeedsYou(None)
+        VerdictSummary::of(&TerminalVerdict::NotFoundAnywhere { ledger: None }).judgement(),
+        (false, None)
     );
     assert_eq!(
-        classify(&TerminalVerdict::ManualOnly {
+        VerdictSummary::of(&TerminalVerdict::ManualOnly {
             track_count: 11,
             ledger: None,
-        },),
-        QueueClassification::NeedsYou(None)
+        },)
+        .judgement(),
+        (false, None)
     );
 }
 
-/// [`VerdictSummary`] is what the list classifies from, read off stored
-/// columns rather than a rebuilt verdict — so every fact the rule consults has
+/// [`VerdictSummary`] is what the list judges from, read off stored columns
+/// rather than a rebuilt verdict — so every fact the judgements consult has
 /// to survive the reduction: which shape the verdict is, how many pressings it
 /// named, and the lead's own columns. Each verdict is paired with the pressing
 /// count it makes, which is the fact the reduction can no longer read off a
 /// row count.
 #[test]
-fn a_summary_keeps_every_fact_the_rule_consults() {
+fn a_summary_keeps_every_fact_the_judgements_consult() {
     let verdicts = [
         (found(vec![result("rel-a", listing(11))], 11), 1),
         (
@@ -392,22 +396,21 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
                 );
             }
         }
-
-        // The rule reads the same answer either way — which is what lets the
-        // list classify without rebuilding the verdict.
-        assert_eq!(classify_summary(&summary), classify(&verdict));
     }
 }
 
-/// A single pressing whose tracklist fits is still not Ready when the
+/// A single pressing whose tracklist fits is still not auto-importable when the
 /// folder's own files rule it out: the person picks, or does not.
 #[test]
-fn a_release_the_folder_rules_out_needs_you() {
+fn a_release_the_folder_rules_out_fails_its_check() {
     assert_eq!(
-        classify(&ruled_out_by_the_folder(vec![result("mb-1", listing(11))])),
-        QueueClassification::NeedsYou(Some(FolderCheck::MediumDisagrees {
-            folder: crate::identify::MediumConflict::NotCdAudio
-        }))
+        VerdictSummary::of(&ruled_out_by_the_folder(vec![result("mb-1", listing(11))])).judgement(),
+        (
+            false,
+            Some(FolderCheck::MediumDisagrees {
+                folder: crate::identify::MediumConflict::NotCdAudio
+            })
+        )
     );
 }
 
@@ -417,13 +420,17 @@ fn a_release_the_folder_rules_out_needs_you() {
 #[test]
 fn a_medium_the_folder_rules_out_is_named_over_several_pressings() {
     assert_eq!(
-        classify(&ruled_out_by_the_folder(vec![
+        VerdictSummary::of(&ruled_out_by_the_folder(vec![
             result("mb-1", listing(11)),
             result("mb-2", listing(11)),
-        ])),
-        QueueClassification::NeedsYou(Some(FolderCheck::MediumDisagrees {
-            folder: crate::identify::MediumConflict::NotCdAudio
-        }))
+        ]))
+        .judgement(),
+        (
+            false,
+            Some(FolderCheck::MediumDisagrees {
+                folder: crate::identify::MediumConflict::NotCdAudio
+            })
+        )
     );
 }
 

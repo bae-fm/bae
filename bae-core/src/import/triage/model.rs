@@ -9,19 +9,12 @@ pub enum TriageTab {
     Skipped,
 }
 
-/// Where a row sits within Pending, or which terminal tab it belongs to, read
-/// from the tables alone; what is running for it is its [`CandidateLiveState`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Which tab a row belongs to, and whether its last import failed, read from
+/// the tables alone; what is running for it is its [`CandidateLiveState`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriagePlacement {
-    /// Nothing to import and nothing to ask.
+    /// Not imported and not skipped.
     Pending,
-    /// Metadata is prepared for import.
-    Ready,
-    /// A verdict classified short of Ready, with the check against the folder
-    /// its found release did not pass when that is why.
-    NeedsYou {
-        folder_check: Option<FolderCheck>,
-    },
     /// The last import attempt failed; why is the row's [`TriageImportStatus`].
     Failed,
     Done,
@@ -31,21 +24,9 @@ pub enum TriagePlacement {
 impl TriagePlacement {
     pub fn tab(&self) -> TriageTab {
         match self {
-            Self::Pending
-            | Self::Ready
-            | Self::NeedsYou { .. }
-            | Self::Failed => TriageTab::Pending,
+            Self::Pending | Self::Failed => TriageTab::Pending,
             Self::Done => TriageTab::Done,
             Self::Skipped => TriageTab::Skipped,
-        }
-    }
-
-    /// The check against the folder this row's found release did not pass;
-    /// only a Needs-you row has one.
-    pub fn folder_check(&self) -> Option<&FolderCheck> {
-        match self {
-            Self::NeedsYou { folder_check } => folder_check.as_ref(),
-            Self::Pending | Self::Ready | Self::Failed | Self::Done | Self::Skipped => None,
         }
     }
 
@@ -53,7 +34,7 @@ impl TriagePlacement {
     /// failed.
     pub fn skip_action(&self) -> Option<TriageSkipAction> {
         match self {
-            Self::Pending | Self::Ready | Self::NeedsYou { .. } => Some(TriageSkipAction::Skip),
+            Self::Pending => Some(TriageSkipAction::Skip),
             Self::Skipped => Some(TriageSkipAction::Unskip),
             Self::Failed | Self::Done => None,
         }
@@ -128,7 +109,7 @@ pub struct MatchedPressing {
 /// The release identification matched for a row, kept on Skipped rows too.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatchedRelease {
-    /// The lead match's release id, which a bulk import commits on.
+    /// The lead match's release id.
     pub release_id: String,
     /// The lead match's title, standing in for the album when several
     /// pressings matched.
@@ -283,8 +264,6 @@ pub struct TriageRow {
     /// The cover the row draws: the chosen one, the matched artwork, or the
     /// folder's default image.
     pub cover: Option<crate::import::CoverImageSource>,
-    /// Whether a bulk import can take this row when nothing is running for it.
-    pub selectable: bool,
     /// How the candidate's last import ended.
     pub import_status: Option<TriageImportStatus>,
     /// Where the candidate's draft was read from, once a source was applied.

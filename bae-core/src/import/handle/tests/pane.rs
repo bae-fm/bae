@@ -2,6 +2,7 @@ mod candidate_mutation_race;
 mod commit_lock_waits;
 mod import_cancellation;
 mod import_ownership;
+mod live_filters;
 mod lookup_choices;
 mod metadata_application;
 mod metadata_author;
@@ -817,7 +818,7 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
     shut_down(handle).await;
 }
 
-/// A bulk import of the Ready set reaching a row identification is still
+/// A bulk import of a selection reaching a row identification is still
 /// answering skips that row and says why, leaving it unclaimed for the person
 /// to import once the run settles; a row an import already owns is refused the
 /// same way rather than claimed twice.
@@ -826,7 +827,7 @@ async fn a_bulk_import_skips_a_row_being_identified_and_says_so() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle.admit_identification(vec![key.clone()], crate::import::Admission::Requested);
 
-    let refused = handle.import_ready(&key).await;
+    let refused = handle.import_selected(&key).await;
 
     assert!(matches!(
         refused,
@@ -841,7 +842,7 @@ async fn a_bulk_import_skips_a_row_being_identified_and_says_so() {
     handle.withdraw_identification(&key);
     handle.claim_candidate_for_import(&key, "import-1").await;
     assert!(matches!(
-        handle.import_ready(&key).await,
+        handle.import_selected(&key).await,
         Err(crate::import::ImportError::CandidateImportInProgress)
     ));
     shut_down(handle).await;

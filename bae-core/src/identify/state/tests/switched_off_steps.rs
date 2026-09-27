@@ -184,8 +184,8 @@ fn a_run_whose_lookups_are_all_off_offers_manual_search() {
         "got {state:?}"
     );
     assert_eq!(
-        crate::identify::classify(&crate::identify::TerminalVerdict::try_from(state).unwrap()),
-        crate::identify::QueueClassification::NeedsYou(None)
+        crate::identify::VerdictSummary::of(&crate::identify::TerminalVerdict::try_from(state).unwrap()).judgement(),
+        (false, None)
     );
 }
 

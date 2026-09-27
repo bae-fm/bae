@@ -24,6 +24,7 @@ async fn subscription() -> (ImportListSubscription, tempfile::TempDir) {
         database.subscribe_folder_scan_progress(),
         request,
         outbox,
+        crate::import::candidate_runtime::RuntimeFactsWatch::of(&Default::default()),
         &tokio::runtime::Handle::current(),
     );
     (subscription, tmp)

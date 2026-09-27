@@ -8,7 +8,8 @@ use crate::identify::VerdictKind;
 /// offers them from this one list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CandidateAction {
-    ImportReady,
+    /// Import the candidate from its draft, wherever Pending places it.
+    Import,
     Identify,
     /// Stop the identification that is waiting, running, or being written.
     CancelIdentification,
@@ -32,7 +33,7 @@ pub enum CandidateAction {
 impl CandidateAction {
     /// Every action, in the order a surface lists them.
     pub const ALL: [CandidateAction; 12] = [
-        CandidateAction::ImportReady,
+        CandidateAction::Import,
         CandidateAction::CancelImport,
         CandidateAction::Identify,
         CandidateAction::CancelIdentification,
@@ -48,8 +49,9 @@ impl CandidateAction {
 }
 
 /// What the tables say a candidate's commands are decided from: whether it can
-/// be acted on at all, where it is placed, and whether its stored lookup
-/// failed — which offers a retry whatever the draft over it says.
+/// be acted on at all, where it is placed, whether its draft would import, and
+/// whether its stored lookup failed — which offers a retry whatever the draft
+/// over it says.
 ///
 /// The row carries it so the surface drawing the row can hand it back with
 /// the row's live-state subscription: the commands a row offers are these
@@ -58,6 +60,8 @@ impl CandidateAction {
 pub struct CandidateActionBasis {
     pub actionable: bool,
     pub placement: TriagePlacement,
+    /// Whether the draft shapes into a release an import can commit.
+    pub draft_valid: bool,
     pub lookup_failed: bool,
     /// Whether this release is folders a grouping reads as one, which the
     /// candidate offers to read as releases of their own.
@@ -70,22 +74,17 @@ impl CandidateActionBasis {
     pub(crate) fn of(
         actionable: bool,
         placement: &TriagePlacement,
+        draft_valid: bool,
         lookup: Option<VerdictKind>,
         separable: bool,
     ) -> Self {
         Self {
             actionable,
-            placement: placement.clone(),
+            placement: *placement,
+            draft_valid,
             lookup_failed: lookup == Some(VerdictKind::Failed),
             separable,
         }
-    }
-
-    /// Whether a bulk import may take this row when nothing is running for
-    /// it — the Ready set the list counts and selects from the tables alone.
-    pub fn importable_at_rest(&self) -> bool {
-        self.actions(&TriageRuntimeFacts::default())
-            .contains(&CandidateAction::ImportReady)
     }
 
     /// The commands these facts offer with `live` running for the candidate.
@@ -137,10 +136,10 @@ impl CandidateActionBasis {
         let mut actions = match placement {
             P::Done | P::Skipped => Vec::new(),
             _ if identifying => vec![A::CancelIdentification],
-            P::Pending | P::Ready | P::NeedsYou { .. } | P::Failed => {
+            P::Pending | P::Failed => {
                 let mut actions = Vec::new();
-                if matches!(placement, P::Ready) {
-                    actions.push(A::ImportReady);
+                if self.draft_valid {
+                    actions.push(A::Import);
                 }
                 actions.push(A::Identify);
                 if self.lookup_failed
@@ -187,10 +186,11 @@ impl CandidateLiveState {
 
 #[cfg(test)]
 mod tests {
+    use super::super::TriageTab;
     use super::*;
 
     fn basis(placement: TriagePlacement, lookup: Option<VerdictKind>) -> CandidateActionBasis {
-        CandidateActionBasis::of(true, &placement, lookup, false)
+        CandidateActionBasis::of(true, &placement, true, lookup, false)
     }
 
     fn identifying(status: IdentificationStatus) -> TriageRuntimeFacts {
@@ -200,21 +200,30 @@ mod tests {
         }
     }
 
+    /// Import is offered for a candidate on Pending — a failed attempt
+    /// included — whose draft would import.
     #[test]
-    fn only_ready_candidates_offer_unattended_import() {
+    fn every_pending_candidate_with_a_valid_draft_offers_import() {
+        let rest = TriageRuntimeFacts::default();
         for placement in [
             TriagePlacement::Pending,
-            TriagePlacement::Ready,
             TriagePlacement::Failed,
             TriagePlacement::Skipped,
             TriagePlacement::Done,
         ] {
+            let pending = placement.tab() == TriageTab::Pending;
             assert_eq!(
-                basis(placement.clone(), None).importable_at_rest(),
-                placement == TriagePlacement::Ready
+                basis(placement, None)
+                    .actions(&rest)
+                    .contains(&CandidateAction::Import),
+                pending,
+                "{placement:?}"
             );
+            assert!(!CandidateActionBasis::of(true, &placement, false, None, false)
+                .actions(&rest)
+                .contains(&CandidateAction::Import));
             assert_eq!(
-                CandidateActionBasis::of(false, &placement, None, false)
+                CandidateActionBasis::of(false, &placement, true, None, false)
                     .actions(&TriageRuntimeFacts::default()),
                 vec![CandidateAction::RevealFolder],
                 "a candidate that cannot be acted on still shows where it is"
@@ -242,7 +251,7 @@ mod tests {
             identification: None,
             import: Some(ImportStanding::Cancellable),
         };
-        for placement in [TriagePlacement::Ready, TriagePlacement::Pending] {
+        for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
             assert_eq!(
                 basis(placement, None).actions(&importing),
                 vec![CandidateAction::CancelImport, CandidateAction::RevealFolder]
@@ -259,20 +268,20 @@ mod tests {
             import: Some(ImportStanding::Writing),
         };
         assert_eq!(
-            basis(TriagePlacement::Ready, None).actions(&writing),
+            basis(TriagePlacement::Pending, None).actions(&writing),
             vec![CandidateAction::RevealFolder]
         );
     }
 
     #[test]
-    fn a_ready_draft_cannot_be_replaced_while_identification_is_running() {
+    fn a_draft_cannot_be_replaced_while_identification_is_running() {
         for status in [
             IdentificationStatus::Queued,
             IdentificationStatus::Running,
             IdentificationStatus::Finalizing,
         ] {
             assert_eq!(
-                basis(TriagePlacement::Ready, Some(VerdictKind::Found))
+                basis(TriagePlacement::Pending, Some(VerdictKind::Found))
                     .actions(&identifying(status)),
                 vec![
                     CandidateAction::CancelIdentification,
@@ -311,17 +320,17 @@ mod tests {
     #[test]
     fn a_candidate_offers_separating_or_combining_while_it_is_settled_nowhere() {
         let rest = TriageRuntimeFacts::default();
-        let grouped = CandidateActionBasis::of(true, &TriagePlacement::Pending, None, true);
+        let grouped = CandidateActionBasis::of(true, &TriagePlacement::Pending, true, None, true);
         assert!(grouped.actions(&rest).contains(&CandidateAction::Separate));
         assert!(!grouped.actions(&rest).contains(&CandidateAction::Combine));
-        let blocked = CandidateActionBasis::of(false, &TriagePlacement::Failed, None, true);
+        let blocked = CandidateActionBasis::of(false, &TriagePlacement::Failed, true, None, true);
         assert_eq!(
             blocked.actions(&rest),
             vec![CandidateAction::Separate, CandidateAction::RevealFolder]
         );
-        let lone = basis(TriagePlacement::Ready, Some(VerdictKind::Found));
+        let lone = basis(TriagePlacement::Pending, Some(VerdictKind::Found));
         assert!(lone.actions(&rest).contains(&CandidateAction::Combine));
-        let done = CandidateActionBasis::of(true, &TriagePlacement::Done, None, true);
+        let done = CandidateActionBasis::of(true, &TriagePlacement::Done, true, None, true);
         assert_eq!(done.actions(&rest), vec![CandidateAction::RevealFolder]);
         let importing = TriageRuntimeFacts {
             identification: None,
@@ -332,10 +341,7 @@ mod tests {
 
     #[test]
     fn lookup_and_finalization_failures_offer_retry() {
-        for placement in [
-            TriagePlacement::NeedsYou { folder_check: None },
-            TriagePlacement::Ready,
-        ] {
+        for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
             assert!(basis(placement, Some(VerdictKind::Failed))
                 .actions(&TriageRuntimeFacts::default())
                 .contains(&CandidateAction::RetryIdentification));
@@ -343,7 +349,7 @@ mod tests {
         let failure = identifying(IdentificationStatus::FinalizationFailed {
             error: "Provider unavailable".to_owned(),
         });
-        assert!(basis(TriagePlacement::Ready, None)
+        assert!(basis(TriagePlacement::Pending, None)
             .actions(&failure)
             .contains(&CandidateAction::RetryIdentification));
         assert!(!basis(TriagePlacement::Pending, None)
@@ -351,7 +357,7 @@ mod tests {
             .contains(&CandidateAction::RetryIdentification));
         for lookup in [VerdictKind::Found, VerdictKind::NotFound, VerdictKind::ManualOnly] {
             assert!(
-                !basis(TriagePlacement::NeedsYou { folder_check: None }, Some(lookup))
+                !basis(TriagePlacement::Pending, Some(lookup))
                     .actions(&TriageRuntimeFacts::default())
                     .contains(&CandidateAction::RetryIdentification),
                 "{lookup:?} is a lookup that finished"

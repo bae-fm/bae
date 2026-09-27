@@ -198,12 +198,12 @@ desktop_only! {
     pub use list::{
         ActiveFolderScan, CandidateImportStatus, CandidatePanePlacement,
         FolderScanActivity,
-        FolderScanProgress, IdentificationOutcome,
+        FolderScanProgress,
         ImportCandidateDetail,
         ImportCandidateDetailProjection, ImportCandidateListLocation, ImportListItem,
         ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
         ImportListSubscription, ImportListSubscriptionError, ImportListView, ImportListWindow,
-        ImportQueueSummary, ReadyRowRef,
+        ImportQueueSummary, PendingFilter,
     };
     pub use mapping::{
         mapping_table, mapping_tracks, MappingBecomes,

@@ -61,7 +61,7 @@ struct ImportCandidateBulkSelectionPaneTests {
             card.drawnGroups == [.importing, .metadata, .placement, .folder]
         )
         #expect(
-            card.rows(in: .importing).map(\.action) == [.importReady, .combine]
+            card.rows(in: .importing).map(\.action) == [.import, .combine]
         )
         #expect(
             card.rows(in: .metadata).map(\.action) == [
@@ -73,7 +73,7 @@ struct ImportCandidateBulkSelectionPaneTests {
     }
 
     /// Each row states how many of the selected folders its action applies to:
-    /// one of the two is ready to import, both can be identified or skipped.
+    /// one of the two can be imported, both can be identified or skipped.
     @Test("a row counts the selected folders its action applies to")
     func aRowCountsTheFoldersItAppliesTo() {
         let card = Self.card()
@@ -154,12 +154,13 @@ struct ImportCandidateBulkSelectionPaneTests {
     // MARK: - Staging
 
     private static let everyAction: [BridgeCandidateAction] = [
-        .importReady, .identify, .cancelIdentification, .cancelImport,
+        .import, .identify, .cancelIdentification, .cancelImport,
         .retryIdentification, .resetToFileMetadata, .clearMetadata, .combine,
         .separate, .skip, .restore, .revealFolder,
     ]
 
-    /// Two selected folders: one ready to import, one whose signals disagree.
+    /// Two selected folders: one with a draft to import, one whose signals
+    /// disagree.
     /// A row that applies to one of them is drawn beside rows that apply to
     /// both, which is what the card is for.
     private static let selectedKeys: Set<String> = [

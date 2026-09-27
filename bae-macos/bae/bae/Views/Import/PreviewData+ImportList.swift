@@ -78,18 +78,13 @@
             )
         }
 
-        /// The Ready set for a fixture: the rows a bulk import would act on,
-        /// in the order the list holds them.
-        static func readyRows(
+        /// The lead-match covers of a fixture's Pending rows, in the order the
+        /// list holds them.
+        static func pendingCovers(
             _ rows: [BridgeTriageRow]
-        ) -> [BridgeReadyRowRef] {
-            rows.filter(\.selectable)
-                .map { row in
-                    BridgeReadyRowRef(
-                        candidateKey: row.candidateKey,
-                        cover: row.matched?.cover
-                    )
-                }
+        ) -> [BridgeRemoteImageSet] {
+            rows.filter { $0.placement == .pending || $0.placement == .failed }
+                .compactMap { $0.matched?.cover }
         }
 
         static func importQueueSummary(
@@ -100,7 +95,7 @@
             folderScanStatuses: [BridgeWatchedFolderScanStatus] = [],
             folderScanActivity: BridgeFolderScanActivity? = nil,
             groupKeys: [BridgeFolderReleaseDecisionKey] = [],
-            ready: [BridgeReadyRowRef] = []
+            pendingCovers: [BridgeRemoteImageSet] = []
         ) -> BridgeImportQueueSummary {
             BridgeImportQueueSummary(
                 counts: BridgeTriageTabCounts(
@@ -112,7 +107,7 @@
                 folderScanStatuses: folderScanStatuses,
                 folderScanActivity: folderScanActivity,
                 groupKeys: groupKeys,
-                ready: ready
+                pendingCovers: pendingCovers
             )
         }
     }
