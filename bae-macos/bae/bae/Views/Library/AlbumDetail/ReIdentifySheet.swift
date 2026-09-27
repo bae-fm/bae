@@ -75,13 +75,14 @@ struct ReIdentifySheet: View {
         }
         .onDisappear {
             commitTask?.cancel()
-            // Stop this release's identification: the identify driver and any
-            // in-flight artwork OCR — the one cancel every identification has.
+            // End this release's session: its identification stops — the
+            // identify driver and any in-flight artwork OCR — and core forgets
+            // what it asked about.
             let importer = importer
             let uiStore = uiStore
             let key = key
             Task {
-                do { try await importer.cancelIdentification([key]) }
+                do { try await importer.endReleaseIdentification(key) }
                 catch { uiStore.showError(error) }
             }
             // Drop the candidate so a future re-open starts cold rather
@@ -315,20 +316,8 @@ extension ReIdentifySheet {
         // are logged in core, not surfaced — identify lands in ManualOnly when
         // nothing resolves, the same as a folder with no signals.
         // A library release has no candidate row to store what its run asks
-        // about, so the seeded session's own choices are what the run reads —
-        // and what a chip toggled here hands back with the run it restarts.
-        importer.autoIdentifyRelease(
-            key,
-            releaseId,
-            importStore.reIdentifyCandidates[key]?.lookupChoices
-                ?? BridgeLookupChoices(
-                    discIdExcluded: false,
-                    excludedBarcodes: [],
-                    chosenCatalogs: [],
-                    searchWords: nil,
-                    discountedCatalogs: []
-                )
-        )
+        // about, so core holds it for this session.
+        importer.autoIdentifyRelease(key, releaseId)
     }
 
     fileprivate func commit(_ choice: BridgeReleaseReseed) {

@@ -148,20 +148,23 @@ forward! {
         /// through the same identify channel — the UI consumes them by candidate
         /// key the same way it does for folder imports.
         ///
-        /// A library release is not a scanned candidate, so there is nowhere to
-        /// store what its run asks about: the caller holds `choices` for as
-        /// long as its session lasts and hands them back with every run it
-        /// starts, including the one a changed choice asks for.
-        fn auto_identify_release(
+        /// A library release is not a scanned candidate, so core holds what
+        /// its runs ask about for the session, from this first run until
+        /// `end_release_identification`.
+        fn auto_identify_release(candidate_key: String, release_id: String) {
+            this.services
+                .identify_release_for_lookup(candidate_key, release_id);
+        }
+
+        /// Make one change to what a library release's session asks about, and
+        /// identify it again from the changed choices.
+        fn edit_release_lookup_choices(
             candidate_key: String,
             release_id: String,
-            choices: crate::types::BridgeLookupChoices,
+            edit: crate::types::BridgeLookupChoiceEdit,
         ) {
-            this.services.identify_release_for_lookup(
-                candidate_key,
-                release_id,
-                choices.into_core(),
-            );
+            this.services
+                .edit_release_lookup_choices(candidate_key, release_id, edit.into_core());
         }
 
         /// Identify a folder candidate again, over what the candidate says its
@@ -276,15 +279,6 @@ forward! {
                 .import_add_watched_folder(path)
                 .await
                 .map_err(BridgeError::import)
-        }
-
-        /// Stop these candidates' identification however it was started, and
-        /// store nothing. Fails only when the identification queue has stopped.
-        fn cancel_identification(candidate_keys: Vec<String>) -> () {
-            this.services
-                .cancel_identification(candidate_keys)
-                .await
-                .map_err(BridgeError::from)
         }
 
         /// Take every candidate off the identification queue.
@@ -448,17 +442,26 @@ forward! {
                 .await?)
         }
 
-        /// Record what a candidate's identification asks about — the whole
-        /// value, computed by the caller from the detail's current one — and
-        /// start the run that reads it. A run already going for this candidate
-        /// is superseded.
-        fn set_candidate_lookup_choices(
+        /// End a library release's re-identify session: stop its
+        /// identification and forget what it asked about.
+        fn end_release_identification(candidate_key: String) -> () {
+            Ok(this
+                .services
+                .end_release_identification(candidate_key)
+                .await?)
+        }
+
+        /// Make one change to what a candidate's identification asks about,
+        /// to the choices core holds for it, and start the run that reads them
+        /// when what it looks up changed. A run already going for this
+        /// candidate is superseded.
+        fn edit_candidate_lookup_choices(
             candidate_key: String,
-            choices: crate::types::BridgeLookupChoices,
+            edit: crate::types::BridgeLookupChoiceEdit,
         ) -> () {
             Ok(this
                 .services
-                .import_set_candidate_lookup_choices(candidate_key, choices.into_core())
+                .import_edit_candidate_lookup_choices(candidate_key, edit.into_core())
                 .await?)
         }
 

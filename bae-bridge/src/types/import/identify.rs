@@ -3,52 +3,34 @@
 
 use super::super::*;
 
-/// What a candidate's identification asks about and how it ranks the answers,
-/// sent whole: a control changes one part of the current value and sends it
-/// back. Mirrors `bae_core::import::LookupChoices`.
-#[derive(Debug, Clone, Default, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeLookupChoices {
-    /// Whether the run leaves the candidate's disc ID out.
-    pub disc_id_excluded: bool,
-    /// The barcode values the run leaves out, each once, sorted.
-    pub excluded_barcodes: Vec<String>,
-    /// The catalog numbers the run looks up, in the order they were chosen.
-    pub chosen_catalogs: Vec<String>,
-    /// The words the person typed for the title search; `None` searches by
-    /// the draft's own title.
-    pub search_words: Option<BridgeSearchWords>,
-    /// The catalog numbers struck out of the candidate's text, so a release
-    /// carrying one earns no catalog agreement from it.
-    pub discounted_catalogs: Vec<String>,
+/// One change a person makes to what a candidate's identification asks about
+/// or counts; core applies it to the choices it holds. Mirrors
+/// `bae_core::import::LookupChoiceEdit`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeLookupChoiceEdit {
+    /// Ask about the disc ID again, or leave it out.
+    ToggleDiscId,
+    /// Leave one barcode out, or ask about it again.
+    ToggleBarcode { code: String },
+    /// Look one catalog number up, or stop looking it up.
+    ToggleCatalog { number: String },
+    /// Search by these words, or by the draft's own title when both are blank.
+    SearchBy { album: String, artist: String },
+    /// Strike one catalog number out of what the folder is taken to state, or
+    /// count it again.
+    ToggleDiscounted { number: String },
 }
 
-/// Mirrors `bae_core::import::SearchWords`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeSearchWords {
-    pub album: String,
-    /// Blank searches by the title alone.
-    pub artist: String,
-}
-
-mirror_struct! {
+mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeSearchWords = bae_core::import::SearchWords,
-    from_core: pub(crate) fn,
+    BridgeLookupChoiceEdit = bae_core::import::LookupChoiceEdit,
     into_core: pub fn,
-    fields: { album, artist },
-}
-
-mirror_struct! {
-    #[cfg(feature = "desktop")]
-    BridgeLookupChoices = bae_core::import::LookupChoices,
-    from_core: pub(crate) fn,
-    into_core: pub fn,
-    fields: {
-        disc_id_excluded,
-        excluded_barcodes,
-        chosen_catalogs,
-        search_words: (opt BridgeSearchWords),
-        discounted_catalogs,
+    variants: {
+        ToggleDiscId,
+        ToggleBarcode { code },
+        ToggleCatalog { number },
+        SearchBy { album, artist },
+        ToggleDiscounted { number },
     },
 }
 

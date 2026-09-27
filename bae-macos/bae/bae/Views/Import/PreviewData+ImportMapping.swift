@@ -457,13 +457,6 @@
                     mapping: mapping,
                     cover: cover,
                     signals: nil,
-                    lookupChoices: BridgeLookupChoices(
-                        discIdExcluded: false,
-                        excludedBarcodes: [],
-                        chosenCatalogs: [],
-                        searchWords: nil,
-                        discountedCatalogs: []
-                    ),
                     failure: failure,
                     session: paneSession(presentation: presentation)
                 )

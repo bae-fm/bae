@@ -221,108 +221,24 @@ struct CandidateSessionState: Equatable {
     }
 }
 
-// MARK: - BridgeLookupChoices
+// MARK: - Lookup toggles
 
 /// Which identifier a chip in the band stands for. Every chip turns its own
 /// identifier over — the disc ID, one of the candidate's barcodes, or one of
-/// its catalog numbers — and the whole value of what identification asks about
-/// is what goes back.
+/// its catalog numbers — and that change is what goes to core.
 enum LookupToggle: Equatable {
     case discId
     case barcode(String)
     case catalog(String)
-}
 
-extension BridgeLookupChoices {
-    /// This value with one identifier turned over: a disc ID asked about or
-    /// left out, a barcode left out or asked about again, a catalog number
-    /// looked up or dropped from the run. The whole value is what a control
-    /// sends back, so the change it makes is made here.
-    func toggling(_ toggle: LookupToggle) -> BridgeLookupChoices {
-        switch toggle {
-        case .discId:
-            return BridgeLookupChoices(
-                discIdExcluded: !discIdExcluded,
-                excludedBarcodes: excludedBarcodes,
-                chosenCatalogs: chosenCatalogs,
-                searchWords: searchWords,
-                discountedCatalogs: discountedCatalogs
-            )
-        case .barcode(let code):
-            // A set, so it goes back sorted and each code appears once.
-            var leftOut = Set(excludedBarcodes)
-            if leftOut.remove(code) == nil {
-                leftOut.insert(code)
-            }
-            return BridgeLookupChoices(
-                discIdExcluded: discIdExcluded,
-                excludedBarcodes: leftOut.sorted(),
-                chosenCatalogs: chosenCatalogs,
-                searchWords: searchWords,
-                discountedCatalogs: discountedCatalogs
-            )
-        case .catalog(let number):
-            return choosing(number)
+    /// The change turning this identifier over makes to the choices core
+    /// holds.
+    var edit: BridgeLookupChoiceEdit {
+        switch self {
+        case .discId: .toggleDiscId
+        case .barcode(let code): .toggleBarcode(code: code)
+        case .catalog(let number): .toggleCatalog(number: number)
         }
-    }
-
-    /// This value with `catalog` among the numbers the run looks up, or
-    /// without it when it already was. The chosen numbers are dispatched in the
-    /// order they were chosen, so they are a list rather than a set.
-    func choosing(_ catalog: String) -> BridgeLookupChoices {
-        var chosen = chosenCatalogs
-        if let index = chosen.firstIndex(of: catalog) {
-            chosen.remove(at: index)
-        }
-        else {
-            chosen.append(catalog)
-        }
-        return BridgeLookupChoices(
-            discIdExcluded: discIdExcluded,
-            excludedBarcodes: excludedBarcodes,
-            chosenCatalogs: chosen,
-            searchWords: searchWords,
-            discountedCatalogs: discountedCatalogs
-        )
-    }
-
-    /// This value searching by `album` and `artist` where the person typed
-    /// them, or by the draft's own title when both are blank. Core trims the
-    /// words and takes a blank title as no words.
-    func searching(album: String, artist: String) -> BridgeLookupChoices {
-        let words: BridgeSearchWords? =
-            album.trimmingCharacters(in: .whitespaces).isEmpty
-                && artist.trimmingCharacters(in: .whitespaces).isEmpty
-            ? nil
-            : BridgeSearchWords(album: album, artist: artist)
-        return BridgeLookupChoices(
-            discIdExcluded: discIdExcluded,
-            excludedBarcodes: excludedBarcodes,
-            chosenCatalogs: chosenCatalogs,
-            searchWords: words,
-            discountedCatalogs: discountedCatalogs
-        )
-    }
-
-    /// This value with `catalog` struck out of what the folder is taken to
-    /// state, or counted again when it already was struck out. A set, so it
-    /// goes back sorted and each value appears once.
-    ///
-    /// Striking a number out only changes how the answers in hand rank, so
-    /// it leaves the numbers the run looks up exactly as they were: the
-    /// write asks for no run, and counting the number again chooses nothing.
-    func discounting(_ catalog: String) -> BridgeLookupChoices {
-        var discounted = Set(discountedCatalogs)
-        if discounted.remove(catalog) == nil {
-            discounted.insert(catalog)
-        }
-        return BridgeLookupChoices(
-            discIdExcluded: discIdExcluded,
-            excludedBarcodes: excludedBarcodes,
-            chosenCatalogs: chosenCatalogs,
-            searchWords: searchWords,
-            discountedCatalogs: discounted.sorted()
-        )
     }
 }
 
@@ -364,19 +280,6 @@ struct Candidate: Equatable, Identifiable {
     /// Where the pane was when the person last left this candidate. A folder
     /// candidate's comes with its detail; a re-identify session's lives here.
     var session = CandidateSessionState()
-    /// What this candidate's identification asks about — the signals its runs
-    /// leave out and the catalog numbers they look up — and the numbers struck
-    /// out of what its own text is taken to state. A folder candidate's is
-    /// stored with it and comes back on its detail; a re-identify session has
-    /// no candidate row to store one on, so its own lives here for as long as
-    /// the sheet does.
-    var lookupChoices = BridgeLookupChoices(
-        discIdExcluded: false,
-        excludedBarcodes: [],
-        chosenCatalogs: [],
-        searchWords: nil,
-        discountedCatalogs: []
-    )
     /// The draft, or the Find online page, occupying the metadata slot.
     /// Opening the page never replaces the stored draft; applying a result
     /// does.
@@ -424,7 +327,6 @@ struct Candidate: Equatable, Identifiable {
         live = detail.live
         self.detail = detail
         session = CandidateSessionState(bridge: detail.session)
-        lookupChoices = detail.lookupChoices
     }
 
     /// This row over `existing`'s session state: the list re-read the folder,

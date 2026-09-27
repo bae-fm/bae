@@ -752,15 +752,17 @@ async fn reset_setup_resets_a_combination_sharing_the_same_files() {
     let mirror = TempDir::new().unwrap();
     let folder = mirrored_combination_folder(&manager, &combined, mirror.path()).await;
     let folder_key = folder.path.to_string_lossy().into_owned();
-    let choices = crate::import::LookupChoices {
-        disc_id_excluded: true,
-        chosen_catalogs: vec!["S1001".into()],
-        ..crate::import::LookupChoices::default()
-    };
-    handle
-        .set_candidate_lookup_choices(&folder_key, choices.clone())
-        .await
-        .unwrap();
+    for edit in [
+        crate::import::LookupChoiceEdit::ToggleDiscId,
+        crate::import::LookupChoiceEdit::ToggleCatalog {
+            number: "S1001".into(),
+        },
+    ] {
+        handle
+            .edit_candidate_lookup_choices(&folder_key, edit)
+            .await
+            .unwrap();
+    }
     let before = preparation(&handle, &folder.files.content_hash()).await;
     assert_eq!(before.draft.tracks.len(), 3, "the folder's decision carried over");
     handle.reset_candidate_setup(&folder_key).await.unwrap();
@@ -791,10 +793,20 @@ async fn reset_setup_clears_lookup_choices_while_reset_to_tags_keeps_them() {
         search_words: None,
         discounted_catalogs: vec!["OTHER-1".into()],
     };
-    handle
-        .set_candidate_lookup_choices(&key, choices.clone())
-        .await
-        .unwrap();
+    for edit in [
+        crate::import::LookupChoiceEdit::ToggleDiscId,
+        crate::import::LookupChoiceEdit::ToggleBarcode {
+            code: "0123456789012".into(),
+        },
+        crate::import::LookupChoiceEdit::ToggleCatalog {
+            number: "S1001".into(),
+        },
+        crate::import::LookupChoiceEdit::ToggleDiscounted {
+            number: "OTHER-1".into(),
+        },
+    ] {
+        handle.edit_candidate_lookup_choices(&key, edit).await.unwrap();
+    }
     handle
         .select_candidate_metadata_provenance(key.clone(), MetadataProvenance::FileMetadata)
         .await
@@ -831,12 +843,11 @@ async fn reset_setup_prepared_before_a_lookup_choice_cannot_erase_it() {
         .expect("reset reads tags");
     let choices = crate::import::LookupChoices {
         disc_id_excluded: true,
-        chosen_catalogs: vec!["S1001".into()],
         ..crate::import::LookupChoices::default()
     };
     let editing = tokio::time::timeout(
         std::time::Duration::from_secs(2),
-        handle.set_candidate_lookup_choices(&key, choices.clone()),
+        handle.edit_candidate_lookup_choices(&key, crate::import::LookupChoiceEdit::ToggleDiscId),
     )
     .await;
     resume.wait();

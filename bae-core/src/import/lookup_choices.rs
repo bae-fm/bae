@@ -65,6 +65,24 @@ pub struct LookupChoices {
     pub discounted_catalogs: Vec<String>,
 }
 
+/// One change a person makes to what a candidate's identification asks about
+/// or counts: each control sends the change it is, and core applies it to the
+/// choices it holds, so two quick changes both land.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LookupChoiceEdit {
+    /// Ask about the disc ID again, or leave it out.
+    ToggleDiscId,
+    /// Leave one barcode out, or ask about it again.
+    ToggleBarcode { code: String },
+    /// Look one catalog number up, or stop looking it up.
+    ToggleCatalog { number: String },
+    /// Search by these words, or by the draft's own title when both are blank.
+    SearchBy { album: String, artist: String },
+    /// Strike one catalog number out of what the folder is taken to state, or
+    /// count it again.
+    ToggleDiscounted { number: String },
+}
+
 impl SearchWords {
     /// These words with their edges trimmed, or `None` for words that name
     /// no title — which is no words at all, and the draft's title stands.
@@ -78,6 +96,42 @@ impl SearchWords {
 }
 
 impl LookupChoices {
+    /// These choices with `edit` made, as stored: normalized.
+    pub fn edited(mut self, edit: LookupChoiceEdit) -> Self {
+        fn toggled_in_set(values: &mut Vec<String>, value: String) {
+            match values.iter().position(|held| *held == value) {
+                Some(index) => {
+                    values.remove(index);
+                }
+                None => values.push(value),
+            }
+            values.sort();
+        }
+        match edit {
+            LookupChoiceEdit::ToggleDiscId => self.disc_id_excluded = !self.disc_id_excluded,
+            LookupChoiceEdit::ToggleBarcode { code } => {
+                toggled_in_set(&mut self.excluded_barcodes, code)
+            }
+            // The chosen numbers are looked up in the order they were chosen,
+            // so they stay a list rather than a set.
+            LookupChoiceEdit::ToggleCatalog { number } => {
+                match self.chosen_catalogs.iter().position(|held| *held == number) {
+                    Some(index) => {
+                        self.chosen_catalogs.remove(index);
+                    }
+                    None => self.chosen_catalogs.push(number),
+                }
+            }
+            LookupChoiceEdit::SearchBy { album, artist } => {
+                self.search_words = Some(SearchWords { album, artist });
+            }
+            LookupChoiceEdit::ToggleDiscounted { number } => {
+                toggled_in_set(&mut self.discounted_catalogs, number)
+            }
+        }
+        self.normalized()
+    }
+
     /// This value as it is stored: the typed words trimmed, and each chosen
     /// number chosen once however it is spelled. Numbers are compared as the
     /// text is searched, with case and punctuation dropped, so `NJ 8255`
@@ -126,10 +180,101 @@ pub enum ChoiceChange {
 
 #[cfg(test)]
 mod tests {
-    use super::{LookupChoices, SearchWords};
+    use super::{LookupChoiceEdit, LookupChoices, SearchWords};
 
     fn strings(values: &[&str]) -> Vec<String> {
         values.iter().map(|value| value.to_string()).collect()
+    }
+
+    fn held() -> LookupChoices {
+        LookupChoices {
+            disc_id_excluded: false,
+            excluded_barcodes: strings(&["9999999999999"]),
+            chosen_catalogs: strings(&["LBL 001"]),
+            search_words: None,
+            discounted_catalogs: strings(&["LBL 100"]),
+        }
+    }
+
+    /// Each change turns over one choice and leaves every other where it was.
+    #[test]
+    fn one_change_leaves_every_other_choice_alone() {
+        let out = held().edited(LookupChoiceEdit::ToggleDiscId);
+        assert!(out.disc_id_excluded);
+        assert_eq!(
+            out,
+            LookupChoices {
+                disc_id_excluded: true,
+                ..held()
+            }
+        );
+        assert!(!out.edited(LookupChoiceEdit::ToggleDiscId).disc_id_excluded);
+
+        let barcode = |code: &str| LookupChoiceEdit::ToggleBarcode {
+            code: code.to_string(),
+        };
+        let out = held().edited(barcode("0123456789012"));
+        assert_eq!(
+            out.excluded_barcodes,
+            strings(&["0123456789012", "9999999999999"])
+        );
+        assert_eq!(out.chosen_catalogs, held().chosen_catalogs);
+        assert!(held()
+            .edited(barcode("9999999999999"))
+            .excluded_barcodes
+            .is_empty());
+    }
+
+    /// Chosen numbers are looked up in the order they were chosen, and a
+    /// number chosen again is taken out.
+    #[test]
+    fn a_catalog_number_joins_and_leaves_in_order() {
+        let catalog = |number: &str| LookupChoiceEdit::ToggleCatalog {
+            number: number.to_string(),
+        };
+        let added = held().edited(catalog("LBL 002"));
+        assert_eq!(added.chosen_catalogs, strings(&["LBL 001", "LBL 002"]));
+        assert_eq!(
+            added.edited(catalog("LBL 001")).chosen_catalogs,
+            strings(&["LBL 002"])
+        );
+    }
+
+    /// Striking a number out ranks the answers in hand and chooses nothing:
+    /// a chosen number stays chosen, and counting a number again chooses
+    /// nothing either.
+    #[test]
+    fn striking_a_number_out_or_back_chooses_nothing() {
+        let discounted = |number: &str| LookupChoiceEdit::ToggleDiscounted {
+            number: number.to_string(),
+        };
+        let struck = held().edited(discounted("LBL 001"));
+        assert_eq!(struck.discounted_catalogs, strings(&["LBL 001", "LBL 100"]));
+        assert_eq!(struck.chosen_catalogs, strings(&["LBL 001"]));
+        let counted = held().edited(discounted("LBL 100"));
+        assert!(counted.discounted_catalogs.is_empty());
+        assert_eq!(counted.chosen_catalogs, strings(&["LBL 001"]));
+    }
+
+    /// Typed words replace the draft's title, and blank ones give it back.
+    #[test]
+    fn search_words_replace_the_title_and_blank_ones_give_it_back() {
+        let typed = held().edited(LookupChoiceEdit::SearchBy {
+            album: " Album Title ".to_string(),
+            artist: "Artist".to_string(),
+        });
+        assert_eq!(
+            typed.search_words,
+            Some(SearchWords {
+                album: "Album Title".to_string(),
+                artist: "Artist".to_string(),
+            })
+        );
+        let cleared = typed.edited(LookupChoiceEdit::SearchBy {
+            album: String::new(),
+            artist: String::new(),
+        });
+        assert_eq!(cleared.search_words, None);
     }
 
     /// Striking a number out and choosing it are separate choices: a number

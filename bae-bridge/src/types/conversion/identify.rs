@@ -671,26 +671,6 @@ mod tests {
         ));
     }
 
-    /// Every part of the lookup choices crosses and crosses back.
-    #[test]
-    fn every_part_of_what_identification_asks_about_crosses() {
-        let choices = bae_core::import::LookupChoices {
-            disc_id_excluded: true,
-            excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
-            chosen_catalogs: vec!["WPCR-80001".to_string()],
-            search_words: None,
-            discounted_catalogs: vec!["LBL-9".to_string()],
-        };
-        let crossed = crate::types::BridgeLookupChoices::from_core(choices.clone());
-        assert_eq!(
-            crossed.excluded_barcodes,
-            vec!["0123456789012".to_string(), "9999999999999".to_string()]
-        );
-        assert_eq!(crossed.chosen_catalogs, vec!["WPCR-80001".to_string()]);
-        assert_eq!(crossed.discounted_catalogs, vec!["LBL-9".to_string()]);
-        assert_eq!(crossed.into_core(), choices);
-    }
-
     /// A code the person left out crosses as a row whose cells say so.
     #[test]
     fn a_code_left_out_crosses_as_a_row_that_says_so() {

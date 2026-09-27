@@ -490,7 +490,6 @@ extension MappingFixtures {
                 ),
             cover: nil,
             signals: nil,
-            lookupChoices: noLookupChoices,
             failure: failure,
             session: session(presentation: presentation)
         )
@@ -517,16 +516,6 @@ extension MappingFixtures {
             isAdded: false
         )
     }
-
-    /// What a fixture candidate's identification asks about: everything, with
-    /// no catalog number singled out and no search words chosen.
-    static let noLookupChoices = BridgeLookupChoices(
-        discIdExcluded: false,
-        excludedBarcodes: [],
-        chosenCatalogs: [],
-        searchWords: nil,
-        discountedCatalogs: []
-    )
 
     /// A pane session with an empty form and no banner, on `presentation`.
     static func session(

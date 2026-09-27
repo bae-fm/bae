@@ -255,3 +255,40 @@ async fn queue_upcoming_follows_queue_revisions_without_resubscribing() {
     .await;
     assert!(cleared.revision > queue.revision);
 }
+
+/// A library release's re-identify session keeps its choices in core: each
+/// change is made to the ones before it, a run started afterwards reads them
+/// without being handed them, and ending the session forgets them.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[tokio::test(flavor = "multi_thread")]
+async fn a_release_session_keeps_its_choices_in_core() {
+    use crate::import::LookupChoiceEdit;
+    let (services, _track_ids, _temp_dir) = playing_app_services(1).await;
+    let key = "reidentify:release-1".to_string();
+    let release = "release-1".to_string();
+
+    services.edit_release_lookup_choices(
+        key.clone(),
+        release.clone(),
+        LookupChoiceEdit::ToggleDiscId,
+    );
+    services.edit_release_lookup_choices(
+        key.clone(),
+        release.clone(),
+        LookupChoiceEdit::ToggleCatalog {
+            number: "WPCR-80001".to_string(),
+        },
+    );
+    services.identify_release_for_lookup(key.clone(), release);
+
+    let held = services.release_lookup_choices().get(&key).cloned();
+    let held = held.expect("the session's choices are held");
+    assert!(held.disc_id_excluded);
+    assert_eq!(held.chosen_catalogs, vec!["WPCR-80001".to_string()]);
+
+    services
+        .end_release_identification(key.clone())
+        .await
+        .unwrap();
+    assert!(services.release_lookup_choices().get(&key).is_none());
+}

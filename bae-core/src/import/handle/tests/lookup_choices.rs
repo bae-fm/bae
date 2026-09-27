@@ -1,5 +1,37 @@
 use super::*;
-use crate::import::{ChoiceChange, LookupChoices};
+use crate::import::{ChoiceChange, LookupChoiceEdit, LookupChoices};
+
+fn barcode(code: &str) -> LookupChoiceEdit {
+    LookupChoiceEdit::ToggleBarcode {
+        code: code.to_string(),
+    }
+}
+
+fn catalog(number: &str) -> LookupChoiceEdit {
+    LookupChoiceEdit::ToggleCatalog {
+        number: number.to_string(),
+    }
+}
+
+fn discounted(number: &str) -> LookupChoiceEdit {
+    LookupChoiceEdit::ToggleDiscounted {
+        number: number.to_string(),
+    }
+}
+
+/// Make each of `edits` to the candidate's choices, in order, and say what
+/// each changed.
+async fn edit(
+    handle: &ImportServiceHandle,
+    key: &str,
+    edits: impl IntoIterator<Item = LookupChoiceEdit>,
+) -> Vec<ChoiceChange> {
+    let mut changes = Vec::new();
+    for edit in edits {
+        changes.push(handle.edit_candidate_lookup_choices(key, edit).await.unwrap());
+    }
+    changes
+}
 
 /// The person's lookup choices read back on the candidate's pane.
 #[tokio::test(flavor = "multi_thread")]
@@ -11,20 +43,47 @@ async fn the_candidate_s_lookup_choices_read_back_on_its_pane() {
         "a candidate nobody has chosen for excludes nothing and chooses nothing"
     );
 
-    let choices = LookupChoices {
-        disc_id_excluded: false,
-        excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
-        chosen_catalogs: vec!["WPCR-80001".to_string()],
-        search_words: None,
-        discounted_catalogs: vec!["LBL-9".to_string()],
-    };
-    handle
-        .set_candidate_lookup_choices(&key, choices.clone())
-        .await
-        .unwrap();
+    edit(
+        &handle,
+        &key,
+        [
+            barcode("9999999999999"),
+            barcode("0123456789012"),
+            catalog("WPCR-80001"),
+            discounted("LBL-9"),
+        ],
+    )
+    .await;
 
-    assert_eq!(pane(&handle, &key).await.lookup_choices, choices);
+    assert_eq!(
+        pane(&handle, &key).await.lookup_choices,
+        LookupChoices {
+            disc_id_excluded: false,
+            excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
+            chosen_catalogs: vec!["WPCR-80001".to_string()],
+            search_words: None,
+            discounted_catalogs: vec!["LBL-9".to_string()],
+        }
+    );
     shut_down(handle).await;
+}
+
+/// Two changes made one right after the other both land: each is made to the
+/// choices the one before it left, not to a copy read before either.
+#[tokio::test(flavor = "multi_thread")]
+async fn two_quick_changes_both_land() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let (first, second) = tokio::join!(
+        handle.edit_candidate_lookup_choices(&key, LookupChoiceEdit::ToggleDiscId),
+        handle.edit_candidate_lookup_choices(&key, catalog("WPCR-80001")),
+    );
+    first.unwrap();
+    second.unwrap();
+
+    let stored = pane(&handle, &key).await.lookup_choices;
+    shut_down(handle).await;
+    assert!(stored.disc_id_excluded);
+    assert_eq!(stored.chosen_catalogs, vec!["WPCR-80001".to_string()]);
 }
 
 /// A key that names no scanned folder has no candidate to hold a choice.
@@ -32,7 +91,7 @@ async fn the_candidate_s_lookup_choices_read_back_on_its_pane() {
 async fn lookup_choices_for_an_unknown_key_are_refused() {
     let (handle, _tmp, _key, _hash) = pane_fixture().await;
     let refused = handle
-        .set_candidate_lookup_choices("/nowhere/at/all", LookupChoices::default())
+        .edit_candidate_lookup_choices("/nowhere/at/all", LookupChoiceEdit::ToggleDiscId)
         .await;
     assert!(refused.is_err());
     shut_down(handle).await;
@@ -43,40 +102,26 @@ async fn lookup_choices_for_an_unknown_key_are_refused() {
 #[tokio::test(flavor = "multi_thread")]
 async fn only_a_change_to_what_a_run_looks_up_asks_for_another_run() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let looked_up = LookupChoices {
-        disc_id_excluded: false,
-        excluded_barcodes: vec!["0123456789012".to_string()],
-        chosen_catalogs: vec!["WPCR-80001".to_string()],
-        search_words: None,
-        discounted_catalogs: Vec::new(),
-    };
     assert_eq!(
-        handle
-            .set_candidate_lookup_choices(&key, looked_up.clone())
-            .await
-            .unwrap(),
-        ChoiceChange::Lookups
+        edit(&handle, &key, [barcode("0123456789012"), catalog("WPCR-80001")]).await,
+        vec![ChoiceChange::Lookups, ChoiceChange::Lookups]
     );
     assert_eq!(
-        handle
-            .set_candidate_lookup_choices(
-                &key,
-                LookupChoices {
-                    discounted_catalogs: vec!["LBL-9".to_string()],
-                    ..looked_up.clone()
-                }
-            )
-            .await
-            .unwrap(),
-        ChoiceChange::Ranking
+        edit(&handle, &key, [discounted("LBL-9"), discounted("LBL-9")]).await,
+        vec![ChoiceChange::Ranking, ChoiceChange::Ranking]
     );
     assert_eq!(
-        handle
-            .set_candidate_lookup_choices(&key, looked_up)
-            .await
-            .unwrap(),
-        ChoiceChange::Ranking,
-        "writing the same lookups again asks nothing new of the providers"
+        edit(
+            &handle,
+            &key,
+            [LookupChoiceEdit::SearchBy {
+                album: "  ".to_string(),
+                artist: String::new(),
+            }]
+        )
+        .await,
+        vec![ChoiceChange::Ranking],
+        "blank words search by the draft's title, as nothing typed did"
     );
     shut_down(handle).await;
 }
@@ -86,17 +131,12 @@ async fn only_a_change_to_what_a_run_looks_up_asks_for_another_run() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_struck_out_number_is_written_as_still_chosen() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    handle
-        .set_candidate_lookup_choices(
-            &key,
-            LookupChoices {
-                chosen_catalogs: vec!["WPCR-80001".to_string(), "NJ 8255".to_string()],
-                discounted_catalogs: vec!["NJ-8255".to_string()],
-                ..LookupChoices::default()
-            },
-        )
-        .await
-        .unwrap();
+    edit(
+        &handle,
+        &key,
+        [catalog("WPCR-80001"), catalog("NJ 8255"), discounted("NJ-8255")],
+    )
+    .await;
     let stored = pane(&handle, &key).await.lookup_choices;
     shut_down(handle).await;
     assert_eq!(
@@ -110,32 +150,22 @@ async fn a_struck_out_number_is_written_as_still_chosen() {
 #[tokio::test(flavor = "multi_thread")]
 async fn striking_a_chosen_number_out_and_back_asks_for_no_run() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let chosen = LookupChoices {
-        chosen_catalogs: vec!["NJ-8255".to_string()],
-        ..LookupChoices::default()
-    };
-    handle
-        .set_candidate_lookup_choices(&key, chosen.clone())
-        .await
-        .unwrap();
-    let struck = LookupChoices {
-        discounted_catalogs: vec!["NJ-8255".to_string()],
-        ..chosen.clone()
-    };
+    edit(&handle, &key, [catalog("NJ-8255")]).await;
+    let chosen = pane(&handle, &key).await.lookup_choices;
     assert_eq!(
-        handle
-            .set_candidate_lookup_choices(&key, struck.clone())
-            .await
-            .unwrap(),
-        ChoiceChange::Ranking
+        edit(&handle, &key, [discounted("NJ-8255")]).await,
+        vec![ChoiceChange::Ranking]
     );
-    assert_eq!(pane(&handle, &key).await.lookup_choices, struck);
     assert_eq!(
-        handle
-            .set_candidate_lookup_choices(&key, chosen.clone())
-            .await
-            .unwrap(),
-        ChoiceChange::Ranking
+        pane(&handle, &key).await.lookup_choices,
+        LookupChoices {
+            discounted_catalogs: vec!["NJ-8255".to_string()],
+            ..chosen.clone()
+        }
+    );
+    assert_eq!(
+        edit(&handle, &key, [discounted("NJ-8255")]).await,
+        vec![ChoiceChange::Ranking]
     );
     let stored = pane(&handle, &key).await.lookup_choices;
     shut_down(handle).await;
@@ -162,16 +192,13 @@ async fn picking_a_record_the_folder_prints_the_number_of_chooses_nothing() {
 async fn a_pick_leaves_the_person_s_choices_as_they_were() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
-    let choices = LookupChoices {
-        excluded_barcodes: vec!["0123456789012".to_string()],
-        chosen_catalogs: vec!["WPCR-80001".to_string()],
-        discounted_catalogs: vec!["NJ-8255".to_string()],
-        ..LookupChoices::default()
-    };
-    handle
-        .set_candidate_lookup_choices(&key, choices.clone())
-        .await
-        .unwrap();
+    edit(
+        &handle,
+        &key,
+        [barcode("0123456789012"), catalog("WPCR-80001"), discounted("NJ-8255")],
+    )
+    .await;
+    let choices = pane(&handle, &key).await.lookup_choices;
     seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-2", "NJ 8255");
 
     pick(&handle, &key, "chosen-mb-rel-2").await;

@@ -55,6 +55,12 @@ struct AppServicesInner {
     /// has the Import section open, and opening a view is not what starts it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     identification: IdentificationHandle,
+    /// What each library release being identified again asks about, by its
+    /// session's candidate key. A release has no candidate row to store them
+    /// on, so they are held here from the session's first run to its end.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    release_lookup_choices:
+        std::sync::Mutex<std::collections::HashMap<String, crate::import::LookupChoices>>,
 }
 
 impl Drop for AppServicesInner {
@@ -110,6 +116,8 @@ impl AppServices {
                 import,
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
                 identification,
+                #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                release_lookup_choices: Default::default(),
             }),
         }
     }

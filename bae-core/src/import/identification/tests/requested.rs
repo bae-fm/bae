@@ -631,18 +631,14 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     let sweeps_run = await_run_state(&mut restart, &key, |_, _| true).await;
 
-    // What a person changing a choice does: the whole value is stored, and the
-    // run that reads it is started.
+    // What a person changing a choice does: the change is made to the stored
+    // choices, and the run that reads them is started.
     fixture
         .import
-        .set_candidate_lookup_choices(
+        .edit_candidate_lookup_choices(
             &key,
-            crate::import::LookupChoices {
-                disc_id_excluded: false,
-                excluded_barcodes: vec!["0123456789012".to_string()],
-                chosen_catalogs: Vec::new(),
-                search_words: None,
-                discounted_catalogs: Vec::new(),
+            crate::import::LookupChoiceEdit::ToggleBarcode {
+                code: "0123456789012".to_string(),
             },
         )
         .await

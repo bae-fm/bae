@@ -53,15 +53,16 @@ private struct ImportOperations: Sendable {
         @Sendable (String, String, BridgeSheetDisc) async throws -> Void
     let setFileRole:
         @Sendable (String, String, BridgeFileRoleChoice) async throws -> Void
-    let autoIdentifyRelease:
-        @Sendable (String, String, BridgeLookupChoices) -> Void
+    let autoIdentifyRelease: @Sendable (String, String) -> Void
+    let editReleaseLookupChoices:
+        @Sendable (String, String, BridgeLookupChoiceEdit) -> Void
+    let endReleaseIdentification: @Sendable (String) async throws -> Void
     let startCandidateSearch: @Sendable (String, BridgeSearchQuery) -> Void
     let retryCandidateSearch: @Sendable (String) -> Void
     let subscribeLibraryStatuses: @Sendable () -> LibraryStatusQuery
-    let setCandidateLookupChoices:
-        @Sendable (String, BridgeLookupChoices) async throws -> Void
+    let editCandidateLookupChoices:
+        @Sendable (String, BridgeLookupChoiceEdit) async throws -> Void
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
-    let cancelIdentification: @Sendable ([String]) async throws -> Void
     let cancelAllIdentification: @Sendable () async throws -> Void
     let cancelImport: @Sendable (String) async throws -> Void
     let cancelAllImports: @Sendable () -> Void
@@ -175,11 +176,17 @@ extension ImportOperations {
                 )
             },
             autoIdentifyRelease: {
-                handle.autoIdentifyRelease(
+                handle.autoIdentifyRelease(candidateKey: $0, releaseId: $1)
+            },
+            editReleaseLookupChoices: {
+                handle.editReleaseLookupChoices(
                     candidateKey: $0,
                     releaseId: $1,
-                    choices: $2
+                    edit: $2
                 )
+            },
+            endReleaseIdentification: {
+                try await handle.endReleaseIdentification(candidateKey: $0)
             },
             startCandidateSearch: {
                 handle.startCandidateSearch(candidateKey: $0, query: $1)
@@ -195,17 +202,14 @@ extension ImportOperations {
                     cancel: { try? await subscription.cancel() }
                 )
             },
-            setCandidateLookupChoices: {
-                try await handle.setCandidateLookupChoices(
+            editCandidateLookupChoices: {
+                try await handle.editCandidateLookupChoices(
                     candidateKey: $0,
-                    choices: $1
+                    edit: $1
                 )
             },
             rerunIdentifyForCandidate: {
                 handle.rerunIdentifyForCandidate(candidateKey: $0)
-            },
-            cancelIdentification: {
-                try await handle.cancelIdentification(candidateKeys: $0)
             },
             cancelAllIdentification: {
                 try await handle.cancelAllIdentification()
@@ -393,26 +397,26 @@ final class Importer: Sendable, Observable {
         setFileRole:
             @escaping @Sendable (String, String, BridgeFileRoleChoice)
             async throws -> Void = { _, _, _ in },
-        autoIdentifyRelease:
-            @escaping @Sendable (String, String, BridgeLookupChoices) -> Void =
-            {
-                _,
-                _,
-                _ in
-            },
+        autoIdentifyRelease: @escaping @Sendable (String, String) -> Void = {
+            _,
+            _ in
+        },
+        editReleaseLookupChoices:
+            @escaping @Sendable (String, String, BridgeLookupChoiceEdit) ->
+            Void = { _, _, _ in },
+        endReleaseIdentification:
+            @escaping @Sendable (String) async throws -> Void = { _ in },
         startCandidateSearch:
             @escaping @Sendable (String, BridgeSearchQuery) -> Void = { _, _ in
             },
         retryCandidateSearch: @escaping @Sendable (String) -> Void = { _ in },
         subscribeLibraryStatuses:
             @escaping @Sendable () -> LibraryStatusQuery = { .inert },
-        setCandidateLookupChoices:
-            @escaping @Sendable (String, BridgeLookupChoices) async throws ->
+        editCandidateLookupChoices:
+            @escaping @Sendable (String, BridgeLookupChoiceEdit) async throws ->
             Void = { _, _ in },
         rerunIdentifyForCandidate:
             @escaping @Sendable (String) -> Void = { _ in },
-        cancelIdentification:
-            @escaping @Sendable ([String]) async throws -> Void = { _ in },
         cancelAllIdentification:
             @escaping @Sendable () async throws -> Void = {},
         cancelImport: @escaping @Sendable (String) async throws -> Void = {
@@ -514,12 +518,13 @@ final class Importer: Sendable, Observable {
             setSheetDisc: setSheetDisc,
             setFileRole: setFileRole,
             autoIdentifyRelease: autoIdentifyRelease,
+            editReleaseLookupChoices: editReleaseLookupChoices,
+            endReleaseIdentification: endReleaseIdentification,
             startCandidateSearch: startCandidateSearch,
             retryCandidateSearch: retryCandidateSearch,
             subscribeLibraryStatuses: subscribeLibraryStatuses,
-            setCandidateLookupChoices: setCandidateLookupChoices,
+            editCandidateLookupChoices: editCandidateLookupChoices,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
-            cancelIdentification: cancelIdentification,
             cancelAllIdentification: cancelAllIdentification,
             cancelImport: cancelImport,
             cancelAllImports: cancelAllImports,
@@ -641,15 +646,26 @@ extension Importer {
         try await operations.setFileRole(candidateKey, fileId, choice)
     }
 
-    /// Re-identify a library release. It is not a scanned candidate, so
-    /// nothing stores what its run asks about: the sheet holds `choices` and
-    /// hands them back with every run it starts.
-    func autoIdentifyRelease(
+    /// Re-identify a library release, asking about what core holds for this
+    /// session.
+    func autoIdentifyRelease(_ candidateKey: String, _ releaseId: String) {
+        operations.autoIdentifyRelease(candidateKey, releaseId)
+    }
+
+    /// Make one change to what a library release's session asks about; core
+    /// identifies it again from the changed choices.
+    func editReleaseLookupChoices(
         _ candidateKey: String,
         _ releaseId: String,
-        _ choices: BridgeLookupChoices
+        _ edit: BridgeLookupChoiceEdit
     ) {
-        operations.autoIdentifyRelease(candidateKey, releaseId, choices)
+        operations.editReleaseLookupChoices(candidateKey, releaseId, edit)
+    }
+
+    /// End a library release's re-identify session: its identification stops
+    /// and core forgets what it asked about.
+    func endReleaseIdentification(_ candidateKey: String) async throws {
+        try await operations.endReleaseIdentification(candidateKey)
     }
 
     /// Submit a candidate's typed search. Fire-and-forget: every configured
@@ -672,14 +688,13 @@ extension Importer {
         operations.subscribeLibraryStatuses()
     }
 
-    /// Record what a candidate's identification asks about — the whole value,
-    /// computed from the detail's current one — and start the run that reads
-    /// it.
-    func setCandidateLookupChoices(
+    /// Make one change to what a candidate's identification asks about; core
+    /// applies it to the choices it holds and starts the run that reads them.
+    func editCandidateLookupChoices(
         _ candidateKey: String,
-        _ choices: BridgeLookupChoices
+        _ edit: BridgeLookupChoiceEdit
     ) async throws {
-        try await operations.setCandidateLookupChoices(candidateKey, choices)
+        try await operations.editCandidateLookupChoices(candidateKey, edit)
     }
 
     /// Identify a folder candidate again, over what the candidate says its
@@ -691,14 +706,6 @@ extension Importer {
     /// already succeeded.
     func rerunIdentifyForCandidate(_ candidateKey: String) {
         operations.rerunIdentifyForCandidate(candidateKey)
-    }
-
-    /// Stop these candidates' identification however it was started — queued,
-    /// running, or a re-identify sheet's own run. They are left unidentified
-    /// and are not picked up again on their own; `rerunIdentifyForCandidate`
-    /// asks for one again.
-    func cancelIdentification(_ candidateKeys: [String]) async throws {
-        try await operations.cancelIdentification(candidateKeys)
     }
 
     /// Take every candidate off the identification queue.

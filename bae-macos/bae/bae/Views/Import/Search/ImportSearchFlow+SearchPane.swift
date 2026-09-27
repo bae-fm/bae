@@ -121,8 +121,8 @@ extension ImportSearchFlow {
         services: ImportServices,
         input: SearchPaneInput
     ) {
-        writeLookupChoices(
-            input.candidate.lookupChoices.toggling(toggle),
+        editLookupChoices(
+            toggle.edit,
             services: services,
             input: input,
             failure: { line in
@@ -143,11 +143,8 @@ extension ImportSearchFlow {
         services: ImportServices,
         input: SearchPaneInput
     ) {
-        writeLookupChoices(
-            input.candidate.lookupChoices.searching(
-                album: album,
-                artist: artist
-            ),
+        editLookupChoices(
+            .searchBy(album: album, artist: artist),
             services: services,
             input: input,
             failure: { line in
@@ -167,8 +164,8 @@ extension ImportSearchFlow {
         services: ImportServices,
         input: SearchPaneInput
     ) {
-        writeLookupChoices(
-            input.candidate.lookupChoices.discounting(value),
+        editLookupChoices(
+            .toggleDiscounted(number: value),
             services: services,
             input: input,
             failure: { line in
@@ -180,9 +177,8 @@ extension ImportSearchFlow {
         )
     }
 
-    /// Run identification again from the candidate's stored choices. A library
-    /// release has no candidate row, so the sheet restarts its own run with the
-    /// choices it holds.
+    /// Run identification again from the choices core holds: a folder's stored
+    /// ones, or a library release's for its session.
     @MainActor
     private static func rerunIdentification(
         services: ImportServices,
@@ -190,28 +186,21 @@ extension ImportSearchFlow {
     ) {
         switch input.candidate.source {
         case .releaseReIdentify(let releaseId):
-            services.importer.autoIdentifyRelease(
-                input.key,
-                releaseId,
-                input.candidate.lookupChoices
-            )
+            services.importer.autoIdentifyRelease(input.key, releaseId)
         case .folder:
             services.importer.rerunIdentifyForCandidate(input.key)
         }
     }
 
-    /// Store the whole value of what this candidate's identification asks
-    /// about and counts, and let the run that reads it start from there.
-    ///
-    /// A library release has no candidate row to store a choice on, so the
-    /// re-identify sheet's session holds it and the restarted run reads it
-    /// from there. A folder's choices are core's: it stores them, starts a run
-    /// when what is looked up changed, and the candidate's next detail carries
-    /// them back. Striking a number out asks nothing of the providers; the
-    /// same answers come back ranked by it.
+    /// Send one change to what this candidate's identification asks about
+    /// and counts; core makes it to the choices it holds and starts the run
+    /// that reads them. A folder's choices are stored with it; a library
+    /// release's are held for its re-identify session, and each change runs
+    /// it again. Striking a number out asks nothing of a folder's providers;
+    /// the same answers come back ranked by it.
     @MainActor
-    private static func writeLookupChoices(
-        _ choices: BridgeLookupChoices,
+    private static func editLookupChoices(
+        _ edit: BridgeLookupChoiceEdit,
         services: ImportServices,
         input: SearchPaneInput,
         failure: @escaping (String) -> String
@@ -220,16 +209,13 @@ extension ImportSearchFlow {
         let importStore = services.importStore
         switch input.candidate.source {
         case .releaseReIdentify(let releaseId):
-            importStore.mutateCandidate(forKey: key) {
-                $0.lookupChoices = choices
-            }
-            services.importer.autoIdentifyRelease(key, releaseId, choices)
+            services.importer.editReleaseLookupChoices(key, releaseId, edit)
         case .folder:
             Task { @MainActor in
                 do {
-                    try await services.importer.setCandidateLookupChoices(
+                    try await services.importer.editCandidateLookupChoices(
                         key,
-                        choices
+                        edit
                     )
                 }
                 catch is CancellationError {}

@@ -36,14 +36,10 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
     fixture.use_discogs().await;
     fixture
         .import
-        .set_candidate_lookup_choices(
+        .edit_candidate_lookup_choices(
             &dir.to_string_lossy(),
-            crate::import::LookupChoices {
-                disc_id_excluded: false,
-                excluded_barcodes: vec!["0123456789012".to_string()],
-                chosen_catalogs: Vec::new(),
-                search_words: None,
-                discounted_catalogs: Vec::new(),
+            crate::import::LookupChoiceEdit::ToggleBarcode {
+                code: "0123456789012".to_string(),
             },
         )
         .await

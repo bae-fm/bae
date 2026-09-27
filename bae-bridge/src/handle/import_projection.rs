@@ -610,7 +610,9 @@ impl crate::types::BridgeImportCandidateDetail {
             // The same list as `release.cover_art`.
             remote_covers: _,
             signals,
-            lookup_choices,
+            // Changed through `edit_candidate_lookup_choices`; nothing on the
+            // pane reads it back.
+            lookup_choices: _,
             failure,
             session,
         } = detail;
@@ -646,7 +648,6 @@ impl crate::types::BridgeImportCandidateDetail {
             mapping: crate::types::BridgeMappingTable::from_core(mapping),
             cover: cover.map(crate::types::BridgeCoverChoice::from_core),
             signals: signals.map(crate::types::BridgeSignals::from_core),
-            lookup_choices: crate::types::BridgeLookupChoices::from_core(lookup_choices),
             failure: failure.map(crate::types::BridgeImportFailure::from_core),
             session: crate::types::BridgeCandidateSession::from_core(session),
         }

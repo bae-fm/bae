@@ -255,7 +255,6 @@ private func detail(
         ),
         cover: cover,
         signals: nil,
-        lookupChoices: MappingFixtures.noLookupChoices,
         failure: nil,
         session: MappingFixtures.session(presentation: presentation)
     )

@@ -70,24 +70,24 @@ impl AppServices {
         self.inner.import.subscribe_events()
     }
 
-    /// Record what a candidate's identification asks about, and run it again
-    /// when what it looks up has changed: a run takes its choices at its
-    /// start, so a person changing one is asking for a run that reads it. Any
-    /// run already going for this candidate is superseded.
+    /// Make one change to what a candidate's identification asks about, and
+    /// run it again when what it looks up has changed: a run takes its choices
+    /// at its start, so a person changing one is asking for a run that reads
+    /// it. Any run already going for this candidate is superseded.
     ///
     /// Striking a number out of the candidate's text asks nothing of the
     /// providers — the answers in hand are the same answers, ranked by what
     /// the folder is now taken to state about them — so it starts no run, and
     /// the next read of the candidate ranks them afresh.
-    pub async fn import_set_candidate_lookup_choices(
+    pub async fn import_edit_candidate_lookup_choices(
         &self,
         candidate_key: String,
-        choices: crate::import::LookupChoices,
+        edit: crate::import::LookupChoiceEdit,
     ) -> Result<(), crate::import::ImportError> {
         let change = self
             .inner
             .import
-            .set_candidate_lookup_choices(&candidate_key, choices)
+            .edit_candidate_lookup_choices(&candidate_key, edit)
             .await?;
         if change == crate::import::ChoiceChange::Lookups {
             self.inner.identification.rerun_identify(candidate_key);
@@ -96,13 +96,59 @@ impl AppServices {
     }
 
     /// Identify an existing library release after the person opens the
-    /// re-identify sheet. Extraction resolves the disc ID and artwork from the
-    /// library rather than from a scanned folder, so — unlike
-    /// [`Self::rerun_identify`] — this does not go through the identification
-    /// queue: there is no candidate folder to key a stored verdict by, and so
-    /// nowhere to store what the run asks about. The sheet holds `choices`
-    /// itself and hands them back with each run it starts.
-    pub fn identify_release_for_lookup(
+    /// re-identify sheet, asking about what this session's choices say —
+    /// none made yet on its first run. Extraction resolves the disc ID and
+    /// artwork from the library rather than from a scanned folder, so —
+    /// unlike [`Self::rerun_identify`] — this does not go through the
+    /// identification queue: there is no candidate folder to key a stored
+    /// verdict by.
+    pub fn identify_release_for_lookup(&self, candidate_key: String, release_id: String) {
+        let choices = self
+            .release_lookup_choices()
+            .entry(candidate_key.clone())
+            .or_default()
+            .clone();
+        self.start_release_identification(candidate_key, release_id, choices);
+    }
+
+    /// Make one change to what a library release's session asks about, and
+    /// identify it again from the changed choices.
+    pub fn edit_release_lookup_choices(
+        &self,
+        candidate_key: String,
+        release_id: String,
+        edit: crate::import::LookupChoiceEdit,
+    ) {
+        let choices = {
+            let mut held = self.release_lookup_choices();
+            let choices = held.entry(candidate_key.clone()).or_default();
+            *choices = choices.clone().edited(edit);
+            choices.clone()
+        };
+        self.start_release_identification(candidate_key, release_id, choices);
+    }
+
+    /// End a library release's re-identify session: stop its identification
+    /// and forget what it asked about, so the next session starts afresh.
+    pub async fn end_release_identification(
+        &self,
+        candidate_key: String,
+    ) -> Result<(), crate::library::LibraryError> {
+        self.release_lookup_choices().remove(&candidate_key);
+        self.inner.identification.cancel(vec![candidate_key]).await
+    }
+
+    pub(super) fn release_lookup_choices(
+        &self,
+    ) -> std::sync::MutexGuard<'_, std::collections::HashMap<String, crate::import::LookupChoices>>
+    {
+        self.inner
+            .release_lookup_choices
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn start_release_identification(
         &self,
         candidate_key: String,
         release_id: String,
