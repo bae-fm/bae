@@ -342,7 +342,6 @@ mirror_enum! {
     variants: {
         CdRip,
         NotCdAudio { sample_rate_hz },
-        MonoAudio,
     },
 }
 

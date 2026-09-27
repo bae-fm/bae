@@ -350,9 +350,10 @@ fn an_admitted_row_leads_with_no_conflict() {
     assert_eq!(mixed.0.medium_conflict, None);
 }
 
-/// Two pressings of one LP the lookups name alike, one of them stated mono:
-/// a folder of one-channel audio agrees with that one, which is offered, and
-/// the one stating nothing waits behind the disclosure.
+/// Two pressings of one LP the lookups name alike, one stated mono and one
+/// stereo: a folder of one-channel audio agrees with the mono one, which is
+/// offered as the tiebreak, and the stereo one waits behind the disclosure —
+/// set aside, not ruled out.
 #[test]
 fn mono_audio_offers_the_pressing_stated_mono() {
     let lp = |release_id: &str, details: Vec<DiscogsDetail>| {
@@ -369,67 +370,95 @@ fn mono_audio_offers_the_pressing_stated_mono() {
         Vec::new(),
         Vec::new(),
         vec![
-            lp("rel-plain", Vec::new()),
+            lp("rel-stereo", vec![DiscogsDetail::Stereo]),
             lp("rel-mono", vec![DiscogsDetail::Mono]),
         ],
         Vec::new(),
         Vec::new(),
         &folder(),
-        FolderAudio {
-            rip: &RipEvidence::Unproven,
-            mono: true,
-        },
+        MONO_FILES,
     );
     assert_eq!(offered(&outcome), vec!["rel-mono"]);
-    assert_eq!(set_aside(&outcome), vec!["rel-plain"]);
+    assert_eq!(set_aside(&outcome), vec!["rel-stereo"]);
+    assert_eq!(outcome.0.medium_conflict, None);
 }
 
-/// A one-channel folder cannot hold a pressing stated only as stereo; where
-/// every row is one, they are all still offered, and the verdict says the
-/// audio is mono.
+/// A pressing of `media` that Discogs lists as stereo.
+fn stated_stereo(release_id: &str, media: StatedMedia) -> Found {
+    let (result, status) = pressing(release_id, media);
+    (
+        MetadataResult {
+            discogs_details: vec![DiscogsDetail::Stereo],
+            ..result
+        },
+        status,
+    )
+}
+
+const MONO_FILES: FolderAudio<'static> = FolderAudio {
+    rip: &RipEvidence::Unproven,
+    mono: true,
+};
+
+/// Catalogs list mono pressings as stereo, so one-channel files rule no row
+/// out: the stereo-listed pressing the barcode and the catalog number both
+/// returned outranks one the title search alone found, even stated mono.
 #[test]
-fn mono_audio_rules_out_pressings_stated_stereo() {
-    let stereo = |release_id: &str| {
-        let (result, status) = pressing(release_id, made_of(&[Medium::Vinyl]));
-        (
-            MetadataResult {
-                discogs_details: vec![DiscogsDetail::Stereo],
-                ..result
-            },
-            status,
-        )
-    };
-    let mono = FolderAudio {
-        rip: &RipEvidence::Unproven,
-        mono: true,
-    };
-    let mixed = combine_results(
+fn mono_audio_does_not_outrank_what_the_lookups_agree_on() {
+    let stereo = stated_stereo("rel-stereo", made_of(&[Medium::Vinyl]));
+    let (mono_result, mono_status) = pressing("rel-mono", made_of(&[Medium::Vinyl]));
+    let by_title = (
+        MetadataResult {
+            catalog_number: None,
+            discogs_details: vec![DiscogsDetail::Mono],
+            ..mono_result
+        },
+        mono_status,
+    );
+    let outcome = combine_results(
         Vec::new(),
+        vec![stereo.clone()],
+        vec![stereo],
+        vec![by_title],
         Vec::new(),
-        vec![
-            stereo("rel-stereo"),
-            pressing("rel-plain", made_of(&[Medium::Vinyl])),
-        ],
+        &folder(),
+        MONO_FILES,
+    );
+    assert_eq!(offered(&outcome), vec!["rel-stereo"]);
+    assert_eq!(set_aside(&outcome), vec!["rel-mono"]);
+    assert_eq!(outcome.0.medium_conflict, None);
+}
+
+/// Where every pressing is listed as stereo, one-channel files leave them all
+/// offered with no conflict, so a single one is Ready like any other.
+#[test]
+fn mono_audio_against_stereo_listings_can_still_be_ready() {
+    let (result, status) = stated_stereo("rel-stereo", made_of(&[Medium::Vinyl]));
+    let listed = (
+        MetadataResult {
+            source_tracks: Some(crate::import::search::SourceTracks::Listed { count: 11 }),
+            ..result
+        },
+        status,
+    );
+    let (findings, _) = combine_results(
+        Vec::new(),
+        vec![listed],
+        Vec::new(),
         Vec::new(),
         Vec::new(),
         &folder(),
-        mono,
+        MONO_FILES,
     );
-    assert_eq!(offered(&mixed), vec!["rel-plain"]);
-    assert_eq!(mixed.0.medium_conflict, None);
-    let every_stereo = combine_results(
-        Vec::new(),
-        Vec::new(),
-        vec![stereo("rel-stereo-1"), stereo("rel-stereo-2")],
-        Vec::new(),
-        Vec::new(),
-        &folder(),
-        mono,
-    );
-    assert_eq!(offered(&every_stereo), vec!["rel-stereo-1", "rel-stereo-2"]);
+    assert_eq!(findings.medium_conflict, None);
+    let verdict = crate::identify::TerminalVerdict::Found {
+        findings,
+        track_count: 11,
+        ledger: None,
+    };
     assert_eq!(
-        every_stereo.0.medium_conflict,
-        Some(MediumConflict::MonoAudio)
+        crate::identify::classify(&verdict),
+        crate::identify::QueueClassification::Ready
     );
 }
 

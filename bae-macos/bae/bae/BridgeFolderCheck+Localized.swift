@@ -25,8 +25,7 @@ extension BridgeFolderCheck {
             let kilohertz = (Double(sampleRateHz) / 1000)
                 .formatted(.number.precision(.fractionLength(0...1)))
             return String.localizedStringWithFormat(template, kilohertz)
-        case .sourceTracksUnknown, .mediumDisagrees(.cdRip),
-            .mediumDisagrees(.monoAudio):
+        case .sourceTracksUnknown, .mediumDisagrees(.cdRip):
             return template
         }
     }

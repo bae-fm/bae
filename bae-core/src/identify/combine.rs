@@ -39,7 +39,7 @@
 //! the list is shortened and never emptied.
 
 use super::agreements::{agreements_of, CandidateText};
-use super::medium::{ChannelFit, FolderAudio, RippedFrom};
+use super::medium::{agrees_with_mono, FolderAudio, RippedFrom};
 use crate::db::LibraryStatus;
 use crate::import::album_links::Twin;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
@@ -384,8 +384,9 @@ pub fn combine_results(
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 struct Support {
     /// Whether what the row's records say it is made of could have given
-    /// the folder its audio — see [`RippedFrom::admits`] — and, for mono
-    /// audio, whether it states no more channels than one.
+    /// the folder its audio — see [`RippedFrom::admits`]. The carrier only:
+    /// what a row states about its channels is `states_the_channels`, a
+    /// tiebreak far below.
     ///
     /// Read first because it is the one field that speaks to the object
     /// rather than to how well the lookups agree: a vinyl pressing every
@@ -432,12 +433,14 @@ struct Support {
     /// Artists" it does not write at all, is only no agreement, never a
     /// reason against the row.
     names_album: u32,
-    /// Whether the row states mono and the folder's audio is one channel.
+    /// Whether the row states mono and the folder's audio is one channel —
+    /// see [`agrees_with_mono`].
     ///
     /// A catalog tells a mono pressing from a stereo one of the same album
     /// by this alone, often under catalog numbers a folder does not print,
-    /// so it separates rows nothing above tells apart. Two channels are never
-    /// read: a mono record is routinely ripped to two identical ones.
+    /// so it separates rows nothing above tells apart. It never counts
+    /// against a row stating stereo beyond that: catalogs list mono
+    /// pressings as stereo, so a lookup's agreement outranks it.
     states_the_channels: bool,
     /// Whether the folder's text states the country this pressing was
     /// released in.
@@ -494,15 +497,8 @@ fn support_of(
     }
     let agreements = row.agreements(judgements);
     let offered = agreements.offered();
-    let channels = ChannelFit::of(
-        mono,
-        row.releases
-            .iter()
-            .flat_map(|release| &release.discogs_details),
-    );
     Support {
-        medium: ripped_from.admits(row.releases.iter().map(|release| &release.media))
-            && channels != ChannelFit::Contradicts,
+        medium: ripped_from.admits(row.releases.iter().map(|release| &release.media)),
         lookups: [
             returned.by_disc_id,
             returned.by_barcode,
@@ -528,7 +524,12 @@ fn support_of(
         .into_iter()
         .filter(|stated| *stated)
         .count() as u32,
-        states_the_channels: channels == ChannelFit::Agrees,
+        states_the_channels: agrees_with_mono(
+            mono,
+            row.releases
+                .iter()
+                .flat_map(|release| &release.discogs_details),
+        ),
         states_the_country: agreements.country,
         offered,
     }
@@ -554,18 +555,12 @@ fn split_rows(
     let Some(best) = support.iter().copied().max() else {
         return (Vec::new(), Vec::new(), None);
     };
-    // Every row fails the medium, each by its carrier or its channels. What
-    // the verdict names is the carrier, where every row fails by it, and the
-    // mono audio otherwise.
+    // The best row failing the medium means every row does, by its carrier:
+    // the verdict names what the folder proves.
     let medium_conflict = if best.medium {
         None
-    } else if rows
-        .iter()
-        .all(|row| !ripped_from.admits(row.releases.iter().map(|release| &release.media)))
-    {
-        ripped_from.conflict()
     } else {
-        Some(super::MediumConflict::MonoAudio)
+        ripped_from.conflict()
     };
     let mut offered = Vec::new();
     let mut set_aside = Vec::new();

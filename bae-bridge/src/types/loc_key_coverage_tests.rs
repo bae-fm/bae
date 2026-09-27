@@ -271,9 +271,6 @@ fn produced_keys() -> Vec<String> {
         BridgeFolderCheck::MediumDisagrees {
             folder: BridgeMediumConflict::NotCdAudio { sample_rate_hz: 0 },
         },
-        BridgeFolderCheck::MediumDisagrees {
-            folder: BridgeMediumConflict::MonoAudio,
-        },
     ] {
         keys.push(bridge_folder_check_key(&folder_check));
     }

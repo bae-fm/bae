@@ -72,8 +72,9 @@ pub struct Signals {
     /// rows whose stated media it contradicts.
     pub rip: RipEvidence,
     /// Whether every one of the candidate's audio files carries one channel.
-    /// Not a lookup input: a row stating mono agrees with it, and one stating
-    /// only stereo is set aside by it. Two channels are no evidence — a mono
+    /// Not a lookup input: a row stating mono agrees with it, which breaks a
+    /// tie between otherwise equal rows; a row stating stereo is not ruled
+    /// out by it. Two channels are no evidence — a mono
     /// record is routinely ripped to two identical ones — so there is nothing
     /// to record about them.
     pub mono_audio: bool,

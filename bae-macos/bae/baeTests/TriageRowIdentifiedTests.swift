@@ -95,7 +95,6 @@ struct TriageRowIdentifiedTests {
             .sourceTracksUnknown,
             .mediumDisagrees(folder: .cdRip),
             .mediumDisagrees(folder: .notCdAudio(sampleRateHz: 96_000)),
-            .mediumDisagrees(folder: .monoAudio),
         ]
     )
     func everyFolderCheckResolvesToItsOwnSentence(
