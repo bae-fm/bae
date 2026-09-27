@@ -121,6 +121,11 @@ struct ImportCandidateActionOffer: Identifiable {
     var id: BridgeCandidateAction { action }
     var keys: [String] { targets.map(\.key) }
 
+    /// How many of the selected folders the offer applies to, absent for an
+    /// action over the selection as a whole: combining reads every selected
+    /// folder as one release, so a count beside it says nothing.
+    var count: Int? { action == .combine ? nil : targets.count }
+
     /// What `members` — each candidate with the actions its live state offers
     /// — can be told to do together, as core decides it.
     static func offers(

@@ -37,9 +37,7 @@ struct CandidateActionMenuItems: View {
 
     private func title(_ offer: ImportCandidateActionOffer) -> String {
         guard menu.isSelection else { return offer.action.rowLabel }
-        // Combining is the whole selection's, so it carries no count.
-        return offer.action == .combine
-            ? offer.action.label
-            : offer.action.label(count: offer.targets.count)
+        guard let count = offer.count else { return offer.action.label }
+        return offer.action.label(count: count)
     }
 }

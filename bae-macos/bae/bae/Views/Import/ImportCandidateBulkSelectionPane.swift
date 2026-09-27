@@ -165,10 +165,6 @@ struct ImportCandidateBulkSelectionCard: View {
 }
 
 extension ImportCandidateActionOffer {
-    /// How many of the selected folders the row applies to, absent for an
-    /// action over the selection as a whole.
-    var count: Int? { action == .combine ? nil : targets.count }
-
     /// Whether the row gets folders into the library, which is what the
     /// accent and the heavier name mark.
     var isConstructive: Bool { action == .importReady || action == .combine }
