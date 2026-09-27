@@ -49,7 +49,7 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
         .await
         .unwrap();
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     fixture
         .await_identified_row(&dir)

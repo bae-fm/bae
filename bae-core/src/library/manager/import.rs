@@ -158,13 +158,6 @@ impl LibraryManager {
         Ok(self.database.load_import_candidate(key).await?)
     }
 
-    /// Every candidate the queue sweep is responsible for, with its files.
-    pub(crate) async fn load_sweepable_candidates(
-        &self,
-    ) -> Result<Vec<crate::import::FolderCandidate>, LibraryError> {
-        Ok(self.database.load_sweepable_candidates().await?)
-    }
-
     pub async fn start_import_service(
         &self,
         runtime_handle: tokio::runtime::Handle,
@@ -596,23 +589,6 @@ impl LibraryManager {
         &self,
     ) -> Result<HashMap<String, crate::db::DbImportCandidateState>, LibraryError> {
         Ok(self.database.load_import_candidate_states().await?)
-    }
-
-    pub(crate) async fn decline_identification(
-        &self,
-        candidates: Vec<(String, u64)>,
-    ) -> Result<(), LibraryError> {
-        Ok(self.database.decline_identification(candidates).await?)
-    }
-
-    pub(crate) async fn clear_declined_identification(
-        &self,
-        content_hash: &str,
-    ) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .clear_declined_identification(content_hash)
-            .await?)
     }
 
     pub async fn load_import_candidate_state(

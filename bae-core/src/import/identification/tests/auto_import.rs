@@ -92,21 +92,12 @@ impl Fixture {
         );
     }
 
-    /// Read the watched root again, so the queue reads everything afresh the
-    /// way it does at launch.
-    async fn rescan(&self) {
-        self.import
-            .refresh_watched_folder(self.root.to_string_lossy().into_owned())
-            .await
-            .unwrap();
-    }
-
     /// An automatic run's Ready verdict for `dir`, stored while importing when
     /// identified is off.
     async fn identify_ready(&self, dir: &Path, release_id: &str, group_id: &str) {
         self.route_disc_id_match(dir, release_id, group_id, 2);
         self.scan(1).await;
-        self.sweep_once().await;
+        self.drain_automatic().await;
         assert_eq!(
             self.classification_for(dir).await,
             QueueClassification::Ready
@@ -133,7 +124,7 @@ async fn an_automatic_run_that_settles_ready_imports_its_candidate_once() {
     fixture.scan(1).await;
     let mut events = fixture.import.subscribe_events();
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
     assert_eq!(
         fixture.classification_for(&dir).await,
         QueueClassification::Ready
@@ -143,9 +134,9 @@ async fn an_automatic_run_that_settles_ready_imports_its_candidate_once() {
     assert_eq!(imports.len(), 1, "one import of the candidate: {imports:?}");
     assert_eq!(failure, None, "the import completes");
 
-    fixture.rescan().await;
-    fixture.sweep_once().await;
-    assert_no_import(&mut events, &key, "the queue read everything again").await;
+    fixture.rescan(&fixture.import, 1).await;
+    fixture.drain_automatic().await;
+    assert_no_import(&mut events, &key, "the watched folder was read again").await;
 }
 
 /// With the setting off, a Ready verdict waits for a person.
@@ -158,7 +149,7 @@ async fn an_automatic_run_that_settles_ready_with_the_setting_off_imports_nothin
     fixture.scan(1).await;
     let mut events = fixture.import.subscribe_events();
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     assert_eq!(
         fixture.classification_for(&dir).await,
@@ -190,7 +181,7 @@ async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
     fixture.scan(1).await;
     let mut events = fixture.import.subscribe_events();
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     assert_eq!(
         fixture.classification_for(&dir).await,
@@ -217,7 +208,7 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
     fixture.scan(1).await;
     let mut events = fixture.import.subscribe_events();
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     assert_eq!(
         fixture.classification_for(&dir).await,
@@ -249,8 +240,8 @@ async fn a_candidate_ready_before_the_setting_was_on_is_not_imported() {
     let mut events = fixture.import.subscribe_events();
 
     fixture.manager.set_import_when_identified(true).await.unwrap();
-    fixture.rescan().await;
-    fixture.sweep_once().await;
+    fixture.rescan(&fixture.import, 1).await;
+    fixture.drain_automatic().await;
 
     assert_no_import(&mut events, &key, "the setting was turned on").await;
 }
@@ -260,12 +251,15 @@ async fn a_candidate_ready_before_the_setting_was_on_is_not_imported() {
 async fn a_run_a_person_asked_for_imports_nothing() {
     let fixture = Fixture::new("auto-import-requested").await;
     fixture.manager.set_import_when_identified(true).await.unwrap();
-    // The queue starts with the person's request, after the scan has
-    // finished, so the one run this candidate gets is the one they asked for.
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
     fixture.route_disc_id_match(&dir, "mb-requested", "rg-requested", 2);
+    // Found while identification waits to be asked, so the one run it gets is
+    // the person's; importing when identified is read only while it runs on
+    // its own, so it goes back on before they ask.
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
+    fixture.manager.set_identify_automatically(true).await.unwrap();
     let mut events = fixture.import.subscribe_events();
 
     fixture.start_explicit_lookup(&dir);

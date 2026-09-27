@@ -14,9 +14,8 @@ pub struct BridgeConfig {
     pub max_concurrent_uploads: u32,
     /// How many blob downloads a pin fetches at once. Device-local; range 1..=8.
     pub max_concurrent_downloads: u32,
-    /// Whether identification starts on its own: newly discovered candidates
-    /// are identified as they are found, and opening Find online for a
-    /// candidate starts its identification.
+    /// Whether a candidate found while this is on is identified on its own.
+    /// Changing it affects no candidate already found or queued.
     pub identify_automatically: bool,
     /// Whether what an automatic run settles on as needing nothing from anyone
     /// is imported straight away, going where `import_storage` says. Read only

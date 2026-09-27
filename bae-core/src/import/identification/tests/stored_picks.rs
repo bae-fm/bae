@@ -276,7 +276,7 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
     fixture.scan(1).await;
     let key = dir.to_string_lossy().into_owned();
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     assert!(
         fixture.identified_for(&dir).await.is_some(),
@@ -370,7 +370,7 @@ async fn a_stored_verdict_carries_its_durations_and_signals() {
     );
     fixture.scan(1).await;
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     let row = fixture.stored_for(&dir).await.expect("a verdict is stored");
     assert!(row.identify.is_some(), "the verdict is stored");

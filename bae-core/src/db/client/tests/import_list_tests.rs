@@ -8,7 +8,7 @@
 use super::super::*;
 use crate::identify::{LookupProvenance, TerminalVerdict};
 
-use super::{candidate, empty_db, exec, fixed_now, watched_root};
+use super::{candidate, exec, fixed_now, watched_root};
 use crate::import::folder_scanner::{
     CandidateFile, FileRole, FolderCandidate, ScanItem, ScannedFile,
 };
@@ -175,25 +175,6 @@ fn rows(projection: &crate::import::ImportListProjection) -> Vec<crate::import::
             _ => None,
         })
         .collect()
-}
-
-/// The sweep is responsible for every valid candidate. What a candidate's
-/// draft holds is not a reason to leave it out: only a stored result for the
-/// files it has right now stops a run, and that is the plan's to read.
-#[tokio::test]
-async fn every_valid_candidate_is_sweepable() {
-    let (db, tmp) = empty_db().await;
-    let first_root = tmp.path().join("first");
-    let second_root = tmp.path().join("second");
-    for root in [&first_root, &second_root] {
-        std::fs::create_dir_all(root).unwrap();
-    }
-    let first = scanned(&db, first_root.to_str().unwrap(), "First Candidate").await;
-    let second = scanned(&db, second_root.to_str().unwrap(), "Second Candidate").await;
-
-    let candidates = db.load_sweepable_candidates().await.unwrap();
-
-    assert_eq!(candidates, vec![first, second]);
 }
 
 /// A candidate the user picked a release for leads with that release as its

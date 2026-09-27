@@ -103,10 +103,8 @@ pub enum TerminalVerdict {
 }
 
 impl TerminalVerdict {
-    /// What a release a person chose settles: that release, matched by no
-    /// signal, with no run behind it. A pick is an answer about the candidate
-    /// like a run's is, so it is stored where a run's is — which is what keeps
-    /// the queue sweep from asking a question the person has already answered.
+    /// The result a release a person chose stores: that release, matched by no
+    /// signal and no run.
     pub(crate) fn of_pick(result: MetadataResult, track_count: u32) -> Self {
         Self::Found {
             findings: Findings {

@@ -1,5 +1,5 @@
-//! What each thing that happens to a candidate does to the queue: a run's
-//! state, an answer settled, a scan's report, a decision a person made.
+//! What each event does to the work already on the queue. None of them puts a
+//! candidate the queue does not hold on it.
 
 use super::*;
 
@@ -7,7 +7,6 @@ use super::*;
 pub(super) async fn handle_event(
     context: &Context,
     queue: &mut Queue,
-    config: &watch::Receiver<crate::config::Config>,
     settle_token: &CancellationToken,
     settling: &mut JoinSet<Finished>,
     event: Option<Result<ImportEvent, broadcast::error::RecvError>>,
@@ -22,7 +21,6 @@ pub(super) async fn handle_event(
             advance(
                 context,
                 queue,
-                config,
                 settle_token,
                 settling,
                 &candidate_key,
@@ -31,56 +29,33 @@ pub(super) async fn handle_event(
             )
             .await;
         }
-        // A scan finished: whatever it found, and whatever it took away, the
-        // automatic admission reads the queue afresh.
-        Some(Ok(ImportEvent::Scan(ScanEvent::Finished))) => {
-            if automatic_is_on(config) {
-                admit_automatically(context, queue).await;
+        Some(Ok(ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. }))) => {
+            follow(context, queue, &candidate.key()).await;
+        }
+        // A person's decision about the candidate ends its identification.
+        Some(Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }))) => {
+            queue.withdraw(context, &candidate.key());
+        }
+        Some(Ok(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }))) => {
+            queue.withdraw(context, &candidate_key);
+        }
+        Some(Ok(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+            candidate_key,
+            skipped,
+        }))) => {
+            if skipped {
+                queue.withdraw(context, &candidate_key);
             }
         }
-        // A scan announces every candidate it walks, including ones the queue
-        // is not responsible for — skipped, already in the library, or claimed
-        // by an import that started since. Whether this is one of ours is
-        // `answerable_candidate`'s question and nobody else's: the event's own
-        // flags answer a narrower one, and re-deriving the answer here is what
-        // let a re-scan count an importing candidate back into a total the
-        // import had just taken it out of.
-        Some(Ok(ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. }))) => {
-            let key = candidate.path.to_string_lossy().into_owned();
-            observe(context, queue, config, &key).await;
-        }
-        // The folder is a different shape now, or a person decided the
-        // candidate: they picked a release, said file metadata, or cleared what it
-        // had. The command that decided ended its run as part of its own write.
-        // What the decision left is what the queue takes the candidate as: a
-        // pick answers it, and a clear puts it back on the queue rather than
-        // leaving it for the next scan.
-        Some(Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }))) => {
-            let key = candidate.path.to_string_lossy().into_owned();
-            reconsider(context, queue, config, &key).await;
-        }
-        Some(Ok(ImportEvent::Scan(
-            ScanEvent::CandidateMetadataChanged { candidate_key }
-            | ScanEvent::CandidateSkipChanged { candidate_key, .. },
-        ))) => {
-            reconsider(context, queue, config, &candidate_key).await;
-        }
-        // The folder was removed, renamed or unmounted, or an import has taken
-        // the candidate. Extraction is cancelled by the signal service's own
-        // listener, so no further `Signals` will ever arrive and a driver left
-        // running would sit in `Triangulating` forever, holding a slot that
-        // never frees.
+        // Gone, or taken by an import: a run left going would never finish.
         Some(Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key })))
         | Some(Ok(ImportEvent::ImportProgress { candidate_key, .. })) => {
             queue.withdraw(context, &candidate_key);
         }
         Some(Ok(_)) => {}
         Some(Err(broadcast::error::RecvError::Lagged(n))) => {
-            // A dropped `IdentifyStateChanged` would leave its job running with
-            // nothing left to wake it, so the queue would stall on a slot that
-            // never frees. Give the affected candidates back to the queue and
-            // run them again: nothing durable was written, so replaying them
-            // whole is the only shape that cannot leave a wrong answer behind.
+            // A dropped run state would hold its slot forever, so every running
+            // job starts over.
             warn!("identification: import bus lagged by {n} events; replaying what was running");
             context
                 .library_manager
@@ -88,9 +63,6 @@ pub(super) async fn handle_event(
                     kind: crate::diagnostics::AnomalyKind::EventBusLagged,
                 });
             queue.replay_running(context);
-            if automatic_is_on(config) {
-                admit_automatically(context, queue).await;
-            }
         }
         Some(Err(broadcast::error::RecvError::Closed)) | None => {
             info!("identification: the import event stream closed");
@@ -101,11 +73,9 @@ pub(super) async fn handle_event(
 }
 
 /// One state of the run answering a job.
-#[allow(clippy::too_many_arguments)]
 async fn advance(
     context: &Context,
     queue: &mut Queue,
-    config: &watch::Receiver<crate::config::Config>,
     settle_token: &CancellationToken,
     settling: &mut JoinSet<Finished>,
     key: &str,
@@ -115,19 +85,12 @@ async fn advance(
     let Some(index) = queue.running_job(key, run) else {
         return;
     };
-    // The run ended with no answer: something decided the candidate, or took
-    // it away. The queue takes every member as it stands now rather than
-    // dropping the group — what ended the run says nothing about the others.
+    // Something outside the queue ended the run, which ends this candidate's
+    // identification; the rest of its job waits for a run of its own.
     if matches!(state, IdentifyState::Idle) {
-        let job = queue.jobs.remove(index).expect("the located job exists");
-        for member_key in job.keys() {
-            context.import.withdraw_identification(&member_key);
-            readmit(context, queue, config, &member_key).await;
-        }
+        queue.withdraw(context, key);
         return;
     }
-    // Terminal means the machine stopped moving, including on an explicit
-    // failure verdict. Either way the candidate's slot is free now.
     if !state.is_terminal() {
         return;
     }
@@ -141,17 +104,13 @@ async fn advance(
     else {
         unreachable!("the job this run was located by is the running one");
     };
-    // A member leaving takes its job's run with it, so a job still running for
-    // this key still holds it.
     let candidate = job
         .members
         .iter()
         .find(|member| member.candidate.key() == key)
         .map(|member| member.candidate.clone())
         .expect("a job's running representative is one of its members");
-    // The run ended on its own, so there is no driver left to cancel — only
-    // the extraction that fed it, whose artwork pass would otherwise keep
-    // going beside the settle.
+    // The run ended on its own; only its extraction may still be working.
     context.import.cancel_candidate_extraction(key);
     let settle_token = settle_token.child_token();
     job.state = JobState::Settling {
@@ -200,19 +159,13 @@ pub(super) async fn finish(
             for key in &keys {
                 context.import.withdraw_identification(key);
             }
-            // A run a person asked for is theirs to act on; only the automatic
-            // admission's own run imports what it settled.
             if job.admission() == Admission::Automatic
                 && classification == crate::identify::QueueClassification::Ready
             {
                 import_when_identified(context, config, &done.representative_key).await;
             }
         }
-        // Nothing was stored and nothing failed: the candidate changed while
-        // its answer was being written, or the answer was given up. Every
-        // member is taken as it stands now, on the admission it was on: a
-        // person who asked is still owed an answer, and waiting for the
-        // automatic admission would leave them none when it is off.
+        // Nothing was stored: every member goes back on the queue as it now is.
         Settled::Refused | Settled::Abandoned => {
             info!(
                 "identification: {} stored no answer; re-reading {} candidate(s) for it",
@@ -222,10 +175,7 @@ pub(super) async fn finish(
             for member in &job.members {
                 let key = member.candidate.key();
                 context.import.withdraw_identification(&key);
-                match member.admission {
-                    Admission::Requested => ask_again(context, queue, &key).await,
-                    Admission::Automatic => readmit(context, queue, config, &key).await,
-                }
+                readmit(context, queue, &key, member.admission).await;
             }
         }
         Settled::WriteFailed { error } | Settled::Unwritable { error } => {
@@ -235,9 +185,6 @@ pub(super) async fn finish(
             );
             for key in &keys {
                 context.import.withdraw_identification(key);
-                // The representative's own failure is already on its row — the
-                // write's, or the settle's when no write ran — and saying it
-                // again says the same thing. Its group learns it here.
                 context
                     .import
                     .fail_identification(key, done.run, error.clone());
@@ -246,10 +193,8 @@ pub(super) async fn finish(
     }
 }
 
-/// Import `key`, whose automatic run has just stored a Ready verdict, when
-/// "Import automatically when identified" is on, going where the stored
-/// storage choice says. The job is off the queue and nothing else runs for the
-/// candidate until this returns.
+/// Import `key`, whose automatic run just stored a Ready verdict, when "Import
+/// automatically when identified" is on.
 async fn import_when_identified(
     context: &Context,
     config: &watch::Receiver<crate::config::Config>,
@@ -277,92 +222,29 @@ async fn import_when_identified(
     }
 }
 
-/// Take the candidate at `key` as it stands right now: off the queue, read
-/// afresh, and back on it if it still wants an answer.
-///
-/// What an event that changes what a candidate *is* resolves to, and the same
-/// resolution for each of them: a decision made about it, a skip lifted or
-/// applied, a binding changed.
-async fn reconsider(
-    context: &Context,
-    queue: &mut Queue,
-    config: &watch::Receiver<crate::config::Config>,
-    key: &str,
-) {
-    let Some(candidate) = answerable_candidate(context, key).await else {
-        // Not the queue's any more: set aside, already in the library, claimed
-        // by an import, or gone.
-        queue.withdraw(context, key);
+/// Follow a candidate the queue holds to what is stored for it now: off the
+/// queue when it can no longer be answered, and placed again on its admission
+/// when its files changed.
+async fn follow(context: &Context, queue: &mut Queue, key: &str) {
+    let Some((admission, held_as)) = queue
+        .held(key)
+        .map(|(admission, identity)| (admission, identity.clone()))
+    else {
         return;
     };
-    // A candidate a person asked for is theirs until their run ends: what
-    // changed here is not what they asked about, and the write of their answer
-    // checks for itself that the candidate still stands where it read it.
-    if queue.requested(key) {
-        return;
-    }
-    queue.withdraw(context, key);
-    admit_as_it_stands(context, queue, config, candidate).await;
-}
-
-/// The same, for a scan re-announcing a candidate: one already being answered
-/// as exactly this shape is left alone, because taking it back would cancel the
-/// run answering it.
-async fn observe(
-    context: &Context,
-    queue: &mut Queue,
-    config: &watch::Receiver<crate::config::Config>,
-    key: &str,
-) {
     let Some(candidate) = answerable_candidate(context, key).await else {
         queue.withdraw(context, key);
         return;
     };
-    if queue.holds(key, &candidate_identity(&candidate)) {
-        return;
+    if candidate_identity(&candidate) != held_as {
+        admit(context, queue, vec![candidate], admission).await;
     }
-    queue.withdraw(context, key);
-    admit_as_it_stands(context, queue, config, candidate).await;
 }
 
-/// Read `key` afresh and put it back on the queue as the request it was, if an
-/// answer can still be stored for it.
-async fn ask_again(context: &Context, queue: &mut Queue, key: &str) {
+/// Put `key` back on the queue as it now is, if it can still be answered.
+async fn readmit(context: &Context, queue: &mut Queue, key: &str, admission: Admission) {
     let Some(candidate) = answerable_candidate(context, key).await else {
         return;
     };
-    admit(context, queue, vec![candidate], Admission::Requested).await;
-}
-
-/// Read `key` afresh and put it back on the queue if it still wants an answer.
-async fn readmit(
-    context: &Context,
-    queue: &mut Queue,
-    config: &watch::Receiver<crate::config::Config>,
-    key: &str,
-) {
-    let Some(candidate) = answerable_candidate(context, key).await else {
-        return;
-    };
-    admit_as_it_stands(context, queue, config, candidate).await;
-}
-
-/// Put `candidate` on the queue if its row states no result for the files it
-/// has right now.
-///
-/// Always as an automatic admission: a request is one act, and once the run it
-/// asked for is over the person's latest word is whatever decided the candidate
-/// since.
-async fn admit_as_it_stands(
-    context: &Context,
-    queue: &mut Queue,
-    config: &watch::Receiver<crate::config::Config>,
-    candidate: FolderCandidate,
-) {
-    if !automatic_is_on(config) {
-        return;
-    }
-    if wants_an_answer(context, &candidate).await {
-        admit(context, queue, vec![candidate], Admission::Automatic).await;
-    }
+    admit(context, queue, vec![candidate], admission).await;
 }

@@ -1,9 +1,7 @@
 // ── A person cancelling identification ──────────────────────────────────────
 //
-// Cancelling takes candidates off the queue whatever they are doing — waiting,
-// running, or having their answer written — and leaves them as they were
-// before identification reached them: no verdict, no failure. The automatic
-// admission does not put them back; a person asking for one again does.
+// A cancel takes candidates off the queue, whatever they are doing, and stores
+// nothing.
 
 /// Wait until nothing is identifying `key`: its queue mark, its run and its
 /// answer are all gone.
@@ -46,7 +44,7 @@ async fn flooded_queue(fixture: &Fixture) -> Vec<PathBuf> {
 async fn a_cancelled_waiting_candidate_is_never_looked_up() {
     let fixture = Fixture::new("cancel-waiting").await;
     let dirs = flooded_queue(&fixture).await;
-    let sweep = fixture.sweep();
+    let sweep = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
     let waiting = dirs
         .iter()
@@ -83,17 +81,21 @@ async fn a_cancelled_waiting_candidate_is_never_looked_up() {
 }
 
 /// A running identification that is cancelled writes nothing — no verdict, no
-/// failure — stays off the queue through the next automatic pass, and is
-/// identified again when a person asks.
+/// failure, no record of the cancel: the candidate's stored state is what it
+/// was before the run — and a person asking identifies it.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_cancelled_run_leaves_the_candidate_unidentified_until_asked_again() {
+async fn a_cancelled_run_leaves_the_candidate_as_it_was_until_asked_again() {
     let fixture = Fixture::new("cancel-running").await;
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
-    let sweep = fixture.sweep();
+    let before = fixture
+        .stored_for(&dir)
+        .await
+        .expect("the scan stores the candidate's state row");
+    let sweep = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
     fixture.identification().cancel(vec![key.clone()]).await.unwrap();
@@ -104,23 +106,21 @@ async fn a_cancelled_run_leaves_the_candidate_unidentified_until_asked_again() {
     await_not_identifying(&fixture, &key).await;
     fixture.provider.release();
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate keeps its state row");
-    assert!(row.identify.is_none(), "a cancelled run stores no verdict");
+    assert_eq!(
+        fixture.stored_for(&dir).await,
+        Some(before),
+        "a cancel stores nothing: no verdict, and nothing about the cancel"
+    );
     assert!(
         fixture.import.candidate_runtime(&key).is_none(),
         "nothing is left running or failed for it"
     );
-
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
     assert_eq!(
         fixture.provider.count_containing("/discid/"),
         1,
-        "the automatic admission does not take a cancelled candidate back up"
+        "nothing queues it again on its own"
     );
-    assert!(fixture.identified_for(&dir).await.is_none());
 
     fixture.identification().rerun_identify(key.clone());
     tokio::time::timeout(Duration::from_secs(15), fixture.await_identified_row(&dir))
@@ -134,7 +134,7 @@ async fn a_cancelled_run_leaves_the_candidate_unidentified_until_asked_again() {
 async fn cancelling_everything_empties_the_queue() {
     let fixture = Fixture::new("cancel-all").await;
     let dirs = flooded_queue(&fixture).await;
-    let sweep = fixture.sweep();
+    let sweep = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
 
     fixture.identification().cancel_all().await.unwrap();
@@ -146,7 +146,7 @@ async fn cancelling_everything_empties_the_queue() {
         await_not_identifying(&fixture, &dir.to_string_lossy()).await;
     }
     fixture.provider.release();
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     assert_eq!(
         fixture.provider.count_containing("query=barcode"),
@@ -181,7 +181,7 @@ async fn a_cancelled_answer_is_not_written() {
     );
     fixture.provider.hold("/release/mb-1?");
     fixture.scan(1).await;
-    let sweep = fixture.sweep();
+    let sweep = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/release/mb-1?", 1).await;
     assert_eq!(
         fixture.identification_status(&key),
@@ -234,60 +234,4 @@ async fn a_run_the_queue_did_not_start_ends_through_the_same_cancel() {
     fixture.provider.release();
 
     assert!(fixture.identified_for(&dir).await.is_none());
-}
-
-/// A cancel is stored with the candidate: a queue started afresh — the next
-/// launch — leaves it alone too, until a person asks again.
-#[tokio::test(flavor = "multi_thread")]
-async fn a_cancel_outlives_the_queue_that_took_it() {
-    let fixture = Fixture::new("cancel-across-launches").await;
-    let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
-    fixture.provider.route("/discid/", 200, "{}");
-    fixture.provider.hold("/discid/");
-    fixture.scan(1).await;
-    let sweep = fixture.sweep();
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
-    fixture.identification().cancel(vec![key.clone()]).await.unwrap();
-    tokio::time::timeout(Duration::from_secs(10), sweep)
-        .await
-        .expect("cancelling the only job drains the pass")
-        .unwrap();
-    fixture.provider.release();
-    let revision = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate keeps its state row")
-        .file_edits
-        .revision;
-    assert!(fixture
-        .stored_for(&dir)
-        .await
-        .unwrap()
-        .identification_declined(revision));
-
-    fixture.identification().stop();
-    let relaunched = super::start(fixture.import.clone(), fixture.manager.clone());
-    tokio::time::timeout(Duration::from_secs(30), relaunched.identify_the_queue_for_test())
-        .await
-        .expect("the relaunched queue's automatic admission drains");
-    assert_eq!(
-        fixture.provider.count_containing("/discid/"),
-        1,
-        "the relaunched queue does not take the cancelled candidate back up"
-    );
-
-    relaunched.rerun_identify(key.clone());
-    tokio::time::timeout(Duration::from_secs(15), fixture.await_identified_row(&dir))
-        .await
-        .expect("a person asking identifies it again");
-    assert!(
-        !fixture
-            .stored_for(&dir)
-            .await
-            .unwrap()
-            .identification_declined(revision),
-        "asking again lifts the cancel"
-    );
-    relaunched.stop();
 }

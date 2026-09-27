@@ -124,8 +124,7 @@ impl FakeProvider {
             .push((needle.to_string(), status, body.into()));
     }
 
-    /// Replace every route. Used to flip the provider from failing to healthy
-    /// between two sweep passes.
+    /// Replace every route.
     fn set_routes(&self, routes: Vec<(&str, u16, String)>) {
         let mut state = self.state.lock().unwrap();
         state.routes = routes
@@ -269,10 +268,6 @@ struct GatedAnalyzer {
     release: Arc<Barrier>,
 }
 
-struct SlowAnalyzer {
-    delay: Duration,
-}
-
 struct CountingAnalyzer {
     calls: Arc<AtomicUsize>,
 }
@@ -292,13 +287,6 @@ impl ArtworkAnalyzer for GatedAnalyzer {
     }
 }
 
-impl ArtworkAnalyzer for SlowAnalyzer {
-    fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
-        std::thread::sleep(self.delay);
-        ArtworkAnalysis::empty()
-    }
-}
-
 struct Fixture {
     manager: LibraryManager,
     /// The writer the handle uses, for tests that write a candidate directly.
@@ -308,11 +296,8 @@ struct Fixture {
     /// The services the queue runs on, for the tests that drive one step of it
     /// directly.
     context: Context,
-    /// The queue itself, started the first time a test reaches for it.
-    ///
-    /// Started late on purpose: the loop admits candidates as the scan
-    /// announces them, so a fixture that started one in `new` would identify
-    /// every test's fixtures before the test had said what it was testing.
+    /// The queue, started the first time a test reaches for it, so a test can
+    /// set a candidate up before a found release's run reads it.
     identification: OnceLock<IdentificationHandle>,
     root: PathBuf,
     _temp: TempDir,
@@ -498,24 +483,57 @@ impl Fixture {
         dir
     }
 
-    /// Watch the root and wait for the scan to surface every candidate, so a
-    /// sweep started after this sees a populated queue.
+    /// Watch the root and wait until the scan has surfaced every candidate and
+    /// finished, by which point every release it found has been handed over.
     async fn scan(&self, expected: usize) {
+        let events = self.import.subscribe_events();
         let root = self.root.to_string_lossy().into_owned();
         self.import.add_watched_folder(root.clone()).await.unwrap();
         self.import.refresh_watched_folder(root).await.unwrap();
+        self.await_scanned(&self.import, events, expected).await;
+    }
+
+    /// Scan the watched root again through `import`, as a launch does, and wait
+    /// as [`Self::scan`] does.
+    async fn rescan(&self, import: &ImportServiceHandle, expected: usize) {
+        let events = import.subscribe_events();
+        import.scan_watched_folders().unwrap();
+        self.await_scanned(import, events, expected).await;
+    }
+
+    /// Wait for `import`'s list to hold `expected` candidates and for a scan
+    /// to finish on `events`, subscribed before the scan was asked for.
+    async fn await_scanned(
+        &self,
+        import: &ImportServiceHandle,
+        mut events: tokio::sync::broadcast::Receiver<ImportEvent>,
+        expected: usize,
+    ) {
         tokio::time::timeout(
             Duration::from_secs(10),
-            self.import
-                .wait_for_list(crate::import::ImportListView::default(), |projection| {
-                    projection.summary.counts.pending as usize
-                        + projection.summary.counts.done as usize
-                        + projection.summary.counts.skipped as usize
-                        == expected
-                }),
+            import.wait_for_list(crate::import::ImportListView::default(), |projection| {
+                projection.summary.counts.pending as usize
+                    + projection.summary.counts.done as usize
+                    + projection.summary.counts.skipped as usize
+                    == expected
+            }),
         )
         .await
         .expect("the completed scan surfaces every fixture candidate");
+        // A scan finishes after handing over everything it found.
+        tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                match events.recv().await {
+                    Ok(ImportEvent::Scan(ScanEvent::Finished)) => return,
+                    Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                        panic!("the import event bus closed before the scan finished")
+                    }
+                }
+            }
+        })
+        .await
+        .expect("the scan finishes");
     }
 
     /// Ask to identify `dir`, through the one entry point a person's request
@@ -575,22 +593,21 @@ impl Fixture {
         self.context.clone()
     }
 
-    /// Run the automatic admission and wait for everything it is responsible
-    /// for to end — the whole of what one pass over the queue was. Assertions
-    /// land after finished work rather than after a sleep.
-    async fn sweep_once(&self) {
+    /// Start the queue if needed, and wait until every release found so far is
+    /// admitted and every automatic job has ended.
+    async fn drain_automatic(&self) {
         tokio::time::timeout(
             Duration::from_secs(30),
-            self.identification().identify_the_queue_for_test(),
+            self.identification().automatic_drained_for_test(),
         )
         .await
         .expect("the automatic admission's queue drains");
     }
 
     /// The same, as a task a test can watch while it acts on the queue.
-    fn sweep(&self) -> tokio::task::JoinHandle<()> {
+    fn drain_automatic_task(&self) -> tokio::task::JoinHandle<()> {
         let identification = self.identification().clone();
-        tokio::spawn(async move { identification.identify_the_queue_for_test().await })
+        tokio::spawn(async move { identification.automatic_drained_for_test().await })
     }
 
     /// Whether the queue holds `key` — what the runtime says about it, which is
@@ -783,7 +800,7 @@ impl Fixture {
             .answerable_candidate(&dir.to_string_lossy())
             .await
             .expect("the candidate state is readable")
-            .expect("the scanned candidate is sweepable");
+            .expect("the scanned candidate is answerable");
         let mut draft = candidate.blank_source().draft;
         draft.album_title = "Album".to_string();
         draft.album_artist_assignments = vec![crate::import::ArtistAssignment::Credit {
@@ -916,7 +933,7 @@ enum SettledDraft {
 fn identify_result(row: &DbImportCandidateState) -> &crate::db::DbCandidateIdentifyResult {
     row.identify
         .as_ref()
-        .expect("a row the sweep wrote carries its identify result")
+        .expect("a row identification wrote carries its identify result")
 }
 
 impl Drop for Fixture {
@@ -938,11 +955,11 @@ include!("tests/imports_and_progress.rs");
 include!("tests/persistence.rs");
 include!("tests/stored_picks.rs");
 include!("tests/settled_panes.rs");
-include!("tests/persistence_late.rs");
 include!("tests/candidate_decisions.rs");
 include!("tests/cancellation.rs");
 include!("tests/cancelled.rs");
 include!("tests/requested.rs");
 include!("tests/admissions.rs");
+include!("tests/automatic.rs");
 include!("tests/row_live_state.rs");
 include!("tests/auto_import.rs");

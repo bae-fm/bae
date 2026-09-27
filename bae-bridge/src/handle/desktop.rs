@@ -278,12 +278,8 @@ forward! {
                 .map_err(BridgeError::import)
         }
 
-        /// Stop these candidates' identification however it was started —
-        /// queued, running, having its answer written, or a re-identify
-        /// sheet's own run. They are left unidentified — no verdict, no
-        /// failure — and the cancel is stored, so they are not picked up again
-        /// on their own, this launch or the next; `rerun_identify_for_candidate`
-        /// asks for one.
+        /// Stop these candidates' identification however it was started, and
+        /// store nothing. Fails only when the identification queue has stopped.
         fn cancel_identification(candidate_keys: Vec<String>) -> () {
             this.services
                 .cancel_identification(candidate_keys)

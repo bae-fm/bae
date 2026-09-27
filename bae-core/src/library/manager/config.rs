@@ -56,9 +56,8 @@ impl LibraryManager {
         library_full_width: bool
     );
 
-    /// Whether identification starts on its own. The identification queue
-    /// follows the value: on, it admits what has no answer; off, it admits
-    /// nothing new, and nothing it identifies is imported on its own.
+    /// Whether releases found from now on are identified on its own. It
+    /// affects no candidate already found or queued.
     pub async fn set_identify_automatically(
         &self,
         enabled: bool,
@@ -111,6 +110,11 @@ impl LibraryManager {
         self.config_handle
             .update_preferences(move |prefs| prefs.import_storage.pinned = enabled)
             .await
+    }
+
+    /// Whether a release found now is identified on its own.
+    pub(crate) fn identifies_automatically(&self) -> bool {
+        self.config_handle.config().prefs.identification.automatic
     }
 
     /// The steps an identification run takes, as a run starting now reads

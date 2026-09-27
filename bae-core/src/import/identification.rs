@@ -1,60 +1,24 @@
 //! One queue for identifying release candidates, whoever asked for it.
 //!
-//! Every identification of an import candidate enters here, through one of two
-//! admissions:
+//! A candidate is admitted one of two ways:
 //!
-//! - **Automatic** — while identification runs on its own
-//!   ([`IdentificationPreferences::automatic`](crate::config::IdentificationPreferences::automatic)),
-//!   every candidate without a usable stored answer is admitted, at
-//!   [`CallPriority::Background`].
-//! - **Requested** — a person pressed Identify or Retry, changed what a
-//!   candidate's lookup asks about, or switched a source off under a run. The
-//!   candidate goes to the front and runs at [`CallPriority::Interactive`].
+//! - **Automatic**, at [`CallPriority::Background`]: a release a scan finds for
+//!   the first time while identification runs on its own (see
+//!   [`AutomaticAdmissions`]). Nothing else admits a candidate on its own.
+//! - **Requested**, at [`CallPriority::Interactive`] and ahead of automatic
+//!   jobs: a person asked for it.
 //!
-//! One driver loop runs the queue: it fills the slots, listens to the import
-//! bus once, and spawns one settle task per answer. The settle step buys the
-//! documents of the single pressing a run matched — the tracklist that decides
-//! Ready, and everything opening the candidate would otherwise re-fetch — and
-//! writes the verdict. The candidate runtime is the queue's published state:
-//! the queue writes `queued`, the driver's broadcasts write the run, and the
-//! verdict write ends what it started.
+//! A job leaves the queue when its answer is stored or fails, when its
+//! candidate can no longer be answered, when a person's decision about the
+//! candidate ends its run, or when a person cancels it; nothing about a cancel
+//! is kept.
 //!
-//! **It starts and stops with the library, not with a view.**
-//! [`crate::library::AppServices`] constructs one and its `Drop` stops it, so
-//! the queue is identified whether or not anyone has the Import section open.
-//! Opening a view triggers nothing.
-//!
-//! **It is the one writer of a candidate's verdict**, for both admissions.
-//! Everything that decides what to store lives here rather than being spread
-//! across the producers. The row's other half — the user's sheet bindings — is
-//! written by the import handle, and writing it *clears* the verdict, which is
-//! what brings a re-bound candidate back to the automatic admission.
-//!
-//! **A candidate with a finished result for the files it has right now is not
-//! admitted automatically, and nothing else is skipped.** What the draft holds
-//! — a pre-fill from the folder's tags, a release a person chose, fields they
-//! typed — is not an answer to the question a run asks. A stored result is
-//! settled because the settle step and the result are written together, and
-//! files that change retire it. A request ignores the stored result outright:
-//! it is what the person is asking to replace.
-//!
-//! **A result changes the draft only when it found one release.** A run that
-//! settled on a release writes that release's draft over whatever stood. A run
-//! that settled on none — nothing found, several offered, a failure — stores
-//! its result and writes no draft: it says what the candidate is not, and a
-//! person's pre-fill, edits and pick are none of its business.
-//!
-//! **An automatic run can end in an import.** While "Import automatically
-//! when identified" is on, the queue starts the import of a candidate the
-//! automatic admission's run has just stored a Ready verdict for — the same
-//! start a person's Import press makes — right as the verdict lands. Nothing
-//! records that it will: a candidate the app quit before importing stays
-//! Ready, for a person to import.
-//!
-//! **Provider failures are answers.** They are stored as failed verdicts and
-//! the automatic admission leaves them alone; only a request replaces one.
-//! Cancellation and a candidate that vanished mid-flight still write nothing,
-//! because neither is an outcome of the candidate's lookup.
+//! One loop runs the queue for the library's lifetime: it fills the slots,
+//! follows the import bus, and hands each answer to a settle task, which
+//! fetches the matched pressing's documents and writes the verdict. The queue
+//! is the only writer of verdicts. A result writes the draft only when it
+//! found one release, and an automatic run that stores a Ready verdict starts
+//! the candidate's import when "Import automatically when identified" is on.
 
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
 use super::folder_scanner::FolderCandidate;
@@ -76,66 +40,51 @@ mod handle;
 mod queue;
 mod settle;
 
+pub(crate) use admission::AutomaticAdmissions;
 use admission::*;
 pub use handle::IdentificationHandle;
 use queue::{admit, Queue};
 use settle::*;
 
-/// How many candidates are identified at once.
-///
-/// The local half of a candidate — the folder walk, disc-ID derivation,
-/// duration probing, artwork OCR — is CPU and disk work that parallelises, and
-/// the network half is serialised by the provider rate limiter however many run
-/// at once. So the cap exists to keep OCR off every core, not to pace the
-/// network. It applies to every job: a request goes to the front of the queue
-/// and takes the next slot, but a batch of requests does not put a run on
-/// every core at once. A constant, not configuration: there is no setting a
-/// user could meaningfully choose here.
+/// How many candidates are identified at once: a cap on local work such as
+/// OCR, since the provider rate limiter already paces the network.
 const MAX_IN_FLIGHT: usize = 4;
 
-/// What one candidate's identity is for identification: the bytes it holds and
-/// the revision of the file decisions taken over them. Candidates sharing it
-/// are one job — the answer one of them stores is keyed by it, and so answers
-/// all of them.
+/// A candidate's content hash and file-decision revision. Candidates sharing it
+/// are one job, since the answer is stored under it.
 type CandidateIdentity = (String, u64);
 
-/// The services the queue runs on. The identify driver and the extraction
-/// behind it are the import handle's, so the queue and the commands that decide
-/// a candidate act on the same pair.
+/// The services the queue runs on.
 #[derive(Clone)]
 struct Context {
     import: ImportServiceHandle,
     library_manager: LibraryManager,
 }
 
-/// What the handle asks the queue for. The queue's own state lives on its loop
-/// and is reached only from there, so everything from outside arrives as one of
-/// these.
+/// What the handle asks the queue's loop for.
 enum Command {
     /// A person asked for this candidate to be identified now.
     Request { candidate_key: String },
     /// A person cancelled these candidates' identification. `done` hears
-    /// once the decline is stored and the jobs are gone, or why not.
+    /// once the jobs are gone.
     Cancel {
         candidate_keys: Vec<String>,
-        done: tokio::sync::oneshot::Sender<Result<(), crate::library::LibraryError>>,
+        done: tokio::sync::oneshot::Sender<()>,
     },
     /// A person cancelled every identification the queue holds.
     CancelAll {
-        done: tokio::sync::oneshot::Sender<Result<(), crate::library::LibraryError>>,
+        done: tokio::sync::oneshot::Sender<()>,
     },
-    /// Run the automatic admission, and say when everything it is responsible
-    /// for has ended. The events that trigger one in the app carry no
-    /// acknowledgement, and nothing there waits for the queue to drain — it is
-    /// never done, only idle — so this is a test's way of asking.
+    /// Say when every release found so far has been admitted and every
+    /// automatic job has ended.
     #[cfg(any(test, feature = "test-utils"))]
-    AdmitAutomatic {
+    AwaitAutomaticDrained {
         drained: tokio::sync::oneshot::Sender<()>,
     },
 }
 
-/// Start the identification queue. A candidate becoming answerable, a binding
-/// change, a completed folder scan, or a person's request puts work on it.
+/// Start the identification queue over `import`. There is one per import
+/// service, since it takes the service's found releases.
 pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> IdentificationHandle {
     let token = CancellationToken::new();
     let tasks = TaskTracker::new();
@@ -144,11 +93,13 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Id
         library_manager,
     };
 
-    // Subscribe before the task is spawned so the launch scan's `Finished`
-    // cannot land in the gap between `start` returning and the loop's first
-    // `recv`.
+    let mut found = context
+        .import
+        .take_automatic_admissions()
+        .expect("one identification queue per import service");
+    // Subscribed before the loop is spawned, so it misses no event.
     let mut bus = context.import.subscribe_events();
-    let mut config = context.library_manager.subscribe_config_changes();
+    let config = context.library_manager.subscribe_config_changes();
     let (event_tx, mut event_rx) = mpsc::unbounded_channel();
     let (command_tx, mut command_rx) = mpsc::unbounded_channel();
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -181,7 +132,8 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Id
                 &loop_token,
                 &mut event_rx,
                 &mut command_rx,
-                &mut config,
+                &mut found,
+                &config,
             )
             .await;
         },

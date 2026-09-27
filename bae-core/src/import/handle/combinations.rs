@@ -225,7 +225,6 @@ impl ImportServiceHandle {
                     self.event_tx.send(ImportEvent::Scan(event));
                 }
                 self.announce_regrouped(&regrouped).await?;
-                self.event_tx.send(ImportEvent::Scan(ScanEvent::Finished));
                 Ok(())
             }
             None => Err(ImportError::Internal {
@@ -234,7 +233,8 @@ impl ImportServiceHandle {
         }
     }
 
-    /// Tell the runtime and the list about releases a grouping rebuilt.
+    /// Announce the releases a grouping rebuilt, and hand the new ones to
+    /// automatic identification.
     async fn announce_regrouped(
         &self,
         regrouped: &crate::db::GroupingChanges,
@@ -248,6 +248,10 @@ impl ImportServiceHandle {
             let event = match item.clone() {
                 ScanItem::Valid(candidate) => {
                     let standing = self.candidate_standing(&candidate.key(), &candidate).await?;
+                    if regrouped.found.contains(&candidate.key()) {
+                        self.automatic_admissions
+                            .found(&self.library_manager, candidate.key());
+                    }
                     ScanEvent::FolderCandidate {
                         candidate,
                         skipped: standing.skipped,

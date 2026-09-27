@@ -138,6 +138,8 @@ pub(crate) struct ImportServices {
     /// cancel: shared by the handle that claims and cancels them and the
     /// worker that runs them.
     import_cancels: import_cancel::ImportCancels,
+    /// Where newly found releases go to be identified on their own.
+    automatic_admissions: identification::AutomaticAdmissions,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -159,6 +161,7 @@ impl ImportServices {
             directories: std::sync::Arc::new(folder_scanner::OsDirectoryReader),
             folder_state_commit: folder_state_commit::FolderStateCommit::default(),
             import_cancels: import_cancel::ImportCancels::default(),
+            automatic_admissions: identification::AutomaticAdmissions::new(),
         }
     }
 }

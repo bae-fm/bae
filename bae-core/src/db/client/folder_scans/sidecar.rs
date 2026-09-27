@@ -198,6 +198,7 @@ pub(super) fn write_sidecar(
     Ok(ScanItemWrite::Stored {
         superseded_keys,
         regrouped,
+        found: false,
     })
 }
 

@@ -4,25 +4,16 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Everything a person decides about identification, in one place.
-///
-/// Every setting defaults to what identification did before it was a
-/// setting, except [`Self::import_when_identified`], which starts off: an
-/// import nobody asked for is not something to start doing behind anyone.
+/// Everything a person decides about identification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IdentificationPreferences {
-    /// Whether identification starts on its own: the automatic admission
-    /// queues every candidate that has no result for its current files.
-    /// Defaults to `true`; off means no new candidate is queued on its own —
-    /// what is already queued finishes, and a person starts each run
-    /// themselves.
+    /// Whether a release found while this is on is identified on its own.
+    /// Changing it affects no candidate already found or queued. Defaults to
+    /// `true`.
     pub automatic: bool,
-    /// Whether a candidate an automatic run settles on as needing nothing from
-    /// anyone is imported straight away. Defaults to `false`.
-    ///
-    /// Read only while [`Self::automatic`] is on, and kept as the person set
-    /// it while that is off — turning automatic identification back on brings
-    /// it back — so what decides is [`Self::imports_when_identified`].
+    /// Whether a candidate an automatic run settles as Ready is imported
+    /// straight away. Defaults to `false`, and is read only through
+    /// [`Self::imports_when_identified`].
     pub import_when_identified: bool,
     /// The steps every run takes, each of which can be switched off.
     pub steps: IdentificationSteps,
@@ -32,9 +23,7 @@ pub struct IdentificationPreferences {
 }
 
 impl IdentificationPreferences {
-    /// Whether a run the automatic admission started imports what it settles
-    /// on as needing nothing: [`Self::import_when_identified`], while
-    /// identification runs on its own at all.
+    /// Whether an automatic run imports what it settles as Ready.
     pub fn imports_when_identified(&self) -> bool {
         self.automatic && self.import_when_identified
     }

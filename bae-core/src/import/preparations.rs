@@ -276,13 +276,8 @@ impl CandidatePreparations {
     /// candidate has no result yet — `settled_by_choice` becomes its result,
     /// in the same write.
     ///
-    /// A release a person chose is an answer about the candidate exactly as a
-    /// run's is, so it is stored where a run's is. That is what keeps the queue
-    /// sweep from asking a question the person has already answered: the sweep
-    /// reads results and knows nothing about who reached them. A run that has
-    /// already answered keeps its own result — that is the record of what it
-    /// found, and the choice does not unmake it. The read and the write share
-    /// this load, so nothing can land a result in between.
+    /// A person's chosen release is stored as a result like a run's, unless a
+    /// run's result already stands. The read and the write share this load.
     pub(crate) async fn apply_source_as_result(
         &self,
         watched_folder_path: &str,

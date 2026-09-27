@@ -1,5 +1,4 @@
-//! What [`crate::library::AppServices`] holds: the running queue, and the one
-//! way a person asks for a candidate to be identified.
+//! The handle [`crate::library::AppServices`] holds on the running queue.
 
 use super::*;
 
@@ -30,9 +29,7 @@ impl IdentificationHandle {
         }
     }
 
-    /// Tell the queue to stop, and return. Every run it has going is cancelled
-    /// on its own loop, and the answers already being written are told to
-    /// abandon themselves before they write.
+    /// Tell the queue to stop, and return without waiting.
     pub fn shut_down(&self) {
         self.token.cancel();
         self.tasks.close();
@@ -49,18 +46,8 @@ impl IdentificationHandle {
         }
     }
 
-    /// Identify this candidate now, whatever is stored and whatever is running.
-    ///
-    /// The one way a person starts identification. A run takes its inputs once,
-    /// at its start, so asking for one is asking for a fresh run: the
-    /// candidate's run and the signal extraction feeding it are torn down
-    /// before this one starts.
-    ///
-    /// The key is marked as waiting for the whole time the queue is deciding,
-    /// so a person who pressed sees their candidate waiting rather than
-    /// nothing. A run that starts takes the mark off itself, in its first
-    /// broadcast; the mark is cleared only when no run came of it, so there is
-    /// no instant in which the candidate is neither waiting nor running.
+    /// Identify this candidate now with a fresh run, whatever is stored or
+    /// running. It is marked waiting right away, so the person sees it queued.
     pub fn rerun_identify(&self, candidate_key: String) {
         if self.token.is_cancelled() {
             return;
@@ -79,14 +66,9 @@ impl IdentificationHandle {
         }
     }
 
-    /// Stop identifying these candidates, whether they are waiting, running,
-    /// or having their answer written, or a run the queue did not start. Each
-    /// one's whole job goes — candidates with the same files share one run —
-    /// and it is left unidentified: no verdict and no failure are stored. The
-    /// cancel is stored with the candidate, so the automatic admission does
-    /// not take it back up, this launch or the next; a person asking for it
-    /// again, or a file decision that makes it a different question, lifts
-    /// it. Returns once the cancel is stored and the jobs are gone.
+    /// Take these candidates' jobs off the queue, whatever they are doing, and
+    /// store nothing. Returns once they are gone; fails only when the queue has
+    /// stopped.
     pub async fn cancel(
         &self,
         candidate_keys: Vec<String>,
@@ -99,8 +81,7 @@ impl IdentificationHandle {
         Self::await_cancel(cancelled).await
     }
 
-    /// Stop every identification on the queue, as [`Self::cancel`] does for
-    /// one.
+    /// [`Self::cancel`] every job on the queue.
     pub async fn cancel_all(&self) -> Result<(), crate::library::LibraryError> {
         let (done, cancelled) = tokio::sync::oneshot::channel();
         self.send_cancel(Command::CancelAll { done })?;
@@ -116,33 +97,28 @@ impl IdentificationHandle {
     }
 
     async fn await_cancel(
-        cancelled: tokio::sync::oneshot::Receiver<Result<(), crate::library::LibraryError>>,
+        cancelled: tokio::sync::oneshot::Receiver<()>,
     ) -> Result<(), crate::library::LibraryError> {
         cancelled.await.map_err(|_| {
             crate::library::LibraryError::Internal(
                 "the identification queue stopped before the cancel ended".to_string(),
             )
-        })?
+        })
     }
 
-    /// Run the automatic admission now, and wait until every job it is
-    /// responsible for has ended — a verdict stored, refused, failed, or
-    /// withdrawn. The whole of what one pass over the queue was.
-    ///
-    /// A candidate a person asked for does not hold this up: the automatic
-    /// admission never had it.
+    /// Wait until every release found so far has been admitted and every
+    /// automatic job has ended.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn identify_the_queue_for_test(&self) {
+    pub async fn automatic_drained_for_test(&self) {
         let (drained, wait) = tokio::sync::oneshot::channel();
         if self
             .commands
-            .send(Command::AdmitAutomatic { drained })
+            .send(Command::AwaitAutomaticDrained { drained })
             .is_err()
         {
             return;
         }
-        // An error is the queue stopping, which is also the end of waiting for
-        // anything it was doing.
+        // A stopped queue ends the wait too.
         let _ = wait.await;
     }
 }

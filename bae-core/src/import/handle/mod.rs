@@ -286,6 +286,8 @@ pub struct ImportServiceHandle {
     extraction: crate::signals::ExtractionServiceHandle,
     folder_state_commit: crate::import::FolderStateCommit,
     import_cancels: crate::import::import_cancel::ImportCancels,
+    /// Where a release a combination makes goes to be identified on its own.
+    automatic_admissions: crate::import::identification::AutomaticAdmissions,
     watcher: WorkerThread<WatcherCommand>,
     runtime_handle: tokio::runtime::Handle,
 }
@@ -333,8 +335,7 @@ pub enum ScanEvent {
     /// different track count and source-audio summary, so every index holding those
     /// replaces its copy from this rather than keeping stale ones.
     ///
-    /// It also says the candidate's stored identify verdict was cleared, which
-    /// is what brings it back to the identification queue.
+    /// It also says the candidate's stored identify verdict was cleared.
     CandidateBindingChanged {
         candidate: FolderCandidate,
     },
@@ -411,6 +412,7 @@ impl ImportServiceHandle {
             directories: _,
             folder_state_commit,
             import_cancels,
+            automatic_admissions,
         } = services;
         let identify = crate::identify::IdentifyServiceHandle::new(
             library_manager.clone(),
@@ -435,9 +437,18 @@ impl ImportServiceHandle {
             extraction,
             folder_state_commit,
             import_cancels,
+            automatic_admissions,
             watcher,
             runtime_handle,
         }
+    }
+
+    /// The releases this service finds, for the one identification queue that
+    /// takes them.
+    pub(crate) fn take_automatic_admissions(
+        &self,
+    ) -> Option<tokio::sync::mpsc::UnboundedReceiver<String>> {
+        self.automatic_admissions.take()
     }
 
     /// Stop and join both worker threads. Idempotent (each join handle is
@@ -758,10 +769,6 @@ impl ImportServiceHandle {
     /// replaced by the failure when the write itself fails. So a caller torn
     /// down the instant it has asked still leaves the key stating what
     /// happened rather than a commit that never resolves.
-    ///
-    /// The default metadata source plays no part: it decides which candidates
-    /// the automatic admission picks up on its own, not whether an answer a
-    /// run reached — one a person asked for included — is worth keeping.
     ///
     /// The commit lock spans the check and the write, and everything that can
     /// invalidate a verdict — a scan, a file re-decision, a skip, an import

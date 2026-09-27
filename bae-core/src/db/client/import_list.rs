@@ -19,7 +19,6 @@ use super::import_state::{load_matches_on, load_provenance_on};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_scanner::InvalidReason;
-use crate::import::folder_scanner::ScanItem;
 use crate::import::list::{
     flatten, ImportCandidateDetailProjection, ImportListProjection, ImportListRequest,
     ImportListWindow,
@@ -615,20 +614,6 @@ impl Database {
             })
     }
 
-    /// Every candidate the queue sweep is responsible for: settled folders,
-    /// with their files, that are neither skipped nor already in the library.
-    ///
-    /// Read from the tables rather than from the list, which is a query that
-    /// lands after the commit it reflects — the sweep plans a pass right after
-    /// the event that changed the answer.
-    pub(crate) async fn load_sweepable_candidates(
-        &self,
-    ) -> Result<Vec<crate::import::FolderCandidate>, DbError> {
-        self.read(move |sql| load_sweepable_candidates_on(&sql))
-            .process(|process| process())
-            .await
-    }
-
     /// One candidate as the pane reads it, once.
     pub(crate) async fn load_import_candidate(
         &self,
@@ -639,86 +624,4 @@ impl Database {
             .process(|process| process.map(|process| process()).transpose())
             .await
     }
-}
-
-fn load_sweepable_candidates_on(
-    sql: &SqlReadContext<'_>,
-) -> Result<
-    impl FnOnce() -> Result<Vec<crate::import::FolderCandidate>, DbError> + Send + 'static,
-    DbError,
-> {
-    // Every settled release the queue lists: not taken into a grouping, and —
-    // for a grouping — built from every release it takes in and not set aside.
-    let sweepable: HashSet<(String, String)> = sql
-        .query(
-            "SELECT c.watched_folder_path, c.path FROM scan_candidate AS c \
-             LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
-             WHERE c.kind = 'valid' \
-               AND NOT EXISTS (SELECT 1 FROM release_grouping_member WHERE member_key = c.path) \
-               AND (c.grouping_key IS NULL OR (g.skipped = 0 AND g.blocked IS NULL))",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )?
-        .into_iter()
-        .collect();
-    let skipped: HashSet<(String, String)> = sql
-        .query(
-            "SELECT watched_folder_path, relative_candidate_path FROM skipped_import_candidates",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )?
-        .into_iter()
-        .collect();
-    let imported: HashSet<String> = sql
-        .query(
-            "SELECT DISTINCT content_hash FROM releases WHERE content_hash IS NOT NULL",
-            [],
-            |row| row.get::<_, String>(0),
-        )?
-        .into_iter()
-        .collect();
-    let roots = sql.query(
-        "SELECT watched_folder_path FROM folder_scan_roots ORDER BY watched_folder_path",
-        [],
-        |row| row.get::<_, String>(0),
-    )?;
-    let roots = roots
-        .into_iter()
-        .map(|root| {
-            folder_scans::read::load_candidate_items_rows(
-                sql,
-                &root,
-                None,
-                folder_scans::RowSources::Any,
-            )
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(move || {
-        let mut candidates = Vec::new();
-        for root in roots {
-            for stored in root()? {
-                let ScanItem::Valid(candidate) = stored.item else {
-                    continue;
-                };
-                if !sweepable.contains(&(candidate.watched_folder_path.clone(), candidate.key())) {
-                    continue;
-                }
-                if candidate.grouping.is_none() {
-                    let relative = crate::import::watched_folder::candidate_relative_path(
-                        &candidate.watched_folder_path,
-                        &candidate.path,
-                    )
-                    .map_err(|error| DbError::Message(error.to_string()))?;
-                    if skipped.contains(&(candidate.watched_folder_path.clone(), relative)) {
-                        continue;
-                    }
-                }
-                if imported.contains(&candidate.files.content_hash()) {
-                    continue;
-                }
-                candidates.push(candidate);
-            }
-        }
-        Ok(candidates)
-    })
 }

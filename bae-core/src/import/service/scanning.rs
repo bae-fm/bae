@@ -141,9 +141,8 @@ impl ImportService {
         Ok((item, Some((content_hash, revision))))
     }
 
-    /// Tell the runtime and the list what one stored scan item changed: the
-    /// entries it displaced, then the item itself. A write that left the row as
-    /// it was is told to nobody.
+    /// Announce what one stored scan item changed: the entries it displaced,
+    /// then the item itself. An unchanged row is announced to nobody.
     pub(super) async fn announce_scan_write(
         item: ScanItem,
         write: &crate::db::ScanItemWrite,
@@ -161,7 +160,7 @@ impl ImportService {
                 },
             ));
         }
-        Self::announce_item(item, skipped, services).await?;
+        Self::announce_item(item, write.found(), skipped, services).await?;
         if let Some(regrouped) = write.regrouped() {
             Self::announce_regrouped(regrouped, services).await?;
         }
@@ -183,15 +182,20 @@ impl ImportService {
                 ));
         }
         for item in &regrouped.written {
-            Self::announce_item(item.clone(), &HashSet::new(), services).await?;
+            let found = item
+                .persisted_key()
+                .is_some_and(|key| regrouped.found.contains(&key));
+            Self::announce_item(item.clone(), found, &HashSet::new(), services).await?;
         }
         Ok(())
     }
 
-    /// Announce one stored entry as what it now is. A release's skip stamp is
-    /// its grouping's own, or its folder's in `skipped`.
+    /// Announce one stored entry as what it now is, and hand a `found` release
+    /// to automatic identification. A release's skip stamp is its grouping's
+    /// own, or its folder's in `skipped`.
     async fn announce_item(
         item: ScanItem,
+        found: bool,
         skipped: &HashSet<String>,
         services: &crate::import::ImportServices,
     ) -> Result<(), crate::import::ImportError> {
@@ -221,6 +225,11 @@ impl ImportService {
                     .library_manager
                     .is_content_hash_imported(&candidate.files.content_hash())
                     .await?;
+                if found {
+                    services
+                        .automatic_admissions
+                        .found(&services.library_manager, candidate.key());
+                }
                 event_tx.send(crate::import::handle::ImportEvent::Scan(if actionable {
                     ScanEvent::FolderCandidate {
                         candidate,

@@ -1,10 +1,7 @@
 // ── 9. A decision ends the candidate's identification ───────────────────────
 //
-// The command that decides a candidate — a pick, a clear, a skip, an import —
-// cancels its run inside its own write, so no answer the run would have
-// reached can land after the decision. The sweep drops the decided candidate
-// from the pass it is running and carries every other candidate on to its
-// verdict.
+// A decision about a candidate — a pick, a clear, a skip, an import — ends its
+// run inside the decision's own write and takes it off the queue.
 
 /// A pick names one candidate, so it ends one candidate's run. The pass keeps
 /// answering everything else it had going.
@@ -33,7 +30,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
 
     let picked_key = picked.to_string_lossy().into_owned();
     let other_key = other.to_string_lossy().into_owned();
-    let pass = fixture.sweep();
+    let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     let mut events = fixture.import.subscribe_events();
 
@@ -50,9 +47,8 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
         !fixture.import.is_identifying(&picked_key),
         "the pick ends the picked candidate's run before it returns"
     );
-    // The other candidate is carried to its verdict. The picked one is the
-    // sweep's again — a draft is not a result — so its next run is waiting at
-    // the held route rather than finishing, and the pass is ended here.
+    // The other candidate is carried to its verdict. The picked one left the
+    // queue with the run the pick ended.
     tokio::time::timeout(
         Duration::from_secs(30),
         fixture.await_identified_row(&other),
@@ -100,14 +96,20 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
 }
 
 /// Skipping is a decision about the candidate, so it ends its run. Unskipping
-/// makes it the sweep's again, and the next pass answers it.
+/// brings it back as it was — unqueued — and a person asking answers it.
 #[tokio::test(flavor = "multi_thread")]
-async fn skipping_a_candidate_ends_its_run_and_unskipping_plans_it_again() {
+async fn skipping_a_candidate_ends_its_run_and_unskipping_queues_nothing() {
     let fixture = Fixture::new("skip-ends-run").await;
     let dir = fixture.disc_id_candidate("Candidate");
     let key = dir.to_string_lossy().into_owned();
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup_and_await_run(&dir).await;
@@ -131,20 +133,25 @@ async fn skipping_a_candidate_ends_its_run_and_unskipping_plans_it_again() {
 
     fixture
         .import
-        .set_candidate_skipped(key, false)
+        .set_candidate_skipped(key.clone(), false)
         .await
         .expect("the candidate is unskipped");
-    fixture.sweep_once().await;
-
-    assert!(
-        fixture.identified_for(&dir).await.is_some(),
-        "an unskipped candidate is planned again"
+    fixture.drain_automatic().await;
+    assert_eq!(
+        fixture.provider.count_containing("/discid/"),
+        1,
+        "unskipping queues nothing: {:?}",
+        fixture.provider.requests()
     );
+    assert!(fixture.identified_for(&dir).await.is_none());
+
+    fixture.start_explicit_lookup(&dir);
+    fixture.await_identified_row(&dir).await;
 }
 
 /// Clearing a candidate's metadata is a decision too: the run answering the
-/// candidate as it was ends, and the change is announced so the pane and the
-/// queue sweep both read the candidate afresh.
+/// candidate as it was ends, and the change is announced so the pane reads
+/// the candidate afresh.
 #[tokio::test(flavor = "multi_thread")]
 async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() {
     let fixture = Fixture::new("clear-ends-run").await;
@@ -152,6 +159,12 @@ async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() 
     let key = dir.to_string_lossy().into_owned();
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
     fixture.scan(1).await;
 
     let mut events = fixture.import.subscribe_events();
@@ -186,11 +199,11 @@ async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() 
     );
 }
 
-/// A clear leaves the candidate holding neither a pick nor a verdict, so the
-/// pass it was running in takes it back: the run the clear ended is replaced,
-/// in the same pass, by one reading the candidate as it now is.
+/// A clear ends the identification the automatic admission had going, and
+/// the candidate leaves the queue with it: nothing puts it back on its own,
+/// and a person asking answers it.
 #[tokio::test(flavor = "multi_thread")]
-async fn clearing_a_candidates_metadata_mid_pass_puts_it_back_in_the_queue() {
+async fn clearing_a_candidates_metadata_takes_it_off_the_queue() {
     let fixture = Fixture::new("clear-requeues").await;
     let dir = fixture.disc_id_candidate("Candidate");
     let key = dir.to_string_lossy().into_owned();
@@ -208,7 +221,7 @@ async fn clearing_a_candidates_metadata_mid_pass_puts_it_back_in_the_queue() {
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
 
-    let pass = fixture.sweep();
+    let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
     fixture
@@ -221,20 +234,21 @@ async fn clearing_a_candidates_metadata_mid_pass_puts_it_back_in_the_queue() {
         !fixture.import.is_identifying(&key),
         "the clear ends the run it found"
     );
-    // A second disc-ID lookup is the pass asking the candidate again. Nothing
-    // else can produce one: the pass owns the only queue, and the candidate it
-    // dropped would otherwise wait for a scan that never comes.
-    wait_for_request(&fixture.provider, "/discid/", 2).await;
-    fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(30), pass)
         .await
-        .expect("the pass answers the candidate it took back")
+        .expect("the candidate left the queue, so the automatic admission holds nothing")
         .unwrap();
-
-    assert!(
-        fixture.identified_for(&dir).await.is_some(),
-        "the run that replaced the cleared one stored its verdict"
+    fixture.provider.release();
+    assert_eq!(
+        fixture.provider.count_containing("/discid/"),
+        1,
+        "nothing asked about the cleared candidate again: {:?}",
+        fixture.provider.requests()
     );
+    assert!(fixture.identified_for(&dir).await.is_none());
+
+    fixture.start_explicit_lookup(&dir);
+    fixture.await_identified_row(&dir).await;
 }
 
 /// An import claims the candidate, so nothing is left for identification to
@@ -246,6 +260,12 @@ async fn starting_an_import_ends_the_candidates_run() {
     let key = dir.to_string_lossy().into_owned();
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup_and_await_run(&dir).await;
@@ -269,10 +289,9 @@ async fn starting_an_import_ends_the_candidates_run() {
     );
 }
 
-/// Switching automatic identification off cancels the runs the sweep has
-/// going, and then waits: a candidate whose answer is already being written
-/// keeps its write, so the row lands and nothing is left saying a commit is
-/// still pending.
+/// Switching automatic identification off takes nothing off the queue: a
+/// candidate whose answer is already being written keeps its write, so the
+/// row lands and nothing is left saying a commit is still pending.
 #[tokio::test(flavor = "multi_thread")]
 async fn switching_automatic_identification_off_lets_a_settling_write_land() {
     let fixture = Fixture::new("disable-during-settle").await;
@@ -292,7 +311,7 @@ async fn switching_automatic_identification_off_lets_a_settling_write_land() {
     fixture.provider.hold("/release/mb-settling?");
     fixture.scan(1).await;
 
-    let mut pass = fixture.sweep();
+    let mut pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/release/mb-settling?", 1).await;
 
     fixture.manager.set_identify_automatically(false).await.unwrap();

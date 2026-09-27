@@ -142,10 +142,8 @@ impl AppServices {
         self.inner.identification.rerun_identify(candidate_key);
     }
 
-    /// Stop these candidates' identification, however it was started: off the
-    /// queue whether waiting or running, and a re-identify sheet's own run
-    /// ended. They are left unidentified and the automatic admission does not
-    /// take them back up; [`Self::rerun_identify`] asks for them again.
+    /// Stop these candidates' identification, however it was started, and
+    /// store nothing.
     pub async fn cancel_identification(
         &self,
         candidate_keys: Vec<String>,

@@ -51,11 +51,10 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
     ));
 }
 
-/// An import started mid-pass takes its candidate away from the sweep: its
-/// draft gains no identification result, and it stops counting towards the
-/// queue's total.
+/// An import started while its candidate is queued takes it off the queue: it
+/// gains no result and stops counting towards the queue's total.
 #[tokio::test(flavor = "multi_thread")]
-async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress() {
+async fn an_import_start_takes_a_queued_candidate_out_of_work_and_progress() {
     let fixture = Fixture::new("import-mid-pass").await;
     let remaining = fixture.disc_id_candidate("Remaining");
     let importing = fixture.disc_id_candidate("Importing");
@@ -76,7 +75,7 @@ async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress()
     fixture.provider.hold("/discid/");
 
     let mut events = fixture.import.subscribe_events();
-    let pass = fixture.sweep();
+    let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     // Starting an import, in the order the import service really does it: the
     // candidate is claimed before the command is queued, and the worker's
@@ -145,7 +144,7 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     fixture.provider.hold("/discid/");
 
     let mut events = fixture.import.subscribe_events();
-    let pass = fixture.sweep();
+    let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     start_import_for(&fixture, &importing).await;
     // …and then the scan re-announces it, exactly as a watcher-triggered pass
@@ -223,7 +222,7 @@ async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
     // the window between a settled verdict and its row.
     fixture.provider.hold("/release/mb-mid-write?");
 
-    let pass = fixture.sweep();
+    let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/release/mb-mid-write?", 1).await;
     start_import_for(&fixture, &dir).await;
     fixture.provider.release();
@@ -245,9 +244,9 @@ async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
 
 /// Progress crosses as an event carrying both numbers, so a view renders
 /// "n of m" without counting the rows it happens to be holding. The batch is
-/// what the pass identifies: it opens at the whole of it, and ends at `(0, 0)`
+/// what was found together: it opens at the whole of it, and ends at `(0, 0)`
 /// — which is what a surface draws nothing for — once every identification is
-/// over. A pass with nothing to identify says nothing at all.
+/// over. A queue with nothing to identify says nothing at all.
 #[tokio::test(flavor = "multi_thread")]
 async fn progress_carries_both_counts() {
     let fixture = Fixture::new("progress").await;
@@ -270,7 +269,7 @@ async fn progress_carries_both_counts() {
     fixture.scan(2).await;
 
     let mut events = fixture.import.subscribe_events();
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
     let mut progress = Vec::new();
     for event in drain_events(&mut events) {
         if let ImportEvent::IdentificationProgress { identified, total } = event {
@@ -293,7 +292,7 @@ async fn progress_carries_both_counts() {
     );
 
     let mut events = fixture.import.subscribe_events();
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
     let replanned: Vec<_> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
@@ -325,7 +324,7 @@ async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
     fixture.scan(1).await;
 
     let mut events = fixture.import.subscribe_events();
-    let pass = fixture.sweep();
+    let pass = fixture.drain_automatic_task();
 
     let mut opened = false;
     loop {
@@ -352,7 +351,7 @@ async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
         }
     }
 
-    pass.await.expect("sweep pass joins");
+    pass.await.expect("the drain joins");
 }
 
 fn drain_events(events: &mut tokio::sync::broadcast::Receiver<ImportEvent>) -> Vec<ImportEvent> {
@@ -367,13 +366,11 @@ fn drain_events(events: &mut tokio::sync::broadcast::Receiver<ImportEvent>) -> V
 }
 
 /// A candidate that vanishes while it is being identified must not wedge the
-/// pass. The signals service cancels extraction on `CandidateRemoved` and
+/// queue. The signals service cancels extraction on `CandidateRemoved` and
 /// nothing cancels identify, so the driver would sit in `Triangulating`
-/// forever holding a slot — and because the outer loop only takes another
-/// `ScanEvent::Finished` between passes, a stalled pass silently ends sweeping
-/// for the whole session.
+/// forever holding a slot, and nothing behind it would ever run.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
+async fn a_candidate_removed_mid_flight_does_not_wedge_the_queue() {
     let fixture = Fixture::new("removed-mid-flight").await;
     let analyzer_started = Arc::new(Barrier::new(2));
     let analyzer_release = Arc::new(Barrier::new(2));
@@ -387,7 +384,7 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
 
     // Start the pass and hold extraction inside OCR, so the candidate is
     // genuinely mid-flight when the folder goes.
-    let pass = fixture.sweep();
+    let pass = fixture.drain_automatic_task();
     tokio::task::spawn_blocking(move || {
         analyzer_started.wait();
     })
@@ -432,8 +429,8 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
         state.identify.is_none(),
         "a candidate that vanished mid-identification learned nothing"
     );
-    // And the sweep is still alive to the queue: a later pass runs.
-    fixture.sweep_once().await;
+    // And the queue is still alive: it answers a later drain.
+    fixture.drain_automatic().await;
 }
 
 /// A candidate the queue is done with leaves nothing of the queue's behind.
@@ -442,8 +439,7 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
 /// queue gives the key up in the same breath. A driver left registered past its
 /// answer would park a task, a bus-relay task, and a live broadcast receiver
 /// that every later `IdentifyStateChanged` — a whole `IdentifyState`, result
-/// vectors and all — is deep-cloned into; over a queue swept unattended on
-/// every launch that fan-out is quadratic in its size.
+/// vectors and all — is deep-cloned into.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_finished_candidate_leaves_no_driver_behind() {
     let fixture = Fixture::new("no-driver-left").await;
@@ -462,7 +458,7 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
     fixture.scan(1).await;
     let key = dir.to_string_lossy().into_owned();
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     assert!(
         fixture.identified_for(&dir).await.is_some(),
@@ -503,7 +499,7 @@ async fn a_cancelled_candidate_writes_no_row() {
     // finished.
     fixture.provider.hold("/discid/");
 
-    let pass = fixture.sweep();
+    let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     fixture.identification().shut_down();
     fixture.provider.release();

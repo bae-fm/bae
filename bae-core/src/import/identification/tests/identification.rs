@@ -29,8 +29,8 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
     );
     fixture.scan(1).await;
 
-    // Nobody selects anything. The sweep is the only actor.
-    fixture.sweep_once().await;
+    // Nobody asks: it is identified because it was found.
+    fixture.drain_automatic().await;
 
     let row = fixture.stored_for(&dir).await.expect("a verdict is stored");
     assert_eq!(
@@ -61,14 +61,14 @@ async fn a_planned_candidate_is_queued_before_its_driver_reports() {
     fixture.scan(1).await;
     let mut changes = fixture.import.subscribe_candidate_runtime().1;
 
-    let pass = fixture.sweep();
+    let pass = fixture.drain_automatic_task();
 
     let change = tokio::time::timeout(Duration::from_secs(10), changes.recv())
         .await
         .expect("the queue state is published before identification")
         .expect("candidate runtime remains open");
     let crate::import::CandidateRuntimeChange::Reset { runtimes } = change else {
-        panic!("the pass admits its queue atomically before starting drivers");
+        panic!("the queue publishes its admission before starting drivers");
     };
     assert_eq!(
         crate::import::TriageRuntimeFacts::of(&runtimes[&key]).identification,
@@ -99,7 +99,7 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
     fixture.provider.hold("/discid/");
     fixture.scan(2).await;
 
-    let pass = fixture.sweep();
+    let pass = fixture.drain_automatic_task();
 
     if tokio::time::timeout(Duration::from_secs(10), async {
         loop {
@@ -149,9 +149,10 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
 
 // ── 2. A stored verdict is not re-fetched ───────────────────────────────────
 
-/// The second launch is instant because a candidate whose content hash already
-/// has a verdict is never handed to the pipeline again. Two passes over the same
-/// queue, and the provider sees requests only in the first.
+/// A folder found again under a new name — renamed, or moved within the
+/// watched folder — holds files a run already answered. It is a release found
+/// for the first time, but its answer is stored, so it is never handed to the
+/// pipeline again: the provider sees requests only for the first name.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_stored_verdict_is_not_re_fetched() {
     let fixture = Fixture::new("not-re-fetched").await;
@@ -168,87 +169,72 @@ async fn a_stored_verdict_is_not_re_fetched() {
         release_json("mb-cached-1", "rg-cached-1", &[probed, 0]),
     );
     fixture.scan(1).await;
-
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
     let after_first = fixture.provider.requests().len();
     assert!(
         after_first > 0,
-        "the first pass has to actually ask the provider"
+        "the first name has to actually ask the provider"
     );
     assert!(fixture.identified_for(&dir).await.is_some());
+    let answered = fixture.content_hash(&dir);
 
-    fixture.sweep_once().await;
+    let renamed = fixture.root.join("Album Renamed");
+    std::fs::rename(&dir, &renamed).unwrap();
+    assert_eq!(
+        fixture.content_hash(&renamed),
+        answered,
+        "the renamed folder holds the files that were answered"
+    );
+    fixture.rescan(&fixture.import, 1).await;
+    fixture.drain_automatic().await;
 
     assert_eq!(
         fixture.provider.requests().len(),
         after_first,
-        "the second pass asked the provider for nothing: {:?}",
+        "the folder under its new name asked the provider for nothing: {:?}",
         fixture.provider.requests()
+    );
+    assert!(
+        fixture
+            .import
+            .answerable_candidate(&renamed.to_string_lossy())
+            .await
+            .unwrap()
+            .is_some(),
+        "the scan found the folder under its new name"
     );
 }
 
-// ── 3. A transport failure is stored until an explicit rerun ────────────────
+// ── 3. A transport failure is stored ────────────────────────────────────────
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_transport_failure_is_stored_and_not_automatically_retried() {
+async fn a_transport_failure_is_stored() {
     let fixture = Fixture::new("failure-stored").await;
     let dir = fixture.disc_id_candidate("Album");
-    let probed = fixture.probed_total_ms(&dir);
     fixture
         .provider
         .set_routes(vec![("/discid/", 400, "{}".to_string())]);
     fixture.scan(1).await;
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
     let stored = fixture
         .identified_for(&dir)
         .await
         .expect("the failed outcome is stored");
     assert!(matches!(stored.verdict, TerminalVerdict::Failed { .. }));
-    let requests_after_failure = fixture.provider.requests().len();
-
-    fixture.provider.set_routes(vec![
-        (
-            "/discid/",
-            200,
-            discid_json("mb-retry-1", "rg-retry-1", &[probed, 0]),
-        ),
-        (
-            "/release/mb-retry-1?",
-            200,
-            release_json("mb-retry-1", "rg-retry-1", &[probed, 0]),
-        ),
-    ]);
-    fixture.sweep_once().await;
-
-    assert_eq!(
-        fixture.provider.requests().len(),
-        requests_after_failure,
-        "a stored failure waits for an explicit rerun"
-    );
 }
 
-// ── 4. The interactive path is not delayed by the sweep ─────────────────────
+// ── 4. The interactive path is not delayed by automatic identification ──────
 
-/// The pair to the limiter's own priority test, from the producer's side. With
-/// the sweep's background lookups queued on the shared limiter, a search the
-/// user typed is admitted next rather than after all of them.
+/// With automatic identification's background lookups queued on the shared
+/// limiter, a search the user typed is admitted next rather than after all of
+/// them. Each of eight candidates has its own barcode, so each queues a lookup.
 ///
-/// Eight candidates saturate the limiter's background queue at the sweep's
-/// concurrency cap. Each carries its own barcode, so each is a lookup of its
-/// own: candidates asking the same question are answered once from the response
-/// cache and would queue nothing. Without priority the interactive search waits
-/// out every queued background call at one second each; with it, one interval.
-///
-/// Wall time, not the deterministic clock, and deliberately: the fake provider
-/// is a real socket, so `start_paused` would leave the runtime idle while a
-/// response is in flight and auto-advance straight into the request's own
-/// `API_TIMEOUT` — every lookup would time out before the server answered. What
-/// the clock would otherwise buy is bought instead by bracketing the
-/// measurement with assertions that background work really was in flight, so a
-/// sweep that had died cannot make this pass by doing nothing.
+/// Wall time, because the fake provider is a real socket and a paused clock
+/// would time every lookup out; assertions around the measurement check that
+/// background work really was in flight.
 #[tokio::test(flavor = "multi_thread")]
-async fn the_interactive_path_is_not_delayed_by_the_sweep() {
+async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
     let fixture = Fixture::new("interactive-not-delayed").await;
     fixture
         .import
@@ -281,15 +267,15 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
         .route("/release?", 200, search_json("mb-typed", "rg-typed"));
     fixture.scan(8).await;
 
-    let sweep = fixture.sweep();
+    let sweep = fixture.drain_automatic_task();
 
-    // Let the sweep take the first slot and stack the rest behind it.
+    // Let the first lookup go out and the rest queue behind it.
     tokio::time::sleep(Duration::from_millis(1_200)).await;
     let background_before = fixture.provider.count_containing("query=barcode");
     assert!(
         (1..8).contains(&background_before),
-        "the sweep must be mid-flight when the search is timed — {background_before} of 8 \
-         lookups done means there is no background queue to be admitted ahead of"
+        "background lookups must be queued when the search is timed: \
+         {background_before} of 8 done"
     );
 
     let started = std::time::Instant::now();
@@ -307,14 +293,9 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
         .expect("the typed search succeeds");
     let waited = started.elapsed();
 
-    // Still running, so the search really was admitted past a live background
-    // queue rather than into an idle limiter. (Its count does not rise across
-    // the measurement, and must not: the whole point is that the interactive
-    // call took the slot the sweep would have had.)
     assert!(
         !sweep.is_finished(),
-        "the sweep must still be mid-pass across the measurement — a sweep that \
-         died would make this pass by doing nothing"
+        "background work must still be going across the measurement"
     );
     fixture.identification().shut_down();
     let _ = tokio::time::timeout(Duration::from_secs(20), sweep).await;
@@ -322,7 +303,7 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
     assert_eq!(typed.len(), 1);
     assert!(
         waited < Duration::from_millis(2_000),
-        "an interactive search waited {waited:?} behind the sweep; \
+        "an interactive search waited {waited:?} behind background lookups; \
          with priority it is admitted within about one interval"
     );
 }
@@ -400,12 +381,12 @@ fn a_count_disagreement_is_named_as_one() {
     );
 }
 
-// ── 6. A skipped candidate is out of the sweep ──────────────────────────────
+// ── 6. A skipped candidate is not identified ────────────────────────────────
 
 /// Skipped is a decision the user already made, so automatic identification
 /// excludes it until the user explicitly unskips it.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_skipped_candidate_is_not_swept() {
+async fn a_skipped_candidate_is_not_identified() {
     let fixture = Fixture::new("skipped").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
@@ -426,7 +407,7 @@ async fn a_skipped_candidate_is_not_swept() {
         .await
         .unwrap();
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     assert!(
         fixture.provider.requests().is_empty(),
@@ -437,86 +418,6 @@ async fn a_skipped_candidate_is_not_swept() {
         fixture.identified_for(&dir).await.is_none(),
         "and produces no identification result"
     );
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn unskipping_a_stored_candidate_mid_pass_does_not_identify_it_again() {
-    let fixture = Fixture::new("unskip-mid-pass").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: "0123456789012".to_string(),
-        }));
-    let stored = fixture.barcode_candidate("Stored");
-    let running = fixture.disc_id_candidate("Running");
-    std::fs::write(running.join("notes.txt"), "distinct candidate").unwrap();
-    let probed = fixture.probed_total_ms(&running);
-    fixture.provider.route(
-        "/release?",
-        200,
-        search_json("mb-unskip-stored", "rg-unskip-stored"),
-    );
-    fixture.provider.route(
-        "/release/mb-unskip-stored?",
-        200,
-        release_json("mb-unskip-stored", "rg-unskip-stored", &[probed, 0]),
-    );
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-unskip-running", "rg-unskip-running", &[probed, 0]),
-    );
-    fixture.provider.route(
-        "/release/mb-unskip-running?",
-        200,
-        release_json("mb-unskip-running", "rg-unskip-running", &[probed, 0]),
-    );
-    fixture.scan(2).await;
-    fixture.start_explicit_lookup(&stored);
-    fixture.await_identified_row(&stored).await;
-    fixture
-        .import
-        .set_candidate_skipped(stored.to_string_lossy().into_owned(), true)
-        .await
-        .unwrap();
-
-    fixture.provider.hold("/discid/");
-    let mut events = fixture.import.subscribe_events();
-    let pass = fixture.sweep();
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
-    fixture
-        .import
-        .set_candidate_skipped(stored.to_string_lossy().into_owned(), false)
-        .await
-        .unwrap();
-    fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(15), pass)
-        .await
-        .expect("pass finishes after unskip")
-        .unwrap();
-
-    let row = fixture
-        .stored_for(&stored)
-        .await
-        .expect("stored row remains");
-    let verdict = identify_result(&row).verdict.clone();
-    assert!(
-        matches!(&verdict, TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. }
-        if matches[0].source_tracks.is_some())
-    );
-    let progress: Vec<_> = drain_events(&mut events)
-        .into_iter()
-        .filter_map(|event| match event {
-            ImportEvent::IdentificationProgress { identified, total } => Some((identified, total)),
-            _ => None,
-        })
-        .collect();
-    assert!(
-        progress.iter().all(|(_, total)| *total <= 1),
-        "the unskipped candidate already holds its answer, so the batch stays \
-         the one candidate the pass identifies: {progress:?}"
-    );
-    assert_eq!(progress.last(), Some(&(0, 0)), "{progress:?}");
 }
 
 /// An identification that settles on a release the catalogs hold no artwork
@@ -555,7 +456,7 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
         "the scan stores the cover the folder gives the candidate"
     );
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     assert_eq!(
         fixture
@@ -618,7 +519,7 @@ async fn a_release_no_identifier_names_is_found_by_its_title() {
     );
     fixture.scan(1).await;
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     let verdict = identify_result(&fixture.stored_for(&dir).await.expect("a verdict is stored"))
         .verdict

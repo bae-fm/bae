@@ -544,8 +544,8 @@ pub enum BridgeIdentifyState {
         track_count: u32,
         run: Option<BridgeIdentifyRun>,
     },
-    /// At least one automatic provider lookup failed. The stored failure waits
-    /// for an explicit re-run rather than being retried by the queue sweep.
+    /// At least one automatic provider lookup failed; only an explicit re-run
+    /// retries it.
     ///
     /// It still carries whatever the surviving evidence found: one provider
     /// failing leaves the other's matches standing, and the pane shows them

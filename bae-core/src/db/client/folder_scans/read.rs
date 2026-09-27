@@ -323,10 +323,9 @@ fn load_file_tag_facts(
         .collect()
 }
 
-/// Whether the stored candidate at `path` is a settled release row — the kind
-/// the list draws and counts. `false` covers a tentative or invalid row and a
-/// path nothing is stored for.
-pub(crate) fn candidate_is_valid(
+/// Whether a valid or invalid entry, rather than a tentative one or none, is
+/// stored at `path`.
+pub(crate) fn settled_entry_is_stored(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,
     path: &str,
@@ -338,7 +337,7 @@ pub(crate) fn candidate_is_valid(
             |row| row.get(0),
         )
         .optional()?;
-    Ok(kind.as_deref() == Some("valid"))
+    Ok(matches!(kind.as_deref(), Some("valid" | "invalid")))
 }
 
 /// Every entry the scans stored under one root, as the key it is addressed

@@ -783,9 +783,8 @@ impl CandidateRuntime {
     /// records the same fact, but far too late to gate anything on: it is
     /// emitted after the worker has dequeued the command and re-walked the
     /// folder — behind however many imports are already queued ahead of it.
-    /// The automatic admission reads this field to decide whether a candidate still
-    /// wants a verdict, and "the user has committed to importing it" has to be
-    /// true here from the moment they commit.
+    /// Whether identification can still answer the candidate reads this, so it
+    /// has to hold from the moment the person commits.
     ///
     /// One import owns a candidate at a time: a claim on a candidate an import
     /// already owns — queued or running — is refused, and changes nothing.

@@ -171,12 +171,13 @@ async fn a_cleared_sheet_can_be_bound_again() {
         )
         .await
         .unwrap();
-    // The queue looks the reshaped folder up again and finds nothing: the
-    // draft is now the folder's own, one blank track per loose file.
-    fixture.sweep_once().await;
+    // The release was found while identification ran on its own, and its run
+    // starts now, over the reshaped folder: it finds nothing, and the draft is
+    // the folder's own, one blank track per loose file.
+    fixture.drain_automatic().await;
     assert!(
         fixture.identified_for(&dir).await.is_some(),
-        "the sweep answered the reshaped folder"
+        "the found release's run answered the reshaped folder"
     );
     let options = fixture
         .import

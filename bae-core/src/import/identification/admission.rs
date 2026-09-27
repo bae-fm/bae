@@ -1,9 +1,8 @@
-//! What puts a candidate on the queue, and the reads that decide it.
+//! What puts a candidate on the queue on its own, and the reads a run starts
+//! from.
 
 use super::*;
 
-/// What one candidate's identification is judged by: the bytes it holds and
-/// the revision of the file decisions taken over them.
 pub(super) fn candidate_identity(candidate: &FolderCandidate) -> CandidateIdentity {
     (
         candidate.files.content_hash(),
@@ -11,24 +10,76 @@ pub(super) fn candidate_identity(candidate: &FolderCandidate) -> CandidateIdenti
     )
 }
 
-/// Whether the automatic admission is to identify this candidate: no run has
-/// answered the files it has right now, and no person cancelled identifying
-/// it as it stands. The one predicate both automatic paths read.
-pub(super) fn wants_automatic_identification(
-    row: Option<&DbImportCandidateState>,
-    candidate: &FolderCandidate,
-) -> bool {
-    !usable_stored_answer(row, candidate)
-        && !row.is_some_and(|row| row.identification_declined(candidate.file_edit_revision))
+/// The releases stored for the first time while
+/// [`IdentificationPreferences::automatic`](crate::config::IdentificationPreferences::automatic)
+/// is on, on their way to the queue.
+///
+/// A channel of its own because the import event bus drops what a subscriber
+/// falls behind on, and a release is found only once.
+#[derive(Clone)]
+pub(crate) struct AutomaticAdmissions {
+    sender: mpsc::UnboundedSender<String>,
+    /// The queue's end, until the queue takes it.
+    receiver: Arc<Mutex<Option<mpsc::UnboundedReceiver<String>>>>,
 }
 
-/// Whether a run has already finished for the files this candidate has right
-/// now. What its draft holds is not an answer — only a stored result is.
-///
-/// The one predicate, over the one row: the automatic admission reads every
-/// candidate's row in a map, and a re-evaluation of a single candidate reads
-/// its own.
-pub(super) fn usable_stored_answer(
+impl AutomaticAdmissions {
+    pub(crate) fn new() -> Self {
+        let (sender, receiver) = mpsc::unbounded_channel();
+        Self {
+            sender,
+            receiver: Arc::new(Mutex::new(Some(receiver))),
+        }
+    }
+
+    /// The store now holds the release at `key` for the first time; queue it if
+    /// identification runs on its own right now.
+    pub(crate) fn found(&self, library_manager: &LibraryManager, key: String) {
+        if !library_manager.identifies_automatically() {
+            return;
+        }
+        if self.sender.send(key).is_err() {
+            debug!("identification: the queue has stopped; a found release is not queued");
+        }
+    }
+
+    /// The queue's end, for the one queue that takes it.
+    pub(crate) fn take(&self) -> Option<mpsc::UnboundedReceiver<String>> {
+        self.receiver.lock().unwrap().take()
+    }
+}
+
+/// Put the found releases at `keys` on the queue as one automatic admission,
+/// except those that cannot be answered and those whose files already have a
+/// stored result, such as a folder renamed after it was identified.
+pub(super) async fn admit_found(context: &Context, queue: &mut Queue, keys: Vec<String>) {
+    let mut admitted = Vec::with_capacity(keys.len());
+    for key in keys {
+        let Some(candidate) = answerable_candidate(context, &key).await else {
+            continue;
+        };
+        match context
+            .library_manager
+            .load_import_candidate_state(&candidate.files.content_hash())
+            .await
+        {
+            Ok(row) if usable_stored_answer(row.as_ref(), &candidate) => {
+                info!("identification: {key} was found with its files already answered");
+            }
+            Ok(_) => admitted.push(candidate),
+            Err(error) => warn!(
+                "identification: cannot read the stored state of {key} ({error}); leaving it \
+                 unidentified"
+            ),
+        }
+    }
+    if !admitted.is_empty() {
+        admit(context, queue, admitted, Admission::Automatic).await;
+    }
+}
+
+/// Whether a result is stored for the files this candidate has now.
+fn usable_stored_answer(
     row: Option<&DbImportCandidateState>,
     candidate: &FolderCandidate,
 ) -> bool {
@@ -37,13 +88,9 @@ pub(super) fn usable_stored_answer(
     })
 }
 
-/// The candidate at `key` an identification can still answer: a stored,
-/// actionable candidate that is not set aside, already in the library, or
-/// claimed by a running import.
-///
-/// A read that fails answers no candidate, and says so. This is the same read
-/// the verdict write makes, so what the queue admits and what the write accepts
-/// cannot disagree.
+/// The candidate at `key` if an answer can still be stored for it: not set
+/// aside, imported, or claimed by an import. The same read the verdict write
+/// makes.
 pub(super) async fn answerable_candidate(context: &Context, key: &str) -> Option<FolderCandidate> {
     match context.import.answerable_candidate(key).await {
         Ok(candidate) => candidate,
@@ -61,21 +108,13 @@ pub(super) struct CandidateRunStart {
     pub(super) metadata_revision: u64,
     /// What the person decided this candidate's identification asks about.
     pub(super) choices: LookupChoices,
-    /// What the run searches by when its identifiers name nothing: the words
-    /// the person typed, else what the candidate's draft calls the release.
-    /// `None` when neither states a title.
+    /// The title to search by when the identifiers name nothing: the person's
+    /// words, else the draft's.
     pub(super) title_search: Option<TitleSearch>,
 }
 
-/// Read what a run begins from, off the two rows the candidate's content hash
-/// keys: the choices from its stored state, and the words to search by from
-/// its own draft.
-///
-/// The draft comes from the pane's rows rather than the candidate projection a
-/// surface reads. The projection also resolves whatever release a pick claims,
-/// which fails for a candidate whose documents were cleared — and a run that
-/// could not read a title would then not run at all, where it has three
-/// identifiers to ask about regardless.
+/// Read what a run begins from. The draft comes from the pane's rows, because
+/// the surface's projection fails for a pick whose documents were cleared.
 pub(super) async fn candidate_run_start(
     context: &Context,
     candidate: &FolderCandidate,
@@ -100,7 +139,6 @@ pub(super) async fn candidate_run_start(
         .album_artist_assignments
         .first()
         .map_or("", crate::import::ArtistAssignment::name);
-    // Words the person typed stand in for the draft's own.
     let title_search = match &state.lookup_choices.search_words {
         Some(words) => TitleSearch::of(&words.album, &words.artist),
         None => TitleSearch::of_draft(&draft.album_title, artist),
@@ -110,85 +148,4 @@ pub(super) async fn candidate_run_start(
         choices: state.lookup_choices,
         title_search,
     })
-}
-
-/// Whether the automatic admission still wants this candidate answered: its
-/// row states no result for the files it has right now.
-///
-/// A read that fails answers "leave it alone" and says so: without the row
-/// there is no telling an answered candidate from an unanswered one, and
-/// identifying it again would spend the rate limit re-learning what it may
-/// already know.
-pub(super) async fn wants_an_answer(context: &Context, candidate: &FolderCandidate) -> bool {
-    match context
-        .library_manager
-        .load_import_candidate_state(&candidate.files.content_hash())
-        .await
-    {
-        Ok(row) => wants_automatic_identification(row.as_ref(), candidate),
-        Err(error) => {
-            warn!(
-                "identification: cannot read the stored state of {} ({error}); leaving it as it \
-                 is until the next event about it",
-                candidate.key()
-            );
-            false
-        }
-    }
-}
-
-/// Admit every candidate the automatic policy is responsible for that holds no
-/// usable stored answer. Admitting is idempotent: a candidate the queue already
-/// holds keeps the place — and the admission — it has.
-///
-/// Read from the tables rather than through the list: an admission runs right
-/// after the event that changed the queue — a skip, a scan item — and the
-/// list's query lands after the commit it reflects, so it can still describe
-/// the queue before that change.
-pub(super) async fn admit_automatically(context: &Context, queue: &mut Queue) {
-    let candidates = match context.library_manager.load_sweepable_candidates().await {
-        Ok(candidates) => candidates,
-        Err(error) => {
-            // Without the list there is nothing to admit from. Skip it; the
-            // next scan admits again.
-            warn!(
-                "identification: could not read the candidate list ({error}); \
-                 admitting nothing this time"
-            );
-            return;
-        }
-    };
-    let stored = match context.library_manager.load_import_candidate_states().await {
-        Ok(stored) => stored,
-        Err(error) => {
-            // Without the stored set there is no telling answered from
-            // unanswered, and identifying the whole queue again would spend the
-            // rate limit re-learning what it already knows.
-            warn!(
-                "identification: could not read stored candidate states ({error}); \
-                 admitting nothing this time"
-            );
-            return;
-        }
-    };
-    let runtime = context.import.candidate_runtimes();
-    let admitted: Vec<FolderCandidate> = candidates
-        .into_iter()
-        .filter(|candidate| {
-            // An import owns the candidate, or the last write of its answer
-            // failed: neither is the automatic admission's to take back.
-            runtime
-                .get(&candidate.key())
-                .is_none_or(|runtime| runtime.import.is_none() && runtime.save_failed.is_none())
-        })
-        .filter(|candidate| {
-            wants_automatic_identification(stored.get(&candidate.files.content_hash()), candidate)
-        })
-        .collect();
-    let planned = admitted.len();
-    let opened = admit(context, queue, admitted, Admission::Automatic).await;
-    info!(
-        "identification: the automatic admission wants {planned} candidate(s) answered, \
-         {opened} of them new to the queue"
-    );
 }

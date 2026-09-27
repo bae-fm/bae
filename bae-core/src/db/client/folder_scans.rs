@@ -55,6 +55,8 @@ pub enum ScanItemWrite {
     Stored {
         superseded_keys: Vec<String>,
         regrouped: super::release_groupings::GroupingChanges,
+        /// See [`EntryWrite::Stored`].
+        found: bool,
     },
 }
 
@@ -81,6 +83,11 @@ impl ScanItemWrite {
             Self::Unchanged => None,
             Self::Stored { regrouped, .. } => Some(regrouped),
         }
+    }
+
+    /// Whether this write stored a release for the first time.
+    pub fn found(&self) -> bool {
+        matches!(self, Self::Stored { found: true, .. })
     }
 }
 
@@ -565,15 +572,18 @@ fn write_scan_item(
         ));
     };
     validate_scan_item_ownership(watched_folder_path, &entry_key, &to_write.item)?;
-    let written = write_entry(
+    let EntryWrite::Stored {
+        replaced: superseded_keys,
+        found,
+    } = write_entry(
         sql,
         watched_folder_path,
         generation,
         to_write,
         observed_at,
         EntrySource::Scanned,
-    )?;
-    let Some(superseded_keys) = written else {
+    )?
+    else {
         return Ok(ScanItemWrite::Unchanged);
     };
     // A settled release holds its files itself, so no sidecar holding one of
@@ -588,6 +598,7 @@ fn write_scan_item(
     Ok(ScanItemWrite::Stored {
         superseded_keys,
         regrouped,
+        found,
     })
 }
 
@@ -600,9 +611,20 @@ pub(super) enum EntrySource {
     Grouping,
 }
 
-/// Write one entry under `generation`, inside the caller's transaction. `None`
-/// when the stored row already said exactly this; otherwise the keys of the
-/// entries it replaced.
+/// What writing one entry did.
+pub(super) enum EntryWrite {
+    /// The stored row already said exactly this.
+    Unchanged,
+    Stored {
+        /// The keys of the entries it replaced.
+        replaced: Vec<String>,
+        /// Whether this is a valid release under a key that held nothing
+        /// settled before; new files under a known key are not a new release.
+        found: bool,
+    },
+}
+
+/// Write one entry under `generation`, inside the caller's transaction.
 pub(super) fn write_entry(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -610,7 +632,7 @@ pub(super) fn write_entry(
     to_write: &ScanItemToWrite,
     observed_at: i64,
     source: EntrySource,
-) -> Result<Option<Vec<String>>, DbError> {
+) -> Result<EntryWrite, DbError> {
     let ScanItemToWrite {
         item,
         file_metadata,
@@ -632,27 +654,15 @@ pub(super) fn write_entry(
         *folder_date,
         observed_at,
     )?;
-    // A re-walk rewrites every candidate it finds, and each one arrives
-    // tentative before it arrives valid — tentative meaning "seen
-    // before its enclosing folder was understood". A row that is
-    // already a settled release has been understood; sending it back
-    // through that window would take it out of the list and the tab
-    // counts until the valid write lands a moment later, which is the
-    // swing a viewer sees while a folder rescans. The stored row
-    // stands and only takes this generation's stamp, so the completion
-    // prune keeps it; the valid write that follows replaces it whole.
-    //
-    // A candidate this scan is seeing for the first time has nothing
-    // stored, so it still appears tentative — which is the only thing
-    // tentative is for. A row this scan decides is hidden after all is
-    // removed by the reading that hides it, which supersedes by the files
-    // it reads and does not care which kind the row was.
-    if matches!(item, ScanItem::Discovered(_))
-        && read::candidate_is_valid(sql, watched_folder_path, &entry_key)?
-    {
+    // A rescan reports every candidate tentative before it reports it settled.
+    // A settled row keeps standing through that, taking only this
+    // generation's stamp, so it does not swing out of the list; the settled
+    // write that follows replaces it.
+    let settled_before = read::settled_entry_is_stored(sql, watched_folder_path, &entry_key)?;
+    if matches!(item, ScanItem::Discovered(_)) && settled_before {
         write::touch_candidate(sql, watched_folder_path, &entry_key, generation)?;
         discovery.store(sql, watched_folder_path, &entry_key)?;
-        return Ok(None);
+        return Ok(EntryWrite::Unchanged);
     }
     // A walk of a folder nobody has touched produces exactly the items
     // already stored for it. Rewriting one of those would mean a
@@ -664,7 +674,7 @@ pub(super) fn write_entry(
     if stored_item.as_ref() == Some(item) {
         write::touch_candidate(sql, watched_folder_path, &entry_key, generation)?;
         discovery.store(sql, watched_folder_path, &entry_key)?;
-        return Ok(None);
+        return Ok(EntryWrite::Unchanged);
     }
     // Rewriting the row takes the file-tag reading hanging off it, and
     // the draft that reading projected outlives the rewrite. So a write
@@ -705,7 +715,10 @@ pub(super) fn write_entry(
         )?;
     }
     discovery.store(sql, watched_folder_path, &entry_key)?;
-    Ok(Some(removed_keys))
+    Ok(EntryWrite::Stored {
+        replaced: removed_keys,
+        found: matches!(item, ScanItem::Valid(_)) && !settled_before,
+    })
 }
 
 pub(super) fn load_folder_scan_items_on(

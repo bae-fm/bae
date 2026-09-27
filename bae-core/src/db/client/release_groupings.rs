@@ -39,17 +39,19 @@ pub(super) struct StoredReleaseCandidate {
     pub error: Option<GroupingBlock>,
 }
 
-/// What rebuilding groupings changed: the releases written, and the keys of
-/// releases no longer stored.
+/// What rebuilding groupings changed.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct GroupingChanges {
     pub written: Vec<ScanItem>,
+    /// The keys of `written` stored for the first time.
+    pub found: Vec<String>,
     pub removed: Vec<String>,
 }
 
 impl GroupingChanges {
     fn extend(&mut self, other: GroupingChanges) {
         self.written.extend(other.written);
+        self.found.extend(other.found);
         self.removed.extend(other.removed);
     }
 }
@@ -335,7 +337,12 @@ fn rebuild_grouping(
         observed_at,
         EntrySource::Grouping,
     )?;
-    changes.written.extend(written.map(|_| item));
+    if let folder_scans::EntryWrite::Stored { found, .. } = written {
+        if found {
+            changes.found.push(key.to_string());
+        }
+        changes.written.push(item);
+    }
     Ok(changes)
 }
 

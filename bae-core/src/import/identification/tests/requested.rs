@@ -25,7 +25,7 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
     fixture.scan(1).await;
 
     let mut events = fixture.import.subscribe_events();
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
     assert!(matches!(
         fixture.identified_for(&dir).await.map(|row| row.verdict),
         Some(TerminalVerdict::Failed { .. })
@@ -129,6 +129,12 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
     // Hold MusicBrainz's answer, so the run is genuinely still asking when the
     // source is switched off rather than racing a run that already settled.
     fixture.provider.hold("/release?");
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
     fixture.scan(1).await;
 
     let mut events = fixture.import.subscribe_events();
@@ -193,6 +199,12 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
         200,
         release_json("mb-interactive-1", "rg-interactive-1", &[probed, 0]),
     );
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
     fixture.scan(1).await;
 
     // Exactly what a person asking to identify the candidate does.
@@ -221,16 +233,6 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
         fixture.classification_for(&dir).await,
         QueueClassification::Ready,
         "so the row is admitted on evidence that was actually checked"
-    );
-
-    // A later sweep pass finds nothing left to buy.
-    let after_lookup = fixture.provider.requests().len();
-    fixture.sweep_once().await;
-    assert_eq!(
-        fixture.provider.requests().len(),
-        after_lookup,
-        "a settled row is finished: {:?}",
-        fixture.provider.requests()
     );
 }
 
@@ -266,6 +268,12 @@ async fn explicit_lookup_stores_a_metadata_projection_failure() {
         200,
         serde_json::Value::Object(incomplete.clone()).to_string(),
     );
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup(&dir);
@@ -297,12 +305,13 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
         200,
         release_json("mb-interactive-off", "rg-interactive-off", &[probed, 0]),
     );
-    fixture.scan(1).await;
+    // Identified only when asked: nothing found here is identified on its own.
     fixture
         .manager
         .set_identify_automatically(false)
         .await
         .unwrap();
+    fixture.scan(1).await;
 
     fixture.start_explicit_lookup(&dir);
 
@@ -330,6 +339,12 @@ async fn explicit_lookup_stores_its_verdict_for_a_pre_filled_candidate() {
         200,
         release_json("mb-default-none", "rg-default-none", &[probed, 0]),
     );
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup(&dir);
@@ -356,8 +371,8 @@ async fn explicit_lookup_stores_its_verdict_for_a_pre_filled_candidate() {
 }
 
 /// Asking to identify an answered candidate runs it again: the person asked
-/// for a run, and a stored result is what they are asking to replace. The
-/// sweep is the only reader that treats a result as a reason not to run.
+/// for a run, and a stored result is what they are asking to replace. Only a
+/// release found on its own treats a result as a reason not to run.
 #[tokio::test(flavor = "multi_thread")]
 async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
     let fixture = Fixture::new("resume-answered").await;
@@ -373,6 +388,12 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
         200,
         release_json("mb-asked-again", "rg-asked-again", &[probed, 0]),
     );
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
     fixture.scan(1).await;
 
     let verdict = multi_match_verdict(&["mb-resume-1", "mb-resume-2"], "rg-resume-1");
@@ -425,6 +446,12 @@ async fn explicit_lookup_during_an_active_run_supersedes_it() {
     let key = dir.to_string_lossy().into_owned();
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
     fixture.scan(1).await;
     let mut events = fixture.import.subscribe_events();
 
@@ -488,6 +515,12 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
     let fixture = Fixture::new("rerun-no-driver").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
     fixture.scan(1).await;
     fixture
         .archive("mb-rerun-1", "rg-rerun-1", &[probed, 0])
@@ -513,8 +546,8 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 }
 
-/// A person's own run is ended by their decision the same way a sweep's is:
-/// the run stops at `Idle` and the watcher hanging off it stores nothing.
+/// A person's decision ends their own run like any other: it stops at `Idle`
+/// and stores nothing.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
     let fixture = Fixture::new("pick-ends-explicit-run").await;
@@ -522,6 +555,12 @@ async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
     let key = dir.to_string_lossy().into_owned();
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
     fixture.scan(1).await;
 
     let mut events = fixture.import.subscribe_events();
@@ -591,7 +630,7 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     let mut events = fixture.import.subscribe_events();
     let mut restart = fixture.import.subscribe_events();
 
-    let pass = fixture.sweep();
+    let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     let sweeps_run = await_run_state(&mut restart, &key, |_, _| true).await;
 
@@ -657,120 +696,6 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     );
 }
 
-/// The case the entry's admission exists for, end to end: the queue stores a
-/// failed candidate, the person explicitly reruns it, and the automatic
-/// admission must not take it back.
-///
-/// `identify.start` supersedes, so taking it would cancel their Interactive run
-/// and restart it in the background. Nothing keeps a second set of keys to
-/// remember whose run it is: the entry on the queue says so.
-#[tokio::test(flavor = "multi_thread")]
-async fn a_candidate_the_queue_failed_then_the_user_reran_is_left_alone() {
-    let fixture = Fixture::new("failed-then-looked-up").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(SlowAnalyzer {
-            delay: Duration::from_millis(2_000),
-        }));
-    let dir = fixture.disc_id_candidate("Album");
-    // One image, so the user's run stays in flight on a slow OCR pass while the
-    // second sweep pass runs.
-    std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
-    fixture
-        .provider
-        .set_routes(vec![("/discid/", 400, "{}".to_string())]);
-    fixture.scan(1).await;
-    let key = dir.to_string_lossy().into_owned();
-
-    fixture.sweep_once().await;
-    assert!(matches!(
-        fixture.identified_for(&dir).await.map(|row| row.verdict),
-        Some(TerminalVerdict::Failed { .. })
-    ));
-
-    // The user explicitly reruns the stored failure.
-    fixture.identification().rerun_identify(key.clone());
-    tokio::time::timeout(Duration::from_secs(10), async {
-        while !fixture.import.is_identifying(&key) {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
-    .await
-    .expect("identify registers the explicit rerun");
-    assert!(
-        fixture.import.is_identifying(&key),
-        "their run is in flight"
-    );
-
-    let lookups_before = fixture.provider.count_containing("/discid/");
-    fixture.sweep_once().await;
-    assert_eq!(
-        fixture.identification_status(&key),
-        Some(crate::import::IdentificationStatus::Running),
-        "the queue holds it as the run the person asked for, not as one of its own"
-    );
-    assert_eq!(
-        fixture.provider.count_containing("/discid/"),
-        lookups_before,
-        "nor spent a background lookup on it"
-    );
-    assert!(
-        fixture.import.is_identifying(&key),
-        "their run is still the one registered — it was not cancelled and \
-         restarted underneath them"
-    );
-}
-
-/// The guard the priority exists for. A candidate someone is looking up is
-/// left alone — `identify.start` supersedes, so taking it would cancel their
-/// Interactive run and restart it in the background. Under one queue it is
-/// left alone by construction: the key is already an entry, and admitting is
-/// idempotent.
-///
-/// The held lookup is what makes the run in flight rather than merely recent:
-/// a driver is registered for exactly as long as its run is working, so the
-/// admission has to be timed against a lookup that has not come back yet.
-#[tokio::test(flavor = "multi_thread")]
-async fn the_automatic_admission_leaves_a_candidate_being_looked_up_alone() {
-    let fixture = Fixture::new("user-owns-it").await;
-    let dir = fixture.disc_id_candidate("Opened");
-    let key = dir.to_string_lossy().into_owned();
-    let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-opened-1", "rg-opened-1", &[probed, 0]),
-    );
-    fixture.provider.hold("/discid/");
-    fixture.scan(1).await;
-
-    // The request registers the person's driver before the admission runs.
-    fixture.start_explicit_lookup_and_await_run(&dir).await;
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
-    assert!(
-        fixture.import.is_identifying(&key),
-        "the user's run is in flight"
-    );
-
-    fixture.sweep_once().await;
-
-    assert_eq!(
-        fixture.identification_status(&key),
-        Some(crate::import::IdentificationStatus::Running),
-        "the queue holds only the run the person asked for"
-    );
-    assert!(
-        fixture.import.is_identifying(&key),
-        "and it did not cancel the run out from under them"
-    );
-    assert_eq!(
-        fixture.provider.count_containing("/discid/"),
-        1,
-        "nor asked the provider a second time for the same candidate"
-    );
-    fixture.provider.release();
-}
-
 /// A run a person asked for whose answer is refused — they edited the
 /// candidate while it was being written — is asked for again straight away,
 /// with automatic identification off: the person is still owed an answer, and
@@ -789,12 +714,12 @@ async fn a_requested_answer_refused_by_an_edit_is_asked_for_again() {
         200,
         release_json("mb-1", "rg-1", &[probed, 0]),
     );
-    fixture.scan(1).await;
     fixture
         .manager
         .set_identify_automatically(false)
         .await
         .unwrap();
+    fixture.scan(1).await;
     fixture.provider.hold("/release/mb-1?");
     let mut events = fixture.import.subscribe_events();
 

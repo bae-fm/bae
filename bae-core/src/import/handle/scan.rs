@@ -472,11 +472,8 @@ impl ImportServiceHandle {
                     CallPriority::Interactive,
                 )
                 .await?;
-                // A release the person chose answers the candidate. Where a run
-                // has already answered it, that run's own result is the record
-                // of what it found and stands; where none has, the choice is
-                // the result, and it is stored as one so the automatic admission stops
-                // asking.
+                // The choice is stored as the candidate's result unless a run's
+                // result already stands.
                 let audio_durations =
                     crate::import::track_slots::audio_durations(&candidate.files, &durations)?;
                 let detail = release.detail_for_audio(&audio_durations, &prepared_partners)?;
@@ -522,9 +519,8 @@ impl ImportServiceHandle {
     /// Clear source metadata while retaining the candidate's physical layout
     /// and every explicit mapping decision.
     ///
-    /// A clear is a decision about the candidate like a pick is: it ends
-    /// whatever identification the candidate had going, and announces the
-    /// change, so the pane and the identification queue both read the candidate afresh.
+    /// A clear is a decision like a pick: it ends the candidate's
+    /// identification and announces the change.
     pub(crate) async fn clear_candidate_metadata(
         &self,
         candidate_key: String,

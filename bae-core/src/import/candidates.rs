@@ -126,8 +126,8 @@ pub struct CandidateRuntimeSnapshot {
     pub search: Option<super::candidate_search::CandidateSearch>,
 }
 
-/// How a candidate was admitted to identification: by the automatic policy
-/// that answers the whole queue, or because a person asked for this one.
+/// How a candidate got on the identification queue: found while
+/// identification ran on its own, or asked for by a person.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Admission {
     Automatic,

@@ -141,6 +141,12 @@ async fn a_batch_identify_shows_each_row_queued_then_running() {
         200,
         release_json("mb-batch", "rg-batch", &[probed, 0]),
     );
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
     fixture.scan(2).await;
     let rows = pending_rows(&fixture, 2).await;
 

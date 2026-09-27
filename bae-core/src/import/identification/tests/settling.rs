@@ -40,7 +40,7 @@ async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
     );
     fixture.scan(2).await;
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     assert_eq!(
         fixture.count_release_lookups("mb-disc-1"),
@@ -64,9 +64,8 @@ async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
     );
 }
 
-/// The write ordering, from the outside: a failed lead fetch stores the failure
-/// without storing partial release documents, and automatic passes leave it
-/// alone until an explicit re-run.
+/// A failed lead fetch stores the failure without storing partial release
+/// documents.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_failed_settle_is_stored_without_partial_documents() {
     let fixture = Fixture::new("settle-ordering").await;
@@ -83,7 +82,7 @@ async fn a_failed_settle_is_stored_without_partial_documents() {
     fixture.provider.route("/release/mb-order-1?", 400, "{}");
     fixture.scan(1).await;
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     assert!(matches!(
         fixture.identified_for(&dir).await.map(|row| row.verdict),
@@ -92,33 +91,6 @@ async fn a_failed_settle_is_stored_without_partial_documents() {
     assert!(
         fixture.stored_release("mb-order-1").await.is_none(),
         "and nothing half-written is left behind"
-    );
-
-    let requests_after_failure = fixture.provider.requests().len();
-    // The provider comes back, but an automatic pass does not replace the
-    // stored failure.
-    fixture.provider.set_routes(vec![
-        (
-            "/discid/",
-            200,
-            discid_json("mb-order-1", "rg-order-1", &[probed, 0]),
-        ),
-        (
-            "/release/mb-order-1?",
-            200,
-            release_json("mb-order-1", "rg-order-1", &[probed, 0]),
-        ),
-    ]);
-    fixture.sweep_once().await;
-
-    assert_eq!(
-        fixture.provider.requests().len(),
-        requests_after_failure,
-        "the stored failure is not retried automatically"
-    );
-    assert!(
-        fixture.stored_release("mb-order-1").await.is_none(),
-        "an automatic pass leaves the failed settle untouched"
     );
 }
 
@@ -318,7 +290,7 @@ const PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT: &str = "012 345 678901 2";
 
 /// Two sources' records of one physical pressing are one row on the Find
 /// online list, picked whole — so a verdict that groups into a single row is an
-/// answer, and the sweep settles it. The pick names the MusicBrainz release the
+/// answer, and identification settles it. The pick names the MusicBrainz release the
 /// draft is read from and the Discogs release beside it, and both sources'
 /// documents are archived, so opening this candidate needs no network.
 #[tokio::test(flavor = "multi_thread")]
@@ -359,7 +331,7 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
         .seed_discogs_url_lookup("70000101", None);
     fixture.scan(1).await;
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     let row = fixture
         .stored_for(&dir)
@@ -415,7 +387,7 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
 /// A disc ID is a question only MusicBrainz answers, so the Discogs record of
 /// the pressing it names can only ever come back from the barcode — never from
 /// the disc ID as well. Agreement reads whole rows, so the two records of the
-/// one pressing survive the narrowing together, and the pick the sweep stores
+/// one pressing survive the narrowing together, and the pick identification stores
 /// claims both sources.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
@@ -460,7 +432,7 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
         .seed_discogs_url_lookup("70000102", None);
     fixture.scan(1).await;
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     let row = fixture
         .stored_for(&dir)
@@ -563,7 +535,7 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
         .seed_discogs_url_lookup("70000103", None);
     fixture.scan(1).await;
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     let row = fixture
         .stored_for(&dir)
@@ -639,7 +611,7 @@ async fn two_distinct_pressings_do_not_settle() {
     );
     fixture.scan(1).await;
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     let row = fixture
         .stored_for(&dir)
@@ -697,7 +669,7 @@ async fn settling_a_lead_leaves_the_lookup_choices_alone() {
     );
     fixture.scan(1).await;
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     let pane = fixture
         .pane(&dir)

@@ -23,7 +23,7 @@ async fn one_answer_covers_every_candidate_that_hashes_the_same() {
     );
     fixture.scan(2).await;
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     let asked = fixture.provider.count_containing("/discid/");
     assert_eq!(
@@ -35,7 +35,7 @@ async fn one_answer_covers_every_candidate_that_hashes_the_same() {
     assert!(fixture.identified_for(&first).await.is_some());
     assert!(fixture.identified_for(&second).await.is_some());
 
-    fixture.sweep_once().await;
+    fixture.drain_automatic().await;
 
     assert_eq!(
         fixture.provider.count_containing("/discid/"),
