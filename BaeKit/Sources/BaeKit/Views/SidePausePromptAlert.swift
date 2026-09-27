@@ -91,9 +91,9 @@ private struct SidePausePromptCard: View {
     private var card: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(verbatim: prompt.title())
-                .font(.title2.weight(.semibold))
+                .themeText(.heading)
             Text(verbatim: localizedCoreString("core.playback.pause.message"))
-                .font(.body)
+                .themeText(.body)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if let countdown = prompt.countdown {
@@ -111,7 +111,7 @@ private struct SidePausePromptCard: View {
                 // prompts, so the card says where to turn it back on.
                 if !keepPausing {
                     Text("You can turn this back on in Settings › Playback.")
-                        .font(.callout)
+                        .themeText(.body)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -182,7 +182,7 @@ private struct SidePauseCountdownLine: View {
     var body: some View {
         TimelineView(.periodic(from: tickAnchor, by: 1)) { context in
             Text(verbatim: prompt.countdownLine(countdown, at: context.date))
-                .font(.body.weight(.medium))
+                .themeText(.strong)
                 .monospacedDigit()
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.updatesFrequently)

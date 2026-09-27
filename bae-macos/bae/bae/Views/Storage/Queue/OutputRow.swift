@@ -22,7 +22,7 @@ struct OutputRow: View {
                 .lineLimit(1)
 
             detailLine
-                .font(.caption)
+                .themeText(.detail)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
         } badge: {

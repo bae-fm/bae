@@ -18,7 +18,7 @@ struct CountCapsule: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 10.5, weight: .semibold))
+            .themeText(.chip)
             .monospacedDigit()
             .foregroundStyle(matched ? Theme.success : Color.secondary)
             .padding(.horizontal, 5)

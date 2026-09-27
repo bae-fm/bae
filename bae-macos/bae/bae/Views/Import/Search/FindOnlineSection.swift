@@ -81,10 +81,8 @@ struct FindOnlineSectionHeader: View {
                     .font(.system(size: 8, weight: .semibold))
                     .foregroundStyle(dimmed ? .quaternary : .tertiary)
                     .frame(width: 8)
-                FindOnlineCapsLabel(
-                    section == .automatic ? "Automatic" : "Search"
-                )
-                .opacity(dimmed ? 0.55 : 1)
+                Eyebrow(section == .automatic ? "Automatic" : "Search")
+                    .opacity(dimmed ? 0.55 : 1)
                 Spacer(minLength: 8)
                 FindOnlineSectionGlyphView(glyph: glyph)
             }

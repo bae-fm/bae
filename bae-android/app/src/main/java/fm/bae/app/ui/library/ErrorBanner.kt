@@ -15,6 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeText
 
 @Composable
 internal fun ErrorBanner(
@@ -28,7 +29,7 @@ internal fun ErrorBanner(
         ) {
             Text(
                 text = message,
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.body.style,
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.weight(1f),
             )

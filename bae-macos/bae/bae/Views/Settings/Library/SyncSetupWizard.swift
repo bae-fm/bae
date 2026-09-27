@@ -1,6 +1,4 @@
-// Sync setup is a modal wizard so the operation is atomic: the user either
-// completes the full provider configuration or cancels. No half-configured
-// sync state is ever visible in the settings view.
+// A modal wizard, so sync is either fully configured or not at all.
 
 import BaeKit
 import SwiftUI
@@ -19,18 +17,13 @@ private enum WizardStep: Equatable {
 
 private struct ProviderOption: Identifiable {
     let id: BridgeCloudProvider
-    // Resolved through the catalog at the access site (not stored as a
-    // `LocalizedStringKey`, which isn't `Sendable` and would break the
-    // concurrency-safe global `providerDisplay`/`providerOptions` tables).
+    // A `String`, since `LocalizedStringKey` isn't `Sendable`.
     let name: String
     let description: String
     let icon: String
 }
 
-/// Display data (name, blurb, icon) for every provider bae can sync to. The
-/// bridge decides which are actually compiled in via `availableCloudProviders()`;
-/// `providerOptions` filters this table to that set, so a baeium (S3-only) build
-/// shows just S3.
+/// Name, blurb and icon for every provider bae can sync to.
 private let providerDisplay: [BridgeCloudProvider: ProviderOption] = [
     .cloudKit: ProviderOption(
         id: .cloudKit,
@@ -66,8 +59,7 @@ private let providerDisplay: [BridgeCloudProvider: ProviderOption] = [
     ),
 ]
 
-/// The providers this build offers, in the bridge's display order. Drives the
-/// wizard's provider list so the picker matches the compiled-in feature set.
+/// The providers this build offers, in the bridge's display order.
 private let providerOptions: [ProviderOption] = availableCloudProviders()
     .compactMap { providerDisplay[$0] }
 
@@ -76,7 +68,7 @@ private let providerOptions: [ProviderOption] = availableCloudProviders()
 struct SyncSetupWizard: View {
     let onConnectS3: (BridgeSaveSyncConfig) async throws -> Void
     #if BAE_OAUTH_PROVIDERS
-        /// Awaits the OAuth browser round-trip; cancellation aborts the listener.
+        /// Awaits the OAuth browser sign-in; cancelling stops the listener.
         let onConnectOAuth:
             (_ provider: BridgeCloudProvider, _ storage: BridgeHomeStorage)
                 async throws -> Void
@@ -94,8 +86,7 @@ struct SyncSetupWizard: View {
     @State
     private var connectTask: Task<Void, Never>?
 
-    // How the home stores its objects: opaque (encrypted) or browsable (stored in
-    // the clear). Applies to every provider; defaults to the secure choice.
+    // How the home stores its objects; defaults to encrypted.
     @State
     private var storage: BridgeHomeStorage = .opaque
 
@@ -150,7 +141,7 @@ struct SyncSetupWizard: View {
             }
 
             Text(headerTitle)
-                .font(.headline)
+                .themeText(.heading)
 
             Spacer()
 
@@ -190,9 +181,9 @@ struct SyncSetupWizard: View {
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(option.name)
-                                    .fontWeight(.medium)
+                                    .themeText(.rowTitle)
                                 Text(option.description)
-                                    .font(.caption)
+                                    .themeText(.detail)
                                     .foregroundStyle(.secondary)
                             }
 
@@ -215,20 +206,14 @@ struct SyncSetupWizard: View {
 
     // MARK: - Configure Step
 
-    /// The dialog shape the rest of bae's setup screens use: the scrolling form
-    /// carries only the fields, and the failure plus the button that produced it
-    /// sit beneath it, outside the scroller. A probe that fails is then visible
-    /// next to the control the user just pressed rather than below the fold.
+    /// The fields scroll; the error and the connect button stay below them.
     @ViewBuilder
     private func configureStep(for provider: BridgeCloudProvider) -> some View {
         VStack(spacing: 0) {
             Form {
                 storageSection
 
-                // The switch stays exhaustive over all five providers in every
-                // build; only the arms whose bridge calls are feature-gated are
-                // hollowed out. A gated-out provider never reaches here — it isn't
-                // in `availableCloudProviders()`, so it can't be selected.
+                // A provider compiled out of this build can't be selected.
                 switch provider {
                 case .s3:
                     s3Fields
@@ -262,8 +247,7 @@ struct SyncSetupWizard: View {
 
     // MARK: - Connect Row
 
-    /// The configure step's one action, pinned below the form next to the error
-    /// it can produce.
+    /// The configure step's one action.
     private func connectRow(for provider: BridgeCloudProvider) -> some View {
         HStack(spacing: 8) {
             if isWorking {
@@ -296,8 +280,7 @@ struct SyncSetupWizard: View {
         }
     }
 
-    /// Only S3 takes credentials by hand; the browser and iCloud flows collect
-    /// theirs after the button is pressed, so they are always ready.
+    /// Only S3 takes credentials here; the other flows collect theirs later.
     private func connectReady(for provider: BridgeCloudProvider) -> Bool {
         switch provider {
         case .s3:
@@ -310,10 +293,7 @@ struct SyncSetupWizard: View {
 
     // MARK: - Storage mode
 
-    /// Opaque vs. browsable, shown for every provider. Opaque is the secure
-    /// default; browsable trades encryption for a bucket you can read by name.
-    /// This is not access control — the provider's own credentials gate the
-    /// bucket either way.
+    /// Opaque or browsable storage, shown for every provider.
     private var storageSection: some View {
         Section("Storage") {
             Picker("Storage", selection: $storage) {
@@ -330,7 +310,7 @@ struct SyncSetupWizard: View {
                     ? "Every object is encrypted before upload. Anyone with access to the storage sees only ciphertext under opaque keys."
                     : "Objects are stored in the clear at readable paths, so anyone with access to the storage can read your files by name. Sharing is unavailable for a browsable library."
             )
-            .font(.caption)
+            .themeText(.detail)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -365,7 +345,7 @@ struct SyncSetupWizard: View {
                 Text(
                     "Opens your browser to authorize bae with \(provider.displayName)."
                 )
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -380,7 +360,7 @@ struct SyncSetupWizard: View {
                 Text(
                     "Uses iCloud for sync. Requires iCloud to be enabled in System Settings."
                 )
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -437,10 +417,8 @@ extension SyncSetupWizard {
         }
     #endif
 
-    /// Shared task lifecycle for the async connect actions (OAuth, iCloud):
-    /// cancel any in-flight attempt, run `operation`, finish the wizard on
-    /// success, reset on cancellation (sheet dismissed or retried), surface
-    /// the error otherwise.
+    /// Runs one connect attempt, replacing any in flight: success closes the
+    /// wizard and a failure shows its error.
     fileprivate func runConnect(_ operation: @escaping () async throws -> Void)
     {
         connectTask?.cancel()
@@ -464,14 +442,8 @@ extension SyncSetupWizard {
         }
     }
 
-    /// Map a connect error to the renderable failure. `CloudKitError` already
-    /// carries a ready sentence in `msg`, but its `localizedDescription` is the
-    /// reflected enum, so unwrap the case instead. Everything else — a rejected
-    /// credential, an unreachable backend, a keyring failure, a config-write
-    /// failure — arrives typed from core and keeps its opaque detail for the
-    /// disclosure's copy button.
-    /// `nil` when the failure has no line to show — a cancellation — so the
-    /// wizard clears its error rather than showing an empty one.
+    /// The failure to show for a connect error, or nil for a cancellation;
+    /// a `CloudKitError` carries its sentence in `msg`.
     fileprivate func connectFailure(_ error: Error) -> DisplayError? {
         #if BAE_CLOUDKIT
             if case CloudKitError.Storage(let msg) = error {

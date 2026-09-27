@@ -20,7 +20,7 @@ struct JoinPairingOffer: View {
             Form {
                 Section("Pairing code") {
                     TextField("Paste pairing code", text: $pairingCodeInput)
-                        .font(.system(.body, design: .monospaced))
+                        .themeText(.mono)
                         .disabled(isAuthorizing || isJoining)
                     Button("Scan") { onScan() }
                         .disabled(isAuthorizing || isJoining)
@@ -34,7 +34,7 @@ struct JoinPairingOffer: View {
             if let error {
                 Text(error)
                     .foregroundStyle(Theme.danger)
-                    .font(.callout)
+                    .themeText(.body)
                     .padding(.horizontal)
                     .padding(.bottom, 8)
             }
@@ -76,7 +76,7 @@ struct JoinPairingOffer: View {
                     "This library uses a provider this build can't connect to."
                 )
                 .foregroundStyle(Theme.danger)
-                .font(.callout)
+                .themeText(.body)
             }
             if let joiningFingerprint {
                 LabeledContent("This device", value: joiningFingerprint)
@@ -88,7 +88,7 @@ struct JoinPairingOffer: View {
         {
             Text(line)
                 .foregroundStyle(Theme.danger)
-                .font(.callout)
+                .themeText(.body)
         }
     }
 
@@ -105,7 +105,7 @@ struct JoinPairingOffer: View {
             ProgressView()
                 .controlSize(.small)
             Text(title)
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(.secondary)
         }
         .padding(.bottom, 12)

@@ -103,7 +103,7 @@ struct ImportedReleasePane: View {
                 ?? session.failureMessage
             {
                 Label(message, systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
+                    .themeText(.body)
                     .foregroundStyle(Theme.danger)
             }
         }
@@ -156,12 +156,12 @@ struct ImportedReleasePane: View {
             } label: {
                 HStack(spacing: 12) {
                     Text(sheet.name)
-                        .font(.system(size: 12, design: .monospaced))
+                        .themeText(.mono)
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Spacer(minLength: 0)
                     Text(Int64(sheet.size).formatted(.byteCount(style: .file)))
-                        .font(.caption2)
+                        .themeText(.fine)
                         .foregroundStyle(.tertiary)
                 }
                 .contentShape(Rectangle())
@@ -173,12 +173,12 @@ struct ImportedReleasePane: View {
     private func completedFileLine(name: String, size: String) -> some View {
         HStack(spacing: 12) {
             Text(name)
-                .font(.system(size: 12, design: .monospaced))
+                .themeText(.mono)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 0)
             Text(size)
-                .font(.caption2)
+                .themeText(.fine)
                 .foregroundStyle(.tertiary)
         }
         .contentShape(Rectangle())
@@ -328,11 +328,7 @@ private struct ReadOnlyCandidateMappingTable: View {
                         _,
                         section in
                         if !section.sideHeaderText.isEmpty {
-                            Text(verbatim: section.sideHeaderText)
-                                .font(.system(size: 10, weight: .bold))
-                                .tracking(1.2)
-                                .textCase(.uppercase)
-                                .foregroundStyle(.secondary)
+                            Eyebrow(verbatim: section.sideHeaderText)
                                 .frame(width: tableWidth, alignment: .leading)
                                 .padding(.top, 12)
                         }
@@ -358,20 +354,16 @@ private struct ReadOnlyCandidateMappingTable: View {
 
     private var header: some View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
-            FormEyebrow(text: Text("Source"))
+            Eyebrow("Source")
                 .frame(width: columns.source, alignment: .leading)
-            FormEyebrow(text: Text("Track"))
+            Eyebrow("Track")
                 .frame(width: ReleaseMetadataTrackColumns.track)
-            FormEyebrow(text: Text("Title"))
+            Eyebrow("Title")
                 .frame(width: columns.title, alignment: .leading)
-            FormEyebrow(text: Text("Artist"))
+            Eyebrow("Artist")
                 .frame(width: columns.artist, alignment: .leading)
-            FormEyebrow(
-                text: Text(
-                    verbatim: coreString("ui.import.slots.column.length")
-                )
-            )
-            .frame(width: ReleaseMetadataTrackColumns.length)
+            Eyebrow(verbatim: coreString("ui.import.slots.column.length"))
+                .frame(width: ReleaseMetadataTrackColumns.length)
             Color.clear.frame(width: ReleaseMetadataTrackColumns.action)
         }
         .padding(.vertical, 6)
@@ -415,7 +407,7 @@ private struct ReadOnlyCandidateMappingTable: View {
                 )
             Color.clear.frame(width: ReleaseMetadataTrackColumns.action)
         }
-        .font(.system(size: 12))
+        .themeText(.body)
         .padding(.vertical, 10)
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.hairline).frame(height: 1)
@@ -437,7 +429,7 @@ private struct ReadOnlyCandidateMappingTable: View {
                 .buttonStyle(.plain)
             }
             Text(sourceName(source))
-                .font(.system(size: 12, design: .monospaced))
+                .themeText(.mono)
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
@@ -463,7 +455,7 @@ private struct ReadOnlyCandidateMappingTable: View {
 
     private func sourceCaption(_ name: String) -> some View {
         Label(name, systemImage: "list.bullet.rectangle")
-            .font(.system(size: 12, weight: .medium, design: .monospaced))
+            .themeText(.mono)
             .foregroundStyle(.secondary)
             .frame(width: tableWidth, alignment: .leading)
             .padding(.vertical, 6)
@@ -495,7 +487,7 @@ private struct ReadOnlyCandidateMappingTable: View {
                     .buttonStyle(.plain)
                 }
             }
-            .font(.system(size: 12, design: .monospaced))
+            .themeText(.mono)
             .padding(.vertical, 10)
         }
     }

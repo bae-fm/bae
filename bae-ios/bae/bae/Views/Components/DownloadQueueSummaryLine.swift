@@ -17,7 +17,7 @@ struct DownloadQueueSummaryLine: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .font(compact ? .caption : nil)
+        .font(compact ? ThemeText.detail.font : nil)
     }
 }
 

@@ -90,7 +90,7 @@ private struct DownloadConcurrencyControl: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Simultaneous downloads")
-                .font(.subheadline)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
             TransferConcurrencyPicker(
                 title: "Simultaneous downloads",
@@ -113,11 +113,11 @@ private struct DownloadQueueRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(op.title)
-                .font(.body)
+                .themeText(.rowTitle)
                 .lineLimit(1)
             Text(op.detailText)
-                .font(.caption)
                 .monospacedDigit()
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
             stateView
         }
@@ -133,7 +133,7 @@ private struct DownloadQueueRow: View {
             DownloadTransferProgressView(progress: progress)
         case .failed(let error):
             Text(error)
-                .font(.caption2)
+                .themeText(.detail)
                 .foregroundStyle(Theme.danger)
         }
     }

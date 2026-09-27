@@ -11,7 +11,7 @@ struct DocumentViewerView: View {
         VStack(spacing: 0) {
             HStack {
                 Text(name)
-                    .font(.callout)
+                    .themeText(.body)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Done") { onClose() }
@@ -22,7 +22,7 @@ struct DocumentViewerView: View {
             Divider()
             ScrollView {
                 Text(text)
-                    .font(.system(.body, design: .monospaced))
+                    .themeText(.mono)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()

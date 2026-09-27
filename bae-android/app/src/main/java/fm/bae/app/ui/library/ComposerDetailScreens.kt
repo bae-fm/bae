@@ -28,7 +28,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
@@ -39,6 +38,7 @@ import fm.bae.app.metadataText
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.playback.NowPlayingBar
 import uniffi.bae_bridge.BridgeComposerDetail
@@ -145,7 +145,7 @@ private fun ComposerDetailContent(
                             .fillMaxWidth()
                             .clickable { onSelectAlbum(role.albumId, role.releaseId) }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = ThemeText.rowTitle.style,
                     maxLines = 1,
                 )
             }
@@ -298,11 +298,11 @@ internal fun TwoLineText(
     subtitle: String?,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(text = title, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+        Text(text = title, style = ThemeText.rowTitle.style, maxLines = 1)
         if (!subtitle.isNullOrBlank()) {
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
             )
@@ -320,7 +320,7 @@ internal fun LibraryDetailTopBar(onBack: () -> Unit) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
             }
-            Text(text = "bae", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(text = "bae", style = ThemeText.wordmarkBar.style)
         }
     }
 }
@@ -329,8 +329,7 @@ internal fun LibraryDetailTopBar(onBack: () -> Unit) {
 internal fun LibrarySectionHeader(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold,
+        style = ThemeText.heading.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
     )

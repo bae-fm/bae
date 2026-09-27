@@ -108,9 +108,9 @@ struct WelcomeChooseView: View {
         VStack(spacing: 32) {
             Spacer()
             Text(verbatim: "bae")
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .themeText(.wordmark)
             Text("Get started with your music library.")
-                .font(.title3)
+                .themeText(.heading)
                 .foregroundStyle(.secondary)
             if let loadError {
                 WelcomeLoadErrorCallout(
@@ -454,11 +454,11 @@ private struct WelcomeLoadErrorCallout: View {
                 .foregroundStyle(NoticeTone.error.tint)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .themeText(.heading)
                 ErrorDetailDisclosure(error: error, showIcon: false)
                 if let guidance {
                     Text(guidance)
-                        .font(.callout)
+                        .themeText(.body)
                         .foregroundStyle(.secondary)
                 }
             }

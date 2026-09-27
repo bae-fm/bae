@@ -19,7 +19,7 @@ struct AlbumGrid: View {
         else if list.totalCount == 0 {
             ListPlaceholder {
                 Text("No albums yet. Syncing from the cloud\u{2026}")
-                    .font(.callout)
+                    .themeText(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(32)
@@ -86,11 +86,11 @@ private struct AlbumCard: View {
                     .aspectRatio(1, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
                 Text(summary.title)
-                    .font(.subheadline.weight(.medium))
+                    .themeText(.rowTitle)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text(summary.artistNames)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

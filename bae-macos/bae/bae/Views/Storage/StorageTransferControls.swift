@@ -1,8 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The selected release's active transfers. The item list is limited to records
-/// whose authoritative release id matches the selection.
+/// The selected release's active transfers.
 struct StorageTransferControls: View {
     @Environment(DownloadStore.self)
     private var downloadStore
@@ -42,7 +41,7 @@ struct StorageTransferControls: View {
         VStack(spacing: 0) {
             HStack {
                 Label(item.title, systemImage: item.icon)
-                    .font(.callout.weight(.medium))
+                    .themeText(.heading)
                 Spacer()
                 let paused = item.pauseRequested
                 Button(paused ? "Resume" : "Pause") {

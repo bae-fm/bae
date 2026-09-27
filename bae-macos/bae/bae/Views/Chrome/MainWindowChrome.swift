@@ -14,10 +14,8 @@ enum WelcomeWindow {
     static let size = CGSize(width: 900, height: 600)
 }
 
-/// The main window's chrome around the shell — the minimum window size, the
-/// themed background stretched to fill however large the window grows, and
-/// the bottom line for a library load error. BaeApp renders it live; any
-/// preview of shell screens should render the same composition.
+/// The main window's chrome around the shell: its minimum size, the themed
+/// background, and the bottom line for a library load error.
 struct MainWindowChrome<Content: View>: View {
     let loadError: DisplayError?
     @ViewBuilder
@@ -69,9 +67,7 @@ private struct LoadErrorLine: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Sample shell content standing in for the app's screens, so the chrome
-    /// previews show the frame — minimum size, themed background, and the error
-    /// line — around something rather than empty space.
+    /// Stand-in shell content for the chrome to frame.
     private struct ChromeSampleContent: View {
         var body: some View {
             VStack(spacing: 12) {
@@ -79,7 +75,7 @@ private struct LoadErrorLine: View {
                     .font(.system(size: 48))
                     .foregroundStyle(.secondary)
                 Text(verbatim: "Shell content")
-                    .font(.title2)
+                    .themeText(.title)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -61,7 +61,7 @@ struct QRScannerView: View {
                 .font(.largeTitle)
                 .foregroundStyle(.secondary)
             Text(message)
-                .font(.caption)
+                .themeText(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
@@ -177,7 +177,7 @@ struct PairingScannerSheet: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Pairing code")
-                    .font(.headline)
+                    .themeText(.heading)
                 Spacer()
                 Button("Cancel") { onDismiss() }
                     .buttonStyle(.borderless)

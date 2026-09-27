@@ -246,3 +246,100 @@ card = 10
 panel = 20
 artwork = 6
 cover = 10
+
+# Text styles. Weight, tracking (letter spacing), case and monospacing are the
+# same on every platform; the size is points on macOS, a Dynamic Type style on
+# iOS so text follows the person's text size, and sp on Android.
+[text.hero]
+weight = "bold"
+tracking = -0.5
+macos = 30
+ios = "title"
+android = 24
+
+[text.title]
+weight = "bold"
+tracking = -0.3
+macos = 22
+ios = "title2"
+android = 22
+
+[text.heading]
+weight = "semibold"
+macos = 15
+ios = "headline"
+android = 16
+
+[text.rowTitle]
+weight = "medium"
+macos = 13
+ios = "body"
+android = 16
+
+[text.strong]
+weight = "semibold"
+macos = 13
+ios = "body"
+android = 14
+
+[text.body]
+weight = "regular"
+macos = 13
+ios = "body"
+android = 14
+
+[text.detail]
+weight = "regular"
+macos = 11.5
+ios = "caption"
+android = 12
+
+[text.fine]
+weight = "regular"
+macos = 10
+ios = "caption2"
+android = 11
+
+[text.chip]
+weight = "semibold"
+macos = 10.5
+ios = "caption2"
+android = 11
+
+[text.eyebrow]
+weight = "bold"
+tracking = 1
+uppercase = true
+macos = 10
+ios = "caption2"
+android = 11
+
+[text.mono]
+weight = "regular"
+monospaced = true
+macos = 12
+ios = "footnote"
+android = 12
+
+# The "bae" name set as a logo: large on the welcome and about screens, and in
+# a top bar.
+[text.wordmark]
+weight = "bold"
+macos = 48
+ios = "largeTitle"
+android = 48
+
+[text.wordmarkBar]
+weight = "bold"
+macos = 17
+ios = "headline"
+android = 20
+
+# The library's page heading at its largest, before it shrinks to `title` as
+# the page scrolls.
+[text.display]
+weight = "heavy"
+tracking = -1.1
+macos = 46
+ios = "largeTitle"
+android = 32

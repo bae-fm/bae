@@ -33,13 +33,14 @@ struct StorageUploadSummary: View {
                 .opacity(group.progress.bar == nil ? 0 : 1)
             ForEach(group.progress.sourceUnavailablePaths, id: \.self) { path in
                 Text(path)
+                    .themeText(.mono)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(path)
             }
         }
-        .font(.caption)
+        .themeText(.detail)
         .padding(.horizontal)
         .padding(.vertical, 8)
     }

@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The playback bar's Cast control: a speaker glyph that opens a device picker
-/// popover. Discovery runs only while the popover is open. Active (accent) while
-/// casting, with a "Casting to …" row and a disconnect action.
+/// The playback bar's Cast control: a speaker glyph, accent while casting, that
+/// opens the device picker.
 struct CastButton: View {
     @Environment(Cast.self)
     private var cast
@@ -81,8 +80,8 @@ struct CastButton: View {
     }
 }
 
-/// The device-picker popover content: the active-casting row (when casting), then
-/// the discovered devices, or an empty-state line while none are found.
+/// The device picker: the casting row while casting, then the discovered
+/// devices.
 private struct CastPickerPopover: View {
     let devices: [BridgeCastDevice]
     let castingDeviceName: String?
@@ -97,7 +96,7 @@ private struct CastPickerPopover: View {
             }
             if devices.isEmpty {
                 Text("No Cast devices found")
-                    .font(.system(size: 12))
+                    .themeText(.body)
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 6)
                     .padding(.horizontal, 4)
@@ -118,13 +117,13 @@ private struct CastPickerPopover: View {
                 .foregroundStyle(Theme.accent)
             VStack(alignment: .leading, spacing: 1) {
                 Text("Casting to \(name)")
-                    .font(.system(size: 13, weight: .semibold))
+                    .themeText(.strong)
                     .lineLimit(1)
             }
             Spacer()
             Button("Disconnect", action: onDisconnect)
                 .buttonStyle(.borderless)
-                .font(.system(size: 12, weight: .medium))
+                .themeText(.body)
         }
         .padding(.vertical, 2)
     }
@@ -136,7 +135,7 @@ private struct CastPickerPopover: View {
                 Image(systemName: deviceIcon(device.kind))
                     .foregroundStyle(.secondary)
                 Text(device.name)
-                    .font(.system(size: 13))
+                    .themeText(.rowTitle)
                     .lineLimit(1)
                 Spacer()
                 if isActive {
@@ -151,10 +150,7 @@ private struct CastPickerPopover: View {
         .buttonStyle(.plain)
     }
 
-    /// A flavor hint for a picker row: a plain speaker for Cast, a TV glyph for a
-    /// UPnP renderer (commonly a TV or AV receiver), and the AirPlay glyph for an
-    /// AirPlay receiver. The list itself isn't segregated by protocol — a speaker
-    /// is a speaker.
+    /// The picker row's glyph for the device's protocol.
     private func deviceIcon(_ kind: BridgeRendererKind) -> String {
         switch kind {
         case .cast: "hifispeaker"

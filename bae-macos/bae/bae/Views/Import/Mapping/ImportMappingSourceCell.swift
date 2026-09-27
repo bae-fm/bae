@@ -29,7 +29,7 @@ struct ImportMappingSourceCell: View {
                 entryCell(entry)
             case .missing:
                 Text(coreString("ui.import.slots.no_file"))
-                    .font(.system(size: 12))
+                    .themeText(.body)
                     .foregroundStyle(.quaternary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
@@ -53,7 +53,7 @@ struct ImportMappingSourceCell: View {
             nameCell(file)
             if showsFileSize {
                 Text(file.sizeText)
-                    .font(.caption2)
+                    .themeText(.fine)
                     .foregroundStyle(.tertiary)
                     // A squeezed column must truncate the name, never wrap the
                     // size mid-digit.
@@ -84,7 +84,7 @@ struct ImportMappingSourceCell: View {
 
     private func nameLine(_ file: BridgeMappingFile) -> some View {
         Text(file.name)
-            .font(.system(size: 12, design: .monospaced))
+            .themeText(.mono)
             .lineLimit(1)
             .truncationMode(.middle)
     }
@@ -102,7 +102,7 @@ struct ImportMappingSourceCell: View {
                 auditionButton(target: previewTarget)
             }
             Text(entry.title ?? "")
-                .font(.system(size: 12))
+                .themeText(.body)
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 0)

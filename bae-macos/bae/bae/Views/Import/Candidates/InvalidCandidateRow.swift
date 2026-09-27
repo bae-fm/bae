@@ -16,11 +16,11 @@ struct InvalidCandidateRow: View {
                 .frame(width: 16)
             VStack(alignment: .leading, spacing: 2) {
                 Text(displayName)
-                    .font(.callout)
+                    .themeText(.rowTitle)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Text(reason.localizedText)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)

@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// QR image + selectable monospaced code + "Copy code" button — the cluster
-/// every surface that hands a code to another device renders. Emitted as a
-/// flat group (no stack of its own) so the enclosing stack's spacing applies;
-/// the three call sites use different spacings.
+/// The QR image, selectable code and "Copy code" button for handing a code to
+/// another device, as a flat group so the enclosing stack sets the spacing.
 struct CodeDisplay: View {
     let code: String
     let qrSize: CGFloat
@@ -29,7 +27,7 @@ struct CodeDisplay: View {
         }
 
         Text(code)
-            .font(.system(.caption, design: .monospaced))
+            .themeText(.mono)
             .lineLimit(1)
             .truncationMode(.middle)
             .textSelection(.enabled)
@@ -37,7 +35,7 @@ struct CodeDisplay: View {
 
         if let deviceFingerprint {
             Text("This device: \(deviceFingerprint)")
-                .font(.caption.monospaced())
+                .themeText(.mono)
                 .foregroundStyle(.secondary)
         }
 

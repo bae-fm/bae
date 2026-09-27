@@ -26,7 +26,7 @@ struct IdentificationProgressView: View {
                     progress: fraction,
                     detail: "\(identified.formatted()) / \(total.formatted())"
                 )
-                .font(.system(size: 12))
+                .themeText(.body)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -141,7 +141,7 @@ struct FolderScanProgressIndicator: View {
                     }
                 }
             }
-            .font(.system(size: 12))
+            .themeText(.body)
             .frame(width: 240)
             .padding(12)
             .background { PopoverBehavior() }

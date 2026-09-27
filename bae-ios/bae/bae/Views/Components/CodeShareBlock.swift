@@ -5,20 +5,15 @@ import os.log
 
 private let logger = Logger.bae("CodeShareBlock")
 
-/// Hands a short code to another device by display: its QR rendering, the code
-/// as selectable monospaced text, and a button to copy it. Shared by the
-/// device-join, member-invite, and recovery-code surfaces, which all present a
-/// code the same way.
+/// Shows a code as a QR image and selectable text, with a button to copy it.
 struct CodeShareBlock: View {
     let code: String
     /// Describes what the QR encodes, for VoiceOver (the image itself is opaque).
     let contentDescription: LocalizedStringKey
-    /// Side of the square QR image. The surfaces differ only in how much room
-    /// they have for it.
+    /// Side of the square QR image.
     var qrSize: CGFloat = 200
 
-    /// The QR image, or nil if rendering failed — in which case the code text
-    /// alongside is the fallback. Logs at the skip so a missing QR is visible.
+    /// The QR image, or nil if rendering failed and the text stands alone.
     private var qrImage: UIImage? {
         guard let image = QRCode.image(from: code) else {
             logger.warning("no QR image for a \(code.count)-char code; showing text only")
@@ -39,7 +34,7 @@ struct CodeShareBlock: View {
             }
 
             Text(code)
-                .font(.system(.caption, design: .monospaced))
+                .themeText(.mono)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .textSelection(.enabled)

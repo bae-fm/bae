@@ -26,13 +26,13 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.CancellationException
 
 private val logger = BaeLogger("bae.RecoveryCodeDialog")
@@ -79,7 +79,7 @@ private fun RecoveryCodeDialogContent(
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
                     text = stringResource(R.string.settings_recovery_code_secret_warning),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = ThemeText.body.style,
                     color = BaeTheme.colors.warning,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -88,8 +88,7 @@ private fun RecoveryCodeDialogContent(
                     current != null -> {
                         Text(
                             text = current,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = FontFamily.Monospace,
+                            style = ThemeText.mono.style,
                         )
                     }
 

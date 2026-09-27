@@ -1,12 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The mapping table's control for a file whose job is a decision: a menu over
-/// the roles it can be put in, showing the one in force.
-///
-/// A file already out of the tracklist gets the shorthand instead — one "Put
-/// back" button, because the only thing left to say about it is that it was a
-/// track after all.
+/// A menu over the roles a file can be put in, showing the one in force; a
+/// file already out of the tracklist gets a "Put back" button instead.
 struct ImportRoleChoiceControl: View {
     let alternatives: [BridgeFileRoleChoice]
     /// The role in force, as a choice — what the menu shows selected.
@@ -19,7 +15,7 @@ struct ImportRoleChoiceControl: View {
                 onPick(.audio)
             }
             .buttonStyle(.link)
-            .font(.system(size: 12))
+            .themeText(.body)
         }
         else {
             Menu {
@@ -50,7 +46,7 @@ struct ImportRoleChoiceControl: View {
                         coreString(bridgeFileRoleChoiceKey(choice: $0))
                     } ?? ""
                 )
-                .font(.system(size: 12))
+                .themeText(.body)
             }
             .menuStyle(.borderlessButton)
             .fixedSize()

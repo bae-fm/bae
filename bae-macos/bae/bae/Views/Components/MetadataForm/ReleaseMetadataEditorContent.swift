@@ -100,7 +100,7 @@ struct ReleaseMetadataEditorContent: View {
                     if session.trackSides.isEmpty {
                         headerRow
                         Text("No tracks")
-                            .font(.callout)
+                            .themeText(.body)
                             .foregroundStyle(.secondary)
                             .frame(width: tableWidth)
                             .padding(.vertical, 16)
@@ -155,11 +155,7 @@ struct ReleaseMetadataEditorContent: View {
     }
 
     private func sideHeader(_ text: String, index: Int) -> some View {
-        Text(verbatim: text)
-            .font(.system(size: 10, weight: .bold))
-            .tracking(1.2)
-            .textCase(.uppercase)
-            .foregroundStyle(.secondary)
+        Eyebrow(verbatim: text)
             .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)
             .frame(width: tableWidth, alignment: .leading)
             .padding(.top, index == 0 ? 2 : 18)
@@ -168,9 +164,9 @@ struct ReleaseMetadataEditorContent: View {
 
     private var headerRow: some View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
-            FormEyebrow(text: Text("Source"))
+            Eyebrow("Source")
                 .frame(width: columns.source, alignment: .leading)
-            FormEyebrow(text: Text("Track"))
+            Eyebrow("Track")
                 .frame(
                     width: ReleaseMetadataTrackColumns.track,
                     alignment: .leading
@@ -236,7 +232,7 @@ struct ReleaseMetadataEditorContent: View {
                 let name = item.context.sources.map(\.name)
                     .joined(separator: " + ")
                 Text(verbatim: name)
-                    .font(.system(size: 12, design: .monospaced))
+                    .themeText(.mono)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(name)
@@ -252,7 +248,7 @@ struct ReleaseMetadataEditorContent: View {
             Image(systemName: "list.bullet.rectangle")
                 .foregroundStyle(.tertiary)
             Text(source.name)
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .themeText(.mono)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .help(source.name)
@@ -264,7 +260,7 @@ struct ReleaseMetadataEditorContent: View {
     }
 
     private func eyebrow(_ key: String) -> some View {
-        FormEyebrow(text: Text(verbatim: coreString(key)))
+        Eyebrow(verbatim: coreString(key))
     }
 }
 
@@ -273,7 +269,7 @@ struct ReleaseSourceAudioSummaryView: View {
 
     var body: some View {
         Text(sourceAudio.text)
-            .font(.system(size: 11))
+            .themeText(.detail)
             .foregroundStyle(.tertiary)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)

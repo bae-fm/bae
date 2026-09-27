@@ -302,11 +302,11 @@ extension LightboxView {
     fileprivate var labelView: some View {
         VStack(spacing: 4) {
             Text(verbatim: cursor.current.label)
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(Theme.onFill)
                 .lineLimit(2)
             Text(verbatim: cursor.current.sourceLabel)
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(Theme.onFillSecondary)
         }
         .multilineTextAlignment(.center)
@@ -425,7 +425,7 @@ extension LightboxView {
                 .font(.largeTitle)
                 .foregroundStyle(Theme.onFillSecondary)
             Text("Couldn't load image")
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(Theme.onFillSecondary)
             Button("Try again") { attempt += 1 }
         }

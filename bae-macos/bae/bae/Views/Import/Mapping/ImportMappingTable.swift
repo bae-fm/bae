@@ -1,28 +1,19 @@
 import BaeKit
 import SwiftUI
 
-/// Section 2 of the mapping pane: every source the folder offers, paired
-/// with the track committing makes of it.
-///
-/// One table, not two: the file a track comes from and the track it becomes are
-/// the same row, so re-pointing, excluding, naming and role changes all happen
-/// where the pairing is visible. A track sheet describes how playable rows are
-/// carved, so its caption sits over the exact rows it owns, outside the
-/// columns.
+/// The mapping pane's table: every source the folder offers on the same row
+/// as the track committing makes of it.
 struct ImportMappingTable: View {
     let table: BridgeMappingTable
     /// The source window currently auditioning, if any — its row is accented.
     let previewingTarget: BridgePreviewTarget?
-    /// Extracted identifying signals by their source file. The row for that
-    /// file carries the chip independently of the selected pressing.
+    /// Extracted identifying signals by their source file.
     var evidence: [BridgeFileEvidence] = []
     let actions: ImportMappingActions
     let editingCommands: EditingCommitCommands
 
-    /// The width the pane leaves the table. The columns are resolved against
-    /// it, and the table is laid out at it or at its own minimum, whichever is
-    /// wider — so the pane never has more table than it has room for, and the
-    /// row never has less than its columns need.
+    /// The width the pane leaves the table; the table is laid out at it or at
+    /// its own minimum, whichever is wider.
     @State
     private var paneWidth: CGFloat = ReleaseMetadataTrackColumns
         .minimumTableWidth
@@ -48,11 +39,8 @@ struct ImportMappingTable: View {
         }
     }
 
-    /// One run of rows. Each section is named by its own leading column
-    /// header, not a heading above the table. A pane too narrow for the
-    /// columns scrolls sideways rather than squeezing a column past the point
-    /// it says anything, and both sections scroll as one so their columns stay
-    /// aligned.
+    /// One run of rows, scrolling sideways when the pane is too narrow for
+    /// its columns.
     @ViewBuilder
     private func section<Rows: View>(
         @ViewBuilder rows: () -> Rows
@@ -79,9 +67,8 @@ struct ImportMappingTable: View {
 
     // MARK: - Tracks
 
-    /// Core supplies one section per side or disc. Each section contains either
-    /// independent track mappings or one sheet and its entries; this view only
-    /// renders that shape.
+    /// One section per side or disc: track mappings, or one sheet and its
+    /// entries.
     private var tracksSection: some View {
         ScrollView(.horizontal) {
             rowStack {
@@ -126,11 +113,7 @@ struct ImportMappingTable: View {
     }
 
     private func sideHeader(_ text: String, index: Int) -> some View {
-        Text(verbatim: text)
-            .font(.system(size: 10, weight: .bold))
-            .tracking(1.2)
-            .textCase(.uppercase)
-            .foregroundStyle(.secondary)
+        Eyebrow(verbatim: text)
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, index == 0 ? 2 : 18)
@@ -169,19 +152,17 @@ struct ImportMappingTable: View {
         )
     }
 
-    // Each section's leading header cell carries the section's name — the
-    // rows under it are filenames, so the cell names the section rather than
-    // the column. The tracks cell also states how the folder and the release
-    // disagree about the count, when they do.
+    // The leading cell names the section and states how the folder and the
+    // release disagree about the track count, when they do.
     private var trackHeaderRow: some View {
         headerRow {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                FormEyebrow(text: Text("Source"))
+                Eyebrow("Source")
                 if let reconciliation = table.reconciliation
                     .flatMap(bridgeSlotReconciliationText)
                 {
                     Text(reconciliation)
-                        .font(.system(size: 11))
+                        .themeText(.detail)
                         .monospacedDigit()
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
@@ -189,13 +170,12 @@ struct ImportMappingTable: View {
                 Spacer(minLength: 0)
             }
             .frame(width: columns.source, alignment: .leading)
-            FormEyebrow(text: Text("Track"))
+            Eyebrow("Track")
                 .frame(
                     width: ReleaseMetadataTrackColumns.track,
                     alignment: .leading
                 )
-            // Inset to the fields' text, which sits an inline chrome-pad
-            // inside each column.
+            // Inset to line up with the fields' text.
             eyebrow("ui.import.mapping.column.title")
                 .padding(.leading, FieldChrome.inlineHorizontalPadding)
                 .frame(width: columns.title, alignment: .leading)
@@ -214,9 +194,7 @@ struct ImportMappingTable: View {
 
     // MARK: - Files
 
-    /// The rows carried with the release that are not its tracks. Being listed
-    /// here with a role is the whole statement — there is no sentence saying
-    /// they are kept, because the section they are in says it.
+    /// A row carried with the release that is not one of its tracks.
     @ViewBuilder
     private func fileBody(of row: BridgeMappingFileRow) -> some View {
         switch row {
@@ -244,7 +222,7 @@ struct ImportMappingTable: View {
     // MARK: - Shared chrome
 
     private func eyebrow(_ key: String) -> some View {
-        FormEyebrow(text: Text(verbatim: coreString(key)))
+        Eyebrow(verbatim: coreString(key))
     }
 
     private func headerRow<Content: View>(
@@ -268,10 +246,7 @@ struct ImportMappingTable: View {
 
 extension View {
     /// What every row of the mapping table sits in: one leading edge, one
-    /// height, and a hairline over it. No box and no striping — the table sits
-    /// open on the pane under its ruled heading, the columns are what a reader
-    /// follows across a row, and a tinted band under half of them is a
-    /// second, competing grouping.
+    /// height, and a hairline over it.
     fileprivate func rowChrome(background: Color = .clear) -> some View {
         padding(.horizontal, ImportMappingColumns.rowPadding)
             .padding(.vertical, 6)

@@ -163,12 +163,12 @@ struct DiscogsSettingsContent: View {
             if let saveError {
                 Text(saveError)
                     .foregroundStyle(Theme.danger)
-                    .font(.callout)
+                    .themeText(.body)
             }
             if let readError {
                 Text(readError)
                     .foregroundStyle(Theme.danger)
-                    .font(.callout)
+                    .themeText(.body)
             }
             VStack(alignment: .leading, spacing: 8) {
                 Text(
@@ -178,7 +178,7 @@ struct DiscogsSettingsContent: View {
                     "To connect, [get your free API key](https://www.discogs.com/settings/developers) and paste it above."
                 )
             }
-            .font(.callout)
+            .themeText(.body)
             .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

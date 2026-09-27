@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.drawable.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -32,16 +31,18 @@ import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import fm.bae.app.R
 import fm.bae.app.mainActivityIntent
 import fm.bae.app.playback.ArtworkContentProvider
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeText
 import uniffi.bae_bridge.BridgeImageRef
+import androidx.compose.ui.text.font.FontWeight as ComposeFontWeight
 
 /**
- * Home-screen now-playing widget with play/pause and next. It renders from the
- * file-backed [WidgetSnapshot] because the launcher's process can't host
- * bae-core, so it shows the last known track even when the app isn't running.
+ * Home-screen now-playing widget, drawn from the file-backed [WidgetSnapshot]
+ * because the launcher's process can't host bae-core.
  */
 class NowPlayingWidget : GlanceAppWidget() {
     override suspend fun provideGlance(
@@ -61,8 +62,7 @@ class NowPlayingWidget : GlanceAppWidget() {
 private fun NowPlayingWidgetContent(snapshot: WidgetSnapshot) {
     val context = LocalContext.current
     val track = snapshot.track
-    // The whole surface deep-links into the app; the transport buttons override
-    // this within their own bounds.
+    // The whole surface opens the app; the transport buttons take their own taps.
     Row(
         modifier =
             GlanceModifier
@@ -78,18 +78,13 @@ private fun NowPlayingWidgetContent(snapshot: WidgetSnapshot) {
             Text(
                 text = track?.title ?: context.getString(R.string.widget_nothing_playing),
                 maxLines = 1,
-                style =
-                    TextStyle(
-                        color = GlanceTheme.colors.onSurface,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                    ),
+                style = ThemeText.rowTitle.glanceStyle(GlanceTheme.colors.onSurface),
             )
             if (track != null) {
                 Text(
                     text = track.artist,
                     maxLines = 1,
-                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp),
+                    style = ThemeText.detail.glanceStyle(GlanceTheme.colors.onSurfaceVariant),
                 )
             }
         }
@@ -131,8 +126,7 @@ private fun Cover(coverImage: BridgeImageRef?) {
             )
         }
     } else {
-        // Glance has no Uri ImageProvider, so an Icon carries the artwork URI
-        // and the launcher reads the bytes from ArtworkContentProvider.
+        // Glance has no Uri ImageProvider, so an Icon carries the artwork URI for ArtworkContentProvider.
         val coverIcon = Icon.createWithContentUri(ArtworkContentProvider.uriFor(context, coverImage))
         Image(
             provider = ImageProvider(coverIcon),
@@ -168,4 +162,19 @@ private fun TransportButton(
             colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurface),
         )
     }
+}
+
+/** A role as a Glance text style, its weight rounded down to Glance's normal, medium or bold. */
+private fun ThemeText.glanceStyle(color: ColorProvider): TextStyle {
+    val weight = checkNotNull(style.fontWeight) { "every text role sets a weight" }
+    return TextStyle(
+        color = color,
+        fontSize = style.fontSize,
+        fontWeight =
+            when {
+                weight >= ComposeFontWeight.Bold -> FontWeight.Bold
+                weight >= ComposeFontWeight.Medium -> FontWeight.Medium
+                else -> FontWeight.Normal
+            },
+    )
 }

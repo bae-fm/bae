@@ -35,15 +35,15 @@ public struct UnlockView: View {
                 .foregroundStyle(.secondary)
             VStack(spacing: 8) {
                 Text("Library Locked")
-                    .font(.title)
+                    .themeText(.title)
                 Text(libraryName)
-                    .font(.title3)
+                    .themeText(.heading)
                     .foregroundStyle(.secondary)
             }
             Text(
                 "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
             )
-            .font(.callout)
+            .themeText(.body)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
             .frame(maxWidth: 400)
@@ -51,7 +51,7 @@ public struct UnlockView: View {
                 SecureField("Encryption key (64 hex characters)", text: $keyHex)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 400)
-                    .monospaced()
+                    .themeText(.mono)
                 HStack(spacing: 12) {
                     Button("Cancel", action: onCancel)
                         .buttonStyle(.bordered)
@@ -73,7 +73,7 @@ public struct UnlockView: View {
             if let error {
                 Text(error)
                     .foregroundStyle(Theme.danger)
-                    .font(.callout)
+                    .themeText(.body)
             }
             Spacer()
         }

@@ -12,7 +12,7 @@ struct SearchManuallyButton: View {
     var body: some View {
         Button(action: action) {
             Text("Search manually")
-                .font(.system(size: 12, weight: .semibold))
+                .themeText(.strong)
                 .foregroundStyle(.primary)
                 .padding(.horizontal, 14)
                 .frame(height: 26)

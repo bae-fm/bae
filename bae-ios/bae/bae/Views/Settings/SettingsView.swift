@@ -54,7 +54,7 @@ struct SettingsView: View {
                                         // stays listed with its error.
                                         if let error = library.error {
                                             Text(error)
-                                                .font(.caption)
+                                                .themeText(.detail)
                                                 .foregroundStyle(Theme.danger)
                                                 .lineLimit(2)
                                         }
@@ -354,12 +354,12 @@ private struct SyncConnectedControls: View {
                     )
                 }
                 Text(syncError.line)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                 // The fault behind the category line above.
                 if let fault = syncError.detailSummary {
                     Text(fault)
-                        .font(.caption2.monospaced())
+                        .themeText(.mono)
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
@@ -394,7 +394,7 @@ private struct SyncConnectedControls: View {
             if let error = flow.error {
                 Text(error)
                     .foregroundStyle(Theme.danger)
-                    .font(.callout)
+                    .themeText(.body)
             }
         }
         .confirmationDialog(

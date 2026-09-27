@@ -67,7 +67,7 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
             // One run of text, since a menu label puts its image before the
             // title and the chevron belongs after it.
             Text(criterion.field.displayName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(ThemeText.strong.font)
                 + Text(verbatim: " ")
                 + Text(Image(systemName: "chevron.down"))
                 .font(.system(size: 9, weight: .bold))

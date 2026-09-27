@@ -97,7 +97,7 @@ struct EditMetadataSheet: View {
 
     private var header: some View {
         HStack {
-            Text("Edit Metadata").font(.headline)
+            Text("Edit Metadata").themeText(.heading)
             Spacer()
             Button("Cancel") { onCancel() }
                 .keyboardShortcut(.cancelAction)
@@ -115,7 +115,7 @@ struct EditMetadataSheet: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                     Text(message)
                 }
-                .font(.caption)
+                .themeText(.body)
                 .foregroundStyle(Theme.danger)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -128,7 +128,7 @@ struct EditMetadataSheet: View {
                 if session.isBusy {
                     ProgressView().controlSize(.small)
                     Text(session.isSaving ? "Saving..." : "Resetting...")
-                        .font(.callout)
+                        .themeText(.body)
                         .foregroundStyle(.secondary)
                 }
                 else {

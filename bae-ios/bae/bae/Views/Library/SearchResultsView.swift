@@ -115,10 +115,10 @@ private struct AlbumResultRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(album.title)
-                    .font(.body)
+                    .themeText(.rowTitle)
                     .lineLimit(1)
                 Text(album.year.map { "\(album.artistName) \u{00B7} \($0)" } ?? album.artistName)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -137,10 +137,10 @@ private struct ArtistResultRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(artist.name)
-                    .font(.body)
+                    .themeText(.rowTitle)
                     .lineLimit(1)
                 Text("\(artist.albumCount) albums")
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -156,17 +156,17 @@ private struct TrackResultRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title)
-                    .font(.body)
+                    .themeText(.rowTitle)
                     .lineLimit(1)
                 Text("\(track.artistName), \(track.albumTitle)")
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             Spacer()
             if !track.durationLabel.isEmpty {
                 Text(track.durationLabel)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
         }
@@ -183,10 +183,10 @@ private struct ComposerResultRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(composer.name)
-                    .font(.body)
+                    .themeText(.rowTitle)
                     .lineLimit(1)
                 Text("\(composer.workCount) works")
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -205,11 +205,11 @@ private struct WorkResultRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(work.title)
-                    .font(.body)
+                    .themeText(.rowTitle)
                     .lineLimit(1)
                 if let composers = work.composerNames {
                     Text(composers)
-                        .font(.caption)
+                        .themeText(.detail)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

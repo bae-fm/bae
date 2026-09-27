@@ -32,12 +32,12 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.ConflatedProgressDelivery
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.onboarding.AdmittingDeviceProgress
 import kotlinx.coroutines.CancellationException
@@ -286,7 +286,7 @@ private fun PairingCode(code: String) {
 private fun PairingDevice(device: BridgePairingDevice) {
     Text(stringResource(R.string.members_pairing_confirm))
     Spacer(modifier = Modifier.height(12.dp))
-    Text(device.fingerprint, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace)
+    Text(device.fingerprint, style = ThemeText.mono.style)
     device.email?.let {
         Spacer(modifier = Modifier.height(4.dp))
         Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant)

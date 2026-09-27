@@ -67,7 +67,73 @@ pub struct Theme {
     pub opacity: BTreeMap<String, f64>,
     /// Corner radii, in points and dp, by role.
     pub radius: BTreeMap<String, f64>,
+    /// Text styles, by role.
+    pub text: BTreeMap<String, TextRole>,
 }
+
+/// A text role: weight, tracking, case and monospacing shared by every
+/// platform, and a size for each.
+#[derive(Debug)]
+pub struct TextRole {
+    pub weight: Weight,
+    /// Letter spacing, in points and sp.
+    pub tracking: f64,
+    pub uppercase: bool,
+    pub monospaced: bool,
+    /// Points.
+    pub macos: f64,
+    /// A Dynamic Type style, so iOS text follows the person's text size.
+    pub ios: String,
+    /// sp.
+    pub android: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Weight {
+    Regular,
+    Medium,
+    Semibold,
+    Bold,
+    Heavy,
+}
+
+impl Weight {
+    pub fn swift(self) -> &'static str {
+        match self {
+            Self::Regular => ".regular",
+            Self::Medium => ".medium",
+            Self::Semibold => ".semibold",
+            Self::Bold => ".bold",
+            Self::Heavy => ".heavy",
+        }
+    }
+
+    pub fn kotlin(self) -> &'static str {
+        match self {
+            Self::Regular => "FontWeight.Normal",
+            Self::Medium => "FontWeight.Medium",
+            Self::Semibold => "FontWeight.SemiBold",
+            Self::Bold => "FontWeight.Bold",
+            Self::Heavy => "FontWeight.ExtraBold",
+        }
+    }
+}
+
+/// The Dynamic Type styles an iOS size can name.
+const IOS_TEXT_STYLES: &[&str] = &[
+    "largeTitle",
+    "title",
+    "title2",
+    "title3",
+    "headline",
+    "subheadline",
+    "body",
+    "callout",
+    "footnote",
+    "caption",
+    "caption2",
+];
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -77,6 +143,21 @@ struct RawTheme {
     semantics: RawModes,
     opacity: BTreeMap<String, f64>,
     radius: BTreeMap<String, f64>,
+    text: BTreeMap<String, RawTextRole>,
+}
+
+/// A text role as written; a platform left out is reported rather than
+/// defaulted.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawTextRole {
+    weight: Weight,
+    tracking: Option<f64>,
+    uppercase: Option<bool>,
+    monospaced: Option<bool>,
+    macos: Option<f64>,
+    ios: Option<String>,
+    android: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -195,6 +276,42 @@ impl Theme {
             }
         }
         check_role_names(raw.radius.keys(), &mut problems);
+        check_role_names(raw.text.keys(), &mut problems);
+        let text = raw
+            .text
+            .iter()
+            .map(|(name, role)| {
+                let mut lacks =
+                    |platform: &str| problems.push(format!("text {name} lacks a {platform} size"));
+                let macos = role.macos.unwrap_or_else(|| {
+                    lacks("macos");
+                    0.0
+                });
+                let ios = role.ios.clone().unwrap_or_else(|| {
+                    lacks("ios");
+                    String::new()
+                });
+                let android = role.android.unwrap_or_else(|| {
+                    lacks("android");
+                    0.0
+                });
+                if !ios.is_empty() && !IOS_TEXT_STYLES.contains(&ios.as_str()) {
+                    problems.push(format!("text {name}: `{ios}` is not a Dynamic Type style"));
+                }
+                (
+                    name.clone(),
+                    TextRole {
+                        weight: role.weight,
+                        tracking: role.tracking.unwrap_or(0.0),
+                        uppercase: role.uppercase.unwrap_or(false),
+                        monospaced: role.monospaced.unwrap_or(false),
+                        macos,
+                        ios,
+                        android,
+                    },
+                )
+            })
+            .collect();
 
         if problems.is_empty() {
             Ok(Self {
@@ -203,6 +320,7 @@ impl Theme {
                 semantics,
                 opacity: raw.opacity,
                 radius: raw.radius,
+                text,
             })
         } else {
             Err(problems)

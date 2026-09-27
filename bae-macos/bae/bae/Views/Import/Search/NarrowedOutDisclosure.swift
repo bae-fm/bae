@@ -1,23 +1,13 @@
 import BaeKit
 import SwiftUI
 
-/// The releases agreement left out, behind a line that says how many.
-///
-/// Agreement is what makes the match list short. The folder's signals agree
-/// with each other — a disc ID that named three releases and a barcode that
-/// named two settle on the one they share — and the folder's own text agrees
-/// with what came back, so a barcode lookup that returned somebody else's
-/// record ends up here too. Each of these was a real answer, and one of them
-/// may be the disc on the desk, so they are here rather than gone. Closed to
-/// begin with, because the matches are the answer. Open, a row set aside
-/// shows on its album's card among the matches, and an album none of whose
-/// rows is offered is a card below this line — picked the same way.
+/// The releases agreement left out, closed behind a line that says how many;
+/// each was a real answer and can still be picked.
 struct NarrowedOutDisclosure: View {
     let narrowedOut: NarrowedOut
     @Binding
     var isExpanded: Bool
-    /// Library status and badges per release, keyed by release id — the
-    /// state's own maps, which carry the rows set aside too.
+    /// Library status and badges per release, keyed by release id.
     let libraryStatuses: [String: BridgeLibraryStatus]
     let agreements: [String: BridgeAgreements]
     let isImporting: Bool
@@ -40,7 +30,7 @@ struct NarrowedOutDisclosure: View {
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     Text("\(Int(narrowedOut.count)) more releases")
                 }
-                .font(.system(size: 12))
+                .themeText(.body)
                 .foregroundStyle(.secondary)
                 .contentShape(.rect)
             }

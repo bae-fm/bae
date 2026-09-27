@@ -50,8 +50,7 @@ struct AlbumExpansionContent: View {
                     .onTapGesture(perform: onBrowseImages)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(summary.title)
-                        .font(.system(size: 30, weight: .heavy))
-                        .tracking(-0.5)
+                        .themeText(.hero)
                         .lineLimit(1)
                     HStack(spacing: 8) {
                         Text(summary.artistNames)
@@ -63,7 +62,7 @@ struct AlbumExpansionContent: View {
                                 .foregroundStyle(.tertiary)
                         }
                     }
-                    .font(.system(size: 15, weight: .semibold))
+                    .themeText(.heading)
                     .lineLimit(1)
                     if releaseCursor.canCycle {
                         releasePicker
@@ -298,7 +297,7 @@ private struct ReleaseFactsLine: View {
 
     private var factsText: some View {
         Text(facts)
-            .font(.system(size: 12, weight: .medium))
+            .themeText(.detail)
             .foregroundStyle(.tertiary)
     }
 }

@@ -25,7 +25,7 @@ struct CandidateFolderLine: View {
             if let tab {
                 Button(action: onNavigateToPlacement) {
                     Text(Self.label(for: tab))
-                        .font(.caption.weight(.medium))
+                        .themeText(.chip)
                         .lineLimit(1)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
@@ -50,7 +50,7 @@ struct CandidateFolderLine: View {
             .buttonStyle(.plain)
             .help("Reveal in Finder")
             Text(folderName)
-                .font(.system(size: 15, design: .monospaced))
+                .themeText(.heading)
                 .textSelection(.enabled)
                 .lineLimit(1)
                 .truncationMode(.middle)

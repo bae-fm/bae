@@ -11,8 +11,7 @@ struct WorkDetailView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(detail.work.title)
-                .font(.system(size: 18, weight: .bold))
-                .tracking(-0.2)
+                .themeText(.title)
                 .lineLimit(2)
             if !detail.childWorks.isEmpty {
                 SectionHeader(title: String(localized: "Works"))

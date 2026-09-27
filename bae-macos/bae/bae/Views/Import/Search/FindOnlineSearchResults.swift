@@ -39,7 +39,7 @@ struct FindOnlineSearchResults: View {
     private var emptyLine: some View {
         if search.status == .noMatches {
             Text("No matches \u{2014} try different terms")
-                .font(.system(size: 12))
+                .themeText(.body)
                 .foregroundStyle(.secondary)
         }
     }
@@ -75,7 +75,7 @@ struct FindOnlineSearchResults: View {
                 }
             }
         }
-        .font(.system(size: 11))
+        .themeText(.detail)
         .foregroundStyle(.secondary)
         .padding(.leading, 28)
     }

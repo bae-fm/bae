@@ -20,9 +20,11 @@ fn colours_read_with_and_without_alpha() {
 
 fn theme_with(tones: &str, semantics: &str) -> Result<Theme, Vec<String>> {
     Theme::from_toml(&format!(
-        "[opacity]\ntint = 0.14\n\n[radius]\nchip = 5\n\n{tones}\n[[accents]]\nname = \"blue\"\nlight = \"#000000\"\ndark = \"#000000\"\nfill = \"#000000\"\n\n{semantics}"
+        "[opacity]\ntint = 0.14\n\n[radius]\nchip = 5\n\n{TEXT}\n{tones}\n[[accents]]\nname = \"blue\"\nlight = \"#000000\"\ndark = \"#000000\"\nfill = \"#000000\"\n\n{semantics}"
     ))
 }
+
+const TEXT: &str = "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\n";
 
 const SEMANTICS: &str =
     "[semantics.light]\ndanger = \"#000000\"\n[semantics.dark]\ndanger = \"#000000\"\n";
@@ -120,6 +122,38 @@ fn both_platforms_carry_every_radius() {
             "    public static let {role}: CGFloat = {value}\n"
         )));
         assert!(kotlin.contains(&format!("    val {role} = {value}.dp\n")));
+    }
+}
+
+#[test]
+fn a_text_role_needs_every_platforms_size() {
+    let theme = Theme::from_toml(&THEME.replace(
+        "[text.body]\nweight = \"regular\"\nmacos = 13\n",
+        "[text.body]\nweight = \"regular\"\n",
+    ));
+    assert_eq!(theme.unwrap_err(), ["text body lacks a macos size"]);
+}
+
+#[test]
+fn an_ios_size_names_a_dynamic_type_style() {
+    let theme = Theme::from_toml(&THEME.replace(
+        "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"",
+        "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"huge\"",
+    ));
+    assert_eq!(
+        theme.unwrap_err(),
+        ["text body: `huge` is not a Dynamic Type style"]
+    );
+}
+
+#[test]
+fn both_platforms_carry_every_text_role() {
+    let theme = Theme::from_toml(THEME).unwrap();
+    let swift = apple::swift(&theme);
+    let kotlin = android::kotlin(&theme);
+    for role in theme.text.keys() {
+        assert!(swift.contains(&format!("    public static let {role} = ThemeText(\n")));
+        assert!(kotlin.contains(&format!("        val {role} =\n")));
     }
 }
 

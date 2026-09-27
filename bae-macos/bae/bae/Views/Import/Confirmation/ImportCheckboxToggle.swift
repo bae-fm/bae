@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// A checkbox-style toggle used in the confirmation header (Cloud / Pinned).
@@ -14,7 +15,7 @@ struct ImportCheckboxToggle: View {
     var body: some View {
         Toggle(isOn: $isOn) { Text(label) }
             .toggleStyle(.checkbox)
-            .font(.callout)
+            .themeText(.body)
     }
 }
 

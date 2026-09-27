@@ -48,8 +48,8 @@ final class SeekBarNSView: NSView {
         self.showsRemainingTimeToggle = showsRemainingTimeToggle
 
         let font = NSFont.monospacedDigitSystemFont(
-            ofSize: 11.5,
-            weight: .semibold
+            ofSize: ThemeText.chip.macOSSize,
+            weight: ThemeText.chip.nsWeight
         )
         let color = NSColor.secondaryLabelColor
 

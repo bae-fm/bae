@@ -7,35 +7,31 @@ func releaseGroupDisclosureID(
     ReleaseGroupDisclosureID(key: key)
 }
 
-/// A group member's place under its folder header: the child inset, plus the
-/// thin rail that runs down the members — whitespace and the rail say the
-/// membership, not dividers.
+/// A group member's place under its folder header: the child inset and the
+/// rail that runs down the members.
 enum ImportListHierarchyLayout {
     /// The horizontal padding every list row carries, member or not.
     static let rowEdgePadding: CGFloat = 12
     /// Where the rail runs, from the list edge — under the header's chevron.
     static let railInset: CGFloat = 17
-    /// Where a member row's content starts, from the list edge — 10pt past
-    /// the rail.
+    /// Where a member row's content starts, from the list edge.
     static let memberContentInset: CGFloat = 28
     /// The leading padding a member row adds on top of its own edge padding
     /// so its content lands at `memberContentInset`.
     static var memberInset: CGFloat { memberContentInset - rowEdgePadding }
-    /// Air over a group boundary — a header, or the first top-level row
-    /// after a group's members. Rendered as its own spacer row so every real
-    /// row keeps a symmetric box for selection and highlight chrome to trace.
+    /// Air over a group boundary, drawn as its own spacer row so every real
+    /// row keeps a symmetric box for the selection highlight.
     static let groupBoundaryAir: CGFloat = 7
 }
 
-/// The filter row's geometry: every control at its end is one hit box, and
-/// the glyph inside it is one size, whichever indicator it is.
+/// The filter row's geometry: one hit box and one glyph size for every
+/// control at its end.
 enum ImportFilterBarLayout {
     /// The clickable square each trailing control occupies.
     static let controlHitSize: CGFloat = 24
     /// The glyph drawn inside that square.
     static let glyphSize: CGFloat = 14
-    /// The row's height — the field is the row, so a click anywhere on it
-    /// lands in the field.
+    /// The row's height.
     static let rowHeight: CGFloat = 36
 }
 
@@ -91,14 +87,11 @@ struct ImportCandidateListGeometryKey: PreferenceKey {
 struct ImportCandidateListViewport {
     private var anchorKey: String?
     private var appliedContentRevision: UInt64?
-    /// Set from the moment a restore asks for a scroll until that scroll has
-    /// run. Until it does, every layout still measures the list where it stood
-    /// before it — the row at the top of those measurements is one the person
-    /// never scrolled to, so it cannot become the anchor.
+    /// Set while a restore's scroll has not run yet, when layouts still
+    /// measure the list where it stood before and cannot pick the anchor.
     private var awaitingRestoreScroll = false
 
-    /// The scroll the last restore asked for has run, so what the list reports
-    /// from here on is where it actually left its rows.
+    /// The scroll the last restore asked for has run.
     mutating func restoreScrolled() {
         awaitingRestoreScroll = false
     }
@@ -179,27 +172,22 @@ private final class ImportCandidateRevealOperation {
 
 // MARK: - ImportCandidateListContent
 
-/// The import sidebar: one paged list over the tab the slot is showing. Which
-/// items exist, in what order, under which header and in which tab is core's
-/// answer — the list asks for a page of offsets and renders what comes back.
-/// Everything around it comes from the same value's summary.
+/// The import sidebar: one paged list over the tab the slot is showing, with
+/// items, order and grouping decided by core.
 struct ImportCandidateListContent: View {
-    /// Read at the leaf: the loaded entries and the chrome around them come
-    /// from the store.
+    /// The loaded entries and the summary the chrome around them reads.
     let importStore: ImportStore
     /// The paged list and the view it is showing.
     let listSlot: ImportListSlot
     @Binding
     var selectedKeys: Set<String>
     let onAddFolder: () -> Void
-    /// Stop watching `path`. Reached from the watched-folders menu; release
-    /// groups inside each root are rendered by the list below.
+    /// Stop watching `path`.
     let onRemoveFolder: (_ path: String) -> Void
     let onRefreshFolder: (_ folder: BridgeWatchedFolder) -> Void
     /// Read every release below the header's folder as one.
     let onCombineFolder: (_ key: BridgeFolderReleaseDecisionKey) -> Void
-    /// Read the release at `key` as the folders it is made of — an
-    /// unreadable folder's own menu, which offers nothing else.
+    /// Read the release at `key` as the folders it is made of.
     let onSeparate: (_ key: String) -> Void
     /// Show an imported row's folders.
     let onReveal: (_ key: String) -> Void
@@ -265,13 +253,12 @@ struct ImportCandidateListContent: View {
         summary.pendingCovers.map { .remote($0) }
     }
 
-    /// True when the active tab has nothing to show — drives the empty state.
+    /// Whether the active tab has nothing to show.
     private var activeTabIsEmpty: Bool {
         (listSlot.list?.totalCount ?? 0) == 0
     }
 
-    /// Where each watched root's scan stands, by path — what the folder menu
-    /// marks its entries with.
+    /// Each watched root's scan state, by path.
     private var scanStatuses: [String: BridgeFolderScanStatus] {
         Dictionary(
             summary.folderScanStatuses.map {
@@ -281,8 +268,7 @@ struct ImportCandidateListContent: View {
         )
     }
 
-    /// The watched roots on a volume served over the network — what the folder
-    /// menu explains the checking schedule on.
+    /// The watched roots on a network volume.
     private var networkFolders: Set<String> {
         Set(
             summary.folderScanStatuses
@@ -303,8 +289,7 @@ struct ImportCandidateListContent: View {
                     .padding(.top, 10)
                     .padding(.bottom, 10)
 
-                    // The tabs choose what the list holds; the filter narrows what
-                    // it shows. Two jobs, so the header says where one ends.
+                    // Separates choosing the tab from filtering it.
                     Divider()
 
                     HStack(spacing: 8) {
@@ -313,7 +298,7 @@ struct ImportCandidateListContent: View {
                             .foregroundStyle(.tertiary)
                         TextField("Filter...", text: filterTextBinding)
                             .textFieldStyle(.plain)
-                            .font(.system(size: 13))
+                            .themeText(.body)
                             .focused($filterFocused)
                         if !uiStore.importCandidateFilterText.isEmpty {
                             Button {
@@ -386,10 +371,8 @@ struct ImportCandidateListContent: View {
                     }
                     .padding(.horizontal, 14)
                     .frame(height: ImportFilterBarLayout.rowHeight)
-                    // The row is the field: a plain text field's own hit
-                    // area is its one line of text, so the row takes the
-                    // click and puts the caret in the field. The controls at
-                    // the end keep their own clicks.
+                    // A click anywhere on the row puts the caret in the
+                    // field; the controls at the end keep their own clicks.
                     .contentShape(Rectangle())
                     .onTapGesture { filterFocused = true }
                 }
@@ -404,9 +387,8 @@ struct ImportCandidateListContent: View {
             .task(id: summary.groupKeys) {
                 listSlot.retainGroups(summary.groupKeys)
             }
-            // Pending's matched covers were downloaded once already. Decoding
-            // them as the queue lands keeps Pending's first frame from being a
-            // grid of spinners.
+            // Decode Pending's covers as the queue lands, so its first frame
+            // is not a grid of spinners.
             .task(id: pendingCovers) {
                 await imageStore.warm(
                     pendingCovers,
@@ -423,13 +405,11 @@ struct ImportCandidateListContent: View {
                     listLoaded: listSlot.list != nil
                 )
             ) {
-                // A reveal waits for the list to exist: one taken before it
-                // does would find nowhere to scroll and be lost.
+                // A reveal taken before the list exists would be lost.
                 guard listSlot.list != nil,
                     let request = uiStore.pendingImportCandidateReveal
                 else { return }
-                // Taken as soon as the list has it: the reveal is then this
-                // list's, and what the person does next cancels it.
+                // Once taken, the person's next action cancels it.
                 uiStore.consumeImportCandidateReveal(seq: request.seq)
                 startReveal(using: proxy) {
                     try await listSlot.revealCandidate(request.candidateKey)
@@ -438,8 +418,7 @@ struct ImportCandidateListContent: View {
         }
     }
 
-    /// Per-tab empty state: distinguishes "no matches" while filtering from
-    /// "nothing in this tab yet".
+    /// The empty tab, or a filter with no matches.
     private var emptyState: some View {
         ContentUnavailableView(
             uiStore.importCandidateFilterText.isEmpty
@@ -463,8 +442,7 @@ struct ImportCandidateListContent: View {
     private func tabList(_ proxy: ScrollViewProxy) -> some View {
         if let list = listSlot.list {
             entryList(list, proxy: proxy)
-                // Edit ▸ Select All and Command-A select every row the list
-                // shows, loaded or not, rather than the table's loaded rows.
+                // Select All covers every row the list shows, loaded or not.
                 .focusedValue(\.selectAllShownRows) {
                     cancelReveal()
                     listSlot.selectAllShown()
@@ -473,11 +451,9 @@ struct ImportCandidateListContent: View {
     }
 }
 
-/// The list itself. In an extension so the view's body and the chrome it
-/// builds — tabs, filter, folders — read as one piece above them.
+/// The list itself.
 extension ImportCandidateListContent {
-    /// Virtualized rows over the paged list: each visible position loads the
-    /// page it sits in and renders whatever core put at that offset.
+    /// Rows over the paged list; each visible position loads its page.
     private func entryList(
         _ list: PaginatedList<BridgeImportListItem>,
         proxy: ScrollViewProxy
@@ -509,8 +485,7 @@ extension ImportCandidateListContent {
             }
         }
         .listStyle(.plain)
-        // The list's default minimum row height (~24pt) would inflate the
-        // 6pt boundary spacer rows into wide bands of air.
+        // The default minimum row height would inflate the boundary spacers.
         .environment(
             \.defaultMinListRowHeight,
             ImportListHierarchyLayout.groupBoundaryAir
@@ -534,9 +509,8 @@ extension ImportCandidateListContent {
                 revealInProgress: revealOperation != nil,
                 positionOf: { list.position(of: $0) }
             ) {
-                // This scroll is the list's own, not the person's, and it
-                // runs on its own turn — as a reveal's does — so that the
-                // layouts before it can be told from the ones after.
+                // Run on its own turn so the layouts before it can be told
+                // from the ones after.
                 Task { @MainActor in
                     proxy.scrollTo(target, anchor: .top)
                     viewport.restoreScrolled()
@@ -581,15 +555,13 @@ extension ImportCandidateListContent {
             }
         }
         else {
-            // The position is inside the list but its page has not landed:
-            // an empty row keeps the scroll geometry until it does.
+            // Holds the scroll geometry until the row's page lands.
             Color.clear.frame(height: TriageRowView.coverPointSize)
         }
     }
 
     /// The air over the row at `index`: every header past the top, and the
-    /// first top-level row after a group's members. Zero while a page it
-    /// reads has not landed, like the placeholder row that holds its spot.
+    /// first top-level row after a group's members; zero until its page lands.
     private func airAbove(
         _ index: Int,
         in list: PaginatedList<BridgeImportListItem>
@@ -629,9 +601,7 @@ extension ImportCandidateListContent {
         }
     }
 
-    /// A folder group renders as a header row followed by sibling list items,
-    /// rather than a `DisclosureGroup`. Core marks the actual members so only
-    /// those siblings receive the child inset.
+    /// A folder group's header row; its members follow as sibling rows.
     private func releaseGroupHeader(
         _ group: BridgeTriageGroup,
         expanded: Bool
@@ -643,15 +613,13 @@ extension ImportCandidateListContent {
                 !expanded
             )
         } label: {
-            // The chevron and the name alone mark a folder — a glyph would
-            // repeat what the indent and rail below already say.
             HStack(spacing: 7) {
                 Image(systemName: expanded ? "chevron.down" : "chevron.right")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(.tertiary)
                     .frame(width: 9)
                 Text(group.name)
-                    .font(.system(size: 12.5, weight: .semibold))
+                    .themeText(.strong)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -663,11 +631,8 @@ extension ImportCandidateListContent {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            // The rows below are this folder read as several releases, and
-            // this is where it is read as one instead — once, for the folder,
-            // rather than on each of the rows it produced. A header that only
-            // names a shared path component has no such folder behind it and
-            // offers nothing.
+            // A header that only names a shared path component offers
+            // nothing.
             if group.combinable {
                 Button("Combine as One Release") {
                     onCombineFolder(group.key)
@@ -677,8 +642,7 @@ extension ImportCandidateListContent {
     }
 
     /// What a row's menu offers: the selection's actions when the row is
-    /// one of several selected, as the pane that selection opens draws them,
-    /// and the row's own otherwise.
+    /// one of several selected, and the row's own otherwise.
     private func menuOffers(
         for row: BridgeTriageRow,
         live: BridgeCandidateLiveState?
@@ -730,8 +694,7 @@ extension ImportCandidateListContent {
         .tag(row.candidateKey)
     }
 
-    /// An invalid folder isn't selectable — selecting its key is a no-op
-    /// upstream (it isn't a real candidate), so it carries no `.tag()`.
+    /// An invalid folder is not a candidate, so it carries no selection tag.
     private func invalidRow(
         _ invalid: BridgeInvalidCandidate,
         isGroupMember: Bool
@@ -741,9 +704,7 @@ extension ImportCandidateListContent {
             reason: invalid.reason,
             revealPath: invalid.folderPath
         )
-        // A folder read as one release that turned out to be unreadable is
-        // still that folder, and its row is the only place left to say it
-        // should be read as several.
+        // An unreadable combined folder can only be separated from here.
         .contextMenu {
             if invalid.separable {
                 Button("Keep as Separate Releases") {
@@ -756,8 +717,7 @@ extension ImportCandidateListContent {
 }
 
 extension ImportCandidateListContent {
-    /// Go to the first row the identify count is still waiting on, as core
-    /// finds it when asked.
+    /// Go to the first row still being identified.
     private func goToFirstUnidentified(
         using proxy: ScrollViewProxy
     ) -> () -> Void {

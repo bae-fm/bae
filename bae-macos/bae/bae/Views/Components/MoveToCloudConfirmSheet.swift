@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Confirmation for moving a local release to cloud storage. The single
-/// toggle is the stored choice of whether a release that goes to the cloud
-/// stays pinned on this device — the same one an import makes — written as it
-/// moves; core reads it when it moves the releases.
+/// Confirmation for moving a local release to cloud storage, with the stored
+/// choice of whether a cloud release stays pinned on this device.
 struct MoveToCloudConfirmSheet: View {
     let onConfirm: () -> Void
     let onCancel: () -> Void
@@ -19,7 +17,7 @@ struct MoveToCloudConfirmSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Move to Cloud")
-                .font(.headline)
+                .themeText(.heading)
             Toggle("Pinned", isOn: pinned)
             HStack {
                 Spacer()

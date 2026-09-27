@@ -47,15 +47,15 @@ struct AlbumCardView: View {
                 .onHover { isHovered = $0 }
                 .padding(.bottom, 10)
             Text(title)
-                .font(.system(size: 15, weight: .bold))
+                .themeText(.rowTitle)
                 .lineLimit(1)
             Text(artistNames)
-                .font(.system(size: 13, weight: .medium))
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             StableOptionalText(
                 text: year.map(String.init),
-                font: .system(size: 12, weight: .medium),
+                font: ThemeText.detail.font,
                 foreground: .tertiary,
                 lineHeight: 14
             )

@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The "Casting" settings tab: one toggle for the whole feature. Core is what
-/// the toggle actually gates — while off it browses no network and starts no
-/// session — so this tab only writes the setting and warns before a write that
-/// would cut a session short.
+/// The "Casting" settings tab: one toggle that core enforces, with a warning
+/// before turning it off would end a session.
 struct CastingSettingsTab: View {
     @Environment(Cast.self)
     private var cast
@@ -27,7 +25,7 @@ struct CastingSettingsTab: View {
                 Text(
                     "Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices."
                 )
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -45,9 +43,8 @@ struct CastingSettingsTab: View {
         }
     }
 
-    /// Reads the persisted setting and writes through the bridge — the config
-    /// subscription is what moves the switch, so a refused or cancelled flip
-    /// leaves it where it was with nothing to undo.
+    /// Reads the persisted setting; the config subscription moves the switch,
+    /// so a refused write leaves it where it was.
     private var enabledBinding: Binding<Bool> {
         Binding(
             get: { configStore.config.castEnabled },

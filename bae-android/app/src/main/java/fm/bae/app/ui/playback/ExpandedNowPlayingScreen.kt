@@ -42,13 +42,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
@@ -73,8 +73,7 @@ fun ExpandedNowPlayingScreen(
     val (order, reorderState) = rememberReorderableQueue(session, listState)
     // Pad past the navigation bar so the last queue row clears it.
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    // Lets the chevron animate the sheet out before dismissing; onDismiss alone
-    // drops it abruptly.
+    // Lets the chevron animate the sheet out before dismissing.
     val scope = rememberCoroutineScope()
 
     ModalBottomSheet(
@@ -160,15 +159,14 @@ private fun ExpandedTrackInfo(
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+            style = ThemeText.hero.style,
             maxLines = 1,
             modifier = Modifier.weight(1f, fill = false),
         )
     }
     Text(
         text = artist,
-        style = MaterialTheme.typography.titleMedium,
+        style = ThemeText.heading.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1,
     )

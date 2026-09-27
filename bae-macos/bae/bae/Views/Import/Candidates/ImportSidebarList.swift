@@ -1,11 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Shared sidebar layout: a surface-backed header above a divider, then the
-/// scrollable content below. Unlike a plain toolbar, this header holds
-/// two differently-padded sections (tab bar, filter row) stacked vertically,
-/// so each owns its own padding rather than the shell applying one uniform
-/// inset.
+/// The sidebar's layout: a header on the surface, a divider, then the content;
+/// the header's sections pad themselves.
 struct ImportSidebarList<Header: View, Content: View>: View {
     @ViewBuilder
     let header: () -> Header
@@ -29,7 +26,7 @@ struct ImportSidebarList<Header: View, Content: View>: View {
         ImportSidebarList {
             HStack {
                 Text(verbatim: "Header")
-                    .font(.headline)
+                    .themeText(.heading)
                 Spacer()
                 Image(systemName: "plus")
             }

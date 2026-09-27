@@ -28,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -39,21 +38,13 @@ import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeText
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 
-/**
- * The download-queue management surface: every queued/active/failed pin with its
- * progress, pause/resume for the whole queue, retry for failed entries, and
- * per-item cancel. A stack destination like Settings and Devices, so it inherits
- * the browser's system-back and saved-state handling. Renders only from the
- * download snapshot — actions never mutate optimistically; the next snapshot
- * re-renders. It does not dismiss when the queue drains: the queue is transient
- * and can empty while open, so an empty state shows rather than yanking the
- * screen away.
- */
+/** The download queue: each pin's progress, pause and retry for the queue, and cancel per item. */
 @Composable
 internal fun DownloadsScreen(
     session: OpenLibrary,
@@ -111,8 +102,7 @@ private fun DownloadsTopBar(
             }
             Text(
                 text = stringResource(R.string.downloads),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                style = ThemeText.title.style,
                 modifier = Modifier.weight(1f),
             )
             TextButton(onClick = onRetry, enabled = hasFailures) {
@@ -137,7 +127,7 @@ private fun DownloadsList(
             if (summary.isNotEmpty()) {
                 Text(
                     text = summary,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = ThemeText.detail.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
@@ -163,13 +153,13 @@ private fun DownloadQueueRow(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = op.title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = ThemeText.rowTitle.style,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = op.detailText(context),
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             DownloadRowState(op.state)
@@ -194,7 +184,7 @@ private fun DownloadRowState(state: BridgeDownloadState) {
         is BridgeDownloadState.Failed -> {
             Text(
                 text = state.error,
-                style = MaterialTheme.typography.labelSmall,
+                style = ThemeText.body.style,
                 color = MaterialTheme.colorScheme.error,
             )
         }
@@ -206,7 +196,7 @@ private fun DownloadRowState(state: BridgeDownloadState) {
 internal fun WaitingToDownloadText() {
     Text(
         text = stringResource(R.string.download_waiting),
-        style = MaterialTheme.typography.labelMedium,
+        style = ThemeText.detail.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
@@ -222,7 +212,7 @@ internal fun DownloadProgressBytes(progress: BridgeDownloadTransferProgress) {
         )
         Text(
             text = progress.bytesProgressText(context),
-            style = MaterialTheme.typography.labelSmall,
+            style = ThemeText.fine.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

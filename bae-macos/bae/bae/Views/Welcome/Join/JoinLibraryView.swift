@@ -4,9 +4,8 @@ import os.log
 
 private let logger = Logger.bae("JoinLibraryView")
 
-/// Add this device by scanning the one pairing code shown on an existing
-/// device. The scanned offer selects the provider; OAuth, when required, starts
-/// from that authoritative provider before the signed pairing request is sent.
+/// Adds this device to a library by the pairing code shown on a device already
+/// in it, signing in to the code's provider first when it needs OAuth.
 struct JoinLibraryView: View {
     let onLibraryReady: (BridgeLibrary) -> Void
     let onBack: () -> Void
@@ -56,13 +55,13 @@ struct JoinLibraryView: View {
     var body: some View {
         VStack(spacing: 0) {
             Text("Join a library")
-                .font(.title2.bold())
+                .themeText(.title)
                 .padding(.top, 24)
                 .padding(.bottom, 4)
             Text(
                 "Scan the pairing code shown on a device already in your library."
             )
-            .font(.callout)
+            .themeText(.body)
             .foregroundStyle(.secondary)
             .padding(.bottom, 16)
 

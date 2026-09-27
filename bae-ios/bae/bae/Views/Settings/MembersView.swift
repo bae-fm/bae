@@ -34,7 +34,7 @@ struct MembersView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(loadError)
                                 .foregroundStyle(Theme.danger)
-                                .font(.callout)
+                                .themeText(.body)
                             Button("Retry") { load() }
                         }
                     }
@@ -56,7 +56,7 @@ struct MembersView: View {
                 Section {
                     Text(actionError)
                         .foregroundStyle(Theme.danger)
-                        .font(.callout)
+                        .themeText(.body)
                 }
             }
 
@@ -164,10 +164,10 @@ private struct MemberRow: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(member.fingerprint)
-                    .font(.system(.body, design: .monospaced))
+                    .themeText(.mono)
                 // Hidden, not removed, so every row has the same height.
                 Text("This device")
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .opacity(member.isSelf ? 1 : 0)
             }
@@ -192,7 +192,7 @@ private struct RoleBadge: View {
 
     var body: some View {
         Text(label)
-            .font(.caption.weight(.medium))
+            .themeText(.chip)
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
             .background(Color.secondary.opacity(ThemeOpacity.tint))

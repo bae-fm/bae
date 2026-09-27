@@ -38,7 +38,7 @@ struct ApproveDeviceSheet: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Add a device")
-                    .font(.headline)
+                    .themeText(.heading)
                 Spacer()
                 Button("Done") { Task { await dismissPairing() } }
                     .buttonStyle(.borderless)
@@ -71,7 +71,7 @@ struct ApproveDeviceSheet: View {
                 if let error {
                     Text(error)
                         .foregroundStyle(Theme.danger)
-                        .font(.caption)
+                        .themeText(.body)
                 }
             }
         case .cancelling:
@@ -92,7 +92,7 @@ struct ApproveDeviceSheet: View {
     {
         VStack(spacing: 16) {
             Text("Scan this code on the device joining your library.")
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
@@ -102,14 +102,14 @@ struct ApproveDeviceSheet: View {
                 ProgressView()
                     .controlSize(.small)
                 Text("Waiting for the device...")
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
 
             if let error {
                 Text(error)
                     .foregroundStyle(Theme.danger)
-                    .font(.caption)
+                    .themeText(.body)
                 Button("Try again") {
                     self.error = nil
                     pairingTask?.cancel()
@@ -130,25 +130,25 @@ struct ApproveDeviceSheet: View {
                 .font(.largeTitle)
                 .foregroundStyle(.secondary)
             Text("Approve this device?")
-                .font(.headline)
+                .themeText(.heading)
             Text(device.fingerprint)
-                .font(.system(.body, design: .monospaced))
+                .themeText(.mono)
             if let email = device.email {
                 Text(email)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
             Text(
                 "Check that this matches the fingerprint shown on the new device before approving."
             )
-            .font(.caption)
+            .themeText(.detail)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
 
             if let error {
                 Text(error)
                     .foregroundStyle(Theme.danger)
-                    .font(.caption)
+                    .themeText(.body)
             }
 
             HStack(spacing: 12) {

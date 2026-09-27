@@ -109,10 +109,9 @@ struct QueueSection: View {
                         // Loaded or placeholder, every row takes the pitch the
                         // coordinator's slot math assumes.
                         .frame(height: Self.rowHeight)
-                        // Removal clips the row from the bottom without
-                        // squishing it; the collapse rides the remove action's
-                        // spring so everything below moves with it, and only
-                        // the fade has its own curve.
+                        // Removal clips the row from the bottom; the collapse
+                        // rides the remove action's spring, the fade its own
+                        // curve.
                         .frame(height: isRemoving ? 0 : nil, alignment: .top)
                         .clipped()
                         .opacity(isRemoving ? 0 : 1)
@@ -227,8 +226,7 @@ struct QueueSection: View {
     }
 }
 
-/// `QueueSection`'s drag resolution, header, and row builders, split out to
-/// keep the type body under the length limit.
+/// `QueueSection`'s drag resolution, header, and row builders.
 extension QueueSection {
     /// The manual lane's insertion gap from an external drop or a cross-lane
     /// drag; `nil` hides the line.
@@ -286,11 +284,7 @@ extension QueueSection {
         if title != nil || onSetShuffle != nil || count > 0 {
             HStack(spacing: 6) {
                 if let title {
-                    Text(title)
-                        .font(.system(size: 10, weight: .bold))
-                        .tracking(1.2)
-                        .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
+                    Eyebrow(verbatim: title)
                         .lineLimit(1)
                 }
                 Spacer()
@@ -309,14 +303,12 @@ extension QueueSection {
 
     /// This lane's Clear; the tooltip and accessibility label name the lane.
     private var clearButton: some View {
-        Button("Clear") { onClear() }
-            .buttonStyle(.plain)
-            .font(.system(size: 10, weight: .bold))
-            .tracking(1.2)
-            .textCase(.uppercase)
-            .foregroundStyle(.secondary)
-            .help(clearLaneLabel)
-            .accessibilityLabel(clearLaneLabel)
+        Button(action: onClear) {
+            Eyebrow("Clear")
+        }
+        .buttonStyle(.plain)
+        .help(clearLaneLabel)
+        .accessibilityLabel(clearLaneLabel)
     }
 
     /// What this lane's Clear empties, named for the tooltip and VoiceOver.

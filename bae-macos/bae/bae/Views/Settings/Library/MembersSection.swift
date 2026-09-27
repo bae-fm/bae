@@ -32,7 +32,7 @@ struct MembersSection: View {
                 if let loadError {
                     Text(loadError)
                         .foregroundStyle(Theme.danger)
-                        .font(.callout)
+                        .themeText(.body)
                 }
                 else {
                     ProgressView()
@@ -82,7 +82,7 @@ struct MembersSection: View {
         if let actionError {
             Text(actionError)
                 .foregroundStyle(Theme.danger)
-                .font(.callout)
+                .themeText(.body)
         }
 
         if membership?.selfIsOwner == true {
@@ -154,10 +154,10 @@ private struct MemberRow: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(member.fingerprint)
-                    .font(.system(.body, design: .monospaced))
+                    .themeText(.mono)
                 // Hidden rather than removed so every row has the same height.
                 Text("This device")
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .opacity(member.isSelf ? 1 : 0)
             }
@@ -182,7 +182,7 @@ private struct RoleBadge: View {
 
     var body: some View {
         Text(label)
-            .font(.caption.weight(.medium))
+            .themeText(.chip)
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
             .background(Color.secondary.opacity(ThemeOpacity.tint))

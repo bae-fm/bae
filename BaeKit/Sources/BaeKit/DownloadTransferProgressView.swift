@@ -12,7 +12,8 @@ public struct DownloadTransferProgressView: View {
             ProgressView(value: progress.fraction)
                 .progressViewStyle(.linear)
             Text(progress.bytesText)
-                .font(.caption2.monospacedDigit())
+                .themeText(.fine)
+                .monospacedDigit()
                 .foregroundStyle(.secondary)
         }
     }

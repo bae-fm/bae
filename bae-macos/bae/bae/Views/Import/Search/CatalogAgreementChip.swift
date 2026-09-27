@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A catalog number from the folder that agrees with an offered release.
-/// Counted, it ranks that release up and badges its row; struck out, it counts
-/// for nothing. Pressing it toggles that and re-ranks the same results.
+/// A catalog number from the folder that agrees with an offered release;
+/// pressing it toggles whether it counts toward the ranking.
 struct CatalogAgreementChip: View {
     let agreement: BridgeCatalogAgreement
     let onToggle: () -> Void
@@ -22,7 +21,7 @@ struct CatalogAgreementChip: View {
                 )
                 .font(.system(size: 10, weight: .semibold))
                 Text(agreement.value)
-                    .font(.system(size: 10.5, design: .monospaced))
+                    .themeText(.mono)
                     .strikethrough(!counted)
                     .lineLimit(1)
             }

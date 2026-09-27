@@ -22,9 +22,7 @@ struct ImportMappingTrackRow: View {
     private var hovering = false
 
     /// Whether the folder and the release disagree about how long this row
-    /// runs. Core decides how far apart is far enough — it is a judgement about
-    /// how much two rips of one track may legitimately differ, and the other
-    /// desktop surface has to reach the same answer.
+    /// runs, as core judges it.
     private var lengthsDiverge: Bool {
         mapping.durationsDiverge
     }
@@ -56,10 +54,8 @@ struct ImportMappingTrackRow: View {
             }
             actionCell
         }
-        // The whole row is the hover shape, gaps included. Hover follows
-        // hit-testing, and a stack's empty space is not hit-testable on its
-        // own — without this, the pointer crossing a gap on its way to the
-        // removal X ends the hover that shows the X.
+        // The gaps between cells hover too, so crossing one on the way to
+        // the removal X does not hide it.
         .contentShape(Rectangle())
         .onHover {
             hovering = $0
@@ -75,7 +71,7 @@ struct ImportMappingTrackRow: View {
     private func unassignedTrackCells(awaitingPick: Bool) -> some View {
         Color.clear.frame(width: ReleaseMetadataTrackColumns.track)
         Text(coreString("ui.import.becomes.awaiting_pick"))
-            .font(.system(size: 12))
+            .themeText(.body)
             .foregroundStyle(.tertiary)
             .lineLimit(1)
             .frame(width: columns.title, alignment: .leading)
@@ -83,7 +79,7 @@ struct ImportMappingTrackRow: View {
             .accessibilityHidden(!awaitingPick)
         Color.clear.frame(width: columns.artist)
         Text(mapping.displayedDuration)
-            .font(.system(size: 12))
+            .themeText(.body)
             .monospacedDigit()
             .frame(
                 width: ReleaseMetadataTrackColumns.length,
@@ -101,9 +97,8 @@ struct ImportMappingTrackRow: View {
             actions: actions,
         )
         .frame(width: columns.source, alignment: .leading)
-        // The whole cell auditions on double-click, not only the play glyph
-        // — the filename is the biggest target the row has. Simultaneous, so
-        // the glyph's own single click is not held back for a second one.
+        // Double-clicking anywhere in the cell auditions; simultaneous so the
+        // play glyph's single click is not delayed.
         .contentShape(Rectangle())
         .simultaneousGesture(
             TapGesture(count: 2)

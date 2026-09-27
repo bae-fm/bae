@@ -37,11 +37,11 @@ extension View {
     #Preview("Popover Entrance") {
         VStack(alignment: .leading, spacing: 6) {
             Text(verbatim: "Add to queue")
-                .font(.headline)
+                .themeText(.heading)
             Text(
                 verbatim: "Springs in from its anchor when the popover appears."
             )
-            .font(.callout)
+            .themeText(.body)
             .foregroundStyle(.secondary)
         }
         .padding(16)

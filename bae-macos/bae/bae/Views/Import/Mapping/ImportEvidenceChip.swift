@@ -78,7 +78,7 @@ struct ImportEvidenceChip: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
-        .font(.caption2.weight(.medium))
+        .themeText(.chip)
         .padding(.horizontal, 5)
         .padding(.vertical, 2)
         .background(fill, in: Capsule())

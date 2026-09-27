@@ -25,6 +25,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.R
 import fm.bae.app.localizedLine
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeBlockedSyncOperation
@@ -33,12 +34,7 @@ import uniffi.bae_bridge.BridgeException
 
 private val logger = BaeLogger("bae.BlockedSyncOperations")
 
-/**
- * The durable sync operations a completed cycle left waiting on a person. Each
- * failed on a fault that running it again cannot change, so later cycles skip it
- * and it moves only when someone taps Retry; a row leaves the list when the next
- * sync status no longer names it. Renders nothing while there are none.
- */
+/** The sync operations waiting for a person to retry them; nothing when there are none. */
 @Composable
 internal fun BlockedSyncOperations(
     operations: List<BridgeBlockedSyncOperation>,
@@ -49,7 +45,7 @@ internal fun BlockedSyncOperations(
     }
     Text(
         text = stringResource(R.string.settings_sync_waiting),
-        style = MaterialTheme.typography.titleSmall,
+        style = ThemeText.heading.style,
     )
     operations.forEach { operation ->
         BlockedSyncOperationRow(operation = operation, onRetry = onRetry)
@@ -70,21 +66,19 @@ private fun BlockedSyncOperationRow(
         Text(text = blockedSyncOperationKindLabel(operation.kind))
         Text(
             text = operation.description,
-            style = MaterialTheme.typography.bodySmall,
+            style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        // coven's own reason, untranslated. The kind above names the work in the
-        // reader's language; this names what stopped it, which is the part they
-        // can act on or paste into a report.
+        // coven's own untranslated reason, naming what stopped the work.
         Text(
             text = operation.error,
-            style = MaterialTheme.typography.bodySmall,
+            style = ThemeText.mono.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         retryError?.let { message ->
             Text(
                 text = message,
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.body.style,
                 color = MaterialTheme.colorScheme.error,
             )
         }
@@ -112,12 +106,7 @@ private fun BlockedSyncOperationRow(
     }
 }
 
-/**
- * Hand one operation back to the sync loop, returning a user-facing error line to
- * display (or null on success). A retry that takes drops the row on the next sync
- * status; one refused — the operation is no longer blocked, or the loop is not
- * running — reports here rather than leaving the button looking inert.
- */
+/** Hands one operation back to the sync loop and returns the error line to show, or null on success. */
 private suspend fun runRetry(
     id: String,
     onRetry: suspend (String) -> Unit,

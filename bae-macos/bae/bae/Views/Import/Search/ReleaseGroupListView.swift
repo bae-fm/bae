@@ -1,21 +1,14 @@
 import BaeKit
 import SwiftUI
 
-/// Scrollable list of release-group cards, each with its pressing rows hanging
-/// beneath on a connecting rule. Picking a pressing reports it via `onSelect`;
-/// the surrounding flow opens the docked confirm pane. The currently-docked
-/// pressing (if any) renders selected.
-///
-/// `trailing` closes the list from inside the scroll, so what the list has to
-/// say about itself — a source whose results are missing, a source still
-/// answering — scrolls with the results rather than hovering under them.
+/// A scrolling list of release-group cards with their pressing rows, closed
+/// by `trailing` inside the scroll so it scrolls with the results.
 struct ReleaseGroupListView<Trailing: View>: View {
     let groups: [ReleaseGroup]
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
     /// What the candidate's own text agrees with about each release, keyed by
-    /// release id, for the row badges. Empty for typed-search results: no
-    /// candidate was judged against anything.
+    /// release id; empty for typed-search results.
     var agreements: [String: BridgeAgreements] = [:]
     /// Release id of the pressing whose confirm pane is open, if any.
     let selectedReleaseId: String?
@@ -93,7 +86,7 @@ struct AlbumSectionHeading: View {
     var body: some View {
         HStack(spacing: 8) {
             Text(album.title)
-                .font(.system(size: 11.5, weight: .semibold))
+                .themeText(.strong)
                 .lineLimit(1)
                 .truncationMode(.tail)
             AlbumSourceLink(source: album.source)
@@ -111,7 +104,7 @@ struct MissingSourceNote: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 11))
+            .themeText(.detail)
             .foregroundStyle(.tertiary)
             .padding(.leading, 28)
     }
@@ -122,14 +115,13 @@ struct MissingSourceNote: View {
 struct ReleaseGroupSection: View {
     let group: ReleaseGroup
     /// Whether the rows a run's agreement set aside show beneath the offered
-    /// ones — the list's "more" disclosure, open.
+    /// ones.
     var showsNarrowedOut = false
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
     var agreements: [String: BridgeAgreements] = [:]
     let selectedReleaseId: String?
-    /// The pressing whose pick is being read right now — its row carries a
-    /// spinner while the list stays put.
+    /// The pressing whose pick is being read right now.
     var loadingReleaseId: String?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     /// Identify the candidate again, reading once more the documents a run
@@ -144,10 +136,8 @@ struct ReleaseGroupSection: View {
         }
     }
 
-    /// The group's pressing rows, indented under a hairline rule that ties them
-    /// to the card above — album by album, each under its own heading, where
-    /// the card holds more than one album of a catalog — with the rows set
-    /// aside after the offered ones while the disclosure is open.
+    /// The group's pressing rows on a rule under the card, album by album,
+    /// with the rows set aside after the offered ones.
     private var pressings: some View {
         HStack(spacing: 0) {
             Rectangle()
@@ -184,10 +174,7 @@ struct ReleaseGroupSection: View {
         .padding(.leading, 16)
     }
 
-    /// A pressing is the docked one when any of its sources' releases is: a
-    /// person who took the Discogs half of a merged row still picked this row.
-    /// A pick still being read is not one — the highlight says the draft
-    /// carries this pressing, and until the read lands it does not.
+    /// Whether any of the pressing's releases is the one the draft carries.
     func isSelected(_ pressing: Pressing) -> Bool {
         pressing.releases.contains { $0.releaseId == selectedReleaseId }
     }

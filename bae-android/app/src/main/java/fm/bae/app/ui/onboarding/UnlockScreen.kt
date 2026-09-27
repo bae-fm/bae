@@ -31,22 +31,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.launch
 
 private const val HEX_KEY_LENGTH = 64
 
-/**
- * Fallback unlock flow when the encryption key isn't in the keyring. The v1
- * happy path stores the key during `restoreFromCode`, so this rarely triggers,
- * but it's the recovery path when the keyring is wiped.
- */
 private data class UnlockCallbacks(
     val onKeyHexChange: (String) -> Unit,
     val onUnlock: () -> Unit,
     val onCancel: () -> Unit,
 )
 
+/** Asks for the encryption key when it is missing from the keyring. */
 @Composable
 fun UnlockScreen(
     libraryName: String,
@@ -99,17 +96,17 @@ private fun UnlockForm(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(stringResource(R.string.unlock_title), style = MaterialTheme.typography.headlineSmall)
+        Text(stringResource(R.string.unlock_title), style = ThemeText.title.style)
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             libraryName,
-            style = MaterialTheme.typography.titleMedium,
+            style = ThemeText.heading.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = stringResource(R.string.unlock_explanation),
-            style = MaterialTheme.typography.bodyMedium,
+            style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
@@ -137,7 +134,7 @@ private fun UnlockForm(
         }
         if (error != null) {
             Spacer(modifier = Modifier.height(16.dp))
-            Text(text = error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+            Text(text = error, color = MaterialTheme.colorScheme.error, style = ThemeText.body.style)
         }
     }
 }

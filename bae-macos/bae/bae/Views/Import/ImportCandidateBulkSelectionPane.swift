@@ -76,9 +76,9 @@ struct ImportCandidateBulkSelectionCard: View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("\(selectedCount) selected")
-                    .font(.system(size: 22, weight: .semibold))
+                    .themeText(.title)
                 Text("Each action applies only to eligible selected folders.")
-                    .font(.system(size: 12.5))
+                    .themeText(.body)
                     .foregroundStyle(.secondary)
             }
             groupedList
@@ -103,7 +103,7 @@ struct ImportCandidateBulkSelectionCard: View {
                         .frame(height: 1)
                 }
                 if let title = group.title {
-                    FormEyebrow(text: Text(title), size: 10.5)
+                    Eyebrow(title)
                         .padding(.top, 8)
                         .padding(
                             .horizontal,
@@ -223,19 +223,14 @@ private struct BulkActionRow: View {
                     )
                     .frame(width: ImportBulkActionRowMetrics.iconWidth)
                 Text(verbatim: offer.action.label)
-                    .font(
-                        .system(
-                            size: 13,
-                            weight: isConstructive ? .semibold : .regular
-                        )
-                    )
+                    .themeText(isConstructive ? .strong : .body)
                     .foregroundStyle(
                         isConstructive ? Color.primary : Color.secondary
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if let count = offer.count {
                     Text(verbatim: count.formatted())
-                        .font(.system(size: 11, weight: .bold))
+                        .themeText(.chip)
                         .monospacedDigit()
                         .foregroundStyle(
                             isConstructive ? Theme.accent : Color.secondary

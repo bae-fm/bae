@@ -21,14 +21,14 @@ struct QueueItemRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .themeText(.rowTitle)
                     .lineLimit(1)
                 Text(item.artistNames)
-                    .font(.system(size: 11, weight: .medium))
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Text(item.albumTitle)
-                    .font(.system(size: 11, weight: .medium))
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -39,9 +39,8 @@ struct QueueItemRow: View {
             // opacity so the row never resizes.
             ZStack {
                 Text(item.durationLabel)
-                    .font(
-                        .system(size: 11, weight: .semibold).monospacedDigit()
-                    )
+                    .themeText(.detail)
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
                     .opacity(isHovered ? 0 : 1)
                 Button(action: { onRemove(item.id) }) {

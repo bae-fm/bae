@@ -98,9 +98,9 @@ struct ContentView: View {
                             .font(.system(size: 40))
                             .foregroundStyle(.secondary)
                         Text("Library Locked")
-                            .font(.title2.bold())
+                            .themeText(.title)
                         Text(BridgeErrorCategory.keyringLocked.localizedLine)
-                            .font(.callout)
+                            .themeText(.body)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                         Button("Try again") {

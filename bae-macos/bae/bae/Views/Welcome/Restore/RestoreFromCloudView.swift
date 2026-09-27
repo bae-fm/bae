@@ -33,17 +33,17 @@ struct RestoreFromCloudView: View {
     var body: some View {
         VStack(spacing: 0) {
             Text("Restore from cloud")
-                .font(.title2.bold())
+                .themeText(.title)
                 .padding(.top, 24)
                 .padding(.bottom, 4)
             Text("Paste your restore code.")
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 16)
             Form {
                 Section("Restore code") {
                     TextField("Paste restore code", text: $restoreCodeInput)
-                        .font(.system(.body, design: .monospaced))
+                        .themeText(.mono)
                         .onChange(of: restoreCodeInput) { _, newInput in
                             oauthTokenJson = nil
                             let trimmed = newInput.trimmingCharacters(
@@ -82,7 +82,7 @@ struct RestoreFromCloudView: View {
                     {
                         Text(line)
                             .foregroundStyle(Theme.danger)
-                            .font(.callout)
+                            .themeText(.body)
                     }
                 }
             }
@@ -91,7 +91,7 @@ struct RestoreFromCloudView: View {
             if let error {
                 Text(error)
                     .foregroundStyle(Theme.danger)
-                    .font(.callout)
+                    .themeText(.body)
                     .padding(.horizontal)
                     .padding(.bottom, 8)
             }
@@ -100,7 +100,7 @@ struct RestoreFromCloudView: View {
                     ProgressView()
                         .controlSize(.small)
                     Text("Restoring library...")
-                        .font(.callout)
+                        .themeText(.body)
                         .foregroundStyle(.secondary)
                 }
                 .padding(.bottom, 12)

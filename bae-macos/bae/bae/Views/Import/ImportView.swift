@@ -142,7 +142,7 @@ struct ImportView: View {
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             Text("Add a folder to import music from")
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -156,10 +156,10 @@ struct ImportView: View {
                 .font(.system(size: 40, weight: .thin))
                 .foregroundStyle(Theme.danger)
             Text("The import list couldn't be read")
-                .font(.callout)
+                .themeText(.body)
             if let detail = failure.detailSummary {
                 Text(detail)
-                    .font(.caption)
+                    .themeText(.mono)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .textSelection(.enabled)
@@ -213,12 +213,8 @@ struct ImportView: View {
 }
 
 #if DEBUG
-    /// The whole Import tab, drawn by the production `ImportView` from a
-    /// seeded environment.
-    ///
-    /// Its `UiStore` and `ImportSelection` go on before
-    /// `importPreviewEnvironment`, which installs its own, because the
-    /// innermost environment value wins.
+    /// The whole Import tab from a seeded environment; its stores go on
+    /// inside `importPreviewEnvironment` so they win over the ones it installs.
     @MainActor
     private struct ImportTabPreview {
         let uiStore = UiStore()

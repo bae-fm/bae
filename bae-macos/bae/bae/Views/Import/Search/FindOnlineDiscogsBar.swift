@@ -1,15 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The standing notice that Discogs is not among the sources Find online can
-/// ask. It sits under the pane's header, above both section headers, because
-/// it is equally true of the automatic run and the typed search: neither one
-/// asked Discogs, and nothing else on the pane says why its checkbox in the
-/// header cannot be ticked.
-///
-/// Whether Discogs is usable is core's answer, read live from the config the
-/// app already observes — adding a token in Settings takes the bar away
-/// without the pane asking again.
+/// The notice that Discogs is not among the sources Find online can ask,
+/// shown above both sections because it holds for each of them.
 struct FindOnlineDiscogsBar: View {
     /// Open Settings on the Discogs page.
     let onOpenSettings: () -> Void
@@ -29,11 +22,11 @@ struct FindOnlineDiscogsBar: View {
                     .padding(.top, 1)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Add \(discogs) to find more pressings")
-                        .font(.system(size: 12, weight: .semibold))
+                        .themeText(.strong)
                     Text(
                         "Many regional releases, reissues and vinyl pressings are only on \(discogs). Tokens are free: create one in your \(discogs) account settings."
                     )
-                    .font(.system(size: 12))
+                    .themeText(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 }

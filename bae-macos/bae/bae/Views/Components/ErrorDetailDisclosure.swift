@@ -2,10 +2,8 @@ import BaeKit
 import SwiftUI
 
 /// A user-facing error: the localized line, the concrete fault beneath it with
-/// a copy action, and a disclosure for the rest of the chain.
-///
-/// The fault line stays outside the disclosure because core's line names only
-/// a category ("Something went wrong.").
+/// a copy action, and a disclosure for the rest of the chain. The fault stays
+/// outside the disclosure because core's line names only a category.
 struct ErrorDetailDisclosure: View {
     let error: DisplayError?
     /// Tint for the line and icon: `Theme.danger` or `Theme.warning`.
@@ -23,14 +21,14 @@ struct ErrorDetailDisclosure: View {
                         .foregroundStyle(tint)
                 }
                 Text(error?.line ?? "")
-                    .font(.callout)
+                    .themeText(.body)
                     .foregroundStyle(tint)
             }
 
             if let detail = error?.detail {
                 HStack(alignment: .top, spacing: 6) {
                     Text(error?.detailSummary ?? "")
-                        .font(.caption.monospaced())
+                        .themeText(.mono)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                         .truncationMode(.tail)
@@ -59,7 +57,7 @@ struct ErrorDetailDisclosure: View {
                             .font(.caption.weight(.semibold))
                             .rotationEffect(.degrees(detailExpanded ? 90 : 0))
                         Text("Details")
-                            .font(.caption)
+                            .themeText(.detail)
                         Spacer(minLength: 0)
                     }
                     .foregroundStyle(.secondary)
@@ -69,7 +67,7 @@ struct ErrorDetailDisclosure: View {
 
                 if detailExpanded {
                     Text(excerpt)
-                        .font(.caption.monospaced())
+                        .themeText(.mono)
                         .foregroundStyle(.secondary)
                         .lineLimit(6)
                         .truncationMode(.tail)

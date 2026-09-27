@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Libraries on this device, each with Open (or a warning and Show in Finder
-/// when its config won't load) and Delete. The open library is removed from
-/// its settings instead, so its database can close first.
+/// Libraries on this device, each with Open (or Show in Finder when it won't
+/// load) and Delete.
 struct LocalLibrariesSection: View {
     let libraries: [BridgeLibrary]
     let disabled: Bool
@@ -51,16 +50,16 @@ private struct LibraryRow: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(library.name)
-                    .font(.body.bold())
+                    .themeText(.rowTitle)
                 if let error = library.error {
                     Text("Can't open: \(error)")
-                        .font(.caption)
+                        .themeText(.detail)
                         .foregroundStyle(Theme.warning)
                         .lineLimit(2)
                 }
                 else if let provider = library.cloudProvider {
                     Text(provider.displayName)
-                        .font(.caption)
+                        .themeText(.detail)
                         .foregroundStyle(.secondary)
                 }
             }

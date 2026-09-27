@@ -17,7 +17,7 @@ struct ComposerListView: View {
         else if list.totalCount == 0 {
             ListPlaceholder {
                 Text("No composers")
-                    .font(.callout)
+                    .themeText(.body)
                     .foregroundStyle(.secondary)
                     .padding(32)
             }
@@ -79,10 +79,10 @@ struct ComposerSummaryRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(summary.name)
-                    .font(.body)
+                    .themeText(.rowTitle)
                     .lineLimit(1)
                 Text("\(summary.workCount) works")
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

@@ -23,7 +23,7 @@ struct FindOnlineFailureLines: View {
                     .buttonStyle(.link)
             }
         }
-        .font(.system(size: 12.5))
+        .themeText(.body)
         .padding(.horizontal, 18)
         .padding(.vertical, 22)
         .frame(maxWidth: .infinity, alignment: .topLeading)

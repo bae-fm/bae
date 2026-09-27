@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Shows the library's recovery code, which grants full access on a new device
-/// when no other device can approve it. `result` is `nil` while loading, and a
-/// binding because the presenter fills it in after the sheet is up.
+/// Shows the library's recovery code; `result` is nil while the presenter
+/// loads it.
 struct CodeShareSheet: View {
     @Binding
     var result: Result<String, Error>?
@@ -13,7 +12,7 @@ struct CodeShareSheet: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Recovery code")
-                    .font(.headline)
+                    .themeText(.heading)
                 Spacer()
                 Button("Done") { onDismiss() }
                     .buttonStyle(.borderless)
@@ -38,7 +37,7 @@ struct CodeShareSheet: View {
                     Text(
                         "Anyone with this code has full access to your library. Keep it secret. Use it only to restore on a new device when you have no other device available."
                     )
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
 
@@ -52,7 +51,7 @@ struct CodeShareSheet: View {
                     if let line = error.displayLine {
                         Text(line)
                             .foregroundStyle(Theme.danger)
-                            .font(.callout)
+                            .themeText(.body)
                     }
                     Spacer()
                 }

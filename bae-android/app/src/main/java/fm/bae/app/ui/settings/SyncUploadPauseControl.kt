@@ -19,6 +19,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.pauseRequested
 import fm.bae.app.performBridgeAction
+import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.launch
 
 private val logger = BaeLogger("bae.SyncUploadPauseControl")
@@ -52,7 +53,7 @@ internal fun SyncUploadPauseControl(session: OpenLibrary) {
     }
     Text(
         text = stringResource(R.string.settings_pause_uploads_footer),
-        style = MaterialTheme.typography.bodySmall,
+        style = ThemeText.detail.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }

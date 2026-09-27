@@ -86,11 +86,11 @@ struct NowPlayingBar: View {
                     .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(track.trackTitle)
-                        .font(.subheadline.weight(.medium))
+                        .themeText(.rowTitle)
                         .lineLimit(1)
                     if let secondaryLine {
                         Text(secondaryLine)
-                            .font(.caption)
+                            .themeText(.detail)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
@@ -135,7 +135,6 @@ struct NowPlayingBar: View {
                 events: playbackStore.queueItemsAddedPublisher,
                 scheduler: .main,
                 style: QueueAddBadgeStyle(
-                    textFont: .system(size: 11, weight: .semibold),
                     symbolFont: .system(size: 9, weight: .bold),
                     padding: EdgeInsets(
                         top: 3,

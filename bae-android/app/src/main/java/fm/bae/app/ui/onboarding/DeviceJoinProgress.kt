@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.coreString
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
+import fm.bae.app.ui.appearance.ThemeText
 import uniffi.bae_bridge.BridgeAdmittingDeviceJoinProgress
 import uniffi.bae_bridge.BridgeJoiningDeviceJoinProgress
 import uniffi.bae_bridge.bridgeAdmittingDeviceJoinProgressKey
@@ -44,7 +45,7 @@ internal fun JoiningDeviceProgress(progress: BridgeJoiningDeviceJoinProgress) {
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = context.coreString(bridgeJoiningDeviceJoinProgressKey(progress)),
-            style = MaterialTheme.typography.titleMedium,
+            style = ThemeText.heading.style,
             textAlign = TextAlign.Center,
         )
         if (bytes != null) {
@@ -52,7 +53,7 @@ internal fun JoiningDeviceProgress(progress: BridgeJoiningDeviceJoinProgress) {
                 text =
                     "${context.formatFileSize(bytes.first.requireDisplayableByteCount())} / " +
                         context.formatFileSize(bytes.second.requireDisplayableByteCount()),
-                style = MaterialTheme.typography.labelSmall,
+                style = ThemeText.fine.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -67,7 +68,7 @@ internal fun AdmittingDeviceProgress(progress: BridgeAdmittingDeviceJoinProgress
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = context.coreString(bridgeAdmittingDeviceJoinProgressKey(progress)),
-            style = MaterialTheme.typography.titleMedium,
+            style = ThemeText.heading.style,
             textAlign = TextAlign.Center,
         )
     }

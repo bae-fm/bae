@@ -38,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
@@ -49,6 +48,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeArtistSortCriterion
@@ -181,13 +181,12 @@ internal fun ArtistSummaryRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = artist.name,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
+                style = ThemeText.rowTitle.style,
                 maxLines = 1,
             )
             Text(
                 text = stringResource(R.string.album_count, artist.albumCount),
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
             )

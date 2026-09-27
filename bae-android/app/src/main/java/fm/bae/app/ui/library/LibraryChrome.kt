@@ -41,16 +41,15 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.data.SyncFailure
 import fm.bae.app.reconnectFailedSync
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
@@ -120,7 +119,7 @@ internal fun LibraryTopBar(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = "bae", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text(text = "bae", style = ThemeText.wordmarkBar.style)
             Spacer(modifier = Modifier.weight(1f))
             IconButton(onClick = onOpenSearch) {
                 Icon(imageVector = Icons.Filled.Search, contentDescription = stringResource(R.string.search))
@@ -169,19 +168,19 @@ internal fun LibraryModeBar(
         TextButton(onClick = { onModeChange(LibraryBrowserMode.ALBUMS) }) {
             Text(
                 text = stringResource(R.string.library_mode_albums),
-                fontWeight = if (mode == LibraryBrowserMode.ALBUMS) FontWeight.Bold else FontWeight.Normal,
+                style = if (mode == LibraryBrowserMode.ALBUMS) ThemeText.strong.style else ThemeText.body.style,
             )
         }
         TextButton(onClick = { onModeChange(LibraryBrowserMode.COMPOSERS) }) {
             Text(
                 text = stringResource(R.string.library_mode_composers),
-                fontWeight = if (mode == LibraryBrowserMode.COMPOSERS) FontWeight.Bold else FontWeight.Normal,
+                style = if (mode == LibraryBrowserMode.COMPOSERS) ThemeText.strong.style else ThemeText.body.style,
             )
         }
         TextButton(onClick = { onModeChange(LibraryBrowserMode.ARTISTS) }) {
             Text(
                 text = stringResource(R.string.library_mode_artists),
-                fontWeight = if (mode == LibraryBrowserMode.ARTISTS) FontWeight.Bold else FontWeight.Normal,
+                style = if (mode == LibraryBrowserMode.ARTISTS) ThemeText.strong.style else ThemeText.body.style,
             )
         }
     }

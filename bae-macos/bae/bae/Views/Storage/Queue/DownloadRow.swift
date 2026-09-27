@@ -19,7 +19,7 @@ struct DownloadRow: View {
                         .lineLimit(1)
 
                     Text(op.detailText)
-                        .font(.caption)
+                        .themeText(.detail)
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }

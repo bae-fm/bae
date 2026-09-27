@@ -90,9 +90,59 @@ pub fn swift(theme: &Theme) -> String {
     }
     out.push_str("}\n");
 
+    out.push_str(
+        "\n/// A text style: its font, letter spacing and case, and on macOS the\n\
+         /// size, weight and design AppKit text draws it with.\npublic struct ThemeText: Sendable {\n    \
+         public let font: Font\n    public let tracking: CGFloat\n    public let uppercase: Bool\n    \
+         public let macOSSize: CGFloat\n    public let weight: Font.Weight\n    public let monospaced: Bool\n}\n\n\
+         extension ThemeText {\n",
+    );
+    for (role, text) in &theme.text {
+        let design = if text.monospaced {
+            ".monospaced"
+        } else {
+            ".default"
+        };
+        let _ = writeln!(
+            out,
+            "    public static let {role} = ThemeText(\n        font: .theme(\n            macOS: {},\n            \
+             iOS: .{},\n            weight: {},\n            design: {design}\n        ),\n        \
+             tracking: {},\n        uppercase: {},\n        macOSSize: {},\n        weight: {},\n        \
+             monospaced: {}\n    )",
+            text.macos,
+            text.ios,
+            text.weight.swift(),
+            text.tracking,
+            text.uppercase,
+            text.macos,
+            text.weight.swift(),
+            text.monospaced
+        );
+    }
+    out.push_str("}\n");
+    out.push_str(FONT_INITIALIZER);
+
     out.push_str(COLOR_INITIALIZERS);
     out
 }
+
+/// A role's font: a point size on macOS, a Dynamic Type style on iOS.
+const FONT_INITIALIZER: &str = "
+extension Font {
+    fileprivate static func theme(
+        macOS size: CGFloat,
+        iOS style: Font.TextStyle,
+        weight: Font.Weight,
+        design: Font.Design
+    ) -> Font {
+        #if os(macOS)
+            .system(size: size, weight: weight, design: design)
+        #else
+            .system(style, design: design, weight: weight)
+        #endif
+    }
+}
+";
 
 /// Builds each colour from its bytes, and a semantic colour from its light
 /// and dark values through the platform's appearance-aware colour.

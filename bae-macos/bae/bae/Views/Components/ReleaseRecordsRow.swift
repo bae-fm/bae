@@ -1,12 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Every catalog that describes a release, as a wrapped row of links.
-///
-/// One entry per catalog, in the order core lists them, each opening that
-/// catalog's page for this release. The name is the catalog's own brand and
-/// the address is built by core, so this row neither translates nor composes
-/// anything — it draws what the records say.
+/// Every catalog that describes a release, as a wrapped row of links to each
+/// catalog's page, in the order core lists them.
 struct ReleaseRecordsRow: View {
     let records: [BridgeReleaseRecord]
     var scale: ReleaseFactsScale = .pane
@@ -17,10 +13,7 @@ struct ReleaseRecordsRow: View {
             rowSpacing: scale.recordRowSpacing
         ) {
             ForEach(records, id: \.catalog) { record in
-                ReleaseRecordLink(
-                    record: record,
-                    fontSize: scale.recordFontSize
-                )
+                ReleaseRecordLink(record: record)
             }
         }
         .accessibilityIdentifier("release-records")
@@ -30,7 +23,6 @@ struct ReleaseRecordsRow: View {
 /// One catalog's name and the way to its page for this release.
 private struct ReleaseRecordLink: View {
     let record: BridgeReleaseRecord
-    let fontSize: CGFloat
 
     var body: some View {
         if let url = URL(string: record.url) {
@@ -41,9 +33,7 @@ private struct ReleaseRecordLink: View {
             .buttonStyle(.plain)
         }
         else {
-            // The address comes from core; one that will not parse is a broken
-            // record, and the name still says which catalog describes this
-            // release.
+            // An address that won't parse still names the catalog.
             name.foregroundStyle(.secondary)
         }
     }
@@ -51,10 +41,10 @@ private struct ReleaseRecordLink: View {
     private var name: some View {
         HStack(spacing: 3) {
             Text(verbatim: bridgeCatalogName(catalog: record.catalog))
-                .font(.system(size: fontSize, weight: .semibold))
             Image(systemName: "arrow.up.right")
-                .font(.system(size: fontSize - 2.5, weight: .semibold))
+                .imageScale(.small)
         }
+        .themeText(.chip)
         .fixedSize()
     }
 }

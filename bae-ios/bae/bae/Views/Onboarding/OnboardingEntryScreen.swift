@@ -15,7 +15,7 @@ struct OnboardingEntryScreen: View {
                 .font(.system(size: 72))
                 .foregroundStyle(Theme.accent)
             Text("bae")
-                .font(.system(size: 48, weight: .bold))
+                .themeText(.wordmark)
             OnboardingSecondaryText(
                 "Add this device to a library you already have on another device."
             )
@@ -43,7 +43,7 @@ struct OnboardingEntryScreen: View {
 
             if let error {
                 Text(error)
-                    .font(.callout)
+                    .themeText(.body)
                     .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 320)

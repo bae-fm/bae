@@ -25,6 +25,7 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeText
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
@@ -57,7 +58,7 @@ internal fun DownloadsSummaryStrip(
                         } else {
                             downloadQueueSummaryText(context, snapshot)
                         },
-                    style = MaterialTheme.typography.bodySmall,
+                    style = ThemeText.detail.style,
                     color =
                         if (snapshot.paused) {
                             BaeTheme.colors.activity

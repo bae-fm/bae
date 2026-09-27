@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Storage state, any in-flight transfer/upload progress, and the available
-/// storage actions for a release. A separate leaf so transfer and outbox ticks
-/// re-render only this band, not the sheet's file table.
+/// A release's storage state, transfer or upload progress, and storage
+/// actions; a separate view so progress ticks re-render only this band.
 struct StorageStatusBand: View {
     let release: ReleaseDetail
     let onAction: (BridgeReleaseStorageAction) -> Void
@@ -12,11 +11,9 @@ struct StorageStatusBand: View {
     @Environment(OutboxStore.self)
     private var outboxStore
 
-    /// Outbox progress for this release while its make-Remote transition is
-    /// unfinished, including publication after all provider bytes land. Drives
-    /// the "uploading…" indicator and suppresses transfer actions — acting
-    /// mid-upload races the observer that completes the local → cloud
-    /// step.
+    /// This release's outbox progress while its move to the cloud is
+    /// unfinished; transfer actions stay hidden meanwhile, since acting
+    /// mid-upload races the observer that completes the move.
     private var uploadObservation: StorageUploadObservation? {
         outboxStore.storageUploadObservation(forRelease: release.summary.id)
     }
@@ -32,16 +29,15 @@ struct StorageStatusBand: View {
                 ) {
                     uploadLabel(observation)
                 }
-                .font(.callout)
+                .themeText(.body)
             }
             else {
                 storageStatus
             }
-            // Read the live transfer state off the identity-stable summary so a
-            // running pin/unpin/cloud/local transition updates the bar in place.
+            // Read off the identity-stable summary so the bar updates in place.
             if let transfer = release.summary.transfer {
                 ProgressLine(transfer.label, progress: nil)
-                    .font(.callout)
+                    .themeText(.body)
             }
             else if Self.showsTransferActions(
                 uploadObservation: uploadObservation
@@ -53,9 +49,7 @@ struct StorageStatusBand: View {
         .padding()
     }
 
-    /// Storage actions are available only at rest. Publication and
-    /// cancellation can have no file bytes left, but they are still active
-    /// cloud transitions and keep the action area occupied by their phase.
+    /// Storage actions are offered only while no cloud transition runs.
     static func showsTransferActions(
         uploadObservation: StorageUploadObservation?
     ) -> Bool {
@@ -95,7 +89,7 @@ struct StorageStatusBand: View {
                 }
             }
         }
-        .font(.callout)
+        .themeText(.body)
         .foregroundStyle(.secondary)
     }
 
@@ -106,9 +100,7 @@ struct StorageStatusBand: View {
                     Label(action.label, systemImage: action.systemImage)
                 }
             }
-            // Export (verbatim) and Save As (preset workup) are pure outputs —
-            // no state change — so both are offered for every release regardless
-            // of locality, not among the core-computed `storageActions`.
+            // Export and Save As change no state, so every release offers them.
             Button(action: { onExport() }) {
                 Label("Export…", systemImage: "square.and.arrow.up")
             }

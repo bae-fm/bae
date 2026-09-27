@@ -40,14 +40,14 @@ struct GalleryView: View {
             VStack(spacing: 2) {
                 if let selectedItem {
                     Text(selectedItem.label)
-                        .font(.caption)
+                        .themeText(.detail)
                         .foregroundStyle(Theme.onFill)
                     if items.count > 1 {
                         Text(
                             verbatim:
                                 "\((selection + 1).formatted()) / \(items.count.formatted())"
                         )
-                        .font(.caption2)
+                        .themeText(.fine)
                         .foregroundStyle(Theme.onFillSecondary)
                     }
                 }

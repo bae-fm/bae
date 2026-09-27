@@ -21,7 +21,7 @@ struct RenameLibrarySheet: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Rename Library")
-                    .font(.headline)
+                    .themeText(.heading)
                 Spacer()
             }
             .padding()
@@ -41,7 +41,7 @@ struct RenameLibrarySheet: View {
                     Section {
                         Text(error)
                             .foregroundStyle(Theme.danger)
-                            .font(.callout)
+                            .themeText(.body)
                     }
                 }
             }

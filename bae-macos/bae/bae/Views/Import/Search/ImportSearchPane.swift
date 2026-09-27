@@ -151,7 +151,7 @@ struct ImportSearchPane: View {
                 Text(error)
                 Spacer()
             }
-            .font(.caption)
+            .themeText(.body)
             .foregroundStyle(Theme.danger)
             .padding(.horizontal, 14)
             .padding(.vertical, 6)

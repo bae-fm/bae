@@ -12,11 +12,10 @@ struct BrowseDetailHeader<Summary: BrowseSummaryDisplay>: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
             VStack(alignment: .leading, spacing: 5) {
                 Text(summary.name)
-                    .font(.system(size: 22, weight: .bold))
-                    .tracking(-0.3)
+                    .themeText(.title)
                     .lineLimit(2)
                 Text(summary.countText)
-                    .font(.system(size: 13))
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
         }

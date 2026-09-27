@@ -70,18 +70,18 @@ struct ImportConfirmationCardAction: View {
                     ProgressLine(progress: progress.bar?.fraction) {
                         UploadActivityLabel(progress: progress)
                     }
-                    .font(.callout)
+                    .themeText(.body)
                     .frame(width: 200)
                 }
                 else {
                     Label("Imported", systemImage: "checkmark.circle.fill")
                         .foregroundStyle(Theme.success)
-                        .font(.callout)
+                        .themeText(.body)
                 }
                 if let albumId = completedAlbumId {
                     Button("View in Library") { onViewInLibrary(albumId) }
                         .buttonStyle(.link)
-                        .font(.callout)
+                        .themeText(.body)
                 }
             }
         }

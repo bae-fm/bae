@@ -32,9 +32,9 @@ struct KeychainRestoreSection: View {
                     HStack(spacing: 8) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(entry.info.libraryName)
-                                .font(.body.bold())
+                                .themeText(.rowTitle)
                             Text(entry.info.cloudProvider.displayName)
-                                .font(.caption)
+                                .themeText(.detail)
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
@@ -56,7 +56,7 @@ struct KeychainRestoreSection: View {
                                     onCancelAuth()
                                 }
                                 .buttonStyle(.borderless)
-                                .font(.callout)
+                                .themeText(.body)
                             }
                             .opacity(isAuthorizing ? 1 : 0)
                             .allowsHitTesting(isAuthorizing)

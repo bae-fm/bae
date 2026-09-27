@@ -133,7 +133,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
                 placeholder: String(localized: "Album title"),
                 value: values.albumTitle,
                 chrome: .inline,
-                font: .systemFont(ofSize: 22, weight: .semibold),
+                font: ThemeText.title.nsFont,
                 editingCommands: editingCommands,
                 onCommit: { await writer.setField(.albumTitle, $0) },
             )
@@ -144,7 +144,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
                     Task { await writer.setAlbumArtists(assignments) }
                 },
             )
-            .font(.system(size: 14))
+            .themeText(.body)
             .foregroundStyle(.secondary)
             .modifier(FieldChrome(focused: false, style: .inline))
             // The album's original year; the pressing's year is under Release.
@@ -152,7 +152,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
                 placeholder: String(localized: "Album year"),
                 value: values.albumYear,
                 chrome: .inline,
-                font: .systemFont(ofSize: 13),
+                font: ThemeText.body.nsFont,
                 textColor: .tertiaryLabelColor,
                 editingCommands: editingCommands,
                 onCommit: { await writer.setField(.albumYear, $0) },
@@ -328,7 +328,7 @@ struct ReleasePressingFieldsGrid: View {
             value: text,
             monospaced: monospaced,
             chrome: .inline,
-            font: .systemFont(ofSize: 12.5),
+            font: ThemeText.body.nsFont,
             placeholderRole: role,
             editingCommands: editingCommands,
             onCommit: onCommit,
@@ -343,7 +343,7 @@ struct ReleasePressingFieldsGrid: View {
     /// A row's label, right-aligned in its column.
     private func rowLabel(_ label: String) -> some View {
         Text(label)
-            .font(.system(size: 12))
+            .themeText(.detail)
             .foregroundStyle(.secondary)
             .lineLimit(1)
             .frame(width: Self.labelWidth, alignment: .trailing)
@@ -442,7 +442,7 @@ struct ArtistIdentityBadge: View {
 
     var body: some View {
         Text(label)
-            .font(.system(size: 9.5, weight: .medium))
+            .themeText(.chip)
             .foregroundStyle(.secondary)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
@@ -602,7 +602,9 @@ struct ArtistAssignmentsField: View {
                 ProgressView().controlSize(.small)
             }
             if let errorMessage {
-                Text(errorMessage).font(.caption).foregroundStyle(Theme.danger)
+                Text(errorMessage)
+                    .themeText(.body)
+                    .foregroundStyle(Theme.danger)
             }
             ForEach(results, id: \.artist.artistId) { result in
                 VStack(alignment: .leading, spacing: 1) {
@@ -620,7 +622,7 @@ struct ArtistAssignmentsField: View {
                         uiStore.navigateToArtist(result.artist.artistId)
                     }
                     .buttonStyle(.link)
-                    .font(.caption)
+                    .themeText(.detail)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -635,7 +637,7 @@ struct ArtistAssignmentsField: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Which one?")
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
             ForEach(choices, id: \.artistId) { choice in
                 Button {

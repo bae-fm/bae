@@ -23,7 +23,7 @@ struct MetadataField: View {
     private var field: some View {
         let base = TextField(placeholder, text: $text)
             .textFieldStyle(.plain)
-            .font(.system(size: 13))
+            .themeText(.body)
             .focused($focused)
         if monospaced {
             base.monospacedDigit()

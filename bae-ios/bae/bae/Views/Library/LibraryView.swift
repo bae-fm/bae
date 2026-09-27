@@ -255,7 +255,7 @@ private struct LibrarySyncToolbarStatus: View {
             }
             else {
                 Text(SyncIndicatorLabel.text(syncStatusStore.indicator))
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
         }
@@ -346,7 +346,7 @@ private struct LibraryBanner: View {
                     }
                     else {
                         Button("Retry") { Task { await reconnect() } }
-                            .font(.caption.bold())
+                            .themeText(.strong)
                             .foregroundStyle(Theme.onFill)
                     }
                 }
@@ -379,11 +379,11 @@ private struct LibraryBanner: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(message)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(Theme.onFill)
                 if let detail {
                     Text(detail)
-                        .font(.caption2.monospaced())
+                        .themeText(.mono)
                         .foregroundStyle(Theme.onFillSecondary)
                         .lineLimit(2)
                         .truncationMode(.tail)

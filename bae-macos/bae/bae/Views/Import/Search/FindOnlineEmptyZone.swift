@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// A section with nothing to list: in the middle, one line saying what
@@ -10,7 +11,7 @@ struct FindOnlineEmptyZone<Content: View>: View {
         VStack(spacing: 10) {
             content
         }
-        .font(.system(size: 12))
+        .themeText(.body)
         .padding(.horizontal, 18)
         .padding(.top, 22)
         .padding(.bottom, 26)

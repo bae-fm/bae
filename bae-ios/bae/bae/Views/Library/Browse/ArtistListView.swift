@@ -17,7 +17,7 @@ struct ArtistListView: View {
         else if list.totalCount == 0 {
             ListPlaceholder {
                 Text("No artists")
-                    .font(.callout)
+                    .themeText(.body)
                     .foregroundStyle(.secondary)
                     .padding(32)
             }
@@ -79,10 +79,10 @@ struct ArtistSummaryRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(summary.name)
-                    .font(.body)
+                    .themeText(.rowTitle)
                     .lineLimit(1)
                 Text("\(summary.albumCount) albums")
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

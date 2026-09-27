@@ -35,18 +35,11 @@ final class EditingCommitCommands {
     }
 }
 
-/// A text field whose value lives somewhere else — a row in the database —
-/// and which decides when to send what was typed there.
+/// A text field for a value stored elsewhere, which commits its draft when
+/// the person leaves the field, presses Return, or pauses typing.
 ///
-/// One write is one commit, and a commit redraws whatever reads it. That is
-/// right per settled value and wrong per keystroke, so the field owns a draft
-/// while it has focus and commits it on the three moments a person means "this
-/// is the value": leaving the field, pressing Return, and pausing.
-///
-/// The draft is the only copy anywhere, and it exists only while the field is
-/// focused: an unfocused field shows `value`, so a value that changed
-/// underneath replaces what is on screen rather than being overwritten by a
-/// stale draft.
+/// The draft exists only while the field is focused, so a value that changes
+/// underneath an unfocused field replaces what is on screen.
 struct CommittedTextField: View {
     /// What the placeholder is for.
     enum PlaceholderRole {
@@ -64,7 +57,7 @@ struct CommittedTextField: View {
     var monospaced: Bool = false
     var chrome: FieldChrome.Style = .boxed
     var fillsWidth = false
-    var font: NSFont = .systemFont(ofSize: 13)
+    var font: NSFont = ThemeText.body.nsFont
     /// The typed value's color. The placeholder takes its own, by role.
     var textColor: NSColor = .controlTextColor
     var placeholderRole: PlaceholderRole = .hint
@@ -137,25 +130,16 @@ struct CommittedTextField: View {
             }
     }
 
-    /// How far the text field's cell insets its text from each side of the
-    /// field. Measured at 3.5–3.8 points across the two sides for every font
-    /// the fields use, so two a side leaves nothing of the last glyph outside
-    /// the field's bounds.
+    /// The field cell's text inset on each side; measured at 3.5–3.8 points
+    /// across both sides for every font the fields use.
     private static let cellInset: CGFloat = 2
 
     /// The field, laid out by a hidden Text of the same font and content and
     /// drawn in exactly the frame that Text takes.
     ///
-    /// A SwiftUI `TextField` sizes its `NSTextField` itself, and that size is
-    /// not the field's own: a hosting now and then gives an empty 12.5-point
-    /// fact field the 26-point height of the album title beside it, or the
-    /// title the 16-point height of a track row, while AppKit measures the
-    /// field at its own font's height throughout. The field draws its text
-    /// placed by that borrowed height — half a point off, or with the top
-    /// of a 22-point title cut away. A Text measures from its font every
-    /// time, so the Text lays the field out and the editor below fills that
-    /// frame and nothing else. The width follows the text unless the caller
-    /// asks the editor to fill its column.
+    /// A SwiftUI `TextField` sometimes sizes its `NSTextField` to a
+    /// neighbouring field's height, which offsets or clips the text; a Text
+    /// always measures from its own font.
     private var field: some View {
         Text(verbatim: draft.isEmpty ? placeholder : draft)
             .font(Font(draft.isEmpty ? font : valueFont))
@@ -348,7 +332,7 @@ private struct CommittedTextEditor: NSViewRepresentable {
                 onCommit: { stored = $0 },
             )
             Text(verbatim: "Stored: \(stored)")
-                .font(.system(size: 11))
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
         }
         .padding(24)

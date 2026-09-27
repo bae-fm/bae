@@ -1,25 +1,22 @@
 import BaeKit
 import SwiftUI
 
-/// The Identify title row: the way back, and the page's name centered. Which sources
-/// are asked is Settings › Import's; what identification and the search have
-/// to say about themselves is on their own section headers below.
+/// The Identify title row: the way back, and the page's name centered.
 struct FindOnlineHeader: View {
-    /// Leave the pane. `nil` for a surface that owns its own way out — the
-    /// re-identify sheet closes rather than going back.
+    /// Leave the pane; `nil` for a surface with its own way out.
     let onBack: (() -> Void)?
 
     var body: some View {
         ZStack {
             Text("Identify")
-                .font(.system(size: 13, weight: .semibold))
+                .themeText(.strong)
             HStack(spacing: 12) {
                 if let onBack {
                     Button(action: onBack) {
                         Label("Back", systemImage: "chevron.left")
                     }
                     .buttonStyle(.link)
-                    .font(.system(size: 13))
+                    .themeText(.body)
                 }
                 Spacer(minLength: 12)
             }

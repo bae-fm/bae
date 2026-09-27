@@ -1,23 +1,14 @@
 import BaeKit
 import SwiftUI
 
-/// The stacked status banners above the confirm form: an already-in-library
-/// warning (release or album), the import pipeline's error disclosure, and the
-/// commit-time error line. Each is conditional on its input, so an all-clear
-/// candidate renders nothing.
-///
-/// A source tracklist that disagrees with the folder's audio is not one of
-/// these: it is stated on the track slot it belongs to.
+/// The status banners above the confirm form: already in the library, the
+/// import's failure, and the commit-time error, each only when it applies.
 struct ImportConfirmationBanners: View {
     let libraryStatus: BridgeLibraryStatus?
     let importStatus: BridgeCandidateImportStatus?
-    /// Commit-time error written to the candidate (invalid edit shape, a failed
-    /// `start_import` dispatch). Distinct from the `importStatus`-derived error,
-    /// which the candidate's row carries once an import has failed.
+    /// The error written to the candidate when committing the edit failed.
     let error: String?
-    /// The last import of this candidate that failed, as it survives a
-    /// relaunch. Core omits it while an import owns the candidate or after an
-    /// import has completed.
+    /// The last failed import of this candidate, kept across relaunches.
     let failure: BridgeImportFailure?
     let canEdit: Bool
     /// Try the failed import again.
@@ -33,7 +24,7 @@ struct ImportConfirmationBanners: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(NoticeTone.warning.tint)
                     Text("This release is already in your library")
-                        .font(.callout)
+                        .themeText(.body)
                         .foregroundStyle(NoticeTone.warning.tint)
                     Spacer()
                     if let albumId = libStatus.albumId {
@@ -53,7 +44,7 @@ struct ImportConfirmationBanners: View {
                     Text(
                         "Another release of this album is in your library"
                     )
-                    .font(.callout)
+                    .themeText(.body)
                     Spacer()
                     if let albumId = libStatus.albumId {
                         Button("View in Library") {
@@ -74,7 +65,7 @@ struct ImportConfirmationBanners: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(NoticeTone.error.tint)
                 Text(error)
-                    .font(.callout)
+                    .themeText(.body)
                     .foregroundStyle(NoticeTone.error.tint)
             }
             .padding(10)
@@ -123,14 +114,14 @@ struct ImportConfirmationBanners: View {
                     .foregroundStyle(NoticeTone.warning.tint)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(conflict.incomingArtistName)
-                        .fontWeight(.semibold)
+                        .themeText(.strong)
                     Text(
                         verbatim: coreString(
                             "ui.import.artist_identity_conflict.explanation"
                         )
                     )
                 }
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(NoticeTone.warning.tint)
             }
             HStack(spacing: 8) {
@@ -167,7 +158,7 @@ struct ImportConfirmationBanners: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(verbatim: coreString(titleKey))
                 Text(verbatim: artist.name)
-                    .font(.caption)
+                    .themeText(.detail)
             }
         }
     }

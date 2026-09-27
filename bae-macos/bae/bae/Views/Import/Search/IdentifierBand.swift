@@ -312,7 +312,7 @@ private struct CatalogCandidatesDisclosure: View {
                     ? String(localized: "Fewer")
                     : String(localized: "+\(count) more")
             )
-            .font(.system(size: 11))
+            .themeText(.chip)
             .foregroundStyle(.secondary)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
@@ -388,7 +388,7 @@ private struct TitleSearchChip<Trailing: View>: View {
     ) -> some View {
         TextField(name, text: text, prompt: Text(verbatim: ""))
             .textFieldStyle(.plain)
-            .font(.system(size: 10.5, design: .monospaced))
+            .themeText(.mono)
             .foregroundStyle(.secondary)
             .focused($focused, equals: field)
             .disabled(isWaiting)

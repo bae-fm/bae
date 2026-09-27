@@ -25,9 +25,7 @@ struct TrackList: View {
                 group in
                 let groupOffset = offsets[groupIndex]
                 if !group.sideHeaderText.isEmpty {
-                    Text(group.sideHeaderText)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
+                    Eyebrow(verbatim: group.sideHeaderText)
                         .padding(.top, 12)
                         .padding(.bottom, 4)
                 }
@@ -46,7 +44,7 @@ struct TrackList: View {
                 // release needs each side's named here.
                 if groups.count > 1, !group.totalDurationText.isEmpty {
                     Text(group.totalDurationText)
-                        .font(.caption)
+                        .themeText(.detail)
                         .foregroundStyle(.secondary)
                         .padding(.top, 8)
                 }
@@ -57,15 +55,13 @@ struct TrackList: View {
 
 private struct TrackRow: View {
     let track: Track
-    /// The artist to show, or `nil` for none. Resolved by the album/work-release
-    /// display; the row does not decide.
+    /// The artist to show, or `nil` for none, as the album display resolves it.
     let artist: String?
     let onPlay: () -> Void
     let onPlayNext: () -> Void
     let onAddToQueue: () -> Void
 
-    // Read playback state at the leaf so only the rows whose indicator actually
-    // changes re-render, rather than threading a snapshot down from the parent.
+    // Read at the leaf so only rows whose indicator changes re-render.
     @Environment(PlaybackStore.self)
     private var playbackStore
     @Environment(Playback.self)
@@ -91,7 +87,8 @@ private struct TrackRow: View {
                 // the current row in/out never re-measures the stack.
                 ZStack(alignment: .leading) {
                     Text(track.positionText.isEmpty ? "-" : track.positionText)
-                        .font(.callout.monospacedDigit())
+                        .monospacedDigit()
+                        .themeText(.body)
                         .foregroundStyle(.secondary)
                         .opacity(isCurrent ? 0 : 1)
                     Image(
@@ -105,12 +102,12 @@ private struct TrackRow: View {
                 .frame(width: 36, alignment: .leading)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(track.title)
-                        .font(.body)
+                        .themeText(.rowTitle)
                         .foregroundStyle(isCurrent ? Theme.accent : .primary)
                         .lineLimit(1)
                     if let artist {
                         Text(artist)
-                            .font(.caption)
+                            .themeText(.detail)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
@@ -118,7 +115,8 @@ private struct TrackRow: View {
                 Spacer(minLength: 0)
                 if !track.durationLabel.isEmpty {
                     Text(track.durationLabel)
-                        .font(.callout.monospacedDigit())
+                        .monospacedDigit()
+                        .themeText(.body)
                         .foregroundStyle(.secondary)
                 }
             }

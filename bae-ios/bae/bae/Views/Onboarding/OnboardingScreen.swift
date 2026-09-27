@@ -1,7 +1,7 @@
+import BaeKit
 import SwiftUI
 
-/// The centered, padded column every onboarding screen sits in: content
-/// vertically centered between two spacers, filling the safe area.
+/// The centered, padded column every onboarding screen sits in.
 struct OnboardingScreen<Content: View>: View {
     @ViewBuilder
     let content: Content
@@ -17,8 +17,7 @@ struct OnboardingScreen<Content: View>: View {
     }
 }
 
-/// The secondary explanatory line shared by the onboarding screens: centered,
-/// width-capped, secondary color.
+/// The secondary explanatory line shared by the onboarding screens.
 struct OnboardingSecondaryText: View {
     let text: LocalizedStringKey
 
@@ -28,7 +27,7 @@ struct OnboardingSecondaryText: View {
 
     var body: some View {
         Text(text)
-            .font(.body)
+            .themeText(.body)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
             .frame(maxWidth: 320)
@@ -43,7 +42,7 @@ struct OnboardingSecondaryText: View {
     let secondary = "A secondary explanatory line."
     OnboardingScreen {
         Text(verbatim: title)
-            .font(.title)
+            .themeText(.title)
         OnboardingSecondaryText(LocalizedStringKey(secondary))
     }
 }

@@ -24,7 +24,7 @@ struct CoverGalleryView: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Text(initialLayout == .lightbox ? "Images" : "Change Cover")
-                    .font(.title2.weight(.semibold))
+                    .themeText(.title)
                 Spacer()
                 if let onRefresh, remoteItems.canRefresh {
                     Button(action: onRefresh) {
@@ -93,7 +93,7 @@ struct CoverGalleryView: View {
                 if let errorMessage = errorMessage ?? remoteItems.failureMessage
                 {
                     Label(errorMessage, systemImage: "exclamationmark.triangle")
-                        .font(.callout)
+                        .themeText(.body)
                         .foregroundStyle(Theme.danger)
                         .textSelection(.enabled)
                 }
@@ -219,7 +219,7 @@ struct CoverGalleryView: View {
                 if let onRefresh { Button("Retry", action: onRefresh) }
             }
         }
-        .font(.callout)
+        .themeText(.body)
         .padding(12)
     }
 
@@ -234,7 +234,7 @@ extension CoverGalleryView {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Label(title, systemImage: icon)
-                    .font(.headline)
+                    .themeText(.heading)
                 Spacer()
                 Text(items.count, format: .number)
                     .monospacedDigit()
@@ -285,12 +285,12 @@ extension CoverGalleryView {
                         )
                 }
                 Text(verbatim: item.label)
-                    .font(.callout)
+                    .themeText(.rowTitle)
                     .lineLimit(2)
                     .truncationMode(.middle)
                     .frame(height: 34, alignment: .topLeading)
                 Text(verbatim: item.sourceLabel)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
             .contentShape(Rectangle())
@@ -322,7 +322,7 @@ extension CoverGalleryView {
         case .unlinked:
             VStack(alignment: .leading, spacing: 10) {
                 Text("No linked release")
-                    .font(.headline)
+                    .themeText(.heading)
                 Text(
                     "Link a Discogs or MusicBrainz release to browse its artwork."
                 )
@@ -371,12 +371,12 @@ extension CoverGalleryView {
                 .focused($previewFocused)
                 .disabled(isSaving)
                 Text(verbatim: cursor.current.label)
-                    .font(.headline)
+                    .themeText(.heading)
                     .multilineTextAlignment(.center)
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(verbatim: cursor.current.sourceLabel)
-                    .font(.callout)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                 HStack(spacing: 20) {
                     Button {

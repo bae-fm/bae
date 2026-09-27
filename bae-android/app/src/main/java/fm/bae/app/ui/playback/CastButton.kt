@@ -44,6 +44,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
 import fm.bae.app.localizedLine
+import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCastDevice
@@ -52,12 +53,7 @@ import uniffi.bae_bridge.BridgeRendererKind
 
 private val logger = BaeLogger("bae.CastButton")
 
-/**
- * The now-playing bar's cast control: a glyph that opens the device picker.
- * Browsing runs only while the picker is up. Absent entirely when casting is
- * turned off — core browses nothing then and refuses a session, so there is
- * nothing for the control to do.
- */
+/** The now-playing bar's cast control, absent when casting is turned off. */
 @Composable
 fun CastButton(session: OpenLibrary) {
     val config by session.configStore.config.collectAsState()
@@ -69,8 +65,7 @@ fun CastButton(session: OpenLibrary) {
     var pickerOpen by remember { mutableStateOf(false) }
 
     if (pickerOpen) {
-        // Browsing is not always-on: it runs with the picker, and core clears
-        // the list as it starts, so the sheet opens on what this browse finds.
+        // Discovery runs only while the picker is open, and core clears the list as it starts.
         DisposableEffect(Unit) {
             session.cast.startDiscovery()
             onDispose { session.cast.stopDiscovery() }
@@ -127,7 +122,7 @@ private fun CastPickerSheet(
         ) {
             Text(
                 text = stringResource(R.string.cast),
-                style = MaterialTheme.typography.titleMedium,
+                style = ThemeText.heading.style,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             )
             CastDeviceRows(
@@ -168,7 +163,7 @@ private fun CastDeviceRows(
     if (devices.isEmpty()) {
         Text(
             text = stringResource(R.string.cast_no_devices),
-            style = MaterialTheme.typography.bodyMedium,
+            style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
@@ -200,7 +195,7 @@ private fun CastingRow(
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = stringResource(R.string.cast_casting_to, deviceName),
-            style = MaterialTheme.typography.bodyMedium,
+            style = ThemeText.rowTitle.style,
             maxLines = 1,
             modifier = Modifier.weight(1f),
         )
@@ -232,7 +227,7 @@ private fun DeviceRow(
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = device.name,
-            style = MaterialTheme.typography.bodyMedium,
+            style = ThemeText.rowTitle.style,
             maxLines = 1,
             modifier = Modifier.weight(1f),
         )
@@ -246,11 +241,7 @@ private fun DeviceRow(
     }
 }
 
-/**
- * A flavor hint for a row: a cast glyph for Cast, a speaker for an AirPlay
- * receiver, a TV for a UPnP renderer (commonly a TV or AV receiver). The list
- * itself isn't segregated by protocol — a speaker is a speaker.
- */
+/** The icon for a device row, by the kind of renderer it is. */
 private fun deviceIcon(kind: BridgeRendererKind): ImageVector =
     when (kind) {
         BridgeRendererKind.CAST -> Icons.Filled.Cast

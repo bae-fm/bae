@@ -36,8 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
@@ -45,6 +43,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -55,12 +54,7 @@ import uniffi.bae_bridge.BridgeMembership
 private const val TAG = "bae.MembersScreen"
 private val logger = BaeLogger(TAG)
 
-/**
- * Loads and holds the library's membership: its devices and whether this device
- * is the owner (the gate for inviting and removing). Reading the chain hits cloud
- * storage through the bridge runtime; the screen refreshes after every
- * approve or remove so the list reflects the new membership.
- */
+/** Loads and holds the library's membership: its devices and whether this device is the owner. */
 private class MembersModel(
     private val session: OpenLibrary,
     private val appContext: Context,
@@ -209,8 +203,7 @@ private fun MembersTopBar(onBack: () -> Unit) {
             }
             Text(
                 text = stringResource(R.string.members_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                style = ThemeText.title.style,
             )
         }
     }
@@ -230,7 +223,7 @@ private fun MembersList(
         item {
             Text(
                 text = stringResource(R.string.members_explanation),
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -264,15 +257,14 @@ private fun MemberRow(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = member.fingerprint,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = FontFamily.Monospace,
+                    style = ThemeText.mono.style,
                 )
                 AssistChip(onClick = {}, enabled = false, label = { Text(stringResource(member.role.labelRes())) })
             }
             if (member.isSelf) {
                 Text(
                     text = stringResource(R.string.members_this_device),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = ThemeText.detail.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

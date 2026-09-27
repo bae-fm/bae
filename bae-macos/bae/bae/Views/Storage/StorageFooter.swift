@@ -6,8 +6,8 @@ import SwiftUI
 /// left, the full-universe total size on the right.
 struct StorageFooter: View {
     let list: StorageList
-    /// The core aggregate over every row the current filter matches. `nil`
-    /// until fetched — rendered as absence, not a zero/partial stand-in.
+    /// The size of every row the current filter matches; nil, and not shown,
+    /// until fetched.
     let totalSize: UInt64?
     @Environment(OutboxStore.self)
     private var outboxStore
@@ -29,7 +29,7 @@ struct StorageFooter: View {
                 .foregroundStyle(.secondary)
             }
         }
-        .font(.callout)
+        .themeText(.body)
         .padding(.horizontal)
         .padding(.vertical, 8)
     }

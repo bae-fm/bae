@@ -31,7 +31,8 @@ struct TrackRowView: View {
             // so the row's size never changes.
             ZStack {
                 trackNumberLabel
-                    .font(.system(size: 13, weight: .medium).monospacedDigit())
+                    .themeText(.detail)
+                    .monospacedDigit()
                     .foregroundStyle(.tertiary)
                     .opacity(!isCurrent && !isHovered && !isLoading ? 1 : 0)
 
@@ -59,12 +60,12 @@ struct TrackRowView: View {
             .frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title)
-                    .font(.system(size: 14, weight: .medium))
+                    .themeText(.rowTitle)
                     .foregroundStyle(isCurrent ? Theme.accent : .primary)
                     .lineLimit(1)
                 if let artist {
                     Text(artist)
-                        .font(.system(size: 11, weight: .medium))
+                        .themeText(.detail)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -72,9 +73,8 @@ struct TrackRowView: View {
             Spacer(minLength: 0)
             if !track.durationLabel.isEmpty {
                 Text(track.durationLabel)
-                    .font(
-                        .system(size: 12.5, weight: .medium).monospacedDigit()
-                    )
+                    .themeText(.detail)
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
         }

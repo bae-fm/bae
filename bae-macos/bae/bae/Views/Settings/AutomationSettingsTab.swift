@@ -94,7 +94,7 @@ struct AutomationSettingsContent: View {
                 statusRow
                 if let message {
                     Text(message.text)
-                        .font(.callout)
+                        .themeText(.body)
                         .foregroundStyle(message.style)
                 }
             }
@@ -138,7 +138,7 @@ struct AutomationSettingsContent: View {
                         Text(error.localizedSummary)
                             .foregroundStyle(Theme.danger)
                         Text(error.detail)
-                            .font(.caption)
+                            .themeText(.mono)
                             .foregroundStyle(.secondary)
                             .textSelection(.enabled)
                     }

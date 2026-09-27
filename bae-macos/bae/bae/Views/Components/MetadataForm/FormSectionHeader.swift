@@ -1,20 +1,6 @@
 import BaeKit
 import SwiftUI
 
-/// The uppercase label that leads a metadata section or a table column.
-struct FormEyebrow: View {
-    let text: Text
-    var size: CGFloat = 10
-
-    var body: some View {
-        text
-            .font(.system(size: size, weight: .bold))
-            .textCase(.uppercase)
-            .tracking(1)
-            .foregroundStyle(.tertiary)
-    }
-}
-
 /// A section header: the eyebrow and an optional right-aligned note.
 ///
 /// `ruled` draws a hairline to the far edge, for headers over borderless
@@ -26,10 +12,10 @@ struct FormSectionHeader: View {
 
     var body: some View {
         HStack(alignment: ruled ? .center : .firstTextBaseline, spacing: 8) {
-            FormEyebrow(text: Text(verbatim: title), size: 11)
+            Eyebrow(verbatim: title)
             if ruled {
                 Rectangle()
-                    .fill(Theme.hover)
+                    .fill(Theme.hairline)
                     .frame(height: 1)
             }
             else {
@@ -37,7 +23,7 @@ struct FormSectionHeader: View {
             }
             if let trailing {
                 Text(trailing)
-                    .font(.system(size: 11.5))
+                    .themeText(.detail)
                     .monospacedDigit()
                     .foregroundStyle(.tertiary)
             }

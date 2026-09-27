@@ -17,7 +17,7 @@ struct PreviewOverlay: View {
                 VStack(spacing: 12) {
                     HStack {
                         Text(URL(fileURLWithPath: path).lastPathComponent)
-                            .font(.callout)
+                            .themeText(.body)
                             .lineLimit(1)
                             .truncationMode(.middle)
                         Spacer()

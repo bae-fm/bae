@@ -1,11 +1,11 @@
+import BaeKit
 import SwiftUI
 
-/// The "waiting in the download queue" status, shown on a queued row and on the
-/// album-detail control for a release that hasn't started downloading yet.
+/// The status of a release queued for download that hasn't started yet.
 struct WaitingToDownloadLabel: View {
     var body: some View {
         Label("Waiting to download", systemImage: "clock")
-            .font(.caption)
+            .themeText(.detail)
             .foregroundStyle(.secondary)
     }
 }

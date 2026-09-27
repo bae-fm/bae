@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -38,6 +37,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeText
 import java.util.concurrent.ExecutorService
 
 private const val ANALYSIS_WIDTH = 1280
@@ -205,7 +205,7 @@ private fun QRScannerOverlay(
         if (instructions != null) {
             Text(
                 text = instructions,
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.detail.style,
                 color = BaeTheme.colors.onFill,
                 modifier =
                     Modifier

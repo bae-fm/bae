@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 struct AboutSettingsTab: View {
@@ -8,8 +9,7 @@ struct AboutSettingsTab: View {
         VStack(spacing: 16) {
             Spacer()
             Text(verbatim: "bae")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+                .themeText(.wordmark)
             if let version = Bundle.main.infoDictionary?[
                 "CFBundleShortVersionString"
             ] as? String {
@@ -20,7 +20,7 @@ struct AboutSettingsTab: View {
                 as? String
             {
                 Text(commit)
-                    .font(.caption.monospaced())
+                    .themeText(.mono)
                     .foregroundStyle(.tertiary)
             }
             Button("Check for Updates...") {

@@ -132,7 +132,7 @@ struct TriageRowContent: View {
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
             Text(row.folderName)
-                .font(.system(size: 12.5, design: .monospaced))
+                .themeText(.mono)
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -147,11 +147,11 @@ struct TriageRowContent: View {
         // its progress.
         if live?.importing == true {
             ImportProgressLine(key: row.candidateKey)
-                .font(.system(size: 11.5))
+                .themeText(.detail)
         }
         else if let statusLine {
             Text(statusLine)
-                .font(.system(size: 11.5))
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -189,9 +189,7 @@ extension TriageRowContent {
     // MARK: - Trailing
 
     /// The trailing column, kept at its ideal width so the title truncates
-    /// first. An identification run takes it over, a running import leaves it
-    /// empty (the status line has the bar), and otherwise it shows the import's
-    /// tag.
+    /// first.
     private var trailing: some View {
         Group {
             if let identification = live?.identification {
@@ -269,7 +267,7 @@ extension TriageRowContent {
 
     private func chip(_ text: String, tint: Color) -> some View {
         Text(text)
-            .font(.system(size: 10.5, design: .monospaced))
+            .themeText(.chip)
             .foregroundStyle(tint)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)

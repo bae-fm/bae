@@ -1,16 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The controls that choose what a pressing is. Each offers only the values
-/// bae's vocabulary has — countries by their ISO code, named in the reader's
-/// language; regions, media, statuses, packagings and Discogs details by
-/// their catalog words — so the form can hold nothing a catalog does not
-/// state. A choice is handed to the writer whole; core keeps each medium
-/// with a count, and each detail, once.
-enum PressingFactPickers {
-    /// The face of every picker, matching the form's text fields.
-    static let controlFont: Font = .system(size: 12.5)
-}
+// The controls that choose what a pressing is offer only the values bae's
+// vocabulary has, so the form holds nothing a catalog does not state.
 
 /// Where the pressing was released: no answer, a country, or a region.
 struct ReleaseAreaPicker: View {
@@ -155,7 +147,7 @@ private struct MediumCountRow: View {
             .help(String(localized: "Remove \(name)"))
             .accessibilityLabel(String(localized: "Remove \(name)"))
         }
-        .font(PressingFactPickers.controlFont)
+        .themeText(.body)
         .fixedSize()
     }
 }
@@ -229,7 +221,7 @@ struct DiscogsDetailsEditor: View {
             ForEach(details, id: \.self) { detail in
                 HStack(spacing: 3) {
                     Text(bridgeDiscogsDetailLabel(detail: detail).text)
-                        .font(PressingFactPickers.controlFont)
+                        .themeText(.body)
                     Button {
                         commit(details.filter { $0 != detail })
                     } label: {
@@ -277,7 +269,7 @@ private struct FactMenuLabel: View {
             }
             Text(text ?? "\u{2014}")
         }
-        .font(PressingFactPickers.controlFont)
+        .themeText(.body)
         .foregroundStyle(text == nil ? .tertiary : .primary)
     }
 }

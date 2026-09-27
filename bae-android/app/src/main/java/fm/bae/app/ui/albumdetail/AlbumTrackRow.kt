@@ -29,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeText
 
 internal data class TrackRowData(
     val positionLabel: String,
@@ -63,7 +64,7 @@ internal fun TrackRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = data.title,
-                style = MaterialTheme.typography.bodyMedium,
+                style = ThemeText.rowTitle.style,
                 color =
                     if (data.isCurrent) {
                         MaterialTheme.colorScheme.primary
@@ -75,7 +76,7 @@ internal fun TrackRow(
             if (data.artistNames != null) {
                 Text(
                     text = data.artistNames,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = ThemeText.detail.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
@@ -84,7 +85,7 @@ internal fun TrackRow(
         if (data.durationLabel.isNotEmpty()) {
             Text(
                 text = data.durationLabel,
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -117,7 +118,7 @@ private fun TrackPositionIndicator(
     } else {
         Text(
             text = positionLabel,
-            style = MaterialTheme.typography.bodyMedium,
+            style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(40.dp),
         )

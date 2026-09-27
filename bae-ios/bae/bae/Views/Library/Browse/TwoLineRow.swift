@@ -1,7 +1,7 @@
+import BaeKit
 import SwiftUI
 
-/// A title over an optional secondary line — the shared row body for the
-/// composer, artist, and work browse lists.
+/// A browse row's title over an optional secondary line.
 struct TwoLineRow: View {
     let title: String
     let subtitle: String?
@@ -9,11 +9,11 @@ struct TwoLineRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.body)
+                .themeText(.rowTitle)
                 .lineLimit(1)
             if let subtitle, !subtitle.isEmpty {
                 Text(subtitle)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

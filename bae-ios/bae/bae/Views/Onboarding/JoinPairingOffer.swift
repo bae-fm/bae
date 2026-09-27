@@ -14,12 +14,12 @@ struct JoinPairingOffer: View {
         List {
             Section("Pairing code") {
                 Text("Scan the code shown by a device already in your library.")
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
 
                 HStack(spacing: 8) {
                     TextField("Paste pairing code", text: $pairingCode)
-                        .font(.body.monospaced())
+                        .themeText(.mono)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                     Button("Scan") { onScan() }
@@ -34,7 +34,7 @@ struct JoinPairingOffer: View {
                     if offer.needsOauth && !oauthProvidersAvailable {
                         Text("This library uses a provider this build can't connect to.")
                             .foregroundStyle(Theme.danger)
-                            .font(.callout)
+                            .themeText(.body)
                     }
                 }
                 // A decode never reports a cancellation, so a line is always
@@ -44,7 +44,7 @@ struct JoinPairingOffer: View {
                 {
                     Text(line)
                         .foregroundStyle(Theme.danger)
-                        .font(.callout)
+                        .themeText(.body)
                 }
             }
 
@@ -57,7 +57,7 @@ struct JoinPairingOffer: View {
                 Section {
                     Text(error)
                         .foregroundStyle(Theme.danger)
-                        .font(.callout)
+                        .themeText(.body)
                 }
             }
         }

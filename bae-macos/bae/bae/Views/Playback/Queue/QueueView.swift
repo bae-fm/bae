@@ -170,7 +170,7 @@ struct QueueView: View {
     private var header: some View {
         HStack(alignment: .top, spacing: 12) {
             Text("Queue")
-                .font(.system(size: 22, weight: .heavy))
+                .themeText(.title)
             Spacer(minLength: 0)
             PanelCloseButton(onClose: onClose)
         }
@@ -192,19 +192,18 @@ struct QueueView: View {
                 .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: 2) {
+                // Not `Eyebrow`: this label is accent, not secondary.
                 Text("Now Playing")
-                    .font(.system(size: 9, weight: .bold))
-                    .tracking(1.3)
-                    .textCase(.uppercase)
+                    .themeText(.eyebrow)
                     .foregroundStyle(Theme.accent)
                 if let title = nowPlayingTitle {
                     Text(title)
-                        .font(.system(size: 14, weight: .bold))
+                        .themeText(.rowTitle)
                         .lineLimit(1)
                 }
                 if let artist = nowPlayingArtist {
                     Text(artist)
-                        .font(.system(size: 11, weight: .medium))
+                        .themeText(.detail)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

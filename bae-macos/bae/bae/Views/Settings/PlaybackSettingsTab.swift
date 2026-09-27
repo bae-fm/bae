@@ -34,7 +34,7 @@ struct PlaybackSettingsTab: View {
                 Text(
                     "Restores the last session's track, position, queue, and volume when the app opens."
                 )
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

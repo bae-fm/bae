@@ -1,9 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// How many files move to and from cloud storage at once. Device-local: a
-/// concurrency limit reflects one machine's link and CPU, so unlike most
-/// preferences it does not follow the user to another device.
+/// How many files move to and from cloud storage at once, set per device.
 struct TransfersSettingsTab: View {
     @Environment(ConfigStore.self)
     private var configStore
@@ -31,7 +29,7 @@ struct TransfersSettingsTab: View {
                 Text(
                     "How many files upload to cloud storage at once after an import, and how many download at once when a release is pinned."
                 )
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

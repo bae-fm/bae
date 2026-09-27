@@ -47,7 +47,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
@@ -62,6 +61,7 @@ import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.Dispatchers
@@ -153,14 +153,13 @@ private fun RowScope.NowPlayingTrackInfo(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = track.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
+                style = ThemeText.rowTitle.style,
                 maxLines = 1,
                 modifier = Modifier.weight(1f, fill = false),
             )
             Text(
                 text = track.artist,
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
             )
@@ -199,9 +198,8 @@ private fun SidePauseAlert(
 }
 
 /**
- * The prompt core raises when playback pauses at the end of a side or disc; the
+ * The prompt core raises when playback pauses at the end of a side or disc; its
  * box starts checked because the prompt only appears while the setting is on.
- * Core, not the dialog, starts the next side.
  */
 @Composable
 fun SidePauseAlert(
@@ -287,10 +285,7 @@ private fun KeepPausingCheckbox(
     }
 }
 
-/**
- * The countdown line, redrawn each whole second until core's deadline; screen
- * readers hear each new count without losing their place.
- */
+/** The countdown line, redrawn each whole second until core's deadline and read out as it changes. */
 @Composable
 private fun SidePauseCountdownLine(
     messageKey: String,
@@ -313,8 +308,7 @@ private fun SidePauseCountdownLine(
                 messageKey,
                 mapOf("seconds" to sideCountdownSecondsLeft(countdown.resumesAtMs, now)),
             ),
-        style = MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Medium,
+        style = ThemeText.strong.style,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
 }

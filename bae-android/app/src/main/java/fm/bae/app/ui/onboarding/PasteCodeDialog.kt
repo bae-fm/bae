@@ -13,12 +13,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeText
 
 /** The fixed wording of a [PasteCodeDialog], distinct per code it accepts. */
 class PasteDialogText(
@@ -43,7 +43,7 @@ fun PasteCodeDialog(
             Column {
                 Text(
                     text = text.instructions,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = ThemeText.body.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -52,7 +52,7 @@ fun PasteCodeDialog(
                     onValueChange = onInputChange,
                     placeholder = { Text(text.placeholder) },
                     modifier = Modifier.fillMaxWidth(),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                    textStyle = ThemeText.mono.style,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
                     singleLine = false,
                     maxLines = 3,

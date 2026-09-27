@@ -28,7 +28,7 @@ struct ReleaseDownloadSection: View {
             control(status)
             if let unpinError {
                 Text(unpinError)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(Theme.danger)
             }
         }
@@ -59,7 +59,7 @@ struct ReleaseDownloadSection: View {
         case .failed(let message):
             VStack(alignment: .leading, spacing: 6) {
                 Text(message)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(Theme.danger)
                 HStack(spacing: 8) {
                     // Core has no per-item retry; this requeues every failed
@@ -81,8 +81,8 @@ struct ReleaseDownloadSection: View {
         }
     }
 
-    /// A bordered caption button; a `role` drops the accent tint so the role's
-    /// own styling shows.
+    /// A bordered button with a detail label; a `role` drops the accent tint so
+    /// the role's own styling shows.
     private func actionButton(
         _ titleKey: LocalizedStringKey,
         systemImage: String,
@@ -91,7 +91,7 @@ struct ReleaseDownloadSection: View {
     ) -> some View {
         Button(role: role, action: action) {
             Label(titleKey, systemImage: systemImage)
-                .font(.caption)
+                .themeText(.detail)
         }
         .buttonStyle(.bordered)
         .tint(role == nil ? Theme.accent : nil)
@@ -101,7 +101,7 @@ struct ReleaseDownloadSection: View {
     private var downloadedControl: some View {
         HStack(spacing: 8) {
             Label("Downloaded", systemImage: "arrow.down.circle.fill")
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
             if unpinTask != nil {
                 ProgressView()

@@ -17,7 +17,7 @@ struct ReleaseMetadataTrackRow: View {
             Group {
                 if let displayedPosition {
                     Text(verbatim: displayedPosition)
-                        .font(.system(size: 12))
+                        .themeText(.body)
                         .monospacedDigit()
                 }
                 else {
@@ -40,7 +40,7 @@ struct ReleaseMetadataTrackRow: View {
             .frame(width: columns.title)
             artistField
             Text(duration)
-                .font(.system(size: 12))
+                .themeText(.body)
                 .monospacedDigit()
                 .accessibilityLabel(
                     coreString("ui.import.slots.column.length")

@@ -15,12 +15,12 @@ struct ArtistAlbumCard: View {
                         RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                     )
                 Text(album.title)
-                    .font(.subheadline.weight(.medium))
+                    .themeText(.rowTitle)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 StableOptionalText(
                     text: album.year.map(String.init),
-                    font: .caption,
+                    font: ThemeText.detail.font,
                     foreground: .secondary,
                     lineHeight: 12,
                     lineLimit: 1

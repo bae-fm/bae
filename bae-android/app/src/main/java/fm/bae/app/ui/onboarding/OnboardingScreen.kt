@@ -31,11 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import fm.bae.app.BaeApp
 import fm.bae.app.BaeLogger
@@ -43,6 +41,7 @@ import fm.bae.app.OAuthLinker
 import fm.bae.app.R
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRScannerScreen
 import kotlinx.coroutines.launch
@@ -61,21 +60,14 @@ private class OnboardingIdleCallbacks(
     val onJoinLibrary: () -> Unit,
 )
 
-/**
- * Returns a callback that opens the scanner for a [ScanTarget], requesting camera
- * permission first when it isn't already held. Requesting a scan clears the
- * target's prior error via [setError]; [onOpen] runs once the camera is available
- * (synchronously when permission is held, or after the grant); [setError] receives
- * the camera-permission-required message, tagged with its target, on denial.
- */
+/** Returns a callback that opens the scanner for a [ScanTarget], asking for camera permission first when needed. */
 @Composable
 private fun rememberScanRequest(
     setError: (ScanTarget, String?) -> Unit,
     onOpen: (ScanTarget) -> Unit,
 ): (ScanTarget) -> Unit {
     val context = LocalContext.current
-    // The target a pending camera-permission request is for; read in the grant
-    // callback to know which scanner to open and which target an error is for.
+    // The target a pending camera-permission request is for.
     var pendingScanTarget by remember { mutableStateOf<ScanTarget?>(null) }
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -263,11 +255,11 @@ private fun OnboardingIdleContent(
             modifier = Modifier.size(120.dp),
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = "bae", fontSize = 48.sp, fontWeight = FontWeight.Bold)
+        Text(text = "bae", style = ThemeText.wordmark.style)
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = stringResource(R.string.onboarding_tagline),
-            style = MaterialTheme.typography.bodyLarge,
+            style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
@@ -286,7 +278,7 @@ private fun OnboardingIdleContent(
         }
         if (error != null) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Text(text = error, color = MaterialTheme.colorScheme.error, style = ThemeText.body.style)
         }
         Spacer(modifier = Modifier.weight(1f))
     }
@@ -334,7 +326,7 @@ internal fun OnboardingProgress(
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
                     text = stringResource(R.string.onboarding_joining_title),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = ThemeText.heading.style,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -342,8 +334,7 @@ internal fun OnboardingProgress(
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = stringResource(R.string.onboarding_join_fingerprint, it),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    style = ThemeText.mono.style,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -365,13 +356,13 @@ private fun ProgressScreen(
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = stringResource(titleRes),
-            style = MaterialTheme.typography.titleMedium,
+            style = ThemeText.heading.style,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(bodyRes),
-            style = MaterialTheme.typography.bodyMedium,
+            style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
@@ -379,8 +370,7 @@ private fun ProgressScreen(
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.onboarding_join_fingerprint, it),
-                style = MaterialTheme.typography.bodyMedium,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                style = ThemeText.mono.style,
                 textAlign = TextAlign.Center,
             )
         }
@@ -399,12 +389,7 @@ private fun OnboardingContainer(content: @Composable ColumnScope.() -> Unit) {
     )
 }
 
-/**
- * The first-run welcome screen with no attempt in flight, wrapped in the app
- * chrome — the shared composition the `welcome` screenshot scene and the dev
- * preview below both render. Renders the production [OnboardingIdleContent] with
- * inert callbacks; no session or camera is touched.
- */
+/** The first-run welcome screen in the app chrome with inert callbacks, for the `welcome` screenshot scene. */
 @Composable
 internal fun WelcomeScene() {
     BaeAppChrome {

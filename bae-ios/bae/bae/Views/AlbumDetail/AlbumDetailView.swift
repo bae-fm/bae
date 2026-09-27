@@ -163,7 +163,7 @@ struct AlbumDetailView: View {
                         Group {
                             if let label = libraryStore.releaseDetails[id]?.displayName {
                                 Text(label)
-                                    .font(.callout)
+                                    .themeText(.body)
                                     .lineLimit(1)
                             }
                             else {

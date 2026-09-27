@@ -19,12 +19,12 @@ struct ReleaseGroupCard: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(group.title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .themeText(.heading)
                     .lineLimit(1)
                     .truncationMode(.tail)
                 if !attribution.isEmpty {
                     Text(attribution)
-                        .font(.system(size: 12.5))
+                        .themeText(.body)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -37,7 +37,7 @@ struct ReleaseGroupCard: View {
                         Text(
                             "Couldn't read this album's links on \(name); it may also be listed separately."
                         )
-                        .font(.system(size: 11))
+                        .themeText(.detail)
                         .foregroundStyle(.secondary)
                     }
                 }
@@ -81,7 +81,7 @@ struct AlbumSourceLink: View {
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(.tertiary)
                 }
-                .font(.system(size: 11.5, weight: .semibold))
+                .themeText(.chip)
                 .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
@@ -89,7 +89,7 @@ struct AlbumSourceLink: View {
         }
         else {
             Text(name)
-                .font(.system(size: 11.5, weight: .semibold))
+                .themeText(.chip)
                 .foregroundStyle(.secondary)
         }
     }

@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A "?" icon that shows an info popover on hover.
-/// The popover stays open while the cursor is over either the icon or the popover itself.
+/// A "?" icon that shows an info popover while the cursor is over the icon or
+/// the popover.
 struct InfoTip: View {
     let text: LocalizedStringKey
     var learnMoreURL: URL?
@@ -16,10 +16,10 @@ struct InfoTip: View {
             .hoverPopover(arrowEdge: arrowEdge) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(text)
-                        .font(.callout)
+                        .themeText(.body)
                     if let url = learnMoreURL {
                         Link("Learn more", destination: url)
-                            .font(.callout)
+                            .themeText(.body)
                     }
                 }
                 .padding(10)
@@ -43,10 +43,8 @@ struct InfoTip: View {
 }
 
 #if DEBUG
-    // The info popover is hover-driven, so a static preview shows the "?" trigger
-    // glyph beside its label; hovering it in the live preview opens the popover.
-    // Sample copy routes through String values so the extractor never takes
-    // preview-only prose into the catalog.
+    // Hovering the "?" in the live preview opens the popover. Sample copy goes
+    // through String values so the string extractor skips it.
     #Preview("Info Tip") {
         let encryptionTip =
             "Your library is encrypted with a key only this device holds."

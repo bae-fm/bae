@@ -83,7 +83,7 @@ struct ImportMappingGalleryTile: View {
                     .padding(4)
                 }
                 Text(image.name)
-                    .font(.system(size: 10.5, design: .monospaced))
+                    .themeText(.mono)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)

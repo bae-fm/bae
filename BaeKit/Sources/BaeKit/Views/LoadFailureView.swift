@@ -14,7 +14,7 @@ public struct LoadFailureView: View {
     public var body: some View {
         VStack(spacing: 12) {
             Text(line)
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(Theme.danger)
                 .multilineTextAlignment(.center)
             Button("Retry", action: onRetry)

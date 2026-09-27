@@ -13,7 +13,7 @@ struct ImportCombinedSourceView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
             Label("Combined folders", systemImage: "square.stack.3d.up")
-                .font(.headline)
+                .themeText(.heading)
             Spacer()
             Menu("Source folders") {
                 ForEach(parts, id: \.folderPath) { part in

@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Import metadata defaults, what identification does, and the sources Find
-/// online asks. Every control writes through core; the config value stream
-/// redraws the stored value. The Discogs key sits under the Discogs switch,
-/// because the switch cannot be moved without one.
+/// Import metadata defaults, identification steps, and the sources Find online
+/// asks; every control writes through core and redraws from config.
 struct ImportSettingsTab: View {
     @Environment(ConfigStore.self)
     private var configStore
@@ -21,9 +19,7 @@ struct ImportSettingsTab: View {
                     isOn: prefillWithFileMetadata
                 )
                 Toggle("Identify automatically", isOn: identifyAutomatically)
-                // Only an automatic run imports on its own, so the switch
-                // waits, as the person left it, while identification does
-                // not run on its own.
+                // Only an automatic run imports on its own.
                 Toggle(
                     "Import automatically when identified",
                     isOn: importWhenIdentified
@@ -41,7 +37,7 @@ struct ImportSettingsTab: View {
                         "A candidate identified from then on that needs nothing from you is imported right away, where your last import went."
                     )
                 }
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -59,7 +55,7 @@ struct ImportSettingsTab: View {
                 Text(
                     "A step that is off is skipped by every identification from then on, and says so where the run is shown."
                 )
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -80,7 +76,7 @@ struct ImportSettingsTab: View {
                 Text(
                     "Identification asks the sources that are checked here."
                 )
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -88,11 +84,8 @@ struct ImportSettingsTab: View {
         .formStyle(.grouped)
     }
 
-    /// The source switches split where the Discogs key belongs: the switches
-    /// the key follows, then the switches after it. Core owns which sources
-    /// exist and in what order, so the key follows the Discogs switch wherever
-    /// that lands; `afterKey` is nil when the library has no Discogs source,
-    /// which is when there is no key to draw at all.
+    /// The source switches split after the Discogs switch, where its key row
+    /// goes; `afterKey` is nil when there is no Discogs source.
     private var sourceSwitches:
         (
             beforeKey: [BridgeLookupCatalogSetting],
@@ -111,9 +104,7 @@ struct ImportSettingsTab: View {
         )
     }
 
-    /// One source's checkbox. Whether it can be moved is core's answer, not
-    /// this view's: a source with no credential and the only source left being
-    /// asked are both writes core would turn down.
+    /// One source's checkbox; core decides whether it can be moved.
     private func sourceToggle(
         _ setting: BridgeLookupCatalogSetting
     ) -> some View {

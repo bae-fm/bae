@@ -9,24 +9,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,48 +30,33 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.data.SyncFailure
-import fm.bae.app.localizedLine
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeBlockedSyncOperation
 import uniffi.bae_bridge.BridgeConfig
-import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeTelemetryEvent
 
-/**
- * Per-device settings: the library's sync status, device management (the
- * membership chain), an on-demand recovery-code reveal, and a destructive
- * action to remove the library from this device. Reached from the gear in the
- * library top bar.
- */
+/** Per-device settings, reached from the gear in the library top bar. */
 @Composable
 fun SettingsScreen(
     session: OpenLibrary,
@@ -177,10 +157,7 @@ private fun SettingsSections(
             config = config,
             ioDispatcher = ioDispatcher,
         )
-        // Managing devices and revealing the recovery code both read the
-        // membership chain from the library's cloud storage, so they need a live
-        // sync session this run — gate on runtime sync readiness, not merely a
-        // configured provider (which can be present while sync is broken).
+        // Devices and the recovery code read the membership chain from cloud storage, so they need sync running now.
         if (syncReady) {
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             SettingsDevicesSection(
@@ -195,11 +172,7 @@ private fun SettingsSections(
     }
 }
 
-/**
- * Host-originated telemetry: report a screen open as a typed event when this
- * composable enters the composition. Infallible — telemetry never affects
- * navigation.
- */
+/** Reports the screen open as a telemetry event when this enters the composition. */
 @Composable
 private fun ReportScreenOpened(
     session: OpenLibrary,
@@ -242,8 +215,7 @@ private fun SettingsTopBar(onBack: () -> Unit) {
             }
             Text(
                 text = stringResource(R.string.settings),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                style = ThemeText.title.style,
             )
         }
     }
@@ -259,15 +231,9 @@ private fun SettingsLibrarySection(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = stringResource(R.string.settings_library),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Eyebrow(text = stringResource(R.string.settings_library))
         libraries.forEach { library ->
-            // The active library is derived from the open session, not the
-            // BridgeLibrary.isActive snapshot: that snapshot is taken at launch
-            // discovery and goes stale after an in-app switch.
+            // The active library comes from the open session; BridgeLibrary.isActive goes stale after an in-app switch.
             val isActive = library.id == activeLibraryId
             val error = library.error
             Row(
@@ -279,12 +245,11 @@ private fun SettingsLibrarySection(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = library.name)
-                    // A library whose config won't load stays listed — it must not
-                    // silently vanish, which is what it used to do.
+                    // A library whose config won't load stays listed.
                     if (error != null) {
                         Text(
                             text = error,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = ThemeText.body.style,
                             color = MaterialTheme.colorScheme.error,
                             maxLines = 2,
                         )
@@ -314,11 +279,7 @@ private fun SettingsConfigSection(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = stringResource(R.string.settings_sync),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Eyebrow(text = stringResource(R.string.settings_sync))
         Text(stringResource(if (config.sync != null) R.string.settings_cloud_sync_on else R.string.settings_local_only))
         config.sync?.let { sync ->
             SyncConnectedControls(
@@ -335,9 +296,7 @@ private fun SettingsConfigSection(
 @Composable
 private fun SettingsAboutSection() {
     val context = LocalContext.current
-    // The installed version: read from the package rather than BuildConfig so
-    // it reflects what is actually installed. Our manifest always stamps
-    // versionName (build.gradle.kts), so its absence is a build bug.
+    // Read from the package rather than BuildConfig so it reflects what is installed.
     val versionName =
         remember(context) {
             checkNotNull(context.packageManager.getPackageInfo(context.packageName, 0).versionName) {
@@ -348,11 +307,7 @@ private fun SettingsAboutSection() {
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = stringResource(R.string.settings_about),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Eyebrow(text = stringResource(R.string.settings_about))
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = stringResource(R.string.settings_version),
@@ -375,23 +330,15 @@ private fun SettingsDevicesSection(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = stringResource(R.string.settings_devices),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Eyebrow(text = stringResource(R.string.settings_devices))
         PrimaryButton(onClick = onManageDevices) {
             Text(stringResource(R.string.settings_manage_devices))
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.settings_recovery_code),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Eyebrow(text = stringResource(R.string.settings_recovery_code))
         Text(
             text = stringResource(R.string.settings_recovery_code_explanation),
-            style = MaterialTheme.typography.bodySmall,
+            style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         OutlinedButton(onClick = onRevealRecoveryCode) {
@@ -414,7 +361,7 @@ private fun SettingsLeaveSection(onRequestLeave: () -> Unit) {
         }
         Text(
             text = stringResource(R.string.settings_remove_library_explanation),
-            style = MaterialTheme.typography.bodySmall,
+            style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

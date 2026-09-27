@@ -83,7 +83,7 @@ struct LibrarySettingsTab: View {
 
             Section("Remove") {
                 Text(removeFooter)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                 Button(
                     "Remove this library from this Mac...",
@@ -195,9 +195,7 @@ struct LibrarySettingsTab: View {
     }
 }
 
-/// The connected provider's details and disconnect flow, a separate view so it
-/// can build its `DisconnectSyncFlow` from values the parent reads from the
-/// environment.
+/// The connected provider's details and disconnect flow.
 private struct ConnectedProviderControls: View {
     let config: BridgeSyncConfig
 
@@ -261,7 +259,7 @@ private struct ConnectedProviderControls: View {
             if let error = flow.error {
                 Text(error)
                     .foregroundStyle(Theme.danger)
-                    .font(.callout)
+                    .themeText(.body)
             }
         }
         .alert("Disconnect sync?", isPresented: $flow.showConfirm) {
@@ -276,9 +274,7 @@ private struct ConnectedProviderControls: View {
     }
 }
 
-/// The "Recovery" section, which shows the recovery code behind a button
-/// because anyone holding it gets full access. Dismissing the sheet cancels
-/// the generation.
+/// The "Recovery" section: the recovery code, shown only on request.
 private struct RecoveryCodeSection: View {
     let generate: @Sendable () async throws -> String
 
@@ -292,7 +288,7 @@ private struct RecoveryCodeSection: View {
             Text(
                 "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access. Keep it secret."
             )
-            .font(.caption)
+            .themeText(.detail)
             .foregroundStyle(.secondary)
             Button("Show recovery code...") {
                 result = nil

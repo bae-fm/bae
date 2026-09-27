@@ -36,6 +36,8 @@ import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.currentLocale
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.Eyebrow
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -54,17 +56,13 @@ internal fun SettingsPlaybackSection(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = stringResource(R.string.settings_playback),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Eyebrow(text = stringResource(R.string.settings_playback))
         PauseBetweenSidesRow(session = session, config = config, ioDispatcher = ioDispatcher)
         SidePauseCountdownRow(session = session, config = config, ioDispatcher = ioDispatcher)
         RestoreOnLaunchRow()
         Text(
             text = stringResource(R.string.settings_restore_on_launch_help),
-            style = MaterialTheme.typography.bodySmall,
+            style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -134,11 +132,7 @@ private fun SidePauseCountdownRow(
     )
 }
 
-/**
- * Whether a side or disc pause ends on its own, and after how long. Drawn
- * directly under the pause-between-sides switch, and only while that switch
- * is on — with pausing off there is no pause to count down.
- */
+/** Whether a side or disc pause ends on its own, and after how long; shown only while pausing is on. */
 @Composable
 internal fun SidePauseCountdownPicker(
     pauseBetweenSides: Boolean,
@@ -187,11 +181,7 @@ internal val BridgeSidePauseCountdown.seconds: Int?
             BridgeSidePauseCountdown.SECONDS60 -> 60
         }
 
-/**
- * A countdown choice in words for the current locale: "Off", or a length
- * ("5 seconds") from the platform's measure formatter, so every locale gets its
- * own plural.
- */
+/** A countdown choice in words for the current locale, with the platform's plural for the length. */
 internal fun Context.sidePauseCountdownLabel(countdown: BridgeSidePauseCountdown): String {
     val seconds = countdown.seconds ?: return getString(R.string.settings_side_pause_countdown_off)
     return MeasureFormat
@@ -199,9 +189,7 @@ internal fun Context.sidePauseCountdownLabel(countdown: BridgeSidePauseCountdown
         .format(Measure(seconds, MeasureUnit.SECOND))
 }
 
-// Device-local, not library config: whether the next launch restores the last
-// session's playback. The core keeps the resume row current either way, so
-// flipping this on takes effect at the next launch.
+// Device-local, not library config: whether the next launch restores the last session's playback.
 @Composable
 private fun RestoreOnLaunchRow() {
     val context = LocalContext.current

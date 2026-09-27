@@ -41,6 +41,7 @@ import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeOpacity
+import fm.bae.app.ui.appearance.ThemeText
 import uniffi.bae_bridge.BridgeEagerCacheFillProgress
 import uniffi.bae_bridge.BridgeEagerCacheFillStatus
 
@@ -179,7 +180,7 @@ private fun ArtworkFailureStatus(
             Text(
                 text = title,
                 modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.body.style,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -198,7 +199,7 @@ private fun ArtworkFailureStatus(
                         Text(
                             text = status.error,
                             modifier = Modifier.verticalScroll(rememberScrollState()),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = ThemeText.mono.style,
                         )
                     }
                 }
@@ -228,7 +229,7 @@ private fun ArtworkByteProgress(progress: BridgeEagerCacheFillProgress) {
                 "total" to context.formatFileSize(progress.bytesTotal.requireDisplayableByteCount()),
             ),
         ),
-        style = MaterialTheme.typography.labelSmall,
+        style = ThemeText.fine.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }

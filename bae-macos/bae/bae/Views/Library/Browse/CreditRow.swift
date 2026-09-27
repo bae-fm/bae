@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// A text-only detail row (a composer credit or a recording): title over an
@@ -9,11 +10,11 @@ struct CreditRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.browseRowTitle)
+                .themeText(.rowTitle)
                 .lineLimit(1)
             StableOptionalText(
                 text: subtitle,
-                font: .browseRowCaption,
+                font: ThemeText.detail.font,
                 foreground: .secondary,
                 lineHeight: 14,
                 lineLimit: 1

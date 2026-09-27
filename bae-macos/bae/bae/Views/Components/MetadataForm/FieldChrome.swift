@@ -121,7 +121,7 @@ struct FieldChrome: ViewModifier {
             Text(verbatim: "Inline · focused")
                 .modifier(FieldChrome(focused: true, style: .inline))
         }
-        .font(.system(size: 13))
+        .themeText(.body)
         .padding(24)
         .frame(width: 300, alignment: .leading)
         .background(Theme.background)

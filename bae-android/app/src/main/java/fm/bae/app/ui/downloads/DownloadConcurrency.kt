@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -22,19 +21,14 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private val logger = BaeLogger("bae.DownloadConcurrency")
 
-/**
- * Device-local download concurrency: how many blobs a pin fetches at once (1..8).
- * Mobile has no upload control — the app makes no uploads. Writes through the
- * config setter and lets the next config snapshot re-render; a rejected value
- * surfaces an error and the prior selection stands. This entry holds the session
- * so the picker below stays prop-driven.
- */
+/** This device's download concurrency: how many blobs a pin fetches at once. */
 @Composable
 internal fun DownloadConcurrencyRow(
     session: OpenLibrary,
@@ -48,22 +42,20 @@ internal fun DownloadConcurrencyRow(
     )
 }
 
-/** The concurrency picker: the current [value] highlighted, a tap reporting the
- *  chosen count through [onSelect]. Prop-driven so it renders without a session. */
+/** The concurrency picker, with [value] selected and each tap reported through [onSelect]. */
 @Composable
 private fun DownloadConcurrencySelector(
     value: UInt,
     onSelect: (UInt) -> Unit,
 ) {
-    // 1..8 = bae-core's MAX_CONCURRENT_TRANSFERS; the bridge carries the value,
-    // not the bound, so the UI states the range.
+    // bae-core's MAX_CONCURRENT_TRANSFERS; the bridge carries the value but not the bound.
     val options = (1u..8u).toList()
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Text(
             text = stringResource(R.string.downloads_concurrency_label),
-            style = MaterialTheme.typography.bodyMedium,
+            style = ThemeText.body.style,
         )
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             options.forEachIndexed { index, option ->

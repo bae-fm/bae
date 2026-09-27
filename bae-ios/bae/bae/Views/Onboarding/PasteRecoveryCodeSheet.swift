@@ -1,8 +1,8 @@
+import BaeKit
 import SwiftUI
 
-/// The paste-a-recovery-code sheet: a multi-line field and a Connect action,
-/// disabled until something non-blank is entered. Trimming and the connect
-/// itself are the owner's.
+/// The paste-a-recovery-code sheet: a field, and a Connect action that hands
+/// the trimmed code to the owner once one is entered.
 struct PasteRecoveryCodeSheet: View {
     @Binding
     var input: String
@@ -15,7 +15,7 @@ struct PasteRecoveryCodeSheet: View {
                 Text(
                     "Paste your recovery code. Use this only when you have no other device available to approve this one."
                 )
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(.secondary)
                 TextField(
                     "Paste your recovery code",
@@ -23,7 +23,7 @@ struct PasteRecoveryCodeSheet: View {
                     axis: .vertical
                 )
                 .textFieldStyle(.roundedBorder)
-                .font(.body.monospaced())
+                .themeText(.mono)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .lineLimit(3, reservesSpace: true)

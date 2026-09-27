@@ -18,7 +18,7 @@ struct ImportSheetBindingMenu: View {
                 reference.fileId
                     ?? coreString("ui.import.sheet.choose_audio")
             )
-            .font(.system(size: 11, design: .monospaced))
+            .themeText(.mono)
             .foregroundStyle(
                 reference.fileId == nil ? Theme.warning : Theme.accent
             )

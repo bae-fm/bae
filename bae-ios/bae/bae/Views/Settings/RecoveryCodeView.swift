@@ -52,7 +52,7 @@ struct RecoveryCodeView: View {
                 Text(
                     "Anyone with this code has full access to your library. Keep it secret. Use it only to restore on a new device when you have no other device available."
                 )
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
@@ -65,7 +65,7 @@ struct RecoveryCodeView: View {
                 if let line = error.displayLine {
                     Text(line)
                         .foregroundStyle(Theme.danger)
-                        .font(.callout)
+                        .themeText(.body)
                         .multilineTextAlignment(.center)
                 }
                 Spacer()

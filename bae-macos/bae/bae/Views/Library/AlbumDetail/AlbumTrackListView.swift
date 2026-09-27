@@ -1,13 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// The track list under an album's detail card. Every side/disc group is laid
-/// out as two column slots — a side longer than eight tracks is split in half
-/// across them, a shorter one fills the first and leaves the second empty — so
-/// that every row in the list, whatever the shape of its side, is proposed one
-/// column's width and ends its duration at the same x. Carries side headers
-/// and, on a multi-side release, each side's play time. Delegates each row to
-/// `TrackRowView`.
+/// The track list under an album's detail card. Each side or disc lays out in
+/// two column slots (a side over eight tracks splits across both), so every
+/// row gets one column's width and ends its duration at the same x.
 struct AlbumTrackListView: View {
     let release: ReleaseDetail
     let isCompilation: Bool
@@ -40,11 +36,7 @@ struct AlbumTrackListView: View {
                 group in
                 let globalOffset = offsets[groupIndex]
                 if !group.sideHeaderText.isEmpty {
-                    Text(group.sideHeaderText)
-                        .font(.system(size: 10, weight: .bold))
-                        .tracking(1.2)
-                        .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
+                    Eyebrow(verbatim: group.sideHeaderText)
                         .padding(.top, groupIndex == 0 ? 0 : 18)
                         .padding(.bottom, 6)
                 }
@@ -72,7 +64,7 @@ struct AlbumTrackListView: View {
                 // release needs each side's named here.
                 if groups.count > 1, !group.totalDurationText.isEmpty {
                     Text(group.totalDurationText)
-                        .font(.system(size: 11, weight: .semibold))
+                        .themeText(.fine)
                         .foregroundStyle(.tertiary)
                         .padding(.top, 8)
                 }
@@ -88,9 +80,7 @@ struct AlbumTrackListView: View {
                 track in
                 TrackRowView(
                     track: track,
-                    // Core's decision (set only for a compilation); the row does
-                    // not re-derive it. `isCompilation` above is kept only for the
-                    // album-level row-height heuristic.
+                    // Core sets this only for a compilation.
                     artist: track.displayArtist,
                     isCurrent: currentTrackId == track.id,
                     isLoading: loadingTrackId == track.id,

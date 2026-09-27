@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The export filename pattern editor: removable, reorderable token chips and
-/// an "Add:" row of unused tokens; each edit sends the whole list to
-/// `setTokens`.
+/// The export filename pattern editor: reorderable token chips and an "Add:"
+/// row of unused tokens.
 struct FilenameTokenEditor: View {
     let tokens: [BridgeSaveFilenameToken]
     let setTokens: ([BridgeSaveFilenameToken]) -> Void
@@ -45,14 +44,14 @@ struct FilenameTokenEditor: View {
     private var addRow: some View {
         FlowLayout(spacing: 5) {
             Text("Add:")
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
             ForEach(availableTokens, id: \.self) { token in
                 Button(token.label) {
                     setTokens(tokens + [token])
                 }
                 .buttonStyle(.plain)
-                .font(.caption)
+                .themeText(.chip)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 2)
@@ -102,7 +101,7 @@ private struct TokenChip: View {
     var body: some View {
         HStack(spacing: 5) {
             Text(token.label)
-                .font(.callout)
+                .themeText(.chip)
             Button(action: remove) {
                 Image(systemName: "xmark")
                     .font(.system(size: 8, weight: .semibold))

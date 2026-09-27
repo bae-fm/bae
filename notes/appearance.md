@@ -32,6 +32,14 @@ in rows and lists, `cover` for a release's cover shown large, `chip`, `control`
 for fields, buttons, notices and row highlights, `card`, `panel` for floating
 panels and prompts, and `bar` for skeleton and progress bars.
 
+Text styles are roles as well: display, hero, title, heading, rowTitle,
+strong, body, detail, fine, chip, eyebrow and mono, plus wordmark and
+wordmarkBar for the "bae" logo. Weight, letter spacing, case and
+monospacing are shared; each platform has its own size, and iOS names a
+Dynamic Type style so text follows the person's text size. Apple views set a
+role with `.themeText(_:)`, and the section labels on every platform are one
+`Eyebrow`.
+
 Apple views use `Theme`, `ThemeOpacity`, `PrimaryButtonStyle`, and
 `.appAppearance()` at every scene root; Apple's hierarchical label styles stay
 native. Native controls retain their platform geometry and interaction.

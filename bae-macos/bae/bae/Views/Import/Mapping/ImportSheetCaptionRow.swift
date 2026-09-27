@@ -22,7 +22,7 @@ struct ImportSheetCaptionRow: View {
             ForEach(unbound, id: \.fileReference) { reference in
                 HStack(spacing: 8) {
                     Text(verbatim: reference.fileReference)
-                        .font(.system(size: 11, design: .monospaced))
+                        .themeText(.mono)
                         .lineLimit(1)
                         .truncationMode(.middle)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -66,7 +66,7 @@ struct ImportSheetCaptionRow: View {
             formatTag
             nameButton
             Text(verbatim: "→")
-                .font(.system(size: 11))
+                .themeText(.detail)
                 .foregroundStyle(.tertiary)
                 .fixedSize()
             if bound.isEmpty {
@@ -86,7 +86,7 @@ struct ImportSheetCaptionRow: View {
 
     private var boundText: some View {
         Text(sheet.bound.descriptionText)
-            .font(.system(size: 11, design: .monospaced))
+            .themeText(.mono)
             .foregroundStyle(.secondary)
             .lineLimit(1)
             .truncationMode(.middle)
@@ -139,12 +139,10 @@ struct ImportSheetCaptionRow: View {
         "\(reference.fileReference) → \(reference.fileId ?? "")"
     }
 
-    /// What kind of sheet this is. A format name, not a phrase, so it is not
-    /// translated.
+    /// What kind of sheet this is; a format name, so it is not translated.
     private var formatTag: some View {
         Text(verbatim: "CUE")
-            .font(.system(size: 9.5, weight: .bold))
-            .tracking(0.6)
+            .themeText(.chip)
             .foregroundStyle(Theme.accent)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
@@ -161,7 +159,7 @@ struct ImportSheetCaptionRow: View {
             actions.openDocument(sheet.name, sheet.localPath)
         } label: {
             Text(sheet.name)
-                .font(.system(size: 11, design: .monospaced))
+                .themeText(.mono)
                 .foregroundStyle(hoveringName ? .primary : .secondary)
                 .underline(hoveringName)
                 .lineLimit(1)
@@ -207,7 +205,7 @@ struct ImportSheetDiscMenu: View {
         } label: {
             HStack(spacing: 5) {
                 Text(assignmentText)
-                    .font(.system(size: 12, weight: .semibold))
+                    .themeText(.strong)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(.secondary)

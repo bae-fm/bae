@@ -139,7 +139,7 @@ private struct SectionSegmentedControl: View {
             onSelect(section)
         } label: {
             Text(title)
-                .font(.system(size: 13.5, weight: .semibold))
+                .themeText(.strong)
                 .foregroundStyle(active ? Color.primary : Color.secondary)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 6)

@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The Storage sheet for a single release: its storage status band plus a
-/// sortable table of the release's files. Presented from the album detail's
-/// menu.
+/// A release's Storage sheet: its storage status band over a sortable table of
+/// its files.
 struct ReleaseStorageSheet: View {
     let release: ReleaseDetail
     let onAction: (BridgeReleaseStorageAction) -> Void
@@ -11,10 +10,8 @@ struct ReleaseStorageSheet: View {
     let onSaveAs: () -> Void
     let onDone: () -> Void
 
-    /// Column the file table sorts by. Defaults to filename; the user clicks a
-    /// column header to re-sort. The Audio column is display-only (its value is
-    /// optional, so there's no natural ordering key) — sort by Kind to group by
-    /// content type.
+    /// The file table's sort; the Audio column has none, as its value is
+    /// optional.
     @State
     private var sortOrder: [KeyPathComparator<BridgeFile>] = [
         // Finder's order: case-insensitive and numeric-aware, the same order
@@ -29,7 +26,7 @@ struct ReleaseStorageSheet: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Storage")
-                    .font(.headline)
+                    .themeText(.heading)
                 Spacer()
                 Button("Done") { onDone() }
                     .keyboardShortcut(.cancelAction)
@@ -50,9 +47,7 @@ struct ReleaseStorageSheet: View {
     private var filesSection: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Files")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Eyebrow("Files")
                 Spacer()
             }
             .padding(.horizontal)
@@ -69,8 +64,7 @@ struct ReleaseStorageSheet: View {
                     Text(file.originalFilename).lineLimit(1)
                 }
                 TableColumn(coreString("core.audio.label")) { file in
-                    // Audio files carry a label; non-audio files (images, cue)
-                    // have none, so their Audio cell is empty.
+                    // Non-audio files (images, cue) leave the cell empty.
                     if let format = file.audioFormat {
                         Text(format.text)
                             .foregroundStyle(.secondary)

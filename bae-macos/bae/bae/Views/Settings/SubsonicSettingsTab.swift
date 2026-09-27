@@ -103,7 +103,7 @@ struct SubsonicSettingsContent: View {
                 statusRow
                 if let message {
                     Text(message.text)
-                        .font(.callout)
+                        .themeText(.body)
                         .foregroundStyle(message.style)
                 }
             }
@@ -122,7 +122,7 @@ struct SubsonicSettingsContent: View {
                 Text(
                     "The password is stored in the keyring, not in the config file. Clients authenticate with the username and password."
                 )
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
             }
         }
@@ -158,7 +158,7 @@ struct SubsonicSettingsContent: View {
                         Text(error.localizedSummary)
                             .foregroundStyle(Theme.danger)
                         Text(error.detail)
-                            .font(.caption)
+                            .themeText(.mono)
                             .foregroundStyle(.secondary)
                             .textSelection(.enabled)
                     }

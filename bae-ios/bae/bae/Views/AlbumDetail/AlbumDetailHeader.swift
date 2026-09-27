@@ -35,22 +35,22 @@ struct AlbumDetailHeader: View {
                 }
             VStack(alignment: .leading, spacing: 4) {
                 Text(display.title)
-                    .font(.title2.bold())
+                    .themeText(.hero)
                 if let metadata = display.albumMetadata,
                     !metadata.artistNames.isEmpty
                 {
                     Text(metadata.artistNames)
-                        .font(.callout)
+                        .themeText(.body)
                         .foregroundStyle(.secondary)
                 }
                 if let year = display.albumMetadata?.year {
                     Text(String(year))
-                        .font(.caption)
+                        .themeText(.detail)
                         .foregroundStyle(.secondary)
                 }
                 if !detail.compactMetadata.isEmpty {
                     Text(detail.compactMetadata)
-                        .font(.caption)
+                        .themeText(.detail)
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)
                 }
@@ -82,13 +82,13 @@ struct AlbumDetailHeader: View {
                 queue.addReleaseNext(releaseId)
             } label: {
                 Label("Play Next", systemImage: "text.insert")
-                    .font(.caption)
+                    .themeText(.detail)
             }
             Button {
                 queue.addReleaseToQueue(releaseId)
             } label: {
                 Label("Add to Queue", systemImage: "text.append")
-                    .font(.caption)
+                    .themeText(.detail)
             }
         }
         .buttonStyle(.bordered)

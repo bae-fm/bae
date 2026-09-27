@@ -177,11 +177,11 @@ private struct NowPlayingRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.trackTitle)
-                    .font(.body)
+                    .themeText(.rowTitle)
                     .foregroundStyle(Theme.accent)
                     .lineLimit(1)
                 Text(track.artistNames)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
@@ -36,6 +35,7 @@ import fm.bae.app.durationClockLabel
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeComposerSummary
@@ -128,7 +128,7 @@ private fun SearchResultsList(
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         if (results.albums.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.search_section_albums)) }
+            item { LibrarySectionHeader(stringResource(R.string.search_section_albums)) }
             items(results.albums, key = { "album:${it.id}" }) { album ->
                 AlbumResultRow(
                     album = album,
@@ -137,7 +137,7 @@ private fun SearchResultsList(
             }
         }
         if (results.artists.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.search_section_artists)) }
+            item { LibrarySectionHeader(stringResource(R.string.search_section_artists)) }
             items(results.artists, key = { "artist:${it.artistId}" }) { artist ->
                 ArtistSummaryRow(
                     artist = artist,
@@ -146,7 +146,7 @@ private fun SearchResultsList(
             }
         }
         if (results.tracks.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.search_section_tracks)) }
+            item { LibrarySectionHeader(stringResource(R.string.search_section_tracks)) }
             items(results.tracks, key = { "track:${it.id}" }) { track ->
                 TrackResultRow(
                     track = track,
@@ -155,7 +155,7 @@ private fun SearchResultsList(
             }
         }
         if (results.composers.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.search_section_composers)) }
+            item { LibrarySectionHeader(stringResource(R.string.search_section_composers)) }
             items(results.composers, key = { "composer:${it.artistId}" }) { composer ->
                 ComposerResultRow(
                     composer = composer,
@@ -164,7 +164,7 @@ private fun SearchResultsList(
             }
         }
         if (results.works.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.search_section_works)) }
+            item { LibrarySectionHeader(stringResource(R.string.search_section_works)) }
             items(results.works, key = { "work:${it.workId}" }) { work ->
                 WorkResultRow(
                     work = work,
@@ -173,17 +173,6 @@ private fun SearchResultsList(
             }
         }
     }
-}
-
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-    )
 }
 
 @Composable
@@ -210,13 +199,12 @@ private fun AlbumResultRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = album.title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
+                style = ThemeText.rowTitle.style,
                 maxLines = 1,
             )
             Text(
                 text = album.year?.let { "${album.artistName} · $it" } ?: album.artistName,
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
             )
@@ -240,12 +228,12 @@ private fun TrackResultRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = track.title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = ThemeText.rowTitle.style,
                 maxLines = 1,
             )
             Text(
                 text = "${track.artistName}, ${track.albumTitle}",
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
             )
@@ -255,7 +243,7 @@ private fun TrackResultRow(
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = durationLabel,
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -286,13 +274,12 @@ private fun ComposerResultRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = composer.name,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
+                style = ThemeText.rowTitle.style,
                 maxLines = 1,
             )
             Text(
                 text = stringResource(R.string.work_count, composer.workCount.toLong()),
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
             )
@@ -324,14 +311,14 @@ private fun WorkResultRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = work.title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = ThemeText.rowTitle.style,
                 maxLines = 1,
             )
             val composerNames = work.composerNames
             if (!composerNames.isNullOrBlank()) {
                 Text(
                     text = composerNames,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = ThemeText.detail.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )

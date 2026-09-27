@@ -1,16 +1,15 @@
 import BaeKit
 import SwiftUI
 
-/// Shared styling for the centered, tabular borderless numeric track cells —
-/// the disc and track-number columns differ only in required vs optional
-/// `Int32`, so the look lives here.
+/// The look of the track table's centered, tabular disc and track-number
+/// cells.
 struct NumericCellStyle: ViewModifier {
     let focused: Bool
 
     func body(content: Content) -> some View {
         content
             .textFieldStyle(.plain)
-            .font(.system(size: 13))
+            .themeText(.body)
             .monospacedDigit()
             .multilineTextAlignment(.center)
             .modifier(FieldChrome(focused: focused, style: .inline))
@@ -19,8 +18,7 @@ struct NumericCellStyle: ViewModifier {
 
 #if DEBUG
     #Preview("Numeric Cell Style") {
-        // Hosts centered tabular digits where the disc/track-number fields sit —
-        // resting then focused.
+        // Resting and focused cells.
         HStack(spacing: 12) {
             Text(verbatim: "1").modifier(NumericCellStyle(focused: false))
             Text(verbatim: "2").modifier(NumericCellStyle(focused: true))

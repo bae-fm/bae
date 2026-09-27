@@ -77,8 +77,7 @@ struct NowPlayingBar: View {
                 if let title = trackTitle {
                     Button(action: onNavigateToAlbum) {
                         Text(title)
-                            .font(.system(size: 15, weight: .bold))
-                            .tracking(-0.2)
+                            .themeText(.rowTitle)
                             .lineLimit(1)
                     }
                     .buttonStyle(.plain)
@@ -86,7 +85,7 @@ struct NowPlayingBar: View {
 
                 if let secondaryLine {
                     Text(secondaryLine)
-                        .font(.system(size: 13, weight: .medium))
+                        .themeText(.detail)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -279,7 +278,6 @@ extension NowPlayingBar {
                 events: queueAddPublisher,
                 scheduler: .main,
                 style: QueueAddBadgeStyle(
-                    textFont: .system(size: 10, weight: .semibold),
                     symbolFont: .system(size: 8.5, weight: .bold),
                     padding: EdgeInsets(
                         top: 1,

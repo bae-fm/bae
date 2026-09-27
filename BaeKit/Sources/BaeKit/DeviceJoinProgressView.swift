@@ -20,7 +20,7 @@ public struct DeviceJoinProgressView: View {
         VStack(spacing: 8) {
             transferIndicator
             Text(title)
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             if let bytes {
@@ -28,7 +28,8 @@ public struct DeviceJoinProgressView: View {
                     verbatim:
                         "\(bytes.done.formattedDownloadBytes) / \(bytes.total.formattedDownloadBytes)"
                 )
-                .font(.caption2.monospacedDigit())
+                .themeText(.fine)
+                .monospacedDigit()
                 .foregroundStyle(.secondary)
             }
         }

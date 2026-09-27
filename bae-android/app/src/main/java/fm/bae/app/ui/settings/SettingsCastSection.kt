@@ -28,6 +28,8 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
 import fm.bae.app.performBridgeAction
+import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.Eyebrow
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -48,10 +50,7 @@ sealed interface CastToggleAction {
     ) : CastToggleAction
 }
 
-/**
- * Turning casting off mid-session ends it, so that one case asks first; every
- * other flip writes straight through.
- */
+/** Turning casting off mid-session ends it, so that one case asks first. */
 fun castToggleAction(
     enabled: Boolean,
     castingDeviceName: String?,
@@ -62,12 +61,7 @@ fun castToggleAction(
         CastToggleAction.Apply(enabled)
     }
 
-/**
- * The "Casting" settings section: one toggle for the whole feature. Core is what
- * the toggle actually gates — while off it browses no network and starts no
- * session — so this only writes the setting and warns before a write that would
- * cut a session short.
- */
+/** The Casting settings section: one toggle for the whole feature, which core enforces. */
 @Composable
 internal fun SettingsCastSection(
     session: OpenLibrary,
@@ -107,11 +101,7 @@ internal fun SettingsCastSection(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = stringResource(R.string.settings_casting),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Eyebrow(text = stringResource(R.string.settings_casting))
         CastEnabledRow(
             enabled = config.castEnabled,
             castingDeviceName = castingDeviceName(status),
@@ -120,17 +110,13 @@ internal fun SettingsCastSection(
         )
         Text(
             text = stringResource(R.string.settings_casting_help),
-            style = MaterialTheme.typography.bodySmall,
+            style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
 
-/**
- * The toggle itself. Reads the persisted setting and writes through the bridge —
- * the config subscription is what moves the switch, so a refused or cancelled
- * flip leaves it where it was with nothing to undo.
- */
+/** The casting toggle; the config subscription moves the switch, so a refused flip leaves it in place. */
 @Composable
 private fun CastEnabledRow(
     enabled: Boolean,

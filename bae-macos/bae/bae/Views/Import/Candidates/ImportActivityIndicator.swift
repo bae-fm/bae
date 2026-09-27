@@ -41,7 +41,7 @@ struct ImportActivityIndicator: View {
                     "Cancel every import that has not begun writing to the library"
                 )
             }
-            .font(.system(size: 12))
+            .themeText(.body)
             .frame(width: 220)
             .padding(12)
             .background { PopoverBehavior() }

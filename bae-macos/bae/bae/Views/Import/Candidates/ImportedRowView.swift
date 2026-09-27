@@ -65,14 +65,14 @@ struct ImportedRowContent: View {
             if importing {
                 // Subscribes to progress here because it changes every second.
                 ImportProgressLine(key: row.candidateKey)
-                    .font(.system(size: 11.5))
+                    .themeText(.detail)
             }
             else if let uploadObservation {
                 ProgressLine(
                     uploadObservation.phaseText,
                     progress: uploadObservation.progressBar.fraction
                 )
-                .font(.system(size: 11.5))
+                .themeText(.detail)
             }
         }
     }

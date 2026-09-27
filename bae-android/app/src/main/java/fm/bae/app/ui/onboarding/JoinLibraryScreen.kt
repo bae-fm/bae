@@ -21,13 +21,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OAuthLinker
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.PrimaryButton
 import uniffi.bae_bridge.BridgeCloudProvider
 
@@ -46,13 +45,12 @@ fun JoinLibraryScreen(
     ) {
         Text(
             text = stringResource(R.string.onboarding_join_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+            style = ThemeText.title.style,
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.onboarding_join_pairing_instructions),
-            style = MaterialTheme.typography.bodyMedium,
+            style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
@@ -93,7 +91,7 @@ private fun PairingCodeEntry(
         label = { Text(stringResource(R.string.pairing_code)) },
         placeholder = { Text(stringResource(R.string.pairing_code_placeholder)) },
         modifier = Modifier.fillMaxWidth(),
-        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+        textStyle = ThemeText.mono.style,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
         minLines = 3,
         maxLines = 5,
@@ -161,7 +159,7 @@ private fun PairingActivity(joinLauncher: JoinLauncher) {
         joinLauncher.joiningFingerprint?.let {
             Text(
                 text = stringResource(R.string.onboarding_join_fingerprint, it),
-                fontFamily = FontFamily.Monospace,
+                style = ThemeText.mono.style,
             )
         }
     }

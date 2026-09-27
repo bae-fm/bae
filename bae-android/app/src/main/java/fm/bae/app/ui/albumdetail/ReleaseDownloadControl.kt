@@ -40,6 +40,7 @@ import fm.bae.app.localizedLine
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.downloads.DownloadProgressBytes
 import fm.bae.app.ui.downloads.WaitingToDownloadText
 import kotlinx.coroutines.CancellationException
@@ -51,14 +52,7 @@ import uniffi.bae_bridge.bridgeReleaseDownloadStatus
 
 private val logger = BaeLogger("bae.ReleaseDownloadControl")
 
-/**
- * Offline control for the shown release: Download / progress + Cancel /
- * Downloaded + Remove Download. Core joins the pin state, the storage actions it
- * offers, and the download queue into that state; release and download
- * subscriptions keep it live. Actions never mutate optimistically — the next
- * subscribed value after a pin or unpin re-renders. Renders nothing when core offers no control for the release
- * (no cloud home, or a local release).
- */
+/** The shown release's download control; nothing when core offers none for the release. */
 @Composable
 internal fun ReleaseDownloadControl(
     session: OpenLibrary,
@@ -81,9 +75,7 @@ internal fun ReleaseDownloadControl(
         DownloadControlBody(
             status = status,
             unpinning = unpinning,
-            // Fire-and-forget: progress and queue state arrive via the download
-            // snapshot. Re-enqueuing is idempotent — core skips ids already
-            // queued or pinned.
+            // Progress arrives through the download snapshot; core skips ids already queued or pinned.
             onDownload = {
                 scope.launch {
                     performBridgeAction(
@@ -105,17 +97,12 @@ internal fun ReleaseDownloadControl(
             },
         )
         unpinError?.let { message ->
-            Text(text = message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            Text(text = message, style = ThemeText.body.style, color = MaterialTheme.colorScheme.error)
         }
     }
 }
 
-/**
- * Unpin [releaseId], returning a user-facing error line to display (or null on
- * success). [onSettled] runs whether it succeeds or fails. A cancellation (the
- * screen left mid-unpin) propagates — core's drop guard emits the terminal
- * release subscription value, which flips the control back to Download.
- */
+/** Unpins [releaseId] and returns the error line to show, or null on success; [onSettled] runs either way. */
 private suspend fun runUnpin(
     session: OpenLibrary,
     releaseId: String,
@@ -129,7 +116,6 @@ private suspend fun runUnpin(
         throw e
     } catch (e: BridgeException) {
         logger.error("unpinRelease failed for $releaseId", e)
-        // Null already means "nothing to show" — no ifEmpty workaround needed.
         context.localizedLine(e)
     } catch (e: Exception) {
         logger.error("unpinRelease failed for $releaseId", e)
@@ -180,10 +166,9 @@ private fun DownloadFailedControl(
     onRetry: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    Text(text = error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+    Text(text = error, style = ThemeText.body.style, color = MaterialTheme.colorScheme.error)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        // Core has no per-item retry: retryDownloads flips every failed entry
-        // back to queued, like the desktop Downloads pane.
+        // Core has no per-item retry: retryDownloads re-queues every failed entry.
         DownloadActionButton(stringResource(R.string.retry), Icons.Filled.Refresh, onRetry)
         DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
     }
@@ -203,7 +188,7 @@ private fun DownloadedControl(
         )
         Text(
             text = stringResource(R.string.download_downloaded),
-            style = MaterialTheme.typography.bodySmall,
+            style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (unpinning) {
@@ -214,7 +199,7 @@ private fun DownloadedControl(
     }
 }
 
-/** A bordered caption button — the shared shape for every download action. */
+/** The bordered button every download action uses. */
 @Composable
 private fun DownloadActionButton(
     text: String,

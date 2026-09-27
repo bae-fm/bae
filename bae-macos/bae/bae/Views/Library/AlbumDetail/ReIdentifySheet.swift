@@ -89,9 +89,9 @@ struct ReIdentifySheet: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Re-identify")
-                    .font(.headline)
+                    .themeText(.heading)
                 Text(displayName)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -215,11 +215,11 @@ struct ReIdentifySheet: View {
                 .font(.system(size: 48))
                 .foregroundStyle(Theme.success)
             Text("Identity updated.")
-                .font(.headline)
+                .themeText(.heading)
             Text(
                 "Pull the album, track, and pressing fields from the newly-identified source? Edits you've made are overwritten."
             )
-            .font(.callout)
+            .themeText(.body)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
             .frame(maxWidth: 420)
@@ -253,9 +253,9 @@ struct ReIdentifySheet: View {
                 .font(.system(size: 48))
                 .foregroundStyle(Theme.danger)
             Text("Re-identify failed.")
-                .font(.headline)
+                .themeText(.heading)
             Text(message)
-                .font(.callout)
+                .themeText(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 420)

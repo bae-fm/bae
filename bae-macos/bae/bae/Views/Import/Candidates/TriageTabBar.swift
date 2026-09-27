@@ -26,11 +26,11 @@ struct TriageTabBar: View {
         } label: {
             HStack(spacing: 4) {
                 Text(verbatim: CandidateFolderLine.label(for: tab))
-                    .font(.system(size: 12.5, weight: .semibold))
+                    .themeText(.strong)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Text(verbatim: count.formatted())
-                    .font(.system(size: 11, weight: .semibold))
+                    .themeText(.chip)
                     .monospacedDigit()
                     // A squeezed badge must overflow, never stack its digits.
                     .fixedSize()

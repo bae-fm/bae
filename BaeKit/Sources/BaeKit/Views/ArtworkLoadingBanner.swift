@@ -29,7 +29,8 @@ public struct ArtworkLoadingBanner: View {
                         Text(localizedCoreString(titleKey))
                         Spacer()
                         Text(progress.bytesText)
-                            .font(.caption.monospacedDigit())
+                            .themeText(.detail)
+                            .monospacedDigit()
                             .foregroundStyle(.secondary)
                         cancelButton
                     }
@@ -47,7 +48,8 @@ public struct ArtworkLoadingBanner: View {
                     Text(localizedCoreString(titleKey))
                     Spacer()
                     Text(progress.bytesText)
-                        .font(.caption.monospacedDigit())
+                        .themeText(.detail)
+                        .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
             }
@@ -60,11 +62,12 @@ public struct ArtworkLoadingBanner: View {
                         Text(localizedCoreString(titleKey))
                         Spacer()
                         Text(progress.bytesText)
-                            .font(.caption.monospacedDigit())
+                            .themeText(.detail)
+                            .monospacedDigit()
                             .foregroundStyle(.secondary)
                     }
                     Text(error)
-                        .font(.caption.monospaced())
+                        .themeText(.mono)
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }

@@ -1,12 +1,10 @@
+import BaeKit
 import SwiftUI
 
-/// The library screen's page heading, doubling as the browser-mode switcher.
-/// The big bold label *is* the current mode ("Albums" / "Composers") and its
-/// dropdown switches modes, so the switcher stays in one fixed spot as the
-/// content below swaps. Reads and writes mode through the environment `UiStore`.
+/// The library's page heading: the current browser mode, whose menu switches
+/// modes.
 struct LibraryModeHeading: View {
-    /// 0 = full page-heading size, 1 = compact strip; intermediate values
-    /// scrub between them as the content scrolls (`HeaderCollapse.progress`).
+    /// 0 at full size, 1 collapsed into the strip, as the content scrolls.
     let collapseProgress: Double
 
     @Environment(UiStore.self)
@@ -18,31 +16,27 @@ struct LibraryModeHeading: View {
                 uiStore.setLibraryBrowserMode(mode)
             }
         } label: {
-            // Our own chevron in place of the menu's built-in indicator,
-            // sized against the heading so it scales with the collapse
-            // instead of staying a fixed miniature. Concatenated into the
-            // heading's own Text so it rides the text run — after the word,
-            // and on its visual left in an RTL locale — instead of being a
-            // separate view a menu style may reposition.
+            // The chevron is part of the heading's text, so it scales with it
+            // and follows the word in either reading direction.
             (Text(uiStore.libraryBrowserMode.displayName)
                 .font(
-                    .system(size: 46 - 22 * collapseProgress, weight: .heavy)
+                    .system(
+                        size: between(\.macOSSize),
+                        weight: ThemeText.display.weight
+                    )
                 )
-                .tracking(-1.1 + 0.7 * collapseProgress)
+                .tracking(between(\.tracking))
                 + Text(verbatim: " ")
                 + Text(Image(systemName: "chevron.down"))
                 .font(
                     .system(size: 14 - 5 * collapseProgress, weight: .bold)
                 )
-                // Lifted off the baseline to sit optically centered on the
-                // heading's cap height.
+                // Centered on the heading's cap height.
                 .baselineOffset(11 - 6 * collapseProgress)
                 .foregroundColor(.secondary))
                 .contentTransition(.interpolate)
-                // The heading is all caps-height glyphs, but the line box
-                // still reserves descender space and the pull-down anchors
-                // below it. Trim that dead strip from the frame so the menu
-                // opens near the glyphs; scales with the font's descender.
+                // Trims the unused descender space so the menu opens near the
+                // text.
                 .padding(.bottom, -(12 - 8 * collapseProgress))
         }
         .menuStyle(.button)
@@ -50,10 +44,17 @@ struct LibraryModeHeading: View {
         .menuIndicator(.hidden)
         .fixedSize()
     }
+
+    /// A measure of the heading's text, from the display role at full size to
+    /// the title role once collapsed.
+    private func between(_ measure: KeyPath<ThemeText, CGFloat>) -> CGFloat {
+        let full = ThemeText.display[keyPath: measure]
+        let collapsed = ThemeText.title[keyPath: measure]
+        return full + (collapsed - full) * collapseProgress
+    }
 }
 
-/// Renders the label as-is in every state: no pressed-state dimming while
-/// the heading's pull-down is open.
+/// Draws the label unchanged while the menu is open.
 private struct StaticLabelButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label

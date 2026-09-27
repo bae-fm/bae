@@ -29,6 +29,7 @@ import fm.bae.app.localizedLine
 import fm.bae.app.reconnectFailedSync
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeBlockedSyncOperation
 import uniffi.bae_bridge.BridgeException
@@ -94,7 +95,7 @@ internal fun SyncConnectedControls(
     flowState.error?.let { error ->
         Text(
             text = error,
-            style = MaterialTheme.typography.bodySmall,
+            style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.error,
         )
     }
@@ -133,7 +134,7 @@ internal fun SettingsSyncStatusRow(
                 if (error.canReconnect) {
                     Text(
                         text = stringResource(R.string.settings_sync_disconnected),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = ThemeText.body.style,
                         color = BaeTheme.colors.warning,
                     )
                 }
@@ -160,7 +161,7 @@ internal fun SettingsSyncStatusRow(
 private fun SyncStatusDetail(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.bodySmall,
+        style = ThemeText.detail.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }

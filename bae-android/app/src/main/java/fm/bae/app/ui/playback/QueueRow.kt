@@ -27,7 +27,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
@@ -39,6 +38,7 @@ import fm.bae.app.playback.QueueItem
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeDurationClock
 
@@ -63,14 +63,13 @@ internal fun NowPlayingRow(np: NowPlaying) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = np.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
+                style = ThemeText.rowTitle.style,
                 color = MaterialTheme.colorScheme.primary,
                 maxLines = 1,
             )
             Text(
                 text = np.artist,
-                style = MaterialTheme.typography.bodySmall,
+                style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
             )
@@ -105,7 +104,7 @@ internal fun QueueRow(
         val durationLabel = LocalContext.current.durationClockLabel(item.durationClock)
         Text(
             text = durationLabel,
-            style = MaterialTheme.typography.bodySmall,
+            style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier =
                 Modifier
@@ -180,19 +179,18 @@ private fun QueueItemText(
     Column(modifier = modifier) {
         Text(
             text = item.title,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
+            style = ThemeText.rowTitle.style,
             maxLines = 1,
         )
         Text(
             text = item.artist,
-            style = MaterialTheme.typography.bodySmall,
+            style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
         )
         Text(
             text = item.albumTitle,
-            style = MaterialTheme.typography.bodySmall,
+            style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
         )

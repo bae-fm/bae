@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// Search field in the title bar for searching the library (artists, albums, tracks).
+/// The title bar's field for searching artists, albums and tracks.
 struct LibrarySearchField: View {
     @Binding
     var text: String
@@ -16,7 +16,7 @@ struct LibrarySearchField: View {
                 .font(.system(size: 13, weight: .semibold))
             TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13.5, weight: .medium))
+                .themeText(.body)
                 .focused(focused)
                 .onKeyPress(.escape) {
                     onEscape()

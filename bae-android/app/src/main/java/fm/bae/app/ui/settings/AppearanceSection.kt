@@ -41,7 +41,9 @@ import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.LocalAppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.appearance.colors
+import fm.bae.app.ui.components.Eyebrow
 import kotlinx.coroutines.launch
 import java.io.IOException
 
@@ -65,7 +67,7 @@ internal fun AppearanceSection() {
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(stringResource(R.string.appearance_title), style = MaterialTheme.typography.titleSmall)
+        Eyebrow(text = stringResource(R.string.appearance_title))
         AppearancePicker(
             title = stringResource(R.string.appearance_mode),
             selected = preferences.mode,
@@ -73,7 +75,7 @@ internal fun AppearanceSection() {
             label = { it.label },
             onSelect = { save { store.setMode(it) } },
         )
-        Text(stringResource(R.string.appearance_accent), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.appearance_accent), style = ThemeText.body.style)
         AccentPicker(preferences.accent) { accent -> save { store.setAccent(accent) } }
         AppearancePicker(
             title = stringResource(R.string.appearance_tone),

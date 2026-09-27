@@ -22,14 +22,14 @@ struct OnboardingLinkingScreen: View {
                 ProgressView()
                     .controlSize(.large)
                 Text(title)
-                    .font(.headline)
+                    .themeText(.heading)
                     .multilineTextAlignment(.center)
             }
             if case .devicePairing(let fingerprint) = context,
                 let fingerprint
             {
                 LabeledContent("This device", value: fingerprint)
-                    .font(.body.monospaced())
+                    .themeText(.mono)
             }
             else {
                 OnboardingSecondaryText(

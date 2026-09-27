@@ -129,10 +129,7 @@ struct SearchView: View {
     }
 
     private func sectionHeader(_ title: LocalizedStringKey) -> some View {
-        Text(title)
-            .font(.system(size: 12, weight: .heavy))
-            .tracking(0.4)
-            .foregroundStyle(.primary)
+        Eyebrow(title)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
             .padding(.top, 14)
@@ -194,11 +191,11 @@ private struct SearchResultRow: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 15, weight: .semibold))
+                        .themeText(.rowTitle)
                         .lineLimit(1)
                     StableOptionalText(
                         text: subtitle,
-                        font: .system(size: 13, weight: .medium),
+                        font: ThemeText.detail.font,
                         foreground: .secondary,
                         lineHeight: 14,
                         lineLimit: 1
@@ -209,10 +206,8 @@ private struct SearchResultRow: View {
 
                 if let trailing {
                     Text(trailing)
-                        .font(
-                            .system(size: 13.5, weight: .medium)
-                                .monospacedDigit()
-                        )
+                        .themeText(.detail)
+                        .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
             }

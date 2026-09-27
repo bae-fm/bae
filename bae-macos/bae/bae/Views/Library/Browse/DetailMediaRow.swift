@@ -15,11 +15,11 @@ struct DetailMediaRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.browseRowTitle)
+                    .themeText(.rowTitle)
                     .lineLimit(1)
                 StableOptionalText(
                     text: subtitle,
-                    font: .browseRowCaption,
+                    font: ThemeText.detail.font,
                     foreground: .secondary,
                     lineHeight: 14,
                     lineLimit: 1

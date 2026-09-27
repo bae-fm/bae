@@ -60,10 +60,10 @@ struct ExpandedNowPlayingView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(track.trackTitle)
-                    .font(.title2.weight(.bold))
+                    .themeText(.hero)
                     .lineLimit(1)
                 Text(track.artistNames)
-                    .font(.title3)
+                    .themeText(.heading)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

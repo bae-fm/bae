@@ -1,4 +1,3 @@
-import AppKit
 import BaeKit
 import SwiftUI
 
@@ -93,7 +92,7 @@ struct ImportSearchResultRow: View {
                 .buttonStyle(.link)
                 .disabled(!isPickable)
         }
-        .font(.caption)
+        .themeText(.body)
         .padding(.horizontal, 10)
         .padding(.bottom, 8)
         .frame(height: rowFailure == nil ? 0 : nil, alignment: .top)
@@ -125,12 +124,12 @@ struct ImportSearchResultRow: View {
         HStack(spacing: 8) {
             if let year = pressing.lead.year {
                 Text(String(year))
-                    .font(.system(size: 13, weight: .semibold))
+                    .themeText(.strong)
                     .monospacedDigit()
             }
             else {
                 Text("Year unknown")
-                    .font(.system(size: 12))
+                    .themeText(.body)
                     .foregroundStyle(.tertiary)
             }
             ForEach(Array(pressing.labels.enumerated()), id: \.offset) {
@@ -138,14 +137,14 @@ struct ImportSearchResultRow: View {
                 label in
                 if let name = label.name {
                     Text(name)
-                        .font(.system(size: 12))
+                        .themeText(.body)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
                 ForEach(label.catalogNumbers, id: \.self) { catalogNumber in
                     Text(catalogNumber)
-                        .font(.system(size: 10.5, design: .monospaced))
+                        .themeText(.chip)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
@@ -160,7 +159,7 @@ struct ImportSearchResultRow: View {
             let summary = pressing.summaryText
             if !summary.isEmpty {
                 Text(summary)
-                    .font(.system(size: 11))
+                    .themeText(.detail)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -168,7 +167,7 @@ struct ImportSearchResultRow: View {
             let details = pressing.detailsText
             if !details.isEmpty {
                 Text(details)
-                    .font(.system(size: 11))
+                    .themeText(.detail)
                     .foregroundStyle(.quaternary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -210,7 +209,7 @@ struct ImportSearchResultRow: View {
         -> some View
     {
         Text(SignalBadgeStyle.label(for: agreement))
-            .font(.system(size: 10.5, weight: .semibold))
+            .themeText(.chip)
             // A badge is one word; the row's pressing text truncates instead.
             .lineLimit(1)
             .fixedSize()
@@ -231,11 +230,11 @@ struct ImportSearchResultRow: View {
                 source in
                 if at > 0 {
                     Text(verbatim: "\u{00b7}")
-                        .font(.system(size: 11))
+                        .themeText(.detail)
                         .foregroundStyle(.quaternary)
                 }
                 Text(bridgeCatalogName(catalog: source))
-                    .font(.system(size: 11))
+                    .themeText(.detail)
                     .foregroundStyle(.tertiary)
             }
         }
@@ -248,7 +247,7 @@ struct ImportSearchResultRow: View {
                 .foregroundStyle(Theme.success)
             Text("In library")
         }
-        .font(.system(size: 11))
+        .themeText(.detail)
         .foregroundStyle(.tertiary)
         .opacity(isInLibrary ? 1 : 0)
         .accessibilityHidden(!isInLibrary)

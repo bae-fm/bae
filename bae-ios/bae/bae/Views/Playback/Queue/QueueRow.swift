@@ -12,21 +12,22 @@ struct QueueRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
-                    .font(.body)
+                    .themeText(.rowTitle)
                     .lineLimit(1)
                 Text(item.artistNames)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Text(item.albumTitle)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
             if !item.durationLabel.isEmpty {
                 Text(item.durationLabel)
-                    .font(.caption.monospacedDigit())
+                    .monospacedDigit()
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
         }

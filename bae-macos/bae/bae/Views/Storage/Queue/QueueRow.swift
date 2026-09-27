@@ -1,16 +1,11 @@
+import BaeKit
 import Foundation
 import SwiftUI
 
-/// Row scaffolding shared by the download and export queue
-/// rows: a title/detail block with enqueue time and cancel action, then the
-/// state on its own line. The vertical shape leaves the title readable in the
-/// transfer inspector instead of forcing every field into one horizontal row.
-///
-/// The cancel button is optional — a row for work that cannot be abandoned
-/// passes no `cancel` and keeps the trailing space empty.
+/// The layout shared by the download and export queue rows: the content with
+/// its enqueue time and optional cancel button, then the state on its own line.
 struct QueueRow<Content: View, Badge: View>: View {
-    /// The cancel affordance as one value: a button always ships with the
-    /// tooltip naming what it abandons.
+    /// The cancel button's action and the tooltip naming what it abandons.
     struct CancelAction {
         let help: LocalizedStringKey
         let action: () -> Void
@@ -37,7 +32,7 @@ struct QueueRow<Content: View, Badge: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Text(queuedRelativeLabel(createdAt))
-                    .font(.caption)
+                    .themeText(.fine)
                     .foregroundStyle(.secondary)
                     .fixedSize()
 
@@ -51,7 +46,7 @@ struct QueueRow<Content: View, Badge: View>: View {
             }
 
             badge()
-                .font(.caption)
+                .themeText(.detail)
                 .lineLimit(1)
                 .padding(.leading, 28)
         }

@@ -28,7 +28,7 @@ import SwiftUI
                         onCancelAuth()
                     }
                     .buttonStyle(.borderless)
-                    .font(.callout)
+                    .themeText(.body)
                 }
                 else {
                     Button("Connect \(provider.displayName)") {

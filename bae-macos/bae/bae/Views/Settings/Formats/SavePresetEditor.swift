@@ -1,11 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The edit sheet for one export preset. Every control writes a whole updated
-/// preset up through `update` — the caller saves the preset set and the change
-/// round-trips via `configChanged`, so the sheet always renders the stored
-/// state and Done only closes it. Deleting lives on the preset's list row,
-/// not here.
+/// The edit sheet for one export preset; every control writes the whole
+/// preset through `update`, so Done only closes it.
 struct SavePresetEditor: View {
     let preset: BridgeSavePreset
     let update: (BridgeSavePreset) -> Void
@@ -13,9 +10,8 @@ struct SavePresetEditor: View {
     @Environment(\.dismiss)
     private var dismiss
 
-    /// Editable copies of the free-form fields, committed on submit or focus
-    /// loss so mid-edit keystrokes don't churn config writes. Invalid drafts
-    /// never commit; they disable Done instead.
+    /// The free-form fields, committed on submit or focus loss; an invalid
+    /// draft disables Done instead.
     @State
     private var nameDraft = ""
     @State
@@ -193,7 +189,7 @@ struct SavePresetEditor: View {
             Text(
                 "Preview: \(Text(previewFilename).monospaced())"
             )
-            .font(.caption)
+            .themeText(.detail)
             .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

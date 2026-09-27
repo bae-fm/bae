@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The Sync section's banner for what needs a person: the sync error and the
-/// operations left waiting. It reads `syncStatusStore` itself so only this view
-/// re-renders when sync health changes.
+/// The Sync section's banner for the sync error and the operations left
+/// waiting; it reads `syncStatusStore` itself so only it re-renders.
 struct SyncErrorBanner: View {
     @Environment(SyncStatusStore.self)
     var syncStatusStore
@@ -33,8 +32,7 @@ struct SyncErrorBanner: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(Theme.warning)
                 Text("Sync is failing")
-                    .font(.callout)
-                    .bold()
+                    .themeText(.strong)
             }
             ErrorDetailDisclosure(
                 error: syncError,
@@ -68,8 +66,7 @@ struct SyncErrorBanner: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(Theme.warning)
                 Text("Sync is waiting on you")
-                    .font(.callout)
-                    .bold()
+                    .themeText(.strong)
             }
             ForEach(syncStatusStore.blocked, id: \.id) { operation in
                 BlockedSyncOperationRow(
@@ -94,7 +91,7 @@ private struct BlockedSyncOperationRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(operation.kind.localizedName)
-                .font(.callout)
+                .themeText(.rowTitle)
             ErrorDetailDisclosure(
                 error: DisplayError(
                     line: operation.description,

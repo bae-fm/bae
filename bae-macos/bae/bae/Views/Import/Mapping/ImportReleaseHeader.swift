@@ -25,7 +25,8 @@ struct ImportReleaseSourceActions {
     let identifyAutomatically: () -> Void
     /// Open the same pane on its typed search, starting nothing.
     let searchForRelease: () -> Void
-    /// Restore the initial source tracks, audio assignments, cover, and metadata.
+    /// Restore the initial source tracks, audio assignments, cover, and
+    /// metadata.
     let reset: () -> Void
     /// Replace the draft with what the candidate's own files say.
     let resetToFileMetadata: () -> Void
@@ -101,7 +102,7 @@ struct ImportReleaseHeader: View {
                 // under their own divider.
                 if !records.isEmpty {
                     Rectangle()
-                        .fill(Theme.hover)
+                        .fill(Theme.hairline)
                         .frame(height: 1)
                     ReleaseRecordsRow(records: records, scale: .pane)
                 }
@@ -161,7 +162,7 @@ struct ImportReleaseHeader: View {
         HStack(alignment: .center, spacing: 16) {
             HStack(spacing: 8) {
                 Text("Identify")
-                    .font(.system(size: 13, weight: .semibold))
+                    .themeText(.strong)
                     .foregroundStyle(.secondary)
                 Button("Automatic") {
                     sourceActions.identifyAutomatically()
@@ -178,7 +179,7 @@ struct ImportReleaseHeader: View {
             if let commit {
                 if let folderCheck = commit.folderCheck?.localizedText {
                     Text(folderCheck)
-                        .font(.system(size: 11.5))
+                        .themeText(.detail)
                         .foregroundStyle(Theme.warning)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -191,7 +192,7 @@ struct ImportReleaseHeader: View {
                             commit.unansweredCount
                         )
                     )
-                    .font(.system(size: 11.5))
+                    .themeText(.detail)
                     .foregroundStyle(Theme.warning)
                 }
                 if !commitSettled(commit), configStore.config.hasCloudHome {
@@ -322,15 +323,15 @@ struct ImportCoverWell: View {
         return VStack(spacing: 4) {
             if hasCoverOptions {
                 Text("Add artwork")
-                    .font(.system(size: 12, weight: .semibold))
+                    .themeText(.strong)
                 Text("Drag an image here, or click to choose")
-                    .font(.system(size: 11))
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
             else {
                 Text("No artwork")
-                    .font(.system(size: 12, weight: .semibold))
+                    .themeText(.strong)
                     .foregroundStyle(.secondary)
             }
         }

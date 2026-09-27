@@ -12,8 +12,7 @@ struct BlockedSyncOperationRows: View {
     var body: some View {
         if !syncStatusStore.blocked.isEmpty {
             Text("Sync is waiting on you")
-                .font(.callout)
-                .bold()
+                .themeText(.strong)
         }
         ForEach(syncStatusStore.blocked, id: \.id) { operation in
             BlockedSyncOperationRow(operation: operation, retry: retry)
@@ -35,17 +34,17 @@ private struct BlockedSyncOperationRow: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(operation.kind.localizedName)
             Text(operation.description)
-                .font(.caption)
+                .themeText(.detail)
                 .foregroundStyle(.secondary)
             // coven's untranslated reason, for a person to act on or paste into
             // a report.
             Text(operation.error)
-                .font(.caption2.monospaced())
+                .themeText(.mono)
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
             if let retryError {
                 Text(retryError)
-                    .font(.caption)
+                    .themeText(.detail)
                     .foregroundStyle(Theme.danger)
             }
             if retrying {

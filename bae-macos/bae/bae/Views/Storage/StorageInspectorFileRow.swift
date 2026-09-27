@@ -33,7 +33,7 @@ struct StorageInspectorFileRow: View {
                     .monospacedDigit()
                     .fixedSize()
             }
-            .font(.caption)
+            .themeText(.detail)
             .foregroundStyle(.secondary)
             .padding(.leading, 24)
             ProgressTrackBar(progress: row.upload?.bar?.fraction ?? 0)

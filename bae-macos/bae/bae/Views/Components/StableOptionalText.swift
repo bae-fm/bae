@@ -74,23 +74,22 @@ struct StableOptionalText: View {
 
 #if DEBUG
     #Preview("Stable Optional Text") {
-        // The nil row reserves the same line height as the present rows, so a
-        // stack of these never shifts when a value appears or disappears.
+        // The nil row keeps the same line height as the rows with text.
         VStack(alignment: .leading, spacing: 8) {
             StableOptionalText(
                 text: "Track Title",
-                font: .system(size: 14, weight: .medium),
+                font: ThemeText.rowTitle.font,
                 lineHeight: 18
             )
             StableOptionalText(
                 text: nil,
-                font: .system(size: 14, weight: .medium),
+                font: ThemeText.rowTitle.font,
                 foreground: .secondary,
                 lineHeight: 18
             )
             StableOptionalText(
                 text: "Artist Name",
-                font: .system(size: 12),
+                font: ThemeText.detail.font,
                 foreground: .tertiary,
                 lineHeight: 16
             )

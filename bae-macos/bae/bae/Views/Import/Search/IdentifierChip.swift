@@ -28,7 +28,7 @@ struct IdentifierChip<Trailing: View>: View {
             IdentifierLabel(text: label)
             if let value {
                 Text(value)
-                    .font(.system(size: 10.5, design: .monospaced))
+                    .themeText(.mono)
                     .foregroundStyle(valueStyle)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -89,7 +89,7 @@ struct ProviderCapsule: View {
     var body: some View {
         HStack(spacing: 4) {
             Text(bridgeCatalogName(catalog: source))
-                .font(.system(size: 10, weight: .semibold))
+                .themeText(.chip)
                 .foregroundStyle(.secondary)
                 .fixedSize()
             LookupCellView(lookup: lookup, onRetry: onRetry)
@@ -116,7 +116,7 @@ struct IdentifierDash: View {
 struct IdentifierOff: View {
     var body: some View {
         Text("Off")
-            .font(.system(size: 10, weight: .medium))
+            .themeText(.chip)
             .foregroundStyle(.tertiary)
             .fixedSize()
     }
@@ -244,11 +244,11 @@ struct LookupReleasesPopover: View {
                             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         )
                         Text(group.title)
-                            .font(.system(size: 11, weight: .semibold))
+                            .themeText(.rowTitle)
                             .lineLimit(1)
                         if let artist = group.artist {
                             Text(verbatim: "\u{00b7} \(artist)")
-                                .font(.system(size: 11))
+                                .themeText(.detail)
                                 .foregroundStyle(.tertiary)
                                 .lineLimit(1)
                         }
@@ -281,7 +281,7 @@ struct LookupReleaseLine: View {
         HStack(spacing: 7) {
             if let year = pressing.lead.year {
                 Text(String(year))
-                    .font(.system(size: 11.5, weight: .semibold))
+                    .themeText(.strong)
                     .monospacedDigit()
             }
             ForEach(Array(pressing.labels.enumerated()), id: \.offset) {
@@ -289,13 +289,13 @@ struct LookupReleaseLine: View {
                 label in
                 if let name = label.name {
                     Text(name)
-                        .font(.system(size: 11))
+                        .themeText(.detail)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
                 ForEach(label.catalogNumbers, id: \.self) { catalogNumber in
                     Text(catalogNumber)
-                        .font(.system(size: 9.5, design: .monospaced))
+                        .themeText(.chip)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 4)
                         .background(
@@ -307,7 +307,7 @@ struct LookupReleaseLine: View {
             }
             if !pressed.isEmpty {
                 Text(pressed)
-                    .font(.system(size: 10))
+                    .themeText(.fine)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
             }
@@ -338,7 +338,7 @@ struct IdentifierLabel: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 10, weight: .semibold))
+            .themeText(.chip)
             .foregroundStyle(.tertiary)
             .fixedSize()
     }

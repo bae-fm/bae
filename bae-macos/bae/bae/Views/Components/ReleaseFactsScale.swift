@@ -22,11 +22,4 @@ enum ReleaseFactsScale {
         case .card: 4
         }
     }
-
-    var recordFontSize: CGFloat {
-        switch self {
-        case .pane: 11.5
-        case .card: 11
-        }
-    }
 }

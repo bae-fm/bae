@@ -63,14 +63,14 @@ private struct BrowseSummaryRow<Summary: BrowseSummaryDisplay>: View {
             VStack(alignment: .leading, spacing: 2) {
                 StableOptionalText(
                     text: summary?.name,
-                    font: .browseRowTitle,
+                    font: ThemeText.rowTitle.font,
                     foreground: .primary,
                     lineHeight: 17,
                     lineLimit: 1
                 )
                 StableOptionalText(
                     text: summary?.countText,
-                    font: .browseRowCaption,
+                    font: ThemeText.detail.font,
                     foreground: .secondary,
                     lineHeight: 14,
                     lineLimit: 1

@@ -135,7 +135,7 @@ struct ImportSearchFormView: View {
                     signalFailure.badgeLine,
                     systemImage: "exclamationmark.triangle.fill"
                 )
-                .font(.system(size: 11.5))
+                .themeText(.body)
                 .foregroundStyle(Theme.warning)
             }
         }

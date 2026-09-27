@@ -47,9 +47,8 @@ struct ImportReleaseSummary {
         sourceAudio = candidate.files.sourceAudio
     }
 
-    /// The row's applied draft. `nil` for a row that has none, which is the
-    /// `unidentified` reading — that row draws its folder instead of a
-    /// release.
+    /// The row's applied draft; `nil` for an `unidentified` row, which has
+    /// none.
     init?(row: BridgeTriageRow) {
         guard let summary = row.metadataSummary else { return nil }
         titleIsPlaceholder = summary.albumTitle.isEmpty
@@ -82,11 +81,8 @@ struct ImportReleaseSummary {
 
 }
 
-/// One rendering of an import release summary, scaled for its two homes.
-///
-/// What sits after the title is the caller's — the sidebar's row puts the
-/// record arrow there; the pane names its catalogs in the records row instead
-/// and puts nothing.
+/// An import release summary, scaled for the sidebar or the card, with the
+/// caller's accessory after the title.
 struct ImportReleaseSummaryView<TitleAccessory: View>: View {
     enum Style {
         case sidebar
@@ -103,7 +99,7 @@ struct ImportReleaseSummaryView<TitleAccessory: View>: View {
             titleLine
             artistLine
             Text(summary.factsLine)
-                .font(.system(size: 11.5))
+                .themeText(.detail)
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
                 .padding(.top, style.factsTopPadding)
@@ -116,13 +112,11 @@ struct ImportReleaseSummaryView<TitleAccessory: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// The title and whatever the caller puts after it. The title truncates
-    /// first: the accessory is already as short as it gets, and a clipped
-    /// title still reads.
+    /// The title and the caller's accessory; the title truncates first.
     private var titleLine: some View {
         HStack(spacing: 6) {
             Text(summary.title)
-                .font(style.titleFont)
+                .themeText(style.titleText)
                 .foregroundStyle(
                     summary.titleIsPlaceholder ? .secondary : .primary
                 )
@@ -137,7 +131,7 @@ struct ImportReleaseSummaryView<TitleAccessory: View>: View {
     private var artistLine: some View {
         if let artist = summary.artist {
             Text(artist)
-                .font(style.artistFont)
+                .themeText(style.artistText)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -160,17 +154,17 @@ extension ImportReleaseSummaryView.Style {
         }
     }
 
-    fileprivate var titleFont: Font {
+    fileprivate var titleText: ThemeText {
         switch self {
-        case .sidebar: .system(size: 13, weight: .semibold)
-        case .card: .system(size: 17, weight: .semibold)
+        case .sidebar: .rowTitle
+        case .card: .heading
         }
     }
 
-    fileprivate var artistFont: Font {
+    fileprivate var artistText: ThemeText {
         switch self {
-        case .sidebar: .system(size: 11.5)
-        case .card: .system(size: 13)
+        case .sidebar: .detail
+        case .card: .body
         }
     }
 
@@ -209,7 +203,7 @@ struct ImportSourceAudioSummaryView: View {
 
     var body: some View {
         Text(sourceAudio.summary.text)
-            .font(.system(size: 11))
+            .themeText(.detail)
             .foregroundStyle(.tertiary)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
