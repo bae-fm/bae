@@ -179,6 +179,17 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
         echo "Fix the warnings above and try again"
         exit 1
     }
+
+    # CI documents the workspace with warnings as errors; clippy does not see
+    # doc links, so a link to a private item only failed there.
+    DOC_ARGS=(doc --no-deps)
+    for crate in "${DIRECTLY_CHANGED_CRATES[@]}"; do
+        DOC_ARGS+=(-p "$crate")
+    done
+    run_check "rustdoc (directly changed crates)" env RUSTDOCFLAGS="-D warnings" cargo "${DOC_ARGS[@]}" || {
+        echo "Fix the documentation errors above and try again"
+        exit 1
+    }
 fi
 
 STAGED_SWIFT_FILES=()
