@@ -112,14 +112,17 @@ pub enum PendingFilter {
 }
 
 impl PendingFilter {
-    /// Every filter, in the order the menu lists them.
-    pub const ALL: [Self; 6] = [
-        Self::Identified,
-        Self::NeedsYou,
-        Self::Identifying,
-        Self::Importing,
-        Self::LookupError,
-        Self::ImportError,
+    /// Every filter, in the groups the menu sets apart and each group in the
+    /// order it lists them: where identification stands, then where the
+    /// import does. Each group ends with its failure.
+    pub const GROUPS: [&'static [Self]; 2] = [
+        &[
+            Self::Identifying,
+            Self::NeedsYou,
+            Self::Identified,
+            Self::LookupError,
+        ],
+        &[Self::Importing, Self::ImportError],
     ];
 
     /// The candidates `filter` keeps by what is running for them, from every

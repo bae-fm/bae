@@ -7,7 +7,8 @@ struct PendingFilterPicker: View {
     let selection: BridgePendingFilter?
     let onSelect: (BridgePendingFilter?) -> Void
 
-    private static let filters = bridgePendingFilters()
+    /// Core's groups, each set apart from the one before it.
+    static let groups = bridgePendingFilterGroups()
 
     var body: some View {
         Picker(
@@ -15,8 +16,11 @@ struct PendingFilterPicker: View {
             selection: Binding(get: { selection }, set: onSelect)
         ) {
             Text("All").tag(BridgePendingFilter?.none)
-            ForEach(Self.filters, id: \.self) { filter in
-                Text(filter.label).tag(Optional(filter))
+            ForEach(Self.groups, id: \.self) { group in
+                Divider()
+                ForEach(group, id: \.self) { filter in
+                    Text(filter.label).tag(Optional(filter))
+                }
             }
         }
         .pickerStyle(.inline)

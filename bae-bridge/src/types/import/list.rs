@@ -48,13 +48,21 @@ pub enum BridgePendingFilter {
     ImportError,
 }
 
-/// Every pending filter, in the order the menu lists them.
+/// Every pending filter, in the groups the menu sets apart, each group in the
+/// order the menu lists it.
 #[cfg(feature = "desktop")]
 #[uniffi::export]
-pub fn bridge_pending_filters() -> Vec<BridgePendingFilter> {
-    bae_core::import::PendingFilter::ALL
-        .map(BridgePendingFilter::from_core)
-        .to_vec()
+pub fn bridge_pending_filter_groups() -> Vec<Vec<BridgePendingFilter>> {
+    bae_core::import::PendingFilter::GROUPS
+        .iter()
+        .map(|group| {
+            group
+                .iter()
+                .copied()
+                .map(BridgePendingFilter::from_core)
+                .collect()
+        })
+        .collect()
 }
 
 /// One item at one offset. `stable_key` identifies it across reruns — the id a

@@ -150,7 +150,7 @@ fn each_filter_keeps_exactly_its_own_rows() {
 #[test]
 fn the_pending_filter_leaves_done_and_skipped_alone() {
     let rows = every_kind();
-    for filter in PendingFilter::ALL {
+    for &filter in PendingFilter::GROUPS.iter().copied().flatten() {
         assert_eq!(
             shown(&rows, TriageTab::Done, Some(filter)),
             vec!["candidate Imported"]
@@ -353,5 +353,24 @@ fn each_filter_s_rows_offer_what_their_drafts_and_lookups_allow() {
     assert_eq!(
         keys(&import_error, CandidateAction::Import),
         vec![key("Failed Import")]
+    );
+}
+
+/// Every filter is in exactly one group, and the groups keep the order the
+/// menu lists them in: identification's, then the import's, each ending with
+/// its failure.
+#[test]
+fn every_filter_is_in_one_group_in_the_menu_s_order() {
+    assert_eq!(
+        PendingFilter::GROUPS,
+        [
+            &[
+                PendingFilter::Identifying,
+                PendingFilter::NeedsYou,
+                PendingFilter::Identified,
+                PendingFilter::LookupError,
+            ][..],
+            &[PendingFilter::Importing, PendingFilter::ImportError][..],
+        ]
     );
 }
