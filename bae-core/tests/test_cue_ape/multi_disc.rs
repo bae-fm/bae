@@ -104,15 +104,14 @@ async fn test_cue_ape_next_track() {
     );
 }
 
-/// Import a two-disc CUE/APE release under the given storage mode and assert
+/// Import a two-disc CUE/APE release to the given destination and assert
 /// each track's main audio segment resolves to its own disc's APE file
 /// (identified by the relative path `CD{N}/CDImage.ape`).
 ///
 /// This exercises the bare-filename collision regression in every code path:
 /// bytes-never-copied (Local), bytes-uploaded-and-pinned (Remote + pin),
-/// and bytes-uploaded-cloud-only (Remote, no pin). Pin is an orthogonal coven
-/// cache choice, so it rides alongside the `StorageMode` as its own argument.
-async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, pin: bool) {
+/// and bytes-uploaded-cloud-only (Remote, no pin).
+async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestination) {
     tracing_init();
     let temp_root = TempDir::new().expect("temp root");
     let album_dir = temp_root.path().join("album");
@@ -154,7 +153,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
         bae_core::providers::Providers::offline(),
     )
     .expect("open library manager");
-    if storage_mode == StorageMode::Remote {
+    if let ImportDestination::Remote { .. } = destination {
         library_manager
             .connect_test_cloud_home(
                 Arc::new(coven::InMemoryCloudHome::new()),
@@ -195,8 +194,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
-            storage_mode,
-            pin,
+            destination,
             ..support::folder_import(
                 &import_id,
                 album_dir,
@@ -208,7 +206,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
 
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _) =
-        wait_for_multi_disc_cue_ape_import_ready(&library_manager, storage_mode, &mut progress_rx)
+        wait_for_multi_disc_cue_ape_import_ready(&library_manager, destination, &mut progress_rx)
             .await;
 
     let tracks = library_manager
@@ -271,12 +269,12 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
 
 async fn wait_for_multi_disc_cue_ape_import_ready(
     library_manager: &LibraryManager,
-    storage_mode: StorageMode,
+    destination: ImportDestination,
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
 ) -> (String, String) {
-    match storage_mode {
-        StorageMode::Local => wait_for_import_complete(progress_rx).await,
-        StorageMode::Remote => {
+    match destination {
+        ImportDestination::Local => wait_for_import_complete(progress_rx).await,
+        ImportDestination::Remote { .. } => {
             let (release_id, album_id) = wait_for_remote_upload_queued(progress_rx).await;
             // The connected store may still be completing its initial snapshot.
             // Bound a stuck transition without imposing a latency guarantee on
@@ -342,17 +340,17 @@ async fn wait_for_remote_upload_queued(
 /// cover each explicitly to prevent a regression on any one path.
 #[tokio::test]
 async fn test_multi_disc_cue_ape_local() {
-    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Local, false).await;
+    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Local).await;
 }
 
 #[tokio::test]
 async fn test_multi_disc_cue_ape_remote_pin() {
-    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Remote, true).await;
+    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Remote { pin: true }).await;
 }
 
 #[tokio::test]
 async fn test_multi_disc_cue_ape_remote_unpin() {
-    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Remote, false).await;
+    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Remote { pin: false }).await;
 }
 
 /// A sparse buffer pre-filled with the whole byte slice, so a decode exercises

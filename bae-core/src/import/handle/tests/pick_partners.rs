@@ -390,10 +390,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         [9, 3]
     );
     let mut events = handle.subscribe_events();
-    let import_id = handle
-        .start_import(&key, crate::import::StorageMode::Local, false)
-        .await
-        .unwrap();
+    let import_id = handle.start_import(&key).await.unwrap();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
     let tracks = handle
         .library_manager
@@ -476,10 +473,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
         .await
         .unwrap();
     let mut events = handle.subscribe_events();
-    let import_id = handle
-        .start_import(&key, crate::import::StorageMode::Local, false)
-        .await
-        .unwrap();
+    let import_id = handle.start_import(&key).await.unwrap();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
     let records = handle
         .library_manager

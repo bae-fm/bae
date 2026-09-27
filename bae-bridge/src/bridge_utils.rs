@@ -263,7 +263,6 @@ impl BridgeConfig {
             import_storage: BridgeImportStorage {
                 cloud: *cloud,
                 pinned: *pinned,
-                goes_to_cloud: config.imports_to_cloud(),
             },
             prefill_with_file_metadata: *prefill_with_file_metadata,
             lookup_catalogs,

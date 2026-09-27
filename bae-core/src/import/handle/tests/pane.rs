@@ -83,7 +83,10 @@ async fn picked_candidate(
         path: folder.clone(),
         file_root: folder.clone(),
         name: folder_name.to_string(),
-        files: CategorizedFiles { files, parts: Vec::new(),  },
+        files: CategorizedFiles {
+            files,
+            parts: Vec::new(),
+        },
         watched_folder_path: root.to_string_lossy().into_owned(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
@@ -682,7 +685,7 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
 
     let mut events = handle.subscribe_events();
     let import_id = handle
-        .start_import(&key, crate::import::StorageMode::Local, false)
+        .start_import(&key)
         .await
         .expect("the prepared candidate enters source validation");
     let error = await_import_outcome(&mut events, &import_id)
@@ -823,9 +826,7 @@ async fn a_bulk_import_skips_a_row_being_identified_and_says_so() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle.admit_identification(vec![key.clone()], crate::import::Admission::Requested);
 
-    let refused = handle
-        .import_ready(&key, crate::import::StorageMode::Local, false)
-        .await;
+    let refused = handle.import_ready(&key).await;
 
     assert!(matches!(
         refused,
@@ -840,9 +841,7 @@ async fn a_bulk_import_skips_a_row_being_identified_and_says_so() {
     handle.withdraw_identification(&key);
     handle.claim_candidate_for_import(&key, "import-1").await;
     assert!(matches!(
-        handle
-            .import_ready(&key, crate::import::StorageMode::Local, false)
-            .await,
+        handle.import_ready(&key).await,
         Err(crate::import::ImportError::CandidateImportInProgress)
     ));
     shut_down(handle).await;

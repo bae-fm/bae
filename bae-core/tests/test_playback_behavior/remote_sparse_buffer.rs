@@ -64,7 +64,7 @@ async fn build_remote_multi_window_template(
     import_handle
         .send_command(ImportCommand {
             candidate_key: "multi-window-remote-template".to_string(),
-            storage_mode: StorageMode::Remote,
+            destination: ImportDestination::Remote { pin: false },
             ..support::folder_import(
                 &import_id,
                 album_dir.clone(),

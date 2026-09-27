@@ -10,8 +10,8 @@
 //!    sits (no bytes move, no transcode), measure per-track loudness by decoding,
 //!    and write every row in one transaction.
 //!
-//! An import always lands as a local, playable release. A [`StorageMode::Remote`]
-//! import then uploads to the cloud in the background.
+//! An import always lands as a local, playable release. An
+//! [`ImportDestination::Remote`] import then uploads to the cloud in the background.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::audio_codec::ProbeResult;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -660,12 +660,7 @@ pub struct ImportCommand {
     pub source: super::release_candidate::CandidateSource,
     #[cfg(any(test, feature = "test-utils"))]
     pub selected_cover: Option<CoverSelection>,
-    pub storage_mode: StorageMode,
-    /// The transient pin choice for a `Remote` import: whether coven keeps
-    /// the uploaded blobs in `storage/pinned/` (kept offline) vs the evictable
-    /// cache. Ignored for `Local`. Never persisted — it rides the upload
-    /// as the retain-pinned intent.
-    pub pin: bool,
+    pub destination: ImportDestination,
     #[cfg(any(test, feature = "test-utils"))]
     pub metadata_provenance: Option<MetadataProvenance>,
     #[cfg(any(test, feature = "test-utils"))]

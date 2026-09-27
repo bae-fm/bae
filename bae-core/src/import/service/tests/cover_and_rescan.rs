@@ -170,8 +170,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
                     },
                     file_tag_snapshot: Some(snapshot),
                 },
-                StorageMode::Local,
-                false,
+                ImportDestination::Local,
             )
             .await;
         if explicit {
@@ -349,8 +348,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
                 },
                 file_tag_snapshot: None,
             },
-            StorageMode::Local,
-            false,
+            ImportDestination::Local,
         )
         .await;
 

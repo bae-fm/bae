@@ -627,16 +627,6 @@ pub struct AutomationReleaseTrack {
     pub side: Option<u32>,
 }
 
-/// Start an import of a candidate. Nothing about the release rides in: the
-/// pick, the metadata edits, the track rows and the cover are all stored under
-/// the candidate, so the commit reads the very values it would show.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct AutomationStartImport {
-    pub candidate_key: String,
-    pub storage_mode: AutomationStorageMode,
-    pub pin: bool,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationCoverSelection {
@@ -647,13 +637,6 @@ pub enum AutomationCoverSelection {
     Local {
         path: String,
     },
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum AutomationStorageMode {
-    Local,
-    Remote,
 }
 
 #[derive(Debug, Clone, Serialize)]

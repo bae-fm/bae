@@ -7,11 +7,7 @@ private let importConfirmLogger = Logger.bae("ImportConfirm")
 // MARK: - Commit
 
 extension ImportView {
-    /// Commit the selected candidate. Nothing about the release is sent: the
-    /// pick, the metadata typed over it, the corrected rows and the chosen
-    /// cover are all stored under the candidate, so the commit consumes the
-    /// very values this pane drew. Only where the files should live is this
-    /// view's to say.
+    /// Commit the selected candidate; core holds everything it commits.
     ///
     /// A failure — a folder that moved, an album title left empty — lands on
     /// the candidate's banner and the fields stay as they were.
@@ -19,13 +15,8 @@ extension ImportView {
         guard case .folder = candidate.source else {
             return
         }
-        let request = ImportCommitRequest(
-            candidateKey: candidate.key,
-            storageMode: configStore.config.importStorageMode,
-            pin: configStore.config.importStorage.pinned,
-        )
         runCandidateMutation(candidate: candidate) {
-            try await importer.startImport(request)
+            try await importer.startImport(candidate.key)
         }
     }
 

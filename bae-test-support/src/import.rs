@@ -94,15 +94,14 @@ pub fn discogs_release(release_id: impl Into<String>) -> bae_core::import::Metad
 
 /// The command a test sends to import one folder, in the shape almost every
 /// test wants it: a recursive scan of `folder` under candidate key `"test"`,
-/// no chosen cover, stored locally, unpinned, and no user edit over the
-/// metadata.
+/// no chosen cover, stored locally, and no user edit over the metadata.
 ///
 /// A test that differs in one of those names that field and takes the rest
 /// from here:
 ///
 /// ```ignore
 /// ImportCommand {
-///     storage_mode: StorageMode::Remote,
+///     destination: ImportDestination::Remote { pin: false },
 ///     ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileMetadata)
 /// }
 /// ```
@@ -120,8 +119,7 @@ pub fn folder_import(
             parts: Vec::new(),
         },
         selected_cover: None,
-        storage_mode: bae_core::import::StorageMode::Local,
-        pin: false,
+        destination: bae_core::import::ImportDestination::Local,
         metadata_provenance: Some(metadata_provenance),
         user_edit: None,
     }

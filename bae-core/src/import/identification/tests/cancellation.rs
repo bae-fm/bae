@@ -273,7 +273,7 @@ async fn starting_an_import_ends_the_candidates_run() {
 
     let import_id = fixture
         .import
-        .start_import(&key, crate::import::StorageMode::Local, false)
+        .start_import(&key)
         .await
         .expect("the prepared candidate enters its import");
 

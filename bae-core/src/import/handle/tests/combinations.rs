@@ -101,10 +101,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         [Some(1), Some(1), Some(2), Some(2)]
     );
     let mut events = handle.subscribe_events();
-    let import_id = handle
-        .start_import(&key, crate::import::StorageMode::Local, false)
-        .await
-        .unwrap();
+    let import_id = handle.start_import(&key).await.unwrap();
     let release_id = tokio::time::timeout(std::time::Duration::from_secs(30), async {
         loop {
             match events.recv().await.unwrap() {

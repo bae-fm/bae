@@ -305,11 +305,7 @@ async fn an_open_pane_reads_its_credit_into_the_library_when_another_import_comm
     };
     assert_eq!(artist.artist_id, catalog_artist);
 
-    let import_id = f
-        .handle
-        .start_import(&tagged_key, StorageMode::Local, false)
-        .await
-        .unwrap();
+    let import_id = f.handle.start_import(&tagged_key).await.unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (_, tagged_album) = support::wait_for_import_complete(&mut progress_rx).await;
 

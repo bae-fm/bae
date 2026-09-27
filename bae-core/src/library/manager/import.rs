@@ -494,7 +494,7 @@ impl LibraryManager {
 
     /// Insert all of an import's data in one transaction, so the release either
     /// exists complete or does not exist at all. Nothing of it is in the DB yet
-    /// except the import record. A Remote import (`remote`) records its
+    /// except the import record. A Remote import (`destination`) records its
     /// make-Remote in the same write and gets back the outbox revision that
     /// shows its uploads queued.
     ///
@@ -520,7 +520,7 @@ impl LibraryManager {
         prepared_artist_images: &[crate::import::PreparedArtistImage],
         primary_release_id: Option<(&str, &str)>,
         replacement_plans: &[ImportReplacementPlan],
-        remote: Option<crate::db::RemoteImport>,
+        destination: crate::import::ImportDestination,
     ) -> Result<Option<u64>, LibraryError> {
         let expected = self
             .database
@@ -561,13 +561,14 @@ impl LibraryManager {
                 primary_release_id,
                 storage,
                 &replacement_deletes,
-                remote,
+                destination,
             )
             .await?;
+        let remote = matches!(destination, crate::import::ImportDestination::Remote { .. });
         // The outbox value that already shows the queued uploads (or the
         // replaced releases' unwinding), whose revision a Remote import hands
         // back as its receipt.
-        let outbox_revision = if remote.is_some() || !replacement_plans.is_empty() {
+        let outbox_revision = if remote || !replacement_plans.is_empty() {
             Some(self.emit_outbox_changed().await)
         } else {
             None
@@ -579,7 +580,7 @@ impl LibraryManager {
                 });
             }
         }
-        Ok(outbox_revision.filter(|_| remote.is_some()))
+        Ok(outbox_revision.filter(|_| remote))
     }
 
     /// Every stored candidate row, keyed by content hash. The queue is a few

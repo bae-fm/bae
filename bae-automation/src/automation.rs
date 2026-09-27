@@ -269,18 +269,13 @@ impl Automation {
         Ok(EmptyResponse {})
     }
 
+    /// Start an import of a candidate from what it stores, to where the stored
+    /// storage choice says.
     pub async fn start_import(
         &self,
-        request: AutomationStartImport,
+        candidate_key: String,
     ) -> Result<AutomationImportStarted, AutomationError> {
-        let import_id = self
-            .services
-            .import_start_import(
-                &request.candidate_key,
-                request.storage_mode.into_core(),
-                request.pin,
-            )
-            .await?;
+        let import_id = self.services.import_start_import(&candidate_key).await?;
         Ok(AutomationImportStarted { import_id })
     }
 
@@ -529,8 +524,8 @@ impl Automation {
                 )
             }
             AutomationTool::ImportStart => {
-                let input: AutomationStartImport = from_value(args)?;
-                to_value(self.start_import(input).await?)
+                let input: CandidateKeyInput = from_value(args)?;
+                to_value(self.start_import(input.candidate_key).await?)
             }
             AutomationTool::ReleaseDetailGet => {
                 let input: ReleaseIdInput = from_value(args)?;

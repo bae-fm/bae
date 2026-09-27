@@ -38,8 +38,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
                 candidate,
                 file_tag_snapshot: None,
             },
-            StorageMode::Local,
-            false,
+            ImportDestination::Local,
         )
         .await
         .unwrap();

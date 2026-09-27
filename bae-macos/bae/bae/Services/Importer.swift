@@ -1,16 +1,6 @@
 import BaeKit
 import Foundation
 
-/// What committing a candidate needs from the caller: where its files should
-/// live. Everything about the release — the draft, provenance, edited fields,
-/// the corrected rows, the cover — is stored under the candidate, so the
-/// commit reads the very values the pane drew.
-struct ImportCommitRequest: Sendable {
-    let candidateKey: String
-    let storageMode: BridgeStorageMode
-    let pin: Bool
-}
-
 /// Whether the releases an import pane offers are already in the library,
 /// read through one live query: which releases it checks is changed in place,
 /// and each value answers every check at once.
@@ -103,8 +93,8 @@ private struct ImportOperations: Sendable {
             String, BridgeCandidateActionBasis, CandidateLiveStateCallback
         ) -> any LiveSubscriptionProtocol
     let candidateSignals: @Sendable (String) -> Signals?
-    let startImport: @Sendable (ImportCommitRequest) async throws -> Void
-    let importReady: @Sendable (ImportCommitRequest) async throws -> Void
+    let startImport: @Sendable (String) async throws -> Void
+    let importReady: @Sendable (String) async throws -> Void
     let mergeCandidateArtistIdentityConflict:
         @Sendable (String, String) async throws -> Void
     let setIdentifyAutomatically:
@@ -306,19 +296,11 @@ extension ImportOperations {
                 handle.candidateSignals(candidateKey: $0)
                     .map(Signals.init(bridge:))
             },
-            startImport: { request in
-                try await handle.startImport(
-                    candidateKey: request.candidateKey,
-                    storageMode: request.storageMode,
-                    pin: request.pin
-                )
+            startImport: {
+                try await handle.startImport(candidateKey: $0)
             },
-            importReady: { request in
-                try await handle.importReady(
-                    candidateKey: request.candidateKey,
-                    storageMode: request.storageMode,
-                    pin: request.pin
-                )
+            importReady: {
+                try await handle.importReady(candidateKey: $0)
             },
             mergeCandidateArtistIdentityConflict: {
                 try await handle.mergeCandidateArtistIdentityConflict(
@@ -499,14 +481,10 @@ final class Importer: Sendable, Observable {
             },
         candidateSignals: @escaping @Sendable (String) -> Signals? = { _ in nil
         },
-        startImport:
-            @escaping @Sendable (ImportCommitRequest) async throws -> Void = {
-                _ in
-            },
-        importReady:
-            @escaping @Sendable (ImportCommitRequest) async throws -> Void = {
-                _ in
-            },
+        startImport: @escaping @Sendable (String) async throws -> Void = { _ in
+        },
+        importReady: @escaping @Sendable (String) async throws -> Void = { _ in
+        },
         setIdentifyAutomatically:
             @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
             },
@@ -845,15 +823,16 @@ extension Importer {
         try await operations.dropCandidateTrack(candidateKey, trackId)
     }
 
-    func startImport(_ request: ImportCommitRequest) async throws {
-        try await operations.startImport(request)
+    /// Commit a candidate from what core stores for it.
+    func startImport(_ candidateKey: String) async throws {
+        try await operations.startImport(candidateKey)
     }
 
     /// Import one row of a bulk import of the Ready set. Core refuses a row an
     /// import already owns or identification is still answering, and the
     /// refusal says which.
-    func importReady(_ request: ImportCommitRequest) async throws {
-        try await operations.importReady(request)
+    func importReady(_ candidateKey: String) async throws {
+        try await operations.importReady(candidateKey)
     }
 
     func mergeCandidateArtistIdentityConflict(

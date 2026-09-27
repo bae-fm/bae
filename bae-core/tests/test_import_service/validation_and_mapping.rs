@@ -188,11 +188,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
         )
         .await
         .unwrap();
-    let import_id = f
-        .handle
-        .start_import(&candidate_key, StorageMode::Local, false)
-        .await
-        .unwrap();
+    let import_id = f.handle.start_import(&candidate_key).await.unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
     let (_release_id, album_id) = support::wait_for_import_complete(&mut rx).await;
 
@@ -392,11 +388,7 @@ async fn a_corrected_pairing_survives_the_commit() {
         .set_candidate_track_edit(&candidate_key, tracks[1].clone())
         .await
         .unwrap();
-    let import_id = f
-        .handle
-        .start_import(&candidate_key, StorageMode::Local, false)
-        .await
-        .unwrap();
+    let import_id = f.handle.start_import(&candidate_key).await.unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;
 
@@ -465,7 +457,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         &f,
         &album_dir,
         None,
-        StorageMode::Local,
+        ImportDestination::Local,
         MetadataProvenance::ExternalRelease {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, release_id_key),
             partners: vec![],
@@ -515,7 +507,7 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         &f,
         &album_dir,
         None,
-        StorageMode::Local,
+        ImportDestination::Local,
         MetadataProvenance::ExternalRelease {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, release_id_key),
             partners: vec![],

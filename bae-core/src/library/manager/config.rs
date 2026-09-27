@@ -93,9 +93,7 @@ impl LibraryManager {
             .await
     }
 
-    /// Whether an import goes to the cloud home, when the library has one —
-    /// the choice an import pane last made, and what an automatic import
-    /// goes by.
+    /// Whether imports go to the cloud home, when the library has one.
     pub async fn set_import_to_cloud(
         &self,
         enabled: bool,

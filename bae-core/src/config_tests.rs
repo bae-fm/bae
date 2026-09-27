@@ -169,43 +169,30 @@ fn identification_steps_are_total_and_independent() {
     }
 }
 
-/// An import goes to the cloud only when there is a home to go to.
+/// An import goes where the stored choice says, pinned as it says, and to the
+/// cloud only when there is a home to go to.
 #[test]
-fn an_import_goes_to_the_cloud_only_with_a_home() {
+fn an_import_s_destination_is_the_stored_choice() {
+    use crate::import::ImportDestination;
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib", tmp.path().to_path_buf());
-    assert!(
-        !config.imports_to_cloud(),
+    assert_eq!(
+        config.import_destination(),
+        ImportDestination::Local,
         "no cloud home: local, whatever the choice"
     );
     config.cloud_home.provider = Some(CloudProvider::Dropbox);
-    assert!(config.imports_to_cloud());
-    config.prefs.import_storage.cloud = false;
-    assert!(!config.imports_to_cloud());
-}
-
-/// An import goes where the stored choice says, pinned as it says.
-#[test]
-fn an_import_s_destination_is_the_stored_choice() {
-    let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib", tmp.path().to_path_buf());
-    config.cloud_home.provider = Some(CloudProvider::Dropbox);
     assert_eq!(
         config.import_destination(),
-        ImportDestination {
-            storage_mode: crate::import::StorageMode::Remote,
-            pin: true,
-        }
+        ImportDestination::Remote { pin: true }
     );
-    config.prefs.import_storage.cloud = false;
     config.prefs.import_storage.pinned = false;
     assert_eq!(
         config.import_destination(),
-        ImportDestination {
-            storage_mode: crate::import::StorageMode::Local,
-            pin: false,
-        }
+        ImportDestination::Remote { pin: false }
     );
+    config.prefs.import_storage.cloud = false;
+    assert_eq!(config.import_destination(), ImportDestination::Local);
 }
 
 #[test]

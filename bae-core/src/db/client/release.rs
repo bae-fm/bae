@@ -9,15 +9,6 @@ mod storage;
 /// One group rather than thirteen parameters: each is a plain list the caller
 /// either has or does not, and `Default` is every one of them empty, so a
 /// caller names only the lists it actually fills.
-/// A release an import makes Remote from the start. See
-/// `Database::finalize_import_atomic`.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct RemoteImport {
-    /// Keep the uploaded bytes pinned for offline.
-    pub(crate) pin: bool,
-}
-
 ///
 /// Every artist link here — the album's artist, `album_artists`,
 /// `track_artists`, the role rows and `work_artists` — names its artist by the
@@ -447,9 +438,9 @@ impl Database {
         // `cloud_path` computed inside this transaction, ready when the gate flips.
         storage: crate::config::HomeStorage,
         replacement_deletes: &[ReleaseDeletion],
-        // `Some` for a release that goes Remote from the start: its uploads
-        // and intent are recorded in this same write.
-        remote: Option<RemoteImport>,
+        // A release that goes Remote from the start has its uploads and
+        // intent recorded in this same write.
+        destination: crate::import::ImportDestination,
     ) -> Result<Vec<ImportReplacementOutcome>, ArtistWriteError> {
         let album = album.cloned();
         let release = release.clone();
@@ -712,7 +703,7 @@ impl Database {
                     // A Remote import records its make-Remote with its rows, so
                     // the release never commits Local with the choice lost, and
                     // recording needs no cloud connection.
-                    if let Some(RemoteImport { pin }) = &remote {
+                    if let crate::import::ImportDestination::Remote { pin } = destination {
                         let album_title: String = tx.query_row(
                             "SELECT title FROM albums WHERE id = ?",
                             params![release.album_id],
@@ -727,7 +718,7 @@ impl Database {
                                 .iter()
                                 .map(|(_, id)| ("release_files", id.as_str())),
                         );
-                        tx.make_remote("releases", &release.id, &album_title, *pin, &blob_rows)?;
+                        tx.make_remote("releases", &release.id, &album_title, pin, &blob_rows)?;
                     }
 
 

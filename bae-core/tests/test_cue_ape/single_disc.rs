@@ -1,5 +1,5 @@
 use bae_core::discogs::models::DiscogsRelease;
-use bae_core::import::{ImportCommand, StorageMode};
+use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
 use bae_core::sync::CloudCipher;

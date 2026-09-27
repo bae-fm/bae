@@ -17,8 +17,7 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
                 scope: bae_core::import::ReleaseFileScope::Recursive, parts: Vec::new(), 
             },
             selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
+            destination: ImportDestination::Local,
             metadata_provenance: None,
             user_edit: Some(ReleaseUserEdit {
                 album_title: "Album Title".to_string(),

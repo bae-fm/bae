@@ -452,10 +452,7 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
         }));
 
     let mut events = handle.subscribe_events();
-    let import_id = handle
-        .start_import(&key, crate::import::StorageMode::Local, false)
-        .await
-        .unwrap();
+    let import_id = handle.start_import(&key).await.unwrap();
     let (release_id, _album_id) = await_import_outcome(&mut events, &import_id)
         .await
         .unwrap_or_else(|error| panic!("import failed: {error}"));
@@ -515,7 +512,7 @@ async fn import_admission_refuses_an_incomplete_candidate_revision() {
         .unwrap();
 
     let error = handle
-        .start_import(&key, crate::import::StorageMode::Local, false)
+        .start_import(&key)
         .await
         .expect_err("the incomplete revision must not enter the import queue");
 
@@ -579,7 +576,7 @@ async fn an_imported_candidate_refuses_metadata_edits() {
         .selection;
     let mut events = handle.subscribe_events();
     let import_id = handle
-        .start_import(&key, crate::import::StorageMode::Local, false)
+        .start_import(&key)
         .await
         .expect("the prepared candidate enters the import queue");
     let (release_id, _) = await_import_outcome(&mut events, &import_id)
@@ -665,7 +662,7 @@ async fn import_worker_refuses_a_prepared_but_invalid_metadata_draft() {
 
     let mut events = handle.subscribe_events();
     let import_id = handle
-        .start_import(&key, crate::import::StorageMode::Local, false)
+        .start_import(&key)
         .await
         .expect("the complete candidate enters source validation");
     let error = await_import_outcome(&mut events, &import_id)

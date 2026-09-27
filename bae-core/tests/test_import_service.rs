@@ -9,8 +9,8 @@ use bae_test_support as support;
 use bae_core::db::{Database, LibraryImageType};
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{
-    ArtistAssignment, Catalog, CoverSelection, ImportCommand, MetadataProvenance, ReleaseUserEdit,
-    ScanEvent, StorageMode, TrackArtistAssignments, TrackUserEdit,
+    ArtistAssignment, Catalog, CoverSelection, ImportCommand, ImportDestination,
+    MetadataProvenance, ReleaseUserEdit, ScanEvent, TrackArtistAssignments, TrackUserEdit,
 };
 use bae_core::library::LibraryManager;
 use bae_core::musicbrainz::{
@@ -94,14 +94,14 @@ async fn import_folder(
     f: &ImportFixture,
     album_dir: &Path,
     selected_cover: Option<CoverSelection>,
-    storage_mode: StorageMode,
+    destination: ImportDestination,
     metadata_provenance: MetadataProvenance,
 ) -> Result<(String, String), String> {
     let import_id = f.ids.new_id();
     f.handle
         .send_command(ImportCommand {
             selected_cover,
-            storage_mode,
+            destination,
             ..support::folder_import(&import_id, album_dir.to_path_buf(), metadata_provenance)
         })
         .await
@@ -298,6 +298,7 @@ fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
 include!("test_import_service/scan_and_watch.rs");
 include!("test_import_service/audio_and_loudness.rs");
 include!("test_import_service/reimports.rs");
+include!("test_import_service/storage_choice.rs");
 include!("test_import_service/works_and_covers.rs");
 include!("test_import_service/identity.rs");
 include!("test_import_service/validation_and_mapping.rs");

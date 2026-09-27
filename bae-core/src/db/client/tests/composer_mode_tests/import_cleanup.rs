@@ -168,7 +168,7 @@ async fn commit_import(
         commit.primary_release_id,
         crate::config::HomeStorage::Opaque,
         commit.replacement_deletes,
-        None,
+        crate::import::ImportDestination::Local,
     )
     .await
     .unwrap()
@@ -246,7 +246,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
             None,
             crate::config::HomeStorage::Opaque,
             &[],
-            None,
+            crate::import::ImportDestination::Local,
         )
         .await
         .expect_err("the final transaction must re-check the queued metadata revision");

@@ -94,7 +94,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &f,
         &first_dir,
         None,
-        StorageMode::Local,
+        ImportDestination::Local,
         MetadataProvenance::ExternalRelease {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, first_mb),
             partners: vec![],
@@ -120,7 +120,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &f,
         &second_dir,
         None,
-        StorageMode::Local,
+        ImportDestination::Local,
         MetadataProvenance::ExternalRelease {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, second_mb),
             partners: vec![],

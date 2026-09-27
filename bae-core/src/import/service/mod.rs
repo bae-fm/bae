@@ -2,7 +2,7 @@ use crate::diagnostics::TelemetryEvent;
 use crate::import::candidate_runtime::CandidateRuntime;
 use crate::import::handle::ImportServiceHandle;
 use crate::import::handle::{ScanEvent, WatcherCommand};
-use crate::import::types::{ImportCommand, ImportProgress, MetadataRef, StorageMode};
+use crate::import::types::{ImportCommand, ImportDestination, ImportProgress, MetadataRef};
 use crate::library::LibraryManager;
 use crate::util::rate_limiter::CallPriority;
 
@@ -26,8 +26,6 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 mod active_roots;
-mod root_backend;
-mod root_scan_cause;
 mod cover_image;
 mod folder_reading;
 mod folder_watcher;
@@ -35,13 +33,15 @@ mod format_prep;
 mod importing;
 mod progress;
 mod reconcile;
+mod root_backend;
+mod root_scan_cause;
 mod scanning;
 mod watch_batches;
 
 use active_roots::{ActiveRoots, AdoptionOutcome, FolderReadingRequest, RemovalOutcome, RootPass};
+use folder_watcher::FolderWatchSnapshot;
 use root_backend::{RootRemovalBackend, ServiceRootRemovalBackend};
 use root_scan_cause::RootScanCause;
-use folder_watcher::FolderWatchSnapshot;
 use watch_batches::WatchReport;
 mod coordinator;
 use crate::import::volume::{changed_directories, directory_modified_at, volume_kind, VolumeKind};
@@ -110,10 +110,10 @@ pub(crate) struct PreparedImportFile {
     pub(crate) blob: coven::PreparedExternalBlob,
 }
 
-fn storage_mode_label(mode: &StorageMode) -> &'static str {
-    match mode {
-        StorageMode::Remote => "remote",
-        StorageMode::Local => "local",
+fn destination_label(destination: ImportDestination) -> &'static str {
+    match destination {
+        ImportDestination::Remote { .. } => "remote",
+        ImportDestination::Local => "local",
     }
 }
 
@@ -501,9 +501,7 @@ fn spawn_root_pass(
 ) -> RootScanTask {
     match pass {
         RootPass::WholeRoot => spawn_root_scan(id, path, scan, completion_tx),
-        RootPass::Decision(request) => {
-            spawn_folder_reading(id, path, request, scan, completion_tx)
-        }
+        RootPass::Decision(request) => spawn_folder_reading(id, path, request, scan, completion_tx),
         RootPass::Folders(folders) => spawn_changed_folders(id, path, folders, scan, completion_tx),
     }
 }
@@ -538,10 +536,7 @@ fn spawn_folder_reading(
             );
         }
         request.answer(result);
-        if completion_tx
-            .send(RootScanCompletion { id, path })
-            .is_err()
-        {
+        if completion_tx.send(RootScanCompletion { id, path }).is_err() {
             debug!("folder scan coordinator ended before a folder reading completed");
         }
     });
@@ -560,10 +555,7 @@ fn spawn_changed_folders(
     let reading_cancellation = cancellation.clone();
     let task = tokio::spawn(async move {
         ImportService::read_changed_folders(&path, &folders, &scan, &reading_cancellation).await;
-        if completion_tx
-            .send(RootScanCompletion { id, path })
-            .is_err()
-        {
+        if completion_tx.send(RootScanCompletion { id, path }).is_err() {
             debug!("folder scan coordinator ended before changed folders were read");
         }
     });
@@ -752,13 +744,8 @@ fn apply_user_edit_to_seed(
 
     album_artists.clear();
     for (position, assignment) in edit.album_artist_assignments.iter().enumerate().skip(1) {
-        let artist_id = materialize_artist_assignment(
-            assignment,
-            artists,
-            &mut picked_artist_ids,
-            ids,
-            now,
-        );
+        let artist_id =
+            materialize_artist_assignment(assignment, artists, &mut picked_artist_ids, ids, now);
         album_artists.push(DbAlbumArtist::new(
             &db_album.id,
             &artist_id,
@@ -831,8 +818,8 @@ pub(crate) async fn prepare_release(
     priority: CallPriority,
 ) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
     if let Some(stored) = library_manager.load_source_release(release_ref).await? {
-        let discogs_configured = library_manager
-            .can_fetch_releases_from(crate::import::Catalog::Discogs)?;
+        let discogs_configured =
+            library_manager.can_fetch_releases_from(crate::import::Catalog::Discogs)?;
         if !stored.fetch_could_add(discogs_configured) {
             return Ok(stored);
         }

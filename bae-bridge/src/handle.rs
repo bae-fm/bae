@@ -23,7 +23,7 @@ use crate::types::{
     BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
-use crate::types::{BridgeMcpServerStatus, BridgeStorageMode, BridgeSubsonicServerStatus};
+use crate::types::{BridgeMcpServerStatus, BridgeSubsonicServerStatus};
 
 #[derive(uniffi::Object)]
 pub struct AppHandle {

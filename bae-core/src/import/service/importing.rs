@@ -118,8 +118,7 @@ impl ImportService {
                     candidate_key.clone(),
                     command.source,
                     expectation,
-                    command.storage_mode,
-                    command.pin,
+                    command.destination,
                 ),
             )
             .await;
@@ -200,8 +199,7 @@ impl ImportService {
         candidate_key: String,
         source: crate::import::release_candidate::CandidateSource,
         expectation: ImportExpectation,
-        storage_mode: StorageMode,
-        pin: bool,
+        destination: ImportDestination,
     ) -> Result<(), crate::import::ImportError> {
         let library_manager = &self.library_manager;
         let expected_content_hash = expectation.candidate.content_hash.clone();
@@ -480,8 +478,7 @@ impl ImportService {
                 import_id: &import_id,
                 candidate_key: &candidate_key,
             },
-            &storage_mode,
-            pin,
+            destination,
             &mut prepared,
             ImportFiles {
                 discovered: &discovered_files,
@@ -507,22 +504,15 @@ impl ImportService {
         Ok(())
     }
 
-    /// Run an import. ONE path regardless of storage mode: build DbFile +
-    /// audio-format records, reference the files in place, measure loudness,
-    /// then finalize atomically as a LOCAL release (playable immediately) and
-    /// emit events. No bytes move here, and every DB write lands in the single
-    /// transaction at the end.
-    ///
-    /// A `Remote` import then transitions to the cloud via `coven_make_remote`,
-    /// carrying `pin` as the upload's retain-pinned intent; coven flips `remote`
-    /// true once the last upload lands. `pin` is ignored for a `Local` import.
+    /// Run an import: reference the files in place, measure loudness, and write
+    /// the release in one transaction, recording a `Remote` destination's
+    /// uploads in that same write.
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn run_import(
         &self,
         commit_guard: crate::db::ImportCommitGuard,
         run: ImportRun<'_>,
-        storage_mode: &StorageMode,
-        pin: bool,
+        destination: ImportDestination,
         prepared: &mut PreparedMetadata,
         files: ImportFiles<'_>,
         replacement_plans: &[crate::library::manager::ImportReplacementPlan],
@@ -560,7 +550,7 @@ impl ImportService {
 
         debug!(
             "Starting {} import for release {} ({} files)",
-            storage_mode_label(storage_mode),
+            destination_label(destination),
             db_release.id,
             total_files,
         );
@@ -813,7 +803,6 @@ impl ImportService {
         self.import_cancels.begin_writing(candidate_key, import_id)?;
         self.emit_phase_progress(run, &db_release.id, None, ImportPhase::Finalizing);
 
-        let remote_intent = matches!(storage_mode, StorageMode::Remote);
         // A Remote import is made Remote in the same write that creates it —
         // the same flow the "Make Remote" action runs afterwards: coven uploads
         // each file from its external (in-place) source, and on the last flips
@@ -849,24 +838,23 @@ impl ImportService {
                 prepared_artist_images,
                 cover_rel_id,
                 replacement_plans,
-                remote_intent.then_some(crate::db::RemoteImport { pin }),
+                destination,
             )
             .await?;
 
-        let progress = if remote_intent {
-            ImportProgress::RemoteUploadQueued {
+        let progress = match destination {
+            ImportDestination::Remote { .. } => ImportProgress::RemoteUploadQueued {
                 id: db_release.id.to_string(),
                 import_id: import_id.to_string(),
                 album_id: album_id.to_string(),
                 outbox_revision: outbox_revision
                     .expect("a Remote import publishes its queued outbox revision"),
-            }
-        } else {
-            ImportProgress::Complete {
+            },
+            ImportDestination::Local => ImportProgress::Complete {
                 id: db_release.id.to_string(),
                 import_id: import_id.to_string(),
                 album_id: album_id.to_string(),
-            }
+            },
         };
         self.event_tx
             .send(crate::import::handle::ImportEvent::ImportProgress {

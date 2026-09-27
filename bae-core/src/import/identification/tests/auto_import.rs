@@ -292,7 +292,7 @@ async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import(
 
     let error = fixture
         .import
-        .import_identified(&key, crate::import::StorageMode::Local, false)
+        .import_identified(&key)
         .await
         .expect_err("an unprepared draft does not start an import");
 
@@ -322,7 +322,7 @@ async fn an_automatic_import_behind_another_import_records_no_failure() {
 
     let error = fixture
         .import
-        .import_identified(&key, crate::import::StorageMode::Local, false)
+        .import_identified(&key)
         .await
         .expect_err("a candidate an import owns is not imported again");
 

@@ -545,12 +545,6 @@ pub(super) fn cover_selection(selection: AutomationCoverSelection) -> CoverSelec
 }
 
 mirror_enum! {
-    AutomationStorageMode = StorageMode,
-    into_core: pub(crate) fn,
-    variants: { Local, Remote },
-}
-
-mirror_enum! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationSignalKind = bae_core::identify::SignalKind,
     from_core: pub(crate) fn,

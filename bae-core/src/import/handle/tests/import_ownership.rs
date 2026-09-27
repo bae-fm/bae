@@ -33,11 +33,7 @@ async fn repeated_imports_of_one_candidate_make_one_release() {
     let presses = (0..5).map(|_| {
         let handle = handle.clone();
         let key = key.clone();
-        tokio::spawn(async move {
-            handle
-                .start_import(&key, crate::import::StorageMode::Local, false)
-                .await
-        })
+        tokio::spawn(async move { handle.start_import(&key).await })
     });
     let mut started = Vec::new();
     for press in presses.collect::<Vec<_>>() {
@@ -52,12 +48,8 @@ async fn repeated_imports_of_one_candidate_make_one_release() {
         .await
         .unwrap_or_else(|error| panic!("import failed: {error}"));
 
-    let after = handle
-        .start_import(&key, crate::import::StorageMode::Local, false)
-        .await;
-    let ready = handle
-        .import_ready(&key, crate::import::StorageMode::Local, false)
-        .await;
+    let after = handle.start_import(&key).await;
+    let ready = handle.import_ready(&key).await;
     let releases = release_count(&handle).await;
     shut_down(handle).await;
 

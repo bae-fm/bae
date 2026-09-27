@@ -18,7 +18,7 @@ pub use client::{
 pub(crate) use client::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
     CandidateScanExpectation, FolderReadingCommit, FolderReadingStamp, FolderReadingWrite,
-    GroupingFacts, ImportRows, NewArtistImages, RemoteImport, ScanItemToWrite, ScannedCandidateKey,
+    GroupingFacts, ImportRows, NewArtistImages, ScanItemToWrite, ScannedCandidateKey,
 };
 pub(crate) use client::{
     OutboxDisplayContext, OutboxDisplayRequest, QueueCatalogProjection, QueueCatalogRequest,

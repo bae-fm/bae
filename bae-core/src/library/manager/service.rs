@@ -296,6 +296,16 @@ impl LibraryManager {
             .expect("set test home storage mode");
     }
 
+    /// Record `provider` as the library's cloud home in config, as connecting
+    /// a real one does, so an injected test home reads as configured.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn set_test_cloud_provider(&self, provider: crate::config::CloudProvider) {
+        self.config_handle
+            .update_store(move |c| c.cloud_home.provider = Some(provider))
+            .await
+            .expect("set test cloud provider");
+    }
+
     /// Read the injected wall clock without handing its service to callers.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn now(&self) -> chrono::DateTime<chrono::Utc> {

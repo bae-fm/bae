@@ -164,7 +164,6 @@ mod conversion_roundtrip {
             BridgeImportStorage {
                 cloud: true,
                 pinned: false,
-                goes_to_cloud: false,
             }
         );
     }

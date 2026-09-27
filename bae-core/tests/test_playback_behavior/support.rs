@@ -5,7 +5,7 @@
 const RELEASE_THAT_WAS_DELETED: &str = "763072b0-643f-4469-8ac7-799c4550a769"; // was "release-that-was-deleted"
 
 use bae_core::discogs::models::DiscogsRelease;
-use bae_core::import::{ImportCommand, StorageMode};
+use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_core::config::SidePauseCountdown;
 use bae_core::playback::{

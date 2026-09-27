@@ -311,8 +311,7 @@ object BridgeFixtures {
                         enabled = true,
                     ),
                 ),
-            importStorage =
-                BridgeImportStorage(cloud = true, pinned = true, goesToCloud = false),
+            importStorage = BridgeImportStorage(cloud = true, pinned = true),
             prefillWithFileMetadata = true,
             // Every source in core's order, matching this fixture's Discogs
             // state below: MusicBrainz is asked and, as the only source still

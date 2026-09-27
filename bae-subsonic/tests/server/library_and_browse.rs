@@ -8,7 +8,9 @@ use bae_core::config::SubsonicCredential;
 use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::release_candidate::CandidateSource;
-use bae_core::import::{Catalog, ImportCommand, MetadataProvenance, ReleaseFileScope, StorageMode};
+use bae_core::import::{
+    Catalog, ImportCommand, ImportDestination, MetadataProvenance, ReleaseFileScope,
+};
 use bae_core::library::{AppServices, LibraryManager};
 use bae_test_support as support;
 use coven::StoreDir;
@@ -204,8 +206,7 @@ async fn seed_library() -> Library {
                 parts: Vec::new(),
             },
             selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
+            destination: ImportDestination::Local,
             metadata_provenance: Some(MetadataProvenance::FileMetadata),
             user_edit: None,
         })
@@ -243,8 +244,7 @@ async fn seed_library() -> Library {
                 parts: Vec::new(),
             },
             selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
+            destination: ImportDestination::Local,
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 record: bae_core::import::MetadataRef::new(Catalog::Discogs, discogs_key),
                 partners: vec![],

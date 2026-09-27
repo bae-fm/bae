@@ -196,8 +196,7 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             identificationSteps: PreviewData.everyIdentificationStep,
             importStorage: BridgeImportStorage(
                 cloud: true,
-                pinned: true,
-                goesToCloud: false
+                pinned: true
             ),
             prefillWithFileMetadata: true,
             lookupCatalogs: [

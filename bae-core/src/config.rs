@@ -16,8 +16,6 @@ pub use handle::ConfigHandle;
 pub use identification::{
     IdentificationPreferences, IdentificationStep, IdentificationSteps, LookupCatalogPreferences,
 };
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use import_storage::ImportDestination;
 pub use import_storage::ImportStoragePreferences;
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils", debug_assertions))]

@@ -20,17 +20,6 @@ pub struct BridgeSortCriterion {
     pub direction: BridgeSortDirection,
 }
 
-/// The storage state the user picks for an import — Local (keep the files in
-/// place) or Remote (upload to the cloud). Mirrors
-/// `bae_core::import::StorageMode`. Whether a remote import is kept offline is the
-/// ORTHOGONAL `pin` argument on `start_import`, never folded into this enum.
-#[cfg(feature = "desktop")]
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeStorageMode {
-    Local,
-    Remote,
-}
-
 /// Decoded restore code info for UI preview (before the actual restore).
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRestoreCodeInfo {
@@ -749,15 +738,6 @@ mirror_enum! {
         UploadPending,
         Diagnostic { error: (BridgeError) },
     },
-}
-
-mirror_enum! {
-    /// Map the UI's storage-state choice to the core's `StorageMode`. Pinned-ness
-    /// is orthogonal — the caller passes the import's `pin` choice separately.
-    #[cfg(feature = "desktop")]
-    BridgeStorageMode = bae_core::import::StorageMode,
-    into_core: pub(crate) fn,
-    variants: { Local, Remote },
 }
 
 #[cfg(feature = "desktop")]

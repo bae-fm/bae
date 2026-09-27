@@ -8,8 +8,7 @@ fn local_import_command(import_id: &str, candidate_key: &str, folder: &Path) -> 
             parts: Vec::new(),
         },
         selected_cover: None,
-        storage_mode: StorageMode::Local,
-        pin: false,
+        destination: ImportDestination::Local,
         metadata_provenance: None,
         user_edit: None,
     }
@@ -105,8 +104,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
                 parts: Vec::new(),
             },
             expectation(),
-            StorageMode::Local,
-            false,
+            ImportDestination::Local,
         )
         .await
         .expect("the retried import lands");

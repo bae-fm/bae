@@ -1,22 +1,19 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use super::Catalog;
 
-/// The storage state the user picks for an import. Every import FIRST lands
-/// `Local` (files in place, playable immediately); a `Remote` import then
-/// transitions to the cloud in the background.
-///
-/// Pinned-ness is NOT part of this state — it's coven cache state, never a bae
-/// property. The user's pin choice rides the remote transition as a transient
-/// argument (`pin` on the import command) telling coven whether to populate
-/// `storage/pinned/`; it is never persisted.
+/// Where an import puts its release. Every import lands local first; a
+/// `Remote` one then uploads in the background.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageMode {
+pub enum ImportDestination {
     /// Files stay in place on this device; never uploaded.
     Local,
     /// Uploaded to the cloud home; `releases.remote` flips true once the upload
     /// lands.
-    Remote,
+    Remote {
+        /// Whether coven keeps the uploaded bytes pinned rather than evictable.
+        pin: bool,
+    },
 }
 
 /// User's cover art selection for an import.

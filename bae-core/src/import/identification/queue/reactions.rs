@@ -200,22 +200,16 @@ async fn import_when_identified(
     config: &watch::Receiver<crate::config::Config>,
     key: &str,
 ) {
-    let destination = {
-        let config = config.borrow();
-        if !config.prefs.identification.imports_when_identified() {
-            return;
-        }
-        config.import_destination()
-    };
-    match context
-        .import
-        .import_identified(key, destination.storage_mode, destination.pin)
-        .await
+    if !config
+        .borrow()
+        .prefs
+        .identification
+        .imports_when_identified()
     {
-        Ok(import_id) => info!(
-            "identification: importing {key} automatically as {import_id} ({:?}, pinned: {})",
-            destination.storage_mode, destination.pin
-        ),
+        return;
+    }
+    match context.import.import_identified(key).await {
+        Ok(import_id) => info!("identification: importing {key} automatically as {import_id}"),
         Err(error) => {
             warn!("identification: the automatic import of {key} could not start: {error}")
         }

@@ -415,13 +415,11 @@ forward! {
                 .await?)
         }
 
-        /// Commit a candidate. Nothing about the release rides in: the metadata
-        /// source provenance, the metadata typed over it, the corrected rows and the chosen cover
-        /// are all stored under the candidate, so the commit consumes the very
-        /// values the pane drew.
-        fn start_import(candidate_key: String, storage_mode: BridgeStorageMode, pin: bool) -> () {
+        /// Commit a candidate from what it stores, to where the stored storage
+        /// choice says.
+        fn start_import(candidate_key: String) -> () {
             this.services
-                .import_start_import(&candidate_key, storage_mode.into_core(), pin)
+                .import_start_import(&candidate_key)
                 .await
                 .map(|_| ())
                 .map_err(BridgeError::import)
@@ -430,9 +428,9 @@ forward! {
         /// Import one row of a bulk import of the Ready set. Refused, with a
         /// reason the row can be told, for a candidate an import already owns
         /// or identification is still answering at the moment it is reached.
-        fn import_ready(candidate_key: String, storage_mode: BridgeStorageMode, pin: bool) -> () {
+        fn import_ready(candidate_key: String) -> () {
             this.services
-                .import_ready(&candidate_key, storage_mode.into_core(), pin)
+                .import_ready(&candidate_key)
                 .await
                 .map(|_| ())
                 .map_err(BridgeError::import)

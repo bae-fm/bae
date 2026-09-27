@@ -21,11 +21,7 @@ struct ImportView: View {
     @Environment(ConfigStore.self)
     var configStore
 
-    /// The last storage choice an import pane made, stored in core's
-    /// preferences. Only shown when a cloud home exists (toggles hidden
-    /// otherwise). Cloud and pinned are
-    /// orthogonal: `cloud` picks the storage state, `pinned` is passed
-    /// separately to `startImport`.
+    /// The stored import storage choice; shown only when a cloud home exists.
     var storageCloud: Binding<Bool> {
         Binding(
             get: { configStore.config.importStorage.cloud },

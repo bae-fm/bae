@@ -147,8 +147,7 @@ struct SyncStatusStoreTests {
             .map { BridgeIdentificationStepSetting(step: $0, enabled: true) },
             importStorage: BridgeImportStorage(
                 cloud: true,
-                pinned: true,
-                goesToCloud: false
+                pinned: true
             ),
             prefillWithFileMetadata: true,
             lookupCatalogs: [

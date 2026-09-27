@@ -97,7 +97,7 @@ async fn an_imported_folder_is_refused_a_second_import() {
         &f,
         &album_dir,
         None,
-        StorageMode::Local,
+        ImportDestination::Local,
         MetadataProvenance::FileMetadata,
     )
     .await
@@ -112,24 +112,24 @@ async fn an_imported_folder_is_refused_a_second_import() {
             .clone()
             .unwrap();
 
-    // Whatever the second attempt asks for — a different storage mode, a cover
+    // Whatever the second attempt asks for — a different destination, a cover
     // that could never download — it is refused as already imported before
     // any of that is tried.
-    for (cover, storage_mode) in [
-        (None, StorageMode::Local),
+    for (cover, destination) in [
+        (None, ImportDestination::Local),
         (
             Some(CoverSelection::Remote(
                 bae_core::import::cover_art::RemoteImageSet::original("http://127.0.0.1:9/cover.jpg".to_string()),
                 Catalog::MusicBrainz,
             )),
-            StorageMode::Local,
+            ImportDestination::Local,
         ),
     ] {
         let error = import_folder(
             &f,
             &album_dir,
             cover,
-            storage_mode,
+            destination,
             MetadataProvenance::FileMetadata,
         )
         .await
@@ -176,7 +176,7 @@ async fn a_remote_imported_folder_is_refused_a_second_import() {
         &f,
         &album_dir,
         None,
-        StorageMode::Remote,
+        ImportDestination::Remote { pin: false },
         MetadataProvenance::FileMetadata,
     )
     .await
@@ -201,7 +201,7 @@ async fn a_remote_imported_folder_is_refused_a_second_import() {
         &f,
         &album_dir,
         None,
-        StorageMode::Local,
+        ImportDestination::Local,
         MetadataProvenance::FileMetadata,
     )
     .await
@@ -246,7 +246,7 @@ async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
         &f,
         &album_dir,
         None,
-        StorageMode::Remote,
+        ImportDestination::Remote { pin: false },
         MetadataProvenance::FileMetadata,
     )
     .await

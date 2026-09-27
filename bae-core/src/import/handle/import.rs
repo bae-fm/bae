@@ -42,16 +42,15 @@ pub(super) struct FileTagSnapshotRead {
     pub(super) extracted: bool,
 }
 
-/// Who asked for an import, which decides what running work refuses it.
+/// How an import was asked for, which decides whether a running
+/// identification refuses it.
 #[derive(Clone, Copy)]
 enum ImportRequest {
-    /// The person, from the candidate's own pane.
-    Person,
-    /// A bulk import of the Ready set, reaching this row.
+    /// This candidate itself, by a person or by its just-settled automatic run;
+    /// the claim ends whatever identification it had.
+    Candidate,
+    /// A bulk import of the Ready set; refused while the row is being identified.
     ReadySet,
-    /// Automatic identification, the moment its run settled on the candidate
-    /// as Ready while "Import automatically when identified" is on.
-    Identified,
 }
 
 impl ImportServiceHandle {
@@ -164,28 +163,16 @@ impl ImportServiceHandle {
         })
     }
 
-    /// Build an import command from what the candidate stores and enqueue it.
-    ///
-    /// Nothing about the release rides in: the metadata draft, the metadata the
-    /// user typed, the rows they corrected and the cover they chose are all
-    /// rows under this candidate's content hash, so the commit reads the very
-    /// values the pane drew. The caller says only where the files should live.
-    ///
-    /// The worker sources the release itself from the persisted provider
-    /// documents for an external release, or the stored snapshot for file metadata.
-    ///
-    /// The claim ends the candidate's identification: an imported candidate
-    /// has no question left for a run to answer.
+    /// Enqueue an import of what the candidate stores, to where the stored
+    /// storage choice says, ending the candidate's identification.
     pub async fn start_import(
         &self,
         candidate_key: &str,
-        storage_mode: StorageMode,
-        pin: bool,
     ) -> Result<String, crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
         self.committed(async move {
-            this.start_import_write(&candidate_key, storage_mode, pin, ImportRequest::Person)
+            this.start_import_write(&candidate_key, ImportRequest::Candidate)
                 .await
         })
         .await
@@ -199,38 +186,28 @@ impl ImportServiceHandle {
     pub async fn import_ready(
         &self,
         candidate_key: &str,
-        storage_mode: StorageMode,
-        pin: bool,
     ) -> Result<String, crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
         self.committed(async move {
-            this.start_import_write(&candidate_key, storage_mode, pin, ImportRequest::ReadySet)
+            this.start_import_write(&candidate_key, ImportRequest::ReadySet)
                 .await
         })
         .await
     }
 
-    /// Import a candidate an automatic run has just settled on as Ready, while
-    /// "Import automatically when identified" is on: the same start as a
-    /// person's Import press, going where the caller read the stored storage
-    /// choice to say.
-    ///
-    /// Nobody is looking at the candidate to be told a refused start, so a
-    /// refusal is also recorded as its failed import — on its row and pane,
-    /// with Retry, where an import that failed while running shows — unless
-    /// the refusal is that another import already owns the candidate.
+    /// [`Self::start_import`] for a candidate its automatic run just settled as
+    /// Ready. Nobody sees the refusal, so it is recorded as the candidate's
+    /// failed import, unless another import already owns the candidate.
     pub(crate) async fn import_identified(
         &self,
         candidate_key: &str,
-        storage_mode: StorageMode,
-        pin: bool,
     ) -> Result<String, crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
         self.committed(async move {
             let started = this
-                .start_import_write(&candidate_key, storage_mode, pin, ImportRequest::Identified)
+                .start_import_write(&candidate_key, ImportRequest::Candidate)
                 .await;
             match &started {
                 Ok(_) => {}
@@ -281,18 +258,11 @@ impl ImportServiceHandle {
     async fn start_import_write(
         &self,
         candidate_key: &str,
-        storage_mode: StorageMode,
-        pin: bool,
         request: ImportRequest,
     ) -> Result<String, crate::import::ImportError> {
         let commit = self.folder_state_commit.lock("start an import").await;
         match request {
-            // A person importing the candidate they are looking at is
-            // answering it themselves; the claim ends whatever run it had.
-            ImportRequest::Person => {}
-            // Its run has just ended, and the queue starts no other for it
-            // until this returns.
-            ImportRequest::Identified => {}
+            ImportRequest::Candidate => {}
             ImportRequest::ReadySet => {
                 let facts = self
                     .runtime
@@ -393,8 +363,7 @@ impl ImportServiceHandle {
             source: candidate.source(),
             #[cfg(any(test, feature = "test-utils"))]
             selected_cover: None,
-            storage_mode,
-            pin,
+            destination: self.library_manager.get_config().import_destination(),
             #[cfg(any(test, feature = "test-utils"))]
             metadata_provenance: None,
             #[cfg(any(test, feature = "test-utils"))]

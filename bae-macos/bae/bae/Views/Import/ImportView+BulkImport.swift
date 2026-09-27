@@ -29,42 +29,27 @@ extension ImportView {
             .separate, .skip, .restore:
             break
         }
-        let storageMode = configStore.config.importStorageMode
-        let pin = configStore.config.importStorage.pinned
         uiStore.candidateActionRun.start(
             action: offer.action,
             targets: offer.targets,
             uiStore: uiStore,
             before: commitAndEndEditing
         ) { key in
-            try await runCandidateAction(
-                offer.action,
-                on: key,
-                storageMode: storageMode,
-                pin: pin
-            )
+            try await runCandidateAction(offer.action, on: key)
         }
     }
 
     /// One folder's part of a run.
     private func runCandidateAction(
         _ action: BridgeCandidateAction,
-        on key: String,
-        storageMode: BridgeStorageMode,
-        pin: Bool
+        on key: String
     ) async throws {
         switch action {
         // The Ready set is what the tables say; a row being identified
         // or already importing when the run reaches it is refused by
         // core, and the refusal joins the run's report beside its name.
         case .importReady:
-            try await importer.importReady(
-                ImportCommitRequest(
-                    candidateKey: key,
-                    storageMode: storageMode,
-                    pin: pin
-                )
-            )
+            try await importer.importReady(key)
         // Re-asking what failed is the same command as identifying
         // again: the run reads the candidate's inputs afresh, and the
         // response cache answers the lookups that had succeeded. The two

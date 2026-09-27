@@ -1,7 +1,7 @@
 use crate::import::folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
 };
-use crate::import::types::{Catalog, ImportCommand, ImportProgress, StorageMode};
+use crate::import::types::{Catalog, ImportCommand, ImportProgress};
 use crate::import::watched_folder::WatchedFolder;
 use crate::library::manager::discogs_validation_from_result as validation_from_validate_result;
 use crate::library::LibraryManager;
@@ -225,7 +225,9 @@ pub enum ImportEvent {
     },
     /// How many imports are waiting for the worker or running, announced by
     /// the candidate runtime whenever one starts or ends.
-    ImportsInFlight { count: u32 },
+    ImportsInFlight {
+        count: u32,
+    },
 }
 
 /// Search results grouped by release group, with the per-release library dupe
@@ -490,7 +492,8 @@ impl ImportServiceHandle {
     /// on, so a test about what a claim does has to make a real one.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn claim_candidate_for_import_for_test(&self, candidate_key: &str, import_id: &str) {
-        self.claim_candidate_for_import(candidate_key, import_id).await;
+        self.claim_candidate_for_import(candidate_key, import_id)
+            .await;
     }
 
     /// Every key with something in flight right now.
@@ -624,9 +627,7 @@ impl ImportServiceHandle {
             | None => None,
         };
         if let Some((candidate, actionable)) = candidate {
-            let standing = self
-                .candidate_standing(key, &candidate)
-                .await?;
+            let standing = self.candidate_standing(key, &candidate).await?;
             return Ok(Some(ImportCandidateSnapshot::Folder {
                 candidate,
                 runtime: self.runtime.get(key),
@@ -651,8 +652,7 @@ impl ImportServiceHandle {
     pub(super) async fn editable_candidate_for_commit(
         &self,
         key: &str,
-    ) -> Result<crate::import::folder_scanner::FolderCandidate, crate::import::ImportError>
-    {
+    ) -> Result<crate::import::folder_scanner::FolderCandidate, crate::import::ImportError> {
         let candidate = self.get_release_candidate(key).await?.ok_or_else(|| {
             crate::import::ImportError::Internal {
                 detail: format!("{key} is not an actionable folder candidate"),
@@ -722,14 +722,20 @@ impl ImportServiceHandle {
     /// candidate whose import has been committed to.
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn claim_candidate_for_import(&self, candidate_key: &str, import_id: &str) {
-        let _commit = self.folder_state_commit.lock("claim a candidate for a test").await;
+        let _commit = self
+            .folder_state_commit
+            .lock("claim a candidate for a test")
+            .await;
         self.runtime
             .claim_for_import(candidate_key, import_id)
             .expect("a test claims a candidate no import owns");
     }
 
     async fn release_import_claim(&self, candidate_key: &str, import_id: &str) {
-        let _commit = self.folder_state_commit.lock("release an import claim").await;
+        let _commit = self
+            .folder_state_commit
+            .lock("release an import claim")
+            .await;
         self.runtime.release_import_claim(candidate_key, import_id);
     }
 
@@ -807,7 +813,10 @@ impl ImportServiceHandle {
         candidate_key: &str,
         row: &crate::db::NewImportCandidateVerdict,
     ) -> Result<bool, crate::library::LibraryError> {
-        let _commit = self.folder_state_commit.lock("store an identification verdict").await;
+        let _commit = self
+            .folder_state_commit
+            .lock("store an identification verdict")
+            .await;
         let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
             return Ok(false);
         };
@@ -824,10 +833,8 @@ impl ImportServiceHandle {
     pub(crate) async fn answerable_candidate(
         &self,
         key: &str,
-    ) -> Result<
-        Option<crate::import::folder_scanner::FolderCandidate>,
-        crate::library::LibraryError,
-    > {
+    ) -> Result<Option<crate::import::folder_scanner::FolderCandidate>, crate::library::LibraryError>
+    {
         let Some(candidate) = self.get_release_candidate(key).await? else {
             return Ok(None);
         };

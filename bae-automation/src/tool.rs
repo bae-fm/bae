@@ -109,8 +109,8 @@ impl AutomationTool {
         AutomationToolDescriptor {
             tool: AutomationTool::ImportStart,
             name: "import_start",
-            description: "Start an import of a candidate from what it stores: its pick, its metadata edits, its track rows and its cover",
-            schema: Some(schema_object::<AutomationStartImport>),
+            description: "Start an import of a candidate from what it stores: its pick, its metadata edits, its track rows and its cover, to where the stored import storage choice says",
+            schema: Some(schema_object::<CandidateKeyInput>),
         },
         AutomationToolDescriptor {
             tool: AutomationTool::ReleaseDetailGet,

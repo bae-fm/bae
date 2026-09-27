@@ -25,8 +25,7 @@ pub struct BridgeConfig {
     /// Every step of an identification run, in the order a run takes them,
     /// each with whether runs take it — one switch per entry.
     pub identification_steps: Vec<BridgeIdentificationStepSetting>,
-    /// Where an import puts its release: the choice an import pane last made,
-    /// which is also what an automatic import goes by.
+    /// The import storage choice, which core reads as each import starts.
     pub import_storage: BridgeImportStorage,
     /// Whether a newly discovered candidate's draft is created from the
     /// folder's own metadata — its files' tags, its sheets and its name — or
@@ -119,20 +118,13 @@ pub struct BridgeIdentificationStepSetting {
     pub enabled: bool,
 }
 
-/// Where an import puts its release. Mirrors
-/// `bae_core::config::ImportStoragePreferences`.
+/// The import storage choice. Mirrors `bae_core::config::ImportStoragePreferences`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeImportStorage {
-    /// Whether an import goes to the cloud home. Read only while the library
-    /// has one (`sync` is present); without one every import stays local.
+    /// Whether imports go to the cloud home, when the library has one.
     pub cloud: bool,
-    /// Whether a release that goes to the cloud also stays downloaded on this
-    /// device. Moving a library release to the cloud reads the same choice.
+    /// Whether a release that goes to the cloud stays downloaded here.
     pub pinned: bool,
-    /// Whether an import goes to the cloud as things stand: `cloud`, and a
-    /// cloud home to go to. Core's answer, the one an automatic import goes
-    /// by, so a surface does not work it out again.
-    pub goes_to_cloud: bool,
 }
 
 /// Whether Find online asks one catalog, and when it does not, why not. Mirrors

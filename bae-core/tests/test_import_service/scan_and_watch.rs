@@ -648,11 +648,7 @@ async fn a_done_row_follows_the_library_release_it_became() {
         .select_candidate_metadata_provenance(album_key.clone(), MetadataProvenance::FileMetadata)
         .await
         .unwrap();
-    let import_id = f
-        .handle
-        .start_import(&album_key, StorageMode::Local, false)
-        .await
-        .unwrap();
+    let import_id = f.handle.start_import(&album_key).await.unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
 

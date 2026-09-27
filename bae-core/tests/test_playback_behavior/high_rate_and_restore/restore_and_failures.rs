@@ -299,7 +299,7 @@ impl CloudOnlyPlaybackFixture {
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
             .send_command(ImportCommand {
-                storage_mode: StorageMode::Remote,
+                destination: ImportDestination::Remote { pin: false },
                 ..support::folder_import(
                     &import_id,
                     album_dir.clone(),
