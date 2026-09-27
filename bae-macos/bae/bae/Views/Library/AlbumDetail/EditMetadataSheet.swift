@@ -116,7 +116,7 @@ struct EditMetadataSheet: View {
                     Text(message)
                 }
                 .font(.caption)
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.danger)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack(spacing: 12) {

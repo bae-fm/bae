@@ -51,10 +51,8 @@ private sealed interface SlotState {
 }
 
 /**
- * Album-cover thumbnail: the image [cover] names, clipped to a rounded square, or
- * a MusicNote placeholder when there is no cover. The caller's [modifier] carries
- * the sizing — `Modifier.size(48.dp)` for list rows,
- * `Modifier.fillMaxWidth().aspectRatio(1f)` for full-width art.
+ * Album cover clipped to a rounded square, or a music-note placeholder when there
+ * is none; [modifier] sets the size.
  */
 @Composable
 fun CoverImage(
@@ -74,13 +72,8 @@ fun CoverImage(
 }
 
 /**
- * One image slot: renders whatever [ImageStore] resolves [content] to, at the
- * pixel size the slot is laid out at. Pure renderer — it fetches nothing, caches
- * nothing, and decodes nothing itself.
- *
- * The first frame after a (re)mount draws from the store's decoded cache
- * synchronously, so a row scrolled back into view shows its art immediately
- * instead of flashing a placeholder while an async load lands a frame later.
+ * Draws what [ImageStore] resolves [content] to at the slot's laid-out pixel size,
+ * starting from the store's cache so a remounted row shows its art immediately.
  */
 @Composable
 fun ImageSlot(
@@ -110,8 +103,7 @@ fun ImageSlot(
     }
 }
 
-/** What the slot draws before any load runs: the decode the store already holds,
- *  so a remount shows its art immediately. */
+/** What the slot draws before any load runs: the decode the store already holds. */
 private fun ImageStore.firstFrameState(
     content: ImageContent?,
     size: DecodeSize.FitTo,
@@ -121,17 +113,14 @@ private fun ImageStore.firstFrameState(
         else -> cachedImage(content, size)?.let { SlotState.Loaded(it) } ?: SlotState.Loading
     }
 
-/** [content] decoded at [size]. Absent when the library has no bytes for it, or
- *  when the load failed — the slot draws its placeholder either way, so the
- *  failure is logged here rather than surfaced to the caller. */
+/** [content] decoded at [size], or Absent when there are no bytes or the load
+ *  failed (logged here). */
 private suspend fun ImageStore.loadedState(
     content: ImageContent,
     size: DecodeSize.FitTo,
 ): SlotState {
     if (size.pixels <= 0) {
-        // An image slot with no bounded dimension can't say how large to
-        // decode; it reads the source whole. Layout, not the store, is
-        // what would fix it.
+        // Unbounded slots decode the source whole; the layout needs fixing.
         logger.warning("image slot for ${content.description} has unbounded constraints")
     }
     return try {
@@ -144,8 +133,7 @@ private suspend fun ImageStore.loadedState(
     }
 }
 
-/** The slot's one child for [state]: the decoded art, or the tile standing in for
- *  it. */
+/** The decoded art, or the placeholder tile standing in for it. */
 @Composable
 private fun SlotContent(
     state: SlotState,
@@ -162,39 +150,33 @@ private fun SlotContent(
             )
         }
 
-        // An image exists but its bytes aren't in yet: a plain tile (no glyph),
-        // so the art pops in without a placeholder flash beforehand.
+        // Bytes not in yet: a plain tile, so no glyph flashes before the art.
         SlotState.Loading -> {
             CoverTile(showIcon = false, iconPadding = iconPadding)
         }
 
-        // No image, or its bytes were absent/failed (logged when loading).
+        // No image, or its bytes were absent or failed to load.
         SlotState.Absent -> {
             CoverTile(showIcon = true, iconPadding = iconPadding)
         }
     }
 }
 
-/**
- * The pixel size a slot with these [constraints] should decode to: its longer
- * bounded edge, or 0 when neither edge is bounded. Both dimensions count, so a
- * wide-but-short slot still decodes enough pixels to fill it.
- */
+/** The longer bounded edge of [constraints] in pixels, or 0 when neither is bounded. */
 private fun boundedPixelSize(constraints: Constraints): Int {
     val width = if (constraints.hasBoundedWidth) constraints.maxWidth else 0
     val height = if (constraints.hasBoundedHeight) constraints.maxHeight else 0
     return maxOf(width, height)
 }
 
-/** The placeholder tile behind/instead of a cover: a flat surface, with the
- *  MusicNote glyph only when there is no cover to show. */
+/** The placeholder surface, with the music-note glyph only when there is no cover. */
 @Composable
 private fun CoverTile(
     showIcon: Boolean,
     iconPadding: Dp,
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = BaeTheme.surfaces.placeholder,
         modifier = Modifier.fillMaxSize(),
     ) {
         if (showIcon) {

@@ -4,24 +4,16 @@ import SwiftUI
 
 private let logger = Logger.bae("ReIdentifySheet")
 
-/// Stable key for a re-identify candidate. The identify pipeline routes
-/// state changes by candidate key; the sheet uses this key to look its
-/// candidate up in the import store and to clean it up on dismiss.
+/// The candidate key a release's re-identify session runs under.
 enum ReIdentifyKey {
     static func make(forReleaseId releaseId: String) -> String {
         "reidentify:\(releaseId)"
     }
 }
 
-/// Re-identify modal. Re-runs the full identify pipeline against an
-/// existing library release's files, then commits the user's pick via
-/// `re_identify_release`. After commit, prompts whether to also reseed
-/// metadata from the new source.
-///
-/// Reuses `ImportSearchPane` end-to-end: identify state flows through the
-/// import event bus into `ImportStore.reIdentifyCandidates`, keyed by
-/// `ReIdentifyKey.make(forReleaseId:)`. The sheet looks the candidate up
-/// at render time and feeds it to the same builder folder imports use.
+/// Re-runs identification on a library release's files through the import
+/// search pane, commits the pick via `re_identify_release`, then offers to
+/// refresh metadata from the new source.
 struct ReIdentifySheet: View {
     let releaseId: String
     let displayName: String
@@ -50,8 +42,7 @@ struct ReIdentifySheet: View {
     private var commitTask: Task<Void, Never>?
     @State
     private var landingAlbumId: String?
-    /// The pressing the user clicked, pending the Set-identity commit in the
-    /// footer. `nil` until a row is picked.
+    /// The picked pressing, awaiting the footer's Set identity.
     @State
     private var selectedPressing: Pressing?
     private enum Phase: Equatable {
@@ -79,9 +70,7 @@ struct ReIdentifySheet: View {
         }
         .onDisappear {
             commitTask?.cancel()
-            // End this release's session: its identification stops — the
-            // identify driver and any in-flight artwork OCR — and core forgets
-            // what it asked about.
+            // End this release's identification session in core.
             let importer = importer
             let uiStore = uiStore
             let key = key
@@ -89,8 +78,7 @@ struct ReIdentifySheet: View {
                 do { try await importer.endReleaseIdentification(key) }
                 catch { uiStore.showError(error) }
             }
-            // Drop the candidate so a future re-open starts cold rather
-            // than replaying the prior session's terminal state.
+            // Drop the candidate so a re-open starts fresh.
             importStore.reIdentifyCandidates.removeValue(forKey: key)
         }
     }
@@ -108,9 +96,8 @@ struct ReIdentifySheet: View {
                     .lineLimit(1)
             }
             Spacer()
-            // A rip identifies itself when no source knows it. The escape
-            // belongs beside Close: it commits the release outright rather
-            // than picking anything on the page below.
+            // Commits the release from its own file tags when no source knows
+            // it.
             Button(coreString("ui.import.metadata.file_metadata") + "\u{2026}")
             {
                 commit(.fileMetadata)
@@ -156,11 +143,8 @@ struct ReIdentifySheet: View {
         }
     }
 
-    /// The identify pane while the sheet is running its own re-identification.
-    /// Its run has no candidate row anywhere — the release is already in the
-    /// library — so both its identify state and the signals its manual form
-    /// suggests from come from this sheet's key on the two shared signals,
-    /// the same ones the import pane reads.
+    /// The identify pane, reading its state and signals under this sheet's
+    /// key.
     private func identifyPane(
         candidate: Candidate,
         runtime: BridgeCandidateRuntimeSnapshot?,
@@ -187,14 +171,9 @@ struct ReIdentifySheet: View {
                         present: { openSettings() }
                     )
                 },
-                // The sheet's own header closes it, so the pane offers no
-                // way back of its own.
+                // The sheet's header closes it.
                 onBack: nil,
-                // Re-identify has no editable confirm page (the release
-                // already has metadata; "Edit metadata..." covers
-                // post-commit edits). Picking a pressing claims it — every
-                // source it carries — and the footer commits it via
-                // `re_identify_release`.
+                // No confirm page: the footer commits the picked pressing.
                 onSelect: { pressing in
                     selectedPressing = pressing
                 },
@@ -208,9 +187,7 @@ struct ReIdentifySheet: View {
 
     // MARK: - Selection footer
 
-    /// Footer shown once a pressing is picked: the commit that stores it as
-    /// the release's selected external metadata provenance, every source the
-    /// pressing carries included.
+    /// Footer that commits the picked pressing as the release's identity.
     private func selectionFooter(
         for pressing: Pressing
     ) -> some View {
@@ -231,14 +208,12 @@ struct ReIdentifySheet: View {
 
     // MARK: - Refresh prompt
 
-    // Only reachable after a source-backed commit. A file metadata commit reseeds
-    // its rows from the rip's file tags inside `re_identify_release`, so it has
-    // nothing to confirm and never lands here.
+    // Only reachable after a source-backed commit.
     private var refreshPrompt: some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 48))
-                .foregroundStyle(.green)
+                .foregroundStyle(Theme.success)
             Text("Identity updated.")
                 .font(.headline)
             Text(
@@ -260,13 +235,8 @@ struct ReIdentifySheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Close the sheet, then navigate the album grid to whichever album
-    /// the release lives on now. set_identity may have moved it: a
-    /// cross-source merge lands it on a sibling album, a file metadata commit
-    /// always opens a fresh one. The grid follows the release so the
-    /// user lands looking at the same content they re-identified. When
-    /// the user dismisses before any commit landed (`landingAlbumId`
-    /// nil), close without navigating — the source album stays expanded.
+    /// Close the sheet and, if a commit landed, navigate to the album the
+    /// release now lives on, since the commit may have moved it.
     private func closeAndNavigate() {
         let target = landingAlbumId
         onClose()
@@ -281,7 +251,7 @@ struct ReIdentifySheet: View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 48))
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.danger)
             Text("Re-identify failed.")
                 .font(.headline)
             Text(message)
@@ -289,10 +259,8 @@ struct ReIdentifySheet: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 420)
-            // closeAndNavigate respects landingAlbumId — if the identity
-            // commit succeeded and only the refresh failed, the user
-            // still gets routed to the new album. Pure-identify errors
-            // (no commit) just close.
+            // Still navigates when the commit landed and only the refresh
+            // failed.
             Button("Close") { closeAndNavigate() }
                 .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
@@ -305,10 +273,8 @@ struct ReIdentifySheet: View {
 
 extension ReIdentifySheet {
     fileprivate func startReIdentify() async {
-        // Seed the candidate so `ImportSearchFlow.buildSearchPane` has
-        // something to read. It carries only this session's own work — the
-        // pick and the search state; the run's identify state comes from the
-        // candidate-runtime signal under the same key.
+        // Seed the candidate the search pane reads; identify state comes from
+        // the candidate-runtime signal under the same key.
         if importStore.reIdentifyCandidates[key] == nil {
             importStore.reIdentifyCandidates[key] = Candidate(
                 reIdentifyKey: key,
@@ -316,12 +282,6 @@ extension ReIdentifySheet {
                 displayName: displayName
             )
         }
-        // Identify subscribes, then extraction streams the release's signals
-        // (disc ID + artwork resolved from the library). Resolution failures
-        // are logged in core, not surfaced — identify lands in ManualOnly when
-        // nothing resolves, the same as a folder with no signals.
-        // A library release has no candidate row to store what its run asks
-        // about, so core holds it for this session.
         importer.autoIdentifyRelease(key, releaseId)
     }
 
@@ -339,9 +299,7 @@ extension ReIdentifySheet {
                 landingAlbumId = albumId
                 switch choice {
                 case .fileMetadata:
-                    // `re_identify_release` reseeds the rows from the rip's
-                    // file tags as part of a file metadata commit, so there's
-                    // nothing to confirm — go straight to the new album.
+                    // The commit already reseeded from the file tags.
                     closeAndNavigate()
                 case .externalRelease:
                     phase = .askRefresh
@@ -356,8 +314,7 @@ extension ReIdentifySheet {
                 logger.error(
                     "Re-identify commit failed: \(error.localizedDescription)"
                 )
-                // A failure with no line to show — a cancellation — is not an
-                // error phase; there would be nothing in it.
+                // A failure with no line to show gets no error phase.
                 if let line = error.displayLine {
                     phase = .error(line)
                 }
@@ -397,8 +354,7 @@ extension ReIdentifySheet {
                 logger.error(
                     "Refresh failed: \(error.localizedDescription)"
                 )
-                // A failure with no line to show — a cancellation — is not an
-                // error phase; there would be nothing in it.
+                // A failure with no line to show gets no error phase.
                 if let line = error.displayLine {
                     phase = .error(line)
                 }
@@ -407,16 +363,12 @@ extension ReIdentifySheet {
     }
 
     fileprivate func finish() {
-        // The user just answered the refresh prompt — they don't need a
-        // second "Re-identify complete" beat after that. Close the sheet
-        // and navigate the grid to wherever the release landed.
         closeAndNavigate()
     }
 }
 
 #if DEBUG
-    // The stub importer's auto-identify is a no-op, so the sheet seeds its
-    // candidate and renders the search pane in its starting (manual-only) state.
+    // The stub importer never identifies, so the pane stays in its start state.
     #Preview("Re-identify Sheet") {
         ReIdentifySheet(
             releaseId: "rel-a-01",

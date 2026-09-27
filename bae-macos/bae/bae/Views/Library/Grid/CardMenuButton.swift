@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import SwiftUI
 
 /// The ellipsis button that overlays a hovered album card, popping the
@@ -14,10 +15,10 @@ struct CardMenuButton: View {
         Button(action: presentMenu) {
             Image(systemName: "ellipsis")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundStyle(Theme.onFill)
                 .frame(width: 30, height: 30)
                 .background(
-                    isHovered ? Color.accentColor : Color.black.opacity(0.4)
+                    isHovered ? Theme.accent : Theme.scrim
                 )
                 .clipShape(Circle())
         }

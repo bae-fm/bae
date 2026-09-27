@@ -1,20 +1,15 @@
 import BaeKit
 import SwiftUI
 
-/// Renders a user-facing error: the generic localized line, the concrete fault
-/// beneath it, and — when there is more chain than fits — a collapsible
-/// disclosure exposing the rest. The diagnostic always has a copy action. The single surface every
-/// event-driven error reuses (sync banner, inline import error); the global
-/// alert renders the same `DisplayError` through alert actions instead.
+/// A user-facing error: the localized line, the concrete fault beneath it with
+/// a copy action, and a disclosure for the rest of the chain.
 ///
-/// The fault line is not behind the disclosure. Core's line names a category
-/// ("Something went wrong."), so a reader who does not open the disclosure is
-/// told nothing about what failed — which is how a failing sync cycle spent an
-/// hour looking like a generic internal error.
+/// The fault line stays outside the disclosure because core's line names only
+/// a category ("Something went wrong.").
 struct ErrorDetailDisclosure: View {
     let error: DisplayError?
-    /// Tint for the line and icon — red for hard failures, orange for warnings.
-    var tint: Color = .red
+    /// Tint for the line and icon: `Theme.danger` or `Theme.warning`.
+    var tint: Color = Theme.danger
     var showIcon: Bool = true
 
     @State
@@ -52,9 +47,7 @@ struct ErrorDetailDisclosure: View {
                 }
             }
 
-            // Only when the chain says more than the line above already did —
-            // a disclosure that expands to the same sentence is a control that
-            // does nothing.
+            // Only when the chain says more than the line above.
             if let detail = error?.detail, let excerpt = error?.detailExcerpt,
                 detail != error?.detailSummary
             {
@@ -96,7 +89,7 @@ struct ErrorDetailDisclosure: View {
             // Warning tint, no detail — line only.
             ErrorDetailDisclosure(
                 error: PreviewData.displayErrorSimple,
-                tint: .orange
+                tint: Theme.warning
             )
             // Icon suppressed (inline banner variant).
             ErrorDetailDisclosure(

@@ -1,31 +1,22 @@
 import BaeKit
 import SwiftUI
 
-/// The watched folders the candidate list is built from: add a root, or
-/// refresh, reveal, and remove one already being watched. And the list's
-/// folder groups, all at once: open every one, or fold every one shut.
+/// The candidate list's menu: sort order, Pending filter, watched folders,
+/// and expanding or collapsing every folder group.
 ///
-/// `Equatable` over the folders, their refresh state and their scans alone,
-/// and rendered through `.equatable()`: the queue summary this is built from is
-/// re-delivered on every verdict the sweep commits, and a `Menu` whose content
-/// is rebuilt while it is open closes under the pointer. Comparing the values
-/// the menu actually draws keeps it standing across those ticks.
+/// `Equatable` over what the menu draws, and rendered through `.equatable()`,
+/// because a `Menu` rebuilt while open closes under the pointer.
 struct CandidateListMenu: View, Equatable {
     let watchedFolders: [BridgeWatchedFolder]
-    /// The roots with a refresh in flight — their entry says so and cannot be
-    /// asked again.
+    /// Roots with a refresh in flight; their Refresh entry is disabled.
     let refreshingFolders: Set<String>
-    /// Where each root's scan stands, by path. A root being walked, or one
-    /// whose walk failed, says so on its own entry — and a failure also marks
-    /// the trigger, so nobody has to open the menu to find out.
+    /// Each root's scan state, by path. A failed scan also marks the trigger.
     let scanStatuses: [String: BridgeFolderScanStatus]
-    /// The roots on a volume served over the network. Their entry says so,
-    /// because such a folder is checked on a schedule rather than reported the
-    /// moment it changes — and an album added on the server that has not
-    /// appeared yet is otherwise a mystery.
+    /// Roots on a network volume, which are checked on a schedule rather than
+    /// reported the moment they change.
     let networkFolders: Set<String>
-    /// Whether the queue has folder groups to fold. Without any, the two
-    /// group entries have nothing to act on and say so by being disabled.
+    /// Whether the queue has folder groups; without any, Expand All and
+    /// Collapse All are disabled.
     let hasGroups: Bool
     let sortOrder: BridgeImportListOrder
     let onSetSortOrder: (BridgeImportListOrder) -> Void
@@ -38,13 +29,10 @@ struct CandidateListMenu: View, Equatable {
     /// Fold every folder group in the queue open (`true`) or shut (`false`).
     let onSetAllGroupsExpanded: (_ expanded: Bool) -> Void
     let onRefreshFolder: (_ folder: BridgeWatchedFolder) -> Void
-    /// Stop watching `path`. Release grouping belongs to the queue below;
-    /// removing a root stays an action here.
+    /// Stop watching `path`.
     let onRemoveFolder: (_ path: String) -> Void
 
-    /// The actions are left out: each render hands over a fresh closure that
-    /// does the same thing, so comparing them would say "changed" every time
-    /// and defeat the point.
+    /// Leaves out the closures, which are new on every render.
     nonisolated static func == (
         lhs: CandidateListMenu,
         rhs: CandidateListMenu
@@ -79,9 +67,8 @@ struct CandidateListMenu: View, Equatable {
         }
     }
 
-    /// Compare exactly what a root's menu entry renders. Scan progress updates
-    /// the queue's found count, but this menu renders the same spinner for the
-    /// entire scan; replacing it for every count closes an open system menu.
+    /// Whether two scan states draw the same entry; a scan's found count is
+    /// ignored because the entry shows one spinner for the whole scan.
     nonisolated private static func scanPresentation(
         _ lhs: BridgeFolderScanStatus?,
         equals rhs: BridgeFolderScanStatus?
@@ -157,7 +144,7 @@ struct CandidateListMenu: View, Equatable {
                     if hasFailedScan {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 8))
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.danger)
                             .offset(x: 3, y: -3)
                     }
                 }
@@ -168,9 +155,8 @@ struct CandidateListMenu: View, Equatable {
         .help("Sorting, Filtering and Watched Folders")
     }
 
-    /// One root's entry. Its scan, when it is saying anything, rides the
-    /// entry's icon; a failed walk carries what went wrong as the entry's
-    /// tooltip, which is where the header used to spell it out.
+    /// One root's entry: its scan state is the icon, and a failed scan's error
+    /// is the tooltip.
     @ViewBuilder
     private func folderMenu(_ folder: BridgeWatchedFolder) -> some View {
         let onNetwork = networkFolders.contains(folder.path)
@@ -183,7 +169,7 @@ struct CandidateListMenu: View, Equatable {
         case .failed(let error):
             folderEntry(folder) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
             }
             .help(
                 [error, networkLine(onNetwork)]
@@ -204,9 +190,8 @@ struct CandidateListMenu: View, Equatable {
         }
     }
 
-    /// How a folder on a network volume is kept up to date, in the user's
-    /// language. `nil` for a folder on this machine's own disk, which its watch
-    /// reports the moment it changes and which has nothing to explain.
+    /// The tooltip line saying how a network folder is checked; `nil` for a
+    /// local folder.
     private func networkLine(_ onNetwork: Bool) -> String? {
         guard onNetwork else { return nil }
         return coreString(

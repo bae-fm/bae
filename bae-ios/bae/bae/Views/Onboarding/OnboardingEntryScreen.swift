@@ -2,8 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// The first-run chooser: join a library from another device, or restore from a
-/// recovery code by scan or paste. The actions are the owner's — this screen
-/// only lays out the buttons and shows the current error.
+/// recovery code by scan or paste.
 struct OnboardingEntryScreen: View {
     let error: String?
     let onJoin: () -> Void
@@ -45,7 +44,7 @@ struct OnboardingEntryScreen: View {
             if let error {
                 Text(error)
                     .font(.callout)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 320)
             }

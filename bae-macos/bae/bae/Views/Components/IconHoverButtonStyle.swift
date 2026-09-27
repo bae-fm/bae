@@ -1,11 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Hover treatment shared by icon-only buttons (the now-playing bar's transport
-/// and utility glyphs, the title bar's gear): a rounded subtle fill while the
-/// pointer is over it, and the glyph stepping from the secondary color toward
-/// the primary. Buttons that carry an active-state tint set their own glyph
-/// color on the label, which wins over this base.
+/// Hover treatment for icon-only buttons; a glyph color set on the label wins
+/// over this one.
 struct IconHoverButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         Hovering(configuration: configuration)
@@ -21,7 +18,7 @@ struct IconHoverButtonStyle: ButtonStyle {
                 .foregroundStyle(hovering ? Color.primary : Color.secondary)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.primary.opacity(hovering ? 0.06 : 0)),
+                        .fill(hovering ? Theme.hover : Color.clear),
                 )
                 .opacity(configuration.isPressed ? 0.6 : 1)
                 .onHover { hovering = $0 }
@@ -31,8 +28,6 @@ struct IconHoverButtonStyle: ButtonStyle {
 
 #if DEBUG
     #Preview("Icon Hover Button Style") {
-        // Icon-only buttons hosting the style — hover a glyph to see the rounded
-        // fill and the secondary→primary step.
         HStack(spacing: 16) {
             Button {
             } label: {

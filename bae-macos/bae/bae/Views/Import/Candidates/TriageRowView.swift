@@ -1,21 +1,12 @@
 import BaeKit
 import SwiftUI
 
-/// One triage row: cover, title, metadata, and status. Selection belongs to
-/// the surrounding list.
-///
-/// A row does not change height on selection: the folder it came from is the
-/// main pane's to state, and a row that grows on selection shifts every row
-/// under it.
-///
-/// What the list delivers is what the tables say; what is running for the
-/// candidate — a run queued or in flight, an import that owns it — and the
-/// commands the row offers with it are the row's own subscription's, read
-/// here and drawn by `TriageRowContent`.
+/// One triage row: cover, title, metadata, and status, with what is running
+/// for the candidate read from the row's own live-state subscription. Its
+/// height must not change on selection, which would shift every row below.
 struct TriageRowView: View {
-    /// The cover's edge, in points. Named because it is also the size the
-    /// sidebar warms Pending's covers at — a decode cached at another size is a
-    /// different entry and would not spare this row its placeholder.
+    /// The cover's edge in points; the sidebar preloads Pending's covers at
+    /// this size, so it must match for the cached image to be used.
     static let coverPointSize: CGFloat = 50
 
     let row: BridgeTriageRow
@@ -66,8 +57,7 @@ struct TriageRowContent: View {
     let live: BridgeCandidateLiveState?
     let coverContent: ImageContent?
     let isGroupMember: Bool
-    /// What the row's menu offers — the same offers, and the same order, the
-    /// pane a selection opens draws.
+    /// What the row's menu offers, in the same order as the selection's pane.
     let menuOffers: CandidateActionMenu
     let onPerform: (ImportCandidateActionOffer) -> Void
 
@@ -96,9 +86,8 @@ struct TriageRowContent: View {
 
     // MARK: - Leading
 
-    /// The matched release's cover, or the image placeholder when there is
-    /// none yet — the tile keeps every row's text starting at one x whether
-    /// or not there is art.
+    /// The matched release's cover, or a placeholder so every row's text lines
+    /// up.
     private var cover: some View {
         ImageView(
             content: coverContent,
@@ -126,9 +115,7 @@ struct TriageRowContent: View {
         }
     }
 
-    /// The list projection owns the persisted draft summary, so it remains
-    /// visible independently of selection. Every reading but `unidentified`
-    /// is a row that carries one.
+    /// The saved draft's summary, which every reading but `unidentified` has.
     @ViewBuilder
     private var releaseSummary: some View {
         if let summary = ImportReleaseSummary(row: row) {
@@ -138,8 +125,7 @@ struct TriageRowContent: View {
         }
     }
 
-    /// A row nothing has been written about names the folder it came from,
-    /// as the main pane's heading does.
+    /// An unidentified row names its folder, as the main pane's heading does.
     private var folderLine: some View {
         HStack(spacing: 6) {
             Image(systemName: "folder")
@@ -157,8 +143,8 @@ struct TriageRowContent: View {
 
     @ViewBuilder
     private var stateLine: some View {
-        // A running import is the one line that changes by the second, so it
-        // subscribes to the candidate-runtime signal at this leaf.
+        // A running import updates by the second, so only this leaf observes
+        // its progress.
         if live?.importing == true {
             ImportProgressLine(key: row.candidateKey)
                 .font(.system(size: 11.5))
@@ -175,13 +161,10 @@ struct TriageRowContent: View {
 
 }
 
-/// The row's metadata and trailing column. In an extension so the view's body
-/// and the layout it composes stay readable as one piece.
+/// The row's status line and trailing column.
 extension TriageRowContent {
-    /// State that belongs below the release summary: an import failure, or a
-    /// write of an identification result that failed. What a folder check found
-    /// is the pane's to state, beside the Import it bears on; identification
-    /// activity belongs to the trailing indicator's tooltip.
+    /// The line under the release summary: a failed import, or an
+    /// identification result that failed to save.
     private var statusLine: String? {
         if case .finalizationFailed(let error) = live?.identification {
             return error.displayLine
@@ -205,17 +188,10 @@ extension TriageRowContent {
 
     // MARK: - Trailing
 
-    /// What the row ends with. Kept at its ideal width: the release's title and
-    /// artist truncate before a tag does, since a tag is already as short as it
-    /// gets. What the row states about its release is the title line's arrow,
-    /// not a column of its own.
-    ///
-    /// A run in flight takes the column rather than sitting beside it: while a
-    /// run is going there is nothing to answer, and the answer being written
-    /// is about to replace whatever the column said. A running import leaves
-    /// it empty — the line under the title carries the bar. Otherwise the
-    /// import says what it has to. What an identification result asks is the
-    /// pane's to state, never the row's.
+    /// The trailing column, kept at its ideal width so the title truncates
+    /// first. An identification run takes it over, a running import leaves it
+    /// empty (the status line has the bar), and otherwise it shows the import's
+    /// tag.
     private var trailing: some View {
         Group {
             if let identification = live?.identification {
@@ -257,23 +233,27 @@ extension TriageRowContent {
                 .help(String(localized: "Identifying\u{2026}"))
         case .finalizationFailed(let error):
             if let line = error.displayLine {
-                trailingIcon("exclamationmark.triangle.fill", tint: .orange)
-                    .help(line)
+                trailingIcon(
+                    "exclamationmark.triangle.fill",
+                    tint: Theme.warning
+                )
+                .help(line)
             }
             else {
-                trailingIcon("exclamationmark.triangle.fill", tint: .orange)
+                trailingIcon(
+                    "exclamationmark.triangle.fill",
+                    tint: Theme.warning
+                )
             }
         }
     }
 
-    /// What a failed import's row shows: the failure's tag. A completed
-    /// import's row is the library release it became, which `ImportedRowView`
-    /// draws.
+    /// A failed import's tag; a completed import's row is `ImportedRowView`.
     @ViewBuilder
     private var importTrailing: some View {
         switch row.importStatus {
         case .error:
-            chip(String(localized: "Failed"), tint: .red)
+            chip(String(localized: "Failed"), tint: Theme.danger)
         case .complete, nil:
             EmptyView()
         }
@@ -294,7 +274,8 @@ extension TriageRowContent {
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(
-                RoundedRectangle(cornerRadius: 5).fill(tint.opacity(0.14))
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(tint.opacity(ThemeOpacity.tint))
             )
     }
 }

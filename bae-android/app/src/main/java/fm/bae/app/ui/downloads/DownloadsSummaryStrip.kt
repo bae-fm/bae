@@ -30,10 +30,8 @@ import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 
 /**
- * Compact one-line summary of the download queue for the library strip: the
- * paused chip or the count summary, plus the active download's progress bar
- * (the queue is serial, so at most one). Tapping opens the downloads screen.
- * The caller hides it when the queue is empty.
+ * One-line download queue summary with the active download's progress bar;
+ * tapping opens the downloads screen.
  */
 @Composable
 internal fun DownloadsSummaryStrip(
@@ -60,7 +58,12 @@ internal fun DownloadsSummaryStrip(
                             downloadQueueSummaryText(context, snapshot)
                         },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color =
+                        if (snapshot.paused) {
+                            BaeTheme.colors.activity
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -81,18 +84,11 @@ internal fun DownloadsSummaryStrip(
     }
 }
 
-/**
- * The queue summary line: the counts core rolls up (downloading / failed /
- * queued), each a localized "{count} <state>" label, joined with " · ". Empty
- * when the queue is idle. bae-core owns the counts; the UI composes and
- * localizes them (the same shape the desktop Downloads pane renders).
- */
+/** Core's count parts for the queue, each localized, joined with " · ". */
 internal fun downloadQueueSummaryText(
     context: Context,
     snapshot: BridgeDownloadSnapshot,
 ): String =
-    // Core decides which parts appear, their order, and the drop-if-zero rule;
-    // this localizes each and joins.
     snapshot.summaryParts.joinToString(" · ") { part ->
         context.coreString(part.key, mapOf("count" to part.count.toInt()))
     }

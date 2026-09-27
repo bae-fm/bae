@@ -4,20 +4,13 @@ import os.log
 
 private let logger = Logger.bae("RecoveryCode")
 
-/// Reveals the library's recovery code on demand. The recovery code is a bearer
-/// credential — anyone holding it gains full access — so it's kept behind a
-/// presented sheet and labelled as sensitive, used only to restore on a new
-/// device when no existing device is available to approve a join. The `.task`
-/// owns the generation lifecycle: it fires on appear and is cancelled
-/// automatically when the sheet dismisses, which propagates through to the
-/// underlying Rust future since `generate` is a genuine uniffi async call.
-/// Presented as a sheet from `SettingsView`.
+/// Generates and shows the library's recovery code, which grants full access
+/// to the library; closing the sheet cancels generation.
 struct RecoveryCodeView: View {
     let generate: @Sendable () async throws -> String
     let onDismiss: () -> Void
 
-    /// `nil` is loading, `.success(code)` shows the code, `.failure(err)` shows
-    /// the error message.
+    /// `nil` while generating.
     @State
     private var result: Result<String, Error>?
 
@@ -68,12 +61,10 @@ struct RecoveryCodeView: View {
         case .failure(let error):
             VStack {
                 Spacer()
-                // `runGenerate` only records a failure core gave a line for, so
-                // this reads as an unwrap; it is not defaulted to "" because a
-                // blank red line is not an error message.
+                // `runGenerate` only records failures core gave a line for.
                 if let line = error.displayLine {
                     Text(line)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.danger)
                         .font(.callout)
                         .multilineTextAlignment(.center)
                 }
@@ -84,9 +75,7 @@ struct RecoveryCodeView: View {
 
     private func runGenerate() async {
         do {
-            // generateRestoreCode is a genuine uniffi async call: it suspends
-            // without blocking a thread, and cancelling this task propagates
-            // through to the underlying Rust future.
+            // Cancelling this task also cancels the Rust call.
             let code = try await generate()
             try Task.checkCancellation()
             result = .success(code)
@@ -98,10 +87,8 @@ struct RecoveryCodeView: View {
             logger.error(
                 "Failed to generate recovery code: \(error.localizedDescription)"
             )
-            // A failure core says has no line is a cancellation reported from
-            // its side rather than Swift's, and the arm above already decided
-            // that a cancelled generation leaves the view on its spinner
-            // instead of flipping it to an error with nothing in it.
+            // A failure with no line is a cancellation from core, which leaves
+            // the spinner up like the arm above.
             guard DisplayError(error) != nil else { return }
             result = .failure(error)
         }

@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Shared visual roles. Surfaces resolve the selected tone at the drawing site;
-/// accents inherit the selected color from the application root.
+/// Shared visual roles. Surfaces resolve the chosen tone where they are drawn,
+/// the generated semantic colours follow the appearance, and the accent comes
+/// from the application root.
 public enum Theme {
     public static let background = ThemeSurface(role: \.background)
     public static let surface = ThemeSurface(role: \.surface)
@@ -12,9 +13,8 @@ public enum Theme {
     public static let well = ThemeSurface(role: \.well)
     public static let tile = ThemeSurface(role: \.tile)
     public static let accent = Color.accentColor
-    public static let accentSoft = accent.opacity(0.14)
-    public static let hairline = Color.primary.opacity(0.10)
-    public static let hover = Color.primary.opacity(0.06)
+    public static let accentSoft = accent.opacity(ThemeOpacity.tint)
+    public static let accentStrong = accent.opacity(ThemeOpacity.tintStrong)
 }
 
 extension View {

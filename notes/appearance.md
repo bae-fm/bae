@@ -20,12 +20,19 @@ controls. Accent text, glyphs, and slider fills use the mode-specific accent.
 Primary buttons use the separate fill color with white text to preserve
 contrast in both modes. The macOS mode selector uses that fill for its selected
 segment; iOS retains its native neutral segmented control.
-Semantic warning and destructive colors do not change with the chosen accent.
+Semantic colours do not change with the tone or accent: danger for errors,
+warning for what needs attention, success, info, and activity for work in
+progress such as a transfer. Hover, pressed, hairline, scrim, shadow and the
+image viewer's backdrop are semantic too, as are onFill and onFillSecondary for
+text on fills, artwork and the backdrop. A colour laid behind its own text,
+such as a status chip's fill, uses it at the `tint` opacity.
 
-Apple views use `Theme`, `PrimaryButtonStyle`, and `.appAppearance()` at every
-scene root. Native controls retain their platform geometry and interaction.
-Android maps it to Material colors and `PrimaryButton`, with tonal elevation
-disabled so surfaces retain the selected tone. Navigation
+Apple views use `Theme`, `ThemeOpacity`, `PrimaryButtonStyle`, and
+`.appAppearance()` at every scene root; Apple's hierarchical label styles stay
+native. Native controls retain their platform geometry and interaction.
+Android maps the theme to Material colors, reads the other roles through
+`BaeTheme.colors` and `BaeTheme.surfaces`, and uses `PrimaryButton`, with tonal
+elevation disabled so surfaces retain the selected tone. Navigation
 and transport controls use neutral surfaces; selection and progress use the
 accent. Action buttons do not add accent shadows or decorative gradients.
 

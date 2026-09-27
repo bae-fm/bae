@@ -1,14 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// One catalog number the folder states about a release identification is
-/// offering. Counted, it is an agreement: it ranks that release up the list
-/// and badges its row. Struck out, it counts for nothing — the number on the
-/// sleeve that turned out to be a phone number, a serial, the year again.
-///
-/// Pressing it turns it over. Nothing is asked again: the same answers are
-/// ranked by what the folder is now taken to state about them, so the chip
-/// carries the same accent tint the Catalog badge on the rows does.
+/// A catalog number from the folder that agrees with an offered release.
+/// Counted, it ranks that release up and badges its row; struck out, it counts
+/// for nothing. Pressing it toggles that and re-ranks the same results.
 struct CatalogAgreementChip: View {
     let agreement: BridgeCatalogAgreement
     let onToggle: () -> Void
@@ -57,14 +52,14 @@ struct CatalogAgreementChip: View {
 
     private var background: Color {
         counted
-            ? Color.accentColor.opacity(isHovered ? 0.24 : 0.15)
-            : Color.primary.opacity(isHovered ? 0.04 : 0)
+            ? (isHovered ? Theme.accentStrong : Theme.accentSoft)
+            : (isHovered ? Theme.hover : Color.clear)
     }
 
     private var border: Color {
         counted
             ? Color.clear
-            : Color.primary.opacity(isHovered ? 0.18 : 0.09)
+            : (isHovered ? Theme.hairlineStrong : Theme.hairline)
     }
 }
 

@@ -2,8 +2,7 @@ import BaeKit
 import SwiftUI
 
 struct SearchView: View {
-    /// The card's width. The overlay that places it under the search field
-    /// reads this to align their trailing edges.
+    /// The card's width, which the overlay reads to align it under the field.
     static let width: CGFloat = 440
 
     let results: SearchResults?
@@ -12,8 +11,7 @@ struct SearchView: View {
     let onSelectComposer: (String) -> Void
     let onSelectWork: (String) -> Void
 
-    /// Measured natural height of the result list, driving the card's
-    /// fit-to-content height.
+    /// The result list's measured height, which the card fits to.
     @State
     private var contentHeight: CGFloat = 0
 
@@ -25,11 +23,8 @@ struct SearchView: View {
                         .frame(height: 240)
                 }
                 else {
-                    // The card hugs its results, scrolling once they outgrow
-                    // the cap. The viewport height is the measured content
-                    // height, clamped: `.frame(maxHeight:)` can't do this — a
-                    // max-frame fills to its cap regardless of content and
-                    // centers the child in the leftover space.
+                    // A clamped measured height, since `.frame(maxHeight:)`
+                    // would always fill to the cap.
                     ScrollView {
                         resultsList(results)
                             .onGeometryChange(for: CGFloat.self) { geo in
@@ -51,16 +46,12 @@ struct SearchView: View {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
-        // The result list's height is measured (`contentHeight` above), so on
-        // the mount frame the card would render as a zero-height sliver of
-        // chrome before the measurement lands. Hold it invisible until then;
-        // the empty state needs no measurement and shows immediately.
+        .shadow(color: Theme.shadow, radius: 18, y: 8)
+        // Hidden until the list is measured, so it never shows as a sliver.
         .opacity(showsEmptyState || contentHeight > 0 ? 1 : 0)
     }
 
-    /// Whether the card is showing the fixed-height no-results state rather
-    /// than the measured result list.
+    /// Whether the card shows the no-results state.
     private var showsEmptyState: Bool {
         guard let results else {
             return false
@@ -89,9 +80,7 @@ struct SearchView: View {
                     action: { onSelectArtist(artist.artistId) }
                 )
             }
-            // A track's row leads with a waveform, not its album's cover: the
-            // albums above already show the art, and the glyph says which
-            // kind of hit this is.
+            // Tracks lead with a waveform, since the albums above show the art.
             resultsSection("Tracks", results.tracks, id: \.id) { track in
                 SearchResultRow(
                     leading: .waveform,
@@ -124,8 +113,7 @@ struct SearchView: View {
         .padding(8)
     }
 
-    /// One search-result section: a header plus a row per item, rendered only
-    /// when the section is non-empty.
+    /// A header and a row per item, omitted when there are no items.
     @ViewBuilder
     private func resultsSection<Item, ID: Hashable, Row: View>(
         _ title: LocalizedStringKey,
@@ -143,7 +131,7 @@ struct SearchView: View {
         Text(title)
             .font(.system(size: 12, weight: .heavy))
             .tracking(0.4)
-            .foregroundStyle(.primary.opacity(0.9))
+            .foregroundStyle(.primary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
             .padding(.top, 14)
@@ -168,12 +156,10 @@ struct SearchView: View {
     }
 }
 
-/// One search hit: 46×46 cover art where the hit has a picture, a waveform
-/// glyph where it is a track, a title over an optional subtitle, an optional
-/// trailing label (a track's duration), with a subtle hover fill.
+/// One search hit: a picture or waveform, a title over an optional subtitle,
+/// and an optional trailing label.
 private struct SearchResultRow: View {
-    /// What leads the row: a 46pt picture (the placeholder when the hit has
-    /// none yet), or the waveform glyph that marks a track.
+    /// A picture, or the waveform glyph that marks a track.
     enum Leading {
         case picture(BridgeImageRef?)
         case waveform
@@ -233,7 +219,7 @@ private struct SearchResultRow: View {
             .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.primary.opacity(hovering ? 0.05 : 0))
+                    .fill(hovering ? Theme.hover : Color.clear)
             )
         }
         .buttonStyle(.plain)

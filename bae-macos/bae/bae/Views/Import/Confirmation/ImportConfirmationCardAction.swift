@@ -1,21 +1,18 @@
 import BaeKit
 import SwiftUI
 
-/// The trailing action cell of the commit bar: the `Import` button before
-/// commit; while importing, the running import's step and bar with the cancel
-/// where `Import` was; a `Retry Import` button on error; and the `Imported` /
-/// cloud-upload state once complete.
+/// The commit bar's trailing action: `Import`, the running import's progress
+/// and cancel, `Retry Import` on error, or the imported and uploading state.
 ///
-/// `Import` is never disabled. An edit bae-core cannot shape into a savable
-/// release is refused at commit and the reason is stated on the pane — a
-/// disabled button that says nothing is the thing that redesign removed.
+/// `Import` is never disabled; an edit core cannot save is refused at commit
+/// and the pane states why.
 struct ImportConfirmationCardAction: View {
     /// Where the candidate's import stands, as its row places it.
     let importStatus: BridgeCandidateImportStatus?
     /// Routes the running import's progress to the leaf line that draws it.
     let candidateKey: String
-    /// Whether core offers to cancel the running import — until it begins
-    /// writing its release, the same answer the row's menu offers from.
+    /// Whether core allows cancelling the running import, which it does until
+    /// the release is being written.
     let canCancelImport: Bool
     let onConfirmImport: () -> Void
     let onCancelImport: () -> Void
@@ -38,9 +35,8 @@ struct ImportConfirmationCardAction: View {
         return albumId
     }
 
-    /// The imported release's cloud transition, where the outbox holds one. A
-    /// release with nothing queued is absent from the outbox, which is what
-    /// "the import is done" reads as here.
+    /// The imported release's cloud upload; `nil` when the outbox has nothing
+    /// queued for it.
     private var uploadObservation: UploadObservation? {
         guard case .complete(let releaseId, albumId: _) = importStatus else {
             return nil
@@ -48,9 +44,8 @@ struct ImportConfirmationCardAction: View {
         return outboxStore.persistedUploadObservation(forRelease: releaseId)
     }
 
-    /// The running import's cancel, in the place `Import` held. An import
-    /// writing its release can no longer be cancelled, and the button says
-    /// so instead of offering a cancel core would refuse.
+    /// The running import's cancel, or a disabled "Finishing" once the release
+    /// is being written and can no longer be cancelled.
     @ViewBuilder
     private var cancelButton: some View {
         if canCancelImport {
@@ -80,7 +75,7 @@ struct ImportConfirmationCardAction: View {
                 }
                 else {
                     Label("Imported", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Theme.success)
                         .font(.callout)
                 }
                 if let albumId = completedAlbumId {
@@ -93,10 +88,8 @@ struct ImportConfirmationCardAction: View {
         else if let status = importStatus {
             switch status {
             case .importing:
-                // The step, how far through the whole import it is, and the
-                // bar — the same component the candidate's row draws, off the
-                // same signal, so the two surfaces cannot come to disagree
-                // about one run.
+                // The same progress line the candidate's row draws, from the
+                // same signal, so the two cannot disagree.
                 HStack(spacing: 12) {
                     ImportProgressLine(key: candidateKey)
                         .frame(width: 200)
@@ -128,9 +121,8 @@ struct ImportConfirmationCardAction: View {
         )
         .padding()
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-        // A running import draws its progress through the candidate-runtime
-        // reader, so the preview mounts the same chain the app does even while
-        // it is showing the state before one starts.
+        // The progress line reads through the candidate reader, so the
+        // preview mounts it as the app does.
         .candidateReaderPreviewEnvironment()
         .windowBackground()
     }

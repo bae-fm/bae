@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Download-queue management: every queued/active/failed pin with progress,
-/// pause/resume for the whole queue, retry for failed entries, per-item
-/// cancel via swipe. Reads `DownloadStore` at the leaf; actions never mutate
-/// optimistically — the next queue snapshot re-renders the list.
+/// Manages the download queue; the list redraws from the next queue snapshot
+/// after each action, never optimistically.
 struct DownloadsView: View {
     @Environment(DownloadStore.self)
     private var downloadStore
@@ -18,9 +16,8 @@ struct DownloadsView: View {
         NavigationStack {
             Group {
                 if snapshot.downloads.isEmpty {
-                    // The queue is transient; it can drain while the sheet is
-                    // open. Show an empty state rather than dismissing out from
-                    // under the user.
+                    // The queue can drain while the sheet is open, so show an
+                    // empty state instead of dismissing.
                     ContentUnavailableView(
                         "No downloads",
                         systemImage: "arrow.down.circle"
@@ -82,10 +79,8 @@ struct DownloadsView: View {
     }
 }
 
-/// Always-visible bottom control for the device-local download-concurrency
-/// setting: how many downloads a pin fetches at once. Sits in a `safeAreaInset`
-/// so it stays reachable whether the queue has entries or shows the empty
-/// state. Mobile has no upload control — the app makes no uploads.
+/// This device's setting for how many downloads a pin fetches at once, shown
+/// at the bottom even when the queue is empty.
 private struct DownloadConcurrencyControl: View {
     @Environment(ConfigStore.self)
     private var configStore
@@ -111,8 +106,7 @@ private struct DownloadConcurrencyControl: View {
     }
 }
 
-/// One download-queue row: album title, file count and size, and the state —
-/// a waiting label, the live progress bar, or the failure message.
+/// One download-queue row: title, file count and size, and its state.
 private struct DownloadQueueRow: View {
     let op: BridgeDownloadOp
 
@@ -140,7 +134,7 @@ private struct DownloadQueueRow: View {
         case .failed(let error):
             Text(error)
                 .font(.caption2)
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.danger)
         }
     }
 }

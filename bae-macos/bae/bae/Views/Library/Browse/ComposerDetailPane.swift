@@ -1,14 +1,11 @@
 import BaeKit
 import SwiftUI
 
-/// The composer browse mode's detail pane: a composer's works, credits, and
-/// recordings, plus an inline or standalone work detail. Renders whatever
-/// `paneDetail` holds and drives selection through the session; the parent's
-/// `.task` loaders write `paneDetail` back as detail payloads arrive.
+/// The composer browse mode's detail pane: a composer's works and credits,
+/// plus an inline or standalone work detail.
 ///
-/// A composer's works and credits are unbounded, so the repeated rows sit in
-/// lazy stacks: only the rows near the viewport are built, and only they start
-/// a cover load.
+/// A composer's works and credits are unbounded, so their rows sit in lazy
+/// stacks.
 struct ComposerDetailPane: View {
     let paneDetail: ComposerPaneDetail
     @Environment(LibraryBrowseSession.self)
@@ -25,13 +22,9 @@ struct ComposerDetailPane: View {
                     BrowseDetailHeader(summary: composerDetail.composer)
                     if !composerDetail.workGroups.isEmpty {
                         SectionHeader(title: String(localized: "Works"))
-                        // A group's parent row and its works are children of
-                        // this one stack rather than of a per-group stack, so
-                        // the laziness is per row instead of per group. Rows
-                        // sit 2pt apart within a group; groups keep the 20pt
-                        // separation the section stack gave them when each
-                        // group was one child of it — the 2pt row spacing plus
-                        // 18pt above a group's first row.
+                        // Every row is a child of this one stack so each row
+                        // loads lazily; 18pt above a group's first row sets
+                        // the groups apart.
                         LazyVStack(alignment: .leading, spacing: 2) {
                             ForEach(
                                 Array(composerDetail.workGroups.enumerated()),
@@ -92,7 +85,7 @@ struct ComposerDetailPane: View {
                     }
                     if let loadedWorkDetail {
                         Rectangle()
-                            .fill(Color.primary.opacity(0.08))
+                            .fill(Theme.hairline)
                             .frame(height: 1)
                         WorkDetailView(
                             detail: loadedWorkDetail,
@@ -141,13 +134,11 @@ struct ComposerDetailPane: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .reportsHeaderScroll(id: "composerDetail")
-        // The detail pane sits one surface step above the master list, with a
-        // hairline on its leading edge separating it from the base-background
-        // list.
+        // One surface step above the master list, with a hairline between.
         .background(Theme.surface)
         .overlay(alignment: .leading) {
             Rectangle()
-                .fill(Color.primary.opacity(0.08))
+                .fill(Theme.hairline)
                 .frame(width: 1)
         }
     }

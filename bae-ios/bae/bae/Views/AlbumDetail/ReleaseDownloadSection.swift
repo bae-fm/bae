@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Offline control for the shown release: Download / progress + Cancel /
-/// Downloaded + Remove Download. Core joins the pin state, the storage actions
-/// it offers, and the download queue into that state; release and download
-/// subscriptions keep it live.
+/// Download, progress and Remove Download controls for the shown release, from
+/// the status core derives.
 struct ReleaseDownloadSection: View {
     let releaseId: String
     let detail: ReleaseDetail
@@ -31,7 +29,7 @@ struct ReleaseDownloadSection: View {
             if let unpinError {
                 Text(unpinError)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
             }
         }
         .onDisappear { unpinTask?.cancel() }
@@ -43,9 +41,8 @@ struct ReleaseDownloadSection: View {
         case nil:
             EmptyView()
         case .available:
-            // Fire-and-forget: progress and queue state arrive via the download
-            // snapshot. Re-enqueuing is idempotent — core skips ids already
-            // queued or pinned.
+            // Progress arrives through the download snapshot; core skips
+            // releases already queued or pinned.
             actionButton("Download", systemImage: "arrow.down.circle") {
                 Task { try await downloads.queuePins([releaseId]) }
             }
@@ -63,10 +60,10 @@ struct ReleaseDownloadSection: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(message)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                 HStack(spacing: 8) {
-                    // Core has no per-item retry: `retryDownloads` flips every
-                    // failed entry back to queued, like the macOS Downloads pane.
+                    // Core has no per-item retry; this requeues every failed
+                    // download.
                     actionButton("Retry", systemImage: "arrow.clockwise") {
                         downloads.retryDownloads()
                     }
@@ -84,9 +81,8 @@ struct ReleaseDownloadSection: View {
         }
     }
 
-    /// A bordered caption button — the shared shape for every download action.
-    /// A `role` (e.g. `.destructive`) drops the accent tint so the role's own
-    /// styling shows.
+    /// A bordered caption button; a `role` drops the accent tint so the role's
+    /// own styling shows.
     private func actionButton(
         _ titleKey: LocalizedStringKey,
         systemImage: String,

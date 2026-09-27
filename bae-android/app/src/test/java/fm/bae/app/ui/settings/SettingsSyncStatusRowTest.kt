@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.data.SyncFailure
+import fm.bae.app.ui.BaeTheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,7 +24,7 @@ class SettingsSyncStatusRowTest {
     fun appUpdateShowsTheReasonWithoutOfferingReconnection() {
         val error = mutableStateOf(SyncFailure("Update the app to continue syncing.", false))
         compose.setContent {
-            SettingsSyncStatusRow(BridgeSyncIndicator.Error, error.value, {})
+            BaeTheme { SettingsSyncStatusRow(BridgeSyncIndicator.Error, error.value, {}) }
         }
         compose.onNodeWithText("Update the app to continue syncing.").assertIsDisplayed()
         compose.onNodeWithText("Reconnect").assertDoesNotExist()

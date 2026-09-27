@@ -1,11 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// What a typed search turned up, under its form: the album cards each
-/// source has landed so far, and a line per source still looking or failed.
-///
-/// The sources answer separately, so what MusicBrainz found renders while
-/// Discogs is still out — its spinner and name close the list until it lands.
+/// A typed search's results under its form: each source's album cards so far,
+/// then a line for each source still searching or failed.
 struct FindOnlineSearchResults: View {
     let search: BridgeCandidateSearch
     let isImporting: Bool
@@ -21,9 +18,7 @@ struct FindOnlineSearchResults: View {
     }
 
     var body: some View {
-        // The sources' own lines close the list from inside it: a source
-        // still answering belongs under what the others found, not hovering
-        // under the form while the results scroll past it.
+        // Source lines end the list, so they scroll with the results.
         ReleaseGroupListView(
             groups: groups,
             isImporting: isImporting,
@@ -39,8 +34,7 @@ struct FindOnlineSearchResults: View {
         )
     }
 
-    /// Every source has answered and none of them knew anything. Only then:
-    /// while one is still out, what it will say is not yet "nothing".
+    /// Shown only once every source has answered with nothing.
     @ViewBuilder
     private var emptyLine: some View {
         if search.status == .noMatches {
@@ -50,10 +44,7 @@ struct FindOnlineSearchResults: View {
         }
     }
 
-    /// One line per source that has nothing to contribute yet: still looking,
-    /// or failed with its way to ask again. Each carries the same glyph its
-    /// cell in the ledger would. A source that was never asked is not one of
-    /// these — the pane's own bar says that once, above both sections.
+    /// A line per source still searching, or failed with its Retry.
     private var sourceLines: some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(search.sources, id: \.source) { entry in
@@ -71,16 +62,14 @@ struct FindOnlineSearchResults: View {
                 case .failed(let failure):
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.warning)
                         Text(name)
                             .foregroundStyle(.tertiary)
                             .help(failure.badgeLine)
                         Button("Retry", action: onRetry)
                             .buttonStyle(.link)
                     }
-                // A source that answered, and the two ways a source is
-                // never asked, all close the list with nothing: the switch
-                // says one, and the bar above the sections says the other.
+                // Answered sources and sources never asked add no line.
                 case .done, .notConfigured, .off:
                     EmptyView()
                 }

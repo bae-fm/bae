@@ -1,13 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// The mark that says an identifying signal was extracted from this file: the
-/// image a barcode was read from, or the log or sheet a disc ID was computed
-/// from. It states a fact and does nothing.
-///
-/// The hover carries the whole sentence, value included — the mark itself is
-/// only as wide as its surface allows, and a 96-point thumbnail allows a
-/// glyph.
+/// Badges and hover text marking a file as the source of an identifying
+/// signal: the image a barcode was read from, or the log or sheet a disc ID
+/// was computed from.
 enum ImportEvidence {
     struct Badge: Identifiable {
         let signal: BridgeEvidenceSignal
@@ -29,9 +25,7 @@ enum ImportEvidence {
         evidence.filter { $0.fileId == fileId }
     }
 
-    /// One badge per signal kind, preserving every extracted value for its
-    /// help text. Grouping is presentation-only: core keeps one provenance
-    /// record per extracted value.
+    /// One badge per signal kind, keeping every value for its hover text.
     static func badges(_ evidence: [BridgeFileEvidence]) -> [Badge] {
         evidence.reduce(into: []) { badges, entry in
             if let index = badges.firstIndex(where: {
@@ -64,11 +58,8 @@ enum ImportEvidence {
     }
 }
 
-/// The chip itself: the signal's own glyph and name.
-///
-/// `onImage` is for a thumbnail's corner, where the chip sits on a photograph
-/// rather than on the pane — it fills instead of tinting, so it reads against
-/// whatever is behind it, and gives up its label before it outgrows the tile.
+/// The chip: the signal's glyph and name. `onImage` fills it with the accent
+/// so it reads on a thumbnail.
 struct ImportEvidenceChip: View {
     let signal: BridgeEvidenceSignal
     var onImage: Bool = false
@@ -76,7 +67,7 @@ struct ImportEvidenceChip: View {
     private var fill: AnyShapeStyle {
         onImage
             ? AnyShapeStyle(Color.accentColor)
-            : AnyShapeStyle(Color.accentColor.opacity(0.15))
+            : AnyShapeStyle(Theme.accentSoft)
     }
 
     var body: some View {
@@ -91,6 +82,6 @@ struct ImportEvidenceChip: View {
         .padding(.horizontal, 5)
         .padding(.vertical, 2)
         .background(fill, in: Capsule())
-        .foregroundStyle(onImage ? Color.white : Color.accentColor)
+        .foregroundStyle(onImage ? Theme.onFill : Theme.accent)
     }
 }

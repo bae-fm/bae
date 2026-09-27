@@ -1,8 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// One "Up Next" row — shared by the queue sheet and the expanded now-playing
-/// view's embedded queue.
+/// One "Up Next" row in the queue sheet and the expanded now-playing view.
 struct QueueRow: View {
     let item: QueueItem
 
@@ -36,23 +35,22 @@ struct QueueRow: View {
     }
 }
 
-/// A not-yet-loaded row: a skeleton shape, no text — `loadRange` is already in
-/// flight for it via the row's `.task(id:)`.
+/// A skeleton for a queue row whose item is still loading.
 struct QueueRowPlaceholder: View {
     var body: some View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 4)
-                .fill(.secondary.opacity(0.15))
+                .fill(Theme.placeholder)
                 .frame(width: 56, height: 56)
             VStack(alignment: .leading, spacing: 6) {
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(.secondary.opacity(0.15))
+                    .fill(Theme.placeholder)
                     .frame(width: 160, height: 12)
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(.secondary.opacity(0.12))
+                    .fill(Theme.placeholder)
                     .frame(width: 100, height: 10)
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(.secondary.opacity(0.12))
+                    .fill(Theme.placeholder)
                     .frame(width: 120, height: 10)
             }
             Spacer(minLength: 0)

@@ -1,18 +1,16 @@
 import BaeKit
 import SwiftUI
 
-/// One album card in the grid: cover art over title, artist, and year. The art
-/// carries the open-detail accent ring and the hover ellipsis menu; a selection
-/// tint sits behind the whole card. Hover and selection chrome toggle by
-/// opacity so a state change never re-measures the row (layout stability).
+/// One album card in the grid. Hover and selection chrome toggle by opacity so
+/// a state change never re-measures the row.
 struct AlbumCardView: View {
     let title: String
     let artistNames: String
     let year: Int32?
     let cover: BridgeImageRef?
-    /// The album's detail expansion is open — shown as the accent ring on the art.
+    /// The album's detail is open; shown as the accent ring on the art.
     let isExpanded: Bool
-    /// The album is part of the multi-selection — shown as a tint behind the card.
+    /// The album is in the multi-selection; shown as a tint behind the card.
     let isSelected: Bool
     let size: CGFloat
     let menu: AlbumCardMenu
@@ -26,9 +24,9 @@ struct AlbumCardView: View {
         VStack(alignment: .leading, spacing: 2) {
             albumArt
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.55), radius: 14, y: 9)
-                // The open-detail ring sits off the art — a stroke floated
-                // outside the cover's edge, not a border eating into it.
+                .shadow(color: Theme.shadow, radius: 14, y: 9)
+                // The ring floats outside the cover's edge rather than eating
+                // into it.
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
                         .inset(by: -4.5)
@@ -60,8 +58,6 @@ struct AlbumCardView: View {
             )
         }
         .padding(6)
-        // The selection tint stays in the layout tree, toggled by opacity, so a
-        // selection change never re-measures the row (layout stability).
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Theme.accentSoft)

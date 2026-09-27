@@ -36,12 +36,7 @@ import uniffi.bae_bridge.BridgeSyncConfig
 import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncProvider
 
-/**
- * The sync row's rendered state, derived from the runtime sync snapshot. A
- * present error carries its message and whether reconnection can help. Without
- * an error, the row shows whether the loop is synced or still coming up. Only meaningful when a cloud provider is
- * configured — the error takes precedence over readiness.
- */
+/** The sync row's state; an error takes precedence over readiness. */
 internal sealed interface SettingsSyncStatus {
     data class Failed(
         val error: SyncFailure?,
@@ -57,8 +52,7 @@ internal fun settingsSyncStatus(
     syncError: SyncFailure?,
 ): SettingsSyncStatus =
     when (indicator) {
-        // The indicator also reports blocked operations, whose own rows below
-        // carry their failures even when the cycle itself has no error.
+        // Blocked operations also raise Error; their own rows carry their failures.
         is BridgeSyncIndicator.Error -> SettingsSyncStatus.Failed(syncError)
 
         is BridgeSyncIndicator.Synced -> SettingsSyncStatus.Synced
@@ -67,12 +61,8 @@ internal fun settingsSyncStatus(
     }
 
 /**
- * The connected-provider controls: the provider details, the live sync-status
- * row, an upload-pause toggle, and a destructive disconnect action with its
- * confirmation. Rendered only when a cloud provider is configured. After a
- * successful disconnect, core clears the sync config and re-emits sync status,
- * so this whole block falls away through config and sync-status subscriptions —
- * no local cleanup here.
+ * Provider details, sync status, upload pause, and disconnect; after a disconnect
+ * core clears the sync config, which removes this block.
  */
 @Composable
 internal fun SyncConnectedControls(
@@ -119,9 +109,8 @@ internal fun SyncConnectedControls(
     if (flowState.confirming) {
         DisconnectConfirmDialog(
             extraWarning = flowState.extraWarning,
-            // Dismiss before the disconnect runs so the destructive action fires
-            // once: the call can block for an in-flight sync cycle, and the dialog
-            // is gone before it returns (matching the confirm-then-detach flow).
+            // Dismiss first so the disconnect, which can wait on a running sync,
+            // fires once.
             onConfirm = {
                 flow.dismissConfirm()
                 scope.launch { flow.confirm() }
@@ -131,11 +120,7 @@ internal fun SyncConnectedControls(
     }
 }
 
-/**
- * The sync status line under "Cloud sync on": either a failure with its message
- * and any recovery action, or the live loop's synced/coming-up state. Rendered
- * only when a cloud provider is configured.
- */
+/** The sync status line: a failure with its message and reconnect action, or synced/syncing. */
 @Composable
 internal fun SettingsSyncStatusRow(
     indicator: BridgeSyncIndicator,
@@ -149,7 +134,7 @@ internal fun SettingsSyncStatusRow(
                     Text(
                         text = stringResource(R.string.settings_sync_disconnected),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        color = BaeTheme.colors.warning,
                     )
                 }
                 SyncStatusDetail(error.message)
@@ -203,10 +188,7 @@ private fun DisconnectConfirmDialog(
     )
 }
 
-/**
- * The configured provider's identity rows: provider name, account, and — for
- * S3 — the bucket/region/endpoint the library's cloud home lives at.
- */
+/** Provider name, account, and for S3 the bucket, region, and endpoint. */
 @Composable
 private fun SyncProviderRows(sync: BridgeSyncConfig) {
     LabeledSettingRow(stringResource(R.string.settings_provider), syncProviderLabel(sync.provider))
@@ -256,8 +238,7 @@ private fun rememberDisconnectSyncFlow(session: OpenLibrary): DisconnectSyncFlow
                             mapOf("count" to count.toLong()),
                         )
                     },
-                    // No detail means core says there is nothing to show — a
-                    // cancellation — so leave the inline error clear.
+                    // No detail means a cancellation, so leave the error clear.
                     warningFailedLine = { e ->
                         disconnectErrorDetail(context, e)?.let {
                             context.getString(R.string.settings_disconnect_warning_check_failed, it)

@@ -67,8 +67,8 @@ private struct SidePausePromptCard: View {
     @Environment(PlaybackStore.self)
     private var playbackStore
 
-    /// The checkbox. The prompt only appears while the setting is on, so it
-    /// starts checked; nothing is written until the prompt is answered.
+    /// Starts checked because the prompt only appears while the setting is on;
+    /// written only when the prompt is answered.
     @State
     private var keepPausing = true
 
@@ -79,7 +79,7 @@ private struct SidePausePromptCard: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.3)
+            Theme.scrim
                 .ignoresSafeArea()
                 .onTapGesture { answer(play: false) }
 
@@ -173,9 +173,8 @@ private struct SidePausePromptCard: View {
     }
 }
 
-/// The countdown line, redrawn on ticks anchored to core's deadline so the
-/// number changes exactly as each second runs out. Core, not this view, starts
-/// the next side or disc.
+/// The countdown line, redrawn as each second before core's deadline runs out;
+/// core, not this view, starts the next side or disc.
 private struct SidePauseCountdownLine: View {
     let prompt: BridgeSidePausePrompt
     let countdown: BridgeSideCountdown
@@ -190,9 +189,8 @@ private struct SidePauseCountdownLine: View {
         }
     }
 
-    /// A tick an hour before the deadline: every later tick lands a whole
-    /// number of seconds before it, and the hour keeps the anchor in the past
-    /// for any countdown the settings offer.
+    /// An hour before the deadline, so ticks land on whole seconds before it
+    /// and the anchor is in the past for any countdown the settings offer.
     private var tickAnchor: Date {
         countdown.resumesAt.addingTimeInterval(-3600)
     }

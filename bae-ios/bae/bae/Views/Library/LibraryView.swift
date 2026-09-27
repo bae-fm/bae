@@ -5,8 +5,7 @@ import os.log
 
 private let logger = Logger.bae("LibraryView")
 
-/// Page size for the library's paged album/composer/artist lists, shared by
-/// every grid/list slot's range fetch.
+/// Page size for the library's paged album, composer and artist lists.
 let libraryPageSize = 60
 
 enum LibraryBrowserMode {
@@ -80,9 +79,8 @@ private struct LibraryRouteDestination: View {
     }
 }
 
-/// Library browse root: a top bar with sync status, an album grid paged from
-/// the database, navigation into album detail, and a persistent now-playing
-/// bar. The grid receives updated pages from its database subscriptions.
+/// Library browse root: albums, composers or artists, search, and navigation
+/// into their detail screens, above the now-playing bar.
 struct LibraryView: View {
     @Environment(LibraryProjectionStore.self)
     private var libraryProjections
@@ -103,8 +101,7 @@ struct LibraryView: View {
     private var routePath: [LibraryRoute] = []
     @State
     private var searchQuery = ""
-    // Newest-first by default, matching the desktop library. Held as the two
-    // enum components (each Equatable) so onChange can rebuild the paged list.
+    // Newest first by default, matching the desktop library.
     @State
     private var sortField = BridgeSortField.dateAdded
     @State
@@ -250,8 +247,7 @@ private struct LibrarySyncToolbarStatus: View {
 
     var body: some View {
         Group {
-            // The live spinner is its own element, driven by an in-progress cycle;
-            // the badge word comes from core's indicator when no cycle is running.
+            // A spinner while a cycle runs, otherwise core's indicator word.
             if syncStatusStore.syncing {
                 ProgressView()
                     .controlSize(.small)
@@ -267,11 +263,8 @@ private struct LibrarySyncToolbarStatus: View {
     }
 }
 
-/// Compact one-line download summary between the mode picker and the grid:
-/// the active download's bar (the queue is serial, so at most one) plus the
-/// count summary / paused chip. Tapping opens the Downloads sheet. Hidden
-/// when the queue is empty — the queue is transient, so there is nothing to
-/// manage then.
+/// A one-line download summary that opens the Downloads sheet; hidden when the
+/// queue is empty.
 private struct DownloadsStrip: View {
     let onTap: () -> Void
 
@@ -336,38 +329,33 @@ private struct LibraryBanner: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.caption.bold())
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(Theme.onFill)
                 }
                 .accessibilityLabel("Dismiss")
             }
         }
-        // A sync failure is a failure of the provider this library is
-        // configured for. Disconnecting clears that config but leaves the
-        // recorded error behind, so without the config check a library with no
-        // provider would wear a permanent red retry strip for a provider it no
-        // longer has.
+        // Disconnecting leaves the recorded sync error behind, so show it only
+        // while a provider is configured.
         else if let error = syncStatusStore.error, configStore.config.sync != nil {
             banner(message: error.line, detail: error.detailSummary) {
                 if syncStatusStore.canReconnect {
                     if reconnecting {
                         ProgressView()
                             .controlSize(.small)
-                            .tint(Color.white)
+                            .tint(Theme.onFill)
                     }
                     else {
                         Button("Retry") { Task { await reconnect() } }
                             .font(.caption.bold())
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(Theme.onFill)
                     }
                 }
             }
         }
     }
 
-    /// Retry the provider this library is already configured for, connecting
-    /// when a failed launch left no connection rather than only waking a loop
-    /// that may not exist. A failed retry is recorded as the sync-status error
-    /// this banner renders, so it stays up naming the new reason.
+    /// Retry the configured provider, connecting if a failed launch left no
+    /// connection; a failed retry keeps the banner up with the new reason.
     private func reconnect() async {
         reconnecting = true
         do {
@@ -381,10 +369,8 @@ private struct LibraryBanner: View {
         reconnecting = false
     }
 
-    /// `message` is the localized line; `detail` is the untranslated concrete
-    /// fault, rendered under it. A category line alone ("Something went wrong.")
-    /// names nothing the user or a bug report can act on, so a failure that has
-    /// a fault shows it here rather than only in the log.
+    /// `detail` is the untranslated fault shown under the localized `message`,
+    /// so the banner names something a person or bug report can act on.
     private func banner<Trailing: View>(
         message: String,
         detail: String? = nil,
@@ -394,11 +380,11 @@ private struct LibraryBanner: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(message)
                     .font(.caption)
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Theme.onFill)
                 if let detail {
                     Text(detail)
                         .font(.caption2.monospaced())
-                        .foregroundStyle(Color.white.opacity(0.85))
+                        .foregroundStyle(Theme.onFillSecondary)
                         .lineLimit(2)
                         .truncationMode(.tail)
                 }
@@ -408,7 +394,7 @@ private struct LibraryBanner: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(Color.red.opacity(0.7))
+        .background(Theme.danger)
     }
 }
 

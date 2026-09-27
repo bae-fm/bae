@@ -105,9 +105,9 @@ extension BridgeStorageInspectorFile {
 
     var uploadTint: Color {
         switch upload?.state {
-        case .preparing, .uploading: .orange
-        case .retrying: .red
-        case .uploaded: .blue
+        case .preparing, .uploading: Theme.activity
+        case .retrying: Theme.danger
+        case .uploaded: Theme.info
         case .queued, .prepared, nil: .secondary
         }
     }

@@ -41,9 +41,7 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeDurationClock
 
-// The queue's row renderers — the current-track row, a loaded queue row, the
-// not-yet-loaded skeleton, and the shared title/artist/album block. Kept beside the
-// screen scaffolding in QueueScreen.kt, which addresses and lays them out.
+// The queue's row renderers; QueueScreen.kt lays them out.
 
 @Composable
 internal fun NowPlayingRow(np: NowPlaying) {
@@ -102,8 +100,7 @@ internal fun QueueRow(
         )
         Spacer(modifier = Modifier.width(12.dp))
         QueueItemText(item, modifier = Modifier.weight(1f))
-        // The label is empty when core reports no duration; keep the slot in the
-        // tree and toggle via alpha so rows align.
+        // Hidden rather than removed when there is no duration, so rows align.
         val durationLabel = LocalContext.current.durationClockLabel(item.durationClock)
         Text(
             text = durationLabel,
@@ -130,11 +127,10 @@ internal fun QueueRow(
     }
 }
 
-/** A not-yet-loaded row: a skeleton shape, no text — `loadRange` is already in
- *  flight for it via the row's `LaunchedEffect`. */
+/** A skeleton for a row whose item hasn't loaded yet. */
 @Composable
 internal fun QueueRowPlaceholder() {
-    val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+    val placeholderColor = BaeTheme.surfaces.placeholder
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -218,8 +214,7 @@ private val previewQueueItem =
         title = "Track Title",
         artist = "Artist Name",
         albumTitle = "Album Title",
-        // Built in-process (never the `bridgeClock` FFI) so the @Preview renders
-        // under layoutlib, which can't call into the native bridge.
+        // Built directly because previews can't call the native bridge.
         durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 34u),
         coverImage = PreviewData.imageRef("rel-1"),
     )

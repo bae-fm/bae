@@ -11,7 +11,7 @@ struct StorageStateLabel: View {
     var body: some View {
         if let transfer = release.transfer {
             Label(transfer.label, systemImage: "arrow.down.circle")
-                .foregroundStyle(.blue)
+                .foregroundStyle(Theme.activity)
                 .lineLimit(1)
         }
         else if let observation = outboxStore.storageUploadObservation(
@@ -85,8 +85,8 @@ struct StorageStateLabel: View {
                     transfer: .pin
                 )
             )
-            // A queued upload (id present in the injected outbox snapshot)
-            // wins over the resting state.
+            // A queued upload in the preview outbox wins over the resting
+            // state.
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "rel-up-1",

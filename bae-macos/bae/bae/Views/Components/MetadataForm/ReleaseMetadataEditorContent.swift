@@ -2,8 +2,7 @@ import BaeKit
 import OSLog
 import SwiftUI
 
-/// Shared persisted-release editor body. Import Done and the Library modal
-/// provide their shell and actions; this renders one header and track table.
+/// The release editor body shared by Import Done and the Library modal.
 struct ReleaseMetadataEditorContent: View {
     private static let logger = Logger.bae("ReleaseMetadataEditor")
 
@@ -13,8 +12,8 @@ struct ReleaseMetadataEditorContent: View {
 
     @State
     private var availableWidth = ReleaseMetadataTrackColumns.minimumTableWidth
-    /// What the library holds for the credits in the form, as core last read
-    /// them. Read again whenever the form changes.
+    /// What the library holds for the form's credits, read again whenever the
+    /// form changes.
     @State
     private var artistResolutions: [BridgeResolvedCredit] = []
     @Environment(Library.self)
@@ -49,8 +48,8 @@ struct ReleaseMetadataEditorContent: View {
             }
             catch is CancellationError {}
             catch {
-                // No badge is better than a stale one. The form still saves,
-                // and the save resolves every credit for itself.
+                // No badge beats a stale one; the save resolves every credit
+                // itself.
                 artistResolutions = []
                 Self.logger.error(
                     "Could not read the form's artist credits: \(error)"
@@ -71,9 +70,9 @@ struct ReleaseMetadataEditorContent: View {
             .overlay(alignment: .topTrailing) {
                 Image(systemName: "pencil")
                     .font(.caption2)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onFill)
                     .padding(3)
-                    .background(.black.opacity(0.5))
+                    .background(Theme.scrim)
                     .clipShape(RoundedRectangle(cornerRadius: 3))
                     .padding(4)
                     .opacity(onEditCover == nil ? 0 : 1)
@@ -126,8 +125,8 @@ struct ReleaseMetadataEditorContent: View {
         }
     }
 
-    /// Shared audio gets a caption above its tracks. A source used by one
-    /// track stays in that row, beside the track's editable metadata.
+    /// A source shared by several tracks gets a caption above them; a single
+    /// track's source stays in its row.
     @ViewBuilder
     private func sideRows(_ side: ReleaseMetadataTrackSide, index: Int)
         -> some View

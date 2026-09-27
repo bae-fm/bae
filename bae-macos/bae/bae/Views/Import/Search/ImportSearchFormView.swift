@@ -1,36 +1,26 @@
 import BaeKit
 import SwiftUI
 
-/// The typed-search form, at the top of the SEARCH section: which kind of
-/// query (General / Catalog # / Barcode), its fields with autocomplete seeded
-/// from the folder's scanned text, and Search. What it turns up renders
-/// beneath it.
+/// The typed-search form: the query kind, its fields with suggestions from the
+/// folder's scanned text, and Search.
 ///
-/// Every configured provider answers, so the form offers no source selection —
-/// a provider that was never asked says so on its own line in the run above.
-///
-/// The form is the candidate's: what is typed is stored with it, so clicking
-/// away and back finds it as it was left. Text is the field's own while it
-/// has the keyboard and is committed when the field is left, the tab changes,
-/// or Search is pressed — the way the album fields commit.
+/// What is typed is stored with the candidate, committed when a field is left,
+/// the query kind changes, or Search is pressed.
 struct ImportSearchFormView: View {
-    /// The form as the candidate stores it. The fields start from it and
-    /// follow it while nothing is being typed.
+    /// The form as the candidate stores it; the fields follow it while nothing
+    /// is being typed.
     let form: CandidateSearchState
     /// The form as the person left it, to store with the candidate.
     let onCommit: (CandidateSearchState) -> Void
     let signals: Signals?
-    /// A request for the form's first field to take the keyboard — Artist,
-    /// the catalog number, or the barcode, whichever the search-by picker
-    /// shows. The pane sends one when Search manually is chosen; each
-    /// request is a new value.
+    /// A request for the first field shown to take the keyboard; each request
+    /// is a new value.
     let focusRequest: Int
     /// Search with the form as it stands.
     let onSearch: (CandidateSearchState) -> Void
 
-    /// What the fields hold right now. Seeded from `form`, and replaced by a
-    /// new `form` only while no field has the keyboard, so a value landing
-    /// from core never overwrites what is being typed.
+    /// What the fields hold now, replaced by a new `form` only while nothing
+    /// is being typed.
     @State
     private var draft = CandidateSearchState()
     @FocusState
@@ -92,9 +82,8 @@ struct ImportSearchFormView: View {
         commit()
     }
 
-    /// Shared suggestion pool for Artist and Album. OCR often runs adjacent
-    /// lines of cover text together, so an artist name on the spine may just
-    /// as well match the Album field.
+    /// Suggestions shared by Artist and Album, since text recognition often
+    /// runs adjacent cover lines together.
     private var generalSuggestions: [String] {
         signals?.text.freeText ?? []
     }
@@ -103,9 +92,8 @@ struct ImportSearchFormView: View {
         signals?.text.catalogValues ?? []
     }
 
-    /// True while core is still producing suggestions. Drives the small
-    /// spinner inside each autocomplete field so users know the list is still
-    /// filling in.
+    /// Whether core is still producing suggestions, which shows a spinner in
+    /// each field.
     private var isScanning: Bool {
         signals?.text.isScanning ?? false
     }
@@ -148,7 +136,7 @@ struct ImportSearchFormView: View {
                     systemImage: "exclamationmark.triangle.fill"
                 )
                 .font(.system(size: 11.5))
-                .foregroundStyle(.orange)
+                .foregroundStyle(Theme.warning)
             }
         }
         .padding(.horizontal, 14)
@@ -208,9 +196,8 @@ struct ImportSearchFormView: View {
                 .controlSize(.small)
                 .focused($barcodeHasFocus)
                 .onSubmit(submitSearch)
-                // The same contract as the autocomplete fields: a pending
-                // request is served when the field shows, a new one when it
-                // arrives.
+                // Like the autocomplete fields: serve a pending request when
+                // the field shows, and each new one as it arrives.
                 .onChange(of: focusRequest, initial: true) { _, request in
                     if request != 0 {
                         barcodeHasFocus = true

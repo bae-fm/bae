@@ -4,16 +4,11 @@ import os.log
 
 private let logger = Logger.bae("GalleryView")
 
-/// Full-screen artwork viewer over a release's gallery items (cover first, then
-/// every image file the release has). Swipeable when there's more than one. Each
-/// item resolves on demand via `loadImage` (the cover by image ref, a
-/// release-file image by file id, downloaded when cloud-only). Each page
-/// pinch-zooms and snaps back on release.
+/// Full-screen, swipeable viewer over a release's gallery items, each loaded on
+/// demand and pinch-zoomable.
 struct GalleryView: View {
     let items: [BridgeGalleryItem]
-    /// Resolves a gallery item to what its decode reads from. The read
-    /// dispatches in core on the item's `BridgeGallerySource` (its cover or an
-    /// image file); nil means the slot has no bytes.
+    /// Resolves an item to its image source; nil means it has no bytes.
     let loadImage:
         @Sendable (_ item: BridgeGalleryItem) async throws ->
             ImageLoader.Source?
@@ -22,10 +17,7 @@ struct GalleryView: View {
     private var dismiss
     @State
     private var selection = 0
-    /// Downward drag for swipe-to-dismiss: the viewer follows the finger and, on
-    /// release, dismisses once it's past the threshold (or a fast flick) and
-    /// otherwise springs back. Only downward — an upward drag stays at rest, and
-    /// horizontal drags belong to the pager.
+    /// How far the viewer follows a downward swipe-to-dismiss.
     @State
     private var dragOffset: CGFloat = 0
 
@@ -33,33 +25,30 @@ struct GalleryView: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            Color.black.ignoresSafeArea()
+            Theme.backdrop.ignoresSafeArea()
             TabView(selection: $selection) {
                 ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                     GalleryPage(item: item, loadImage: loadImage)
                         .tag(index)
                 }
             }
-            // Edge-to-edge so the photo fills the whole screen; the built-in page
-            // dots are dropped (they'd land under the home indicator) in favor of
-            // the safe-area "n / N" counter below.
+            // The page dots would sit under the home indicator, so the counter
+            // below replaces them.
             .tabViewStyle(.page(indexDisplayMode: .never))
             .ignoresSafeArea()
-            // The current item's label (e.g. "Cover", "Back.jpg") plus, for a
-            // multi-image gallery, its position — so it isn't a blind
-            // swipe-through. Sits in the safe area and doesn't intercept swipes.
+            // The current item's label and, with several items, its position.
             VStack(spacing: 2) {
                 if let selectedItem {
                     Text(selectedItem.label)
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(Theme.onFill)
                     if items.count > 1 {
                         Text(
                             verbatim:
                                 "\((selection + 1).formatted()) / \(items.count.formatted())"
                         )
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(Theme.onFillSecondary)
                     }
                 }
             }
@@ -71,7 +60,7 @@ struct GalleryView: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onFill)
                     .padding()
             }
         }
@@ -92,10 +81,8 @@ struct GalleryView: View {
         selection = min(selection, max(0, count - 1))
     }
 
-    // Vertical-dominant downward swipe to dismiss, run alongside the pager's
-    // horizontal swipe (simultaneousGesture) so it never steals a page turn. The
-    // offset tracks the finger; release past the threshold — or on a fast flick —
-    // dismisses, otherwise it springs back.
+    // Runs alongside the pager so a downward swipe dismisses without stealing a
+    // page turn.
     private var dismissDrag: some Gesture {
         DragGesture(minimumDistance: 10)
             .onChanged { value in
@@ -120,11 +107,8 @@ struct GalleryView: View {
     }
 }
 
-/// One page of the gallery: a single view per `ForEach` element (so the paging
-/// container's element type stays stable) that fetches the item's bytes on
-/// demand and hands them to `ZoomableGalleryImage`, which handles the
-/// screen-fit-then-full-res decode and the pinch-to-zoom. A spinner shows while
-/// fetching, a warning glyph if the fetch fails.
+/// One gallery page, a single view per element so the pager's element type
+/// stays stable, that fetches the item's bytes on demand.
 private struct GalleryPage: View {
     let item: BridgeGalleryItem
     let loadImage:
@@ -137,11 +121,8 @@ private struct GalleryPage: View {
     private var failed = false
 
     var body: some View {
-        // All states share one stable view identity: the placeholders stay
-        // mounted and toggle by opacity, and the image mounts once when its
-        // source arrives (it never unmounts — `source` doesn't revert to nil for
-        // a page). Conditionally swapping children would churn the pager's
-        // layout.
+        // Placeholders toggle by opacity because swapping children would churn
+        // the pager's layout.
         ZStack {
             if let source {
                 ZoomableGalleryImage(source: source)
@@ -150,7 +131,7 @@ private struct GalleryPage: View {
                 .opacity(failed ? 1 : 0)
                 .allowsHitTesting(failed)
             ProgressView()
-                .tint(.white)
+                .tint(Theme.onFill)
                 .opacity(source == nil && !failed ? 1 : 0)
                 .allowsHitTesting(false)
         }
@@ -177,11 +158,8 @@ private struct GalleryPage: View {
     }
 }
 
-/// A zoomable gallery image with a two-stage decode that keeps huge JPEGs (e.g.
-/// 35 MB) responsive: a screen-fit thumbnail loads first, and the full-res
-/// decode runs only once the user starts pinching in. Pinch scales the image
-/// around the gesture anchor and releases back to fit, mirroring the macOS
-/// lightbox.
+/// A pinch-zoomable image that decodes the full resolution only once a pinch
+/// starts, so huge JPEGs stay responsive.
 private struct ZoomableGalleryImage: View {
     let source: ImageLoader.Source
 
@@ -218,19 +196,17 @@ private struct ZoomableGalleryImage: View {
                     GalleryFailedView()
                 }
                 else {
-                    ProgressView().tint(.white)
+                    ProgressView().tint(Theme.onFill)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // Decode the screen-fit thumbnail once the page has its size. Each
-            // page is a distinct image, so this runs once per page.
+            // Decode the screen-fit thumbnail once the page has its size.
             .task {
                 await loadThumbnail(containerSize: geo.size)
             }
         }
-        // The full-res decode is gesture-driven, so it's an explicitly-managed
-        // task rather than a `.task`: cancel it if the page leaves while a big
-        // decode is still running.
+        // The full-resolution decode starts from a gesture, not a `.task`, so
+        // it is cancelled here by hand.
         .onDisappear {
             fullResTask?.cancel()
             fullResTask = nil
@@ -310,12 +286,12 @@ private struct ZoomableGalleryImage: View {
     }
 }
 
-/// The shared failure placeholder for a gallery page (fetch or decode failed).
+/// Shown when a gallery page's fetch or decode failed.
 private struct GalleryFailedView: View {
     var body: some View {
         Image(systemName: "exclamationmark.triangle")
             .font(.largeTitle)
-            .foregroundStyle(.white.opacity(0.7))
+            .foregroundStyle(Theme.onFillSecondary)
     }
 }
 

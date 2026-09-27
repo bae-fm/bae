@@ -214,8 +214,8 @@ internal fun LibrarySearchBar(
                 singleLine = true,
                 colors =
                     TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
+                        focusedContainerColor = BaeTheme.surfaces.well,
+                        unfocusedContainerColor = BaeTheme.surfaces.well,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
                     ),

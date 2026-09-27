@@ -1,19 +1,11 @@
 import BaeKit
 import SwiftUI
 
-/// A track sheet's disc, document, and association summary, followed by one
-/// audio assignment control for each FILE reference that has no working
-/// audio.
-///
-/// A reference the scan bound is not listed: the summary already says how
-/// many files the sheet describes, or which one, and its menu is where a
-/// bound reference is changed. A reference with nothing bound — no file by
-/// that name, or one core refused — is the one thing left to do, so it gets
-/// its own row with its choices, and the row goes away once it is bound.
+/// A track sheet's summary, then an audio choice row for each FILE reference
+/// with no audio bound; bound references are changed from the summary's menu.
 struct ImportSheetCaptionRow: View {
     let sheet: BridgeSheetGroup
-    /// Identifying signals extracted from this sheet — a cue the disc ID was
-    /// computed from. Empty otherwise.
+    /// Identifying signals extracted from this sheet, such as a disc ID.
     var evidence: [BridgeFileEvidence]
     /// Whether this surface offers the CUE selection and disc control.
     let showsDiscMenu: Bool
@@ -129,7 +121,7 @@ struct ImportSheetCaptionRow: View {
                 .padding(.horizontal, 5)
                 .padding(.vertical, 2)
                 .background(
-                    Color.primary.opacity(hoveringBound ? 0.07 : 0),
+                    hoveringBound ? Theme.hover : Color.clear,
                     in: RoundedRectangle(cornerRadius: 4)
                 )
         }
@@ -179,9 +171,8 @@ struct ImportSheetCaptionRow: View {
 
 }
 
-/// The sheet's disc-assignment control: which of the release's discs its
-/// entries are, or that it contributes nothing. A pill, so it reads as a
-/// choice already made rather than a field waiting to be filled.
+/// The sheet's disc assignment: which of the release's discs its entries are,
+/// or that it is ignored.
 struct ImportSheetDiscMenu: View {
     let sheet: BridgeSheetGroup
     let onAssign: (BridgeSheetDisc) -> Void
@@ -221,7 +212,7 @@ struct ImportSheetDiscMenu: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 3)
             .background(
-                Color.primary.opacity(hovering ? 0.13 : 0.09),
+                hovering ? Theme.pressed : Theme.hover,
                 in: RoundedRectangle(cornerRadius: 6)
             )
         }

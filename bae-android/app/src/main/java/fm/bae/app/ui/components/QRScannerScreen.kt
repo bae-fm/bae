@@ -21,7 +21,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -53,8 +52,8 @@ fun QRScannerScreen(
     val context = LocalContext.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     var scanned = remember { false }
-    // ZXing decodes synchronously, so the analyzer runs on its own thread rather
-    // than the main one; the latch and reader are only ever touched from there.
+    // ZXing decodes synchronously, so frames are analyzed off the main thread;
+    // only that thread touches the reader.
     val analysisExecutor =
         remember {
             java.util.concurrent.Executors
@@ -128,8 +127,7 @@ private fun createQRPreviewView(
                             reader = reader,
                             imageProxy = imageProxy,
                             onScanned = { text ->
-                                // Dispatch back to main before calling onScanned, which
-                                // touches Compose state (the scanned latch in the caller).
+                                // onScanned touches Compose state, so run it on main.
                                 mainExecutor.execute { onScanned(text) }
                             },
                             onDecodeFailure = { e ->
@@ -207,8 +205,8 @@ private fun QRScannerOverlay(
             Text(
                 text = instructions,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.White,
-                modifier = Modifier.background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp)).padding(8.dp),
+                color = BaeTheme.colors.onFill,
+                modifier = Modifier.background(BaeTheme.colors.scrim, RoundedCornerShape(8.dp)).padding(8.dp),
             )
         }
         PrimaryButton(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) {
@@ -217,8 +215,7 @@ private fun QRScannerOverlay(
     }
 }
 
-// Preview covers the scanner's chrome overlay; the camera preview surface itself
-// can't render outside a live camera session.
+// Previews the overlay only; the camera surface needs a live camera.
 @androidx.compose.ui.tooling.preview.Preview(showBackground = true)
 @Composable
 private fun QRScannerOverlayPreview() {

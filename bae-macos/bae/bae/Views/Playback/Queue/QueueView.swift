@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The queue pane: a header, the now-playing card (when active), and the two
-/// lanes — the manual "Up Next" lane and the context (what's playing from) —
-/// rendered as stacked `QueueSection`s over a shared `QueueDragCoordinator`.
+/// The queue pane: a header, the now-playing card when active, and the manual
+/// "Up Next" and context lanes as `QueueSection`s sharing one drag coordinator.
 struct QueueView: View {
     @Environment(PlaybackStore.self)
     private var playbackStore
@@ -27,28 +26,19 @@ struct QueueView: View {
     /// to the end of its lane.
     let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
     let onInsertTracks: ([String], Int) -> Void
-    /// Flip the playing context between sequential and shuffled order. Wired only
-    /// to the context section's header — shuffle is a property of the context.
+    /// Sets the playing context's shuffle, from the context section's header.
     let onSetShuffle: (Bool) -> Void
 
-    // A drag can start in either section and target the other (a context row
-    // enqueues into the manual lane), so the coordinator is shared; hover and
-    // external-drop insertion stay per-section (positional — a row index in
-    // one lane must not light up the same index in the other).
+    // Shared because a context row can be dragged into the manual lane.
     @State
     private var dragCoordinator = QueueDragCoordinator()
 
-    /// The manual lane ("Up Next"): explicitly enqueued tracks, drained first —
-    /// always resolved in full, never windowed.
+    /// The manual "Up Next" lane, played first and always loaded in full.
     private var manual: [QueueItem] { playbackStore.manualQueue }
-    /// The context (the release being played from), or `nil` when nothing plays
-    /// from a release. Rendered as a section distinct from the manual lane;
-    /// `upcomingTotal` may exceed what's currently loaded.
+    /// What's playing from, or `nil`; `upcomingTotal` may exceed what's loaded.
     private var context: QueuePlaybackContext? { playbackStore.queueContext }
 
     private var isEmpty: Bool {
-        // No context (nothing playing from a release) contributes no rows — a
-        // normal state, named here rather than folded into a default.
         switch context {
         case .none:
             return manual.isEmpty
@@ -73,8 +63,7 @@ struct QueueView: View {
                 )
                 .frame(maxHeight: .infinity)
                 .dropDestination(for: String.self) { droppedIds, _ in
-                    // A dragged album card may carry several ids joined by a
-                    // newline (a multi-selection drag); split each back out.
+                    // A multi-selection drag carries several ids per payload.
                     let ids = droppedIds.flatMap(AlbumDragPayload.decode)
                     guard !ids.isEmpty else {
                         return false
@@ -84,30 +73,15 @@ struct QueueView: View {
                 }
             }
             else {
-                // No overlay scroller: inside the fixed-size popover it only
-                // ever showed up as a flash when the pane animates in.
+                // No scroller: it only flashed as the pane animated in.
                 ScrollView {
-                    // A plain VStack, NOT LazyVStack: zIndex is inert across a
-                    // lazy container's children (each cell composites in its
-                    // own layer, in order), so the drag-source section could
-                    // never rise above the other — a manual-lane row dragged
-                    // over the context section rendered underneath it. The
-                    // laziness deferred nothing anyway: the sections are the
-                    // only two children, and both are on screen from the
-                    // moment the pane opens. The rows WITHIN each section are
-                    // the lazy part — that is where a lane's thousands of
-                    // rows are.
+                    // Not lazy: `zIndex` has no effect in a lazy stack, and the
+                    // drag-source section must draw above the other.
                     VStack(spacing: 0) {
-                        // The manual lane drains first, so it is shown first. It
-                        // accepts external track drops (Play Next / Add to Queue
-                        // land here); the context section, being the release's own
-                        // order, takes reorder/remove/skip only. It is always
-                        // fully resolved, so it never has a load hook or unloaded
-                        // rows.
+                        // The manual lane plays first, and only it accepts
+                        // external track drops.
                         QueueSection(
-                            // The manual lane labels itself only when it has
-                            // rows; the context header below always shows (it
-                            // names what's playing, not just the lane).
+                            // Labelled only when it has rows.
                             title: manual.isEmpty
                                 ? nil : String(localized: "Up Next"),
                             shuffled: false,
@@ -132,11 +106,8 @@ struct QueueView: View {
                         .zIndex(dragCoordinator.isDragSource(.manual) ? 1 : 0)
 
                         if let context, context.upcomingTotal > 0 {
-                            // The context tail is library-scaled and only
-                            // partly resolved (`upcomingItem` returns `nil` for
-                            // an index not yet loaded); the section renders a
-                            // placeholder for those rows and fetches the range
-                            // around them.
+                            // Partly loaded: `upcomingItem` returns `nil` for
+                            // rows not yet fetched.
                             QueueSection(
                                 title: Self.contextSectionTitle(context),
                                 shuffled: context.shuffled,
@@ -170,21 +141,16 @@ struct QueueView: View {
                 .coordinateSpace(name: "queuePane")
                 .scrollIndicators(.never)
                 .onChange(of: manual.count, initial: true) {
-                    // Cross-lane gap math runs in the context section's
-                    // gesture, which can't see the manual section's props.
+                    // The context section's cross-lane math needs this count.
                     dragCoordinator.manualGapCount = manual.count
                 }
             }
         }
-        // No background of its own: QueuePanel supplies the panel material —
-        // an opaque fill here would block it.
+        // No background: QueuePanel supplies the panel material.
     }
 
-    /// The context section's title, by what it plays from: a release keeps the
-    /// "Playing From" label — suffixed with the album title when core resolved
-    /// one — and the library names itself. Resolving a localized key by the
-    /// source kind is the UI's locale-rendering job — the kind and title cross
-    /// the bridge as data, the prose stays here.
+    /// The context section's title: "Playing From", plus the album title when
+    /// known, for a release; "Your Library" for the library.
     private static func contextSectionTitle(_ context: QueuePlaybackContext)
         -> String
     {
@@ -201,8 +167,6 @@ struct QueueView: View {
 
     // MARK: - Header
 
-    // Each lane clears itself from its own section header; this one names the
-    // pane and closes it.
     private var header: some View {
         HStack(alignment: .top, spacing: 12) {
             Text("Queue")
@@ -217,14 +181,14 @@ struct QueueView: View {
 
     // MARK: - Now Playing
 
-    /// The now-playing card: cover, title/artist, and a slim progress strip
-    /// on an elevated neutral surface above the queue lanes.
+    /// The now-playing card: cover, title, artist, and a progress strip on an
+    /// elevated surface.
     private var nowPlayingCard: some View {
         HStack(alignment: .top, spacing: 12) {
             nowPlayingArt
                 .frame(width: 56, height: 56)
                 .clipShape(RoundedRectangle(cornerRadius: 9))
-                .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+                .shadow(color: Theme.shadow, radius: 8, y: 4)
                 .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -297,9 +261,8 @@ struct QueueView: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// The Queue preview and screenshot composition. It renders the production
-    /// pane with queue state from the environment store and no-op commands, so
-    /// preview interactions settle back instead of changing the fixture.
+    /// The Queue preview and screenshot scene: the real pane over the
+    /// environment store, with no-op commands.
     @MainActor
     struct QueueViewPreviewScene: View {
         enum Presentation {

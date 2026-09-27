@@ -32,9 +32,8 @@ struct SubsonicSettingsContent: View {
     private var username = ""
     @State
     private var password = ""
-    /// Whether the server binds a network-reachable address. On maps to
-    /// `0.0.0.0` (reachable from other devices on the LAN), off to `127.0.0.1`
-    /// (this machine only). The raw IP never reaches the user.
+    /// Whether the server listens on `0.0.0.0` (the local network) rather than
+    /// `127.0.0.1` (this machine only).
     @State
     private var allowNetwork = false
     @State
@@ -57,7 +56,7 @@ struct SubsonicSettingsContent: View {
         var style: Color {
             switch self {
             case .feedback: .secondary
-            case .error: .red
+            case .error: Theme.danger
             }
         }
     }
@@ -157,7 +156,7 @@ struct SubsonicSettingsContent: View {
                 case .error(let error):
                     VStack(alignment: .leading, spacing: 2) {
                         Text(error.localizedSummary)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.danger)
                         Text(error.detail)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -177,8 +176,7 @@ struct SubsonicSettingsContent: View {
         enabled = config.enabled
         portText = String(config.port)
         username = config.username
-        // Anything other than pure loopback means the server is reachable from
-        // the network, so the toggle reads on.
+        // Any address but loopback is reachable from the network.
         allowNetwork = config.bindAddress != "127.0.0.1"
     }
 

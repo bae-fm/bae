@@ -2,12 +2,9 @@ import BaeKit
 import SwiftUI
 import UIKit
 
-/// App root. Drives the `AppScreen` lifecycle: discover an existing library and
-/// open it, gate on the encryption key, or onboard. Once a library is open, the
-/// `LibraryView` browses it.
+/// App root: opens an existing library, asks for its key, or onboards.
 struct ContentView: View {
-    // The host's OAuth client config, forwarded to onboarding. Present only in a
-    // full build; baeium compiles out the OAuth link flow.
+    // The host's OAuth client config for onboarding; absent in baeium builds.
     #if BAE_OAUTH_PROVIDERS
     let oauthLinking: OAuthLinking?
     let oauthLinkingError: String?
@@ -94,10 +91,8 @@ struct ContentView: View {
                     )
 
                 case .keychainLocked:
-                    // Core owns the sentence — the same one every other surface
-                    // shows for this failure. Nothing to type here; the retry
-                    // runs on scene activation, and the button covers the case
-                    // where that was not what changed.
+                    // The open retries on scene activation; the button covers
+                    // any other change that unlocked the keychain.
                     VStack(spacing: 16) {
                         Image(systemName: "lock.fill")
                             .font(.system(size: 40))
@@ -134,30 +129,16 @@ struct ContentView: View {
             holder.start()
         }
         .onChange(of: scenePhase) { _, phase in
-            // Returning to the foreground means the device was unlocked, which
-            // is exactly the condition a refused keychain read was waiting for.
-            //
-            // Scene activation is the whole trigger set on iOS, deliberately —
-            // there is no `protectedDataDidBecomeAvailable` observer here and
-            // that is not an oversight. That notification is only reliably
-            // useful to a process that is already running while the device is
-            // locked, i.e. a background launch before the first unlock since
-            // boot; bae has no background launch path that opens a library. Any
-            // unlock a user is present for brings the scene back to `.active`
-            // and lands here anyway, so an observer would add a second route to
-            // the same retry without covering a case this one misses.
+            // Every unlock a person is present for makes the scene active, so
+            // this is the only retry trigger a refused keychain read needs.
             if phase == .active {
                 holder.retryOpenIfKeychainWasLocked(
                     trigger: "the scene becoming active"
                 )
             }
-            // Persist playback on background so the queue, current track, and
-            // position survive process death while suspended. We can't shut core
-            // down (that would stop the background audio), so this is the only
-            // save point on iOS. Wrapped in a UIKit background task: without
-            // it, iOS is free to suspend the process as soon as the scene
-            // finishes backgrounding, which can cut this await off before
-            // savePlaybackState returns.
+            // The only playback save point on iOS, since core keeps running for
+            // background audio; the background task keeps iOS from suspending
+            // the process before the save returns.
             if phase == .background {
                 Task { [service = holder.appService] in
                     let task = BackgroundSaveTask(name: "SavePlaybackState")
@@ -175,19 +156,14 @@ struct ContentView: View {
 
     private func errorView(_ message: String) -> some View {
         Text(message)
-            .foregroundStyle(.red)
+            .foregroundStyle(Theme.danger)
             .padding(32)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
-/// Owns one UIKit background task and ends its identifier exactly once —
-/// whether the work finishes first (the caller's `end()`) or iOS fires the
-/// expiration handler because the save overran the background window. Ending
-/// an already-ended identifier is an over-release, so `end()` is guarded and
-/// clears the identifier after ending; both paths route through it. The
-/// identifier lives on the main actor (UIKit requires it), and the expiration
-/// handler — invoked by UIKit on the main thread — hops back onto it.
+/// Owns one UIKit background task and ends it exactly once, whether the save
+/// finishes or iOS expires it, because ending it twice is an over-release.
 @MainActor
 private final class BackgroundSaveTask {
     private var id: UIBackgroundTaskIdentifier = .invalid

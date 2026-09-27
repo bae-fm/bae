@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// One output-queue row: album title, file count, size (plus the preset name for
-/// a save), a state badge (Queued / Exporting or Saving at a percent / Failed
-/// with the reason in a tooltip), and a cancel button.
+/// One output-queue row: album title, file count, size, the preset name for a
+/// save, a state badge, and a cancel button.
 struct OutputRow: View {
     let op: BridgeOutputOp
     let onCancel: () -> Void
@@ -50,10 +49,10 @@ struct OutputRow: View {
                 .foregroundStyle(.secondary)
         case .active(let percent):
             activeBadge(percent: Int(percent))
-                .foregroundStyle(.orange)
+                .foregroundStyle(Theme.activity)
         case .failed(let error):
             Label("Failed", systemImage: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.danger)
                 .help(error)
         }
     }

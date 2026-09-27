@@ -1,21 +1,18 @@
 import BaeKit
 import SwiftUI
 
-/// The expanded album-detail card: cover, title block, release picker, primary
-/// actions, and the track list. Pure prop-driven content — its wiring parent
-/// `AlbumDetailView` owns the state and supplies every callback.
+/// The expanded album-detail card; `AlbumDetailView` owns the state and
+/// supplies every callback.
 struct AlbumExpansionContent: View {
     let summary: AlbumSummary
     /// Fat detail for the release the user is currently viewing.
     let selectedRelease: ReleaseDetail
     let onBrowseImages: () -> Void
-    /// Cursor over the album's releases. Drives the release picker and
-    /// guarantees a valid selection on every read.
+    /// Cursor over the album's releases; drives the release picker.
     @Binding
     var releaseCursor: Cursor<ReleaseRef>
     let currentTrackId: String?
-    /// The id of the track currently loading (cloud download / decode warm-up),
-    /// or nil. The matching row shows a spinner where its play/speaker glyph goes.
+    /// The track currently loading, whose row shows a spinner.
     let loadingTrackId: String?
     let isPlaying: Bool
     let onClose: () -> Void
@@ -46,7 +43,7 @@ struct AlbumExpansionContent: View {
                 albumArt
                     .frame(width: 340, height: 340)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .shadow(color: .black.opacity(0.6), radius: 20, y: 12)
+                    .shadow(color: Theme.shadow, radius: 20, y: 12)
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onBrowseImages)
                 VStack(alignment: .leading, spacing: 4) {
@@ -108,7 +105,7 @@ struct AlbumExpansionContent: View {
             RoundedRectangle(cornerRadius: 18)
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.45), radius: 28, y: 18)
+        .shadow(color: Theme.shadow, radius: 28, y: 18)
         .overlay(alignment: .topTrailing) {
             PanelCloseButton(onClose: onClose)
                 .padding(16)
@@ -176,8 +173,8 @@ struct AlbumExpansionContent: View {
             selectedIndex: Binding(
                 get: { releaseCursor.index },
                 set: { newIndex in
-                    // Guard against an out-of-range index from AppKit's segmented
-                    // control. `Cursor.select(id:)` is a no-op for unknown ids.
+                    // AppKit's segmented control can report an index out of
+                    // range.
                     guard releaseCursor.items.indices.contains(newIndex) else {
                         return
                     }
@@ -208,19 +205,11 @@ struct AlbumExpansionContent: View {
     }
 }
 
-/// The release's facts, and the way into the catalogs that describe it.
+/// The release's facts; when a catalog describes the release, an arrow marks
+/// the line and a click toggles a card naming the catalogs.
 ///
-/// A release a catalog describes carries the same arrow the records row links
-/// out with, at rest rather than on hover: the facts after it were read from a
-/// record. Hovering fills the line softly and a click toggles a card under it
-/// naming the catalogs — the library's only way to those links. A release no
-/// catalog describes draws no arrow and is not a trigger at all.
-///
-/// The card is drawn in the window, anchored to the line's leading edge and
-/// laid over whatever sits under it, rather than as a popover floating off
-/// the line with an arrow: it is part of the expansion, not a window of its
-/// own. That means nothing closes it for us, so the card carries the monitor
-/// that closes it on a click away or Escape.
+/// The card is drawn in the window rather than as a popover, so it carries its
+/// own monitor that closes it on a click away or Escape.
 private struct ReleaseFactsLine: View {
     let facts: String
     let records: [BridgeReleaseRecord]
@@ -262,9 +251,7 @@ private struct ReleaseFactsLine: View {
                     RoundedRectangle(cornerRadius: 5)
                         .fill(isHovering ? Theme.hover : Color.clear)
                 )
-                // The fill bleeds outward from where the line already sat,
-                // so the card reads the same at rest as it did before it
-                // became a trigger.
+                // The fill bleeds outward without moving the text.
                 .padding(.horizontal, -5)
                 .padding(.vertical, -2)
             }
@@ -279,8 +266,6 @@ private struct ReleaseFactsLine: View {
             }
             .overlay(alignment: .topLeading) {
                 if isShowingCard {
-                    // Hung off the line's bottom edge: the card's top sits
-                    // the offset below it.
                     card.offset(y: lineHeight + Self.cardOffset)
                 }
             }
@@ -296,7 +281,7 @@ private struct ReleaseFactsLine: View {
                 RoundedRectangle(cornerRadius: 9)
                     .strokeBorder(Theme.hairline, lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.5), radius: 14, y: 8)
+            .shadow(color: Theme.shadow, radius: 14, y: 8)
             .background {
                 OverlayDismissMonitor(trigger: trigger) {
                     isShowingCard = false
@@ -349,9 +334,8 @@ private struct ReleaseFactsLine: View {
     private struct MultiReleasePreview: View {
         @State
         private var selectedReleaseId: String = "rel-a-04-0"
-        // Seeded at construction: the body has nothing to show until the
-        // store holds the album, and an empty body never appears, so seeding
-        // from `onAppear` never ran.
+        // Seeded at construction: the body is empty until the store holds the
+        // album, and an empty body never fires `onAppear`.
         @State
         private var store = PreviewData.seededLibraryStore()
 

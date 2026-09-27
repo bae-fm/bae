@@ -1,10 +1,7 @@
 import SwiftUI
 
-/// A centered load-failure placeholder: the error line plus a Retry button.
-/// The shared shape every full-view load surface uses when a fetch fails —
-/// album detail, the library and composer grids, the storage table — so a
-/// failed load reads as an error the user can retry, never as an empty result
-/// or an endless spinner. `line` is already-localized prose (shown verbatim).
+/// A centered error line and Retry button for a full view whose load failed;
+/// `line` is already localized.
 public struct LoadFailureView: View {
     private let line: String
     private let onRetry: () -> Void
@@ -18,7 +15,7 @@ public struct LoadFailureView: View {
         VStack(spacing: 12) {
             Text(line)
                 .font(.callout)
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.danger)
                 .multilineTextAlignment(.center)
             Button("Retry", action: onRetry)
         }

@@ -12,15 +12,13 @@ struct ImportCandidateBulkSelectionPane: View {
     var storageCloud: Bool
     @Binding
     var storagePinned: Bool
-    /// Run one of the selection's actions. Whoever runs it asks before one
-    /// that replaces a person's choices, as a row's menu does too.
+    /// Run one of the selection's actions; the caller confirms any that
+    /// replaces the person's choices.
     let onPerform: (ImportCandidateActionOffer) -> Void
 
     var body: some View {
-        // A scroll view proposes its content no height of its own, so the
-        // height to center the card in is the pane's, read here and asked for
-        // as a floor: shorter content sits at the center, taller content keeps
-        // its top edge and scrolls.
+        // A scroll view gives its content no height, so the pane's height is
+        // the minimum: short content centers and tall content scrolls.
         GeometryReader { pane in
             ScrollView {
                 VStack(spacing: 16) {
@@ -54,9 +52,8 @@ struct ImportCandidateBulkSelectionPane: View {
     }
 }
 
-/// The selection's actions as one card: how many folders are selected, and a
-/// grouped list of what they can be told to do — each row an action with the
-/// number of selected folders it applies to.
+/// The selection's actions as one card: the selected count, then the actions
+/// in groups, each with how many selected folders it applies to.
 struct ImportCandidateBulkSelectionCard: View {
     /// The width the pane centers the card at.
     static let width: CGFloat = 440
@@ -102,7 +99,7 @@ struct ImportCandidateBulkSelectionCard: View {
             ForEach(groups) { group in
                 if group != groups.first {
                     Rectangle()
-                        .fill(bulkSelectionGroupRule)
+                        .fill(Theme.hairline)
                         .frame(height: 1)
                 }
                 if let title = group.title {
@@ -124,16 +121,15 @@ struct ImportCandidateBulkSelectionCard: View {
                 }
             }
         }
-        .background(Color.primary.opacity(0.035))
+        .background(Theme.hover)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay {
             RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(bulkSelectionGroupRule, lineWidth: 1)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
         }
     }
 
-    /// Where the imported files go, asked where the import row is: a sub-row
-    /// lined up under that row's label.
+    /// The import's storage choices, lined up under the Import row's label.
     private var storageChoices: some View {
         HStack(spacing: 12) {
             ImportCheckboxToggle("Cloud", isOn: $storageCloud)
@@ -148,8 +144,7 @@ struct ImportCandidateBulkSelectionCard: View {
         .disabled(isRunning)
     }
 
-    /// The groups holding a row. A group whose actions nothing in the
-    /// selection offers is not drawn.
+    /// The groups that have at least one row.
     var drawnGroups: [ImportBulkActionGroup] {
         ImportBulkActionGroup.allCases.filter { !rows(in: $0).isEmpty }
     }
@@ -161,21 +156,20 @@ struct ImportCandidateBulkSelectionCard: View {
 }
 
 extension ImportCandidateActionOffer {
-    /// Whether the row gets folders into the library, which is what the
-    /// accent and the heavier name mark.
+    /// Whether the action gets folders into the library; its row gets the
+    /// accent and a heavier name.
     var isConstructive: Bool { action == .import || action == .combine }
 }
 
 /// The groups a selection's actions are listed in, in the order both the card
-/// and a row's menu draw them: getting the folders in, where their metadata
-/// comes from, whether they are in the queue at all, and where they are.
+/// and a row's menu draw them.
 enum ImportBulkActionGroup: CaseIterable, Identifiable {
     case importing, metadata, placement, folder
 
     var id: Self { self }
 
-    /// The label above the group. The last group carries none — a row that
-    /// takes folders out of the queue says that itself.
+    /// The label above the group; placement and folder have none, since their
+    /// rows say what they do.
     var title: LocalizedStringKey? {
         switch self {
         case .importing: "Import"
@@ -198,10 +192,6 @@ enum ImportBulkActionGroup: CaseIterable, Identifiable {
     }
 }
 
-/// The rules inside the grouped list — its own edge and the lines between its
-/// groups, drawn lighter than the card's border so the group reads as one block.
-private let bulkSelectionGroupRule = Color.primary.opacity(0.06)
-
 /// The rows' geometry, shared by the rows themselves and by what lines up under
 /// a row's label.
 enum ImportBulkActionRowMetrics {
@@ -217,10 +207,6 @@ enum ImportBulkActionRowMetrics {
 
 /// One row of the grouped list: the action's symbol, its name, and how many of
 /// the selected folders it applies to.
-///
-/// A constructive row — one that gets folders into the library — carries the
-/// accent and a heavier name; the rest are quieter, so the card states what it
-/// is for at a glance.
 private struct BulkActionRow: View {
     let offer: ImportCandidateActionOffer
     let action: () -> Void
@@ -261,7 +247,7 @@ private struct BulkActionRow: View {
                                 .fill(
                                     isConstructive
                                         ? Theme.accentSoft
-                                        : Color.primary.opacity(0.08)
+                                        : Theme.pressed
                                 )
                         )
                 }
@@ -271,8 +257,7 @@ private struct BulkActionRow: View {
     }
 }
 
-/// A row of the grouped list: full width, no rounding of its own — the group
-/// clips its corners — and a hover wash while the row can be pressed.
+/// A full-width row with a hover and press fill; the group clips its corners.
 private struct BulkActionRowButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         Row(configuration: configuration)
@@ -299,9 +284,9 @@ private struct BulkActionRowButtonStyle: ButtonStyle {
         private var fill: Color {
             guard isEnabled else { return .clear }
             if configuration.isPressed {
-                return Color.primary.opacity(0.09)
+                return Theme.pressed
             }
-            return isHovered ? Color.primary.opacity(0.05) : .clear
+            return isHovered ? Theme.hover : .clear
         }
     }
 }

@@ -1,23 +1,16 @@
 import BaeKit
 import SwiftUI
 
-/// One sort criterion as a capsule pill in three parts: the field name, whose
-/// menu re-points the criterion at another field; the direction arrow, which
-/// sets the opposite direction; and the trailing "x", which removes it.
-///
-/// Re-pointing keeps the pill's place and direction, so changing what a lone
-/// pill sorts by is one pick rather than an add and a remove. A field another
-/// pill already sorts by stays in the menu, disabled: that pill is where it
-/// lives. Used by `SortCriteriaRow`, shared across the album, composer, and
-/// artist library modes.
+/// One sort criterion as a pill: a field menu that re-points it, an arrow that
+/// flips its direction, and an "x" that removes it. A field another pill sorts
+/// by shows disabled in the menu.
 struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
     @Binding
     var criterion: Criterion
     /// Fields other pills in the row already sort by.
     let takenFields: Set<Criterion.Field>
     let canRemove: Bool
-    /// Re-point this criterion at `field`. The row owns the list, so the
-    /// replacement is its write.
+    /// Re-point this criterion at `field`; the row owns the list.
     let onSetField: (Criterion.Field) -> Void
     let onRemove: () -> Void
 
@@ -25,8 +18,6 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
         HStack(spacing: 7) {
             fieldMenu
             Button {
-                // Absolute set: the target direction is computed from the
-                // rendered one, not toggled blind.
                 criterion.direction =
                     criterion.direction == .ascending ? .descending : .ascending
             } label: {
@@ -54,13 +45,12 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
         .background(
-            Theme.placeholder.opacity(0.85),
+            Theme.placeholder,
             in: RoundedRectangle(cornerRadius: 9)
         )
     }
 
-    /// Every field, the current one checked. Picking the current one again
-    /// is a no-op the row refuses, so the menu need not special-case it.
+    /// Every field, the current one checked; picking it again is a no-op.
     private var fieldMenu: some View {
         Menu {
             ForEach(Criterion.Field.allCases, id: \.self) { field in
@@ -74,8 +64,8 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
                 .disabled(takenFields.contains(field))
             }
         } label: {
-            // One run of text: a menu button lays a label's image ahead of
-            // its title, and the chevron belongs after the name.
+            // One run of text, since a menu label puts its image before the
+            // title and the chevron belongs after it.
             Text(criterion.field.displayName)
                 .font(.system(size: 13, weight: .semibold))
                 + Text(verbatim: " ")

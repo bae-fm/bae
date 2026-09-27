@@ -99,6 +99,14 @@ pub fn kotlin(theme: &Theme) -> String {
     out.push_str("    } else {\n");
     roles_value(&mut out, "SemanticColors", &theme.semantics.light, 8);
     out.push_str("    }\n");
+
+    out.push_str(
+        "\n/** How opaque a colour is laid over what is behind it. */\nobject ThemeOpacity {\n",
+    );
+    for (role, value) in &theme.opacity {
+        let _ = writeln!(out, "    const val {role}: Float = {value:?}f");
+    }
+    out.push_str("}\n");
     out
 }
 

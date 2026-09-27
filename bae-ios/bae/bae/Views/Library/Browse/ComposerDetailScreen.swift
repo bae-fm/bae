@@ -29,12 +29,12 @@ struct ComposerDetailScreen: View {
                 )
                 .overlay(alignment: .top) {
                     if let error {
-                        Text(error).foregroundStyle(.red).padding(12)
+                        Text(error).foregroundStyle(Theme.danger).padding(12)
                     }
                 }
             }
             else if let error {
-                Text(error).foregroundStyle(.red).padding(32)
+                Text(error).foregroundStyle(Theme.danger).padding(32)
             }
             else {
                 ProgressView()

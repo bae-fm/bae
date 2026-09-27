@@ -38,10 +38,8 @@ import kotlinx.coroutines.CancellationException
 private val logger = BaeLogger("bae.RecoveryCodeDialog")
 
 /**
- * Reveals the library's recovery code on demand. The code is a bearer secret —
- * anyone holding it can restore the whole library — so it is generated only when
- * the user asks and labelled as a secret, never offered as an add-a-device step
- * (devices are added through the membership chain in the Devices screen).
+ * Shows the library's recovery code, generated on demand; anyone holding it can
+ * restore the whole library.
  */
 @Composable
 internal fun RecoveryCodeDialog(
@@ -66,11 +64,7 @@ internal fun RecoveryCodeDialog(
     RecoveryCodeDialogContent(code = code, error = error, onDismiss = onDismiss)
 }
 
-/**
- * The dialog body: the secret warning plus the resolved [code], its [error], or a
- * spinner while it is being generated. Prop-driven so each state renders without a
- * session.
- */
+/** The dialog body: the secret warning plus the [code], its [error], or a spinner. */
 @Composable
 private fun RecoveryCodeDialogContent(
     code: String?,
@@ -86,7 +80,7 @@ private fun RecoveryCodeDialogContent(
                 Text(
                     text = stringResource(R.string.settings_recovery_code_secret_warning),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = BaeTheme.colors.warning,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 val current = code

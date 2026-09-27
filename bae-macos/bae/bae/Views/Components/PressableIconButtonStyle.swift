@@ -1,26 +1,23 @@
+import BaeKit
 import SwiftUI
 
-/// Icon-button style with tactile press feedback: the label squeezes and dims
-/// while the mouse is down. The `.plain` style gives icon buttons no pressed
-/// state at all, which reads as the click not registering.
+/// Icon-button press feedback: a circle fill behind the label and a slight
+/// squeeze while the mouse is down, since `.plain` shows no pressed state.
 struct PressableIconButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(
-                // Inset from the label's (hit-target-sized) bounds: the ring
-                // marks the control, not the whole hitbox.
+                // Inset so the fill marks the control, not the whole hit
+                // target.
                 Circle()
                     .fill(
-                        Color.primary.opacity(
-                            configuration.isPressed ? 0.18 : 0
-                        )
+                        configuration.isPressed ? Theme.pressed : Color.clear
                     )
                     .padding(4)
             )
             .scaleEffect(configuration.isPressed ? 0.96 : 1)
-            // Press-down feedback is INSTANT (no animation on the way in —
-            // any ease there reads as the click not registering); only the
-            // release relaxes with an ease.
+            // Instant on press, since an ease there reads as a missed click;
+            // only the release eases.
             .animation(
                 configuration.isPressed ? nil : .easeOut(duration: 0.15),
                 value: configuration.isPressed

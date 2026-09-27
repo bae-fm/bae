@@ -317,7 +317,7 @@ private struct CatalogCandidatesDisclosure: View {
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(
-                Color.primary.opacity(0.035),
+                Theme.hover,
                 in: RoundedRectangle(cornerRadius: 6)
             )
         }

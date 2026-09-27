@@ -1,11 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The durable sync operations a completed cycle left waiting on a person, in
-/// the Sync section under the status row. Each one failed on a fault that
-/// running it again cannot change, so later cycles skip it and it moves only
-/// when someone presses Retry; a row leaves the list when the next status no
-/// longer names it. Renders nothing while there are none.
+/// Sync operations that failed in a way running them again cannot fix, so sync
+/// skips them until someone presses Retry.
 struct BlockedSyncOperationRows: View {
     @Environment(SyncStatusStore.self)
     private var syncStatusStore
@@ -24,8 +21,7 @@ struct BlockedSyncOperationRows: View {
     }
 }
 
-/// One stopped operation: what kind of work it was, which operation, why it
-/// stopped, and the button that hands it back to the sync loop.
+/// One blocked operation: its kind, which operation, why it stopped, and Retry.
 private struct BlockedSyncOperationRow: View {
     let operation: BridgeBlockedSyncOperation
     let retry: (String) async throws -> Void
@@ -41,9 +37,8 @@ private struct BlockedSyncOperationRow: View {
             Text(operation.description)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            // coven's own reason, untranslated. The kind above names the work
-            // in the reader's language; this names what stopped it, which is
-            // the part they can act on or paste into a report.
+            // coven's untranslated reason, for a person to act on or paste into
+            // a report.
             Text(operation.error)
                 .font(.caption2.monospaced())
                 .foregroundStyle(.secondary)
@@ -51,7 +46,7 @@ private struct BlockedSyncOperationRow: View {
             if let retryError {
                 Text(retryError)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
             }
             if retrying {
                 ProgressView()
@@ -62,9 +57,8 @@ private struct BlockedSyncOperationRow: View {
         }
     }
 
-    /// A retry that takes drops this row on the next status; one refused —
-    /// because the operation is no longer blocked, or the loop is not running —
-    /// says so here rather than leaving the button looking inert.
+    /// A refused retry shows its reason here instead of leaving the button
+    /// looking inert.
     private func run() {
         retryError = nil
         retrying = true

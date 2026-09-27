@@ -66,7 +66,7 @@ public struct QueueAddBadge: View {
                 Text(displayedCount, format: .number)
             }
             .font(style.textFont)
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.onFill)
             .lineLimit(1)
             .fixedSize()
             .padding(style.padding)

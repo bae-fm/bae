@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The Found / Imported / Skipped tab bar above the candidate list.
-/// Three equal segments, each a label plus a count badge from core's
-/// `BridgeTriageTabCounts` — never an array length, which drifts the moment a
-/// filter is applied.
+/// The Found / Imported / Skipped tab bar above the candidate list, with
+/// counts from core's `BridgeTriageTabCounts` so a filter does not change them.
 struct TriageTabBar: View {
     @Binding
     var activeTab: BridgeTriageTab
@@ -42,8 +40,8 @@ struct TriageTabBar: View {
                         Capsule()
                             .fill(
                                 isActive
-                                    ? Theme.accent.opacity(0.28)
-                                    : Color.secondary.opacity(0.15)
+                                    ? Theme.accentStrong
+                                    : Color.secondary.opacity(ThemeOpacity.tint)
                             )
                     )
             }
@@ -53,7 +51,7 @@ struct TriageTabBar: View {
             .padding(.vertical, 5)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isActive ? Theme.accent.opacity(0.14) : Color.clear)
+                    .fill(isActive ? Theme.accentSoft : Color.clear)
             )
             .contentShape(Rectangle())
         }

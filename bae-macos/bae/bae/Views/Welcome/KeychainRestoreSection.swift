@@ -1,11 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The keychain-restore rows on the choose screen: one row per library whose
-/// restore code was found in this Mac's keychain but isn't on the device yet.
-/// Prop-driven — the flow view owns the restore/authorize state and does the
-/// work; this only renders the rows and holds the delete-confirmation dialog,
-/// which is local UI state.
+/// One row per library whose restore code is in this Mac's keychain but which
+/// isn't on this Mac yet.
 struct KeychainRestoreSection: View {
     let entries: [(code: String, info: BridgeRestoreCodeInfo)]
     let isRestoring: Bool
@@ -41,10 +38,8 @@ struct KeychainRestoreSection: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        // Restoring, authorizing, and idle controls all stay in
-                        // the row's layout tree, toggled by opacity, so the row
-                        // height doesn't change as the keychain entry's state
-                        // flips between them.
+                        // Every state's controls stay in the layout, toggled by
+                        // opacity, so the row height never changes.
                         let needsConnect =
                             entry.info.needsOauth && !oauthConnected
                         let idle = !isRestoring && !isAuthorizing
@@ -68,16 +63,11 @@ struct KeychainRestoreSection: View {
 
                             HStack(spacing: 8) {
                                 ZStack(alignment: .trailing) {
-                                    // The provider is named in the row's
-                                    // caption, so the button doesn't repeat it
-                                    // — the long form was what truncated the
-                                    // library name at the section's width.
                                     Button("Connect") {
                                         onConnect(entry.info)
                                     }
-                                    // Disabled (not just hidden) when it isn't
-                                    // the active control, so it can't take Tab
-                                    // focus while invisible.
+                                    // Disabled so it can't take focus while
+                                    // hidden.
                                     .disabled(!needsConnect)
                                     .opacity(needsConnect ? 1 : 0)
                                     .allowsHitTesting(needsConnect)
@@ -87,10 +77,8 @@ struct KeychainRestoreSection: View {
                                     }
                                     .buttonStyle(PrimaryButtonStyle())
                                     .keyboardShortcut(.defaultAction)
-                                    // Disabled (not just hidden) when Connect is
-                                    // the active control or a restore is running,
-                                    // so the default-action shortcut can't fire
-                                    // the hidden button on Enter.
+                                    // Disabled so Enter can't fire it while
+                                    // hidden or busy.
                                     .disabled(needsConnect || !idle)
                                     .opacity(needsConnect ? 0 : 1)
                                     .allowsHitTesting(!needsConnect)
@@ -110,7 +98,7 @@ struct KeychainRestoreSection: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(Color.secondary.opacity(0.1))
+                .background(Color.secondary.opacity(ThemeOpacity.tint))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }

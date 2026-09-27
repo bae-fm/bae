@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The dominant cloud-upload phase as core projected it. Every storage and
-/// import surface uses this renderer so the same phase has one label, symbol,
-/// and color throughout the app.
+/// Core's current cloud-upload phase as a label, shared by every storage and
+/// import screen so a phase looks the same everywhere.
 struct UploadActivityLabel: View {
     let progress: BridgeUploadProgress
 
@@ -48,9 +47,9 @@ extension BridgeUploadActivity {
 
     fileprivate var tint: Color {
         switch self {
-        case .uploading, .preparing: .orange
-        case .retrying: .red
-        case .publishing, .uploaded: .blue
+        case .uploading, .preparing: Theme.activity
+        case .retrying: Theme.danger
+        case .publishing, .uploaded: Theme.info
         case .cancelling, .prepared, .queued: .secondary
         }
     }

@@ -1,14 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// The shared field chrome, in the two shapes a text field takes.
-///
-/// `.boxed` is the grouped-card field: a recessed well with a hairline border
-/// at rest that lifts and gains an accent border on focus. `.inline` is a
-/// field set into running text or a table cell: nothing at rest, a faint fill
-/// under the pointer, a faint fill and a one-point accent ring while editing.
-/// Both keep their padding in every state, so the text never moves and the
-/// row never grows as the chrome comes and goes.
+/// The shared text-field chrome: `.boxed` for grouped cards, `.inline` for
+/// fields set into running text or table cells. Padding stays the same in
+/// every state so the text never moves.
 struct FieldChrome: ViewModifier {
     enum Style {
         case boxed
@@ -18,9 +13,7 @@ struct FieldChrome: ViewModifier {
     let focused: Bool
     let style: Style
 
-    /// How far an inline field's text sits inside its chrome. Surfaces that
-    /// line an inline field's text up with plain text beside it offset by
-    /// this.
+    /// How far an inline field's text sits inside its chrome.
     static let inlineHorizontalPadding: CGFloat = 7
     static let inlineVerticalPadding: CGFloat = 3
 
@@ -34,9 +27,8 @@ struct FieldChrome: ViewModifier {
         content
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
-            // The rounding lives on the fill, not on a clip of the content:
-            // clipping the field cuts its text off whenever AppKit remounts
-            // it with a transiently under-measured height.
+            // Round the fill, not a clip: a clip cuts the text off when AppKit
+            // remounts the field with a too-short height.
             .background(fill, in: RoundedRectangle(cornerRadius: cornerRadius))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius)
@@ -44,8 +36,7 @@ struct FieldChrome: ViewModifier {
             }
             .onHover { hovering = $0 }
             .onChange(of: hovering && style == .inline) { _, wantsIBeam in
-                // The padding around an inline field is part of the field:
-                // the pointer says so there, not only over the glyphs.
+                // The I-beam covers the inline field's padding too.
                 if wantsIBeam, !cursorPushed {
                     NSCursor.iBeam.push()
                     cursorPushed = true
@@ -106,7 +97,7 @@ struct FieldChrome: ViewModifier {
         case .boxed:
             focused ? Theme.accent : Theme.hairline
         case .inline:
-            focused ? Theme.accent.opacity(0.6) : .clear
+            focused ? Theme.accent : .clear
         }
     }
 
@@ -120,8 +111,6 @@ struct FieldChrome: ViewModifier {
 
 #if DEBUG
     #Preview("Field Chrome") {
-        // The resting/focused × boxed/inline combinations the chrome renders,
-        // hosting plain text where a real field would sit.
         VStack(alignment: .leading, spacing: 12) {
             Text(verbatim: "Boxed · resting")
                 .modifier(FieldChrome(focused: false, style: .boxed))

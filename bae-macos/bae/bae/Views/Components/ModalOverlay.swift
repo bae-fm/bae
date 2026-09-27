@@ -10,7 +10,7 @@ struct ModalOverlay<Content: View>: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.3)
+            Theme.scrim
                 .ignoresSafeArea()
                 .onTapGesture { onDismiss() }
             content()

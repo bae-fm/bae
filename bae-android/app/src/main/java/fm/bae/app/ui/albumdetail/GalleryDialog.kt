@@ -43,7 +43,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -78,12 +77,8 @@ private const val TAG = "bae.GalleryDialog"
 private val logger = BaeLogger(TAG)
 
 /**
- * Full-screen artwork viewer over a release's gallery items (cover first, then
- * every image file the release has). Swipeable when there's more than one, and a
- * downward swipe dismisses it. Every item is an [ImageContent.ReleaseImage] over
- * the item's [BridgeGalleryItem.source], so core dispatches the read (cover by
- * image id, release-file by file id) and the store keys the decode on the slot's
- * own identity. Each page pinch-zooms and snaps back when you release.
+ * Full-screen viewer over a release's gallery items: swipe between them, pinch
+ * to zoom, swipe down to dismiss.
  */
 @Composable
 fun GalleryDialog(
@@ -93,9 +88,7 @@ fun GalleryDialog(
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        // Edge-to-edge with the insets handed to Compose: with the default
-        // (decor fits the system windows) the dialog's content gets no inset
-        // values, so the caption's safe-area padding is zero and it renders
+        // Without this the content gets no inset values and the caption renders
         // under the navigation bar.
         properties =
             DialogProperties(
@@ -108,18 +101,15 @@ fun GalleryDialog(
         val scope = rememberCoroutineScope()
         var offsetY by remember { mutableFloatStateOf(0f) }
         val dismissThresholdPx = with(LocalDensity.current) { DISMISS_THRESHOLD_DP.dp.toPx() }
-        // Fade the backdrop toward the dismiss threshold as the viewer is dragged
-        // down, so the photo appears to lift away over the app behind it.
+        // Fade the backdrop as the viewer is dragged down toward dismissal.
         val dragProgress = (offsetY / (dismissThresholdPx * DRAG_FADE_DISTANCE_MULTIPLIER)).coerceIn(0f, 1f)
+        val backdrop = BaeTheme.colors.backdrop
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color.Black.copy(alpha = 1f - dragProgress * DRAG_BACKDROP_FADE),
+            color = backdrop.copy(alpha = backdrop.alpha * (1f - dragProgress * DRAG_BACKDROP_FADE)),
         ) {
-            // The outer (untranslated) box owns the vertical swipe-to-dismiss; the
-            // inner box carries the drag offset, so the gesture's coordinate space
-            // stays put. The vertical drag and the pager's horizontal swipe each
-            // wait on their own axis' touch slop, so neither steals the other; a
-            // pinch-zoom consumes its events first, so it doesn't dismiss either.
+            // The outer box handles swipe-to-dismiss and only the inner box moves,
+            // so the gesture's coordinates stay fixed.
             Box(
                 modifier =
                     Modifier.fillMaxSize().pointerInput(Unit) {
@@ -154,12 +144,8 @@ fun GalleryDialog(
 }
 
 /**
- * Frame the enclosing dialog's window over the whole display. The dialog's own
- * window fits itself inside the system bars (its frame starts below the status
- * bar) while being laid out at screen height, so its bottom -- and the caption
- * -- hangs off the display. Taking over the insets on the window itself makes
- * it span the display, including the cutout, and hands Compose the real inset
- * values for the caption's safe-area padding.
+ * Stretch the dialog's window over the whole display, cutout included, so its
+ * bottom doesn't hang off screen and Compose gets real inset values.
  */
 @Composable
 private fun FullDisplayDialogWindow() {
@@ -174,9 +160,7 @@ private fun FullDisplayDialogWindow() {
                     layoutInDisplayCutoutMode =
                         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 }
-                // The window manager frames a window inside the system
-                // bars it is told to fit; fit none so the frame is the
-                // whole display and the bars arrive as insets instead.
+                // Fit no system bars, so they arrive as insets instead.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     fitInsetsTypes = 0
                 } else {
@@ -215,16 +199,14 @@ private fun BoxScope.GalleryCloseButton(onDismiss: () -> Unit) {
         Icon(
             imageVector = Icons.Filled.Close,
             contentDescription = stringResource(R.string.close),
-            tint = Color.White,
+            tint = BaeTheme.colors.onFill,
         )
     }
 }
 
 /**
- * Current item's label (e.g. "Cover", "Back.jpg") and, for a multi-image gallery,
- * its position — inset above the navigation bar so it isn't a blind swipe-through.
- * Reads [PagerState.currentPage] here at the leaf so only the caption recomposes
- * on a page turn, not the parent.
+ * Current item's label and, when there are several, its position. Reads
+ * [PagerState.currentPage] here so only the caption recomposes on a page turn.
  */
 @Composable
 private fun BoxScope.GalleryCaption(
@@ -241,28 +223,20 @@ private fun BoxScope.GalleryCaption(
                 ).padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Core always sets a non-empty label ("Cover" or the file's original
-        // filename), so render it unconditionally.
-        Text(text = items[currentPage].label, color = Color.White)
+        // Core always sets a non-empty label.
+        Text(text = items[currentPage].label, color = BaeTheme.colors.onFill)
         if (items.size > 1) {
             Text(
                 text = "${currentPage + 1} / ${items.size}",
-                color = Color.White.copy(alpha = 0.7f),
+                color = BaeTheme.colors.onFillSecondary,
             )
         }
     }
 }
 
 /**
- * A gallery image: fetched (downloaded from the release's cloud home and decrypted
- * by core, or read from coven's image store for a cover) and decoded to the page
- * bounds, so a large — e.g. 35 MB — scan never decodes at full resolution just to
- * fill the screen. Once the user pinches in, the same bytes are decoded again at
- * the source's own resolution, from the store's byte cache rather than a second
- * trip across the bridge, and replace the downsampled image in place.
- *
- * Shows a spinner while the first decode is in flight and a fixed failure message
- * when it fails (the underlying error is logged).
+ * A gallery image decoded to the page bounds, then again at full resolution once
+ * the user zooms in; a spinner while loading, a failure message if it fails.
  */
 @Composable
 private fun GalleryImage(
@@ -307,22 +281,21 @@ private fun GalleryImage(
             failed -> {
                 Text(
                     text = stringResource(R.string.gallery_load_failed),
-                    color = Color.White,
+                    color = BaeTheme.colors.onFill,
                     modifier = Modifier.padding(24.dp),
                 )
             }
 
             else -> {
-                CircularProgressIndicator(color = Color.White)
+                CircularProgressIndicator(color = BaeTheme.colors.onFill)
             }
         }
     }
 }
 
 /**
- * Run [load], answering null when it fails or when the slot has no bytes — both
- * are logged, never silent. Cancellation propagates so a page swiped away stops
- * loading rather than reporting a failure.
+ * Run [load], logging and answering null when it fails or finds no bytes;
+ * cancellation propagates.
  */
 private suspend fun loadOrNull(
     label: String,
@@ -342,11 +315,8 @@ private suspend fun loadOrNull(
     }
 
 /**
- * A pinch-zoomable gallery image. The pinch scales [bitmap] around the gesture
- * centroid and releases back to fit, mirroring the macOS lightbox; crossing the
- * zoom threshold reports [onZoomedIn] once so the caller can decode the source at
- * full resolution. [identity] re-arms the gesture state when the page's content
- * changes.
+ * [bitmap] zoomed by pinching and snapped back to fit on release; calls
+ * [onZoomedIn] past the full-resolution threshold. [identity] resets the zoom.
  */
 @Composable
 private fun ZoomableGalleryImage(
@@ -388,12 +358,11 @@ private fun ZoomableGalleryImage(
                                     onZoomedIn()
                                 }
                                 // Consume so the pager doesn't treat a pinch as a
-                                // page swipe; single-finger drags (zoom == 1) fall
-                                // through to the pager.
+                                // page swipe.
                                 event.changes.forEach { it.consume() }
                             }
                         } while (event.changes.any { it.pressed })
-                        // All pointers up: snap back to fit.
+                        // Snap back to fit.
                         if (scale != 1f) {
                             scope.launch {
                                 animate(scale, 1f) { value, _ -> scale = value }

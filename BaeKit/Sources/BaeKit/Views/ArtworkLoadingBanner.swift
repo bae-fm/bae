@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Post-open progress for artwork that the library keeps available locally.
-/// The library remains usable while this view is visible.
+/// Progress fetching the artwork the library keeps locally; the library stays
+/// usable meanwhile.
 public struct ArtworkLoadingBanner: View {
     @Environment(ArtworkLoadingStore.self)
     private var store
@@ -56,7 +56,7 @@ public struct ArtworkLoadingBanner: View {
                 VStack(alignment: .leading, spacing: 4) {
                     statusLine {
                         Image(systemName: "exclamationmark.triangle")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.warning)
                         Text(localizedCoreString(titleKey))
                         Spacer()
                         Text(progress.bytesText)

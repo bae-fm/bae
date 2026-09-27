@@ -4,13 +4,8 @@ import os.log
 
 private let logger = Logger.bae("MembersSection")
 
-/// Device-management rows for the current library's membership chain: lists the
-/// devices (with this device flagged), lets an owner approve a new device
-/// through a local pairing session and remove a device (which rotates the library
-/// key). Rendered inside the Library settings Form, below the Sync section and
-/// only while sync is connected — the underlying membership calls require an
-/// active sync manager. The list loads when the section appears and after each
-/// approve/remove.
+/// The library's devices, shown only while sync is connected; an owner can add
+/// a device or remove one, which rotates the library key.
 struct MembersSection: View {
     @Environment(Sync.self)
     var sync
@@ -36,7 +31,7 @@ struct MembersSection: View {
             case nil:
                 if let loadError {
                     Text(loadError)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.danger)
                         .font(.callout)
                 }
                 else {
@@ -86,7 +81,7 @@ struct MembersSection: View {
 
         if let actionError {
             Text(actionError)
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.danger)
                 .font(.callout)
         }
 
@@ -116,8 +111,8 @@ struct MembersSection: View {
                 logger.error(
                     "Failed to load members: \(error.localizedDescription)"
                 )
-                // Keep a previously loaded list visible if there is one; only
-                // fall back to the inline error when there's nothing to show.
+                // Keep a loaded list visible; show the inline error only
+                // when there is none.
                 if membership == nil {
                     loadError = error.displayLine
                 }
@@ -149,9 +144,8 @@ struct MembersSection: View {
     }
 }
 
-/// One device row: a short fingerprint of the public key, a role badge, and —
-/// for the running device — a "This device" marker. Owners see a Remove control
-/// on every other device.
+/// One device: its key fingerprint, role, a "This device" marker, and a remove
+/// button when it can be removed.
 private struct MemberRow: View {
     let member: BridgeMember
     let onRemove: () -> Void
@@ -161,8 +155,7 @@ private struct MemberRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(member.fingerprint)
                     .font(.system(.body, design: .monospaced))
-                // Always in the layout (hidden when not self) so the row height
-                // doesn't change between self and other rows.
+                // Hidden rather than removed so every row has the same height.
                 Text("This device")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -170,8 +163,7 @@ private struct MemberRow: View {
             }
             Spacer()
             RoleBadge(role: member.role)
-            // Kept in the layout always (hidden, not removed) so toggling it
-            // doesn't re-measure sibling rows.
+            // Hidden rather than removed so rows keep the same layout.
             Button(role: .destructive) {
                 onRemove()
             } label: {
@@ -193,7 +185,7 @@ private struct RoleBadge: View {
             .font(.caption.weight(.medium))
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
-            .background(Color.secondary.opacity(0.15))
+            .background(Color.secondary.opacity(ThemeOpacity.tint))
             .clipShape(Capsule())
             .foregroundStyle(.secondary)
     }

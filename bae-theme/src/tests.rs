@@ -20,7 +20,7 @@ fn colours_read_with_and_without_alpha() {
 
 fn theme_with(tones: &str, semantics: &str) -> Result<Theme, Vec<String>> {
     Theme::from_toml(&format!(
-        "{tones}\n[[accents]]\nname = \"blue\"\nlight = \"#000000\"\ndark = \"#000000\"\nfill = \"#000000\"\n\n{semantics}"
+        "[opacity]\ntint = 0.14\n\n{tones}\n[[accents]]\nname = \"blue\"\nlight = \"#000000\"\ndark = \"#000000\"\nfill = \"#000000\"\n\n{semantics}"
     ))
 }
 
@@ -86,13 +86,27 @@ fn both_platforms_carry_every_role() {
         .chain(theme.semantics.light.keys())
     {
         assert!(
-            swift.contains(&format!("    let {role}: Color\n")),
+            swift.contains(&format!("    let {role}: Color\n"))
+                || swift.contains(&format!("    public static let {role} = Color(\n")),
             "{role}"
         );
         assert!(
             kotlin.contains(&format!("    val {role}: Color,\n")),
             "{role}"
         );
+    }
+}
+
+#[test]
+fn both_platforms_carry_every_opacity() {
+    let theme = Theme::from_toml(THEME).unwrap();
+    let swift = apple::swift(&theme);
+    let kotlin = android::kotlin(&theme);
+    for (role, value) in &theme.opacity {
+        assert!(swift.contains(&format!(
+            "    public static let {role}: Double = {value:?}\n"
+        )));
+        assert!(kotlin.contains(&format!("    const val {role}: Float = {value:?}f\n")));
     }
 }
 

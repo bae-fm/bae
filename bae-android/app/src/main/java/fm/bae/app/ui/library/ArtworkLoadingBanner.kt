@@ -39,6 +39,8 @@ import fm.bae.app.coreString
 import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeOpacity
 import uniffi.bae_bridge.BridgeEagerCacheFillProgress
 import uniffi.bae_bridge.BridgeEagerCacheFillStatus
 
@@ -162,13 +164,18 @@ private fun ArtworkFailureStatus(
 ) {
     var detailsVisible by rememberSaveable(status) { mutableStateOf(false) }
     val title = LocalContext.current.coreString(status.titleKey)
-    Surface(color = MaterialTheme.colorScheme.errorContainer) {
+    Surface(color = BaeTheme.colors.warning.copy(alpha = ThemeOpacity.tint)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(Icons.Filled.WarningAmber, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(
+                Icons.Filled.WarningAmber,
+                contentDescription = null,
+                tint = BaeTheme.colors.warning,
+                modifier = Modifier.size(18.dp),
+            )
             Text(
                 text = title,
                 modifier = Modifier.weight(1f),

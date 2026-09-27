@@ -189,6 +189,9 @@ light = "#1F7274"
 dark = "#80CCCE"
 fill = "#277A7C"
 
+# Colours that mean the same in every tone. `activity` marks work in progress,
+# such as a transfer; `onFill` and `onFillSecondary` sit on accent and status
+# fills, on artwork and on the image viewer's `backdrop`.
 [semantics.light]
 textPrimary = "#202124"
 textSecondary = "#62656C"
@@ -196,9 +199,16 @@ danger = "#B63B3B"
 success = "#2D7447"
 warning = "#8C5D14"
 info = "#2463C7"
+activity = "#1F7274"
 hairline = "#1A000000"
+hairlineStrong = "#2E000000"
 hover = "#0F000000"
+pressed = "#17000000"
 scrim = "#59000000"
+shadow = "#33000000"
+backdrop = "#D9000000"
+onFill = "#FFFFFF"
+onFillSecondary = "#B3FFFFFF"
 
 [semantics.dark]
 textPrimary = "#F2F2F4"
@@ -207,6 +217,20 @@ danger = "#F29C9F"
 success = "#8BCBA4"
 warning = "#E6BE77"
 info = "#87B5FF"
+activity = "#80CCCE"
 hairline = "#1AFFFFFF"
+hairlineStrong = "#2EFFFFFF"
 hover = "#0FFFFFFF"
+pressed = "#17FFFFFF"
 scrim = "#73000000"
+shadow = "#80000000"
+backdrop = "#D9000000"
+onFill = "#FFFFFF"
+onFillSecondary = "#B3FFFFFF"
+
+# A colour laid over a surface: `tint` behind that colour's own text, as in a
+# status chip, a notice or a selection; `tintStrong` where it must read stronger,
+# as under the pointer.
+[opacity]
+tint = 0.14
+tintStrong = 0.26

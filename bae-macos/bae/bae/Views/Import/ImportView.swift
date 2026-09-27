@@ -53,17 +53,16 @@ struct ImportView: View {
         }
     }
 
-    /// Event-driven candidate writes keyed by candidate, so a repeated command
-    /// cancels the operation it replaces and leaving the import view cancels
-    /// every command the view started.
+    /// Candidate writes by candidate key; a repeated command cancels the one
+    /// it replaces, and leaving the view cancels them all.
     @State
     var candidateMutationTasks: [String: Task<Void, Never>] = [:]
-    /// Coordinates active field writes with metadata replacement. A source
-    /// application must wait for the draft the person was editing to commit.
+    /// Commits the active field edit before a metadata source replaces the
+    /// draft.
     @State
     var editingCommands = EditingCommitCommands()
-    /// An action waiting on the person's say-so before it replaces what they
-    /// may have chosen: from the pane a selection opens, or a row's menu.
+    /// An action awaiting confirmation because it replaces the person's
+    /// choices.
     @State
     var candidateActionConfirmation: ImportCandidateActionOffer?
     @Environment(\.openSettings)
@@ -149,15 +148,13 @@ struct ImportView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// The list could not be read at all, so nothing here is known — including
-    /// whether any folder is being watched. Shown in place of the empty state,
-    /// which would otherwise say the library has no folders when the truth is
-    /// that nobody could look.
+    /// Shown when the list could not be read, instead of an empty state that
+    /// would wrongly say no folder is watched.
     private func failedState(_ failure: DisplayError) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 40, weight: .thin))
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.danger)
             Text("The import list couldn't be read")
                 .font(.callout)
             if let detail = failure.detailSummary {
@@ -216,18 +213,12 @@ struct ImportView: View {
 }
 
 #if DEBUG
-    /// The Import tab whole, both halves at once: the triage sidebar it is
-    /// steered from and the mapping pane the selected row opens.
+    /// The whole Import tab, drawn by the production `ImportView` from a
+    /// seeded environment.
     ///
-    /// The environment is seeded, never the view — every pixel here comes from
-    /// the production `ImportView` and the views under it, so a change to a
-    /// row, a card or a column shows up in the canvas without a second
-    /// rendering of the same screen to keep in step.
-    ///
-    /// `importPreviewEnvironment` installs a `UiStore` and an
-    /// `ImportSelection` of its own, so the ones carrying the tab and the
-    /// selection go on *before* it: the innermost value of an environment key
-    /// is the one the view under it reads.
+    /// Its `UiStore` and `ImportSelection` go on before
+    /// `importPreviewEnvironment`, which installs its own, because the
+    /// innermost environment value wins.
     @MainActor
     private struct ImportTabPreview {
         let uiStore = UiStore()

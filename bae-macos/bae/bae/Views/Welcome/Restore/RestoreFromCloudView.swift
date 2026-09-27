@@ -4,11 +4,8 @@ import os.log
 
 private let logger = Logger.bae("RestoreFromCloudView")
 
-/// The restore-from-cloud screen: paste a restore code. Owns the code decode,
-/// the OAuth state, and the restore itself.
-///
-/// The code carries everything the restore needs — which library, which cloud
-/// home, and the key to open it — so there is nothing left to enter by hand.
+/// The restore-from-cloud screen, where a pasted restore code carries
+/// everything the restore needs.
 struct RestoreFromCloudView: View {
     let onLibraryReady: (BridgeLibrary) -> Void
     let onBack: () -> Void
@@ -18,15 +15,12 @@ struct RestoreFromCloudView: View {
 
     @State
     private var restoreCodeInput = ""
-    /// The decode of the current restore-code input: `nil` when the input is
-    /// empty (nothing to decode), `.success(info)` for a valid code, or
-    /// `.failure(error)` describing why the input couldn't be parsed.
+    /// The decoded restore code, or `nil` when the input is empty.
     @State
     private var decodedRestore: Result<BridgeRestoreCodeInfo, Error>?
     @State
     private var isRestoring = false
-    /// The in-flight restore, owned so a superseding restore and the view's
-    /// disappear can cancel it.
+    /// The in-flight restore, cancelled by a newer restore or on disappear.
     @State
     private var restoreTask: Task<Void, Never>?
     @State
@@ -82,16 +76,12 @@ struct RestoreFromCloudView: View {
                             }
                         #endif
                     }
-                    // Unwrapped in the pattern rather than defaulted to "":
-                    // a decode is a synchronous parse, so core never reports it
-                    // as a cancellation and a line is always there — and if
-                    // that changed, this shows nothing rather than a blank red
-                    // line.
+                    // A decode is never cancelled, so it always has a line.
                     else if case .failure(let decodeError) = decodedRestore,
                         let line = decodeError.displayLine
                     {
                         Text(line)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.danger)
                             .font(.callout)
                     }
                 }
@@ -100,7 +90,7 @@ struct RestoreFromCloudView: View {
             .scrollDisabled(true)
             if let error {
                 Text(error)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .font(.callout)
                     .padding(.horizontal)
                     .padding(.bottom, 8)
@@ -134,9 +124,7 @@ struct RestoreFromCloudView: View {
         .onDisappear { restoreTask?.cancel() }
     }
 
-    /// Decode a non-empty restore code into its info, or the error explaining
-    /// why it couldn't be parsed. The caller owns the empty-input precondition —
-    /// this always attempts a real decode.
+    /// Decodes a non-empty restore code.
     private func decode(
         restoreCode raw: String
     ) -> Result<BridgeRestoreCodeInfo, Error> {
@@ -145,8 +133,8 @@ struct RestoreFromCloudView: View {
 
     // MARK: - Validation
 
-    /// Whether the restore button should be enabled: a code that decoded, with
-    /// its OAuth connection made if the provider needs one.
+    /// A decoded code, with its OAuth connection made when the provider needs
+    /// one.
     private var restoreReady: Bool {
         guard case .success(let info) = decodedRestore else { return false }
         return info.needsOauth ? oauthTokenJson != nil : true
@@ -154,9 +142,8 @@ struct RestoreFromCloudView: View {
 
     // MARK: - Actions
 
-    /// Restore the library from the current restore-code input. The bridge
-    /// re-decodes the code, so callers only need to have confirmed a valid
-    /// decode first — there's nothing to pass in.
+    /// Restores the library from the current input, which the bridge decodes
+    /// again.
     private func doRestoreFromCode() {
         let code = restoreCodeInput
         let token = oauthTokenJson
@@ -166,11 +153,8 @@ struct RestoreFromCloudView: View {
         }
     }
 
-    /// Run a restore off the UI thread, cancelling any
-    /// in-flight restore first. The heavy bridge call blocks its worker, so the
-    /// owned task is checked for cancellation before it touches `screen`-driving
-    /// state: a superseded restore neither opens its (now stale) library nor
-    /// clears `isRestoring` out from under the restore that replaced it.
+    /// Runs a restore off the main thread, cancelling any earlier one; a
+    /// cancelled restore neither opens its library nor clears `isRestoring`.
     private func runRestore(
         _ work: @escaping @Sendable () throws -> BridgeLibrary
     ) {
@@ -185,9 +169,7 @@ struct RestoreFromCloudView: View {
                 onLibraryReady(restored)
             }
             catch is CancellationError {
-                // Superseded by a newer restore, which set `isRestoring = true`
-                // for itself when it cancelled this one — leave the flag alone so
-                // its spinner stays up. The superseding restore owns it.
+                // The newer restore owns `isRestoring` now.
                 logger.debug("Restore superseded by a newer restore; skipping")
             }
             catch {

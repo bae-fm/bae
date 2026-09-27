@@ -3,26 +3,17 @@ import BaeKit
 import SwiftUI
 
 /// One pressing row beneath a release-group card: its facts, which signals
-/// named it, and every source that lists it.
-///
-/// The row is picked whole: it commits the pressing's lead release and carries
-/// every other source's record of the same pressing along with it. That opens
-/// the docked confirm pane, where the Exact / Metadata-only choice is made.
-///
-/// A row already in the library still opens the pane — it surfaces the
-/// "already imported" banner and leaves Import disabled there — so the row
-/// stays clickable; it only dims to signal the dupe.
+/// named it, and every source that lists it. A row already in the library is
+/// dimmed but can still be picked.
 struct ImportSearchResultRow: View {
     let pressing: Pressing
     let isImporting: Bool
     let libraryStatus: BridgeLibraryStatus?
-    /// What the candidate's own text agrees with about this pressing, for the
-    /// badge row. `nil` for typed-search results, where there is no candidate
-    /// to have agreed with anything.
+    /// What the candidate's own text agrees with about this pressing; `nil`
+    /// for typed-search results.
     var agreements: BridgeAgreements?
     let isSelected: Bool
-    /// Whether this row's pick is being read right now — the row itself
-    /// carries the spinner, so the list stays put while the release loads.
+    /// Whether this row's pick is loading, shown by the row's own spinner.
     var isLoading: Bool = false
     var failure: ReleaseSelectionFailure?
     /// Identify the candidate again, reading once more the documents a run
@@ -34,8 +25,8 @@ struct ImportSearchResultRow: View {
         libraryStatus?.releaseInLibrary == true
     }
 
-    /// Whether this row is still a choice to make: no import has committed the
-    /// candidate, and this row's own pick is not already being read.
+    /// Whether the row can be picked: no import is running and its pick is not
+    /// already loading.
     var isPickable: Bool {
         !isImporting && !isLoading
     }
@@ -79,9 +70,8 @@ struct ImportSearchResultRow: View {
         .padding(.horizontal, 10)
     }
 
-    /// What the row failed at, with the retry that asks for it again: picking
-    /// it, when reading the pick failed; identifying again, when the run could
-    /// not read one of its documents.
+    /// The row's failure and its retry: picking it again when loading the pick
+    /// failed, or identifying again when a document could not be read.
     private var rowFailure: (error: DisplayError, retry: () -> Void)? {
         if let failure, failure.matches(pressing) {
             return (failure.error, { onSelect(pressing) })
@@ -117,13 +107,13 @@ struct ImportSearchResultRow: View {
         RoundedRectangle(cornerRadius: 7)
             .fill(
                 isSelected || rowFailure != nil
-                    ? Theme.accent.opacity(0.12) : .clear
+                    ? Theme.accentSoft : .clear
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 7)
                     .strokeBorder(
                         isSelected || rowFailure != nil
-                            ? Theme.accent.opacity(0.4) : .clear,
+                            ? Theme.accentStrong : .clear,
                         lineWidth: 1
                     )
             )
@@ -188,9 +178,8 @@ struct ImportSearchResultRow: View {
 
     // MARK: - Agreement badges
 
-    /// What the candidate's own text agrees with about this row, and what
-    /// ordered it against the others. All six chips stay in the tree
-    /// (opacity-toggled) so row height is stable across the list.
+    /// Badges for what the candidate's own text agrees with about this row, in
+    /// one fixed order.
     @ViewBuilder
     private var signalBadges: some View {
         if let agreements {
@@ -205,9 +194,8 @@ struct ImportSearchResultRow: View {
         }
     }
 
-    /// Agreement badges use the accent as an informational tint.
-    /// Only the agreements a row has, packed in one fixed order, so rows read
-    /// as a run of badges rather than a grid with gaps.
+    /// A badge only for an agreement the row has, so the badges pack without
+    /// gaps.
     @ViewBuilder
     private func agreementBadge(
         _ agreement: SignalBadgeStyle.Agreement,
@@ -228,15 +216,14 @@ struct ImportSearchResultRow: View {
             .fixedSize()
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
-            .background(Color.accentColor.opacity(0.15), in: Capsule())
+            .background(Theme.accentSoft, in: Capsule())
             .foregroundStyle(Color.accentColor)
     }
 
     // MARK: - Trailing
 
-    /// Every source listing this pressing, named in the order core states. A
-    /// label, not a choice: the row is one pressing however many sources carry
-    /// it, and picking it claims all of them.
+    /// Every source listing this pressing, in core's order; picking the row
+    /// takes all of them.
     private var sourceTags: some View {
         HStack(spacing: 4) {
             ForEach(Array(pressing.sources.enumerated()), id: \.element) {
@@ -254,12 +241,11 @@ struct ImportSearchResultRow: View {
         }
     }
 
-    /// "In library" tag for an already-imported pressing. Kept in the tree
-    /// (opacity-toggled) so selecting a row doesn't reflow the column.
+    /// The "In library" tag, hidden by opacity so the column keeps its width.
     private var libraryMarker: some View {
         HStack(spacing: 4) {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(Theme.success)
             Text("In library")
         }
         .font(.system(size: 11))
@@ -268,9 +254,8 @@ struct ImportSearchResultRow: View {
         .accessibilityHidden(!isInLibrary)
     }
 
-    /// Both trailing states stay in the tree (opacity-swapped): rows render
-    /// in a repeated list, and conditional inclusion would re-measure every
-    /// sibling when a pick starts loading.
+    /// The spinner and chevron swap by opacity, so a pick starting to load
+    /// does not re-measure the other rows.
     private var chevron: some View {
         ZStack {
             ProgressView()
@@ -280,7 +265,7 @@ struct ImportSearchResultRow: View {
             Image(systemName: "chevron.right")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(
-                    isSelected ? Theme.accent : Color.primary.opacity(0.3)
+                    isSelected ? Theme.accent : Theme.hairlineStrong
                 )
                 .opacity(isLoading ? 0 : 1)
         }

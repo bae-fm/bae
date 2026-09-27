@@ -94,7 +94,7 @@ struct CoverGalleryView: View {
                 {
                     Label(errorMessage, systemImage: "exclamationmark.triangle")
                         .font(.callout)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.danger)
                         .textSelection(.enabled)
                 }
                 Spacer(minLength: 12)
@@ -210,10 +210,12 @@ struct CoverGalleryView: View {
         VStack(spacing: 8) {
             if browser.cursor != nil || !remoteItems.isLoading { remoteStatus }
             if let errorMessage {
-                Text(errorMessage).foregroundStyle(.red).textSelection(.enabled)
+                Text(errorMessage).foregroundStyle(Theme.danger)
+                    .textSelection(.enabled)
             }
             if let message = remoteItems.failureMessage {
-                Text(message).foregroundStyle(.red).textSelection(.enabled)
+                Text(message).foregroundStyle(Theme.danger)
+                    .textSelection(.enabled)
                 if let onRefresh { Button("Retry", action: onRefresh) }
             }
         }
@@ -275,7 +277,7 @@ extension CoverGalleryView {
                 .overlay(alignment: .topTrailing) {
                     Image(systemName: "checkmark.circle.fill")
                         .symbolRenderingMode(.palette)
-                        .foregroundStyle(.white, Color.accentColor)
+                        .foregroundStyle(Theme.onFill, Theme.accent)
                         .padding(8)
                         .opacity(
                             item.id == .currentCover

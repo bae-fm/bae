@@ -2,10 +2,8 @@ import BaeKit
 import SwiftUI
 
 #if BAE_OAUTH_PROVIDERS
-    /// The connect/authorizing/connected row an OAuth provider shows in the
-    /// restore screen — both the restore-code path and the manual form use it.
-    /// Prop-driven: the flow view owns the token and the authorizing flag and
-    /// does the work; this only renders the current state.
+    /// An OAuth provider's connect, authorizing, or connected state on the
+    /// restore screen.
     struct OauthConnectRow: View {
         let provider: BridgeCloudProvider
         let isConnected: Bool
@@ -17,7 +15,7 @@ import SwiftUI
             HStack {
                 if isConnected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Theme.success)
                     Text("Connected")
                         .foregroundStyle(.secondary)
                 }

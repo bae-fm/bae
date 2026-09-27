@@ -4,26 +4,23 @@ import os.log
 
 private let logger = Logger.bae("DiscogsKey")
 
-/// The Discogs key, drawn under the Discogs source switch in the Import
-/// settings: the stored key's state and the actions that change it. One Form
-/// row, so the lifecycle below runs once however many controls the state draws.
+/// The Discogs key row under the Discogs source switch in Import settings: the
+/// stored key's state and the actions that change it.
 struct DiscogsKeySection: View {
     @Environment(Discogs.self)
     var discogs
     @Environment(ConfigStore.self)
     var configStore
 
-    /// The editable key the user types. A draft, distinct from the stored key:
-    /// seeded once from the keyring when a key is configured (so the user sees
-    /// what's stored), kept across a rejected save so a typo is correctable.
+    /// The key being typed, seeded from the keyring and kept after a rejected
+    /// save so a typo can be fixed.
     @State
     private var draft: String = ""
-    /// The in-flight save/revalidate task. Event-driven (button tap), so it's
-    /// held in `@State` and cancelled from handlers — not `.task(id:)`.
+    /// The in-flight save or re-check.
     @State
     private var saveTask: Task<Void, Never>?
-    /// Set only when Discogs rejected the typed key (401). Cleared on a save
-    /// that stores the key. Distinct from the persisted status.
+    /// The last save, re-check, or remove error, including Discogs rejecting
+    /// the typed key.
     @State
     private var saveError: String?
     /// Set when the stored key can't be read back for display.
@@ -43,16 +40,13 @@ struct DiscogsKeySection: View {
         )
         .task {
             await seedDraftFromStoredKey()
-            // Core no-ops unless the stored key is `Unvalidated`, so call
-            // unconditionally rather than inspecting the status here.
+            // Core does nothing unless the stored key is unvalidated.
             revalidate()
         }
         .onDisappear { saveTask?.cancel() }
     }
 
-    /// Form-state seeding: render the stored key into the editable draft when a
-    /// key is configured. The empty string is the input's "no value".
-    /// The keychain read is awaited off the main thread.
+    /// Fills the draft with the stored key when one is configured.
     private func seedDraftFromStoredKey() async {
         guard configStore.config.discogsTokenStatus != .notConfigured else {
             return
@@ -62,16 +56,13 @@ struct DiscogsKeySection: View {
                 draft = stored
             }
             else {
-                // Status says a key is configured but the keyring has none —
-                // the config flag and the keyring disagree.
                 logger.warning(
                     "Discogs status says a key is configured but the keyring returned none"
                 )
             }
         }
         catch {
-            // Nil line means core reported a cancellation, which has nothing to
-            // say; the field stays clear rather than showing `Optional("…")`.
+            // A nil line means a cancellation, which shows nothing.
             readError = error.displayLine.map { line in
                 String(
                     localized: "Couldn't read the stored Discogs key: \(line)"
@@ -96,8 +87,7 @@ struct DiscogsKeySection: View {
                             "Discogs rejected this key. Check it and save again."
                     )
                 }
-                // `.valid` / `.unvalidated` update the persisted status
-                // reactively through the config event; nothing to set here.
+                // Other outcomes reach the status through the config event.
             }
             catch is CancellationError {
                 logger.debug("saveToken cancelled")
@@ -172,12 +162,12 @@ struct DiscogsSettingsContent: View {
             statusRow
             if let saveError {
                 Text(saveError)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .font(.callout)
             }
             if let readError {
                 Text(readError)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .font(.callout)
             }
             VStack(alignment: .leading, spacing: 8) {
@@ -206,8 +196,7 @@ struct DiscogsSettingsContent: View {
         }
     }
 
-    /// Editable field + Save, for the not-configured and rejected states. In
-    /// `rejected` the draft is kept so the user corrects a typo.
+    /// Key field and Save, for the not-configured and rejected states.
     private var keyInput: some View {
         HStack(spacing: 6) {
             TextField(
@@ -232,7 +221,7 @@ struct DiscogsSettingsContent: View {
     private var connectedRow: some View {
         HStack(spacing: 6) {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(Theme.success)
             Text("Connected")
                 .foregroundStyle(.secondary)
             Spacer()
@@ -247,7 +236,7 @@ struct DiscogsSettingsContent: View {
             }
             else {
                 Image(systemName: "exclamationmark.circle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Theme.warning)
             }
             Text("Saved. Couldn't validate yet (offline). Will retry.")
                 .foregroundStyle(.secondary)

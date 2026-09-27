@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.data.ArtworkLoadingStore
+import fm.bae.app.ui.BaeTheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,7 +26,7 @@ class ArtworkLoadingBannerTest {
     fun failureDetailsAreHiddenUntilRequested() {
         val store = ArtworkLoadingStore {}
         store.apply(failure())
-        compose.setContent { ArtworkLoadingBanner(store) }
+        compose.setContent { BaeTheme { ArtworkLoadingBanner(store) } }
 
         compose.onNodeWithText("The artwork object is missing.").assertDoesNotExist()
         compose.onNodeWithText("Details").performClick()
@@ -39,7 +40,7 @@ class ArtworkLoadingBannerTest {
         val store = ArtworkLoadingStore {}
         val failure = failure()
         store.apply(failure)
-        compose.setContent { ArtworkLoadingBanner(store) }
+        compose.setContent { BaeTheme { ArtworkLoadingBanner(store) } }
 
         compose.onNodeWithContentDescription("Close").performClick()
         compose.runOnIdle { store.apply(failure) }

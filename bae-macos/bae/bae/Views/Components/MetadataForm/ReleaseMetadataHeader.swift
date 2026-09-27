@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Where one release field's settled value goes. Candidate drafts persist each
-/// field independently; persisted-release sessions update their working form.
+/// Where one release field's settled value goes: a candidate draft persists
+/// each field, a persisted-release session updates its working form.
 struct ReleaseFieldWriter {
     let setField: @MainActor (BridgeCandidateEditField, String) async -> Void
     /// Every label row, after one is typed into, added or removed.
@@ -61,25 +61,19 @@ struct ReleaseFieldWriter {
     }
 }
 
-/// The sizes the release header is laid out to, shared by the surfaces that
-/// draw it — the import pane's card and the library's edit sheet — and by
-/// the covers they hand it.
+/// The release header's sizes, shared with the surfaces that draw it and the
+/// covers they pass in.
 enum ReleaseMetadataLayout {
-    /// The cover beside the album identity. Big enough to read the artwork
-    /// as artwork; the heading beside it is sized to match.
+    /// The cover beside the album identity.
     static let coverSize: CGFloat = 132
     /// Between the cover and the identity column.
     static let coverSpacing: CGFloat = 16
-    /// Between the header's blocks: the cover row, what the folder states,
-    /// the release facts, and whatever the surface stacks after them.
+    /// Between the header's blocks.
     static let blockSpacing: CGFloat = 14
 }
 
 /// The shared editable release header: the cover beside the album identity,
-/// then what the folder itself states, then the release facts, each a block
-/// of its own the full width of the surface. Its callers supply the cover and
-/// the two folder slots so candidate and persisted-release ownership never
-/// leaks into this component.
+/// then the release facts. Callers supply the cover and the audio facts.
 struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
     View
 {
@@ -88,9 +82,8 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
     let editingCommands: EditingCommitCommands
     @ViewBuilder
     let cover: () -> Cover
-    /// What the audio behind the release is — its codec, rate and depth —
-    /// as the last line of the identity column, under the artist. Empty
-    /// where nothing has read the files.
+    /// The audio's codec, rate and depth as the identity column's last line;
+    /// empty where nothing has read the files.
     @ViewBuilder
     let audioFacts: () -> AudioFacts
 
@@ -99,9 +92,8 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
         {
             HStack(alignment: .top, spacing: ReleaseMetadataLayout.coverSpacing)
             {
-                // Clipped to the slot here, whatever the caller's cover does:
-                // a non-square image fills the slot and is cut to it rather
-                // than spilling over the identity column.
+                // Clipped here so a non-square cover never spills over the
+                // identity column.
                 cover()
                     .frame(
                         width: ReleaseMetadataLayout.coverSize,
@@ -125,9 +117,7 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
     }
 }
 
-/// Album identity rendered as a document heading that becomes editable on
-/// hover and focus: the title, the artist line, the album's year, and the
-/// audio facts.
+/// The album identity drawn as a heading that is editable in place.
 struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
@@ -155,10 +145,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
             .font(.system(size: 14))
             .foregroundStyle(.secondary)
             .modifier(FieldChrome(focused: false, style: .inline))
-            // The album's original year, a line of its own under the
-            // artists and drawn a step fainter, as the library's album
-            // heading draws it — the pressing's own year is the Release
-            // facts' Year below.
+            // The album's original year; the pressing's year is under Release.
             CommittedTextField(
                 placeholder: String(localized: "Album year"),
                 value: values.albumYear,
@@ -176,8 +163,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
     }
 }
 
-/// Editable release facts as one column of labelled fields under a ruled
-/// RELEASE header, used by Import and the persisted release editor.
+/// The editable release facts under a ruled Release header.
 struct ReleasePressingFieldsGrid: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
@@ -185,12 +171,10 @@ struct ReleasePressingFieldsGrid: View {
 
     static let labelWidth: CGFloat = 64
     static let labelGap: CGFloat = 14
-    /// Between one row's text and the next. The fields carry the inline
-    /// chrome's vertical padding inside their rows, so the grid's own
-    /// spacing is what is left of the gap once that padding is counted.
+    /// Between one row's text and the next, counting the fields' own inline
+    /// padding.
     static let rowSpacing: CGFloat = 8
-    /// What an empty field is drawn at, so there is something to click into;
-    /// a filled field is as wide as its value.
+    /// An empty field's width, so there is something to click into.
     static let emptyValueWidth: CGFloat = 96
 
     var body: some View {
@@ -329,8 +313,7 @@ struct ReleasePressingFieldsGrid: View {
         }
     }
 
-    /// A field as wide as its value, and wider when empty so there is
-    /// something to click into.
+    /// A field as wide as its value, or `emptyValueWidth` when empty.
     private func valueText(
         _ text: String,
         placeholder: String,
@@ -393,11 +376,8 @@ extension BridgeArtistAssignment {
 
 extension EnvironmentValues {
     // swiftui-environment-audit: optional
-    /// What the library holds for the artist credits on screen, as core last
-    /// read them: the import pane's live read, or the release editor's own.
-    /// Rendered through `bridgeArtistStanding` / `bridgeArtistsStanding`.
-    /// Empty is a real state, not a placeholder: nothing read yet, or a read
-    /// that failed, shows no badge, which is what the editor sets itself.
+    /// What the library holds for the artist credits on screen; empty (not read
+    /// yet, or the read failed) shows no badge.
     @Entry
     var artistResolutions: [BridgeResolvedCredit] = []
 }
@@ -429,16 +409,13 @@ extension BridgeArtistsStanding {
     }
 }
 
-/// What a closed artist field says about a whole set of assignments: the names
-/// as one localized list, and — once core has read how the set stands to the
-/// library — one badge for it. One assignment summarizes to that assignment's
-/// own name and badge.
+/// A closed artist field's text: the names as one localized list and, once
+/// core has read them, one badge for the whole set.
 struct ArtistAssignmentsSummary: Equatable {
     let names: String
     let identityLabel: String?
 
-    /// `nil` when nothing is assigned: the field shows its placeholder, which
-    /// is not a summary of anything.
+    /// `nil` when nothing is assigned, so the field shows its placeholder.
     init?(
         assignments: [BridgeArtistAssignment],
         resolutions: [BridgeResolvedCredit]
@@ -498,9 +475,8 @@ struct ArtistSearchResultLabel: View {
 }
 
 struct ArtistAssignmentsField: View {
-    /// How wide the closed field draws. On a header line it is as wide as the
-    /// value it shows, so the fields after it stay beside it; in a table it
-    /// spans its column, so the chevrons line up down the rows.
+    /// How wide the closed field draws: its value's width on a header line, the
+    /// full column in a table so the chevrons line up.
     enum Width {
         case value
         case column
@@ -624,7 +600,7 @@ struct ArtistAssignmentsField: View {
                 ProgressView().controlSize(.small)
             }
             if let errorMessage {
-                Text(errorMessage).font(.caption).foregroundStyle(.red)
+                Text(errorMessage).font(.caption).foregroundStyle(Theme.danger)
             }
             ForEach(results, id: \.artist.artistId) { result in
                 VStack(alignment: .leading, spacing: 1) {
@@ -650,8 +626,7 @@ struct ArtistAssignmentsField: View {
         .task(id: query) { await search() }
     }
 
-    /// The library artists one credit could be, offered to pick from: picking
-    /// one puts that library artist in the credit's place.
+    /// The library artists a credit could be; picking one replaces the credit.
     private func choicesList(
         _ choices: [BridgeExistingArtist],
         replacing index: Int

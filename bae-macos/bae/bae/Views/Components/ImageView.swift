@@ -14,14 +14,12 @@ struct ImageView: View {
     private var imageStore
     @Environment(\.displayScale)
     private var displayScale
-    /// The last load's outcome, with the content it was for. A slot whose
-    /// content has since changed — a list row reused for another item — reads
-    /// as not loaded yet rather than showing the previous item's image.
+    /// The last load's outcome and its content; a slot whose content has since
+    /// changed reads as not loaded yet.
     @State
     private var lastLoad: SlotLoad
-    /// How many times the person asked for a failed load again. Part of the
-    /// load's identity, so asking restarts it; the store caches no failure,
-    /// so the restarted load goes back to the source.
+    /// How many times the person retried a failed load; part of the load's
+    /// identity, so a retry restarts it.
     @State
     private var attempt = 0
 
@@ -54,12 +52,8 @@ struct ImageView: View {
             }
     }
 
-    /// The image to draw this frame. A completed load wins; while a load is
-    /// still pending, an already-decoded image is served straight from the
-    /// store so the first frame after (re)mount draws the real art — the async
-    /// load would otherwise land a frame later and insert the image leaf
-    /// mid-flight, snapping it to its final position inside any transition the
-    /// view mounted with (e.g. the queue sidebar sliding in).
+    /// A completed load wins; while pending, an already-decoded image comes
+    /// straight from the store so the first frame after mount draws the art.
     private var displayedImage: NSImage? {
         switch loadState {
         case .loaded(let image):
@@ -76,19 +70,14 @@ struct ImageView: View {
         }
     }
 
-    /// What the art `Image` draws before a bitmap is available: a 1pt
-    /// transparent image, so the view renders nothing but exists. Nonzero size
-    /// keeps `aspectRatio` away from a 0/0 ratio.
+    /// Drawn before a bitmap is available; nonzero so `aspectRatio` never sees
+    /// 0/0.
     private static let emptyImage = NSImage(size: NSSize(width: 1, height: 1))
 
     private var contentView: some View {
         let image = displayedImage
-        // The art's Image view mounts on the first frame and only its contents
-        // change when a load lands. Animations interpolate the positions of
-        // views that existed when they started — a view inserted mid-flight
-        // snaps to its final position — so the art view must never be inserted
-        // later (e.g. while the queue sidebar is sliding in). The placeholder
-        // layers beneath it, opacity-toggled, instead of branching against it.
+        // The art view must exist from the first frame, since a view inserted
+        // mid-animation snaps to its final position.
         return ZStack {
             placeholderView
                 .opacity(image == nil ? 1 : 0)
@@ -130,7 +119,6 @@ struct ImageView: View {
                 lastLoad = SlotLoad(content: requested, state: .loaded(image))
             }
             else {
-                // No such image — render the unavailable placeholder.
                 lastLoad = SlotLoad(
                     content: requested,
                     state: .pending(.unavailable)
@@ -141,10 +129,6 @@ struct ImageView: View {
             return
         }
         catch {
-            // OSLog redacts interpolated values to `<private>` by default
-            // — the content description is a cover-art URL or an image id and
-            // the error is a bridge string, neither secret. The whole point of
-            // the log is to know which load failed and why.
             logger.warning(
                 """
                 Failed to load \
@@ -188,9 +172,7 @@ enum PlaceholderReason {
 struct ImagePlaceholderView: View {
     let reason: PlaceholderReason
     let pointSize: CGFloat
-    /// Asks for a failed load again. A failure is often the source having a
-    /// bad moment — an archive answering 503 — so the slot offers another try
-    /// rather than keeping the failure until something else changes it.
+    /// Asks for a failed load again.
     let retry: () -> Void
 
     var body: some View {
@@ -205,7 +187,7 @@ struct ImagePlaceholderView: View {
                 .overlay { icon("photo", .tertiary) }
         case .failed:
             Button(action: retry) {
-                Theme.accent.opacity(0.16)
+                Theme.accentSoft
                     .overlay {
                         icon("arrow.clockwise.circle.fill", Theme.accent)
                     }
@@ -246,9 +228,7 @@ struct ImagePlaceholderView: View {
 }
 
 extension ImageView {
-    /// A curated library image, cached by its content version. A nil ref (no
-    /// cover) renders the default placeholder, so callers don't wrap the view
-    /// in their own `if let` / `Theme.placeholder` check.
+    /// A curated library image; a nil ref renders the default placeholder.
     init(
         imageRef: BridgeImageRef?,
         contentMode: ContentMode = .fill,
@@ -264,10 +244,7 @@ extension ImageView {
 
 #if DEBUG
     #Preview("Image View") {
-        // The preview ImageStore stub resolves no bytes, so every slot settles
-        // on its placeholder: nil content shows the "unavailable" art, a library
-        // image ref shows the same once its load comes back empty, and the
-        // compact slot exercises the smaller placeholder chrome (< 56pt).
+        // The stub store resolves no bytes, so every slot shows a placeholder.
         HStack(alignment: .top, spacing: 16) {
             ImageView(imageRef: nil, pointSize: 120)
                 .frame(width: 120, height: 120)

@@ -57,13 +57,13 @@ struct IdentifierChip<Trailing: View>: View {
 
     private var fill: Color {
         switch style {
-        case .filled: Color.primary.opacity(isHovered ? 0.06 : 0.035)
-        case .outlined: Color.primary.opacity(isHovered ? 0.04 : 0)
+        case .filled: isHovered ? Theme.pressed : Theme.hover
+        case .outlined: isHovered ? Theme.hover : Color.clear
         }
     }
 
     private var border: Color {
-        Color.primary.opacity(isHovered ? 0.18 : 0.09)
+        isHovered ? Theme.hairlineStrong : Theme.hairline
     }
 }
 
@@ -97,7 +97,7 @@ struct ProviderCapsule: View {
         .padding(.horizontal, 5)
         .padding(.vertical, 1)
         .background(
-            Color.primary.opacity(0.05),
+            Theme.hover,
             in: RoundedRectangle(cornerRadius: 4)
         )
     }
@@ -107,7 +107,7 @@ struct ProviderCapsule: View {
 struct IdentifierDash: View {
     var body: some View {
         RoundedRectangle(cornerRadius: 1)
-            .fill(Color.primary.opacity(0.28))
+            .fill(Theme.hairlineStrong)
             .frame(width: 8, height: 1.5)
     }
 }
@@ -127,7 +127,7 @@ struct IdentifierWarning: View {
     var body: some View {
         Image(systemName: "exclamationmark.triangle")
             .font(.system(size: 11))
-            .foregroundStyle(.orange)
+            .foregroundStyle(Theme.warning)
     }
 }
 
@@ -148,7 +148,7 @@ struct ScanningChip: View {
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(
-                Color.primary.opacity(0.035),
+                Theme.hover,
                 in: RoundedRectangle(cornerRadius: 6)
             )
     }
@@ -163,7 +163,7 @@ struct LookupCellView: View {
         switch lookup {
         case .queued:
             Circle()
-                .fill(Color.primary.opacity(0.18))
+                .fill(Theme.hairlineStrong)
                 .frame(width: 5, height: 5)
         case .notAsked(reason: .switchedOff):
             IdentifierOff()

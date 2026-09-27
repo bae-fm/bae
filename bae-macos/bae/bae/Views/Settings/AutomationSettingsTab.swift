@@ -64,7 +64,7 @@ struct AutomationSettingsContent: View {
         var style: Color {
             switch self {
             case .feedback: .secondary
-            case .error: .red
+            case .error: Theme.danger
             }
         }
     }
@@ -136,7 +136,7 @@ struct AutomationSettingsContent: View {
                 case .error(let error):
                     VStack(alignment: .leading, spacing: 2) {
                         Text(error.localizedSummary)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.danger)
                         Text(error.detail)
                             .font(.caption)
                             .foregroundStyle(.secondary)

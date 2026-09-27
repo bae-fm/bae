@@ -50,7 +50,7 @@ public struct CloudProviderConnectedSection: View {
                 Button("Disconnect") {
                     onDisconnect()
                 }
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.danger)
             }
         }
     }

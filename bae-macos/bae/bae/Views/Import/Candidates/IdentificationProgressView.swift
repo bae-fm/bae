@@ -1,17 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// The "Identifying [bar] N / total" line, fed by core's identification
-/// progress event. Reached through `IdentificationProgressIndicator`'s
-/// popover: identifications that finish on their own do not earn a permanent
-/// row above every tab. The caller shows this only while there is something
-/// left to say — see `ImportCandidateListContent` — rather than this view
-/// deciding that for itself.
-///
-/// The line is a control, not a label. The candidates the count is waiting on
-/// are rows somewhere in the queue, and a number that sits still while giving
-/// no way to reach what it is waiting on is the frustrating half of this pane.
-/// Tapping it goes to the first one.
+/// The "Identifying [bar] N / total" line in
+/// `IdentificationProgressIndicator`'s popover; tapping it goes to the first
+/// candidate still being identified.
 struct IdentificationProgressView: View {
     let identified: UInt32
     let total: UInt32
@@ -48,8 +40,8 @@ struct IdentificationProgressView: View {
     }
 }
 
-/// The filter row's compact stand-in for the line above: a ring at the
-/// identifications' fraction, opening the counts on click.
+/// The filter row's identification progress ring; clicking it opens
+/// `IdentificationProgressView`.
 struct IdentificationProgressIndicator: View {
     let identified: UInt32
     let total: UInt32
@@ -92,7 +84,7 @@ struct IdentificationProgressIndicator: View {
     private var ring: some View {
         ZStack {
             Circle()
-                .stroke(Color.secondary.opacity(0.25), lineWidth: 2)
+                .stroke(Theme.hairlineStrong, lineWidth: 2)
             Circle()
                 .trim(from: 0, to: fraction)
                 .stroke(
@@ -108,9 +100,8 @@ struct IdentificationProgressIndicator: View {
     }
 }
 
-/// The filter row's one signal that watched folders are being scanned. Core
-/// supplies both the total and the per-root current-generation counts; this
-/// view only formats and renders them.
+/// The filter row's watched-folder scan indicator; clicking it lists each
+/// root's found count.
 struct FolderScanProgressIndicator: View {
     let activity: BridgeFolderScanActivity
 

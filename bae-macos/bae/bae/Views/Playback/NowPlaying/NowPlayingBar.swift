@@ -2,10 +2,8 @@ import BaeKit
 import Combine
 import SwiftUI
 
-/// The docked playback control strip: track info on the left, transport controls
-/// and the progress bar in the center, queue toggle and volume on the right.
-/// Pure prop-driven content — `NowPlayingBarContainer` owns the observation and
-/// wires every callback.
+/// The docked playback strip; `NowPlayingBarContainer` owns the state and wires
+/// every callback.
 struct NowPlayingBar: View {
     let trackTitle: String?
     let secondaryLine: String?
@@ -17,8 +15,8 @@ struct NowPlayingBar: View {
     let volume: Float
     let isMuted: Bool
     let repeatMode: BridgeRepeatMode
-    /// Playing-context shuffle state: `true`/`false` when a context is playing,
-    /// `nil` when there is none — which disables the shuffle button.
+    /// The playing context's shuffle state; `nil` with no context, which
+    /// disables the shuffle button.
     let shuffled: Bool?
     let showQueue: Bool
     let onPlayPause: () -> Void
@@ -34,8 +32,7 @@ struct NowPlayingBar: View {
     let onDropToQueue: ([String]) -> Void
     let onNavigateToAlbum: () -> Void
     let queueAddPublisher: AnyPublisher<Int, Never>
-    /// The Cast control, injected by the container (it reads the cast
-    /// environment); an empty view in previews.
+    /// The Cast control from the container; an empty view in previews.
     let castControl: AnyView
 
     @State
@@ -54,9 +51,8 @@ struct NowPlayingBar: View {
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 22)
-        // Docked strip: the bar sits in the window's bottom row (below the
-        // content and the queue column), so nothing scrolls beneath it — a
-        // flat surface under the Divider above, no card chrome.
+        // Docked in the window's bottom row, so a flat surface with no card
+        // chrome.
         .background(Theme.surface)
     }
 
@@ -69,7 +65,7 @@ struct NowPlayingBar: View {
                     albumArt
                         .frame(width: 54, height: 54)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
+                        .shadow(color: Theme.shadow, radius: 8, y: 4)
                         .accessibilityLabel("Album art")
                 }
                 .buttonStyle(.plain)
@@ -154,9 +150,8 @@ struct NowPlayingBar: View {
         .accessibilityLabel(repeatHelp)
     }
 
-    /// Shuffle/repeat share the same 30pt slot: accent glyph on a soft accent
-    /// fill when active, secondary otherwise (hover brightening supplied by
-    /// `IconHoverButtonStyle`).
+    /// The slot shuffle and repeat share: an accent glyph on an accent fill
+    /// when active.
     @ViewBuilder
     private func toggleLabel(_ systemName: String, active: Bool) -> some View {
         let glyph = Image(systemName: systemName)
@@ -259,7 +254,7 @@ extension NowPlayingBar {
             RoundedRectangle(cornerRadius: 8)
                 .fill(
                     queueButtonDropTargeted
-                        ? Theme.accent.opacity(0.3) : Color.clear
+                        ? Theme.accentStrong : Color.clear
                 ),
         )
         .scaleEffect(queueButtonDropTargeted ? 1.15 : 1.0)
@@ -321,8 +316,8 @@ extension NowPlayingBar {
         .accessibilityLabel(isMuted ? "Unmute" : "Mute")
     }
 
-    /// The rendered volume level chooses the speaker glyph: silenced when muted
-    /// or at zero, one wave up to the midpoint, two above it.
+    /// The speaker glyph for the volume: silenced when muted or at zero, one
+    /// wave up to 0.55, two above it.
     fileprivate var muteIconName: String {
         if isMuted || volume == 0 {
             return "speaker.slash.fill"
@@ -334,7 +329,7 @@ extension NowPlayingBar {
 #if DEBUG
     // MARK: - Previews
 
-    /// Preview host that supplies track metadata and a complete timeline.
+    /// Preview host that holds the queue, volume, and mute state.
     private struct NowPlayingBarPreview: View {
         let trackTitle: String?
         let artistNames: String?
@@ -383,8 +378,8 @@ extension NowPlayingBar {
     }
 
     extension View {
-        /// The transport the bar reads its seek position off. A quarter of the
-        /// way through a track, or the reset an empty bar shows.
+        /// The seek position the bar reads: a quarter through a track, or the
+        /// empty reset.
         @MainActor
         func nowPlayingPreviewTransport(playing: Bool) -> some View {
             self

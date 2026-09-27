@@ -1,19 +1,14 @@
 import BaeKit
 import SwiftUI
 
-/// The folder the pane is about, at the top of it: what it is called on disk
-/// on disk. It leads the pane because it is the one fact
-/// nothing below can change — the release, the metadata and the mapping are
-/// all readings of this folder.
-///
-/// The name is selectable (a path is something people copy) and the glyph
-/// beside it is the control that shows the folder in Finder.
+/// The folder the pane is about: the queue tab it is on, which goes there, a
+/// glyph that reveals it in Finder, and its selectable name.
 struct CandidateFolderLine: View {
     /// The tab the queue places the folder on. `nil` for a folder the queue
     /// does not hold.
     let tab: BridgeTriageTab?
     let folderName: String
-    /// The folder on disk — what the glyph reveals.
+    /// The paths the folder glyph reveals in Finder.
     let folderPaths: [String]
     let onNavigateToPlacement: () -> Void
 
@@ -34,7 +29,7 @@ struct CandidateFolderLine: View {
                         .lineLimit(1)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(Theme.accent.opacity(0.14), in: Capsule())
+                        .background(Theme.accentSoft, in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Theme.accent)

@@ -38,17 +38,14 @@ struct LibrarySearchField: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 36)
-        // A sunken well like the section control's; the accent edge appears
-        // only while the field has focus.
+        // A sunken well like the section control's.
         .background(
             RoundedRectangle(cornerRadius: 9)
                 .fill(Theme.well)
                 .overlay(
                     RoundedRectangle(cornerRadius: 9)
                         .strokeBorder(
-                            Theme.accent.opacity(
-                                focused.wrappedValue ? 0.6 : 0
-                            ),
+                            focused.wrappedValue ? Theme.accent : Color.clear,
                             lineWidth: 1
                         )
                 )
@@ -60,8 +57,7 @@ struct LibrarySearchField: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Owns the text and focus state the title bar normally provides — the
-    /// "With query" variant seeds text so the clear button shows.
+    /// Owns the text and focus state the title bar normally provides.
     private struct LibrarySearchFieldPreview: View {
         @State
         var text: String

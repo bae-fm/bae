@@ -1,26 +1,21 @@
 import BaeKit
 import SwiftUI
 
-/// The removal a track row offers: what the X is called, the sentence its
-/// tooltip says about what it does, and what it does.
+/// A track row's removal: its label, tooltip, and action.
 struct ImportMappingRowRemoval {
     let label: String
     let help: String
     let perform: () -> Void
 }
 
-/// The X at the far right of a track row that takes the row out of the list.
-/// Present in the layout whether or not it is offered — the slot never
-/// resizes — and hit-testable only while it is, so an unoffered X cannot be
-/// pressed by accident.
+/// The X at a track row's far right that removes the row. It always keeps its
+/// slot but can be pressed only while offered.
 struct ImportMappingRowRemovalButton: View {
     let removal: ImportMappingRowRemoval
-    /// Whether the row is offering the removal right now — while the pointer
-    /// is on the row.
+    /// Whether the row offers the removal now, while the pointer is on it.
     let offered: Bool
 
-    /// The X's own hover, distinct from the row's: it backs the ring that
-    /// marks the control as live before any press.
+    /// The X's own hover, which draws its highlight.
     @State
     private var hovering = false
 
@@ -39,7 +34,7 @@ struct ImportMappingRowRemovalButton: View {
                 )
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(Theme.accent.opacity(hovering ? 0.22 : 0))
+                        .fill(hovering ? Theme.accentStrong : Color.clear)
                 )
                 .contentShape(Rectangle())
         }

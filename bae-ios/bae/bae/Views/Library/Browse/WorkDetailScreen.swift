@@ -27,12 +27,12 @@ struct WorkDetailScreen: View {
                 )
                 .overlay(alignment: .top) {
                     if let error {
-                        Text(error).foregroundStyle(.red).padding(12)
+                        Text(error).foregroundStyle(Theme.danger).padding(12)
                     }
                 }
             }
             else if let error {
-                Text(error).foregroundStyle(.red).padding(32)
+                Text(error).foregroundStyle(Theme.danger).padding(32)
             }
             else {
                 ProgressView()
@@ -114,8 +114,7 @@ private struct WorkDetailContent: View {
     }
 }
 
-/// A work-summary row wrapped in a button that opens the work. Shared by the
-/// composer and work browse detail lists.
+/// A work-summary row that opens the work when tapped.
 struct WorkSummaryButton: View {
     let summary: BridgeWorkSummary
     let openWork: (String) -> Void

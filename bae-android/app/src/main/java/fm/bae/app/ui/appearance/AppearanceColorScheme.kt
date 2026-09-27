@@ -3,7 +3,7 @@ package fm.bae.app.ui.appearance
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 
 /** The Material colour scheme for the chosen appearance, from the shared theme. */
 fun appearanceColorScheme(
@@ -16,7 +16,7 @@ fun appearanceColorScheme(
     val inverseSemantics = semanticColors(!dark)
     val accentColors = preferences.accent.colors
     val accent = if (dark) accentColors.dark else accentColors.light
-    val onFilled = if (dark) surfaces.background else Color.White
+    val onFilled = if (dark) surfaces.background else semantics.onFill
     val base = if (dark) darkColorScheme() else lightColorScheme()
     return base.copy(
         primary = accent,
@@ -50,8 +50,8 @@ fun appearanceColorScheme(
         inverseSurface = inverseSurfaces.surface,
         inverseOnSurface = inverseSemantics.textPrimary,
         inversePrimary = if (dark) accentColors.light else accentColors.dark,
-        scrim = Color.Black,
-        errorContainer = surfaces.elevated,
+        scrim = semantics.scrim,
+        errorContainer = semantics.danger.copy(alpha = ThemeOpacity.tint).compositeOver(surfaces.surface),
         onErrorContainer = semantics.danger,
         error = semantics.danger,
         onError = onFilled,

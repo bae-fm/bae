@@ -1,11 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// Libraries already on this device — the primary "open" path. Each healthy
-/// row shows the library's name over its cloud provider and an Open button; a
-/// library whose config won't load shows as an amber warning with Show in
-/// Finder. Every row offers confirmed local deletion; an open library uses its
-/// settings removal flow so its live database handle can shut down first.
+/// Libraries on this device, each with Open (or a warning and Show in Finder
+/// when its config won't load) and Delete. The open library is removed from
+/// its settings instead, so its database can close first.
 struct LocalLibrariesSection: View {
     let libraries: [BridgeLibrary]
     let disabled: Bool
@@ -35,12 +33,7 @@ struct LocalLibrariesSection: View {
     }
 }
 
-/// One library row. Healthy and broken share the same shape — name line,
-/// caption line, trailing actions — so the column keeps a steady rhythm; only
-/// the broken row adds a leading warning glyph and swaps its tint. The branch
-/// is on the library's immutable `error`, not on any toggling `@State`, so it
-/// never re-measures at runtime (unlike the layout-stability opacity pattern the
-/// keychain rows need for their in-flight controls).
+/// One library row; a library that won't load adds a warning glyph and tint.
 private struct LibraryRow: View {
     let library: BridgeLibrary
     let disabled: Bool
@@ -54,7 +47,7 @@ private struct LibraryRow: View {
         HStack(spacing: 12) {
             if library.error != nil {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Theme.warning)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(library.name)
@@ -62,7 +55,7 @@ private struct LibraryRow: View {
                 if let error = library.error {
                     Text("Can't open: \(error)")
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Theme.warning)
                         .lineLimit(2)
                 }
                 else if let provider = library.cloudProvider {
@@ -97,8 +90,8 @@ private struct LibraryRow: View {
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            (library.error != nil ? Color.orange : Color.secondary)
-                .opacity(0.1)
+            (library.error != nil ? Theme.warning : Color.secondary)
+                .opacity(ThemeOpacity.tint)
         )
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .disabled(disabled)

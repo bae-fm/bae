@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A folder that looked like a release but failed validation. Shows a warning
-/// icon and the reason; it has no Skip action and no detail pane (selecting it
-/// is a no-op — its key isn't a real candidate).
+/// A folder that looked like a release but failed validation, shown with the
+/// reason. It is not a real candidate, so it has no Skip action or detail pane.
 struct InvalidCandidateRow: View {
     let displayName: String
     let reason: BridgeInvalidReason
@@ -13,7 +12,7 @@ struct InvalidCandidateRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle")
-                .foregroundStyle(.orange)
+                .foregroundStyle(Theme.warning)
                 .frame(width: 16)
             VStack(alignment: .leading, spacing: 2) {
                 Text(displayName)

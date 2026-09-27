@@ -1,9 +1,7 @@
 import SwiftUI
 
-/// How much a notice asks of the person, and the colour that says it: a fact
-/// worth knowing, something to act on before going further, or a failure.
-/// Every tinted notice draws from here, so the three read the same wherever
-/// they appear.
+/// How much a notice asks of the person: a fact worth knowing, something to
+/// act on before going further, or a failure.
 public enum NoticeTone: Sendable {
     case info
     case warning
@@ -12,15 +10,15 @@ public enum NoticeTone: Sendable {
     /// The icon, title and outline colour.
     public var tint: Color {
         switch self {
-        case .info: .blue
-        case .warning: .orange
-        case .error: .red
+        case .info: Theme.info
+        case .warning: Theme.warning
+        case .error: Theme.danger
         }
     }
 
     /// The notice's fill: the tint, faint enough for text to sit on it.
     public var fill: Color {
-        tint.opacity(0.1)
+        tint.opacity(ThemeOpacity.tint)
     }
 }
 

@@ -64,7 +64,7 @@ struct ApproveDeviceView: View {
                 DeviceJoinProgressView(admitting: progress)
                 if let error {
                     Text(error)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.danger)
                         .font(.caption)
                 }
             }
@@ -104,7 +104,7 @@ struct ApproveDeviceView: View {
 
             if let error {
                 Text(error)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .font(.callout)
                 Button("Try again") {
                     self.error = nil
@@ -142,7 +142,7 @@ struct ApproveDeviceView: View {
 
             if let error {
                 Text(error)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .font(.caption)
             }
 

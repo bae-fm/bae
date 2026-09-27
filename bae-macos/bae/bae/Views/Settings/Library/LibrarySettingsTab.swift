@@ -5,7 +5,7 @@ import os.log
 private let logger = Logger.bae("LibrarySettings")
 
 struct LibrarySettingsTab: View {
-    /// Remove the active library from this device. Implemented by AppDelegate.
+    /// Removes the active library from this device.
     let onForgetLibrary: () -> Void
 
     @Environment(Sync.self)
@@ -55,12 +55,8 @@ struct LibrarySettingsTab: View {
             }
 
             Section("Sync") {
-                // The failure banner belongs to a configured provider: it offers
-                // to retry that provider's connection, which is meaningless with
-                // no provider to retry. The recorded sync error outlives a
-                // disconnect (nothing clears it once the loop is gone), so
-                // rendering it on error alone would leave a stale banner over the
-                // set-up button. iOS and Android already gate it this way.
+                // The banner only shows with a configured provider, since the
+                // recorded sync error outlives a disconnect.
                 if let syncConfig = configStore.config.sync {
                     SyncErrorBanner(
                         onReconnect: reconnectSync,
@@ -136,13 +132,8 @@ struct LibrarySettingsTab: View {
         #endif
     }
 
-    /// Retry the provider the library is already configured for. The library
-    /// keeps its provider config and its keyring credentials through a failure,
-    /// so a failed sync is retried, never set up again.
-    ///
-    /// A failed retry is recorded as the sync-status error, which is what
-    /// `SyncErrorBanner` renders — it re-appears naming the new reason, so the
-    /// failure's display path is the banner the user pressed the button in.
+    /// Retries the configured provider; a failure shows up in `SyncErrorBanner`
+    /// through the sync status.
     private func reconnectSync() async {
         do {
             try await sync.reconnectSync()
@@ -182,10 +173,7 @@ struct LibrarySettingsTab: View {
         showSyncSetup = false
     }
 
-    /// Section footer for the remove-library control. A synced library's cloud
-    /// copy survives and can be restored; a never-synced library's catalog is
-    /// gone for good, though the audio files bae indexed in place are left
-    /// alone.
+    /// The remove section's footer, which depends on whether the library syncs.
     private var removeFooter: String {
         if configStore.config.hasCloudHome {
             return String(
@@ -207,12 +195,9 @@ struct LibrarySettingsTab: View {
     }
 }
 
-/// The connected-provider controls in the Sync section: the provider details
-/// and the disconnect flow. Split into its own view so it can seed the shared
-/// `DisconnectSyncFlow` as `@State` from the sync service and library id —
-/// values a parent can't read at `@State` init time because they come from the
-/// environment. macOS's base confirmation sentence omits iOS's "pair from
-/// another device" note because it has a reconnect flow.
+/// The connected provider's details and disconnect flow, a separate view so it
+/// can build its `DisconnectSyncFlow` from values the parent reads from the
+/// environment.
 private struct ConnectedProviderControls: View {
     let config: BridgeSyncConfig
 
@@ -275,7 +260,7 @@ private struct ConnectedProviderControls: View {
 
             if let error = flow.error {
                 Text(error)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .font(.callout)
             }
         }
@@ -291,14 +276,9 @@ private struct ConnectedProviderControls: View {
     }
 }
 
-/// The "Recovery" section: reveals the library's recovery code on demand. The
-/// recovery code is a bearer credential — anyone holding it gains full access —
-/// so it's kept behind a button and labelled as sensitive, used only to restore
-/// on a new device when no existing device is available to approve a join. The
-/// sheet's `.task` owns the generation lifecycle: it fires on appear and is
-/// cancelled automatically when the sheet dismisses, which propagates through
-/// to the underlying Rust future since `generate` is a genuine uniffi async
-/// call.
+/// The "Recovery" section, which shows the recovery code behind a button
+/// because anyone holding it gets full access. Dismissing the sheet cancels
+/// the generation.
 private struct RecoveryCodeSection: View {
     let generate: @Sendable () async throws -> String
 
@@ -330,9 +310,6 @@ private struct RecoveryCodeSection: View {
 
     private func runGenerate() async {
         do {
-            // generateRestoreCode is a genuine uniffi async call: it suspends
-            // without blocking a thread, and cancelling this task propagates
-            // through to the underlying Rust future.
             let code = try await generate()
             result = .success(code)
         }
@@ -343,10 +320,7 @@ private struct RecoveryCodeSection: View {
             logger.error(
                 "Failed to generate recovery code: \(error.localizedDescription)"
             )
-            // A failure core says has no line is a cancellation reported from
-            // its side rather than Swift's, and the arm above already decided
-            // that a cancelled generation leaves the sheet on its spinner
-            // instead of flipping it to an error with nothing in it.
+            // No line means core reported a cancellation; keep the spinner.
             guard DisplayError(error) != nil else { return }
             result = .failure(error)
         }

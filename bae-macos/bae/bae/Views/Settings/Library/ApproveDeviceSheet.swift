@@ -4,9 +4,8 @@ import os.log
 
 private let logger = Logger.bae("ApproveDevice")
 
-/// Owner-side flow for adding a device. It displays the only pairing code,
-/// waits for the joining device's signed identity, and admits that exact device
-/// after the owner reviews it.
+/// The owner's side of adding a device: shows the pairing code, waits for the
+/// joining device, and admits it once the owner approves.
 struct ApproveDeviceSheet: View {
     let sync: Sync
     let onDismiss: () -> Void
@@ -71,7 +70,7 @@ struct ApproveDeviceSheet: View {
                 DeviceJoinProgressView(admitting: progress)
                 if let error {
                     Text(error)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.danger)
                         .font(.caption)
                 }
             }
@@ -109,7 +108,7 @@ struct ApproveDeviceSheet: View {
 
             if let error {
                 Text(error)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .font(.caption)
                 Button("Try again") {
                     self.error = nil
@@ -148,7 +147,7 @@ struct ApproveDeviceSheet: View {
 
             if let error {
                 Text(error)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .font(.caption)
             }
 

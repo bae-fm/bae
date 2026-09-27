@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// One release track's editable metadata columns. Source evidence and context
-/// actions are supplied by the surrounding table.
+/// One release track's editable metadata columns; the table around it supplies
+/// the source and actions.
 struct ReleaseMetadataTrackRow: View {
     let track: BridgeRawTrackEdit
     let duration: String
@@ -48,7 +48,7 @@ struct ReleaseMetadataTrackRow: View {
                 .accessibilityValue(duration)
                 .foregroundStyle(
                     durationDiverges
-                        ? AnyShapeStyle(.orange) : AnyShapeStyle(.primary)
+                        ? AnyShapeStyle(Theme.warning) : AnyShapeStyle(.primary)
                 )
                 .help(
                     durationDiverges ? String(localized: "Lengths differ") : ""
@@ -107,8 +107,7 @@ struct ReleaseMetadataTrackRow: View {
     }
 }
 
-/// Width contract shared by candidate, completed-import, and Library release
-/// metadata tables.
+/// Column widths shared by every release metadata table.
 struct ReleaseMetadataTrackColumns {
     let source: CGFloat
     let title: CGFloat

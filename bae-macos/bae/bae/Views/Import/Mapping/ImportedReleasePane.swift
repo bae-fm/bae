@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A completed import rendered from the persisted release edit projection and
-/// the source-folder evidence that produced it. It has no candidate mutation
-/// callbacks.
+/// A completed import: the saved release's editable metadata, with the source
+/// folder's images and files. It cannot change the candidate.
 struct ImportedReleasePane: View {
     let candidate: Candidate
     let releaseId: String
@@ -79,7 +78,7 @@ struct ImportedReleasePane: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Label("Imported", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Theme.success)
                 Button("View in Library") { onViewInLibrary(albumId) }
                     .buttonStyle(.link)
                 Spacer(minLength: 12)
@@ -105,7 +104,7 @@ struct ImportedReleasePane: View {
             {
                 Label(message, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
             }
         }
     }
@@ -227,8 +226,7 @@ extension ImportedReleasePane {
     }
 }
 
-/// A claimed candidate remains visible while import runs, but nothing in this
-/// tree can revise the captured candidate revision.
+/// A candidate being imported, shown read-only while the import runs.
 struct ImportingCandidatePane: View {
     let candidate: Candidate
     let runtime: BridgeCandidateRuntimeSnapshot?

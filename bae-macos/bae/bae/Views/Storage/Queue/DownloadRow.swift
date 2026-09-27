@@ -41,10 +41,10 @@ struct DownloadRow: View {
                 "Downloading",
                 systemImage: "arrow.down.circle.fill"
             )
-            .foregroundStyle(.orange)
+            .foregroundStyle(Theme.activity)
         case .failed(let error):
             Label("Failed", systemImage: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.danger)
                 .help(error)
         }
     }

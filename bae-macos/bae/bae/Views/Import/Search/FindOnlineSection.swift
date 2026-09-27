@@ -48,9 +48,7 @@ enum FindOnlineSectionGlyph: Equatable {
         }
     }
 
-    /// Whether the glyph says the section has nothing to show: a collapsed
-    /// section reading this dims, so the open one beside it reads as the
-    /// place to look.
+    /// Whether the section has nothing to show, which dims it when collapsed.
     var isVacant: Bool {
         switch self {
         case .empty, .nothing: true
@@ -59,9 +57,8 @@ enum FindOnlineSectionGlyph: Equatable {
     }
 }
 
-/// One section's header row: the chevron saying whether it is open, the
-/// section's name in caps, and its status glyph at the right edge. Clicking
-/// a collapsed header opens the section and collapses the other.
+/// A section's header: its open-or-closed chevron, name, and status glyph.
+/// Clicking a collapsed header opens that section.
 struct FindOnlineSectionHeader: View {
     let section: BridgeFindOnlineSection
     let isOpen: Bool
@@ -82,7 +79,7 @@ struct FindOnlineSectionHeader: View {
             HStack(spacing: 8) {
                 Image(systemName: isOpen ? "chevron.down" : "chevron.right")
                     .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(Color.primary.opacity(dimmed ? 0.3 : 0.45))
+                    .foregroundStyle(dimmed ? .quaternary : .tertiary)
                     .frame(width: 8)
                 FindOnlineCapsLabel(
                     section == .automatic ? "Automatic" : "Search"
@@ -94,7 +91,7 @@ struct FindOnlineSectionHeader: View {
             .padding(.horizontal, 14)
             .frame(height: 32)
             .background(
-                Theme.hover.opacity(isHovered && !isOpen ? 0.5 : 0)
+                isHovered && !isOpen ? Theme.hover : Color.clear
             )
             .contentShape(Rectangle())
         }
@@ -108,8 +105,8 @@ struct FindOnlineSectionHeader: View {
     }
 }
 
-/// The glyph itself, 12 points square. Every case stays the same size so the
-/// header holds still as a run goes from spinning to settled.
+/// The status glyph, at least 12 points square so the header holds still as
+/// it changes.
 struct FindOnlineSectionGlyphView: View {
     let glyph: FindOnlineSectionGlyph
 
@@ -127,10 +124,10 @@ struct FindOnlineSectionGlyphView: View {
             case .failed:
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 11))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Theme.warning)
             case .nothing:
                 RoundedRectangle(cornerRadius: 1)
-                    .fill(Color.primary.opacity(0.28))
+                    .fill(Theme.hairlineStrong)
                     .frame(width: 8, height: 1.5)
             }
         }

@@ -1,10 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// One row in an album's track list. Its single leading slot carries the track
-/// number and everything that stands in for it — hover play/pause, playing
-/// speaker, loading spinner — all kept in the layout tree and opacity-toggled so
-/// the row's intrinsic size never changes and sibling rows don't re-measure.
+/// One row in an album's track list.
 struct TrackRowView: View {
     @Environment(UiStore.self)
     private var uiStore
@@ -30,11 +27,8 @@ struct TrackRowView: View {
     var body: some View {
         let isCurrentPlaying = isCurrent && isPlaying
         HStack(spacing: 14) {
-            // One leading slot carries the track number and everything that
-            // stands in for it — the hover play/pause, the playing speaker,
-            // the loading spinner. All stay in the layout tree, opacity-
-            // toggled, so the row's intrinsic size never changes and sibling
-            // rows don't re-measure.
+            // Every leading-slot state stays in the layout, opacity-toggled,
+            // so the row's size never changes.
             ZStack {
                 trackNumberLabel
                     .font(.system(size: 13, weight: .medium).monospacedDigit())
@@ -89,27 +83,23 @@ struct TrackRowView: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.primary.opacity(isHovered ? 0.05 : 0))
+                    .fill(isHovered ? Theme.hover : Color.clear)
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Theme.accent.opacity(highlightOpacity))
             }
         )
-        // The row chrome (the hover fill) bleeds past the text column so the
-        // content stays aligned with the header block above the list.
+        // The hover fill bleeds past the text column so the text stays aligned
+        // with the header above the list.
         .padding(.horizontal, -10)
-        // Keyed on the flash's `seq` (not a subject) for the same reason the
-        // grid scroll is: navigating here can remount this row, and durable
-        // state survives that where a one-shot emit would be lost. Re-fires when
-        // seq changes (repeat navigation). Independent of the grid-scroll
-        // consumer sharing the same navigateToAlbum call — each clears only its
-        // own pending command, so one consumer can't starve the other.
+        // Keyed on the flash's `seq` so a remounted row still sees the flash
+        // and a repeat navigation fires it again.
         .task(id: uiStore.pendingTrackFlash?.seq) {
             guard let flash = uiStore.pendingTrackFlash,
                 flash.trackId == track.id
             else {
                 return
             }
-            highlightOpacity = 0.3
+            highlightOpacity = ThemeOpacity.tintStrong
             withAnimation(.easeOut(duration: 3)) {
                 highlightOpacity = 0
             }
@@ -182,7 +172,7 @@ struct TrackRowView: View {
                     position: "1"
                 )
             )
-            // Current + playing (pause glyph, accent title, speaker when unhovered).
+            // Current + playing.
             previewTrackRow(
                 track: PreviewData.previewTrack(
                     title: "Track Title",
@@ -200,7 +190,7 @@ struct TrackRowView: View {
                 isCurrent: true,
                 isPlaying: false
             )
-            // Loading (spinner in the leading slot).
+            // Loading.
             previewTrackRow(
                 track: PreviewData.previewTrack(
                     title: "Track Title",

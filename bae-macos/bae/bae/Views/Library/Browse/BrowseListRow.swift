@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// One master-list row in the composer/artist browser. The summary may not be
-/// loaded yet, so the row keeps both a shimmer placeholder and the real content
-/// in the layout tree, opacity-swapped, and disables selection until the summary
-/// arrives.
+/// One master-list row in the composer/artist browser; until its summary loads
+/// it shows a placeholder and cannot be selected.
 struct BrowseListRow<Summary: BrowseSummaryDisplay>: View {
     @Environment(LibraryStore.self)
     private var libraryStore
@@ -45,13 +43,12 @@ struct BrowseListRow<Summary: BrowseSummaryDisplay>: View {
         .onHover { isHovered = $0 }
     }
 
-    /// Selected rows carry the soft accent fill and keep it under hover; an
-    /// unselected row lifts to a faint foreground wash while hovered.
+    /// A selected row keeps its accent fill under hover.
     private var rowFill: Color {
         if isSelected {
             return Theme.accentSoft
         }
-        return isHovered ? Color.primary.opacity(0.04) : .clear
+        return isHovered ? Theme.hover : .clear
     }
 }
 
@@ -88,14 +85,14 @@ private struct SummaryRowPlaceholder: View {
     var body: some View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 6)
-                .fill(.secondary.opacity(0.15))
+                .fill(Theme.placeholder)
                 .frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: 5) {
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(.secondary.opacity(0.15))
+                    .fill(Theme.placeholder)
                     .frame(width: 140, height: 11)
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(.secondary.opacity(0.12))
+                    .fill(Theme.placeholder)
                     .frame(width: 80, height: 10)
             }
             Spacer(minLength: 0)
@@ -119,7 +116,7 @@ private struct SummaryRowPlaceholder: View {
                 summaries: \.composerSummaries,
                 select: { _ in }
             )
-            // Not in the store: renders the shimmer placeholder.
+            // Not in the store: renders the placeholder.
             BrowseListRow(
                 id: "composer-unloaded",
                 isSelected: false,

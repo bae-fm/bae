@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A slim, knobless slider for the now-playing bar's volume: a 5pt capsule
-/// track inside a taller hit area. Click and drag both set the value in 0…1
-/// through `onChange`. `value` is store-driven — the parent passes the rendered
-/// volume and re-renders when it changes, so the control keeps no copy.
+/// A knobless volume slider; it keeps no copy of `value` and reports clicks
+/// and drags through `onChange`.
 struct SlimSlider: View {
     let value: Float
     let onChange: (Float) -> Void
@@ -16,7 +14,7 @@ struct SlimSlider: View {
             let width = geo.size.width
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.primary.opacity(0.10))
+                    .fill(Theme.hairline)
                     .frame(height: 5)
                 Capsule()
                     .fill(Theme.accent)
@@ -55,8 +53,7 @@ struct SlimSlider: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Holds the value the way the now-playing bar does — the control keeps no
-    /// copy, so dragging updates the host's state and re-renders the fill.
+    /// Holds the value the way the now-playing bar does.
     private struct SlimSliderPreview: View {
         @State
         var value: Float

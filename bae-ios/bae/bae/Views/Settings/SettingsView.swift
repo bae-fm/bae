@@ -4,8 +4,7 @@ import os.log
 
 private let logger = Logger.bae("Settings")
 
-/// Device appearance, playback, casting, and library settings.
-/// Presented as a sheet from LibraryView.
+/// Appearance, library, sync, playback, and casting settings.
 struct SettingsView: View {
     @Environment(ConfigStore.self)
     private var configStore
@@ -24,8 +23,7 @@ struct SettingsView: View {
     @Environment(\.dismiss)
     private var dismiss
 
-    // Mobile defaults to restoring: the app resumes where playback left off
-    // unless the user turns this off. Read at the next initApp (app launch).
+    // On by default; read at the next app launch.
     @AppStorage("persistPlayback")
     private var persistPlayback = true
 
@@ -52,18 +50,18 @@ struct SettingsView: View {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(library.name)
-                                        // A library whose config won't load stays
-                                        // listed — it must not silently vanish.
+                                        // A library whose config won't load
+                                        // stays listed with its error.
                                         if let error = library.error {
                                             Text(error)
                                                 .font(.caption)
-                                                .foregroundStyle(.red)
+                                                .foregroundStyle(Theme.danger)
                                                 .lineLimit(2)
                                         }
                                     }
                                     Spacer()
-                                    // Always in the tree; toggle visibility so an
-                                    // active-state change doesn't re-measure rows.
+                                    // Hidden, not removed, so switching
+                                    // libraries doesn't re-measure rows.
                                     Image(systemName: "checkmark")
                                         .foregroundStyle(Theme.accent)
                                         .opacity(holder.isActive(library) ? 1 : 0)
@@ -137,10 +135,8 @@ struct SettingsView: View {
                     )
                 }
 
-                // Managing members and revealing the recovery code both need a
-                // live sync session this run (the membership chain lives in the
-                // library's cloud storage), so gate on syncReady — runtime status
-                // — not merely a configured provider.
+                // Members and the recovery code need a live sync session, not
+                // only a configured provider.
                 if syncStatusStore.syncReady {
                     Section {
                         NavigationLink {
@@ -242,9 +238,8 @@ struct SettingsView: View {
         }
     }
 
-    /// Reads the persisted setting and writes through the bridge — the config
-    /// subscription is what moves the switch, so a refused or cancelled flip
-    /// leaves it where it was with nothing to undo.
+    /// Only the config subscription moves the switch, so a refused flip leaves
+    /// it where it was.
     private var castEnabledBinding: Binding<Bool> {
         Binding(
             get: { configStore.config.castEnabled },
@@ -273,11 +268,9 @@ struct SettingsView: View {
     }
 }
 
-/// The connected-provider controls in the Sync section: provider details, the
-/// disconnect flow, the live sync status rows, and the upload-pause toggle.
-/// Split into its own view so it can seed the `DisconnectSyncFlow` model as
-/// `@State` from the sync service and library id — values a parent can't read at
-/// `@State` init time because they come from the environment.
+/// The Sync section's controls for a connected provider, in its own view so its
+/// init can seed `DisconnectSyncFlow` from values the parent reads from the
+/// environment.
 private struct SyncConnectedControls: View {
     let config: BridgeSyncConfig
 
@@ -363,9 +356,7 @@ private struct SyncConnectedControls: View {
                 Text(syncError.line)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                // The line above names a category; this names the fault. Without
-                // it a failing cycle reads as "Something went wrong." and the
-                // reason lives only in the device log.
+                // The fault behind the category line above.
                 if let fault = syncError.detailSummary {
                     Text(fault)
                         .font(.caption2.monospaced())
@@ -402,7 +393,7 @@ private struct SyncConnectedControls: View {
 
             if let error = flow.error {
                 Text(error)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .font(.callout)
             }
         }
@@ -421,15 +412,8 @@ private struct SyncConnectedControls: View {
         .onDisappear { flow.cancelWarningTask() }
     }
 
-    /// Retry the provider this library is already configured for. The provider
-    /// config and its keyring credentials survive a failure, so a failed sync is
-    /// retried rather than set up again — and unlike a bare sync wake, this also
-    /// connects when a failed launch left no connection to wake.
-    ///
-    /// A failed retry is recorded as the sync-status error, which is the
-    /// `syncStatusStore.error` line right above this button: it re-appears
-    /// naming the new reason, so the failure's display path is the row the user
-    /// tapped in.
+    /// Retry the configured provider, connecting if a failed launch left no
+    /// connection; a failed retry shows its reason in the status line above.
     private func reconnect() async {
         reconnecting = true
         do {
@@ -445,9 +429,7 @@ private struct SyncConnectedControls: View {
 }
 
 extension SettingsView {
-    /// The marketing version and build number from the app bundle, e.g.
-    /// "1.2 (345)". Both Info.plist keys are stamped by every build; a missing
-    /// one is a packaging bug and fails loud.
+    /// The app's version and build, e.g. "1.2 (345)"; every build stamps both.
     fileprivate static var appVersion: String {
         let info = Bundle.main
         guard

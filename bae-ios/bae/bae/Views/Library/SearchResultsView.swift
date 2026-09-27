@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Library search results. Album and track rows open album detail; artist,
-/// composer, and work rows navigate to their bridge ids.
-/// Iterates and renders only — the search call and the bridge→model mapping
-/// live in the data layer (`Library.searchLibrary` / `SearchResults`).
+/// Library search results; album and track rows open album detail, and the
+/// other rows open their own screens.
 struct SearchResultsView: View {
     let results: SearchResults?
     let error: String?
@@ -15,7 +13,7 @@ struct SearchResultsView: View {
 
     var body: some View {
         if let error {
-            centered(Text(error).foregroundStyle(.red))
+            centered(Text(error).foregroundStyle(Theme.danger))
         }
         else if let results {
             if results.albums.isEmpty, results.artists.isEmpty,

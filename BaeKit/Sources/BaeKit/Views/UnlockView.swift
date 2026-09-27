@@ -3,8 +3,7 @@ import SwiftUI
 public struct UnlockView: View {
     public let libraryName: String
     public let onUnlock: @MainActor (String) async throws -> Void
-    /// Back out without unlocking — returns to wherever the unlock was entered
-    /// from (the welcome chooser, or the previously-open library on a switch).
+    /// Back out to wherever the unlock was entered from.
     public let onCancel: () -> Void
 
     public init(
@@ -73,7 +72,7 @@ public struct UnlockView: View {
             }
             if let error {
                 Text(error)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .font(.callout)
             }
             Spacer()

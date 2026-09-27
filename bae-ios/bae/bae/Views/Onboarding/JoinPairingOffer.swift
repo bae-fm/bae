@@ -33,19 +33,17 @@ struct JoinPairingOffer: View {
                     LabeledContent("Provider", value: offer.cloudProvider.displayName)
                     if offer.needsOauth && !oauthProvidersAvailable {
                         Text("This library uses a provider this build can't connect to.")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.danger)
                             .font(.callout)
                     }
                 }
-                // Unwrapped in the pattern rather than defaulted to "": a
-                // decode is a synchronous parse, so core never reports it as a
-                // cancellation and a line is always there — and if that
-                // changed, this shows nothing rather than a blank red line.
+                // A decode never reports a cancellation, so a line is always
+                // there; if not, this shows nothing instead of a blank error.
                 else if case .failure(let decodeError) = decodedOffer,
                     let line = decodeError.displayLine
                 {
                     Text(line)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.danger)
                         .font(.callout)
                 }
             }
@@ -58,7 +56,7 @@ struct JoinPairingOffer: View {
             if let error {
                 Section {
                     Text(error)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.danger)
                         .font(.callout)
                 }
             }

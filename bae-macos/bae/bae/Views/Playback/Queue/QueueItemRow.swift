@@ -1,11 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// One loaded queue row: cover art (with a hover play overlay), title/artist/album, and
-/// a duration that swaps for a remove button on hover. It has no state of its
-/// own beyond the remove button's own hover; the row hover is the section's
-/// (only one row is ever hovered at a time), flowing in and back out via
-/// `isHovered`/`onHoverChanged`.
+/// One loaded queue row: cover art with a hover play overlay, title, artist,
+/// album, and a duration that swaps for a remove button on hover. The section
+/// owns the row hover and passes it through `isHovered`/`onHoverChanged`.
 struct QueueItemRow: View {
     let item: QueueItem
     let isHovered: Bool
@@ -13,8 +11,7 @@ struct QueueItemRow: View {
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
 
-    /// The remove X's own hover, distinct from the row's: it backs the ring
-    /// that marks the control as live before any press.
+    /// The remove button's own hover, which fills its background.
     @State
     private var removeHovered = false
 
@@ -38,11 +35,8 @@ struct QueueItemRow: View {
 
             Spacer()
 
-            // The duration swaps for the remove X on row hover, in one fixed
-            // slot (opacity toggles, never conditional inclusion) so the row
-            // can't resize. Safe now that hover is identity-based: a row
-            // sliding under a stationary pointer claims the hover itself, so
-            // the X is present exactly when the pointer is on the row.
+            // The duration and the remove button share one slot and toggle by
+            // opacity so the row never resizes.
             ZStack {
                 Text(item.durationLabel)
                     .font(
@@ -56,14 +50,13 @@ struct QueueItemRow: View {
                         .foregroundStyle(
                             removeHovered ? Theme.accent : .secondary
                         )
-                        // Same small glyph, comfortable click target.
+                        // A larger click target than the glyph.
                         .frame(width: 28, height: 28)
                         .background(
                             RoundedRectangle(cornerRadius: 7)
                                 .fill(
-                                    Theme.accent.opacity(
-                                        removeHovered ? 0.22 : 0
-                                    )
+                                    removeHovered
+                                        ? Theme.accentStrong : Color.clear
                                 )
                                 .frame(width: 24, height: 24)
                         )
@@ -78,11 +71,11 @@ struct QueueItemRow: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        // Hover chrome toggles by fill only — rows stay uniform height, which
-        // the drag coordinator's row-pitch math depends on.
+        // Hover toggles only the fill: the drag coordinator's slot math needs
+        // every row at the same height.
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color.primary.opacity(isHovered ? 0.06 : 0))
+                .fill(isHovered ? Theme.hover : Color.clear)
         )
         .contentShape(Rectangle())
         .onHover(perform: onHoverChanged)
@@ -96,8 +89,7 @@ struct QueueItemRow: View {
         }
     }
 
-    // The hover play overlay stays in the tree and toggles by opacity/hit-testing
-    // so revealing it on hover doesn't resize the row and re-lay-out the lane.
+    // The play overlay toggles by opacity so showing it doesn't resize the row.
     private var artWithHoverOverlay: some View {
         ZStack {
             ImageView(imageRef: item.coverImage, pointSize: 48)
@@ -105,13 +97,13 @@ struct QueueItemRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
             RoundedRectangle(cornerRadius: 8)
-                .fill(.black.opacity(0.5))
+                .fill(Theme.scrim)
                 .frame(width: 48, height: 48)
                 .opacity(isHovered ? 1 : 0)
             Button(action: { onSkipTo(item.id) }) {
                 Image(systemName: "play.fill")
                     .font(.caption)
-                    .foregroundColor(.white)
+                    .foregroundStyle(Theme.onFill)
                     // The whole hovered cover is the target, not the glyph.
                     .frame(width: 48, height: 48)
                     .contentShape(Rectangle())
@@ -126,8 +118,7 @@ struct QueueItemRow: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Hosts the row's own hover so the "Hovered" variant shows the remove X and
-    /// the play overlay the section normally toggles.
+    /// Holds the hover the section normally owns.
     private struct QueueItemRowPreview: View {
         let item: QueueItem
         @State
@@ -147,9 +138,8 @@ struct QueueItemRow: View {
         }
     }
 
-    // The environment lives on the #Preview root (not inside QueueItemRowPreview's
-    // body) so the missing-environment audit, which only reads the preview
-    // closure's modifier chain, can see it.
+    // The environment sits on the #Preview root because the missing-environment
+    // audit reads only the preview closure.
     #Preview("Resting") {
         QueueItemRowPreview(item: PreviewData.queueItems[0], isHovered: false)
             .environment(ImageStore.stub())

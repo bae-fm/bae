@@ -1,7 +1,8 @@
+import BaeKit
 import SwiftUI
 
-/// Placeholder shown for a row whose page hasn't loaded yet. Only the first
-/// column carries the standing bar; the rest stay empty.
+/// A not-yet-loaded row's cell: a placeholder bar in the album column, empty
+/// elsewhere.
 struct StorageRowPlaceholderCell: View {
     let column: StorageTableColumn
 
@@ -9,7 +10,7 @@ struct StorageRowPlaceholderCell: View {
         Group {
             if column == .album {
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(Color.gray.opacity(0.15))
+                    .fill(Theme.placeholder)
                     .frame(height: 14)
             }
             else {

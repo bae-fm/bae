@@ -23,23 +23,14 @@ pub fn swift(theme: &Theme) -> String {
         theme.accents.iter().map(|accent| accent.name.as_str()),
     );
 
-    let surfaces = &theme.tones[0].surfaces.light;
-    roles_struct(
-        &mut out,
-        "One tone's surfaces in one appearance.",
-        "ToneSurfaces",
-        surfaces,
-    );
+    out.push_str("\n/// One tone's surfaces in one appearance.\nstruct ToneSurfaces: Sendable {\n");
+    for role in theme.tones[0].surfaces.light.keys() {
+        let _ = writeln!(out, "    let {role}: Color");
+    }
     out.push_str(
-        "\n/// One accent's colours: text and glyphs in each appearance, and the\n\
+        "}\n\n/// One accent's colours: text and glyphs in each appearance, and the\n\
          /// fill behind white button labels.\n\
          struct AccentColors: Sendable {\n    let dark: Color\n    let fill: Color\n    let light: Color\n}\n",
-    );
-    roles_struct(
-        &mut out,
-        "Colours that mean the same in every tone, in one appearance.",
-        "SemanticColors",
-        &theme.semantics.light,
     );
 
     out.push_str(
@@ -71,32 +62,71 @@ pub fn swift(theme: &Theme) -> String {
     out.push_str("        }\n    }\n}\n");
 
     out.push_str(
-        "\nextension SemanticColors {\n    static func of(dark: Bool) -> SemanticColors {\n        switch dark {\n",
+        "\n/// Colours that mean the same in every tone, each following the\n\
+         /// appearance it is drawn in.\nextension Theme {\n",
     );
-    for (dark, roles) in [
-        (false, &theme.semantics.light),
-        (true, &theme.semantics.dark),
-    ] {
-        let _ = writeln!(out, "        case {dark}:");
-        roles_value(&mut out, "SemanticColors", roles, 12);
+    for (role, light) in &theme.semantics.light {
+        let dark = theme.semantics.dark[role];
+        let _ = writeln!(
+            out,
+            "    public static let {role} = Color(\n        light: {},\n        dark: {}\n    )",
+            hex(*light),
+            hex(dark)
+        );
     }
-    out.push_str("        }\n    }\n}\n");
+    out.push_str("}\n");
 
     out.push_str(
-        "\nextension Color {\n\
-         \x20   fileprivate init(argb: UInt32) {\n\
-         \x20       self.init(\n\
-         \x20           .sRGB,\n\
-         \x20           red: Double((argb >> 16) & 0xFF) / 255,\n\
-         \x20           green: Double((argb >> 8) & 0xFF) / 255,\n\
-         \x20           blue: Double(argb & 0xFF) / 255,\n\
-         \x20           opacity: Double(argb >> 24) / 255\n\
-         \x20       )\n\
-         \x20   }\n\
-         }\n",
+        "\n/// How opaque a colour is laid over what is behind it.\npublic enum ThemeOpacity {\n",
     );
+    for (role, value) in &theme.opacity {
+        let _ = writeln!(out, "    public static let {role}: Double = {value:?}");
+    }
+    out.push_str("}\n");
+
+    out.push_str(COLOR_INITIALIZERS);
     out
 }
+
+/// Builds each colour from its bytes, and a semantic colour from its light
+/// and dark values through the platform's appearance-aware colour.
+const COLOR_INITIALIZERS: &str = "
+extension Color {
+    fileprivate init(argb: UInt32) {
+        self.init(
+            .sRGB,
+            red: Double((argb >> 16) & 0xFF) / 255,
+            green: Double((argb >> 8) & 0xFF) / 255,
+            blue: Double(argb & 0xFF) / 255,
+            opacity: Double(argb >> 24) / 255
+        )
+    }
+
+    fileprivate init(light: UInt32, dark: UInt32) {
+        #if canImport(AppKit)
+            self.init(
+                nsColor: NSColor(name: nil) { appearance in
+                    let isDark =
+                        appearance.bestMatch(from: [.aqua, .darkAqua])
+                        == .darkAqua
+                    return NSColor(Color(argb: isDark ? dark : light))
+                }
+            )
+        #else
+            self.init(
+                uiColor: UIColor { traits in
+                    UIColor(
+                        Color(
+                            argb: traits.userInterfaceStyle == .dark
+                                ? dark : light
+                        )
+                    )
+                }
+            )
+        #endif
+    }
+}
+";
 
 fn choice_enum<'a>(out: &mut String, name: &str, cases: impl Iterator<Item = &'a str>) {
     let _ = writeln!(
@@ -109,14 +139,6 @@ fn choice_enum<'a>(out: &mut String, name: &str, cases: impl Iterator<Item = &'a
     out.push_str("}\n");
 }
 
-fn roles_struct(out: &mut String, doc: &str, name: &str, roles: &Roles) {
-    let _ = writeln!(out, "\n/// {doc}\nstruct {name}: Sendable {{");
-    for role in roles.keys() {
-        let _ = writeln!(out, "    let {role}: Color");
-    }
-    out.push_str("}\n");
-}
-
 /// An initializer call with one colour argument per role, one per line.
 fn roles_value(out: &mut String, name: &str, roles: &Roles, indent: usize) {
     let pad = " ".repeat(indent);
@@ -124,15 +146,12 @@ fn roles_value(out: &mut String, name: &str, roles: &Roles, indent: usize) {
     let last = roles.len() - 1;
     for (index, (role, colour)) in roles.iter().enumerate() {
         let comma = if index == last { "" } else { "," };
-        let _ = writeln!(out, "{pad}    {role}: {}{comma}", color(*colour));
+        let _ = writeln!(out, "{pad}    {role}: Color(argb: {}){comma}", hex(*colour));
     }
     let _ = writeln!(out, "{pad})");
 }
 
-fn color(colour: Argb) -> String {
-    format!(
-        "Color(argb: 0x{:04X}_{:04X})",
-        colour.0 >> 16,
-        colour.0 & 0xFFFF
-    )
+/// The colour's bytes as a Swift literal, grouped by four digits.
+fn hex(colour: Argb) -> String {
+    format!("0x{:04X}_{:04X}", colour.0 >> 16, colour.0 & 0xFFFF)
 }

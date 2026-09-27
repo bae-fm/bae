@@ -5,11 +5,8 @@ import os.log
 
 private let logger = Logger.bae("QRScanner")
 
-/// Live camera QR-code scanner. Requests camera access on appear, runs an
-/// `AVCaptureSession` feeding camera frames to Vision, and calls `onScan`
-/// with the first decoded payload. When the camera is unavailable or access is
-/// denied it renders an explanatory placeholder instead — every caller also
-/// offers a paste fallback, so a missing camera is never a dead end.
+/// A live camera QR-code scanner that calls `onScan` with the first decoded
+/// code, or explains why the camera isn't available.
 struct QRScannerView: View {
     let onScan: (String) -> Void
 
@@ -69,7 +66,7 @@ struct QRScannerView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.secondary.opacity(0.1))
+        .background(Color.secondary.opacity(ThemeOpacity.tint))
     }
 
     private func start() async {
@@ -137,9 +134,8 @@ struct QRScannerView: View {
     }
 }
 
-/// Owns the capture graph and serializes its blocking start/stop calls. Closing
-/// the scanner queues `stop` after any in-flight `start`, so the camera cannot
-/// be left running by a lifecycle race.
+/// Owns the capture session and runs its blocking start/stop calls in order,
+/// so closing the scanner can't leave the camera running.
 private final class CameraCapture: @unchecked Sendable {
     let session: AVCaptureSession
     let output: AVCaptureVideoDataOutput
@@ -171,10 +167,8 @@ private final class CameraCapture: @unchecked Sendable {
     }
 }
 
-/// A sheet that hosts `QRScannerView` for code entry where the surrounding
-/// surface is a text field rather than a dedicated capture pane. Reports the
-/// first decoded code and is otherwise dismissable, so the paste field behind it
-/// remains the fallback.
+/// A sheet hosting `QRScannerView` over a screen whose paste field stays the
+/// fallback.
 struct PairingScannerSheet: View {
     let onScan: (String) -> Void
     let onDismiss: () -> Void
@@ -199,8 +193,7 @@ struct PairingScannerSheet: View {
     }
 }
 
-/// `AVCaptureVideoPreviewLayer` host. Starts the session when shown, wires the
-/// video output to a coordinator that forwards the first decoded QR payload.
+/// Shows the camera and forwards the first decoded QR code.
 private struct CameraPreview: NSViewRepresentable {
     let capture: CameraCapture
     let onScan: (String) -> Void
@@ -233,8 +226,7 @@ private struct CameraPreview: NSViewRepresentable {
             qos: .userInitiated
         )
         let onScan: (String) -> Void
-        /// First decode wins; later frames are ignored so a held-up code fires
-        /// the callback once rather than on every frame.
+        /// Set after the first decode so a held-up code fires only once.
         private var didScan = false
         private var didLogDecodeFailure = false
 
@@ -272,8 +264,7 @@ private struct CameraPreview: NSViewRepresentable {
         }
     }
 
-    /// Layer-backed host whose backing layer is the capture preview, so the
-    /// camera fills the view and tracks resizes.
+    /// A view backed by the capture preview layer.
     final class PreviewNSView: NSView {
         let previewLayer = AVCaptureVideoPreviewLayer()
 

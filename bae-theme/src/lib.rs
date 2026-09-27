@@ -63,6 +63,8 @@ pub struct Theme {
     pub tones: Vec<Tone>,
     pub accents: Vec<Accent>,
     pub semantics: Modes,
+    /// How opaque a colour is laid over what is behind it, by role.
+    pub opacity: BTreeMap<String, f64>,
 }
 
 #[derive(Deserialize)]
@@ -71,6 +73,7 @@ struct RawTheme {
     tones: Vec<RawTone>,
     accents: Vec<RawAccent>,
     semantics: RawModes,
+    opacity: BTreeMap<String, f64>,
 }
 
 #[derive(Deserialize)]
@@ -167,7 +170,7 @@ impl Theme {
                     );
                 }
             }
-            check_role_names(&first.surfaces.light, &mut problems);
+            check_role_names(first.surfaces.light.keys(), &mut problems);
         }
         check_same_roles(
             "semantics.dark",
@@ -176,13 +179,20 @@ impl Theme {
             &semantics.light,
             &mut problems,
         );
-        check_role_names(&semantics.light, &mut problems);
+        check_role_names(semantics.light.keys(), &mut problems);
+        for (name, value) in &raw.opacity {
+            if !(0.0..=1.0).contains(value) {
+                problems.push(format!("opacity {name}: {value} is not between 0 and 1"));
+            }
+        }
+        check_role_names(raw.opacity.keys(), &mut problems);
 
         if problems.is_empty() {
             Ok(Self {
                 tones,
                 accents,
                 semantics,
+                opacity: raw.opacity,
             })
         } else {
             Err(problems)
@@ -209,8 +219,8 @@ fn check_choices<'a>(kind: &str, names: impl Iterator<Item = &'a str>, problems:
 }
 
 /// A role name becomes a property on both platforms.
-fn check_role_names(roles: &Roles, problems: &mut Vec<String>) {
-    for name in roles.keys() {
+fn check_role_names<'a>(names: impl Iterator<Item = &'a String>, problems: &mut Vec<String>) {
+    for name in names {
         let mut chars = name.chars();
         let starts_lower = chars.next().is_some_and(|c| c.is_ascii_lowercase());
         if !starts_lower || !chars.all(|c| c.is_ascii_alphanumeric()) {

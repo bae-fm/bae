@@ -1,20 +1,16 @@
 import BaeKit
 import SwiftUI
 
-/// Identifies the library being renamed and carries the in-progress
-/// name plus any error the caller writes back after a failed rename.
-/// `id` is the library id, so the value doubles as the `.sheet(item:)`
-/// trigger.
+/// The library being renamed (`id`), its in-progress name, and the error
+/// from a failed rename; the value also drives `.sheet(item:)`.
 struct RenameLibrarySheetState: Identifiable {
     let id: String
     var newName: String
     var error: String?
 }
 
-/// Small modal for renaming any local library (active or inactive).
-/// The caller owns task lifecycle — this view just edits a name and
-/// reports it back through `onCommit`. The `state` binding carries an
-/// error message that the caller writes after a failed bridge call.
+/// Modal for renaming a local library; the caller performs the rename and
+/// writes any error back into `state`.
 struct RenameLibrarySheet: View {
     @Binding
     var state: RenameLibrarySheetState
@@ -44,7 +40,7 @@ struct RenameLibrarySheet: View {
                 if let error = state.error {
                     Section {
                         Text(error)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.danger)
                             .font(.callout)
                     }
                 }

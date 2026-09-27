@@ -63,8 +63,8 @@ struct TitleBar: View {
         .padding(.trailing, titleBarTrailingPadding)
         .frame(height: 56)
         .background { WindowDragArea() }
-        // The bar is the window's own ground with a hairline under it, not a
-        // raised band: the controls on it are what set it apart.
+        // The window's own background with a hairline under it, not a raised
+        // band.
         .background {
             Rectangle().fill(Theme.background)
                 .overlay(alignment: .bottom) {
@@ -111,9 +111,8 @@ struct TitleBar: View {
     }
 }
 
-/// The Library/Import selector: a sunken pill of two segments, the active one
-/// raised on a neutral tile. Reads as a segmented group to assistive tech; the
-/// caller owns the section switch (and its animation).
+/// The Library/Import selector; the caller owns the section switch and its
+/// animation.
 private struct SectionSegmentedControl: View {
     let selection: MainSection
     let onSelect: (MainSection) -> Void
@@ -149,7 +148,7 @@ private struct SectionSegmentedControl: View {
                         .fill(Theme.tile)
                         .opacity(active ? 1 : 0)
                         .shadow(
-                            color: .black.opacity(active ? 0.45 : 0),
+                            color: active ? Theme.shadow : Color.clear,
                             radius: 1.5,
                             y: 1
                         )
@@ -167,9 +166,7 @@ private struct SectionSegmentedControl: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Owns the search text the title bar binds to and injects the two services
-    /// it reads from the environment as stubs. An empty query keeps the search
-    /// task's debounce from firing.
+    /// Owns the search text the title bar binds to.
     private struct TitleBarPreview: View {
         @State
         private var searchText = ""
@@ -180,9 +177,8 @@ private struct SectionSegmentedControl: View {
         }
     }
 
-    // The environment lives on the #Preview root (not inside TitleBarPreview's
-    // body) so the missing-environment audit, which only reads the preview
-    // closure's modifier chain, can see it.
+    // The environment sits on the #Preview root because the missing-environment
+    // audit reads only the preview closure's modifier chain.
     #Preview("Title bar") {
         let library = Library.stub()
         TitleBarPreview()

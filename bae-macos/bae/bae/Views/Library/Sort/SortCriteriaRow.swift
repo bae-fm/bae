@@ -21,11 +21,8 @@ extension BridgeSortCriterion: SortCriterionRepresentable {}
 extension BridgeComposerSortCriterion: SortCriterionRepresentable {}
 extension BridgeArtistSortCriterion: SortCriterionRepresentable {}
 
-/// One mode's sort criteria as capsule pills: a pill's field menu re-points
-/// it, its arrow inverts its direction, the trailing "x" removes it, and the
-/// "+" menu appends a field not already in use. Reordering is gone by
-/// design — precedence is the order pills were added. Shared by the album,
-/// composer, and artist library modes.
+/// One library mode's sort criteria as pills, with a "+" menu that appends an
+/// unused field; precedence is the order the pills were added.
 struct SortCriteriaRow<Criterion: SortCriterionRepresentable>: View {
     @Binding
     var criteria: [Criterion]
@@ -60,7 +57,7 @@ struct SortCriteriaRow<Criterion: SortCriterionRepresentable>: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 30, height: 30)
                         .background(
-                            Theme.placeholder.opacity(0.85),
+                            Theme.placeholder,
                             in: RoundedRectangle(cornerRadius: 9)
                         )
                 }
@@ -79,8 +76,8 @@ struct SortCriteriaRow<Criterion: SortCriterionRepresentable>: View {
 
 extension Array where Element: SortCriterionRepresentable {
     /// Re-point the criterion sorting by `field` at `replacement`, keeping its
-    /// place and direction. Nothing changes when `field` is not here or when
-    /// `replacement` already is: a field sorts once, in one pill.
+    /// place and direction; a no-op when `field` is absent or `replacement` is
+    /// already used.
     mutating func replaceField(
         _ field: Element.Field,
         with replacement: Element.Field

@@ -33,7 +33,7 @@ struct JoinPairingOffer: View {
 
             if let error {
                 Text(error)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .font(.callout)
                     .padding(.horizontal)
                     .padding(.bottom, 8)
@@ -75,22 +75,19 @@ struct JoinPairingOffer: View {
                 Text(
                     "This library uses a provider this build can't connect to."
                 )
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.danger)
                 .font(.callout)
             }
             if let joiningFingerprint {
                 LabeledContent("This device", value: joiningFingerprint)
             }
         }
-        // The line is unwrapped in the pattern rather than defaulted to "":
-        // a decode is a synchronous parse, so core never reports it as a
-        // cancellation and a line is always there — and if that ever changed,
-        // the row would show nothing rather than an empty red line.
+        // A decode is never cancelled, so it always has a line.
         else if case .failure(let decodeError) = decodedOffer,
             let line = decodeError.displayLine
         {
             Text(line)
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.danger)
                 .font(.callout)
         }
     }

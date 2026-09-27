@@ -1,16 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// Find online: two sections, one open at a time. AUTOMATIC lays the
-/// identify run out as a ledger and lists what it matched; SEARCH holds the
-/// typed-search form with what it turned up beneath. Each section's results
-/// render under the header that produced them, and each header carries one
-/// glyph saying how its part is going, open or collapsed.
-///
-/// Opening SEARCH collapses AUTOMATIC without cancelling its run: the run
-/// carries on behind its header, and its results wait behind the glyph.
-/// Renders from `ImportSearchState` plus the form bindings and action
-/// callbacks.
+/// Find online, in two sections with one open at a time: Automatic, the
+/// identify run and its matches, and Search, the typed-search form and its
+/// results. Collapsing Automatic does not cancel its run.
 struct ImportSearchPane: View {
     let state: ImportSearchState
     /// Leave the pane. `nil` for a surface that owns its own way out.
@@ -23,29 +16,25 @@ struct ImportSearchPane: View {
     let onSearch: (CandidateSearchState) -> Void
     /// Re-ask only the providers whose part of the search failed.
     let onRetrySearch: () -> Void
-    /// Open Settings on the Discogs page — what the not-configured bar offers.
+    /// Open Settings on the Discogs page.
     let onOpenSettings: () -> Void
-    /// Turn one identifier in the band over — the disc ID, a barcode, a
-    /// catalog number. Core re-derives the state the import projection
-    /// delivers from what the candidate's choices then say.
+    /// Leave an identifier (disc ID, barcode, catalog number) out of the run,
+    /// or ask about it again.
     let onToggleLookup: (LookupToggle) -> Void
-    /// Count a catalog number the folder states, or stop counting it: the
-    /// same answers, ranked by what the folder is taken to state about them.
+    /// Count a catalog number the folder states, or stop counting it.
     let onToggleCatalogAgreement: (String) -> Void
     /// Re-ask only the lookups that failed, keeping what the others found.
     let onRetryFailed: () -> Void
     /// Search by the words the person left in the title chip.
     let onEditTitleSearch: (_ album: String, _ artist: String) -> Void
-    /// A pressing row was picked — the flow opens the docked confirm pane.
+    /// A pressing row was picked.
     let onSelect: (Pressing) -> Void
     /// Which section is open, as the candidate's session says.
     let openSection: BridgeFindOnlineSection
     /// Open one section.
     let onOpenSection: (BridgeFindOnlineSection) -> Void
 
-    /// Whether Discogs can be asked at all is core's answer, carried on the
-    /// config the app observes: adding a token in Settings takes the notice
-    /// away while the pane is open.
+    /// Whether Discogs is usable, which updates while the pane is open.
     @Environment(ConfigStore.self)
     private var configStore
     @Environment(UiStore.self)
@@ -84,13 +73,10 @@ struct ImportSearchPane: View {
         self.onOpenSection = onOpenSection
     }
 
-    /// The form's first field takes the keyboard on every new value: Search
-    /// manually hands the cursor over, and does so again after it has been
-    /// elsewhere.
+    /// Each new value gives the form's first field the keyboard.
     @State
     private var formFocusRequest = 0
-    /// Whether the releases agreement narrowed out are showing. Closed on
-    /// arrival: the matches are the answer.
+    /// Whether the releases agreement narrowed out are shown; closed at first.
     @State
     private var narrowedOutExpanded = false
 
@@ -144,8 +130,8 @@ struct ImportSearchPane: View {
         }
     }
 
-    /// Above both sections, because neither of them asked Discogs. Gone for
-    /// the rest of the session once put away, in every candidate's pane.
+    /// Above both sections, since neither asked Discogs; once dismissed it
+    /// stays hidden for the session.
     @ViewBuilder
     private var discogsBar: some View {
         if !configStore.config.discogsUsable, !uiStore.discogsNoticeDismissed {
@@ -166,16 +152,15 @@ struct ImportSearchPane: View {
                 Spacer()
             }
             .font(.caption)
-            .foregroundStyle(.red)
+            .foregroundStyle(Theme.danger)
             .padding(.horizontal, 14)
             .padding(.vertical, 6)
             Divider()
         }
     }
 
-    /// Open SEARCH with the cursor in its first field, seeded from what was
-    /// read off the folder — only when the fields are untouched, never over
-    /// typing.
+    /// Open Search with the cursor in its first field, seeding Artist from the
+    /// folder's text when Artist and Album are both empty.
     private func searchManually() {
         onOpenSection(.search)
         formFocusRequest += 1
@@ -223,9 +208,8 @@ struct ImportSearchPane: View {
     // MARK: - Previews
 
     extension ImportSearchPane {
-        /// Preview builder — fixes the form bindings and action callbacks to
-        /// inert defaults so a preview states only the situation it exercises.
-        /// A test that presses one of them passes it in.
+        /// A pane with inert form bindings and callbacks, so a preview states
+        /// only its situation.
         @MainActor
         static func preview(
             state: ImportSearchState,

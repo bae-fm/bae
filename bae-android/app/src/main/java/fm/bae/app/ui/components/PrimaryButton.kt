@@ -6,7 +6,7 @@ import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.LocalPrimaryFill
 
 /** Native button behavior with the shared primary fill and no added elevation. */
@@ -18,7 +18,7 @@ fun PrimaryButton(
     colors: ButtonColors =
         ButtonDefaults.buttonColors(
             containerColor = LocalPrimaryFill.current,
-            contentColor = Color.White,
+            contentColor = BaeTheme.colors.onFill,
         ),
     content: @Composable RowScope.() -> Unit,
 ) {

@@ -1,8 +1,8 @@
+import BaeKit
 import SwiftUI
 
-/// The detail pane's row buttons: 6/8 padding, radius-8 rounding, a hover wash,
-/// and a negative horizontal margin so the hover fill bleeds to the pane's
-/// content edges while the content itself stays column-aligned.
+/// The detail pane's row buttons, whose hover fill bleeds past the content so
+/// the text stays column-aligned.
 struct DetailRowButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         DetailRow(configuration: configuration)
@@ -29,9 +29,9 @@ struct DetailRowButtonStyle: ButtonStyle {
 
         private var fill: Color {
             if configuration.isPressed {
-                return Color.primary.opacity(0.08)
+                return Theme.pressed
             }
-            return isHovered ? Color.primary.opacity(0.04) : .clear
+            return isHovered ? Theme.hover : .clear
         }
     }
 }

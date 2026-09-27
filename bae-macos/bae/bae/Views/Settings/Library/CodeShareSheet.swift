@@ -1,12 +1,9 @@
+import BaeKit
 import SwiftUI
 
-/// QR-code + textual code + copy button for the library's recovery code — the
-/// bearer code that grants full access on a new device when no existing device
-/// is available to approve a join. `result` carries the loading/loaded/error
-/// state as `Result<String, Error>?`: `nil` is loading, `.success(code)` shows
-/// the code, `.failure(err)` shows the error message. It's a binding because the
-/// presenter computes the code off-main after the sheet is already up — the
-/// sheet has to re-render when that write lands, not show a stale snapshot.
+/// Shows the library's recovery code, which grants full access on a new device
+/// when no other device can approve it. `result` is `nil` while loading, and a
+/// binding because the presenter fills it in after the sheet is up.
 struct CodeShareSheet: View {
     @Binding
     var result: Result<String, Error>?
@@ -51,12 +48,10 @@ struct CodeShareSheet: View {
             case .failure(let error):
                 VStack {
                     Spacer()
-                    // The presenter only records a failure core gave a line
-                    // for, so this reads as an unwrap; it is not defaulted to
-                    // "" because a blank red line is not an error message.
+                    // The presenter only records failures that have a line.
                     if let line = error.displayLine {
                         Text(line)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.danger)
                             .font(.callout)
                     }
                     Spacer()
@@ -71,8 +66,7 @@ struct CodeShareSheet: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Holds the async result the presenter normally writes after the sheet is
-    /// up, so each variant renders one of the loading / loaded / failed states.
+    /// Holds the result the presenter normally writes after the sheet is up.
     private struct CodeShareSheetPreview: View {
         @State
         var result: Result<String, Error>?

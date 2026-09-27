@@ -2,19 +2,14 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// The one way a progress bar is drawn in this app: a rounded low-opacity
-/// track with an accent fill pill. `ProgressTrackNSView` renders it,
-/// `SlimSeekSliderCell` calls the same drawing under the seek knob math, and
-/// `ProgressTrackBar` exposes it to SwiftUI layouts as a value prop — the
-/// drawing and the indeterminate animation stay in AppKit/Core Animation
-/// either way, so no progress rendering rides the SwiftUI render loop.
+/// The app's one progress bar drawing: a rounded hairline track with an accent
+/// fill, kept in AppKit so no progress rendering runs through SwiftUI.
 enum ProgressTrackDrawing {
-    /// Draws the track pill and, for a positive fraction, the accent fill pill
-    /// (never narrower than its own height, so a tiny fraction still reads as
-    /// a pill rather than a sliver).
+    /// Draws the track and, for a positive fraction, an accent fill never
+    /// narrower than its height.
     static func draw(in bar: NSRect, fraction: Double?, accent: NSColor) {
         let radius = bar.height / 2
-        NSColor.labelColor.withAlphaComponent(0.12).setFill()
+        NSColor(Theme.hairline).setFill()
         NSBezierPath(roundedRect: bar, xRadius: radius, yRadius: radius).fill()
 
         guard let fraction else {
@@ -40,8 +35,7 @@ enum ProgressTrackDrawing {
 /// `nil` runs an indeterminate marching pill, animated by Core Animation so
 /// nothing ticks the view hierarchy.
 final class ProgressTrackNSView: NSView {
-    /// Height of the drawn track, the same on every surface that draws one.
-    /// Also the view's intrinsic height.
+    /// Height of the drawn track and of the view.
     static let trackHeight: CGFloat = 4
 
     var progress: Double? {
@@ -148,9 +142,7 @@ final class ProgressTrackNSView: NSView {
     }
 }
 
-/// SwiftUI wrapper for the value-driven sites: the value arrives as a prop,
-/// the rendering stays in AppKit. A bar with text describing it is drawn by
-/// `ProgressLine`; this alone is for a bar that stands by itself.
+/// SwiftUI wrapper for a bar on its own; `ProgressLine` draws one with text.
 struct ProgressTrackBar: NSViewRepresentable {
     @Environment(\.accentChoice)
     private var accent

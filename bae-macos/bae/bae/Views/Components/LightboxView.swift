@@ -6,9 +6,8 @@ import VisionKit
 
 private let logger = Logger.bae("LightboxView")
 
-/// The same artwork can be browsed without adopting a cover-selection identity.
-/// One image per item: the strip's thumbnails and the stage both draw it, each
-/// at its own size.
+/// An image the lightbox shows; the strip and the stage each draw it at their
+/// own size.
 protocol LightboxImage: Identifiable, Equatable {
     var label: String { get }
     var sourceLabel: String { get }
@@ -55,10 +54,8 @@ struct LightboxView<Item: LightboxImage>: View {
     private var loadedImage: NSImage?
     @State
     private var fullResImage: NSImage?
-    /// The resolved decode source for the current item — `.local` for an
-    /// import candidate, `.data` for fetched library bytes. Set once when the
-    /// fit-to-screen image loads and reused by the on-zoom full-res decode, so
-    /// zooming never re-crosses the bridge.
+    /// The current item's decode source, kept so the full-resolution decode on
+    /// zoom never crosses the bridge again.
     @State
     private var decodeSource: ImageLoader.Source?
     @State
@@ -67,8 +64,8 @@ struct LightboxView<Item: LightboxImage>: View {
     private var imageAnalysis: ImageAnalysis?
     @State
     private var loadFailed = false
-    /// How many times the person asked for a failed load again. Part of the
-    /// load's identity, so asking restarts it.
+    /// How many times the person retried a failed load; part of the load's
+    /// identity, so a retry restarts it.
     @State
     private var attempt = 0
     @FocusState
@@ -79,7 +76,7 @@ struct LightboxView<Item: LightboxImage>: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.85)
+            Theme.backdrop
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { onDismiss() }
@@ -118,7 +115,7 @@ struct LightboxView<Item: LightboxImage>: View {
                         stroke: { _, isActive in
                             (
                                 isActive
-                                    ? Color.white : Color.gray.opacity(0.4),
+                                    ? Theme.onFill : Theme.onFillSecondary,
                                 isActive ? 2 : 1
                             )
                         }
@@ -282,7 +279,7 @@ struct LightboxView<Item: LightboxImage>: View {
             .padding(.horizontal, 40)
             .padding(.top, 40)
             .padding(.bottom, 16)
-            .shadow(color: .black.opacity(0.5), radius: 20)
+            .shadow(color: Theme.shadow, radius: 20)
     }
 
 }
@@ -306,11 +303,11 @@ extension LightboxView {
         VStack(spacing: 4) {
             Text(verbatim: cursor.current.label)
                 .font(.callout)
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(Theme.onFill)
                 .lineLimit(2)
             Text(verbatim: cursor.current.sourceLabel)
                 .font(.caption)
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(Theme.onFillSecondary)
         }
         .multilineTextAlignment(.center)
         .padding(.horizontal, 24)
@@ -349,9 +346,9 @@ extension LightboxView {
                         )
                     }
                     .buttonStyle(.borderless)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onFill)
                     .padding(10)
-                    .background(.black.opacity(0.4), in: Capsule())
+                    .background(Theme.scrim, in: Capsule())
                     .padding(12)
                 }
                 Spacer()
@@ -378,11 +375,11 @@ extension LightboxView {
         Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(.black.opacity(0.4))
+                    .fill(Theme.scrim)
                     .frame(width: diameter, height: diameter)
                 Image(systemName: systemName)
                     .font(iconFont)
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(Theme.onFillSecondary)
             }
         }
         .buttonStyle(.plain)
@@ -391,9 +388,8 @@ extension LightboxView {
 }
 
 extension LightboxView {
-    /// Where the current item's bytes come from, or nil once the failure has
-    /// been logged and put on screen. A cancellation resolves to nil too, with
-    /// nothing shown — the item is on its way out.
+    /// Where the current item's bytes come from, or nil after a failure (logged
+    /// and shown) or a cancellation (not shown).
     private func resolveDecodeSource() async -> ImageLoader.Source? {
         do {
             guard
@@ -422,16 +418,15 @@ extension LightboxView {
         }
     }
 
-    /// The item whose bytes could not be had, and a way to ask for them
-    /// again — the source may only have been having a bad moment.
+    /// The failed-load state, with a retry.
     fileprivate var loadFailedView: some View {
         VStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.largeTitle)
-                .foregroundStyle(.gray)
+                .foregroundStyle(Theme.onFillSecondary)
             Text("Couldn't load image")
                 .font(.callout)
-                .foregroundStyle(.gray)
+                .foregroundStyle(Theme.onFillSecondary)
             Button("Try again") { attempt += 1 }
         }
     }

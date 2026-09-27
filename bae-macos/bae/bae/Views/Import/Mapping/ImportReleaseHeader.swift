@@ -1,25 +1,19 @@
 import BaeKit
 import SwiftUI
 
-/// The commit controls the card carries once there is something to commit:
-/// storage, the Import action, and what is still unanswered. Nothing here
-/// disables the commit — the count is a statement, and the one refusal left
-/// in the whole import is audio that will not decode, which core raises.
+/// The card's commit controls: the folder check, the unanswered count,
+/// storage, and Import, which nothing here disables.
 struct ImportCommitControls {
     let unansweredCount: Int
-    /// The check against the folder that keeps this candidate out of a bulk
-    /// import — the release listing a different number of tracks than the
-    /// folder holds, none at all, or a medium the folder's files rule out.
-    /// Stated beside the Import it bears on, which stays available:
-    /// importing it anyway is the person's call.
+    /// Why the folder keeps this candidate out of a bulk import, such as a
+    /// track count mismatch; shown beside Import, which stays available.
     let folderCheck: BridgeFolderCheck?
     /// Routes the running import's progress to the leaf line that draws it.
     let candidateKey: String
-    /// Where the candidate's import stands: running now, or what the last
-    /// one left.
+    /// The running import, or the result of the last one.
     let importStatus: BridgeCandidateImportStatus?
-    /// Whether the running import can still be cancelled: core offers the
-    /// cancel until the import begins writing its release.
+    /// Whether core still allows cancelling the running import, which it does
+    /// until the release is being written.
     let canCancelImport: Bool
     let storageCloud: Binding<Bool>
     let storagePinned: Binding<Bool>
@@ -33,31 +27,22 @@ struct ImportReleaseSourceActions {
     let searchForRelease: () -> Void
     /// Restore the initial source tracks, audio assignments, cover, and metadata.
     let reset: () -> Void
-    /// Replace the draft with what the candidate's own files say. Not a
-    /// surface to browse: the tags are read and applied, and the card redraws
-    /// on the draft they wrote.
+    /// Replace the draft with what the candidate's own files say.
     let resetToFileMetadata: () -> Void
     let clearMetadata: () -> Void
 }
 
-/// The editable metadata draft card, top to bottom: the action row, the cover
-/// beside the album heading, the names the folder states and what the rip
-/// databases said, the release facts, and — under a hairline of their own —
-/// the catalogs that describe the release. A block with nothing to state is
-/// absent rather than drawn empty.
+/// The editable metadata draft card: the action row, the cover beside the
+/// release fields, and the catalogs that describe the release.
 struct ImportReleaseHeader: View {
     let releaseSummary: ImportReleaseSummary
-    /// Whether the draft can be edited and identified now. The records row
-    /// is the one part of the card this does not touch: opening a catalog's
-    /// page changes nothing about the candidate.
+    /// Whether the draft can be edited and identified now; the records row
+    /// stays enabled.
     let actionable: Bool
-    /// Whether a read is in flight — the source controls wait for it rather
-    /// than the card being replaced by a placeholder.
+    /// Whether a read is in flight, which disables the identify controls.
     let isReading: Bool
     let coverContent: ImageContent?
-    /// Whether there is any artwork to pick from — the release's images or the
-    /// folder's. Without one, the cover well says so instead of inviting a
-    /// pick.
+    /// Whether the release or the folder has any artwork to pick from.
     let hasCoverOptions: Bool
     /// `nil` when there is no release to edit.
     let editValues: BridgeRawReleaseEdit?
@@ -112,9 +97,8 @@ struct ImportReleaseHeader: View {
                     }
                 )
                 .disabled(!actionable)
-                // Which catalogs describe the release is the card's last
-                // line, under its own hairline — not a caption on the
-                // header's artist.
+                // The catalogs that describe the release end the card,
+                // under their own divider.
                 if !records.isEmpty {
                     Rectangle()
                         .fill(Theme.hover)
@@ -170,15 +154,9 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// The card's one row of actions: the two ways into identification on the
-    /// left and, once there is something to commit, the commit on the right —
-    /// the folder check the candidate did not pass, the unanswered tally,
-    /// storage, and the Import action.
-    ///
-    /// The two entries differ in what they start, not in where they go: both
-    /// open the same pane, and only the first asks for a run. Commands that
-    /// replace metadata or restore the import setup sit behind the ellipsis,
-    /// each with its own confirmation.
+    /// The identify entries and metadata menu on the left, and the commit
+    /// controls on the right once there is something to commit. Both entries
+    /// open the same pane; only Automatic starts a run.
     private var actionRow: some View {
         HStack(alignment: .center, spacing: 16) {
             HStack(spacing: 8) {
@@ -201,7 +179,7 @@ struct ImportReleaseHeader: View {
                 if let folderCheck = commit.folderCheck?.localizedText {
                     Text(folderCheck)
                         .font(.system(size: 11.5))
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Theme.warning)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .help(folderCheck)
@@ -214,7 +192,7 @@ struct ImportReleaseHeader: View {
                         )
                     )
                     .font(.system(size: 11.5))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Theme.warning)
                 }
                 if !commitSettled(commit), configStore.config.hasCloudHome {
                     HStack(spacing: 10) {
@@ -243,8 +221,8 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// Whether the import already ran or is running — the storage choice is
-    /// spent then, so its toggles leave the row.
+    /// Whether the import already ran or is running, which hides the storage
+    /// toggles.
     private func commitSettled(_ commit: ImportCommitControls) -> Bool {
         switch commit.importStatus {
         case .importing, .complete: return true
@@ -275,14 +253,11 @@ struct ImportReleaseHeader: View {
     }
 }
 
-/// The cover the card leads with, or the well it goes in. The well invites
-/// the two ways a cover arrives — dragging one of the folder's images onto
-/// it, or picking from the release's and the folder's — and says when there
-/// is neither.
+/// The card's cover, or an empty well that invites dropping or picking one,
+/// or says there is none.
 struct ImportCoverWell: View {
     let coverContent: ImageContent?
-    /// Whether there is any artwork to pick from — the release's images or the
-    /// folder's. Without one, the well says so instead of inviting a pick.
+    /// Whether the release or the folder has any artwork to pick from.
     let hasCoverOptions: Bool
     let localCoverSelections: [String: BridgeCoverSelection]
     let onEditCover: () -> Void
@@ -310,9 +285,9 @@ struct ImportCoverWell: View {
             if coverContent != nil, hasCoverOptions {
                 Image(systemName: "pencil")
                     .font(.caption2)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onFill)
                     .padding(3)
-                    .background(.black.opacity(0.5))
+                    .background(Theme.scrim)
                     .clipShape(RoundedRectangle(cornerRadius: 3))
                     .padding(4)
             }
@@ -363,7 +338,7 @@ struct ImportCoverWell: View {
         .padding(10)
         .frame(width: Self.coverSize, height: Self.coverSize)
         .background(
-            inviting ? Theme.accent.opacity(0.06) : Theme.hover
+            inviting ? Theme.accentSoft : Theme.hover
         )
         .overlay {
             RoundedRectangle(cornerRadius: 8)
@@ -371,7 +346,7 @@ struct ImportCoverWell: View {
                 .foregroundStyle(
                     inviting
                         ? AnyShapeStyle(Theme.accent)
-                        : AnyShapeStyle(Color.primary.opacity(0.16))
+                        : AnyShapeStyle(Theme.hairlineStrong)
                 )
         }
     }

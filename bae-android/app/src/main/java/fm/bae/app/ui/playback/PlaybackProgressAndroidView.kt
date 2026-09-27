@@ -28,6 +28,7 @@ import fm.bae.app.currentLocale
 import fm.bae.app.performBridgeAction
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackPosition
+import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -44,17 +45,15 @@ private const val SEEK_BAR_MAX = 10_000
 private const val TIME_LABEL_TEXT_SIZE_SP = 11f
 private const val TIME_LABEL_WIDTH_DP = 48
 
-/** What the seek bar draws: the [0,1] slider fraction, the leading label (elapsed
- *  or the countdown, per the user's preference) and the trailing one (the track's
- *  total length). Core decides which label is which. */
+/** What the seek bar draws: the [0,1] slider fraction and the two time labels core
+ *  picks. */
 internal data class SeekBarState(
     val progress: Double,
     val leading: String,
     val trailing: String,
 )
 
-/** Render a raw playback position into the two labels the bar draws. Nothing
- *  plays, nothing to show. */
+/** The bar's state for [position], with empty labels when nothing is playing. */
 internal fun Context.seekBarState(
     position: PlaybackPosition,
     showRemaining: Boolean,
@@ -79,21 +78,20 @@ fun PlaybackProgressAndroidView(
     val scope = rememberCoroutineScope()
     val config by session.configStore.config.collectAsState()
     val showRemaining = config.showRemainingTime
-    // One flow instance per (player, context, preference): the view rebinds only
-    // when the flow identity changes, so mapping inline would re-collect on every
-    // recomposition.
+    // Remembered because the view re-collects whenever the flow instance changes.
     val state =
         remember(player, context, showRemaining) {
             player.position.map { context.seekBarState(it, showRemaining) }
         }
     val colors = MaterialTheme.colorScheme
+    val hairline = BaeTheme.colors.hairline
     AndroidView(
         modifier = modifier,
         factory = { viewContext -> PlaybackProgressView(viewContext) },
         update = { view ->
             view.applyColors(
                 accent = colors.primary.toArgb(),
-                track = colors.onSurface.copy(alpha = 0.12f).toArgb(),
+                track = hairline.toArgb(),
                 text = colors.onSurfaceVariant.toArgb(),
             )
             view.bind(
@@ -104,8 +102,7 @@ fun PlaybackProgressAndroidView(
                         player.seekTo((ratio * duration).toLong())
                     }
                 },
-                // Write-through: the config subscription re-renders the bar, so
-                // nothing is flipped locally.
+                // The config subscription re-renders the bar.
                 onToggleRemaining = {
                     scope.launch {
                         performBridgeAction(

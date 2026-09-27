@@ -4,14 +4,10 @@ import os.log
 
 private let logger = Logger.bae("WelcomeChooseView")
 
-/// The first screen: open a library already on this device, restore one whose
-/// restore code is in the keychain, or start one of the other flows (create,
-/// join, restore-from-cloud). Owns the on-device discovery and the keychain
-/// restore machinery the entry rows drive.
+/// The first screen: open a library on this device, restore one from the
+/// keychain, or create, join, or restore from the cloud.
 struct WelcomeChooseView: View {
-    /// A failed library open, surfaced inline as a callout under the subtitle.
-    /// Prop-drilled from the app (the welcome window's chrome no longer carries
-    /// it); nil when nothing failed.
+    /// A failed library open, shown as a callout under the subtitle.
     let loadError: DisplayError?
     let canDeleteActiveLibrary: Bool
     let onLibraryReady: (BridgeLibrary) -> Void
@@ -31,8 +27,8 @@ struct WelcomeChooseView: View {
     @State
     private var removingLibraryId: String?
 
-    /// The in-flight keychain-row restore, owned so a superseding restore and
-    /// the view's disappear can cancel it.
+    /// The in-flight keychain restore, cancelled by a newer one or on
+    /// disappear.
     @State
     private var restoreTask: Task<Void, Never>?
     @State
@@ -42,12 +38,11 @@ struct WelcomeChooseView: View {
     @State
     private var oauthTokenJson: String?
 
-    /// Libraries already on this device, discovered on appear. Listed first as
-    /// the primary "open" path; reopening after a close lands here.
+    /// Libraries on this device, discovered on appear.
     @State
     private var localLibraries: SectionLoad<[BridgeLibrary]> = .loading
 
-    /// iCloud Keychain restore
+    /// Restore codes found in the keychain.
     @State
     private var keychainEntries:
         SectionLoad<[(code: String, info: BridgeRestoreCodeInfo)]> = .loading
@@ -57,8 +52,6 @@ struct WelcomeChooseView: View {
     }
 
     /// Keychain restore codes whose library isn't already on this device.
-    /// On-device libraries open directly (the `localLibraries` section), so
-    /// the restore section only offers the ones that need a cloud pull.
     private var restorableEntries: [(code: String, info: BridgeRestoreCodeInfo)]
     {
         (keychainEntries.value ?? [])
@@ -67,21 +60,16 @@ struct WelcomeChooseView: View {
             }
     }
 
-    /// Whether to lead with the prominent "Create new library" layout instead of
-    /// the secondary action row. Only when both lookups finished and found
-    /// nothing: a section still loading, or one that failed, is not a device
-    /// with no libraries on it, and offering the first-run wall on either is how
-    /// a locked keychain or an unreadable libraries directory came to read as a
-    /// brand new install.
+    /// Lead with "Create new library" only when both lookups finished and found
+    /// nothing; a loading or failed lookup doesn't mean there are no libraries.
     private var isFirstRun: Bool {
         localLibraries.value?.isEmpty == true
             && keychainEntries.value?.isEmpty == true
     }
 
     var body: some View {
-        // Scrolls only when the content outgrows the window (a populated
-        // choose screen in a short window); the min-height keeps the Spacers
-        // centering the content whenever it fits.
+        // Scrolls only when the content outgrows the window; the min-height
+        // keeps it centered otherwise.
         GeometryReader { geometry in
             ScrollView {
                 content
@@ -190,10 +178,7 @@ struct WelcomeChooseView: View {
         .padding()
     }
 
-    /// The Create button's label: a spinner while a create is in flight, the
-    /// title otherwise. Shared by both action layouts so the spinner behaves
-    /// the same whether Create is the prominent first-run action or one small
-    /// button among several.
+    /// The Create button's label, a spinner while a create runs.
     @ViewBuilder
     private var createButtonLabel: some View {
         if isCreating {
@@ -205,8 +190,7 @@ struct WelcomeChooseView: View {
         }
     }
 
-    /// First run (no library on this device, nothing to restore): three stacked
-    /// buttons at one width, Create the prominent default action.
+    /// First run: three stacked buttons with Create as the default action.
     private var firstRunActions: some View {
         VStack(spacing: 12) {
             Button(action: doCreate) { createButtonLabel }
@@ -225,9 +209,8 @@ struct WelcomeChooseView: View {
         }
     }
 
-    /// A library or restore entry already exists, so the three actions drop to
-    /// a secondary horizontal row under a divider — Create is no longer the
-    /// headline; opening or restoring an existing library is.
+    /// With a library or restore code present, the actions become a row of
+    /// smaller buttons under a divider.
     private var populatedActions: some View {
         VStack(spacing: 12) {
             Divider()
@@ -250,10 +233,7 @@ struct WelcomeChooseView: View {
 // MARK: - Actions
 
 extension WelcomeChooseView {
-    /// Remove a keychain restore code (and its entry) after the section's
-    /// confirmation. The section holds the confirmation dialog; the confirmed
-    /// delete calls up here so the keychain write and the entry drop stay with
-    /// the state's owner.
+    /// Removes a keychain restore code after the section's confirmation.
     private func deleteKeychainEntry(code: String) {
         guard let entries = keychainEntries.value,
             let entry = entries.first(where: { $0.code == code })
@@ -264,9 +244,7 @@ extension WelcomeChooseView {
             try setup.deleteRestoreCode(entry.info.libraryId)
         }
         catch {
-            // The row goes only when the keychain says the code is gone.
-            // Dropping it on a refused delete tells the user it was removed and
-            // then hands the entry back on the next load.
+            // Keep the row: the code is still in the keychain.
             logger.error(
                 "Failed to delete keychain restore code: \(error.localizedDescription)"
             )
@@ -311,13 +289,8 @@ extension WelcomeChooseView {
         catch is CancellationError {
         }
         catch {
-            // Not an empty list: a discovery that never ran cannot say the
-            // device has no libraries, and saying it puts a first-run wall in
-            // front of someone whose libraries are right there on disk.
-            //
-            // A failure core says has no line to show is a cancellation — the
-            // same case the arm above catches for Swift's own, where the view
-            // is going away and this section's state stops mattering.
+            // A failure, not an empty list, so it doesn't read as first run.
+            // No line means core reported a cancellation.
             guard let failure = DisplayError(error) else {
                 logger.debug("Local library discovery cancelled")
                 return
@@ -356,10 +329,8 @@ extension WelcomeChooseView {
         catch is CancellationError {
         }
         catch {
-            // The keychain refusing the lookup (locked, or the display asleep)
-            // is not the same answer as holding no restore codes, and the user
-            // is the one who can tell them apart. A failure with no line to
-            // show is a cancellation, handled as above.
+            // A refused lookup (such as a locked keychain) isn't the same as
+            // no restore codes. No line means core reported a cancellation.
             guard let failure = DisplayError(error) else {
                 logger.debug("Keychain restore lookup cancelled")
                 return
@@ -392,9 +363,7 @@ extension WelcomeChooseView {
         }
     }
 
-    /// Restore the keychain entry's library from its restore code. The bridge
-    /// re-decodes the code, so the caller only passes the code plus whatever
-    /// OAuth token a connect step already produced.
+    /// Restores a keychain entry's library from its code and any OAuth token.
     private func doRestoreFromCode(code: String) {
         let token = oauthTokenJson
         let restore = setup.restoreFromCode
@@ -411,9 +380,7 @@ extension WelcomeChooseView {
                 onLibraryReady(restored)
             }
             catch is CancellationError {
-                // Superseded by a newer restore, which set `isRestoring = true`
-                // for itself when it cancelled this one — leave the flag alone so
-                // its spinner stays up. The superseding restore owns it.
+                // The newer restore owns `isRestoring` now.
                 logger.debug("Restore superseded by a newer restore; skipping")
             }
             catch {
@@ -450,10 +417,8 @@ extension WelcomeChooseView {
     #endif
 }
 
-/// What one of the welcome screen's lookups knows so far. A failure is its own
-/// case rather than an empty result: "there is nothing here" and "we could not
-/// look" are different screens, and collapsing them is what turned a locked
-/// keychain into a first-run wall.
+/// A welcome-screen lookup's state; a failure is kept apart from an empty
+/// result because they show different screens.
 private enum SectionLoad<Value> {
     case loading
     case loaded(Value)
@@ -470,26 +435,17 @@ private enum SectionLoad<Value> {
     }
 }
 
-/// The shared width of the populated choose screen's column. The libraries and
-/// keychain sections, the divider, and the bottom actions all pin to it so the
-/// screen reads as one column rather than a stack of differently-sized blocks.
+/// The choose screen's shared column width.
 enum WelcomeLayout {
     static let columnWidth: CGFloat = 400
 }
 
-/// The inline callout for something the welcome screen could not do: a warning
-/// glyph, a bold title naming what failed, the underlying message, and — when
-/// there is one — a line pointing at the ways forward. A tinted rounded rect
-/// (native red opacities, not the mockup's hex colors), column-width.
-///
-/// Used for the failed open and for either section lookup coming back broken.
-/// A section that failed shows this in its own place rather than rendering as
-/// an empty list, which is a different and wrong claim.
+/// An error callout for a failed open or lookup: a title naming what failed,
+/// the error, and optional guidance, on the error notice background.
 private struct WelcomeLoadErrorCallout: View {
     let title: LocalizedStringKey
     let error: DisplayError
-    /// What the user can do next, when the screen has something to suggest. A
-    /// lookup that broke does not — the actions below are all still there.
+    /// What the user can do next, if the screen has a suggestion.
     var guidance: LocalizedStringKey?
 
     var body: some View {
@@ -513,7 +469,9 @@ private struct WelcomeLoadErrorCallout: View {
         .noticeBackground(.error, cornerRadius: 8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(NoticeTone.error.tint.opacity(0.3))
+                .strokeBorder(
+                    NoticeTone.error.tint.opacity(ThemeOpacity.tintStrong)
+                )
         )
     }
 }

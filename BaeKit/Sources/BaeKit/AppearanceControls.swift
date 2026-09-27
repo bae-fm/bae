@@ -30,7 +30,7 @@ public struct AppearanceControls: View {
                             .overlay {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(Theme.onFill)
                                     .opacity(
                                         preferences.accent == accent ? 1 : 0
                                     )

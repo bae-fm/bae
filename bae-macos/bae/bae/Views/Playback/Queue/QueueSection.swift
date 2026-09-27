@@ -2,113 +2,79 @@ import BaeKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The window read around an unloaded context row as the queue scrolls: what
-/// `PlaybackStore.loadUpcomingRange` adds to the store's one upcoming read.
+/// How many rows to load around an unloaded context row.
 private let queueUpcomingLoadBatchSize = 100
 
 // periphery:ignore
-/// Row load identity: which section epoch (the store's queue revision, so a
-/// bump restarts every visible row's load task) and which absolute index. The
-/// manual lane, always fully loaded, passes a constant epoch and a `nil` load
-/// hook so its rows never fire a load.
+/// A row's load task identity: the queue revision, so a new revision restarts
+/// the load, and the absolute index.
 private struct QueueRowLoadID: Hashable {
     let epoch: UInt64
     let index: Int
 }
 
-/// A row's identity in the `ForEach` below: a loaded row is keyed by its entry
-/// id (stable across a live reorder, which is what lets SwiftUI animate the
-/// move); an unloaded row is keyed by its display slot instead, since it has no
-/// content of its own to identify. `sourceIndex` is the absolute, canonical
-/// index `itemAt`/`loadRange` address — it equals `displaySlot` outside a live
-/// reorder, and diverges from it only while the coordinator's display order
-/// permutes the lane (`QueueDragCoordinator.displayOrder`).
+/// A row's `ForEach` identity: the entry id when loaded, so SwiftUI animates a
+/// reorder, else the display slot. `sourceIndex` is the canonical index
+/// `itemAt`/`loadRange` take; it differs from `displaySlot` only during a drag.
 private struct QueueRowSlot: Identifiable {
     let id: String
     let displaySlot: Int
     let sourceIndex: Int
 }
 
-/// One lane of the queue (the manual "Up Next" lane or the context), rendered as
-/// a labelled section of reorderable rows addressed by absolute index —
-/// `itemAt(index)` resolves the loaded row, or `nil` for a not-yet-loaded
-/// context row, which renders a placeholder and triggers `loadRange`. Only the
-/// manual lane sets `acceptsExternalDrops` (external track drops land in the
-/// manual lane, never the release's own order). Hover and drop-insertion are
-/// positional, so each section owns its own state.
+/// One queue lane (the manual "Up Next" lane or the context) as a labelled
+/// section of reorderable rows. `itemAt` returns `nil` for an unloaded context
+/// row, which shows a placeholder and calls `loadRange`.
 struct QueueSection: View {
-    /// The pitch of a lane's rows, which every row is sized to: 48pt of cover
-    /// art, `QueueItemRow`'s 6pt vertical padding either side, and the 1pt this
-    /// section puts between rows either side. It is declared rather than
-    /// measured because the rows stack is lazy — the height of the part that
-    /// isn't built is SwiftUI's estimate — and `QueueDragCoordinator`'s slot
-    /// math divides cursor positions by it.
+    /// Every row's height (48pt art, 6pt padding and 1pt spacing either side),
+    /// declared rather than measured because the lazy stack only estimates rows
+    /// it hasn't built, and `QueueDragCoordinator` divides cursor positions by
+    /// it.
     static let rowHeight: CGFloat = 62
 
-    /// `nil` hides the header label: with an empty manual lane there is only
-    /// one visible list, and "Up Next" / "Playing From" labels over a single
-    /// list are noise. The shuffle control keeps its slot regardless.
+    /// `nil` hides the header label, for when only one list is visible.
     let title: String?
     let shuffled: Bool
     let count: Int
     let itemAt: (Int) -> QueueItem?
-    /// The store's queue revision — folded into each row's `.task(id:)` so a
-    /// queue change restarts in-flight loads rather than resolving into a
-    /// superseded window. Unused (fixed at 0) for the always-loaded manual lane.
+    /// Restarts in-flight row loads when it changes; fixed at 0 for the manual
+    /// lane, which is always loaded.
     let loadEpoch: UInt64
     /// Fetch `[offset, offset + limit)` and merge it into the store. `nil` for
     /// the manual lane, which is never windowed.
     let loadRange: ((_ offset: Int, _ limit: Int) async -> Void)?
     let acceptsExternalDrops: Bool
-    /// Which lane this section renders — the drag coordinator's key for
-    /// geometry, permutations, and cross-lane targeting.
+    /// This lane's key in the drag coordinator.
     let laneId: QueueLaneID
-    /// The shared drag state: the active gesture, lane geometry, and the
-    /// post-commit hold. All row-shift effects derive from it per render.
+    /// The shared drag state every row shift is derived from.
     let coordinator: QueueDragCoordinator
-    /// The store's queue revision, independent of `loadEpoch` (which the manual
-    /// lane fixes at 0). A change means core applied a mutation — including the
-    /// reorder this lane just committed — so the held post-commit order is
-    /// dropped: the canonical order the new snapshot carries already equals
-    /// what was on screen, so clearing it is visually a no-op, not a snap.
+    /// The store's queue revision; a change drops the held post-commit order.
     let queueRevision: UInt64
-    /// Empty this lane. Shown in the section header only while the lane has
-    /// rows — an empty section has nothing to clear, so it offers nothing.
+    /// Empties this lane; offered only while the lane has rows.
     let onClear: () -> Void
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
     let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
     let onInsertTracks: ([String], Int) -> Void
-    /// Flip this section between sequential and shuffled order, given its current
-    /// `shuffled` state. `nil` on the manual lane, which has no shuffle control.
+    /// Sets this lane's shuffle; `nil` on the manual lane, which has none.
     let onSetShuffle: ((Bool) -> Void)?
 
-    /// The hovered row, by entry id — NOT by display slot: a removal above the
-    /// pointer slides the lane up and re-indexes every row without firing new
-    /// hover events, so a stored slot ends up pointing one row past the one
-    /// actually under the pointer. The id follows the row wherever it lands.
+    /// The hovered row by entry id, not slot, so the hover stays on its row
+    /// when a removal above shifts the lane without new hover events.
     @State
     private var hoveredEntryId: String?
     @State
     private var dropInsertIndex: Int?
-    /// Rows removed optimistically: the X collapses the row on the spot, the
-    /// remove command races the snapshot behind the animation, and the
-    /// revision bump (whose canonical order no longer carries the entry)
-    /// clears the set. The alternative — waiting for the round trip — reads
-    /// as the click not registering.
+    /// Rows collapsed before core confirms the removal, so the click responds
+    /// at once; cleared when the entry leaves the lane.
     @State
     private var removingEntryIds: Set<String> = []
 
-    /// Display slots 0..<count, each resolved to its source index (identity
-    /// in canonical order, or permuted while a drag is live) and an identity —
-    /// the entry id when loaded, a slot sentinel when not. A `LazyMapCollection`
-    /// rather than a materialized array, so no `[QueueRowSlot]` is allocated
-    /// per render — random access over `0..<count` is what lets the lazy rows
-    /// stack index a slot without walking the lane, and `itemAt` runs only for
-    /// the slots it materializes.
+    /// Display slots 0..<count resolved to source index and identity, mapped
+    /// lazily so `itemAt` runs only for the rows the lazy stack builds.
     private var rowSlots: LazyMapCollection<Range<Int>, QueueRowSlot> {
-        // Derived fresh against the CURRENT count on every render — a queue
-        // change mid-drag can't leave a stale-length permutation.
+        // Derived from the current count so a queue change mid-drag can't
+        // leave a stale permutation.
         let order = coordinator.displayOrder(for: laneId, count: count)
         return (0..<count).lazy
             .map { displaySlot in
@@ -126,16 +92,9 @@ struct QueueSection: View {
         VStack(spacing: 0) {
             sectionHeader
 
-            // Lazy: the context lane counts the whole rest of the library, so
-            // a plain stack mounts thousands of rows — every drop target, and
-            // every row's load task at once, which the store's three-page
-            // subscription cap then evicts out from under the visible rows.
-            // An explicit zero-spacing stack, NOT `Group`: a modified Group
-            // wraps its children in an implicit container with DEFAULT stack
-            // spacing — which put a phantom 8pt between every row (53pt pitch
-            // for 45pt rows), held collapse animations 8pt short until the
-            // unmount, and floated the perceived row border 8pt above each
-            // row's actual top edge.
+            // Lazy because the context lane can span the whole library. An
+            // explicit zero-spacing stack, not `Group`, which would add default
+            // spacing between rows.
             LazyVStack(spacing: 0) {
                 ForEach(rowSlots) { slot in
                     let item = itemAt(slot.sourceIndex)
@@ -147,32 +106,19 @@ struct QueueSection: View {
                     queueRow(item, index: slot.displaySlot)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 1)
-                        // The pitch the coordinator's slot math assumes,
-                        // exact by construction — a loaded row and a
-                        // placeholder occupy the same 62pt whether or not
-                        // the lazy stack has built its neighbours.
+                        // Loaded or placeholder, every row takes the pitch the
+                        // coordinator's slot math assumes.
                         .frame(height: Self.rowHeight)
-                        // Optimistic removal: one linear curve drives the fade
-                        // and the collapse together. The content stays full-size,
-                        // pinned to the top — the bottom edge rises over it (a
-                        // top-aligned zero frame + clip), never squishing it.
-                        // No scoped animation on the frame: the collapse rides
-                        // the withAnimation transaction from the remove action, so
-                        // every downstream layout shift (rows below, the whole
-                        // next section) animates in the SAME spring — a scoped
-                        // animation here moved only this row smoothly and let the
-                        // rest snap. The fade alone keeps its own linear curve.
+                        // Removal clips the row from the bottom without
+                        // squishing it; the collapse rides the remove action's
+                        // spring so everything below moves with it, and only
+                        // the fade has its own curve.
                         .frame(height: isRemoving ? 0 : nil, alignment: .top)
                         .clipped()
                         .opacity(isRemoving ? 0 : 1)
                         .animation(.linear(duration: 0.25), value: isRemoving)
-                        // The manual lane's insertion line serves both external
-                        // track drops and a context-row drag hovering here (a
-                        // cross-lane enqueue); the context lane never shows one.
-                        // Anchored to the BOTTOM of the row above the gap; a
-                        // top-anchored line on the row below kept landing visibly
-                        // under it. Gap 0 (above the first row) is the one gap
-                        // with no row above; it anchors to row 0's top instead.
+                        // The manual lane's insertion line sits on the bottom
+                        // of the row above the gap; gap 0 uses row 0's top.
                         .overlay(alignment: .bottom) {
                             if acceptsExternalDrops,
                                 insertGapForLine == slot.displaySlot + 1
@@ -189,12 +135,8 @@ struct QueueSection: View {
                                     .allowsHitTesting(false)
                             }
                         }
-                        // The dragged row keeps its slot in the stack — and its
-                        // gesture, which owns the rest of the drag — but is
-                        // drawn by the floating copy below instead, so the
-                        // siblings can shift through the space it holds. It
-                        // stays hidden while the released copy settles into
-                        // its slot, and shows again the moment that lands.
+                        // The dragged row keeps its slot and gesture but is
+                        // hidden while the floating copy draws it.
                         .opacity(isFloating ? 0 : 1)
                         .task(
                             id: QueueRowLoadID(
@@ -228,9 +170,7 @@ struct QueueSection: View {
                 }
             }
             .overlay(alignment: .top) { draggedRowCopy }
-            // The rows region's frame in the pane space: the coordinator maps
-            // cursor positions onto row slots with it, at the declared
-            // `rowHeight` pitch.
+            // The coordinator maps cursor positions onto slots with this frame.
             .onGeometryChange(for: CGRect.self) { proxy in
                 proxy.frame(in: .named("queuePane"))
             } action: { frame in
@@ -240,21 +180,16 @@ struct QueueSection: View {
                     rowCount: count
                 )
             }
-            // The trailing drop line: only the EMPTY lane needs it — with rows
-            // present, the last row's bottom overlay above marks the append
-            // gap.
+            // Only an empty lane needs this line; otherwise the last row's
+            // bottom overlay marks the append gap.
             if acceptsExternalDrops, count == 0 {
                 insertionLine
                     .opacity(insertGapForLine == 0 ? 1 : 0)
                     .allowsHitTesting(false)
             }
 
-            // Trailing drop zone for appending external tracks — manual lane
-            // only; the context lane keeps a thin spacer between sections. Its
-            // frame doubles as the cross-lane append target — the ONLY target
-            // when the lane has no rows yet. Kept slim so the two sections sit
-            // close; the append gap is still hittable via the last row's lower
-            // half.
+            // The manual lane's append drop zone and cross-lane append target;
+            // a thin spacer on the context lane.
             Color.clear
                 .frame(height: acceptsExternalDrops ? 18 : 8)
                 .onGeometryChange(for: CGRect.self) { proxy in
@@ -272,23 +207,18 @@ struct QueueSection: View {
                     )
                 )
         }
-        // The reorder this lane committed just echoed back from core: the
-        // canonical order now equals the held one, so dropping the hold is a
-        // visual no-op, not a snap.
+        // Core applied the change, so the canonical order now matches the held
+        // one and dropping it doesn't snap.
         .onChange(of: queueRevision) {
             coordinator.clearHold(laneId)
-            // Drop only ids whose rows are GONE from the lane data. The
-            // snapshot and the revision arrive as separate observable
-            // updates, so clearing unconditionally can hit a pass where the
-            // row still exists — its zero frame snaps back to intrinsic for
-            // a frame (a visible end-of-collapse jump).
+            // Drop only ids whose rows are gone: the snapshot and revision
+            // update separately, and a still-present row would jump back open.
             removingEntryIds = removingEntryIds.filter { id in
                 (0..<count).contains { itemAt($0)?.id == id }
             }
         }
-        // A drag started: drop the stored hover. `.onHover` won't fire again
-        // until the gesture ends, so without this the pre-drag value would
-        // resurface afterwards.
+        // Drop the hover when a drag starts, since `.onHover` won't fire again
+        // until it ends.
         .onChange(of: coordinator.isDragging) {
             if coordinator.isDragging {
                 hoveredEntryId = nil
@@ -297,14 +227,11 @@ struct QueueSection: View {
     }
 }
 
-/// `QueueSection`'s drop-resolution, header chrome, and per-row builders, split
-/// into an extension purely to keep the primary type body under the length
-/// limit — no behavior or state change; each method still runs on the section
-/// instance and reads its stored props and `@State` directly.
+/// `QueueSection`'s drag resolution, header, and row builders, split out to
+/// keep the type body under the length limit.
 extension QueueSection {
-    /// Where the manual lane's insertion line sits: an external album-card
-    /// drag's drop target, or a context-row drag hovering here (cross-lane
-    /// enqueue). `nil` hides it.
+    /// The manual lane's insertion gap from an external drop or a cross-lane
+    /// drag; `nil` hides the line.
     private var insertGapForLine: Int? {
         guard acceptsExternalDrops else {
             return nil
@@ -313,23 +240,18 @@ extension QueueSection {
             ?? coordinator.manualInsertGap(manualCount: count)
     }
 
-    /// Resolve a finished drag in this lane: a same-lane reorder commits
-    /// `(entryId, beforeEntryId)` (refused when the anchor row after the drop
-    /// slot exists but isn't loaded — core pins by id, and there is none yet);
-    /// a context-row release over the manual lane enqueues the track there;
-    /// anything else settles back.
+    /// Resolves a finished drag: a reorder commits unless the row after the
+    /// drop slot isn't loaded yet, a context row dropped on the manual lane
+    /// enqueues its track, and anything else settles back.
     private func handleDragEnd() {
-        // A cross-lane commit ends WITHOUT animation: the enqueued row appears
-        // at the drop point when the snapshot lands (milliseconds), and
-        // animating the source row's flight back home drags the eye away from
-        // it. Same-lane outcomes (commit or settle-back) animate the release.
+        // A cross-lane drop skips the animation so the eye stays on the
+        // enqueued row, not the source row flying home.
         guard !coordinator.isCrossLaneTargeting else {
             finishDrag()
             coordinator.settled()
             return
         }
-        // The floating copy glides into its slot under this spring and the
-        // in-place row takes over the moment it lands.
+        // The floating copy glides into its slot under this spring.
         withAnimation(.snappy(duration: 0.2, extraBounce: 0)) {
             finishDrag()
         } completion: {
@@ -385,9 +307,7 @@ extension QueueSection {
         }
     }
 
-    /// This lane's Clear. The visible word stays "Clear" — the header beside it
-    /// already names the lane — while the tooltip and the accessibility label
-    /// spell out which lane it empties, for anyone reading it out of context.
+    /// This lane's Clear; the tooltip and accessibility label name the lane.
     private var clearButton: some View {
         Button("Clear") { onClear() }
             .buttonStyle(.plain)
@@ -409,8 +329,7 @@ extension QueueSection {
         }
     }
 
-    /// The context's shuffle toggle: tinted when on, muted when off; tapping it
-    /// flips the context's order while the current track keeps playing.
+    /// The context's shuffle toggle; the current track keeps playing.
     private func shuffleToggle(_ onSetShuffle: @escaping (Bool) -> Void)
         -> some View
     {
@@ -420,8 +339,7 @@ extension QueueSection {
             Image(systemName: "shuffle")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(shuffled ? Theme.accent : .secondary)
-                // Same 28pt slot as the rows' X column, so the glyphs align
-                // vertically — and the same comfortable hit target.
+                // Same 28pt slot as the rows' remove button, so they line up.
                 .frame(width: 28, height: 28)
                 .background(
                     RoundedRectangle(cornerRadius: 7)
@@ -441,22 +359,15 @@ extension QueueSection {
             .padding(.horizontal, 8)
     }
 
-    /// The dragged row, drawn over the lane at the cursor, and after release
-    /// the same row gliding into its slot — the source lane only, which is
-    /// the one the coordinator answers for. It is a copy rather than the row
-    /// itself lifted out of the stack: `zIndex` is inert among a lazy stack's
-    /// children (each cell composites in its own layer, in order), so a row
-    /// raised in place would render under the rows below it. Inert, too: the
-    /// in-place row keeps the gesture and the hover, and this copy only
-    /// draws.
+    /// The dragged row drawn at the cursor, then gliding into its slot. A copy,
+    /// because `zIndex` has no effect in a lazy stack and a row raised in place
+    /// would draw under the rows below it.
     @ViewBuilder
     private var draggedRowCopy: some View {
         if let floating = coordinator.floatingRow(in: laneId) {
             let isDragging = coordinator.isDragging
-            // The grabbed row as a value, not a lookup by index: after core
-            // echoes the reorder, the row's old index belongs to whichever
-            // row moved into it, and a lookup would draw that one for the
-            // rest of the settle.
+            // The row as a value, not an index lookup: after core echoes the
+            // reorder, the old index belongs to another row.
             QueueItemRow(
                 item: floating.item,
                 isHovered: false,
@@ -468,17 +379,14 @@ extension QueueSection {
             .padding(.vertical, 1)
             .frame(height: Self.rowHeight)
             .shadow(
-                color: .black.opacity(isDragging ? 0.25 : 0),
+                color: isDragging ? Theme.shadow : Color.clear,
                 radius: 6,
                 y: 2
             )
             .allowsHitTesting(false)
             .offset(y: floating.top)
-            // The gesture updates the coordinator inside an animation so the
-            // siblings shift smoothly; this copy has to sit exactly under the
-            // cursor instead, on every frame. The release is the exception:
-            // it rides the release animation from the cursor into its slot,
-            // in the same spring as the siblings closing around it.
+            // No animation while dragging so the copy stays under the cursor;
+            // the release rides the siblings' spring.
             .transaction { transaction in
                 if isDragging {
                     transaction.animation = nil
@@ -493,10 +401,8 @@ extension QueueSection {
             if let item {
                 QueueItemRow(
                     item: item,
-                    // Hover chrome is suppressed for the whole drag: rows
-                    // sliding under the stationary pointer fire hover events
-                    // mid-drag — without the guard, whichever row slides by
-                    // wears the remove/play chrome.
+                    // No hover during a drag: rows sliding under the pointer
+                    // fire hover events.
                     isHovered: hoveredEntryId == item.id
                         && !coordinator.isDragging,
                     onHoverChanged: { hovering in
@@ -507,24 +413,17 @@ extension QueueSection {
                             hoveredEntryId = item.id
                         }
                         else if hoveredEntryId == item.id {
-                            // Only the row that owns the hover clears it: a
-                            // collapsing row's exit event can land AFTER the
-                            // row sliding into its place claimed the hover,
-                            // and must not wipe that claim.
+                            // Only the owning row clears the hover: a
+                            // collapsing row's exit can arrive after the next
+                            // row claimed it.
                             hoveredEntryId = nil
                         }
                     },
                     onSkipTo: onSkipTo,
                     onRemove: { id in
-                        // The exit animation owns the removal visually; the
-                        // command follows as it finishes (sent immediately,
-                        // core's echo lands in ~20ms, unmounts the row, and
-                        // truncates the exit to an imperceptible blink). The
-                        // global transaction is what carries the spring to
-                        // every row and section this collapse displaces.
-                        // Spring perceptual duration 0.2 settles well before
-                        // the 350ms command — an echo landing inside the
-                        // spring's tail truncates it into a visible end nudge.
+                        // Collapse first and send the remove after the spring
+                        // settles, so core's echo can't cut the animation
+                        // short.
                         withAnimation(.spring(duration: 0.2)) {
                             _ = removingEntryIds.insert(id)
                         }
@@ -534,12 +433,9 @@ extension QueueSection {
                         }
                     }
                 )
-                // The reorder drag, in-process: a copy of the row follows the
-                // cursor, siblings shift continuously at slot boundaries, and
-                // `onEnded` is the one deterministic end-of-drag signal —
-                // no AppKit drag session, no floating drag image to linger
-                // after release. `minimumDistance` keeps clicks (skip,
-                // hover buttons, double-click) intact.
+                // An in-process reorder drag rather than an AppKit drag
+                // session, so `onEnded` reliably ends it; `minimumDistance`
+                // keeps clicks working.
                 .gesture(
                     DragGesture(
                         minimumDistance: 4,
@@ -554,9 +450,8 @@ extension QueueSection {
                             }
                         }
                         else {
-                            // `index` is this row's display slot; a drag can
-                            // only begin from canonical order (no permutation
-                            // is live), so it is also the canonical slot.
+                            // A drag begins only in canonical order, so the
+                            // display slot is the canonical slot.
                             coordinator.begin(
                                 lane: laneId,
                                 item: item,
@@ -580,9 +475,8 @@ extension QueueSection {
 #if DEBUG
     // MARK: - Previews
 
-    /// Hosts one lane over a fresh drag coordinator and the named pane
-    /// coordinate space the section's gestures address, resolving rows from a
-    /// slice of the shared queue fixtures.
+    /// Hosts one lane over a fresh drag coordinator and the `queuePane`
+    /// coordinate space, with rows from the shared queue fixtures.
     @MainActor
     private func queueSectionPreview(
         title: String?,
