@@ -1,17 +1,7 @@
-//! Placement columns in, an ordered list of item references out.
+//! Placement columns in, an ordered list of item references out, in one pass
+//! that reads no files or fetched releases.
 //!
-//! One pass over the queue answers every question the tab asks: where each
-//! entry sits, which group it joins, which tab it counts against, whether the
-//! filter keeps it, and — for the chrome — the Ready set and the group keys.
-//! Nothing here reads a file,
-//! a cue sheet, a boundary tree or a fetched release; those are loaded for
-//! the items inside the requested windows and nowhere else.
-//!
-//! The filter tests the text each row shows and nothing else: a candidate
-//! row's draft title and artists, or its folder's name when it has no draft;
-//! a Done row's library release's title, artists and year; an invalid folder's
-//! name. What a row does not show — its path, the verdict's lead — finds
-//! nothing.
+//! The filter matches only the text each row shows.
 
 use super::{
     GroupHeaderRow, IdentificationOutcome, ImportCandidateListLocation, ImportListItem,
@@ -31,15 +21,16 @@ use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
-/// Where one item in the list comes from. The windows resolve these; the
-/// entries outside them are never built.
+/// Where one item in the list comes from; only the requested windows build
+/// theirs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ItemRef {
     /// Into [`Flattened::headers`].
     Header(usize),
     /// Into [`Flattened::rows`].
     Candidate { index: usize, is_group_member: bool },
-    /// Into [`ImportQueueRows::candidates`] — a row the scan found invalid.
+    /// Into [`ImportQueueRows::candidates`], for a folder the scan found
+    /// invalid.
     Invalid { index: usize, is_group_member: bool },
 }
 
@@ -60,20 +51,19 @@ struct OrderedEntry {
     group: Option<TriageGroup>,
     matches_filter: bool,
     item: ItemRef,
-    /// How a Done row sorts against its neighbours. `None` on every other tab,
-    /// which uses the source folder's date instead.
+    /// How a Done row sorts; other tabs sort by the folder's date.
     done_order: Option<DoneOrder>,
 }
 
-/// Outstanding uploads remain first. Date sorting on Done describes when
-/// the release entered the library rather than when its folder was discovered.
+/// A Done row's sort key: outstanding uploads first, then when it was
+/// imported.
 struct DoneOrder {
     upload_rank: u8,
     imported_at: Option<i64>,
 }
 
-/// Every entry of the queue, placed and in the order the view sorts them,
-/// before the tab filter and the grouping into items runs.
+/// Every entry of the queue, placed and sorted, before the tab filter and
+/// grouping.
 struct Ordered {
     entries: Vec<OrderedEntry>,
     placed: Vec<PlacedRow>,
@@ -99,9 +89,7 @@ pub(crate) fn flatten(
     })
 }
 
-/// The first of `keys` in the queue's own order — every tab in turn, each in
-/// the order `request`'s view sorts it — or `None` when the queue holds none
-/// of them. The filter hides none of them, so it is not applied at all.
+/// The first of `keys` in the queue's unfiltered order.
 pub(crate) fn first_candidate_among(
     rows: &ImportQueueRows,
     request: &ImportListRequest,
@@ -144,11 +132,8 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
                     done_order: None,
                 });
             }
-            // A tentative candidate is a release approximation the scan found
-            // before it knew what enclosed it. It is not a row, is not
-            // counted, and does not make its first path component a group:
-            // nothing can be asked of it until a later scan item settles what
-            // it belongs to.
+            // A tentative candidate is not a row until a later scan settles
+            // what encloses it.
             ScanCandidateKind::Tentative => {}
             ScanCandidateKind::Valid => {
                 let (triage_row, identification) = place_row(rows, row)?;
@@ -181,10 +166,8 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
     let grouped_roots = grouped_roots(rows);
     let combinable_roots = combinable_roots(rows);
     for entry in &mut ordered {
-        // A group header asks how the folder under it is read, and offers to
-        // read it the other way. Both are questions about a folder nobody has
-        // imported yet, so only a Pending row joins one; Done and Skipped are
-        // flat lists of releases whose reading is settled.
+        // Only Pending rows group: how a folder is read is settled on the
+        // other tabs.
         if entry.tab != TriageTab::Pending {
             continue;
         }
@@ -202,10 +185,8 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
         .enumerate()
         .map(|(index, folder)| (folder.path.as_str(), index))
         .collect();
-    // A group's most recent member dates the group as a whole. Compare the
-    // group before its members, so dates never scatter a group's rows between
-    // other headers. Compute this before filtering/collapsing: neither changes
-    // when the source folder was last added to.
+    // A group is dated by its newest member, so date sorting keeps its rows
+    // together.
     let mut group_dates: HashMap<FolderReleaseDecisionKey, Option<i64>> = HashMap::new();
     for entry in &ordered {
         if let Some(group) = &entry.group {
@@ -215,9 +196,7 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
                 .or_insert(entry.discovered_at);
         }
     }
-    // Sort every tab's entries in one pass, tab first so each tab's run is
-    // contiguous and its own order is decided among its own rows. Which tab is
-    // being shown is the filter's business, further down.
+    // Tab first, so each tab's entries are contiguous.
     ordered.sort_by(|left, right| {
         tab_rank(left.tab).cmp(&tab_rank(right.tab)).then_with(|| {
             let upload_order = match (&left.done_order, &right.done_order) {
@@ -296,10 +275,7 @@ fn compare_dates(
     }
 }
 
-/// Locate `candidate_key` using the same placement, grouping and ordering
-/// pass as the list itself. The filter is cleared, so the candidate is where
-/// it sits in its tab unfiltered. Only the target's group is opened; the
-/// caller's disclosure state for every other group remains authoritative.
+/// Where `candidate_key` sits in its tab, unfiltered, with its group opened.
 pub(crate) fn locate_candidate(
     rows: &ImportQueueRows,
     request: &ImportListRequest,
@@ -343,8 +319,7 @@ pub(crate) fn locate_candidate(
     }))
 }
 
-/// `request` with its filters cleared: the request a queue read without the
-/// filter's text answers, placing every row whatever it is.
+/// `request` with its filters cleared.
 fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
     let mut request = request.clone();
     request.view.filter_text.clear();
@@ -353,8 +328,7 @@ fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
 }
 
 /// One settled candidate's row, as the tables place it, and what its stored
-/// lookup result reads as for the Identification filter. `matched` is the
-/// verdict's lead — the window fills it in for the items it materialises.
+/// lookup result reads as for the Identification filter.
 pub(super) fn place_row(
     rows: &ImportQueueRows,
     row: &ScanCandidateListRow,
@@ -396,8 +370,6 @@ pub(super) fn place_row(
         state.is_some_and(|state| state.metadata_draft_valid),
         answer.as_ref(),
     );
-    // Every row the list holds is a settled release: a tentative candidate
-    // never becomes one.
     let actionable = row.error().is_none();
     let action_basis = CandidateActionBasis::of(
         actionable,
@@ -410,14 +382,12 @@ pub(super) fn place_row(
         folder_name: row.name.clone(),
         watched_folder_path: row.watched_folder_path.clone(),
         display_path: row.display_path.clone(),
-        separable: row.grouping.is_some(),
         actionable,
         selectable: action_basis.importable_at_rest(),
         action_basis,
         matched: verdict.and_then(MatchedRelease::of_summary),
-        // The records are read off the pick's stored releases, which the
-        // queue never opens: the window that materialises the row reads them
-        // and builds the reading over again.
+        // The window that builds the row reads the pick's records and
+        // replaces this reading.
         reading: TriageReading::of(
             state.and_then(|state| state.metadata_summary.as_ref()),
             metadata_provenance.as_ref(),
@@ -432,9 +402,7 @@ pub(super) fn place_row(
     Ok((triage_row, IdentificationOutcome::of(verdict)))
 }
 
-/// Which run of the sorted vector a tab's entries form. Only the grouping
-/// matters — each tab is filtered out on its own — but a stable one keeps the
-/// comparator a total order.
+/// The order tabs' entries run in the sorted list.
 fn tab_rank(tab: TriageTab) -> u8 {
     match tab {
         TriageTab::Pending => 0,
@@ -443,8 +411,7 @@ fn tab_rank(tab: TriageTab) -> u8 {
     }
 }
 
-/// Where one Done row sorts: what the cloud is still doing with the release it
-/// became, then when that import happened.
+/// Where one Done row sorts: by upload standing, then import time.
 fn done_order(
     rows: &ImportQueueRows,
     row: &ScanCandidateListRow,
@@ -466,39 +433,28 @@ fn done_order(
     }
 }
 
-/// The first path components that hold more than a flat row — a folder with a
-/// nested candidate below it, or a boundary that has a tree. Rows under one of
-/// those group; a row that is the only thing at its root does not.
+/// The first path components with a candidate nested below them; rows under
+/// one of those group.
 fn grouped_roots(rows: &ImportQueueRows) -> HashSet<(String, String)> {
     let mut grouped = HashSet::new();
-    let mut note = |watched_folder_path: &str, display_path: &str, hidden: bool| {
-        let mut components = display_path
-            .split('/')
-            .filter(|component| !component.is_empty());
-        if let Some(first) = components.next() {
-            if hidden || components.next().is_some() {
-                grouped.insert((watched_folder_path.to_string(), first.to_string()));
-            }
-        }
-    };
     for row in &rows.candidates {
         if matches!(row.kind, ScanCandidateKind::Tentative) {
             continue;
         }
-        note(&row.watched_folder_path, &row.display_path, false);
+        let mut components = row
+            .display_path
+            .split('/')
+            .filter(|component| !component.is_empty());
+        if let (Some(first), Some(_)) = (components.next(), components.next()) {
+            grouped.insert((row.watched_folder_path.clone(), first.to_string()));
+        }
     }
     grouped
 }
 
-/// The folders the list can offer to read as one release, counted over the
-/// releases as the groupings read them — a folder holding one album read from
-/// two disc folders holds one release, and offers nothing.
-///
-/// Two kinds of folder offer it: one whose releases are kept apart by a
-/// stored reading, and one nothing is stored for that is the nearest such
-/// folder above some release to hold two releases or more. A folder between
-/// that one and the release, holding only the one reading's worth, is where
-/// the choice already belongs, so nothing above it is asked.
+/// The folders the list offers to read as one release: those a stored reading
+/// keeps apart, and, with nothing stored, the nearest folder above a release
+/// that holds two releases or more.
 fn combinable_roots(rows: &ImportQueueRows) -> HashSet<(String, String)> {
     let releases: Vec<&ScanCandidateListRow> = rows
         .candidates
@@ -532,8 +488,7 @@ fn combinable_roots(rows: &ImportQueueRows) -> HashSet<(String, String)> {
     combinable
 }
 
-/// Every folder above the release at `display_path`, shallowest first, as
-/// root-relative paths — the release's own folder left out.
+/// Every folder above the release at `display_path`, shallowest first.
 fn ancestors(display_path: &str) -> Vec<String> {
     let components: Vec<&str> = display_path
         .split('/')
@@ -568,8 +523,7 @@ fn group_for(
     })
 }
 
-/// The view's filter text, lowercased once. `None` for an empty filter, which
-/// keeps every row.
+/// The view's filter text, lowercased; `None` keeps every row.
 struct TextFilter(Option<String>);
 
 impl TextFilter {
@@ -580,9 +534,8 @@ impl TextFilter {
         )
     }
 
-    /// Whether a row showing `shown` survives the filter. The text is only
-    /// asked for when there is a filter: with none, the queue read did not
-    /// read a Done row's.
+    /// Whether a row showing `shown` survives the filter; `shown` is only
+    /// called when there is one.
     fn keeps<'a>(
         &self,
         shown: impl FnOnce() -> Result<Vec<Cow<'a, str>>, LibraryError>,
@@ -596,9 +549,8 @@ impl TextFilter {
     }
 }
 
-/// Every piece of text one settled candidate's row shows. A Done row is the
-/// library release it became, so its text is that release's, read with the
-/// queue; every other row is the candidate's own [`TriageRow::shown_text`].
+/// The text one settled candidate's row shows: a Done row's library release's,
+/// or the candidate's own.
 fn shown_text<'a>(
     rows: &'a ImportQueueRows,
     triage_row: &'a TriageRow,
@@ -631,9 +583,7 @@ fn shown_text<'a>(
     Ok(text.shown_text())
 }
 
-/// The chrome, over the whole queue rather than the requested tab: the counts
-/// every tab bar shows, the Ready set the foot bar acts on, and every group key
-/// disclosure state is retained against.
+/// The whole queue's tab counts, Ready set and group keys.
 fn summarise(
     rows: &ImportQueueRows,
     ordered: &[OrderedEntry],
@@ -671,8 +621,8 @@ fn summarise(
     }
 }
 
-/// The tab's items in order: a header before each run of entries sharing a
-/// group, and the entries themselves unless the group is folded shut.
+/// The tab's items: a header before each group's run, and the entries unless
+/// the group is collapsed.
 fn emit(view: &ImportListView, ordered: &[OrderedEntry]) -> (Vec<ItemRef>, Vec<GroupHeaderRow>) {
     let entries: Vec<&OrderedEntry> = ordered
         .iter()

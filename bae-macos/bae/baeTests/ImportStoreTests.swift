@@ -24,8 +24,7 @@ private func makeStatus(albumId: String) -> BridgeLibraryStatus {
 
 // MARK: - Bridge snapshot builders
 
-/// The Bridge* records are generated at build from `bae-bridge/src/types.rs`;
-/// these hand-build the minimal shapes the snapshot reducers consume.
+/// Hand-built bridge records for the snapshot reducers.
 
 private func emptyBridgeFiles() -> BridgeCandidateFiles {
     BridgeCandidateFiles(
@@ -80,8 +79,7 @@ private func bridgeFolder(
     )
 }
 
-/// A folder-source `Candidate` with the given scan flags, for the
-/// batch/single-snapshot suites.
+/// A folder `Candidate` with the given scan flags.
 private func folderCandidate(
     folderPath: String,
     watchedFolderPath: String,
@@ -153,7 +151,6 @@ private func readyRow(
         folderName: title,
         watchedFolderPath: "/w",
         displayPath: title,
-        separable: false,
         actionable: true,
         placement: .ready,
         actionBasis: BridgeCandidateActionBasis(
@@ -192,7 +189,6 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         folderName: title,
         watchedFolderPath: "/w",
         displayPath: title,
-        separable: false,
         actionable: true,
         placement: .skipped,
         actionBasis: BridgeCandidateActionBasis(
@@ -300,8 +296,7 @@ struct ImportStoreCandidateDetailTests {
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
         store.selectedCandidates["/w1/a"] = existing
 
-        // Same key, renamed + skip flipped, and the pane's stored session
-        // moved on.
+        // Same key, renamed and skipped, and the pane's stored session moved on.
         store.applyCandidateDetail(
             key: "/w1/a",
             detail: detail(
@@ -314,8 +309,7 @@ struct ImportStoreCandidateDetailTests {
         )
 
         let merged = try #require(store.selectedCandidates["/w1/a"])
-        // The work this pane holds in memory survives; the read only re-read
-        // the folder.
+        // The pane's in-memory work survives the re-read.
         #expect(merged.libraryStatuses["rel-1"] != nil)
         // The pane's session is the candidate's, so it comes with the read.
         #expect(merged.metadataPresentation == .findOnline)
@@ -324,9 +318,8 @@ struct ImportStoreCandidateDetailTests {
         #expect(merged.files.files.isEmpty)
     }
 
-    /// Identification storing a pick that asks nothing moves the stored pane
-    /// to the draft in the same write; the open pane follows the read that
-    /// write produces, off Find online and onto the draft.
+    /// A stored pick that asks nothing moves the open pane from Find online to
+    /// the draft.
     @MainActor
     @Test("a read that stores the pane on the draft moves it there")
     func aReadOnTheDraftMovesThePane() throws {
@@ -460,8 +453,8 @@ struct ImportListPageSourceTests {
         }
     }
 
-    /// A stub bridge subscription: it records the windows asked for and hands
-    /// back the values a test queues.
+    /// A stub bridge subscription recording the windows asked for and handing
+    /// back queued values.
     private final class StubListSubscription: ImportListSubscriptionProtocol,
         @unchecked Sendable
     {
@@ -487,9 +480,8 @@ struct ImportListPageSourceTests {
             return views
         }
 
-        /// How many times the source has asked for a value. It takes one
-        /// value at a time and hands it on before asking again, so an ask
-        /// past a delivered value means that value has been handled.
+        /// How many times the source has asked for a value; an ask past a
+        /// delivered value means that value was handled.
         var asks: Int {
             lock.withLock { askedCount }
         }
@@ -619,11 +611,8 @@ extension ImportListPageSourceTests {
         }
         try await Wait.until({ subscription.requestedViews == [view] })
 
-        // The source asked once on opening; its second ask comes after it
-        // has handled revision 0, including resuming any view waiter. A
-        // resumed waiter's task was queued on the main actor before that
-        // ask, and the yield queues this test behind it, so a waiter that
-        // revision 0 wrongly released has run by the check.
+        // The source's second ask comes after it handled revision 0, and the yield
+        // runs this test after any waiter revision 0 wrongly released.
         subscription.deliver(
             snapshot([], totalCount: 70, requestRevision: 0)
         )
@@ -836,9 +825,7 @@ extension ImportListPageSourceTests {
             onSummary: { _ in }
         )
         let importStore = ImportStore()
-        // A redelivered page changes nothing else about the list, so the count
-        // of pages taken is the one place a delivery is observable — and the
-        // only thing each wait below can honestly wait for.
+        // A redelivered page is observable only in the count of pages taken.
         let delivered = DeliveredPages()
         let list = PaginatedList<BridgeImportListItem>(
             pageSource: source,
@@ -864,9 +851,7 @@ extension ImportListPageSourceTests {
         try await Wait.until({ delivered.count == 1 })
         #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
 
-        // A commit that leaves this window's rows exactly where they were —
-        // an identification tick on a row further down the queue. The value
-        // repeats, and nothing it repeats may go missing.
+        // A commit that leaves this window's rows where they were.
         subscription.deliver(
             snapshot(
                 [SnapshotWindow(offset: 0, limit: 50, keys: firstPage)],
@@ -876,9 +861,8 @@ extension ImportListPageSourceTests {
         try await Wait.until({ delivered.count == 2 })
         #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
 
-        // Scrolling past the page boundary registers a second window. The
-        // first window's rows are still on screen, so they stay resolvable
-        // while the value that answers the new window is still in flight.
+        // Scrolling past the page boundary registers a second window; the first
+        // window's rows stay resolvable meanwhile.
         async let next: Void = list.loadPage(containing: 55)
         try await Wait.until({ subscription.requestedWindows.last?.count == 2 })
         #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
@@ -898,9 +882,7 @@ extension ImportListPageSourceTests {
         #expect(loadedKeys(list, importStore, 0..<60) == keys)
     }
 
-    /// The keys the list holds at `positions`, resolved the way a row does:
-    /// the position's id, then that id's item in the store. A position either
-    /// side of that misses and renders as an empty row.
+    /// The keys the list holds at `positions`, resolved as a row does.
     @MainActor
     private func loadedKeys(
         _ list: PaginatedList<BridgeImportListItem>,

@@ -1,6 +1,5 @@
-/// The list as the Pending tab shows it: each group header with whether it
-/// offers to read its folder's releases as one, and each release row with
-/// whether it offers to read itself as the folders it is made of.
+/// Each Pending group header with whether it can combine, and each row with
+/// whether it can separate.
 async fn offers(manager: &LibraryManager) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
     let projection = manager
         .load_import_list(crate::import::ImportListRequest {
@@ -26,7 +25,7 @@ async fn offers(manager: &LibraryManager) -> (Vec<(String, bool)>, Vec<(String, 
                 headers.push((group.name.clone(), group.combinable));
             }
             crate::import::ImportListItem::Candidate { row, .. } => {
-                rows.push((row.display_path.clone(), row.separable));
+                rows.push((row.display_path.clone(), row.action_basis.separable));
             }
             _ => {}
         }
@@ -34,8 +33,8 @@ async fn offers(manager: &LibraryManager) -> (Vec<(String, bool)>, Vec<(String, 
     (headers, rows)
 }
 
-/// A watched root holding `releases` — each a folder of one FLAC track —
-/// read whole once, as when it was added.
+/// A watched root holding `releases`, each a folder of one FLAC track, scanned
+/// once.
 async fn scanned_root(releases: &[&str]) -> (TestService, TestScan, PathBuf) {
     let test = setup_import_service().await;
     let root = test.temp.path().join("music");
@@ -62,9 +61,8 @@ fn folder_key(root: &Path, relative: &str) -> crate::import::FolderReleaseDecisi
     }
 }
 
-/// One album read from two disc folders under an artist's folder is one
-/// release there: the artist's header has nothing to combine, and the album's
-/// row offers to read its discs apart.
+/// One album read from two disc folders offers to separate, and its artist's
+/// header has nothing to combine.
 #[tokio::test]
 async fn one_grouped_album_under_an_artist_offers_no_combine() {
     let (test, _scan, _root) =
@@ -74,8 +72,8 @@ async fn one_grouped_album_under_an_artist_offers_no_combine() {
     assert_eq!(rows, vec![("Artist/Album".to_string(), true)]);
 }
 
-/// Two albums under an artist's folder: the artist's header offers to read
-/// them as one, and neither album offers anything to separate.
+/// Two albums under an artist's folder offer to combine from the header, and
+/// neither separates.
 #[tokio::test]
 async fn two_albums_under_an_artist_offer_to_combine() {
     let (test, _scan, _root) = scanned_root(&["Artist/Album A", "Artist/Album B"]).await;
@@ -90,9 +88,8 @@ async fn two_albums_under_an_artist_offer_to_combine() {
     );
 }
 
-/// Disc folders read as one album offer to be read apart, from the album's
-/// row; kept apart, they offer to be read as one again, from the header over
-/// them — at the top of the root and under an artist alike.
+/// Disc folders read as one album separate from its row, and once kept apart
+/// combine from the header over them.
 #[tokio::test]
 async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
     for (album, header) in [("Album", "Album"), ("Artist/Album", "Artist")] {
@@ -126,9 +123,7 @@ async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
     }
 }
 
-/// Reading a folder as one release, apart and together again, keeps one key
-/// for the release it reads as — what a selection or a running
-/// identification follows it by.
+/// A folder read apart and together again keeps its release's key.
 #[tokio::test]
 async fn a_folders_release_keeps_its_key_across_readings() {
     let (test, scan, root) = scanned_root(&["Album/Disc 1", "Album/Disc 2"]).await;
@@ -173,8 +168,8 @@ async fn a_folders_release_keeps_its_key_across_readings() {
     assert_eq!(stored_release().await, vec![key]);
 }
 
-/// A folder that holds the art beside its disc folders gives the art to the
-/// release it reads as, and each disc a run of its own.
+/// A folder's own files go to the release it reads as, and each disc is
+/// numbered on its own.
 #[tokio::test]
 async fn a_folder_read_as_one_release_takes_its_own_files_and_numbers_its_discs() {
     let test = setup_import_service().await;

@@ -203,11 +203,8 @@ final class ImportCandidateViewportTests: XCTestCase {
         )
     }
 
-    /// A restore asks the list to scroll, and every layout until that scroll
-    /// runs still measures the list where the person left it — with the rows
-    /// above the anchor already resized, so a different row sits at the top.
-    /// That row is nobody's choice: a page landing in the meantime has to put
-    /// the anchor back, not the row the unscrolled list happened to show.
+    /// A page landing before a restore's scroll runs puts the anchor back at
+    /// the top, not the row the unscrolled list shows.
     func testALayoutBeforeTheRestoreScrollCannotReplaceTheAnchor() {
         var state = ImportCandidateListViewport()
         let anchorKey = viewportCandidateKey(30)
@@ -253,9 +250,7 @@ final class ImportCandidateViewportTests: XCTestCase {
         )
     }
 
-    /// Once the restore's scroll has run, the list reports where it really
-    /// left its rows, and the row at the top is the anchor again — otherwise
-    /// the next page would drag the person back to the row they scrolled off.
+    /// Once the restore's scroll has run, the row at the top is the anchor.
     func testTheAnchorFollowsTheListOnceTheRestoreScrollHasRun() {
         var state = ImportCandidateListViewport()
         let anchorKey = viewportCandidateKey(30)
@@ -407,7 +402,6 @@ extension ImportCandidateViewportTests {
                 folderName: "Release \(index)",
                 watchedFolderPath: "/library",
                 displayPath: "Release \(index)",
-                separable: false,
                 actionable: true,
                 placement: .skipped,
                 actionBasis: BridgeCandidateActionBasis(
@@ -442,8 +436,7 @@ extension ImportCandidateViewportTests {
         "/library/release-\(index)"
     }
 
-    /// The list's own frame in the tests that drive the viewport state
-    /// directly: the sidebar's header takes the first 84 points.
+    /// The list's frame below the sidebar's 84-point header.
     private var viewportBounds: CGRect {
         CGRect(x: 0, y: 84, width: 460, height: 516)
     }
@@ -462,8 +455,7 @@ extension ImportCandidateViewportTests {
         [view] + view.subviews.flatMap { descendants(of: $0) }
     }
 
-    /// Lay the newly hosted list out until it reports rows, then until it
-    /// and its content come to rest.
+    /// Lay the hosted list out until it reports rows and comes to rest.
     private func settleFirstLayout(
         _ geometry: GeometryObservation,
         _ slot: ImportListSlot
@@ -475,24 +467,14 @@ extension ImportCandidateViewportTests {
         try await settleViewportLayout(geometry, slot)
     }
 
-    /// Where the list stands: the rows it laid out, and which delivery of
-    /// its pages it laid them out from.
+    /// The rows the list laid out, and the page delivery they came from.
     private struct ViewportState: Equatable {
         let geometry: ImportCandidateListGeometry
         let contentRevision: UInt64?
     }
 
-    /// Run the list until it stops moving and stops loading: SwiftUI lays out
-    /// on the run loop, rows it lays out ask for their pages, and each page
-    /// that lands has the list restore its anchor with a scroll of its own on
-    /// a later turn. A scroll made while pages are still landing is undone
-    /// by the next restore, so the list's content has to come to rest as
-    /// well as its rows.
-    ///
-    /// After a step that must move the list — a scroll — settled means it
-    /// moved off `before` and then held still, since a list not yet on its
-    /// way also holds still. After a step that may leave it where it is — a
-    /// page delivery the anchor absorbs — holding still is the whole of it.
+    /// Run the list until its rows and content stop moving and loading; with
+    /// `before`, until it has also moved off it.
     private func settleViewportLayout(
         _ geometry: GeometryObservation,
         _ slot: ImportListSlot,
@@ -518,8 +500,7 @@ extension ImportCandidateViewportTests {
         }
     }
 
-    /// One run-loop turn, from a synchronous context: SwiftUI lays out there,
-    /// and `RunLoop.run(until:)` is spelled out of reach of an async one.
+    /// One run-loop turn, from a synchronous context.
     private func layOutOnce() {
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.005))
     }

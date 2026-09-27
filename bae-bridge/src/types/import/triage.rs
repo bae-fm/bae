@@ -2,26 +2,19 @@ use super::super::*;
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderCandidate {
-    /// The folders this release is read from, in play order, when it is
-    /// several. Empty for a release read from one folder.
+    /// The folders this release is read from, in play order; empty for one
+    /// folder.
     pub parts: Vec<BridgeReleasePart>,
     pub folder_path: String,
     pub source_folder_name: String,
-    /// Absolute path of the watched folder this candidate was scanned from —
-    /// the grouping key for the candidate-list section it renders under. Match
-    /// it against `BridgeWatchedFolder.path` for the section's display name.
+    /// The watched folder this candidate was scanned from
+    /// (`BridgeWatchedFolder.path`).
     pub watched_folder_path: String,
-    /// Categorized files for this candidate. Delivered with the candidate so
-    /// the receiver sees a fully populated value in a single event.
     pub files: BridgeCandidateFiles,
-    /// Folder candidates always have files on disk and CUEs parsed during the
-    /// scan, so track count is always known.
     pub track_count: u32,
-    /// Whether the user manually marked this candidate as skipped — the import
-    /// view tabs it under "Skipped".
+    /// Whether the person skipped this candidate.
     pub skipped: bool,
-    /// Whether this candidate's file structure was already imported (matched by
-    /// content hash). When true, the import view tabs it under "Added".
+    /// Whether these files were already imported, matched by content hash.
     pub is_added: bool,
 }
 
@@ -31,8 +24,8 @@ pub struct BridgeFolderReleaseDecisionKey {
     pub relative_folder_path: String,
 }
 
-/// Mirror of bae-core's `InvalidReason`. The UI localizes each variant via its
-/// catalog key (`bridge_invalid_reason_key`), interpolating the path where set.
+/// Why a folder failed validation; the UI localizes it through
+/// `bridge_invalid_reason_key`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeInvalidReason {
     CorruptAudioFile { path: String },
@@ -61,37 +54,31 @@ mirror_enum! {
     },
 }
 
-/// Localization key for an invalid-candidate reason — resolved by the UI against
-/// the `Core` string table; the UI interpolates the path arg where present.
+/// The `Core` string table key for an invalid-candidate reason.
 #[uniffi::export]
 pub fn bridge_invalid_reason_key(reason: BridgeInvalidReason) -> String {
     reason.loc_key().to_string()
 }
 
-/// A leaf folder that looks like a release but failed validation — the import
-/// view surfaces it under the Skipped tab with a warning and the reason. Mirror
-/// of `bae_core::import::InvalidCandidate`; carries no files or identify state
-/// because an invalid folder can't be imported.
+/// A folder that looks like a release but failed validation, listed under
+/// Skipped with its reason.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeInvalidCandidate {
-    /// The key the row is addressed by: its folder's path, or its grouping's.
+    /// Its folder's path, or its grouping's.
     pub candidate_key: String,
     pub folder_path: String,
     pub source_folder_name: String,
-    /// Absolute path of the watched folder this was scanned from — the grouping
-    /// key for the candidate-list section. Match it against
-    /// `BridgeWatchedFolder.path` for the section's display name.
+    /// The watched folder this was scanned from (`BridgeWatchedFolder.path`).
     pub watched_folder_path: String,
     pub display_path: String,
     /// Whether this row is folders a grouping reads as one, which it offers
-    /// to read as releases of their own.
+    /// to separate.
     pub separable: bool,
-    /// Why the folder failed validation — the UI localizes this typed reason.
     pub reason: BridgeInvalidReason,
 }
 
-/// What one key has in flight after a change, its removal, or — after a
-/// dropped delivery — every key in flight right now.
+/// A change to what one key has in flight, or every key in flight after a
+/// dropped delivery.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCandidateRuntimeChange {
     Updated {
@@ -100,8 +87,7 @@ pub enum BridgeCandidateRuntimeChange {
     },
     /// Nothing is running for the key any more.
     Removed { key: String },
-    /// The subscription dropped changes; this is every key in flight right
-    /// now. A consumer holding a key this does not list treats it as removed.
+    /// Every key in flight now; a key not listed is removed.
     Reset {
         runtimes: Vec<BridgeKeyedCandidateRuntime>,
     },
@@ -113,19 +99,13 @@ pub struct BridgeKeyedCandidateRuntime {
     pub runtime: BridgeCandidateRuntimeSnapshot,
 }
 
-/// What is happening for one candidate right now. Everything a finished run or
-/// import leaves behind — the stored verdict, the extracted signals, the
-/// release an import wrote, the error one failed with — is on the candidate's
-/// row instead.
+/// What is happening for one candidate right now; what finished work left
+/// behind is on its row.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateRuntimeSnapshot {
-    /// The live driver's state. `Idle` when no driver is running for the key
-    /// and nothing terminal is being held.
     pub identify_state: BridgeIdentifyState,
-    /// The running import, or absent when none is.
     pub import: Option<BridgeImportInFlight>,
-    /// The typed search submitted for this candidate, as its sources land.
-    /// Absent before one is submitted and after it is cleared.
+    /// The typed search submitted for this candidate, as its sources answer.
     pub search: Option<BridgeCandidateSearch>,
 }
 
@@ -136,8 +116,7 @@ pub struct BridgeImportInFlight {
     pub step: Option<BridgeImportStep>,
 }
 
-/// Where a candidate's import stands for the pane that shows it: running now,
-/// or the outcome the last one left in the tables.
+/// Where a candidate's import stands: running, or how the last one ended.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCandidateImportStatus {
     Importing,
@@ -150,8 +129,7 @@ pub enum BridgeCandidateImportStatus {
     },
 }
 
-/// What the last import of a candidate left in the tables. An import running
-/// now is the candidate's `BridgeCandidateLiveState`.
+/// How a candidate's last import ended.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeTriageImportStatus {
     Complete {
@@ -168,25 +146,19 @@ pub struct BridgeWatchedFolderScanStatus {
     pub watched_folder_path: String,
     pub watched_folder_name: String,
     pub status: BridgeFolderScanStatus,
-    /// Whether this folder lives on a volume served over the network. Such a
-    /// folder is checked on a schedule as well as watched, because a watch on
-    /// a network mount reports only what this machine does to it — and the
-    /// list says so, so a change made on the server that has not appeared yet
-    /// is explained rather than mysterious.
+    /// Whether this folder is on a network volume, which is also checked on a
+    /// schedule because a watch misses changes made on the server.
     pub on_network_volume: bool,
 }
 
-/// The catalog key for what a network folder's indicator says on hover. Its
-/// one argument is how often the folder is checked, which
-/// [`bridge_network_folder_check_minutes`] answers — the two travel together so
-/// the line cannot state an interval nothing uses.
+/// The catalog key for a network folder's hover text; its argument is
+/// [`bridge_network_folder_check_minutes`].
 #[cfg_attr(feature = "desktop", uniffi::export)]
 pub fn bridge_network_folder_watch_key() -> String {
     "core.import.folder.network_watch".to_string()
 }
 
-/// How often a watched folder on a network volume is checked, in whole
-/// minutes.
+/// How often a watched folder on a network volume is checked, in minutes.
 #[cfg(feature = "desktop")]
 #[uniffi::export]
 pub fn bridge_network_folder_check_minutes() -> u32 {
@@ -200,11 +172,7 @@ pub enum BridgeFolderScanStatus {
     Failed { error: String },
 }
 
-// ── Sidebar triage ─────────────────────────────────────────────────────────
-//
-// Mirrors `bae_core::import::triage` field for field and decides nothing. Every
-// rule the sidebar renders — which tab, which group, which checkbox, which
-// counts — is core's; a UI iterates these and formats them for its locale.
+// ── Sidebar triage: mirrors of `bae_core::import::triage` ─────────────────
 
 /// The sidebar's three tabs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -214,12 +182,8 @@ pub enum BridgeTriageTab {
     Skipped,
 }
 
-/// Where a row sits within Pending, or which terminal tab it belongs to. One
-/// value rather than a tab plus optional status fields, so a surface cannot
-/// read half of it.
-///
-/// Read from the tables alone. A run or an import is true of a candidate
-/// wherever its row sits, so both are its `BridgeCandidateLiveState` instead.
+/// Where a row sits, read from the tables alone; what is running for it is its
+/// `BridgeCandidateLiveState`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTriagePlacement {
     Pending,
@@ -229,17 +193,13 @@ pub enum BridgeTriagePlacement {
     NeedsYou {
         folder_check: Option<BridgeFolderCheck>,
     },
-    /// The last attempt failed and nothing has been attempted since. Pending,
-    /// not Done: the folder is not in the library and the work is waiting on
-    /// another attempt, which is the ordinary import the pane offers. What
-    /// went wrong is the row's `BridgeTriageImportStatus::Error`.
+    /// The last import attempt failed; why is the row's import status.
     Failed,
     Done,
     Skipped,
 }
 
-/// Every command a candidate can take. Mirrors
-/// `bae_core::import::triage::CandidateAction`.
+/// Every command a candidate can take.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeCandidateAction {
     ImportReady,
@@ -249,8 +209,7 @@ pub enum BridgeCandidateAction {
     RetryIdentification,
     ResetToFileMetadata,
     ClearMetadata,
-    /// Read this folder together with the rest of the selection as one
-    /// release. A selection offers it once, over every member.
+    /// Read the selection's folders as one release.
     Combine,
     /// Read this release as the folders it is made of.
     Separate,
@@ -260,9 +219,7 @@ pub enum BridgeCandidateAction {
     RevealFolder,
 }
 
-/// What the tables say a row's commands are decided from: whether it can be
-/// acted on, where it is placed, whether its stored lookup failed, and whether
-/// it is folders a grouping reads as one.
+/// What the tables say a row's commands are decided from.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCandidateActionBasis {
     pub actionable: bool,
@@ -271,8 +228,7 @@ pub struct BridgeCandidateActionBasis {
     pub separable: bool,
 }
 
-/// One selected candidate and the actions its live state offers. Mirrors
-/// `bae_core::import::triage::SelectionMember`.
+/// One selected candidate and the actions its live state offers.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSelectionMember {
     pub candidate_key: String,
@@ -280,8 +236,7 @@ pub struct BridgeSelectionMember {
 }
 
 /// One action a selection offers, the members it applies to, and whether it
-/// can run as the selection stands. Mirrors
-/// `bae_core::import::triage::SelectionOffer`.
+/// can run now.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSelectionOffer {
     pub action: BridgeCandidateAction,
@@ -289,9 +244,7 @@ pub struct BridgeSelectionOffer {
     pub enabled: bool,
 }
 
-/// What a selection of candidates can be told to do, in the order every
-/// surface lists it — the one answer the pane a multi-selection opens and the
-/// list's menu both render.
+/// What a selection of candidates can be told to do, in display order.
 #[uniffi::export]
 pub fn bridge_candidate_selection_offers(
     members: Vec<BridgeSelectionMember>,
@@ -318,21 +271,16 @@ pub fn bridge_candidate_selection_offers(
 }
 
 /// What is running for one candidate right now, and the commands its row
-/// offers with it — the part of a row that changes without a write, read per
-/// row beside the list.
+/// offers.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCandidateLiveState {
-    /// What identification is doing for the candidate. Absent when no run is
-    /// queued, running or settling and the last one's write did not fail.
     pub identification: Option<BridgeIdentificationStatus>,
-    /// Whether an import owns the candidate. How far it has got is
-    /// `BridgeCandidateRuntimeSnapshot::import`.
+    /// Whether an import owns the candidate.
     pub importing: bool,
     pub actions: Vec<BridgeCandidateAction>,
 }
 
-/// What identification is doing for a candidate right now, whatever its
-/// placement says.
+/// What identification is doing for a candidate right now.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeIdentificationStatus {
     /// Admitted to the queue but not started.
@@ -345,11 +293,8 @@ pub enum BridgeIdentificationStatus {
     FinalizationFailed { error: BridgeError },
 }
 
-/// Mirror of bae-core's `identify::FolderCheck`: a check of the found release
-/// against the folder that did not pass, carrying the operands the line beside
-/// Import is built from. Every number crosses raw — the UI formats it for its
-/// own locale and interpolates it into the variant's `core.*` message
-/// (`bridge_folder_check_key`).
+/// A check of the found release against the folder that did not pass, with raw
+/// operands the UI formats into the `bridge_folder_check_key` message.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeFolderCheck {
     TrackCountDisagrees {
@@ -357,15 +302,13 @@ pub enum BridgeFolderCheck {
         source: u32,
     },
     SourceTracksUnknown,
-    /// The folder's own files rule out every release found. The sample rate
-    /// crosses raw; the UI formats it.
+    /// The folder's own files rule out every release found.
     MediumDisagrees {
         folder: BridgeMediumConflict,
     },
 }
 
-/// Mirror of bae-core's `identify::MediumConflict`: what the folder's own
-/// files prove against releases that all state a medium it rules out.
+/// What the folder's own files prove against the releases found.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMediumConflict {
     /// The folder is a CD rip, and no release could be a CD.
@@ -390,9 +333,7 @@ impl BridgeFolderCheck {
     }
 }
 
-/// Localization key for the line stating a failed folder check beside Import —
-/// resolved by the UI against the `Core` string table, which interpolates the
-/// variant's own operands.
+/// The `Core` string table key for a failed folder check's line.
 #[uniffi::export]
 pub fn bridge_folder_check_key(folder_check: &BridgeFolderCheck) -> String {
     folder_check.loc_key().to_string()
@@ -403,79 +344,65 @@ pub fn bridge_folder_check_key(folder_check: &BridgeFolderCheck) -> String {
 pub enum BridgeMatchedSignal {
     DiscId,
     Barcode,
-    /// The run searched the catalogs for the candidate's own album title,
-    /// which is what it falls back on when no identifier named anything.
+    /// A catalog search for the candidate's album title.
     TitleSearch,
 }
 
-/// Which provider answered and what matched — the row's trailing evidence.
+/// Which provider answered and what matched.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMatchEvidence {
     pub source: BridgeCatalog,
-    /// `None` when nothing in the provenance names a signal; the row then shows
-    /// the provider alone.
+    /// `None` for a release the person picked themselves.
     pub signal: Option<BridgeMatchedSignal>,
 }
 
-/// The pressing-level facts about a match, present as a whole exactly when the
-/// pressing is settled — absent while several are in play, because that is the
-/// question the row is asking. The inner fields stay optional: a settled
-/// pressing may state a year and no format.
+/// The facts that differ between editions of one album, present only once the
+/// pressing is settled.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMatchedPressing {
     pub year: Option<i32>,
-    /// What the source says the release is made of, each carrier with its
-    /// count.
+    /// Each carrier the source lists, with its count.
     pub media: Vec<BridgeMediaCount>,
-    /// What the source says the release holds, when it has said.
+    /// The source's track count, when it listed one.
     pub track_count: Option<u32>,
 }
 
-/// The release a row leads with. Absent as a whole when nothing matched, in
-/// which case the row's title is `folder_name` and it has no metadata line —
-/// there is no half-populated match to render. Present on Done and Skipped rows
-/// too: a candidate already imported or set aside still shows what it matched.
+/// The release identification matched for a row, kept on Skipped rows too.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMatchedRelease {
-    /// The lead match's release id — what a bulk import commits a Ready row
-    /// against, with no mapping pane to pick one in.
+    /// The lead match's release id, which a bulk import commits on.
     pub release_id: String,
-    /// The lead match's title, which with several matches stands in for the
-    /// album — titles vary between the editions of one release group.
+    /// The lead match's title, standing in for the album when several
+    /// pressings matched.
     pub title: String,
-    /// The lead match's artist, with the same caveat as `title`.
     pub artist: Option<String>,
     pub pressing: Option<BridgeMatchedPressing>,
-    /// The lead match's own sleeve, since cover art is fetched per release
-    /// id, with the copies its catalog serves.
+    /// The lead pressing's cover, in every size its catalog serves.
     pub cover: Option<BridgeRemoteImageSet>,
     pub evidence: BridgeMatchEvidence,
 }
 
-/// The candidate's applied editable metadata, projected for its sidebar row.
+/// The candidate's stored draft as its row shows it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTriageMetadataSummary {
     pub album_title: String,
     pub album_artist_assignments: Vec<BridgeArtistAssignment>,
 }
 
-/// Where a candidate's draft was read from. Mirror of
-/// `bae_core::import::MetadataProvenance`.
+/// Where a candidate's draft was read from.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMetadataProvenance {
     ExternalRelease {
         /// The catalog's release the draft is read from.
         record: crate::types::BridgeMetadataRef,
-        /// The other catalogs' releases the picked pressing paired with. Each
-        /// of these is the same pressing as another catalog has it, and the
-        /// pick claims them all.
+        /// The same pressing in the other catalogs, which the pick also
+        /// claims.
         partners: Vec<crate::types::BridgeMetadataRef>,
     },
     FileMetadata,
 }
 
-/// Who wrote the candidate's draft. Mirror of
-/// `bae_core::import::MetadataAuthor`.
+/// Who wrote the candidate's draft.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMetadataAuthor {
     Nobody,
@@ -505,9 +432,7 @@ mirror_enum! {
     },
 }
 
-/// What a row's text column says about its release. One value rather than a
-/// flag beside a record list: "identified naming no catalog" and "prefilled
-/// from a catalog" are both unrepresentable.
+/// What a row's text column says about its release.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTriageReading {
     /// No draft, from tags or anywhere: the row leads with its folder.
@@ -515,7 +440,7 @@ pub enum BridgeTriageReading {
     /// A draft read off the files' tags, or typed in.
     Prefilled,
     /// A draft read from a catalog's release, with every catalog that
-    /// describes it, in the order surfaces list catalogs.
+    /// describes it.
     Identified {
         records: Vec<crate::types::BridgeReleaseRecord>,
     },
@@ -537,50 +462,36 @@ mirror_enum! {
 pub struct BridgeTriageRow {
     /// The candidate's folder path — the key every other import call takes.
     pub candidate_key: String,
-    /// The folder on disk: what a row leads with while its draft is blank,
-    /// whatever identification matched.
+    /// The folder's name, which is the row's title while it has no draft.
     pub folder_name: String,
-    /// Match against `BridgeWatchedFolder.path` for the section header.
+    /// The watched folder this was scanned from (`BridgeWatchedFolder.path`).
     pub watched_folder_path: String,
     pub display_path: String,
-    /// Whether this release is folders a grouping reads as one, which the
-    /// row offers to read as releases of their own.
-    pub separable: bool,
     pub actionable: bool,
     pub placement: BridgeTriagePlacement,
-    /// What the row's commands are decided from in the tables. Handed back
-    /// with the row's live-state subscription, which answers with the commands
-    /// themselves.
+    /// What the row's commands are decided from, handed back with its
+    /// live-state subscription.
     pub action_basis: BridgeCandidateActionBasis,
     pub matched: Option<BridgeMatchedRelease>,
     pub metadata_summary: Option<BridgeTriageMetadataSummary>,
-    /// The cover selected for this candidate, even when its metadata draft is
-    /// otherwise blank.
+    /// The cover the row draws, even when its draft is otherwise blank.
     pub cover: Option<BridgeCoverImageSource>,
-    /// Whether a bulk import can take this row when nothing is running for
-    /// it. What is running is checked when the import runs.
+    /// Whether a bulk import can take this row when nothing is running for it.
     pub selectable: bool,
-    /// What the last import of this candidate left in the tables.
     pub import_status: Option<BridgeTriageImportStatus>,
-    /// Where this candidate's draft was read from, already recorded.
     pub metadata_provenance: Option<BridgeMetadataProvenance>,
-    /// How the row's text column reads: its folder, a draft, or a draft read
-    /// from a catalog's release.
     pub reading: BridgeTriageReading,
 }
 
-/// A Done row: the candidate that became a library release, presented as that
-/// release as the library has it now. Its own shape rather than a
-/// `BridgeTriageRow` placed Done, so a Done row cannot show the candidate's
-/// draft or pick — re-identifying, editing or re-covering the release in the
-/// library is what the row shows.
+/// A Done row: the library release the candidate became, as the library has it
+/// now.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportedRow {
     /// The candidate's folder path — the key every other import call takes.
     pub candidate_key: String,
     pub display_path: String,
-    /// Handed back with the row's live-state subscription: an import that
-    /// just wrote the release can still own the candidate for a moment.
+    /// Handed back with the row's live-state subscription; an import that just
+    /// wrote the release can still own the candidate for a moment.
     pub action_basis: BridgeCandidateActionBasis,
     pub release: BridgeImportedReleaseSummary,
 }
@@ -590,16 +501,13 @@ pub struct BridgeImportedRow {
 pub struct BridgeImportedReleaseSummary {
     pub release_id: String,
     pub album_id: String,
-    /// The album's title. Empty for a release reseeded from tags that named
-    /// none.
+    /// Empty when the tags named no title.
     pub title: String,
-    /// The album's credited artists, joined, or absent when it credits none.
+    /// The album's credited artists, joined.
     pub artist: Option<String>,
     pub year: Option<i32>,
-    /// The release's own cover.
     pub cover: Option<crate::types::BridgeImageRef>,
-    /// Every catalog's description of the release, in the order surfaces list
-    /// catalogs. Empty when no catalog describes it.
+    /// Every catalog's description of the release, in catalog order.
     pub records: Vec<crate::types::BridgeReleaseRecord>,
 }
 
@@ -608,14 +516,11 @@ pub struct BridgeTriageGroup {
     pub key: BridgeFolderReleaseDecisionKey,
     pub name: String,
     /// Whether the rows under this header are one folder read as several
-    /// releases, and so whether the header offers to read them as one. `false`
-    /// where the header is only a path component the rows share.
+    /// releases, which the header offers to read as one.
     pub combinable: bool,
 }
 
-/// How many rows each tab holds. Computed in core in the same pass that places
-/// them — a UI never counts an array length, which would be wrong the moment a
-/// filter is applied.
+/// How many rows each tab holds, unfiltered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeTriageTabCounts {
     pub pending: u32,

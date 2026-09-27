@@ -72,9 +72,8 @@ impl crate::types::BridgeInvalidCandidate {
 
 impl crate::types::BridgeCandidateRuntimeSnapshot {
     pub(crate) fn from_core(runtime: bae_core::import::CandidateRuntimeSnapshot) -> Self {
-        // The queue marker and a failed write are the row's facts, drawn from
-        // the candidate's triage status; the pane draws the run itself, and
-        // reads the one in flight before the one being written.
+        // The queue marker and a failed write reach the UI through the row's
+        // live state; the pane shows the running run before the saving one.
         let bae_core::import::CandidateRuntimeSnapshot {
             queued: _,
             running,
@@ -115,8 +114,7 @@ impl crate::types::BridgeCandidateRuntimeChange {
         }
     }
 
-    /// Every key in flight right now, as the one change a consumer that
-    /// dropped deliveries can rebuild itself from.
+    /// Every key in flight now, for a consumer that dropped deliveries.
     pub(crate) fn reset(
         runtimes: std::collections::HashMap<String, bae_core::import::CandidateRuntimeSnapshot>,
     ) -> Self {
@@ -167,10 +165,7 @@ impl crate::types::BridgeCandidateImportStatus {
     }
 }
 
-// ── Sidebar triage ─────────────────────────────────────────────────────────
-//
-// A mirror, variant for variant. Every decision behind these values was made in
-// `bae_core::import::triage`.
+// ── Sidebar triage: mirrors of `bae_core::import::triage` ─────────────────
 
 impl crate::types::BridgeTriageRow {
     pub(crate) fn from_core(row: bae_core::import::TriageRow) -> Self {
@@ -179,7 +174,6 @@ impl crate::types::BridgeTriageRow {
             folder_name,
             watched_folder_path,
             display_path,
-            separable,
             actionable,
             placement,
             action_basis,
@@ -196,7 +190,6 @@ impl crate::types::BridgeTriageRow {
             folder_name,
             watched_folder_path,
             display_path,
-            separable,
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
             action_basis: crate::types::BridgeCandidateActionBasis::from_core(action_basis),
@@ -487,8 +480,7 @@ mirror_struct! {
 }
 
 impl crate::types::BridgeImportQueueSummary {
-    /// The list's chrome and where the folder scans stand, which core reads
-    /// by two live queries and delivers side by side.
+    /// The list's summary and where the folder scans stand.
     fn from_core(
         summary: bae_core::import::ImportQueueSummary,
         folder_scans: bae_core::import::FolderScanProgress,
@@ -602,8 +594,7 @@ impl crate::types::BridgeImportCandidateDetail {
             metadata_revision,
             mapping,
             cover,
-            // Every cover the picker offers is already inside `release`, whose
-            // `cover_art` is the same list.
+            // The same list as `release.cover_art`.
             remote_covers: _,
             signals,
             lookup_choices,

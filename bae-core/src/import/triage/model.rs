@@ -9,37 +9,20 @@ pub enum TriageTab {
     Skipped,
 }
 
-/// Where a row sits within Pending, or which terminal tab it belongs to.
-///
-/// One field rather than a tab plus optional status fields, so an unresolved
-/// row without a reason and an importable row with one are unrepresentable.
-/// See `many-fields-none-together-means-a-missing-type`.
-///
-/// Read from the tables alone. What identification or an import is doing is
-/// not part of this: a run or an import is true of a candidate wherever it
-/// sits, and is the row's [`CandidateLiveState`].
+/// Where a row sits within Pending, or which terminal tab it belongs to, read
+/// from the tables alone; what is running for it is its [`CandidateLiveState`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriagePlacement {
-    /// Pending with nothing to import and nothing to ask: no verdict, or a
-    /// verdict with nothing to ask over a draft that would not import.
+    /// Nothing to import and nothing to ask.
     Pending,
-    /// Metadata is prepared for import. The commands a row offers also account
-    /// for what is running for it, which can keep a bulk import off it for a
-    /// while — see [`CandidateActionBasis::actions`].
+    /// Metadata is prepared for import.
     Ready,
     /// A verdict classified short of Ready, with the check against the folder
     /// its found release did not pass when that is why.
     NeedsYou {
         folder_check: Option<FolderCheck>,
     },
-    /// The last attempt to import this candidate failed and nothing has been
-    /// attempted since. Pending, not Done: the folder is not in the library
-    /// and the work is waiting on another attempt. Its own variant rather than
-    /// Needs you because nothing about the release is in question —
-    /// the pick stands, the attempt did not. What went wrong is the row's
-    /// [`TriageImportStatus::Error`] — or, for a release read from several
-    /// folders that cannot be worked on, its [`TriageImportStatus::Blocked`] —
-    /// the same place the pane reads it.
+    /// The last import attempt failed; why is the row's [`TriageImportStatus`].
     Failed,
     Done,
     Skipped,
@@ -57,8 +40,8 @@ impl TriagePlacement {
         }
     }
 
-    /// The check against the folder this row's found release did not pass,
-    /// stated beside the Import it bears on. Only a Needs-you row has one.
+    /// The check against the folder this row's found release did not pass;
+    /// only a Needs-you row has one.
     pub fn folder_check(&self) -> Option<&FolderCheck> {
         match self {
             Self::NeedsYou { folder_check } => folder_check.as_ref(),
@@ -66,10 +49,8 @@ impl TriagePlacement {
         }
     }
 
-    /// A candidate an import has finished or failed is past the point where
-    /// skipping it means anything: the attempt is what decides it now. One an
-    /// import is running for is too, which is the live state's to say — see
-    /// [`CandidateActionBasis::actions`].
+    /// The skip command the placement allows; none once an import finished or
+    /// failed.
     pub fn skip_action(&self) -> Option<TriageSkipAction> {
         match self {
             Self::Pending | Self::Ready | Self::NeedsYou { .. } => Some(TriageSkipAction::Skip),
@@ -79,51 +60,40 @@ impl TriagePlacement {
     }
 }
 
-/// The absolute skip-state command a placement allows, or absent once an import
-/// has settled the candidate.
+/// The skip-state command a placement allows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriageSkipAction {
     Skip,
     Unskip,
 }
 
-/// What identification is doing for a candidate right now.
-///
-/// A runtime fact, true of the candidate wherever its placement puts it: a
-/// Ready row being identified again holds one, and so does a Needs-you row.
+/// What identification is doing for a candidate right now, whatever its
+/// placement.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IdentificationStatus {
     /// The candidate has been admitted but its driver has not started.
     Queued,
     /// Signals are being gathered or a provider lookup is in flight.
     Running,
-    /// The identify reducer has a terminal result and the sweep is committing
-    /// its verdict, metadata, and prepared documents.
+    /// The run has a result and is committing it.
     Finalizing,
-    /// The terminal result could not be committed. The result stays available
-    /// to the candidate pane and the diagnostic says why the row stopped.
+    /// The result could not be committed; `error` says why.
     FinalizationFailed { error: String },
 }
 
-/// Which lookup produced a match — the row's trailing evidence chip, and the
-/// confidence cue the design leans on.
-///
-/// Named strongest first, because a lead can be claimed by more than one and
-/// the chip names one: a disc ID identifies the pressing, a barcode only the
-/// product, and a title only what the folder calls it.
+/// Which lookup produced a match, strongest first: the row's evidence chip
+/// names the strongest one that claims it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MatchedSignal {
     /// The disc's table of contents.
     DiscId,
     Barcode,
-    /// The run searched the catalogs for the candidate's own album title,
-    /// which is what it falls back on when no identifier named anything.
+    /// A catalog search for the candidate's album title.
     TitleSearch,
 }
 
 impl MatchedSignal {
-    /// `None` when no lookup claims the result — a release the person picked
-    /// themselves — and the row then shows the provider alone.
+    /// `None` for a release the person picked themselves.
     fn of(lead: &LeadMatch) -> Option<Self> {
         if lead.by_disc_id {
             Some(Self::DiscId)
@@ -144,62 +114,34 @@ pub struct MatchEvidence {
     pub signal: Option<MatchedSignal>,
 }
 
-/// The pressing-level facts about a match — the ones that differ between the
-/// editions of one album.
-///
-/// Present as a whole exactly when the pressing is settled, which is when the
-/// verdict named one match. With several in play the row is *asking* which
-/// pressing, so none of these is known, and absent-together is then a state
-/// rather than a convention three separate `Option`s would leave a consumer to
-/// honour. See `many-fields-none-together-means-a-missing-type`; `pressing::Pressing`
-/// is the same shape for the same reason.
-///
-/// The fields stay optional inside it: a settled pressing may well state a year
-/// and no media.
+/// The facts that differ between editions of one album, present only once the
+/// pressing is settled.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatchedPressing {
     pub year: Option<i32>,
-    /// What the source says the release is made of, each carrier with its
-    /// count; empty where it says nothing.
+    /// Each carrier the source lists, with its count.
     pub media: Vec<crate::pressing::MediaCount>,
-    /// What the source says this release holds, once something asked. `None`
-    /// when nobody has, or when the source answered and listed nothing.
+    /// The source's track count, when it listed one.
     pub track_count: Option<u32>,
 }
 
-/// The release a row leads with. Absent as a whole when nothing matched — the
-/// row then has the folder name as its title and no metadata line at all, so a
-/// surface cannot render a half-populated match.
-///
-/// Populated for Done and Skipped rows too, deliberately: a candidate that has
-/// been imported or set aside still shows what it was matched to.
+/// The release identification matched for a row, kept on Skipped rows too.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatchedRelease {
-    /// The lead match's release id. A Ready row commits on exactly this
-    /// release — a bulk import has no mapping pane to pick one in, so the row
-    /// has to carry the id it will import against.
+    /// The lead match's release id, which a bulk import commits on.
     pub release_id: String,
-    /// The lead match's title. Titles vary between the editions of a release
-    /// group, so with several matches this is one pressing's title standing in
-    /// for the album — see `MatchedRelease::of`.
+    /// The lead match's title, standing in for the album when several
+    /// pressings matched.
     pub title: String,
-    /// The lead match's artist, with the same caveat as `title`.
     pub artist: Option<String>,
-    /// The facts that are only known once the pressing is settled.
     pub pressing: Option<MatchedPressing>,
-    /// The lead match's cover, with the copies its catalog serves — the slot
-    /// drawing it picks the copy its size needs. Cover art is fetched per
-    /// release id, so this is that one pressing's sleeve, not the group's.
+    /// The lead pressing's cover, in every size its catalog serves.
     pub cover: Option<crate::import::cover_art::RemoteImageSet>,
     pub evidence: MatchEvidence,
 }
 
-/// The candidate's stored editable metadata as one compact sidebar value.
-///
-/// This is independent of the verdict's lead: applying file metadata or editing a
-/// chosen release changes the draft without changing what identification once
-/// matched. The list owns this projection so every row keeps showing the
-/// applied values when its detail subscription closes.
+/// The candidate's stored draft as the row shows it, independent of what
+/// identification matched.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriageMetadataSummary {
     pub album_title: String,
@@ -220,8 +162,7 @@ impl TriageMetadataSummary {
         })
     }
 
-    /// The same summary from what the stored draft's columns say: its album
-    /// title and artists, and whether it is blank.
+    /// The same summary from the stored draft's columns.
     pub(crate) fn of_columns(
         album_title: String,
         album_artist_assignments: Vec<crate::import::ArtistAssignment>,
@@ -239,25 +180,11 @@ impl TriageMetadataSummary {
 }
 
 impl MatchedRelease {
-    /// The release a stored verdict leads with, read off the columns of its
-    /// lead match row, or `None` when it named none.
-    ///
-    /// `NotFoundAnywhere` and `ManualOnly` lead with nothing: they have no
-    /// results at all. A failed verdict leads with what its answering lookups
-    /// found, but never as a settled pressing.
-    ///
-    /// With several pressings the row still leads with the first one's title,
-    /// artist and cover. Those are not group-level truths — a release group
-    /// spans remasters and reissues that differ in all three — they are the
-    /// lead pressing's, standing in for the album until someone picks. What is
-    /// *not* shown is `pressing`: year, media and track count are the question
-    /// being asked, and answering it from the first candidate would be the app
-    /// pre-empting the user.
+    /// The release a stored verdict leads with; its pressing only when the
+    /// verdict found exactly one.
     pub fn of_summary(summary: &VerdictSummary) -> Option<Self> {
         let lead = summary.lead.as_ref()?;
-        // A failed verdict's single pressing is not settled: it is what the
-        // lookups that answered found, and the one that failed may have named
-        // others.
+        // A failed lookup may have named other pressings.
         let settled = summary.kind == crate::identify::VerdictKind::Found && summary.pressing_count == 1;
         Some(Self {
             release_id: lead.release_id.clone(),
@@ -271,20 +198,12 @@ impl MatchedRelease {
             cover: lead.cover.clone(),
             evidence: MatchEvidence {
                 source: lead.source,
-                // Index-aligned with `matches`, so the lead's provenance is the
-                // first one.
                 signal: MatchedSignal::of(lead),
             },
         })
     }
 
-    /// The release the user's own pick settled the candidate on, as its
-    /// documents describe it.
-    ///
-    /// A pick names one release, so its pressing is settled by definition —
-    /// there is no question left for the row to ask. No signal claims it
-    /// either: a match somebody chose was not matched by a disc ID or a
-    /// barcode, and the row shows the provider alone.
+    /// The release the person picked, as its documents describe it.
     pub fn of_pick(source: Catalog, detail: &ImportSearchReleaseDetail) -> Self {
         Self {
             release_id: detail.release_id.clone(),
@@ -312,12 +231,7 @@ fn source_track_count(source_tracks: &Option<SourceTracks>) -> Option<u32> {
 }
 
 /// What a row's text column says about its release: nothing yet, a draft, or a
-/// draft one or more sources' releases were read into.
-///
-/// One value rather than a flag beside a source list, so "identified with no
-/// source" and "prefilled from a source" are both unrepresentable. Decided
-/// here rather than in each surface: two UIs deriving it from a summary and a
-/// provenance is two answers to one question.
+/// draft read from catalog releases.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriageReading {
     /// No draft, from tags or anywhere: the row leads with its folder.
@@ -332,14 +246,8 @@ pub enum TriageReading {
 }
 
 impl TriageReading {
-    /// How a row reads, from the draft it carries, where that draft came
-    /// from, and the records the pick's stored releases describe it in.
-    ///
-    /// `Unidentified` is exactly a row with no summary: the draft is blank and
-    /// no catalog has been applied, so the row has a folder and nothing else.
-    /// An external release reads as identified in exactly `records`: the
-    /// caller derives them from the documents the pick claims, so every
-    /// surface that names the release's catalogs names the same ones.
+    /// How a row reads from its draft, the draft's provenance, and the
+    /// catalog records the pick's releases are described in.
     pub fn of(
         summary: Option<&TriageMetadataSummary>,
         provenance: Option<&MetadataProvenance>,
@@ -360,51 +268,32 @@ impl TriageReading {
 pub struct TriageRow {
     /// The candidate's folder path — the key every other import call takes.
     pub candidate_key: String,
-    /// The folder on disk: the mono subtitle, and the row's title when nothing
-    /// matched.
+    /// The folder's name, which is the row's title while it has no draft.
     pub folder_name: String,
-    /// The watched folder this candidate was scanned from — the sidebar's
-    /// existing section key. Match it against `WatchedFolder::path`.
+    /// The watched folder this candidate was scanned from
+    /// (`WatchedFolder::path`).
     pub watched_folder_path: String,
     pub display_path: String,
-    /// Whether this release is folders a grouping reads as one, which the row
-    /// offers to read as releases of their own.
-    pub separable: bool,
     pub actionable: bool,
     pub placement: TriagePlacement,
-    /// What the row's commands are decided from in the tables. The commands
-    /// themselves depend on what is running for the candidate too, so they
-    /// are its [`CandidateLiveState`], read with this.
+    /// What the row's commands are decided from in the tables.
     pub action_basis: CandidateActionBasis,
-    /// The release the row leads with. `None` and the folder name is the title.
     pub matched: Option<MatchedRelease>,
-    /// The applied editable draft, independent of selection and of the
-    /// identification result the row originally matched.
     pub metadata_summary: Option<TriageMetadataSummary>,
-    /// The effective cover the row renders: selection, matched artwork, or the
+    /// The cover the row draws: the chosen one, the matched artwork, or the
     /// folder's default image.
     pub cover: Option<crate::import::CoverImageSource>,
-    /// Whether a bulk import can take this row when nothing is running for
-    /// it: [`CandidateActionBasis::importable_at_rest`]. What is running is
-    /// checked when the import runs.
+    /// Whether a bulk import can take this row when nothing is running for it.
     pub selectable: bool,
-    /// What the last import of this candidate left in the tables: the release
-    /// it became, or the error it failed with. An import running now is the
-    /// row's [`CandidateLiveState`].
+    /// How the candidate's last import ended.
     pub import_status: Option<TriageImportStatus>,
-    /// The metadata provenance already applied to this candidate. `None` while no
-    /// source has been selected.
+    /// Where the candidate's draft was read from, once a source was applied.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
-    /// How the row's text column reads, with every catalog the pick's stored
-    /// releases describe the release in.
     pub reading: TriageReading,
 }
 
 impl TriageRow {
-    /// Every piece of text the row shows, which is what the list's filter
-    /// tests: the draft's album title and each credited artist's name, or —
-    /// with no draft, the [`TriageReading::Unidentified`] row — the folder's
-    /// name, which is the row's title then.
+    /// The text the row shows, which the list's filter matches against.
     pub(crate) fn shown_text(&self) -> Vec<&str> {
         match &self.metadata_summary {
             None => vec![self.folder_name.as_str()],
@@ -420,63 +309,44 @@ impl TriageRow {
     }
 }
 
-/// A Done row: the candidate that became a library release, presented as that
-/// release.
-///
-/// Its own shape rather than a [`TriageRow`] placed Done, because what a Done
-/// row shows is the library's and nothing of the candidate's: once the bytes
-/// are in the library, the person re-identifies, edits and re-covers the
-/// release there, and a row reading the candidate's draft or pick would go on
-/// saying what the candidate said before any of that.
+/// A Done row: the library release the candidate became, as the library has it
+/// now rather than as the candidate's draft said.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportedRow {
     /// The candidate's folder path — the key every other import call takes.
     pub candidate_key: String,
     pub display_path: String,
-    /// What the row's commands are decided from in the tables, handed back
-    /// with its live-state subscription: an import that just wrote the release
-    /// can still own the candidate for a moment.
+    /// What the row's commands are decided from; an import that just wrote the
+    /// release can still own the candidate for a moment.
     pub action_basis: CandidateActionBasis,
     pub release: ImportedReleaseSummary,
 }
 
-/// The library release a Done row became, as the library has it now. Its
-/// words are an [`ImportedReleaseText`], spread into the fields the surfaces
-/// draw.
+/// The library release a Done row became.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportedReleaseSummary {
     pub release_id: String,
     pub album_id: String,
-    /// [`ImportedReleaseText::title`].
     pub title: String,
-    /// [`ImportedReleaseText::artist`].
     pub artist: Option<String>,
-    /// [`ImportedReleaseText::year`].
     pub year: Option<i32>,
-    /// The release's own cover.
     pub cover: Option<crate::album_detail::ImageRef>,
-    /// Every catalog's description of the release, in the order surfaces list
-    /// catalogs. Empty when no catalog describes it.
+    /// Every catalog's description of the release, in catalog order.
     pub records: Vec<crate::import::ReleaseRecord>,
 }
 
-/// What a Done row states about its library release in words. One read
-/// answers it for the rows a window shows and for every Done row the list's
-/// filter tests, so a row is found by the text it shows.
+/// The words a Done row shows for its library release.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportedReleaseText {
-    /// The album's title as the library holds it. Empty for a release reseeded
-    /// from tags that named none, which the person fills in the editor.
+    /// Empty when the tags named no title.
     pub title: String,
-    /// The album's credited artists as they show after merges, joined, or
-    /// `None` when it credits none.
+    /// The album's credited artists, joined.
     pub artist: Option<String>,
     pub year: Option<i32>,
 }
 
 impl ImportedReleaseText {
-    /// Every piece of text the row shows — its title, and its artist beside
-    /// its year on the line under it — which is what the list's filter tests.
+    /// The text the row shows, which the list's filter matches against.
     pub(crate) fn shown_text(&self) -> Vec<std::borrow::Cow<'_, str>> {
         std::iter::once(std::borrow::Cow::Borrowed(self.title.as_str()))
             .chain(self.artist.as_deref().map(std::borrow::Cow::Borrowed))
@@ -493,18 +363,11 @@ pub struct TriageGroup {
     pub key: FolderReleaseDecisionKey,
     pub name: String,
     /// Whether the rows under this header are this folder read as several
-    /// releases, and so whether the header offers to read them as one. `false`
-    /// where the header is only a path component the rows happen to share —
-    /// there is nothing to combine and nothing was decided.
-    ///
-    /// The offer lives here and nowhere else: a row is a release, not a place
-    /// to answer a question about the folder holding it.
+    /// releases, which the header offers to read as one.
     pub combinable: bool,
 }
 
-/// How many rows each tab holds. Computed in the same pass that places them, so
-/// the number on a tab and the rows behind it cannot drift, and neither UI
-/// counts an array length.
+/// How many rows each tab holds, counted in the pass that places them.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct TriageTabCounts {
     pub pending: u32,
@@ -522,13 +385,11 @@ impl TriageTabCounts {
     }
 }
 
-/// The outcome a candidate's last import finished with, read off the release
-/// row an import wrote or the failure row one left behind.
+/// How a candidate's last import ended.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TriageImportStatus {
     Complete { release: ImportedRelease },
     Error { error: String },
-    /// A release read from several folders that cannot be worked on as it
-    /// stands, and why.
+    /// A release read from several folders that cannot be worked on, and why.
     Blocked { reason: crate::import::GroupingBlock },
 }

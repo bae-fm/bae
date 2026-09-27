@@ -90,7 +90,6 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             folderName: "Release \(index)",
             watchedFolderPath: "/library",
             displayPath: "Release \(index)",
-            separable: false,
             actionable: true,
             placement: .skipped,
             actionBasis: BridgeCandidateActionBasis(
@@ -115,15 +114,8 @@ private func candidateKey(_ index: Int) -> String {
     "/library/release-\(index)"
 }
 
-/// The import tab decides between three panes — the list, the "add a folder"
-/// prompt, and the read failure — before one is drawn, so it has to know that
-/// its first page read failed.
-///
-/// `PaginatedList` does not hand a first-page failure to `onError`: it keeps it
-/// as `initialLoadError` for a list view to render inline, which is where every
-/// other list surface reads it. The import tab read only `onError`, so the one
-/// failure that matters at launch went nowhere and a library nobody could look
-/// at rendered as a library with no folders.
+/// The import tab picks its pane before drawing one, so a failed first page
+/// read has to reach it as `initialLoadError`.
 @MainActor
 @Suite("Import list slot read failures")
 struct ImportListSlotTests {
@@ -189,14 +181,11 @@ struct ImportListSlotTests {
         try await Wait.until { slot.loadFailure != nil }
 
         #expect(slot.loadFailure != nil)
-        // The same failure is raised as the global alert, the way every other
-        // background failure reaches the person.
+        // The same failure is raised as the global alert.
         #expect(uiStore.lastError != nil)
     }
 
-    /// Which candidate the count is still waiting on is core's answer, asked
-    /// when the person goes to it; the slot then follows that candidate's
-    /// placement like any other reveal.
+    /// The slot follows the candidate core says the count waits on.
     @Test("going to the first identifying candidate follows core's answer")
     func revealFirstIdentifyingFollowsCoresAnswer() async throws {
         let uiStore = UiStore()

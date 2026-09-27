@@ -3,12 +3,7 @@
     import BaeKit
     import Foundation
 
-    /// Preview fixtures for the Import flow: watched folders and folder
-    /// candidates, the seeded import store, candidate file listings (CUE+FLAC
-    /// and per-track), the picked-release detail/seed and its confirm edit, and
-    /// the identify/search states (exact, manual, disagreement, triangulating,
-    /// not-found) with their signal toolbars. Generic placeholder names
-    /// throughout.
+    /// Preview fixtures for the Import flow.
     extension PreviewData {
         static let importWatchedFolder = BridgeWatchedFolder(
             path: "/Music/Downloads",
@@ -17,11 +12,8 @@
 
         // MARK: - Generated placeholder art
 
-        /// Placeholder art for a fixture image: a flat color derived from the
-        /// name with the name drawn across it, written as a PNG under the
-        /// temporary directory on first use. Fixture paths point here so image
-        /// slots decode real bytes instead of settling on the failure
-        /// placeholder.
+        /// A generated placeholder PNG for a fixture image, written to the
+        /// temporary directory on first use.
         static func previewArtPath(_ name: String) -> String {
             let directory = URL(fileURLWithPath: NSTemporaryDirectory())
                 .appendingPathComponent("bae-preview-art", isDirectory: true)
@@ -32,9 +24,7 @@
                 )
                 .appendingPathExtension("png")
             if !FileManager.default.fileExists(atPath: file.path) {
-                // A generator failure means every slot draws the failure
-                // placeholder anyway — crash the preview with the reason
-                // instead of rendering a wall of warning triangles.
+                // Crash with the reason rather than draw failure placeholders.
                 // swiftlint:disable force_try
                 try! FileManager.default.createDirectory(
                     at: directory,
@@ -46,9 +36,7 @@
             return file.path
         }
 
-        /// PNG bytes for one placeholder: the name decides the hue, so the
-        /// same fixture always renders the same tile and different fixtures
-        /// are telling them apart at a glance.
+        /// PNG bytes for one placeholder, its hue decided by the name.
         private static func previewArtData(_ name: String) -> Data {
             let side: CGFloat = 600
             let hash = name.unicodeScalars.reduce(into: UInt32(5381)) {
@@ -94,11 +82,8 @@
             return png
         }
 
-        /// ImageStore for previews whose fixtures carry image addresses: a
-        /// remote "URL" in fixture data is a path to generated placeholder
-        /// art, served straight from disk. The library and release reads stay
-        /// unwired exactly like `ImageStore.stub()` — previews have no live
-        /// library to read from.
+        /// An image store that serves fixture "URLs", which are paths to
+        /// generated placeholder art, from disk.
         static func artImageStore() -> ImageStore {
             ImageStore(
                 fetchRemoteImage: { image, _ in
@@ -125,7 +110,7 @@
                 watchedFolderPath: "/Music/Downloads",
                 files: bridgeCandidateFiles,
                 trackCount: 12,
-                // Skipped example — renders under the Skipped tab.
+                // Skipped.
                 skipped: true,
                 isAdded: false
             ),
@@ -156,12 +141,11 @@
                 watchedFolderPath: "/Music/Downloads",
                 files: bridgeCandidateFiles,
                 trackCount: 18,
-                // Added example (content-hash match) — renders under the Added tab.
+                // Already imported (content-hash match).
                 skipped: false,
                 isAdded: true
             ),
-            // Two more importable folders, so Pending shows a folder group with
-            // rows in it beside a row that belongs to no group.
+            // Two more, so Pending shows a group beside an ungrouped row.
             BridgeFolderCandidate(
                 parts: [],
                 folderPath: "/Music/Downloads/Album Title Three",
@@ -185,8 +169,7 @@
         ]
         .map(Candidate.init(bridge:))
 
-        /// Folders that look like a release but failed validation — surface under
-        /// the Skipped tab with a warning and reason.
+        /// Folders that failed validation, listed under Skipped.
         static let invalidCandidates: [BridgeInvalidCandidate] = [
             BridgeInvalidCandidate(
                 candidateKey: "/Music/Downloads/Broken Rip",
@@ -239,14 +222,13 @@
                 folderName: name,
                 watchedFolderPath: releaseQueueRoot,
                 displayPath: displayPath,
-                separable: separable,
                 actionable: true,
                 placement: .ready,
                 actionBasis: BridgeCandidateActionBasis(
                     actionable: true,
                     placement: .ready,
                     lookupFailed: false,
-                    separable: false
+                    separable: separable
                 ),
                 matched: nil,
                 metadataSummary: nil,
@@ -393,9 +375,8 @@
             )
         }
 
-        /// Every Import-tab state in one production-backed fixture: the
-        /// candidate questions and the terminal tabs, under a second watched
-        /// root so the folder menu has more than one entry to draw.
+        /// Every Import-tab state in one fixture, with a second watched root
+        /// so the folder menu has more than one entry.
         @MainActor
         static func importSmokeTestScene() -> ImportPreviewFixture {
             let scene = importTabScene()
@@ -412,11 +393,8 @@
                     ready: base.ready
                 )
             )
-            // The identify count is over the whole queue, with the one row
-            // that is still identifying yet to land. Counted off the rows the
-            // scene actually holds rather than written down beside them, so
-            // adding a row to the fixture cannot leave the header claiming a
-            // queue that is not there.
+            // Counted off the scene's rows, with the one still identifying
+            // yet to land.
             let queue =
                 base.counts.pending + base.counts.done + base.counts.skipped
             scene.store.identificationProgress = (

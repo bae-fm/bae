@@ -3,13 +3,11 @@
     import BaeKit
     import Foundation
 
-    /// Preview fixtures for the import triage sidebar, candidate file listings,
-    /// and the release chosen for a candidate.
+    /// Preview fixtures for the import candidate list and its rows.
     extension PreviewData {
         // MARK: - Triage sidebar
 
-        /// A `BridgeMatchedRelease` fixture with a settled single pressing —
-        /// the shape a Ready or Done row's `matched` carries.
+        /// A `BridgeMatchedRelease` fixture with a settled single pressing.
         static func triageMatch(
             releaseId: String,
             title: String,
@@ -29,8 +27,7 @@
                     media: media,
                     trackCount: trackCount
                 ),
-                // In fixtures the "URL" is a path to generated placeholder
-                // art; `PreviewData.artImageStore()` serves it from disk.
+                // A path `PreviewData.artImageStore()` serves from disk.
                 cover: BridgeRemoteImageSet(
                     url: previewArtPath(title),
                     downscaled: []
@@ -39,8 +36,7 @@
             )
         }
 
-        /// A `BridgeTriageRow` fixture keyed to an existing `Candidate` fixture,
-        /// so the sidebar and the detail pane agree on the same folder.
+        /// A `BridgeTriageRow` fixture for an existing `Candidate` fixture.
         static func triageRow(
             for candidate: Candidate,
             placement: BridgeTriagePlacement,
@@ -57,7 +53,6 @@
                 folderName: candidate.displayName,
                 watchedFolderPath: importWatchedFolder.path,
                 displayPath: candidate.displayName,
-                separable: false,
                 actionable: true,
                 placement: placement,
                 actionBasis: BridgeCandidateActionBasis(
@@ -76,9 +71,7 @@
             )
         }
 
-        /// A preview candidate showing `identifyState`. Nothing is running in
-        /// a preview, so the state stands as the one its stored verdict would
-        /// resume — which is what every surface falls back to.
+        /// A preview candidate showing `identifyState`.
         static func importTabFolder(
             path: String,
             name: String,
@@ -281,8 +274,7 @@
                 )
             )
 
-        /// Nothing written about the release yet: the row is its folder, and
-        /// the folder's own image is still its cover.
+        /// No draft yet: the row shows its folder and the folder's image.
         static let triageRowUnidentified = triageRow(
             for: importTabUnidentifiedCandidate,
             placement: .pending,
@@ -291,8 +283,7 @@
             cover: .local(path: previewArtPath("Front.png"))
         )
 
-        /// A draft read off the folder's own metadata — a title and an artist, and no
-        /// source to name.
+        /// A draft read off the folder's tags.
         static let triageRowPrefilledFromTags = triageRow(
             for: importTabTaggedCandidate,
             placement: .pending,
@@ -306,8 +297,7 @@
             reading: .prefilled
         )
 
-        /// Both catalogs a pick paired, each with its own page for the
-        /// pressing. The draft was read from the MusicBrainz one.
+        /// Both catalogs a pick paired; the draft was read from MusicBrainz.
         static let identifiedFromBothCatalogs = [
             BridgeReleaseRecord(
                 catalog: .musicBrainz,
@@ -319,8 +309,7 @@
             ),
         ]
 
-        /// A pick that paired two sources' releases into one pressing: the row
-        /// names both.
+        /// A pick that paired two catalogs' releases; the row names both.
         static let triageRowIdentifiedOnline = triageRow(
             for: importTabIdentifiedCandidate,
             placement: .ready,
@@ -346,8 +335,7 @@
             reading: .identified(records: identifiedFromBothCatalogs)
         )
 
-        /// Identified, and still asked which of several pressings it is:
-        /// the row names its sources and carries the question at once.
+        /// Identified, and still asked which of several pressings it is.
         static let triageRowIdentifiedSeveralMatches = triageRow(
             for: importTabIdentifiedSeveralMatchesCandidate,
             placement: .needsYou(folderCheck: nil),
@@ -398,9 +386,7 @@
         static let triageRowPickAPressing = triageRow(
             for: importTabSeveralMatchesCandidate,
             placement: .needsYou(folderCheck: nil),
-            // Several matches — the pressing is exactly what's unsettled, so
-            // there is no `pressing` to show yet, only the lead's title and
-            // artist.
+            // Several matches leave the pressing unsettled.
             matched: BridgeMatchedRelease(
                 releaseId: "rel-lead",
                 title: "Album Title Five",
@@ -416,8 +402,7 @@
             importStatus: nil
         )
 
-        /// Two signals that named different releases: the row asks the same
-        /// question any multi-match does.
+        /// Two signals that named different releases.
         static let triageRowSeveralMatchesFromSignals = triageRow(
             for: importTabDisagreementCandidate,
             placement: .needsYou(folderCheck: nil),
@@ -439,9 +424,7 @@
             metadataSummary: nil
         )
 
-        /// A release already in the library is Ready like any other: the
-        /// pane says it is there, and importing another copy is the person's
-        /// call.
+        /// A release already in the library, Ready like any other.
         static let triageRowAlreadyInLibrary = triageRow(
             for: importTabAlreadyInLibraryCandidate,
             placement: .ready,
@@ -481,15 +464,13 @@
         private static let importTabDoneCandidate = folderCandidates[3]
         private static let importTabFailedCandidate = folderCandidates[4]
 
-        /// How far the preview's running import has got — what the row's
-        /// progress leaf reads off the candidate-runtime signal.
+        /// How far the preview's running import has got.
         static let importTabImportInFlight = BridgeImportInFlight(
             progressPercent: 45,
             step: .running(phase: .measuringLoudness)
         )
 
-        /// Ready in the tables until its import writes the release; that the
-        /// import is running is the row's live state.
+        /// Ready until its running import writes the release.
         static let triageRowImporting = triageRow(
             for: importTabImportingCandidate,
             placement: .ready,
@@ -524,8 +505,7 @@
             )
         )
 
-        /// A Done row as the library has its release: read from a catalog,
-        /// with its album's year.
+        /// A Done row whose release was read from a catalog.
         static let importedRowIdentified = importedRow(
             for: importTabDoneCandidate,
             title: importTabDoneCandidate.displayName,
@@ -533,8 +513,7 @@
             records: identifiedFromBothCatalogs
         )
 
-        /// A Done row whose release was read off its files' tags: no catalog
-        /// describes it.
+        /// A Done row whose release was read off its files' tags.
         static let importedRowFromTags = importedRow(
             for: folderCandidates[0],
             title: "Album Title",
@@ -654,9 +633,8 @@
             triageRowFailed,
         ]
 
-        /// The row a selected Done candidate's own read carries: the pane
-        /// reads where the candidate is placed from it. The list shows the
-        /// candidate as `importedRowIdentified`.
+        /// The row a selected Done candidate carries; the list shows it as
+        /// `importedRowIdentified`.
         private static let importTabDoneRows = [
             triageRowDoneImported
         ]
@@ -696,8 +674,7 @@
             ready: readyRows(importTabPendingRows + triageGroupedRows)
         )
 
-        /// What a preview row's live state reads: nothing running and `actions`
-        /// offered, unless a run or an import is given.
+        /// A preview row's live state offering `actions`.
         static func triageLive(
             _ actions: [BridgeCandidateAction],
             identification: BridgeIdentificationStatus? = nil,
@@ -715,9 +692,7 @@
             .revealFolder,
         ]
 
-        /// What is running for each of the tab's rows, and the commands each
-        /// offers — what a row's subscription and a selected candidate's read
-        /// deliver.
+        /// Each of the tab's rows' live state, by candidate key.
         @MainActor
         private static func importTabLiveStates()
             -> [String: BridgeCandidateLiveState]
@@ -763,16 +738,8 @@
             )
         }
 
-        /// One preview of the whole Import tab: the store the sidebar and the
-        /// detail pane read, and the items each tab holds. Every candidate row
-        /// resolves to the candidate the detail pane opens, while boundary and
-        /// invalid entries exercise the two non-candidate shapes.
+        /// Every row the tab holds, on any tab, by candidate key.
         @MainActor
-        /// Every row the tab holds, whichever tab it is on, by candidate key.
-        /// A selected candidate carries the same row the list does, and the
-        /// live state beside it is what the row-driven actions (skip, import)
-        /// read their eligibility from, so a fixture without it makes every
-        /// candidate ineligible.
         private static func importTabRowsByKey() -> [String: BridgeTriageRow] {
             let rows =
                 importTabPendingRows + triageGroupedRows + importTabDoneRows
@@ -783,8 +750,7 @@
             )
         }
 
-        /// Where the pane places a preview candidate, from the row the list
-        /// places it as.
+        /// Where the pane places a preview candidate, from its list row.
         static func panePlacement(
             of row: BridgeTriageRow
         ) -> BridgeCandidatePanePlacement {
@@ -849,8 +815,7 @@
 
     }
 
-    /// A preview row's live state answers once, as it opens; there is nothing
-    /// behind it to end.
+    /// A preview row's live state, delivered once as it opens.
     private final class PreviewLiveStateSubscription: LiveSubscriptionProtocol,
         @unchecked Sendable
     {
