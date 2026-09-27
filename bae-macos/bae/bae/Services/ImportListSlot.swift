@@ -354,7 +354,17 @@ extension ImportListSlot {
             change = .extend(from: from, to: to)
         }
         let view = view
-        writeSelection { try await $0.change(in: view, change) }
+        let click = importStore.beginSelectionClick(selected)
+        writeSelection { [importStore] selection in
+            do {
+                let revision = try await selection.change(in: view, change)
+                importStore.selectionClickWritten(click, revision: revision)
+            }
+            catch {
+                importStore.selectionClickFailed(click)
+                throw error
+            }
+        }
     }
 
     /// Make `candidateKey` the whole selection, once the writes asked for

@@ -118,6 +118,7 @@ impl Delivered {
             total_count: list.projection.total_count,
             summary: list.projection.summary.clone(),
             folder_scans: folder_scans.clone(),
+            selection_revision: list.projection.selection_revision,
             request_revision: list.request_revision,
             cause,
         };

@@ -110,6 +110,8 @@ pub struct ImportQueueRows {
     pub imported_text: Option<HashMap<String, crate::import::ImportedReleaseText>>,
     /// The candidate keys the person has selected.
     pub selected: HashSet<String>,
+    /// The person's changes to the selection this read reflects.
+    pub selection_revision: u64,
 }
 
 /// Whether a queue read loads the Done rows' text: only when the view filters.
@@ -240,6 +242,7 @@ pub(super) fn load_import_queue_on(
         })?
         .into_iter()
         .collect();
+    let selection_revision = super::candidate_selection::selection_revision_on(sql)?;
     let imported_text = match done_row_text {
         DoneRowText::Read => Some(load_imported_release_text_on(sql, None)?),
         DoneRowText::Skip => None,
@@ -255,6 +258,7 @@ pub(super) fn load_import_queue_on(
         folder_readings,
         imported_text,
         selected,
+        selection_revision,
     })
 }
 
@@ -518,6 +522,7 @@ fn load_import_list_on(
             total_count: flat.items.len() as u64,
             windows,
             summary: flat.summary,
+            selection_revision: rows.selection_revision,
         })
     })
 }

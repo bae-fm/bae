@@ -99,7 +99,7 @@ impl LibraryManager {
         &self,
         request: crate::import::ImportListRequest,
         change: crate::import::selection::SelectionChange,
-    ) -> Result<(), LibraryError> {
+    ) -> Result<u64, LibraryError> {
         Ok(self
             .database
             .change_candidate_selection(request, change)

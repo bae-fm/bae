@@ -167,6 +167,45 @@ async fn pointing_at_rows_replaces_toggles_or_extends() {
     assert_eq!(selected(&db).await, listed);
 }
 
+/// Each change says the selection revision of the list read that reflects it,
+/// and a change that changes nothing says the one the list already carries, so
+/// a surface can tell a list read taken before its change from one after.
+#[tokio::test]
+async fn a_change_says_the_list_revision_that_reflects_it() {
+    let (db, _tmp, root) = watched_root().await;
+    let all = keys(&scanned_many(&db, &root, &names(2, "Album")).await);
+    let revision_listed = || async {
+        db.load_import_list(texted(""))
+            .await
+            .unwrap()
+            .selection_revision
+    };
+    let replace = |key: &String| SelectionChange::Replace {
+        keys: vec![key.clone()],
+    };
+
+    let before = revision_listed().await;
+    let first = db
+        .change_candidate_selection(texted(""), replace(&all[0]))
+        .await
+        .unwrap();
+    assert!(first > before);
+    assert_eq!(revision_listed().await, first);
+
+    let second = db
+        .change_candidate_selection(texted(""), replace(&all[1]))
+        .await
+        .unwrap();
+    assert!(second > first);
+    assert_eq!(revision_listed().await, second);
+
+    let unchanged = db
+        .change_candidate_selection(texted(""), replace(&all[1]))
+        .await
+        .unwrap();
+    assert_eq!(unchanged, second);
+}
+
 /// A key leaves the selection in the same write that removes its release from
 /// the queue, imports its files, or sets it aside; a rescan that rewrites a
 /// release keeps it selected.

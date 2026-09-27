@@ -24,6 +24,15 @@ class ImportStore {
     /// holds the order; this holds what each key renders as.
     var items: [String: BridgeImportListItem] = [:]
 
+    /// The last click on the list's rows whose write core's list has not
+    /// reflected yet. See `shownSelectedKeys`.
+    private var pendingClick: PendingSelectionClick?
+    /// The selection revision the loaded rows reflect.
+    @ObservationIgnored
+    private var listedSelectionRevision: UInt64 = 0
+    @ObservationIgnored
+    private var clickCount: UInt64 = 0
+
     /// Everything the chrome around the list shows: the tab counts, the
     /// watched folders and their scan statuses, the group keys and Pending's
     /// covers. Defaults to an
@@ -182,6 +191,52 @@ class ImportStore {
                 }
             }
         )
+    }
+
+    /// The keys of the loaded rows the list shows selected: core's, except
+    /// from a click until core's list reflects the write it made, when they
+    /// are the click's. The rows core delivers in that time were read before
+    /// the write, and showing them would put back the rows the click replaced.
+    var shownSelectedKeys: Set<String> {
+        pendingClick?.keys ?? selectedLoadedKeys
+    }
+
+    /// Show `keys` as the selection until the write this click makes is
+    /// reflected, and return the click to report that write against.
+    func beginSelectionClick(_ keys: Set<String>) -> UInt64 {
+        clickCount += 1
+        pendingClick = PendingSelectionClick(
+            id: clickCount,
+            keys: keys,
+            revision: nil
+        )
+        return clickCount
+    }
+
+    /// The click `id` wrote the selection at `revision`. Once the rows reflect
+    /// it they are the selection shown; a newer click has taken over already.
+    func selectionClickWritten(_ id: UInt64, revision: UInt64) {
+        guard pendingClick?.id == id else { return }
+        if listedSelectionRevision >= revision {
+            pendingClick = nil
+        }
+        else {
+            pendingClick?.revision = revision
+        }
+    }
+
+    /// The click `id` wrote nothing, so the rows core has are the selection.
+    func selectionClickFailed(_ id: UInt64) {
+        guard pendingClick?.id == id else { return }
+        pendingClick = nil
+    }
+
+    /// The loaded rows now reflect the selection at `revision`.
+    func applySelectionRevision(_ revision: UInt64) {
+        listedSelectionRevision = revision
+        if let written = pendingClick?.revision, written <= revision {
+            pendingClick = nil
+        }
     }
 
     /// Drop entries the list no longer holds a position for, so a page the
@@ -495,4 +550,12 @@ extension ImportStore {
             )
         }
     }
+}
+
+/// A click on the list's rows: the keys it selected among the loaded rows, and
+/// the selection revision its write made once core has said.
+private struct PendingSelectionClick {
+    let id: UInt64
+    let keys: Set<String>
+    var revision: UInt64?
 }

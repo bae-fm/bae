@@ -140,6 +140,8 @@ pub struct BridgeImportListSnapshot {
     pub windows: Vec<BridgeImportListWindow>,
     pub total_count: u64,
     pub summary: BridgeImportQueueSummary,
+    /// The person's changes to the selection the rows' `selected` reflects.
+    pub selection_revision: u64,
     pub request_revision: u64,
     pub cause: BridgeLiveQueryCause,
 }

@@ -579,6 +579,7 @@ struct ImportListPageSourceTests {
                 groupKeys: [],
                 pendingCovers: []
             ),
+            selectionRevision: 0,
             requestRevision: requestRevision,
             cause: .requestChanged
         )
@@ -592,7 +593,8 @@ extension ImportListPageSourceTests {
         let subscription = StubListSubscription()
         let source = ImportListPageSource(
             subscription: subscription,
-            onSummary: { _ in }
+            onSummary: { _ in },
+            onSelectionRevision: { _ in }
         )
         let view = BridgeImportListView(
             tab: .pending,
@@ -635,7 +637,8 @@ extension ImportListPageSourceTests {
         let subscription = StubListSubscription()
         let source = ImportListPageSource(
             subscription: subscription,
-            onSummary: { _ in }
+            onSummary: { _ in },
+            onSelectionRevision: { _ in }
         )
         let task = Task {
             try await source.pages.waitForView(
@@ -667,7 +670,8 @@ extension ImportListPageSourceTests {
         let subscription = StubListSubscription()
         let source = ImportListPageSource(
             subscription: subscription,
-            onSummary: { _ in }
+            onSummary: { _ in },
+            onSelectionRevision: { _ in }
         )
         let task = Task {
             try await source.pages.waitForView(
@@ -699,7 +703,8 @@ extension ImportListPageSourceTests {
         let subscription = StubListSubscription()
         let source = ImportListPageSource(
             subscription: subscription,
-            onSummary: { _ in }
+            onSummary: { _ in },
+            onSelectionRevision: { _ in }
         )
         let failureDelivered = DispatchSemaphore(value: 0)
         _ = source.subscribe(
@@ -742,7 +747,8 @@ extension ImportListPageSourceTests {
         var summaries: [BridgeImportQueueSummary] = []
         let source = ImportListPageSource(
             subscription: subscription,
-            onSummary: { summaries.append($0) }
+            onSummary: { summaries.append($0) },
+            onSelectionRevision: { _ in }
         )
         var first: [String] = []
         var second: [String] = []
@@ -793,7 +799,8 @@ extension ImportListPageSourceTests {
         let subscription = StubListSubscription()
         let source = ImportListPageSource(
             subscription: subscription,
-            onSummary: { _ in }
+            onSummary: { _ in },
+            onSelectionRevision: { _ in }
         )
         _ = source.subscribe(
             offset: 0,
@@ -824,7 +831,8 @@ extension ImportListPageSourceTests {
         let subscription = StubListSubscription()
         let source = ImportListPageSource(
             subscription: subscription,
-            onSummary: { _ in }
+            onSummary: { _ in },
+            onSelectionRevision: { _ in }
         )
         let importStore = ImportStore()
         // A redelivered page is observable only in the count of pages taken.

@@ -14,9 +14,11 @@ struct ImportCandidateActionProgress {
 
 /// The calls the selection makes, as values a test can replace.
 struct ImportSelectionOperations: Sendable {
+    /// Returns the selection revision of the list value that reflects the
+    /// change.
     let change:
         @Sendable (BridgeImportListView, BridgeSelectionChange) async throws ->
-            Void
+            UInt64
     let selectAll: @Sendable (BridgeImportListView) async throws -> Void
     let keepShown: @Sendable (BridgeImportListView) async throws -> Void
     let sourceFolders: @Sendable () async throws -> [String]
@@ -55,7 +57,7 @@ struct ImportSelectionOperations: Sendable {
     /// Operations that change nothing, for previews and tests that never act
     /// on the selection.
     static let inert = ImportSelectionOperations(
-        change: { _, _ in },
+        change: { _, _ in 0 },
         selectAll: { _ in },
         keepShown: { _ in },
         sourceFolders: { [] },
@@ -115,10 +117,13 @@ final class ImportSelection {
         self.summary = summary
     }
 
+    /// Apply `change`, and return the selection revision of the list value
+    /// that reflects it.
+    @discardableResult
     func change(
         in view: BridgeImportListView,
         _ change: BridgeSelectionChange
-    ) async throws {
+    ) async throws -> UInt64 {
         try await operations.change(view, change)
     }
 

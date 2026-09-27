@@ -55,7 +55,8 @@ import Foundation
     /// every one of them, so the pages a `PaginatedList` asks for are registered
     /// here and handed the window that matches them. The chrome around the list —
     /// the tab counts, Pending's covers, the group keys — rides on the same value and
-    /// goes to `onSummary`.
+    /// goes to `onSummary`, and the selection revision the rows reflect goes to
+    /// `onSelectionRevision` once the rows have been handed out.
     public final class ImportListPageSource: PageSource, @unchecked Sendable {
         public typealias Row = BridgeImportListItem
 
@@ -91,6 +92,7 @@ import Foundation
         private let subscription: any ImportListSubscriptionProtocol
         private let onSummary:
             @MainActor @Sendable (BridgeImportQueueSummary) -> Void
+        private let onSelectionRevision: @MainActor @Sendable (UInt64) -> Void
         private let lock = NSLock()
         private var sinks: [WindowKey: Sink] = [:]
         private var viewWaiters: [UUID: ViewWaiterState] = [:]
@@ -112,10 +114,13 @@ import Foundation
             subscription: any ImportListSubscriptionProtocol,
             onSummary:
                 @escaping @MainActor @Sendable (BridgeImportQueueSummary)
-                -> Void
+                -> Void,
+            onSelectionRevision:
+                @escaping @MainActor @Sendable (UInt64) -> Void
         ) {
             self.subscription = subscription
             self.onSummary = onSummary
+            self.onSelectionRevision = onSelectionRevision
             deliveries = Task { [weak self] in
                 await self?.deliver()
             }
@@ -220,6 +225,7 @@ import Foundation
                     let snapshot = try await subscription.next()
                     let sinks = registeredSinks()
                     let onSummary = self.onSummary
+                    let onSelectionRevision = self.onSelectionRevision
                     let summary = snapshot.summary
                     await MainActor.run {
                         onSummary(summary)
@@ -231,6 +237,7 @@ import Foundation
                             sinks[key]?
                                 .value(window.items, Int(snapshot.totalCount))
                         }
+                        onSelectionRevision(snapshot.selectionRevision)
                     }
                     fulfillViewWaiters(
                         revision: snapshot.requestRevision,

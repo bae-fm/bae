@@ -25,7 +25,7 @@ extension ImportSelectionOperations {
     static func stub(
         change:
             @escaping @Sendable (BridgeImportListView, BridgeSelectionChange)
-            async throws -> Void = { _, _ in },
+            async throws -> UInt64 = { _, _ in 0 },
         selectAll:
             @escaping @Sendable (BridgeImportListView) async throws -> Void = {
                 _ in
@@ -177,5 +177,65 @@ struct ImportSelectionTests {
             let png = try await SnapshotTestSupport.capturePNG(host, size: size)
             #expect(!png.isEmpty)
         }
+    }
+}
+
+/// What the list shows selected between a click and core's list catching up.
+@MainActor
+@Suite("A click's selection until core's list reflects it")
+struct PendingSelectionClickTests {
+    private static func store(selecting key: String?) -> ImportStore {
+        let store = ImportStore()
+        store.ingest(
+            ["/music/Album", "/music/Other Album"]
+                .map { path in
+                    var row = PreviewData.triageRowIdentified
+                    row.candidateKey = path
+                    row.selected = path == key
+                    return PreviewData.candidateItem(row)
+                }
+        )
+        return store
+    }
+
+    @Test("an older list read leaves the click shown until its revision lands")
+    func olderReadsLeaveTheClick() {
+        let store = Self.store(selecting: "/music/Album")
+        store.applySelectionRevision(4)
+        let click = store.beginSelectionClick(["/music/Other Album"])
+
+        store.applySelectionRevision(4)
+        #expect(store.shownSelectedKeys == ["/music/Other Album"])
+        store.selectionClickWritten(click, revision: 5)
+        store.applySelectionRevision(4)
+        #expect(store.shownSelectedKeys == ["/music/Other Album"])
+
+        store.applySelectionRevision(5)
+        #expect(store.shownSelectedKeys == ["/music/Album"])
+    }
+
+    @Test("a list read that landed before the write answered clears the click")
+    func aReadAheadOfTheAnswerClears() {
+        let store = Self.store(selecting: "/music/Album")
+        let click = store.beginSelectionClick(["/music/Other Album"])
+        store.applySelectionRevision(7)
+        #expect(store.shownSelectedKeys == ["/music/Other Album"])
+
+        store.selectionClickWritten(click, revision: 7)
+        #expect(store.shownSelectedKeys == ["/music/Album"])
+    }
+
+    @Test("a failed write shows core's rows, and only the latest click counts")
+    func failuresAndNewerClicks() {
+        let store = Self.store(selecting: "/music/Album")
+        let first = store.beginSelectionClick(["/music/Other Album"])
+        let second = store.beginSelectionClick([])
+
+        store.selectionClickWritten(first, revision: 1)
+        store.applySelectionRevision(1)
+        #expect(store.shownSelectedKeys.isEmpty)
+
+        store.selectionClickFailed(second)
+        #expect(store.shownSelectedKeys == ["/music/Album"])
     }
 }

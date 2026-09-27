@@ -195,6 +195,9 @@ final class DesktopSubscriptions {
                     subscription: appHandle.subscribeImportList(view: view),
                     onSummary: { summary in
                         importStore.applySummary(summary)
+                    },
+                    onSelectionRevision: { revision in
+                        importStore.applySelectionRevision(revision)
                     }
                 )
                 .pages

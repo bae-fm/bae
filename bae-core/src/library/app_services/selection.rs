@@ -17,12 +17,13 @@ pub struct SelectionActionFailure {
 
 impl AppServices {
     /// Apply a change a person made by pointing at rows of the list `view`
-    /// shows.
+    /// shows, and return the selection revision of the list read that
+    /// reflects it.
     pub async fn change_import_selection(
         &self,
         view: ImportListView,
         change: SelectionChange,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<u64, crate::library::LibraryError> {
         self.inner
             .manager
             .change_candidate_selection(

@@ -894,6 +894,16 @@ CREATE TABLE IF NOT EXISTS candidate_selection (
     candidate_key TEXT PRIMARY KEY
 ) STRICT, WITHOUT ROWID;
 
+-- The one row counting the person's changes to the selection, so a list read
+-- says which of them it reflects.
+CREATE TABLE IF NOT EXISTS candidate_selection_revision (
+    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+    revision  INTEGER NOT NULL CHECK (revision >= 0)
+) STRICT;
+
+INSERT OR IGNORE INTO candidate_selection_revision (singleton, revision)
+VALUES (1, 0);
+
 CREATE TRIGGER IF NOT EXISTS deselect_removed_candidate AFTER DELETE ON scan_candidate
 WHEN NOT EXISTS (SELECT 1 FROM scan_candidate WHERE path = OLD.path)
 BEGIN

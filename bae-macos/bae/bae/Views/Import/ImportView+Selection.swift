@@ -6,15 +6,15 @@ import SwiftUI
 
 extension ImportView {
     /// The sidebar's selection, which core holds: the list shows the loaded
-    /// rows core marks selected, and what a person does to them goes back to
-    /// core as the change it is.
+    /// rows core marks selected — or a click's, until core reflects it — and
+    /// what a person does to them goes back to core as the change it is.
     var candidateSelectionBinding: Binding<Set<String>> {
         Binding(
-            get: { importStore.selectedLoadedKeys },
+            get: { importStore.shownSelectedKeys },
             set: { keys in
                 listSlot.changeSelection(
                     to: keys,
-                    from: importStore.selectedLoadedKeys,
+                    from: importStore.shownSelectedKeys,
                     by: SelectionGesture(NSEvent.modifierFlags)
                 )
             },

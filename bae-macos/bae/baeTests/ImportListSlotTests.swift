@@ -270,6 +270,7 @@ struct ImportListSlotTests {
                     toggleEntered.continuation.yield(())
                     for await _ in releaseToggle.stream { break }
                     writes.record("toggle")
+                    return 1
                 },
                 selectAll: { _ in writes.record("select all") },
                 keepShown: { view in

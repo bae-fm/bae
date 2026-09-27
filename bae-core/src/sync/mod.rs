@@ -440,6 +440,7 @@ mod tests {
             "watched_import_folders",
             "skipped_import_candidates",
             "candidate_selection",
+            "candidate_selection_revision",
             "release_grouping",
             "release_grouping_member",
             "folder_scan_generation_sequence",

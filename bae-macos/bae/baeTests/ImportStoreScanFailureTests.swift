@@ -171,7 +171,8 @@ struct ImportListPageSourceFailureTests {
         let subscription = FailingListSubscription()
         let source = ImportListPageSource(
             subscription: subscription,
-            onSummary: { _ in }
+            onSummary: { _ in },
+            onSelectionRevision: { _ in }
         )
         // The read fails before anything subscribes, which is the launch race.
         await subscription.firstReadAttempted

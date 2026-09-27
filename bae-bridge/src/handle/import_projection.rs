@@ -538,6 +538,7 @@ impl crate::types::BridgeImportListSnapshot {
             total_count,
             summary,
             folder_scans,
+            selection_revision,
             request_revision,
             cause,
         } = snapshot;
@@ -548,6 +549,7 @@ impl crate::types::BridgeImportListSnapshot {
                 .collect(),
             total_count,
             summary: crate::types::BridgeImportQueueSummary::from_core(summary, folder_scans),
+            selection_revision,
             request_revision,
             cause: crate::types::BridgeLiveQueryCause::from_core(cause),
         }

@@ -424,6 +424,8 @@ pub struct ImportListProjection {
     pub windows: Vec<ImportListWindow>,
     pub total_count: u64,
     pub summary: ImportQueueSummary,
+    /// The person's changes to the selection the rows' `selected` reflects.
+    pub selection_revision: u64,
 }
 
 /// A projection with the live query's own bookkeeping — which request it
@@ -438,6 +440,8 @@ pub struct ImportListSnapshot {
     pub total_count: u64,
     pub summary: ImportQueueSummary,
     pub folder_scans: FolderScanProgress,
+    /// The person's changes to the selection the rows' `selected` reflects.
+    pub selection_revision: u64,
     pub request_revision: u64,
     pub cause: coven::ReconfigurableLiveQueryCause,
 }

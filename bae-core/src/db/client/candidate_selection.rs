@@ -15,6 +15,7 @@ impl Database {
         let selected = self.selected_keys().await?;
         self.write_selection(selected.into_iter().collect(), Vec::new())
             .await
+            .map(|_| ())
     }
 
     /// The selected candidates as the tables place them, now and on every
@@ -46,12 +47,13 @@ impl Database {
     }
 
     /// Apply one change a person made by pointing at rows of the list
-    /// `request` shows.
+    /// `request` shows, and say the selection revision a list read that
+    /// reflects it carries.
     pub(crate) async fn change_candidate_selection(
         &self,
         request: ImportListRequest,
         change: SelectionChange,
-    ) -> Result<(), DbError> {
+    ) -> Result<u64, DbError> {
         let selected = self.selected_keys().await?;
         let (remove, add) = match change {
             SelectionChange::Replace { keys } => {
@@ -100,7 +102,7 @@ impl Database {
             .into_iter()
             .filter(|key| !selected.contains(key))
             .collect();
-        self.write_selection(Vec::new(), add).await
+        self.write_selection(Vec::new(), add).await.map(|_| ())
     }
 
     /// Keep only the selected candidates the list shows under `request`: a
@@ -117,15 +119,16 @@ impl Database {
             .into_iter()
             .filter(|key| !shown.contains(key))
             .collect();
-        self.write_selection(remove, Vec::new()).await
+        self.write_selection(remove, Vec::new()).await.map(|_| ())
     }
 
-    /// Take `remove` out of the selection and put `add` in, as one write; no
+    /// Take `remove` out of the selection and put `add` in, as one write that
+    /// also counts the selection's revision up, and return that revision. No
     /// write at all when both are empty, since the store refuses a write that
-    /// changes nothing.
-    async fn write_selection(&self, remove: Vec<String>, add: Vec<String>) -> Result<(), DbError> {
+    /// changes nothing: the revision the last change left is returned.
+    async fn write_selection(&self, remove: Vec<String>, add: Vec<String>) -> Result<u64, DbError> {
         if remove.is_empty() && add.is_empty() {
-            return Ok(());
+            return self.read(|sql| selection_revision_on(&sql)).await;
         }
         self.call(move |sql| {
             for key in &remove {
@@ -137,7 +140,12 @@ impl Database {
             for key in &add {
                 select_on(sql, key)?;
             }
-            Ok(())
+            Ok(sql.query_row(
+                "UPDATE candidate_selection_revision SET revision = revision + 1 \
+                 RETURNING revision",
+                [],
+                |row| row.get::<_, i64>(0),
+            )? as u64)
         })
         .await
     }
@@ -165,6 +173,16 @@ impl Database {
             })
             .await
     }
+}
+
+/// How many changes a person has made to the selection, as the caller's read
+/// sees it.
+pub(super) fn selection_revision_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
+    Ok(sql.query_row(
+        "SELECT revision FROM candidate_selection_revision",
+        [],
+        |row| row.get::<_, i64>(0),
+    )? as u64)
 }
 
 /// Whether `key` is selected, inside the caller's transaction.

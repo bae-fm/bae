@@ -3,11 +3,12 @@ use std::collections::BTreeSet;
 
 forward! { async this => {
     /// Apply a change a person made by pointing at rows of the list `view`
-    /// shows.
+    /// shows, and return the selection revision of the list value that
+    /// reflects it.
     fn change_import_selection(
         view: crate::types::BridgeImportListView,
         change: crate::types::BridgeSelectionChange,
-    ) -> () {
+    ) -> u64 {
         this.services
             .change_import_selection(view.into_core(), change.into_core())
             .await
