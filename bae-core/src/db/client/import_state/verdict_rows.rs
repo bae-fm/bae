@@ -66,14 +66,13 @@ pub(super) fn insert_verdict(
             })
         })
         .transpose()?;
-    let (medium_conflict, medium_conflict_sample_rate_hz) =
-        match verdict.findings().and_then(|findings| findings.medium_conflict) {
-            None => (None, None),
-            Some(MediumConflict::CdRip) => (Some("cd_rip"), None),
-            Some(MediumConflict::NotCdAudio { sample_rate_hz }) => {
-                (Some("not_cd_audio"), Some(sample_rate_hz))
-            }
-        };
+    let medium_conflict = verdict
+        .findings()
+        .and_then(|findings| findings.medium_conflict)
+        .map(|conflict| match conflict {
+            MediumConflict::CdRip => "cd_rip",
+            MediumConflict::NotCdAudio => "not_cd_audio",
+        });
     let failures_json = match verdict {
         TerminalVerdict::Failed { failures, .. } => {
             if failures.is_empty() {
@@ -94,8 +93,8 @@ pub(super) fn insert_verdict(
     sql.execute(
         "INSERT INTO import_candidate_verdict \
              (content_hash, kind, track_count, failures_json, \
-              ledger_json, identified_at, medium_conflict, medium_conflict_sample_rate_hz) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+              ledger_json, identified_at, medium_conflict) \
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             kind,
@@ -104,7 +103,6 @@ pub(super) fn insert_verdict(
             ledger_json,
             identification.identified_at.to_rfc3339(),
             medium_conflict,
-            medium_conflict_sample_rate_hz,
         ],
     )?;
     insert_matches(sql, content_hash, verdict)
@@ -627,8 +625,7 @@ pub(super) struct VerdictRow {
 }
 
 pub(super) const VERDICT_COLUMNS: &str = "content_hash, kind, track_count, \
-     failures_json, ledger_json, identified_at, medium_conflict, \
-     medium_conflict_sample_rate_hz";
+     failures_json, ledger_json, identified_at, medium_conflict";
 
 
 pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
@@ -639,10 +636,7 @@ pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
         failures_json: row.get("failures_json")?,
         ledger_json: row.get("ledger_json")?,
         identified_at: super::rfc3339_column(row, "identified_at")?,
-        medium_conflict: super::medium_conflict_of(
-            row.get("medium_conflict")?,
-            row.get("medium_conflict_sample_rate_hz")?,
-        )?,
+        medium_conflict: super::medium_conflict_of(row.get("medium_conflict")?)?,
     })
 }
 

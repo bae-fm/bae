@@ -17,7 +17,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
         .archive("mb-answer-1", "rg-answer-1", &[probed, 0])
         .await;
     fixture
-        .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1", probed)
+        .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1",)
         .await;
 
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
@@ -117,7 +117,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
         .archive("mb-answer-1", "rg-answer-1", &[probed, 0])
         .await;
     fixture
-        .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1", probed)
+        .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1",)
         .await;
     // The picked release is one identification never fetched, which is what a
     // manual search result is: its documents are archived by the pick itself.
@@ -222,7 +222,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
         .archive("mb-answer-1", "rg-answer-1", &[probed, 0])
         .await;
     fixture
-        .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1", probed)
+        .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1",)
         .await;
 
     let pick = crate::import::MetadataProvenance::ExternalRelease {
@@ -383,10 +383,6 @@ async fn a_stored_verdict_carries_its_durations_and_signals() {
         "the disc ID the lookup used reads back: {:?}",
         signals.disc_id
     );
-    assert!(
-        signals.durations.units.is_empty(),
-        "source durations are derived from the candidate scan, not duplicated in identify state"
-    );
 }
 
 /// A terminal state without its settled signals cannot be committed, and the
@@ -405,6 +401,7 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
         IdentifyRunId::for_test(1),
         TerminalVerdict::NotFoundAnywhere { ledger: None }.resume_state(
             &|_| unreachable!("a no-match verdict names no release"),
+            Default::default(),
             Default::default(),
         ),
         CallPriority::Background,
@@ -437,7 +434,7 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
         file_edit_revision: 0,
         folder_path: key.clone(),
         verdict: multi_match_verdict(&["mb-torn-1", "mb-torn-2"], "rg-torn-1"),
-        signals: settled_signals(fixture.probed_durations(&dir)),
+        signals: settled_signals(),
         metadata: None,
     };
 
@@ -452,7 +449,7 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
             state: row
                 .verdict
                 .clone()
-                .resume_state(&not_in_library, Default::default()),
+                .resume_state(&not_in_library, Default::default(), Default::default()),
             priority: CallPriority::Background,
         });
     tokio::time::timeout(Duration::from_secs(10), async {

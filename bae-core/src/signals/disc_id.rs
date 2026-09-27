@@ -6,15 +6,11 @@ use super::LookupFailure;
 /// Derived once during the extraction pass. Identify turns a `Computed` disc ID into
 /// a MusicBrainz lookup; `Absent`, `NotCdAudio` and `Failed` settle the signal with
 /// no results.
-///
-/// `track_count` is the candidate's own count and rides every variant, so a barcode
-/// match can still report "N tracks here vs. M on the matched release."
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiscIdSignal {
     /// A disc ID was derived from a LOG/CUE artifact.
     Computed {
         disc_id: String,
-        track_count: u32,
         /// The candidate-relative path of the LOG or CUE it came from, so a
         /// surface can put the disc ID on that file's row. `None` for a
         /// re-identify pass over a library release, which derives it from
@@ -22,39 +18,24 @@ pub enum DiscIdSignal {
         source_file: Option<String>,
     },
     /// No LOG/CUE artifact to derive one from.
-    Absent { track_count: u32 },
+    Absent,
     /// A track sheet was there, and the audio it lays out is sampled at a
     /// rate a CD does not play at (see [`super::RipEvidence::NotCd`]), so no
     /// disc could have had the layout the sheet describes and none is hashed
     /// to ask about.
-    NotCdAudio {
-        track_count: u32,
-        sample_rate_hz: u32,
-    },
+    NotCdAudio,
     /// Derivation failed — a DB load, a "release not found", a compute task panic.
     /// Always local, so always a `LookupFailure::Diagnostic` in practice.
-    Failed {
-        failure: LookupFailure,
-        track_count: u32,
-    },
+    Failed { failure: LookupFailure },
 }
 
 impl DiscIdSignal {
-    pub fn track_count(&self) -> u32 {
-        match self {
-            DiscIdSignal::Computed { track_count, .. }
-            | DiscIdSignal::Absent { track_count }
-            | DiscIdSignal::NotCdAudio { track_count, .. }
-            | DiscIdSignal::Failed { track_count, .. } => *track_count,
-        }
-    }
-
     /// The hash when one was computed — the toolbar badge's value.
     pub fn discid_value(&self) -> Option<String> {
         match self {
             DiscIdSignal::Computed { disc_id, .. } => Some(disc_id.clone()),
-            DiscIdSignal::Absent { .. }
-            | DiscIdSignal::NotCdAudio { .. }
+            DiscIdSignal::Absent
+            | DiscIdSignal::NotCdAudio
             | DiscIdSignal::Failed { .. } => None,
         }
     }

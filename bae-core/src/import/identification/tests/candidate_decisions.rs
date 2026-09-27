@@ -106,7 +106,7 @@ async fn a_claimed_candidate_refuses_sheet_and_role_decisions() {
         .archive("mb-claimed-1", "rg-claimed-1", &[500, 500])
         .await;
     fixture
-        .store_settled_verdict(&dir, "mb-claimed-1", "rg-claimed-1", 1_000)
+        .store_settled_verdict(&dir, "mb-claimed-1", "rg-claimed-1",)
         .await;
     let key = dir.to_string_lossy().into_owned();
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
@@ -157,7 +157,7 @@ async fn a_cleared_sheet_can_be_bound_again() {
         .archive("mb-rebind-1", "rg-rebind-1", &[500, 500])
         .await;
     fixture
-        .store_settled_verdict(&dir, "mb-rebind-1", "rg-rebind-1", 1_000)
+        .store_settled_verdict(&dir, "mb-rebind-1", "rg-rebind-1",)
         .await;
     let key = dir.to_string_lossy().into_owned();
 

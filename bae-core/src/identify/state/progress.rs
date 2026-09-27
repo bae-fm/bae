@@ -21,20 +21,15 @@ pub enum DiscidProgress {
     LookingUp,
     Done {
         results: LookupResults,
-        track_count: u32,
     },
-    /// No disc ID was derived; the local track count still stands.
-    Skipped {
-        track_count: u32,
-    },
+    /// No disc ID was derived.
+    Skipped,
     /// A disc ID was derived and nobody was asked about it, for `reason`.
     NotAsked {
-        track_count: u32,
         reason: NotAskedReason,
     },
     Failed {
         failure: LookupFailure,
-        track_count: u32,
     },
 }
 
@@ -43,7 +38,7 @@ impl DiscidProgress {
         matches!(
             self,
             DiscidProgress::Done { .. }
-                | DiscidProgress::Skipped { .. }
+                | DiscidProgress::Skipped
                 | DiscidProgress::NotAsked { .. }
                 | DiscidProgress::Failed { .. }
         )
@@ -387,7 +382,7 @@ pub(super) fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
     match progress {
         DiscidProgress::Computing | DiscidProgress::LookingUp => SignalState::LookingUp,
         DiscidProgress::Done { results, .. } => found_or_no_match(results.len() as u32),
-        DiscidProgress::Skipped { .. } => SignalState::Skipped,
+        DiscidProgress::Skipped => SignalState::Skipped,
         DiscidProgress::NotAsked { reason, .. } => SignalState::NotAsked { reason: *reason },
         DiscidProgress::Failed { failure, .. } => SignalState::Failed {
             failure: failure.clone(),
@@ -447,7 +442,7 @@ pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
         };
     }
     match &context.disc.signal {
-        DiscIdSignal::Absent { .. } | DiscIdSignal::NotCdAudio { .. } => SignalState::Skipped,
+        DiscIdSignal::Absent | DiscIdSignal::NotCdAudio => SignalState::Skipped,
         DiscIdSignal::Failed { failure, .. } => SignalState::Failed {
             failure: failure.clone(),
         },
@@ -508,11 +503,7 @@ pub(super) fn start_discid_progress(
     effects: &mut Vec<Effect>,
 ) -> DiscidProgress {
     match signal {
-        DiscIdSignal::Computed {
-            disc_id,
-            track_count,
-            ..
-        } => {
+        DiscIdSignal::Computed { disc_id, .. } => {
             // The reason nearest the value wins: see `NotAskedReason`.
             let reason = if excluded {
                 Some(NotAskedReason::LeftOut)
@@ -524,28 +515,16 @@ pub(super) fn start_discid_progress(
                 None
             };
             if let Some(reason) = reason {
-                return DiscidProgress::NotAsked {
-                    track_count: *track_count,
-                    reason,
-                };
+                return DiscidProgress::NotAsked { reason };
             }
             effects.push(Effect::LookupDiscid {
                 disc_id: disc_id.clone(),
-                track_count: *track_count,
             });
             DiscidProgress::LookingUp
         }
-        DiscIdSignal::Absent { track_count } | DiscIdSignal::NotCdAudio { track_count, .. } => {
-            DiscidProgress::Skipped {
-                track_count: *track_count,
-            }
-        }
-        DiscIdSignal::Failed {
-            failure,
-            track_count,
-        } => DiscidProgress::Failed {
+        DiscIdSignal::Absent | DiscIdSignal::NotCdAudio => DiscidProgress::Skipped,
+        DiscIdSignal::Failed { failure } => DiscidProgress::Failed {
             failure: failure.clone(),
-            track_count: *track_count,
         },
     }
 }
@@ -677,16 +656,5 @@ pub(super) fn start_search_progress(
                 }
             })
             .collect(),
-    }
-}
-
-/// The local track count every settled disc-ID variant carries.
-pub(super) fn settled_track_count(discid: &DiscidProgress) -> u32 {
-    match discid {
-        DiscidProgress::Done { track_count, .. } => *track_count,
-        DiscidProgress::Skipped { track_count } => *track_count,
-        DiscidProgress::NotAsked { track_count, .. } => *track_count,
-        DiscidProgress::Failed { track_count, .. } => *track_count,
-        DiscidProgress::Computing | DiscidProgress::LookingUp => 0,
     }
 }

@@ -289,8 +289,6 @@ pub struct ComputedDiscId {
 pub struct RipReading {
     pub evidence: RipEvidence,
     pub disc_id: DiscIdReading,
-    /// Every audio file carries one channel.
-    pub mono: bool,
 }
 
 /// The disc ID a candidate's rip artifacts hash to.
@@ -301,7 +299,7 @@ pub enum DiscIdReading {
     Absent,
     /// A sheet was there and the audio rules a CD out (see
     /// [`RipEvidence::NotCd`]), so it was not hashed.
-    NotCdAudio { sample_rate_hz: u32 },
+    NotCdAudio,
 }
 
 impl DiscIdReading {
@@ -309,23 +307,19 @@ impl DiscIdReading {
     pub fn computed(self) -> Option<ComputedDiscId> {
         match self {
             Self::Computed(computed) => Some(computed),
-            Self::Absent | Self::NotCdAudio { .. } => None,
+            Self::Absent | Self::NotCdAudio => None,
         }
     }
 
-    /// The signal a candidate of `track_count` tracks carries.
-    pub fn into_signal(self, track_count: u32) -> DiscIdSignal {
+    /// The signal this reading is.
+    pub fn into_signal(self) -> DiscIdSignal {
         match self {
             Self::Computed(computed) => DiscIdSignal::Computed {
                 disc_id: computed.disc_id,
-                track_count,
                 source_file: computed.source_file,
             },
-            Self::Absent => DiscIdSignal::Absent { track_count },
-            Self::NotCdAudio { sample_rate_hz } => DiscIdSignal::NotCdAudio {
-                track_count,
-                sample_rate_hz,
-            },
+            Self::Absent => DiscIdSignal::Absent,
+            Self::NotCdAudio => DiscIdSignal::NotCdAudio,
         }
     }
 }
@@ -380,8 +374,6 @@ pub(crate) fn is_rip_document(path: &Path) -> bool {
 /// a CD out; and the sheets are hashed unless it does. Failures along the
 /// way log at `debug!` so the chain shows up in traces.
 fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
-    let mono = !artifacts.audio.is_empty()
-        && artifacts.audio.iter().all(|format| format.channels == 1);
     // Logs first: a log's table of contents is the disc ID as well as the
     // proof, which a report is not.
     artifacts.documents.sort_by_key(|document| !document.is_log());
@@ -404,7 +396,6 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
                             disc_id,
                             source_file: file,
                         }),
-                        mono,
                     };
                 }
                 Err(e) => debug!("DiscID from LOG failed for {:?}: {}", document.path, e),
@@ -430,18 +421,18 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
                 file: sheet.file.map(str::to_string),
             },
             None => match rate_ruling_out_cd(artifacts.audio.iter().copied()) {
-                Some(sample_rate_hz) => RipEvidence::NotCd { sample_rate_hz },
+                Some(_) => RipEvidence::NotCd,
                 None => RipEvidence::Unproven,
             },
         },
     };
 
     let disc_id = match evidence {
-        RipEvidence::NotCd { sample_rate_hz } if !artifacts.sheets.is_empty() => {
-            debug!("not hashing a track sheet whose audio is at {sample_rate_hz} Hz");
-            DiscIdReading::NotCdAudio { sample_rate_hz }
+        RipEvidence::NotCd if !artifacts.sheets.is_empty() => {
+            debug!("not hashing a track sheet whose audio no CD holds");
+            DiscIdReading::NotCdAudio
         }
-        RipEvidence::NotCd { .. } => DiscIdReading::Absent,
+        RipEvidence::NotCd => DiscIdReading::Absent,
         RipEvidence::Cd { .. } | RipEvidence::Unproven => artifacts
             .sheets
             .iter()
@@ -455,11 +446,7 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
             })
             .unwrap_or(DiscIdReading::Absent),
     };
-    RipReading {
-        evidence,
-        disc_id,
-        mono,
-    }
+    RipReading { evidence, disc_id }
 }
 
 /// One of a library release's audio files: where it is, how long it plays,

@@ -194,9 +194,10 @@ pub enum BridgeDiscIdStep {
     Reading,
     /// No LOG or CUE to read one off.
     Absent,
-    /// A CUE over audio sampled at a rate no CD plays at.
+    /// A CUE over audio sampled at a rate no CD plays at, with that rate as
+    /// the audio's files state it; `None` when they are not at hand.
     NotCdAudio {
-        sample_rate_hz: u32,
+        sample_rate_hz: Option<u32>,
     },
     ReadFailed {
         failure: BridgeLookupFailure,

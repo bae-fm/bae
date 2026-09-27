@@ -78,7 +78,6 @@ fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
         state,
         IdentifyEvent::DiscidLookupCompleted {
             results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
-            track_count: 5,
         },
     );
     match state {

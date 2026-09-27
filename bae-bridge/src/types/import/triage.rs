@@ -314,8 +314,9 @@ pub enum BridgeMediumConflict {
     /// The folder is a CD rip, and no release could be a CD.
     CdRip,
     /// The folder's audio is at a rate no CD plays at, and every release is
-    /// a CD.
-    NotCdAudio { sample_rate_hz: u32 },
+    /// a CD. The rate is the audio's, read off its files; `None` on a row,
+    /// where they are not at hand.
+    NotCdAudio { sample_rate_hz: Option<u32> },
 }
 
 impl BridgeFolderCheck {

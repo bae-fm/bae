@@ -58,9 +58,7 @@ pub enum AutomationDiscIdStep {
     Reading,
     Absent,
     /// A CUE over audio sampled at a rate no CD plays at.
-    NotCdAudio {
-        sample_rate_hz: u32,
-    },
+    NotCdAudio,
     ReadFailed {
         failure: AutomationLookupFailure,
     },

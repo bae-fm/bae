@@ -206,16 +206,26 @@ mirror_struct! {
     fields: { value, excluded, cells: (each BridgeProviderCell) },
 }
 
-mirror_enum! {
-    BridgeDiscIdStep = bae_core::identify::DiscIdStepView,
-    from_core: fn,
-    variants: {
-        Reading,
-        Absent,
-        NotCdAudio { sample_rate_hz },
-        ReadFailed { failure: (BridgeLookupFailure) },
-        Read { disc_id, lookup: (BridgeLookupState) },
-    },
+impl BridgeDiscIdStep {
+    /// Not a copy: an unread sheet crosses with the rate of the audio it was
+    /// run over, which is what says why it was not read.
+    fn from_core(step: bae_core::identify::DiscIdStepView, rate: Option<u32>) -> Self {
+        use bae_core::identify::DiscIdStepView;
+        match step {
+            DiscIdStepView::Reading => Self::Reading,
+            DiscIdStepView::Absent => Self::Absent,
+            DiscIdStepView::NotCdAudio => Self::NotCdAudio {
+                sample_rate_hz: rate,
+            },
+            DiscIdStepView::ReadFailed { failure } => Self::ReadFailed {
+                failure: BridgeLookupFailure::from_core(failure),
+            },
+            DiscIdStepView::Read { disc_id, lookup } => Self::Read {
+                disc_id,
+                lookup: BridgeLookupState::from_core(lookup),
+            },
+        }
+    }
 }
 
 mirror_enum! {
@@ -268,16 +278,28 @@ mirror_enum! {
     },
 }
 
-mirror_struct! {
-    BridgeIdentifyRun = bae_core::identify::IdentifyRunView,
-    from_core: fn,
-    fields: {
-        providers: (each BridgeCatalog),
-        disc_id: (BridgeDiscIdStep),
-        barcode: (BridgeBarcodeStep),
-        catalog: (BridgeCatalogStep),
-        search: (BridgeSearchStep),
-    },
+impl BridgeIdentifyRun {
+    /// The ledger, with the rate of the audio the run was over for its
+    /// disc-ID step.
+    fn from_core(run: bae_core::identify::IdentifyRunView, rate: Option<u32>) -> Self {
+        let bae_core::identify::IdentifyRunView {
+            providers,
+            disc_id,
+            barcode,
+            catalog,
+            search,
+        } = run;
+        Self {
+            providers: providers
+                .into_iter()
+                .map(BridgeCatalog::from_core)
+                .collect(),
+            disc_id: BridgeDiscIdStep::from_core(disc_id, rate),
+            barcode: BridgeBarcodeStep::from_core(barcode),
+            catalog: BridgeCatalogStep::from_core(catalog),
+            search: BridgeSearchStep::from_core(search),
+        }
+    }
 }
 
 mirror_struct! {
@@ -378,12 +400,10 @@ impl BridgeSignals {
     pub(crate) fn from_core(s: bae_core::signals::Signals) -> Self {
         let bae_core::signals::Signals {
             rip: _,
-            mono_audio: _,
             disc_id: _,
             barcode: _,
             text,
             text_pool: _,
-            durations: _,
         } = s;
         BridgeSignals {
             text: BridgeTextSignal::from_core(text),
@@ -417,10 +437,11 @@ impl BridgeAgreements {
 }
 
 /// Mirror [`bae_core::identify::IdentifyStateView`] into the uniffi enum, a field
-/// copy per variant.
+/// copy per variant with the rate of the state's audio on its run.
 impl BridgeIdentifyState {
     pub(crate) fn from_core(s: bae_core::identify::IdentifyState) -> Self {
         use bae_core::identify::IdentifyStateView;
+        let rate = s.audio().and_then(|audio| audio.rate_ruling_out_cd);
         match IdentifyStateView::from(s) {
             IdentifyStateView::Idle => BridgeIdentifyState::Idle,
             IdentifyStateView::Triangulating {
@@ -430,7 +451,7 @@ impl BridgeIdentifyState {
                 agreements,
                 narrowed_out,
             } => BridgeIdentifyState::Triangulating {
-                run: BridgeIdentifyRun::from_core(run),
+                run: BridgeIdentifyRun::from_core(run, rate),
                 groups: groups
                     .into_iter()
                     .map(BridgeReleaseGroup::from_core)
@@ -451,7 +472,7 @@ impl BridgeIdentifyState {
                 narrowed_out,
                 catalog_agreements,
             } => BridgeIdentifyState::Found {
-                run: run.map(BridgeIdentifyRun::from_core),
+                run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
                 groups: groups
                     .into_iter()
                     .map(BridgeReleaseGroup::from_core)
@@ -469,11 +490,11 @@ impl BridgeIdentifyState {
                     .collect(),
             },
             IdentifyStateView::NotFoundAnywhere { run } => BridgeIdentifyState::NotFoundAnywhere {
-                run: run.map(BridgeIdentifyRun::from_core),
+                run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
             },
             IdentifyStateView::ManualOnly { track_count, run } => BridgeIdentifyState::ManualOnly {
                 track_count,
-                run: run.map(BridgeIdentifyRun::from_core),
+                run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
             },
             IdentifyStateView::Failed {
                 run,
@@ -484,7 +505,7 @@ impl BridgeIdentifyState {
                 narrowed_out,
                 catalog_agreements,
             } => BridgeIdentifyState::Failed {
-                run: run.map(BridgeIdentifyRun::from_core),
+                run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
                 failures: failures.into_iter().map(identify_failure).collect(),
                 groups: groups
                     .into_iter()
@@ -565,7 +586,7 @@ mod tests {
 
     fn in_flight(barcode: BarcodeProgress) -> IdentifyState {
         IdentifyState::Triangulating {
-            discid: DiscidProgress::Skipped { track_count: 9 },
+            discid: DiscidProgress::Skipped,
             barcode,
             catalog: CatalogProgress::Skipped,
             search: bae_core::identify::SearchProgress::Skipped,
@@ -574,9 +595,8 @@ mod tests {
                 steps: bae_core::config::IdentificationSteps::default(),
                 artwork: bae_core::signals::ArtworkScan::Absent,
                 rip: bae_core::signals::RipEvidence::Unproven,
-                mono_audio: false,
                 disc: DiscIdEvidence {
-                    signal: DiscIdSignal::Absent { track_count: 9 },
+                    signal: DiscIdSignal::Absent,
                     ..Default::default()
                 },
                 barcode: BarcodeEvidence {
@@ -591,7 +611,10 @@ mod tests {
                 search: Default::default(),
                 text: Default::default(),
                 text_settled: true,
-                track_count: 9,
+                audio: bae_core::signals::AudioFacts {
+                    track_count: 9,
+                    ..Default::default()
+                },
                 album_links: bae_core::identify::state::AlbumLinkReading::Pending,
             },
         }
@@ -705,13 +728,9 @@ mod tests {
             else {
                 panic!("a run in flight");
             };
-            *discid = DiscidProgress::NotAsked {
-                track_count: 9,
-                reason,
-            };
+            *discid = DiscidProgress::NotAsked { reason };
             context.disc.signal = DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
-                track_count: 9,
                 source_file: None,
             };
             match BridgeIdentifyState::from_core(state) {
@@ -734,6 +753,28 @@ mod tests {
                     ..
                 } if reason == crossed
             ));
+        }
+    }
+
+    /// An unread sheet crosses with the rate of the audio the run was over:
+    /// the stored step states no number, the audio's files do.
+    #[test]
+    fn an_unread_sheet_crosses_with_the_audio_s_rate() {
+        let mut state = in_flight(BarcodeProgress::Skipped);
+        let IdentifyState::Triangulating { context, .. } = &mut state else {
+            panic!("a run in flight");
+        };
+        context.rip = bae_core::signals::RipEvidence::NotCd;
+        context.disc.signal = DiscIdSignal::NotCdAudio;
+        context.audio.rate_ruling_out_cd = Some(96_000);
+        match BridgeIdentifyState::from_core(state) {
+            BridgeIdentifyState::Triangulating { run, .. } => assert!(matches!(
+                run.disc_id,
+                BridgeDiscIdStep::NotCdAudio {
+                    sample_rate_hz: Some(96_000)
+                }
+            )),
+            other => panic!("expected a run in flight, got {other:?}"),
         }
     }
 

@@ -95,15 +95,13 @@ fn sample_findings() -> Findings {
 fn sample_signals() -> crate::signals::Signals {
     crate::signals::Signals {
         rip: crate::signals::RipEvidence::Unproven,
-        disc_id: crate::signals::DiscIdSignal::Absent { track_count: 0 },
+        disc_id: crate::signals::DiscIdSignal::Absent,
         barcode: crate::signals::BarcodeSignal::Absent,
         text: crate::signals::TextSignal::Settled {
             catalogs: Vec::new(),
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
-        durations: crate::import::probe::SourceDurations::totalling(2_700_000),
-        mono_audio: false,
     }
 }
 
@@ -890,7 +888,6 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
                 rip: crate::signals::RipEvidence::Unproven,
                 disc_id: DiscIdSignal::Computed {
                     disc_id: "disc-hash".to_string(),
-                    track_count: 1,
                     source_file: None,
                 },
                 barcode: BarcodeSignal::Absent,
@@ -899,9 +896,8 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
                     free_text: vec![],
                 },
                 text_pool: Vec::new(),
-                durations: crate::import::probe::SourceDurations::default(),
-                mono_audio: false,
             },
+            audio: crate::signals::AudioFacts::default(),
             artwork: crate::signals::ArtworkScan::Absent,
         },
     );
@@ -909,7 +905,6 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
         state,
         IdentifyEvent::DiscidLookupFailed {
             failure: LookupFailure::Provider { status: Some(503) },
-            track_count: 1,
         },
     );
 

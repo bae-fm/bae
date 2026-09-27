@@ -8,7 +8,7 @@ fn a_run_holding_both_catalogs_reads_album_links_before_it_settles() {
     let (state, _) = update(
         started_with(vec![MB, DG]),
         signals(
-            DiscIdSignal::Absent { track_count: 0 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["A"]),
             },
@@ -85,7 +85,7 @@ fn a_twin_joins_the_row_of_the_release_that_names_it() {
     let (state, _) = update(
         started_with(vec![MB, DG]),
         signals(
-            DiscIdSignal::Absent { track_count: 0 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["A"]),
             },

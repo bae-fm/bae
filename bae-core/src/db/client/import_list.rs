@@ -396,8 +396,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     let mut provenances = load_provenance_on(sql, None)?;
     let mut verdicts: HashMap<String, VerdictSummary> = HashMap::new();
     for row in sql.query(
-        "SELECT content_hash, kind, track_count, medium_conflict, \
-                medium_conflict_sample_rate_hz \
+        "SELECT content_hash, kind, track_count, medium_conflict \
          FROM import_candidate_verdict",
         [],
         |row| {
@@ -406,11 +405,10 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<i64>>(2)?,
                 row.get::<_, Option<String>>(3)?,
-                row.get::<_, Option<i64>>(4)?,
             ))
         },
     )? {
-        let (content_hash, kind, track_count, medium_conflict, sample_rate_hz) = row;
+        let (content_hash, kind, track_count, medium_conflict) = row;
         // The releases agreement narrowed out are not what the verdict settled
         // on, so the lead and the count come from `found` alone.
         let found = matches.remove(&content_hash).unwrap_or_default().found;
@@ -433,10 +431,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 .transpose()?,
             pressing_count,
             lead,
-            medium_conflict: super::import_state::medium_conflict_of(
-                medium_conflict,
-                sample_rate_hz,
-            )?,
+            medium_conflict: super::import_state::medium_conflict_of(medium_conflict)?,
         };
         verdicts.insert(content_hash, summary);
     }

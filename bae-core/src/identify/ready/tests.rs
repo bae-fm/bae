@@ -406,9 +406,7 @@ fn a_release_the_folder_rules_out_needs_you() {
     assert_eq!(
         classify(&ruled_out_by_the_folder(vec![result("mb-1", listing(11))])),
         QueueClassification::NeedsYou(Some(FolderCheck::MediumDisagrees {
-            folder: crate::identify::MediumConflict::NotCdAudio {
-                sample_rate_hz: 96_000
-            }
+            folder: crate::identify::MediumConflict::NotCdAudio
         }))
     );
 }
@@ -424,9 +422,7 @@ fn a_medium_the_folder_rules_out_is_named_over_several_pressings() {
             result("mb-2", listing(11)),
         ])),
         QueueClassification::NeedsYou(Some(FolderCheck::MediumDisagrees {
-            folder: crate::identify::MediumConflict::NotCdAudio {
-                sample_rate_hz: 96_000
-            }
+            folder: crate::identify::MediumConflict::NotCdAudio
         }))
     );
 }
@@ -441,9 +437,7 @@ fn ruled_out_by_the_folder(matches: Vec<MetadataResult>) -> TerminalVerdict {
     else {
         unreachable!("found builds a found verdict");
     };
-    findings.medium_conflict = Some(crate::identify::MediumConflict::NotCdAudio {
-        sample_rate_hz: 96_000,
-    });
+    findings.medium_conflict = Some(crate::identify::MediumConflict::NotCdAudio);
     TerminalVerdict::Found {
         findings,
         track_count,

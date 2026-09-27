@@ -21,7 +21,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
         steps: crate::config::IdentificationSteps::default(),
         artwork: crate::signals::ArtworkScan::Absent,
         disc: DiscIdEvidence {
-            signal: crate::signals::DiscIdSignal::Absent { track_count },
+            signal: crate::signals::DiscIdSignal::Absent,
             ..Default::default()
         },
         barcode: BarcodeEvidence::default(),
@@ -29,9 +29,11 @@ fn mk_context(track_count: u32) -> SignalsContext {
         search: Default::default(),
         text: Default::default(),
         text_settled: true,
-        track_count,
+        audio: crate::signals::AudioFacts {
+            track_count,
+            ..Default::default()
+        },
         album_links: crate::identify::state::AlbumLinkReading::Pending,
-        mono_audio: false,
     }
 }
 
@@ -96,7 +98,7 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
     context.providers = vec![Catalog::MusicBrainz];
     let (settled, _) = step(
         IdentifyState::Triangulating {
-            discid: DiscidProgress::Skipped { track_count: 9 },
+            discid: DiscidProgress::Skipped,
             barcode: BarcodeProgress::Lookups {
                 codes: vec![ValueLookup {
                     value: "012345".to_string(),
@@ -204,6 +206,7 @@ fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
     } = verdict.resume_state(
         &|result| LibraryStatus::absent(&result.release_id),
         Default::default(),
+        Default::default(),
     )
     else {
         panic!("a found verdict resumes as Found");
@@ -248,7 +251,7 @@ fn a_recorded_discid_failure_derives_and_stores_as_failed() {
 fn signals_that_share_no_result_store_as_one_match_list() {
     let context = SignalsContext {
         disc: DiscIdEvidence {
-            signal: crate::signals::DiscIdSignal::Absent { track_count: 9 },
+            signal: crate::signals::DiscIdSignal::Absent,
             results: vec![(mk_result("rel-a"), LibraryStatus::absent("rel-a"))],
             ..Default::default()
         },
@@ -294,7 +297,7 @@ fn signals_that_share_no_result_store_as_one_match_list() {
 fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
     let context = SignalsContext {
         disc: DiscIdEvidence {
-            signal: crate::signals::DiscIdSignal::Absent { track_count: 9 },
+            signal: crate::signals::DiscIdSignal::Absent,
             failure: Some(crate::signals::LookupFailure::Network),
             ..Default::default()
         },
@@ -525,6 +528,7 @@ fn a_resumed_failure_stands_its_findings_back_up() {
         ..
     } = verdict.resume_state(
         &|result| LibraryStatus::absent(&result.release_id),
+        Default::default(),
         Default::default(),
     )
     else {

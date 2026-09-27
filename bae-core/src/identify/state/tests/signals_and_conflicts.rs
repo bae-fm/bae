@@ -92,11 +92,20 @@ fn badge(state: &IdentifyState, kind: SignalKind) -> ToolbarSignal {
         .unwrap_or_else(|| panic!("the toolbar carries a {kind:?} badge"))
 }
 
+/// The audio every run in these tests is over: five tracks.
+fn five_tracks() -> crate::signals::AudioFacts {
+    crate::signals::AudioFacts {
+        track_count: 5,
+        ..Default::default()
+    }
+}
+
 fn update(state: IdentifyState, signals: Signals) -> (IdentifyState, Vec<Effect>) {
     step(
         state,
         IdentifyEvent::SignalsUpdated {
             signals,
+            audio: five_tracks(),
             artwork: crate::signals::ArtworkScan::Absent,
         },
     )
@@ -166,23 +175,20 @@ fn signals_with_catalogs(
             free_text: vec![],
         },
         text_pool: Vec::new(),
-        durations: crate::import::probe::SourceDurations::default(),
-        mono_audio: false,
     }
 }
 
-/// A disc ID computed for `track_count` tracks, from no named file.
-fn disc(disc_id: &str, track_count: u32) -> DiscIdSignal {
+/// A disc ID computed from no named file.
+fn disc(disc_id: &str) -> DiscIdSignal {
     DiscIdSignal::Computed {
         disc_id: disc_id.to_string(),
-        track_count,
         source_file: None,
     }
 }
 
 /// A disc ID for five tracks, no barcode source, and the named catalog numbers.
 fn disc_only(catalogs: &[&str]) -> Signals {
-    signals(disc("d", 5), BarcodeSignal::Absent, catalogs)
+    signals(disc("d"), BarcodeSignal::Absent, catalogs)
 }
 
 /// A MusicBrainz run given the disc ID alone.
@@ -190,10 +196,10 @@ fn disc_only_started() -> (IdentifyState, Vec<Effect>) {
     update(started(), disc_only(&[]))
 }
 
-/// A disc ID for five tracks, with the given barcodes settled.
+/// A disc ID, with the given barcodes settled.
 fn disc_and_codes(disc_id: &str, codes: &[&str]) -> Signals {
     signals(
-        disc(disc_id, 5),
+        disc(disc_id),
         BarcodeSignal::Settled {
             codes: artwork_codes(codes),
         },
@@ -223,7 +229,7 @@ fn started_enters_triangulating_awaiting_signals() {
 /// The disc-ID lookup is dispatched exactly once, even as snapshots stream.
 #[test]
 fn disc_computed_dispatches_lookup_idempotently() {
-    let snapshot = || signals(disc("d", 5), BarcodeSignal::Scanning { codes: vec![] }, &[]);
+    let snapshot = || signals(disc("d"), BarcodeSignal::Scanning { codes: vec![] }, &[]);
     let (state, effects) = update(started(), snapshot());
     assert!(effects
         .iter()
@@ -241,14 +247,14 @@ fn no_disc_no_barcode_is_manual_only() {
     let (state, effects) = update(
         started(),
         signals(
-            DiscIdSignal::Absent { track_count: 7 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Absent,
             &[],
         ),
     );
     assert!(effects.is_empty());
     match state {
-        IdentifyState::ManualOnly { track_count, .. } => assert_eq!(track_count, 7),
+        IdentifyState::ManualOnly { track_count, .. } => assert_eq!(track_count, 5),
         other => panic!("expected ManualOnly, got {other:?}"),
     }
 }
@@ -258,15 +264,13 @@ fn no_disc_no_barcode_is_manual_only() {
 fn nothing_to_run_waits_for_the_settled_text() {
     let scanning = Signals {
         rip: crate::signals::RipEvidence::Unproven,
-        disc_id: DiscIdSignal::Absent { track_count: 7 },
+        disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Scanning {
             catalogs: vec![],
             free_text: vec![],
         },
         text_pool: Vec::new(),
-        durations: crate::import::probe::SourceDurations::default(),
-        mono_audio: false,
     };
     let (state, effects) = update(started(), scanning);
     assert!(effects.is_empty());
@@ -278,14 +282,14 @@ fn nothing_to_run_waits_for_the_settled_text() {
     let (state, effects) = update(
         state,
         signals(
-            DiscIdSignal::Absent { track_count: 7 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Absent,
             &[],
         ),
     );
     assert!(effects.is_empty());
     assert!(
-        matches!(state, IdentifyState::ManualOnly { track_count: 7, .. }),
+        matches!(state, IdentifyState::ManualOnly { track_count: 5, .. }),
         "the settled snapshot answers it, got {state:?}"
     );
 }
@@ -300,7 +304,6 @@ fn an_aborted_extraction_settles_the_run_as_failed() {
         rip: crate::signals::RipEvidence::Unproven,
         disc_id: DiscIdSignal::Failed {
             failure: failure.clone(),
-            track_count: 0,
         },
         barcode: BarcodeSignal::Failed {
             failure: failure.clone(),
@@ -312,8 +315,6 @@ fn an_aborted_extraction_settles_the_run_as_failed() {
             free_text: vec![],
         },
         text_pool: Vec::new(),
-        durations: crate::import::probe::SourceDurations::default(),
-        mono_audio: false,
     };
     let (state, effects) = update(started(), aborted);
     assert!(effects.is_empty(), "nothing is asked, got {effects:?}");
@@ -341,7 +342,7 @@ fn absent_barcode_offers_manual_search_where_scanned_and_empty_is_a_no_match() {
     let settle = |barcode: BarcodeSignal| {
         let (state, effects) = update(
             started(),
-            signals(DiscIdSignal::Absent { track_count: 9 }, barcode, &[]),
+            signals(DiscIdSignal::Absent, barcode, &[]),
         );
         assert!(effects.is_empty(), "no codes to look up either way");
         state
@@ -350,7 +351,7 @@ fn absent_barcode_offers_manual_search_where_scanned_and_empty_is_a_no_match() {
     let absent = settle(BarcodeSignal::Absent);
     assert_eq!(absent.toolbar()[1].state, SignalState::Skipped);
     match absent {
-        IdentifyState::ManualOnly { track_count, .. } => assert_eq!(track_count, 9),
+        IdentifyState::ManualOnly { track_count, .. } => assert_eq!(track_count, 5),
         other => panic!("expected ManualOnly for an absent barcode source, got {other:?}"),
     }
 
@@ -369,7 +370,7 @@ fn barcode_lookups_start_only_from_settled() {
     let (state, effects) = update(
         started_with(vec![MB, DG]),
         signals(
-            DiscIdSignal::Absent { track_count: 0 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Scanning {
                 codes: artwork_codes(&["A"]),
             },
@@ -385,7 +386,7 @@ fn barcode_lookups_start_only_from_settled() {
     let (_, effects) = update(
         state,
         signals(
-            DiscIdSignal::Absent { track_count: 0 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["A", "B"]),
             },
@@ -411,7 +412,6 @@ fn disc_only_resolves_to_found_with_provenance() {
         state,
         IdentifyEvent::DiscidLookupCompleted {
             results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
-            track_count: 5,
         },
     );
     match state {
@@ -441,7 +441,6 @@ fn both_signals_intersect_to_found_combined() {
                 pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
                 pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-x")),
             ],
-            track_count: 10,
         },
     );
     let (state, _) = step(
@@ -482,7 +481,6 @@ fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
         state,
         IdentifyEvent::DiscidLookupCompleted {
             results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
-            track_count: 5,
         },
     );
     let (state, _) = step(
@@ -521,7 +519,7 @@ fn every_code_is_asked_of_every_provider() {
     let (state, effects) = update(
         started_with(vec![MB, DG]),
         signals(
-            DiscIdSignal::Absent { track_count: 0 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["A", "B"]),
             },
@@ -580,7 +578,7 @@ fn a_repeated_barcode_answer_is_ignored() {
     let (state, _) = update(
         started(),
         signals(
-            DiscIdSignal::Absent { track_count: 0 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["A", "B"]),
             },
@@ -642,7 +640,7 @@ fn a_failed_provider_does_not_hide_the_other_s_answer() {
     let (state, _) = update(
         started_with(vec![MB, DG]),
         signals(
-            DiscIdSignal::Absent { track_count: 0 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["A", "B"]),
             },
@@ -690,7 +688,6 @@ fn failed_discid_lookup_preserves_track_count() {
         state,
         IdentifyEvent::DiscidLookupFailed {
             failure: LookupFailure::Provider { status: Some(503) },
-            track_count: 5,
         },
     );
     match state {
@@ -726,7 +723,6 @@ fn an_unchosen_catalog_number_narrows_nothing() {
                 (r_a, LibraryStatus::absent("rel-a")),
                 (r_b, LibraryStatus::absent("rel-b")),
             ],
-            track_count: 5,
         },
     );
     match state {
@@ -753,7 +749,6 @@ fn both_lookups_empty_is_not_found_anywhere() {
         state,
         IdentifyEvent::DiscidLookupCompleted {
             results: vec![],
-            track_count: 5,
         },
     );
     let (state, _) = step(state, barcode_missed(MB, "BAR"));

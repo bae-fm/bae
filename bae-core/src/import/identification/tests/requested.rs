@@ -407,7 +407,7 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
                 file_edit_revision: 0,
                 folder_path: dir.to_string_lossy().into_owned(),
                 verdict,
-                signals: settled_signals(fixture.probed_durations(&dir)),
+                signals: settled_signals(),
                 metadata: None,
             },
         )
@@ -523,7 +523,7 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
         .archive("mb-rerun-1", "rg-rerun-1", &[probed, 0])
         .await;
     fixture
-        .store_settled_verdict(&dir, "mb-rerun-1", "rg-rerun-1", probed)
+        .store_settled_verdict(&dir, "mb-rerun-1", "rg-rerun-1",)
         .await;
     fixture.provider.route(
         "/discid/",

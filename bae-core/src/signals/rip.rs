@@ -56,7 +56,7 @@ pub enum RipEvidence {
     },
     /// Every audio file is lossless and sampled at a rate other than a CD's
     /// 44.1 kHz, so none of it can have come off a CD as it is.
-    NotCd { sample_rate_hz: u32 },
+    NotCd,
     /// Nothing either way.
     Unproven,
 }

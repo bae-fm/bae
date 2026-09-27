@@ -59,7 +59,6 @@ mod tests {
             rip: crate::signals::RipEvidence::Unproven,
             disc_id: DiscIdSignal::Computed {
                 disc_id: "XwqRcz4RhAqRTfhE5nRxRKF4iFY-".to_string(),
-                track_count: 14,
                 source_file: Some("Album.log".to_string()),
             },
             barcode: BarcodeSignal::Settled {
@@ -74,8 +73,6 @@ mod tests {
                 free_text: Vec::new(),
             },
             text_pool: Vec::new(),
-            durations: Default::default(),
-            mono_audio: false,
         }
     }
 
@@ -113,7 +110,6 @@ mod tests {
         let mut fileless = signals();
         fileless.disc_id = DiscIdSignal::Computed {
             disc_id: "XwqRcz4RhAqRTfhE5nRxRKF4iFY-".to_string(),
-            track_count: 14,
             source_file: None,
         };
         fileless.barcode = BarcodeSignal::Settled {

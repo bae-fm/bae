@@ -163,19 +163,12 @@ pub enum AutomationLookupFailure {
 pub enum AutomationDiscIdSignal {
     Computed {
         disc_id: String,
-        track_count: u32,
     },
-    Absent {
-        track_count: u32,
-    },
+    Absent,
     /// A CUE over audio sampled at a rate no CD plays at.
-    NotCdAudio {
-        track_count: u32,
-        sample_rate_hz: u32,
-    },
+    NotCdAudio,
     Failed {
         failure: AutomationLookupFailure,
-        track_count: u32,
     },
 }
 
@@ -196,9 +189,7 @@ pub enum AutomationRipEvidence {
         proof: AutomationCdProof,
         file: Option<String>,
     },
-    NotCd {
-        sample_rate_hz: u32,
-    },
+    NotCd,
     Unproven,
 }
 

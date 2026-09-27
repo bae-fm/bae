@@ -31,7 +31,7 @@ impl FolderAudio<'static> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RippedFrom {
     Cd,
-    NotCd { sample_rate_hz: u32 },
+    NotCd,
     Unknown,
 }
 
@@ -47,7 +47,7 @@ pub enum MediumConflict {
     CdRip,
     /// The folder's audio is sampled at a rate no CD plays at, and every row
     /// is a CD.
-    NotCdAudio { sample_rate_hz: u32 },
+    NotCdAudio,
 }
 
 /// Whether one-channel audio agrees with a row stating `details`: the row
@@ -82,9 +82,7 @@ impl RippedFrom {
             RipEvidence::Cd { .. } => Self::Cd,
             // The disc ID is not computed from a sheet whose audio rules a
             // CD out, so it cannot have matched here.
-            RipEvidence::NotCd { sample_rate_hz } => Self::NotCd {
-                sample_rate_hz: *sample_rate_hz,
-            },
+            RipEvidence::NotCd => Self::NotCd,
             RipEvidence::Unproven if disc_id_matched => Self::Cd,
             RipEvidence::Unproven => Self::Unknown,
         }
@@ -95,7 +93,7 @@ impl RippedFrom {
     pub(crate) fn conflict(self) -> Option<MediumConflict> {
         match self {
             Self::Cd => Some(MediumConflict::CdRip),
-            Self::NotCd { sample_rate_hz } => Some(MediumConflict::NotCdAudio { sample_rate_hz }),
+            Self::NotCd => Some(MediumConflict::NotCdAudio),
             Self::Unknown => None,
         }
     }
@@ -115,7 +113,7 @@ impl RippedFrom {
             Self::Cd => CdAudio::Never,
             // Audio that is not a CD's cannot come off a carrier that plays
             // nothing else.
-            Self::NotCd { .. } => CdAudio::Only,
+            Self::NotCd => CdAudio::Only,
         };
         let entries: Vec<_> = media.into_iter().flat_map(StatedMedia::entries).collect();
         entries.is_empty()
@@ -161,15 +159,8 @@ mod tests {
             RippedFrom::Unknown
         );
         assert_eq!(
-            RippedFrom::of(
-                &RipEvidence::NotCd {
-                    sample_rate_hz: 96_000
-                },
-                false
-            ),
-            RippedFrom::NotCd {
-                sample_rate_hz: 96_000
-            }
+            RippedFrom::of(&RipEvidence::NotCd, false),
+            RippedFrom::NotCd
         );
     }
 
@@ -192,9 +183,7 @@ mod tests {
     /// another carrier beside them.
     #[test]
     fn audio_off_a_cds_rate_rules_out_only_rows_of_cds() {
-        let not_cd = RippedFrom::NotCd {
-            sample_rate_hz: 96_000,
-        };
+        let not_cd = RippedFrom::NotCd;
         assert!(!not_cd.admits([&per_medium(&[Some(Medium::Cd), Some(Medium::Cd)])]));
         assert!(not_cd.admits([&per_medium(&[Some(Medium::Vinyl)])]));
         assert!(not_cd.admits([&per_medium(&[Some(Medium::Cd), Some(Medium::Dvd)])]));

@@ -69,17 +69,13 @@ pub(super) fn search_step(
 pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) -> DiscIdStepView {
     let disc_id = match &context.disc.signal {
         DiscIdSignal::Computed { disc_id, .. } => disc_id.clone(),
-        DiscIdSignal::Absent { .. } => {
+        DiscIdSignal::Absent => {
             return match progress {
                 DiscidProgress::Computing => DiscIdStepView::Reading,
                 _ => DiscIdStepView::Absent,
             }
         }
-        DiscIdSignal::NotCdAudio { sample_rate_hz, .. } => {
-            return DiscIdStepView::NotCdAudio {
-                sample_rate_hz: *sample_rate_hz,
-            }
-        }
+        DiscIdSignal::NotCdAudio => return DiscIdStepView::NotCdAudio,
         DiscIdSignal::Failed { failure, .. } => {
             return DiscIdStepView::ReadFailed {
                 failure: failure.clone(),
@@ -91,7 +87,7 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
         DiscidProgress::Computing | DiscidProgress::LookingUp => LookupView::LookingUp,
         DiscidProgress::Done { results, .. } => found_or_no_match(results),
         DiscidProgress::NotAsked { reason, .. } => LookupView::NotAsked { reason: *reason },
-        DiscidProgress::Skipped { .. } => {
+        DiscidProgress::Skipped => {
             unreachable!("only a disc ID that was never computed is skipped")
         }
         DiscidProgress::Failed { failure, .. } => LookupView::Failed {

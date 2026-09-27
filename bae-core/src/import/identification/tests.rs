@@ -44,19 +44,17 @@ fn copy_fixture(source: &Path, target: &Path) {
         .unwrap();
 }
 
-/// Settled signals carrying `durations` and nothing found.
-fn settled_signals(durations: crate::import::probe::SourceDurations) -> Signals {
+/// Settled signals that found nothing.
+fn settled_signals() -> Signals {
     Signals {
         rip: crate::signals::RipEvidence::Unproven,
-        disc_id: DiscIdSignal::Absent { track_count: 0 },
+        disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled {
             catalogs: Vec::new(),
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
-        durations,
-        mono_audio: false,
     }
 }
 
@@ -396,28 +394,6 @@ impl Fixture {
         dir
     }
 
-    /// The durations of the fixture FLACs in `dir`, as the fast pass measures
-    /// them.
-    fn probed_durations(&self, dir: &Path) -> crate::import::probe::SourceDurations {
-        crate::import::probe::SourceDurations::new(
-            FLAC_FIXTURES
-                .iter()
-                .map(|name| crate::import::probe::SourceDuration {
-                    audio: crate::import::AudioFile::Standalone {
-                        file_id: (*name).to_string(),
-                    },
-                    duration_ms: u64::try_from(
-                        crate::audio_codec::probe_audio_from_path(dir.join(name).to_str().unwrap())
-                            .expect("fixture FLAC probes")
-                            .duration
-                            .as_millis(),
-                    )
-                    .expect("fixture duration fits u64"),
-                })
-                .collect(),
-        )
-    }
-
     fn probed_total_ms(&self, dir: &Path) -> u64 {
         FLAC_FIXTURES
             .iter()
@@ -685,13 +661,11 @@ impl Fixture {
         dir: &Path,
         release_id: &str,
         group_id: &str,
-        probed_total_ms: u64,
     ) {
         self.store_settled_verdict_listing(
             dir,
             release_id,
             group_id,
-            probed_total_ms,
             SourceTracks::Listed { count: 2 },
         )
         .await;
@@ -703,14 +677,12 @@ impl Fixture {
         dir: &Path,
         release_id: &str,
         group_id: &str,
-        probed_total_ms: u64,
         source_tracks: SourceTracks,
     ) {
         self.store_verdict_settled_on(
             dir,
             release_id,
             group_id,
-            probed_total_ms,
             source_tracks,
             SettledDraft::Picked,
         )
@@ -724,13 +696,11 @@ impl Fixture {
         dir: &Path,
         release_id: &str,
         group_id: &str,
-        probed_total_ms: u64,
     ) {
         self.store_verdict_settled_on(
             dir,
             release_id,
             group_id,
-            probed_total_ms,
             SourceTracks::Listed { count: 2 },
             SettledDraft::Untouched,
         )
@@ -742,7 +712,6 @@ impl Fixture {
         dir: &Path,
         release_id: &str,
         group_id: &str,
-        probed_total_ms: u64,
         source_tracks: SourceTracks,
         settled_draft: SettledDraft,
     ) {
@@ -814,12 +783,9 @@ impl Fixture {
                     signals: Signals {
                         disc_id: DiscIdSignal::Computed {
                             disc_id: SEEDED_DISC_ID.to_string(),
-                            track_count: 2,
                             source_file: Some(SEEDED_DISC_ID_FILE.to_string()),
                         },
-                        ..settled_signals(crate::import::probe::SourceDurations::totalling(
-                            probed_total_ms,
-                        ))
+                        ..settled_signals()
                     },
                     metadata: matches!(settled_draft, SettledDraft::Picked).then(|| {
                         crate::import::CandidateMetadataDraft {

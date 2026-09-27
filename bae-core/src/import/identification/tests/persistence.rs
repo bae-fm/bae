@@ -140,7 +140,7 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
         file_edit_revision: 0,
         folder_path: key.clone(),
         verdict: multi_match_verdict(&["mb-claimed-1"], "rg-claimed-1"),
-        signals: settled_signals(fixture.probed_durations(&dir)),
+        signals: settled_signals(),
         metadata: None,
     };
 
@@ -179,7 +179,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
     let not_in_library =
         |result: &MetadataResult| crate::db::LibraryStatus::absent(&result.release_id);
     let found = multi_match_verdict(&["mb-teardown-1"], "rg-teardown-1")
-        .resume_state(&not_in_library, Default::default());
+        .resume_state(&not_in_library, Default::default(), Default::default());
     let changed = |run: u64, state: IdentifyState| ImportEvent::IdentifyStateChanged {
         candidate_key: key.clone(),
         run: crate::identify::IdentifyRunId::for_test(run),
@@ -254,9 +254,11 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
             search: Default::default(),
             text: Default::default(),
             text_settled: false,
-            track_count: 0,
+            audio: crate::signals::AudioFacts {
+                track_count: 0,
+                ..Default::default()
+            },
             album_links: crate::identify::state::AlbumLinkReading::Pending,
-            mono_audio: false,
         },
     };
     fixture
@@ -306,7 +308,7 @@ async fn restating_a_file_decision_changes_nothing() {
     fixture.scan(1).await;
     fixture.archive("mb-noop-1", "rg-noop-1", &[500, 500]).await;
     fixture
-        .store_settled_verdict(&dir, "mb-noop-1", "rg-noop-1", 1_000)
+        .store_settled_verdict(&dir, "mb-noop-1", "rg-noop-1",)
         .await;
     let key = dir.to_string_lossy().into_owned();
     let mut events = fixture.import.subscribe_events();

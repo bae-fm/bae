@@ -46,9 +46,7 @@ const CD_RIP: RipEvidence = RipEvidence::Cd {
     file: None,
 };
 
-const NOT_CD: RipEvidence = RipEvidence::NotCd {
-    sample_rate_hz: 96_000,
-};
+const NOT_CD: RipEvidence = RipEvidence::NotCd;
 
 /// The catalog lookup returned `rows`, and the folder's files say `rip`.
 fn by_catalog(rows: Vec<Found>, rip: &RipEvidence) -> Outcome {
@@ -305,12 +303,7 @@ fn rows_the_folder_rules_out_carry_the_conflict() {
         &NOT_CD,
     );
     assert_eq!(offered(&every_cd), vec!["rel-cd-1", "rel-cd-2"]);
-    assert_eq!(
-        every_cd.0.medium_conflict,
-        Some(MediumConflict::NotCdAudio {
-            sample_rate_hz: 96_000
-        })
-    );
+    assert_eq!(every_cd.0.medium_conflict, Some(MediumConflict::NotCdAudio));
     let every_vinyl = by_catalog(
         vec![pressing("rel-vinyl", made_of(&[Medium::Vinyl]))],
         &CD_RIP,

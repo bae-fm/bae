@@ -50,7 +50,7 @@ fn search_failed(source: Catalog, failure: LookupFailure) -> IdentifyEvent {
 /// run to lay out, and a code the providers can miss.
 fn one_code(code: &str) -> Signals {
     signals(
-        DiscIdSignal::Absent { track_count: 9 },
+        DiscIdSignal::Absent,
         BarcodeSignal::Settled {
             codes: artwork_codes(&[code]),
         },
@@ -193,13 +193,12 @@ fn one_provider_failing_the_search_leaves_the_other_s_matches_standing() {
 #[test]
 fn a_failed_search_stores_what_the_other_provider_found() {
     let state = started_searching(vec![MB, DG], "Album Title", "Artist Name");
-    let (state, effects) = update(state, signals(disc("d", 9), BarcodeSignal::Absent, &[]));
+    let (state, effects) = update(state, signals(disc("d"), BarcodeSignal::Absent, &[]));
     assert!(matches!(effects.as_slice(), [Effect::LookupDiscid { .. }]));
     let (state, effects) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
             results: Vec::new(),
-            track_count: 9,
         },
     );
     assert_eq!(
@@ -252,6 +251,7 @@ fn a_failed_search_stores_what_the_other_provider_found() {
     let resumed = verdict.resume_state(
         &|result: &MetadataResult| LibraryStatus::absent(&result.release_id),
         text,
+        Default::default(),
     );
     assert_eq!(
         crate::identify::IdentifyStateView::from(resumed),
@@ -267,7 +267,7 @@ fn a_failed_search_stores_what_the_other_provider_found() {
 fn manual_only_needs_no_identifier_and_no_title() {
     let nothing = || {
         signals(
-            DiscIdSignal::Absent { track_count: 9 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Absent,
             &[],
         )
@@ -276,7 +276,7 @@ fn manual_only_needs_no_identifier_and_no_title() {
     let (state, effects) = update(started_searching(vec![MB], "", ""), nothing());
     assert!(effects.is_empty());
     assert!(
-        matches!(state, IdentifyState::ManualOnly { track_count: 9, .. }),
+        matches!(state, IdentifyState::ManualOnly { track_count: 5, .. }),
         "no identifier and no title, got {state:?}"
     );
 

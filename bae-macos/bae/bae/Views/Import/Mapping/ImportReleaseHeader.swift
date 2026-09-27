@@ -198,13 +198,13 @@ struct ImportReleaseHeader: View {
             .disabled(isReading)
             Spacer(minLength: 12)
             if let commit {
-                if let folderCheck = commit.folderCheck {
-                    Text(folderCheck.localizedText)
+                if let folderCheck = commit.folderCheck?.localizedText {
+                    Text(folderCheck)
                         .font(.system(size: 11.5))
                         .foregroundStyle(.orange)
                         .lineLimit(1)
                         .truncationMode(.tail)
-                        .help(folderCheck.localizedText)
+                        .help(folderCheck)
                 }
                 if commit.unansweredCount > 0 {
                     Text(

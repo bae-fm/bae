@@ -20,6 +20,7 @@ use crate::identify::IdentifyRunId;
 use crate::import::{ImportEvent, ImportEventBus, ScanEvent};
 use crate::library::LibraryManager;
 use crate::signals::{
+    AudioFacts,
     ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, RipEvidence, Signals, SourcedValue,
     TextSignal,
 };
@@ -44,11 +45,12 @@ pub enum ExtractionSource {
     },
 }
 
-/// One snapshot of a candidate's signals, with where the artwork pass that
-/// produced it had got to.
+/// One snapshot of a candidate's signals, with the audio they were read
+/// beside and where the artwork pass that produced them had got to.
 #[derive(Debug, Clone)]
 pub struct SignalsSnapshot {
     pub signals: Signals,
+    pub audio: AudioFacts,
     pub artwork: ArtworkScan,
 }
 
@@ -249,7 +251,7 @@ async fn run_extraction(
                     "signals: {} was read before with these files; reusing that reading",
                     extraction.key
                 );
-                emit_signals(&inner, &extraction, settled.signals, settled.artwork);
+                emit_signals(&inner, &extraction, settled);
                 return;
             }
             let fast = match run_fast_pass_blocking(&inner.runtime_handle, move || {
@@ -265,7 +267,6 @@ async fn run_extraction(
                         &extraction,
                         DiscIdSignal::Failed {
                             failure: failure.clone(),
-                            track_count: 0,
                         },
                         failure,
                     );
@@ -288,11 +289,10 @@ async fn run_extraction(
                 ExtractionInputs {
                     gathered: Gathered {
                         rip: fast.rip,
-                        mono_audio: fast.mono_audio,
                         disc_id: fast.disc_id,
                         barcodes: fast.cue_barcodes,
                         pool,
-                        durations: fast.durations,
+                        audio: fast.audio,
                     },
                     artwork,
                 },
@@ -306,19 +306,18 @@ async fn run_extraction(
         // A library release has no folder text; its rip files and artwork come
         // from the library.
         ExtractionSource::Release { release_id } => {
-            let (rip, mono_audio, disc_id) =
+            let (rip, audio, disc_id) =
                 match resolve_release_identity(&inner.library_manager, &release_id).await {
                     Ok(identity) => (
                         identity.rip.evidence,
-                        identity.rip.mono,
-                        identity.rip.disc_id.into_signal(identity.track_count),
+                        identity.audio,
+                        identity.rip.disc_id.into_signal(),
                     ),
                     Err(detail) => (
                         RipEvidence::Unproven,
-                        false,
+                        AudioFacts::default(),
                         DiscIdSignal::Failed {
                             failure: crate::signals::LookupFailure::Diagnostic { detail },
-                            track_count: 0,
                         },
                     ),
                 };
@@ -367,11 +366,10 @@ async fn run_extraction(
                 ExtractionInputs {
                     gathered: Gathered {
                         rip,
-                        mono_audio,
                         disc_id,
                         barcodes: Vec::new(),
                         pool: Pool::default(),
-                        durations: crate::import::probe::SourceDurations::default(),
+                        audio,
                     },
                     artwork,
                 },
@@ -418,11 +416,10 @@ where
 /// Barcodes are the CUE's first, then each image's.
 struct Gathered {
     rip: RipEvidence,
-    mono_audio: bool,
     disc_id: DiscIdSignal,
     barcodes: Vec<SourcedValue>,
     pool: Pool,
-    durations: crate::import::probe::SourceDurations,
+    audio: AudioFacts,
 }
 
 /// What the streaming pass consumes: what is already gathered, and the
@@ -522,8 +519,15 @@ async fn stream_extraction(
         emit_signals(
             &inner,
             &extraction,
-            scanning_signals(&gathered, classification.catalogs, classification.free_text),
-            position_of(&pass.images, 0),
+            SignalsSnapshot {
+                signals: scanning_signals(
+                    &gathered,
+                    classification.catalogs,
+                    classification.free_text,
+                ),
+                audio: gathered.audio.clone(),
+                artwork: position_of(&pass.images, 0),
+            },
         );
     }
 
@@ -590,8 +594,15 @@ async fn stream_extraction(
             emit_signals(
                 &inner,
                 &extraction,
-                scanning_signals(&gathered, classification.catalogs, classification.free_text),
-                position_of(&images, index + 1),
+                SignalsSnapshot {
+                    signals: scanning_signals(
+                        &gathered,
+                        classification.catalogs,
+                        classification.free_text,
+                    ),
+                    audio: gathered.audio.clone(),
+                    artwork: position_of(&images, index + 1),
+                },
             );
         }
     }
@@ -611,7 +622,6 @@ async fn stream_extraction(
     let settled = SignalsSnapshot {
         signals: Signals {
             rip: gathered.rip,
-            mono_audio: gathered.mono_audio,
             disc_id: gathered.disc_id,
             barcode,
             text: TextSignal::Settled {
@@ -619,16 +629,11 @@ async fn stream_extraction(
                 free_text: classification.free_text,
             },
             text_pool: gathered.pool.text_lines(),
-            durations: gathered.durations,
         },
+        audio: gathered.audio,
         artwork: finished,
     };
-    emit_signals(
-        &inner,
-        &extraction,
-        settled.signals.clone(),
-        settled.artwork.clone(),
-    );
+    emit_signals(&inner, &extraction, settled.clone());
     Some(settled)
 }
 
@@ -647,25 +652,27 @@ fn emit_failed_ocr_signals(
     emit_signals(
         inner,
         extraction,
-        Signals {
-            rip: gathered.rip,
-            mono_audio: gathered.mono_audio,
-            disc_id: gathered.disc_id,
-            barcode,
-            text: TextSignal::Failed {
-                failure,
-                catalogs: classification.catalogs,
-                free_text: classification.free_text,
+        SignalsSnapshot {
+            signals: Signals {
+                rip: gathered.rip,
+                disc_id: gathered.disc_id,
+                barcode,
+                text: TextSignal::Failed {
+                    failure,
+                    catalogs: classification.catalogs,
+                    free_text: classification.free_text,
+                },
+                text_pool: gathered.pool.text_lines(),
             },
-            text_pool: gathered.pool.text_lines(),
-            durations: gathered.durations,
+            audio: gathered.audio,
+            artwork,
         },
-        artwork,
     );
 }
 
 /// Send one snapshot with every signal failed, for an extraction that could
-/// not gather its inputs, so its run settles as a failure.
+/// not gather its inputs, so its run settles as a failure. The audio could
+/// not be read either, so it is none.
 fn emit_aborted_signals(
     inner: &ExtractionServiceInner,
     extraction: &RunningExtraction,
@@ -675,26 +682,27 @@ fn emit_aborted_signals(
     emit_signals(
         inner,
         extraction,
-        Signals {
-            rip: RipEvidence::Unproven,
-            mono_audio: false,
-            disc_id,
-            barcode: BarcodeSignal::Failed {
-                failure: failure.clone(),
-                codes: Vec::new(),
+        SignalsSnapshot {
+            signals: Signals {
+                rip: RipEvidence::Unproven,
+                disc_id,
+                barcode: BarcodeSignal::Failed {
+                    failure: failure.clone(),
+                    codes: Vec::new(),
+                },
+                text: TextSignal::Failed {
+                    failure: failure.clone(),
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+                text_pool: Vec::new(),
             },
-            text: TextSignal::Failed {
-                failure: failure.clone(),
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
+            audio: AudioFacts::default(),
+            artwork: ArtworkScan::Failed {
+                failure,
+                read: 0,
+                total: 0,
             },
-            text_pool: Vec::new(),
-            durations: crate::import::probe::SourceDurations::default(),
-        },
-        ArtworkScan::Failed {
-            failure,
-            read: 0,
-            total: 0,
         },
     );
 }
@@ -708,7 +716,6 @@ fn scanning_signals(
     let text_pool = gathered.pool.text_lines();
     Signals {
         rip: gathered.rip.clone(),
-        mono_audio: gathered.mono_audio,
         disc_id: gathered.disc_id.clone(),
         barcode: BarcodeSignal::Scanning {
             codes: gathered.barcodes.clone(),
@@ -718,7 +725,6 @@ fn scanning_signals(
             free_text,
         },
         text_pool,
-        durations: gathered.durations.clone(),
     }
 }
 
@@ -728,17 +734,15 @@ fn scanning_signals(
 fn emit_signals(
     inner: &ExtractionServiceInner,
     extraction: &RunningExtraction,
-    signals: Signals,
-    artwork: ArtworkScan,
+    snapshot: SignalsSnapshot,
 ) {
     let key = &extraction.key;
     let sent = inner
         .cancellation
         .while_current(key, extraction.generation, || {
-            extraction.snapshots.send_replace(Some(SignalsSnapshot {
-                signals: signals.clone(),
-                artwork: artwork.clone(),
-            }));
+            let signals = snapshot.signals.clone();
+            let artwork = snapshot.artwork.clone();
+            extraction.snapshots.send_replace(Some(snapshot));
             inner.event_tx.send(ImportEvent::SignalsUpdated {
                 candidate_key: key.clone(),
                 run: extraction.run,

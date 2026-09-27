@@ -99,10 +99,27 @@ struct TriageRowIdentifiedTests {
     )
     func everyFolderCheckResolvesToItsOwnSentence(
         _ folderCheck: BridgeFolderCheck
-    ) {
-        let text = folderCheck.localizedText
+    ) throws {
+        let text = try #require(folderCheck.localizedText)
         #expect(!text.isEmpty)
         #expect(text != bridgeFolderCheckKey(folderCheck: folderCheck))
+        #expect(!text.contains("%"), "every operand is filled in")
+    }
+
+    /// Audio no CD holds is stated with its rate, which a row does not have
+    /// at hand: without it there is no sentence to show.
+    @Test("audio no CD holds needs its rate to be stated")
+    func audioNoCdHoldsNeedsItsRateToBeStated() {
+        let stated = BridgeFolderCheck.mediumDisagrees(
+            folder: .notCdAudio(sampleRateHz: 96_000)
+        )
+        #expect(stated.localizedText?.contains("96") == true)
+        #expect(
+            BridgeFolderCheck.mediumDisagrees(
+                folder: .notCdAudio(sampleRateHz: nil)
+            )
+            .localizedText == nil
+        )
     }
 
     /// On a selected row the whole text column goes white, and the arrow

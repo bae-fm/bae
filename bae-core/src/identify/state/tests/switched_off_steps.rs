@@ -104,7 +104,7 @@ fn barcodes_the_run_does_not_look_up_are_listed_with_every_cell_off() {
     let (state, effects) = update(
         state,
         signals(
-            DiscIdSignal::Absent { track_count: 2 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["A", "B"]),
             },
@@ -200,7 +200,7 @@ fn a_run_that_does_not_follow_catalog_links_reads_none() {
     let (state, _) = update(
         state,
         signals(
-            DiscIdSignal::Absent { track_count: 0 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["A"]),
             },
@@ -238,10 +238,11 @@ fn cover_art_left_unread_says_so_in_the_barcode_and_catalog_steps() {
         state,
         IdentifyEvent::SignalsUpdated {
             signals: signals(
-                DiscIdSignal::Absent { track_count: 2 },
+                DiscIdSignal::Absent,
                 BarcodeSignal::Absent,
                 &[],
             ),
+            audio: crate::signals::AudioFacts::default(),
             artwork: crate::signals::ArtworkScan::Off,
         },
     );

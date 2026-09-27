@@ -534,15 +534,13 @@ async fn a_cancelled_candidate_writes_no_row() {
             &verdict,
             crate::signals::Signals {
                 rip: crate::signals::RipEvidence::Unproven,
-                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 0 },
+                disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
                 text_pool: Vec::new(),
-                durations: crate::import::probe::SourceDurations::default(),
-                mono_audio: false,
             },
             None,
         )

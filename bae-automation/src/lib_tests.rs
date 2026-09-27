@@ -303,9 +303,8 @@ mod identify_mirrors {
             search: Default::default(),
             text: Default::default(),
             text_settled: true,
-            track_count: 0,
+            audio: Default::default(),
             album_links: bae_core::identify::state::AlbumLinkReading::Pending,
-            mono_audio: false,
         }
     }
 
@@ -492,7 +491,6 @@ mod identify_mirrors {
                 disc: DiscIdEvidence {
                     signal: DiscIdSignal::Computed {
                         disc_id: "disc-hash".to_string(),
-                        track_count: 9,
                         source_file: Some("rip.log".to_string()),
                     },
                     ..Default::default()
@@ -577,7 +575,6 @@ mod identify_mirrors {
             },
             disc_id: DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
-                track_count: 10,
                 source_file: None,
             },
             barcode: BarcodeSignal::Settled {
@@ -588,9 +585,6 @@ mod identify_mirrors {
                 free_text: vec!["Album Title".to_string()],
             },
             text_pool: Vec::new(),
-            // Not zero, which would claim the audio could not be probed.
-            durations: bae_core::import::probe::SourceDurations::totalling(2_400_000),
-            mono_audio: false,
         };
 
         let json = serde_json::to_value(AutomationSignals::from_core(signals)).unwrap();
@@ -599,7 +593,6 @@ mod identify_mirrors {
         assert_eq!(json["rip"]["file"], "Album.log");
         assert_eq!(json["disc_id"]["kind"], "computed");
         assert_eq!(json["disc_id"]["disc_id"], "disc-hash");
-        assert_eq!(json["disc_id"]["track_count"], 10);
         assert_eq!(json["barcode"]["kind"], "settled");
         assert_eq!(json["barcode"]["codes"][0], "0123456789012");
         assert_eq!(json["text"]["kind"], "settled");

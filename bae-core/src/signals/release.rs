@@ -1,15 +1,15 @@
 //! Extraction inputs for the `Release` source (re-identify): resolve a library
-//! release's files into a rip reading + track count, and the artwork paths for the
+//! release's files into a rip reading and its audio facts, and the artwork paths for the
 //! OCR pass. Reading the rip artifacts themselves lives in `import::discid`.
 
 use std::path::PathBuf;
 use tracing::{debug, warn};
 
 /// What a release already in the library was copied from: what its rip
-/// artifacts say, and how many tracks the library holds for it.
+/// artifacts say, and what its audio is.
 pub(crate) struct ReleaseIdentity {
     pub(crate) rip: crate::import::discid::RipReading,
-    pub(crate) track_count: u32,
+    pub(crate) audio: super::AudioFacts,
 }
 
 /// Resolve the release's local files, pick out its rip documents, track
@@ -78,13 +78,17 @@ pub(crate) async fn resolve_release_identity(
         }
     }
 
+    let audio = super::AudioFacts::of_release(
+        track_count,
+        audio_files.iter().map(|file| &file.format),
+    );
     let rip = tokio::task::spawn_blocking(move || {
         crate::import::discid::read_rip_artifacts_from_paths(&documents, &cue_paths, &audio_files)
     })
     .await
     .map_err(|e| format!("rip artifact read task failed: {e}"))?;
 
-    Ok(ReleaseIdentity { rip, track_count })
+    Ok(ReleaseIdentity { rip, audio })
 }
 
 /// The artwork the re-identify OCR pass reads: the release's cover, plus every
@@ -469,7 +473,7 @@ mod tests {
         let identity = resolve_release_identity(&manager, &release.id)
             .await
             .unwrap();
-        let (rip, track_count) = (identity.rip, identity.track_count);
+        let (rip, track_count) = (identity.rip, identity.audio.track_count);
 
         assert!(
             rip.disc_id.computed().is_some(),

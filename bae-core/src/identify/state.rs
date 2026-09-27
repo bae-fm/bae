@@ -15,7 +15,7 @@ use crate::db::LibraryStatus;
 use crate::import::album_links::{self, GroupReading, ToRead};
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::{Catalog, LookupChoices};
-use crate::signals::{ArtworkScan, BarcodeSignal, LookupFailure, Signals};
+use crate::signals::{ArtworkScan, AudioFacts, BarcodeSignal, LookupFailure, Signals};
 
 /// One candidate's identify state. Every settled state carries the ledger its
 /// run recorded as it ended, `None` when there was nothing to lay out.
@@ -77,6 +77,11 @@ impl IdentifyState {
             | IdentifyState::Failed { context, .. } => Some(context),
             IdentifyState::Idle => None,
         }
+    }
+
+    /// The audio this state was identified over; `None` only for `Idle`.
+    pub fn audio(&self) -> Option<&AudioFacts> {
+        self.context().map(|context| &context.audio)
     }
 
     /// The candidate's own text this run judged its results against, which a
@@ -198,20 +203,20 @@ pub enum IdentifyEvent {
     },
     Cancelled,
 
-    /// The candidate's latest signals and where the artwork pass has got to.
-    /// Snapshots stream, so handling one is idempotent.
+    /// The candidate's latest signals, the audio they were read beside, and
+    /// where the artwork pass has got to. Snapshots stream, so handling one is
+    /// idempotent.
     SignalsUpdated {
         signals: Signals,
+        audio: AudioFacts,
         artwork: ArtworkScan,
     },
 
     DiscidLookupCompleted {
         results: LookupResults,
-        track_count: u32,
     },
     DiscidLookupFailed {
         failure: LookupFailure,
-        track_count: u32,
     },
 
     /// One provider answered about one barcode.
@@ -245,7 +250,6 @@ pub enum IdentifyEvent {
 pub enum Effect {
     LookupDiscid {
         disc_id: String,
-        track_count: u32,
     },
     LookupBarcode {
         source: Catalog,
@@ -312,8 +316,14 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 search,
                 context,
             },
-            IdentifyEvent::SignalsUpdated { signals, artwork },
-        ) => apply_signals(discid, barcode, catalog, search, context, signals, artwork),
+            IdentifyEvent::SignalsUpdated {
+                signals,
+                audio,
+                artwork,
+            },
+        ) => apply_signals(
+            discid, barcode, catalog, search, context, signals, audio, artwork,
+        ),
 
         (
             IdentifyState::Triangulating {
@@ -323,15 +333,9 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 search,
                 context,
             },
-            IdentifyEvent::DiscidLookupFailed {
-                failure,
-                track_count,
-            },
+            IdentifyEvent::DiscidLookupFailed { failure },
         ) => settle_if_ready(IdentifyState::Triangulating {
-            discid: DiscidProgress::Failed {
-                failure,
-                track_count,
-            },
+            discid: DiscidProgress::Failed { failure },
             barcode,
             catalog,
             search,
@@ -346,15 +350,9 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 search,
                 context,
             },
-            IdentifyEvent::DiscidLookupCompleted {
-                results,
-                track_count,
-            },
+            IdentifyEvent::DiscidLookupCompleted { results },
         ) => settle_if_ready(IdentifyState::Triangulating {
-            discid: DiscidProgress::Done {
-                results,
-                track_count,
-            },
+            discid: DiscidProgress::Done { results },
             barcode,
             catalog,
             search,
@@ -478,10 +476,11 @@ fn apply_signals(
     search: SearchProgress,
     mut context: SignalsContext,
     signals: Signals,
+    audio: AudioFacts,
     artwork: ArtworkScan,
 ) -> (IdentifyState, Vec<Effect>) {
     let mut effects = Vec::new();
-    context.refresh_inputs(&signals, artwork);
+    context.refresh_inputs(&signals, audio, artwork);
 
     let discid = match (discid, &signals.disc_id) {
         (DiscidProgress::Computing, signal) => start_discid_progress(
@@ -563,8 +562,6 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         );
     }
 
-    let track_count = settled_track_count(&discid);
-    context.track_count = track_count;
     context.record_results(&discid, &barcode, &catalog);
 
     // The title search goes out now or never.
@@ -645,7 +642,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     // Nothing was asked of anyone, so nothing was found wanting.
     if matches!(
         discid,
-        DiscidProgress::Skipped { .. } | DiscidProgress::NotAsked { .. }
+        DiscidProgress::Skipped | DiscidProgress::NotAsked { .. }
     ) && matches!(
         barcode,
         BarcodeProgress::Skipped | BarcodeProgress::NotAsked { .. }
@@ -657,7 +654,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     {
         return (
             IdentifyState::ManualOnly {
-                track_count,
+                track_count: context.audio.track_count,
                 ledger,
                 context,
             },
@@ -682,10 +679,10 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
         &context.text,
         super::medium::FolderAudio {
             rip: &context.rip,
-            mono: context.mono_audio,
+            mono: context.audio.mono,
         },
     );
-    let track_count = context.track_count;
+    let track_count = context.audio.track_count;
     let failures = context.active_failures();
     if !failures.is_empty() {
         return IdentifyState::Failed {
@@ -718,7 +715,7 @@ pub use context::{
 };
 use progress::{
     barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,
-    discid_progress_state, search_progress_at_start, settled_identity_state, settled_track_count,
+    discid_progress_state, search_progress_at_start, settled_identity_state,
     start_barcode_progress, start_catalog_progress, start_discid_progress, start_search_progress,
 };
 pub use progress::{

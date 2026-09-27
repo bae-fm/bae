@@ -38,7 +38,7 @@ use super::state::{IdentifyState, SignalsContext};
 use super::view::IdentifyRunView;
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
-use crate::signals::LookupFailure;
+use crate::signals::{AudioFacts, LookupFailure};
 
 /// Which lookup failed, and — where several providers answer it — which
 /// provider. The disc-ID endpoint is MusicBrainz's alone, and release details
@@ -260,17 +260,19 @@ impl TerminalVerdict {
     /// names, never a stored copy (see the module doc).
     ///
     /// `text` is the candidate's own stored lines, which is what the rows are
-    /// judged and ordered against. It belongs to the candidate rather than to
-    /// the run, so it stands back up beside the matches and the rows say and
-    /// order exactly what they did while the run went.
+    /// judged and ordered against, and `audio` is its audio read off its
+    /// files. Both belong to the candidate rather than to the run, so they
+    /// stand back up beside the matches.
     pub fn resume_state(
         self,
         status_of: &impl Fn(&MetadataResult) -> LibraryStatus,
         text: CandidateText,
+        audio: AudioFacts,
     ) -> IdentifyState {
         let context = || SignalsContext {
             text: text.clone(),
             text_settled: true,
+            audio: audio.clone(),
             ..SignalsContext::default()
         };
         match self {

@@ -13,8 +13,8 @@ use crate::identify::{IdentifyFailure, NotAskedReason};
 use crate::import::album_links::{self, GroupReading, Twin};
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
-    ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, RipEvidence, Signals, SourcedValue,
-    TextSignal,
+    ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, LookupFailure, RipEvidence, Signals,
+    SourcedValue, TextSignal,
 };
 
 /// The disc-ID signal and what asking about it produced; one provider, so one
@@ -36,7 +36,7 @@ pub struct DiscIdEvidence {
 impl Default for DiscIdEvidence {
     fn default() -> Self {
         Self {
-            signal: DiscIdSignal::Absent { track_count: 0 },
+            signal: DiscIdSignal::Absent,
             excluded: false,
             results: Vec::new(),
             failure: None,
@@ -305,8 +305,8 @@ pub struct SignalsContext {
     /// What the candidate's files say about the medium its audio was ripped
     /// from.
     pub rip: RipEvidence,
-    /// Whether every one of the candidate's audio files carries one channel.
-    pub mono_audio: bool,
+    /// The audio being identified, read off its files.
+    pub audio: AudioFacts,
     pub disc: DiscIdEvidence,
     pub barcode: BarcodeEvidence,
     pub catalog: CatalogEvidence,
@@ -315,8 +315,6 @@ pub struct SignalsContext {
     pub text: CandidateText,
     /// Whether `text` is final; a run does not settle before it is.
     pub text_settled: bool,
-    /// The candidate's local track count.
-    pub track_count: u32,
     /// What the run's MusicBrainz albums are on Discogs, read once every
     /// lookup has settled.
     pub album_links: AlbumLinkReading,
@@ -343,14 +341,13 @@ impl Default for SignalsContext {
             steps: IdentificationSteps::default(),
             artwork: ArtworkScan::Absent,
             rip: RipEvidence::Unproven,
-            mono_audio: false,
+            audio: AudioFacts::default(),
             disc: DiscIdEvidence::default(),
             barcode: BarcodeEvidence::default(),
             catalog: CatalogEvidence::default(),
             search: SearchEvidence::default(),
             text: CandidateText::default(),
             text_settled: false,
-            track_count: 0,
             album_links: AlbumLinkReading::Pending,
         }
     }
@@ -400,16 +397,20 @@ impl SignalsContext {
     }
 
     /// Take the inputs from a new snapshot, keeping choices and results.
-    pub(super) fn refresh_inputs(&mut self, signals: &Signals, artwork: ArtworkScan) {
+    pub(super) fn refresh_inputs(
+        &mut self,
+        signals: &Signals,
+        audio: AudioFacts,
+        artwork: ArtworkScan,
+    ) {
         self.artwork = artwork;
         self.rip = signals.rip.clone();
-        self.mono_audio = signals.mono_audio;
+        self.audio = audio;
         self.disc.refresh_input(&signals.disc_id);
         self.barcode.refresh_input(&signals.barcode);
         self.catalog.refresh_input(&signals.text);
         self.text = CandidateText::of(&signals.text_pool, &self.catalog.struck_out);
         self.text_settled = !matches!(signals.text, TextSignal::Scanning { .. });
-        self.track_count = signals.disc_id.track_count();
     }
 
     pub(super) fn record_results(
@@ -479,7 +480,7 @@ impl SignalsContext {
     /// Whether extraction gave this run anything to lay out: a disc ID, a
     /// barcode source, or a catalog number.
     pub fn has_inputs(&self) -> bool {
-        !matches!(self.disc.signal, DiscIdSignal::Absent { .. })
+        !matches!(self.disc.signal, DiscIdSignal::Absent)
             || self.barcode.had_source
             || !self.barcode.codes.is_empty()
             || self.barcode.scan_failure.is_some()

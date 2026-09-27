@@ -88,15 +88,13 @@ async fn save_verdict_with_ledger(
             verdict: verdict(release_id, ledger),
             signals: crate::signals::Signals {
                 rip: crate::signals::RipEvidence::Unproven,
-                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+                disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
                 text_pool: Vec::new(),
-                durations: crate::import::probe::SourceDurations::totalling(1_000),
-                mono_audio: false,
             },
             metadata: None,
         })
@@ -280,14 +278,30 @@ async fn a_row_without_a_pick_leads_with_the_verdicts_lead_match() {
 }
 
 /// A verdict whose releases the folder's files rule out reads back as the
-/// row's question.
+/// row's question, and the pane reads the rate that rules a CD out off the
+/// folder's files, where alone it is stored.
 #[tokio::test]
 async fn a_verdict_the_folder_rules_out_reads_back_as_its_question() {
     let (db, _tmp, root) = watched_root().await;
-    let candidate = scanned(&db, &root, "Album").await;
-    let conflict = crate::identify::MediumConflict::NotCdAudio {
-        sample_rate_hz: 96_000,
-    };
+    let mut candidate = candidate(&root, "Album");
+    for file in &mut candidate.files.files {
+        if let Some(audio) = &mut file.file.source_audio {
+            audio.format.sample_rate_hz = 96_000;
+            audio.format.bits_per_sample = Some(24);
+        }
+    }
+    db.add_watched_import_folder(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
+        .await
+        .unwrap();
+    db.finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
+    let conflict = crate::identify::MediumConflict::NotCdAudio;
     let TerminalVerdict::Found {
         mut findings,
         track_count,
@@ -309,18 +323,14 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_question() {
             folder_path: candidate.path.to_string_lossy().into_owned(),
             verdict: stored.clone(),
             signals: crate::signals::Signals {
-                rip: crate::signals::RipEvidence::NotCd {
-                    sample_rate_hz: 96_000,
-                },
-                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+                rip: crate::signals::RipEvidence::NotCd,
+                disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
                 text_pool: Vec::new(),
-                durations: crate::import::probe::SourceDurations::totalling(1_000),
-                mono_audio: false,
             },
             metadata: None,
         })
@@ -345,6 +355,18 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_question() {
         crate::import::TriagePlacement::NeedsYou {
             folder_check: Some(crate::identify::FolderCheck::MediumDisagrees { folder: conflict })
         }
+    );
+    let detail = db
+        .load_import_candidate(&candidate.path.to_string_lossy())
+        .await
+        .unwrap()
+        .expect("the candidate reads back");
+    assert_eq!(
+        detail
+            .resumed_identify_state
+            .audio()
+            .and_then(|audio| audio.rate_ruling_out_cd),
+        Some(96_000)
     );
 }
 

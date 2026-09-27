@@ -6,13 +6,12 @@
 fn state_with_catalog_offered(providers: Vec<Catalog>) -> IdentifyState {
     let (state, _) = update(
         started_with(providers),
-        signals(disc("disc-hash", 5), BarcodeSignal::Absent, &["LBL 001"]),
+        signals(disc("disc-hash"), BarcodeSignal::Absent, &["LBL 001"]),
     );
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
             results: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))],
-            track_count: 5,
         },
     );
     state
@@ -23,13 +22,12 @@ fn run_with_catalog_chosen(providers: Vec<Catalog>) -> (IdentifyState, Vec<Effec
     let (state, chosen_effects) = started_with_choices(providers, choosing(&["LBL 001"]));
     let (state, _) = update(
         state,
-        signals(disc("disc-hash", 5), BarcodeSignal::Absent, &["LBL 001"]),
+        signals(disc("disc-hash"), BarcodeSignal::Absent, &["LBL 001"]),
     );
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
             results: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))],
-            track_count: 5,
         },
     );
     (state, chosen_effects)
@@ -40,7 +38,7 @@ fn toolbar_while_triangulating_shows_spinners() {
     let (state, _) = update(
         started(),
         signals(
-            disc("disc-hash", 5),
+            disc("disc-hash"),
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["012345678905"]),
             },
@@ -87,7 +85,7 @@ fn every_extracted_catalog_number_is_an_option_on_the_one_badge() {
     let (state, _) = update(
         started(),
         signals_with_catalogs(
-            disc("disc-hash", 5),
+            disc("disc-hash"),
             BarcodeSignal::Absent,
             vec!["LBL 001".to_string(), "LBL 999".to_string()],
         ),
@@ -188,7 +186,7 @@ fn a_chosen_number_the_snapshot_does_not_offer_leaves_the_run() {
     let (state, _) = update(
         state,
         signals(
-            DiscIdSignal::Absent { track_count: 5 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Absent,
             &["LBL 001"],
         ),
@@ -212,16 +210,15 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
         IdentifyEvent::SignalsUpdated {
             signals: Signals {
                 rip: crate::signals::RipEvidence::Unproven,
-                disc_id: DiscIdSignal::Absent { track_count: 5 },
+                disc_id: DiscIdSignal::Absent,
                 barcode: BarcodeSignal::Scanning { codes: Vec::new() },
                 text: TextSignal::Scanning {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
                 text_pool: Vec::new(),
-                durations: crate::import::probe::SourceDurations::default(),
-                mono_audio: false,
             },
+            audio: crate::signals::AudioFacts::default(),
             artwork: crate::signals::ArtworkScan::Absent,
         },
     );
@@ -241,7 +238,6 @@ fn toolbar_shows_failed_disc_id_lookup() {
         state,
         IdentifyEvent::DiscidLookupFailed {
             failure: LookupFailure::Provider { status: Some(503) },
-            track_count: 5,
         },
     );
     let disc = state
@@ -284,7 +280,7 @@ fn toolbar_keeps_failed_barcode_lookup_after_settle() {
     let (state, _) = update(
         started(),
         signals(
-            DiscIdSignal::Absent { track_count: 5 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["012345678905"]),
             },
@@ -316,14 +312,13 @@ fn toolbar_keeps_failed_barcode_lookup_after_settle() {
 fn toolbar_keeps_failed_disc_id_lookup_after_settle() {
     let (state, _) = update(
         started(),
-        signals(disc("disc-hash", 5), BarcodeSignal::Absent, &[]),
+        signals(disc("disc-hash"), BarcodeSignal::Absent, &[]),
     );
     let failure = LookupFailure::Provider { status: Some(503) };
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupFailed {
             failure: failure.clone(),
-            track_count: 5,
         },
     );
     assert!(matches!(state, IdentifyState::Failed { .. }));
@@ -340,7 +335,7 @@ fn toolbar_skipped_disc_and_barcode_in_manual_only() {
     let (state, _) = update(
         started(),
         signals(
-            DiscIdSignal::Absent { track_count: 7 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Absent,
             &[],
         ),
@@ -384,7 +379,6 @@ fn found_carries_in_library_status_through() {
                 "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
                 Some("g-x"),
             )],
-            track_count: 5,
         },
     );
     match state {
@@ -429,7 +423,6 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
         state,
         IdentifyEvent::DiscidLookupCompleted {
             results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
-            track_count: 5,
         },
     );
 
@@ -527,7 +520,7 @@ fn toolbar_barcode_spins_until_every_provider_answers() {
     let (state, _) = update(
         started_with(vec![MB, DG]),
         signals(
-            DiscIdSignal::Absent { track_count: 5 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["012345678905"]),
             },

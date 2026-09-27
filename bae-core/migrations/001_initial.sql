@@ -1204,17 +1204,12 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     -- The candidate-relative path of the file that proves it; NULL when
     -- re-identifying a library release.
     rip_file               TEXT,
-    -- The rate the audio is sampled at, where it rules a CD out.
-    rip_sample_rate_hz     INTEGER CHECK (rip_sample_rate_hz IS NULL OR rip_sample_rate_hz > 0),
-    -- Every audio file has one channel.
-    mono_audio             INTEGER NOT NULL CHECK (mono_audio IN (0, 1)),
     disc_id_state          TEXT NOT NULL CHECK (disc_id_state IN ('computed', 'absent', 'not_cd_audio', 'failed')),
     disc_id                TEXT,
     -- The candidate-relative path of the LOG or CUE the disc ID came from, so a
     -- surface can mark that file's row. NULL when re-identifying a library
     -- release, whose ID comes from stored tracks.
     disc_id_source_file    TEXT,
-    track_count            INTEGER NOT NULL CHECK (track_count >= 0),
     disc_id_failure        TEXT CHECK (disc_id_failure IS NULL OR disc_id_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
     disc_id_failure_status INTEGER,
     disc_id_failure_detail TEXT,
@@ -1229,7 +1224,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((rip = 'cd') = (rip_proof IS NOT NULL)),
     CHECK (rip_file IS NULL OR rip = 'cd'),
-    CHECK ((rip = 'not_cd') = (rip_sample_rate_hz IS NOT NULL)),
     -- A sheet goes unhashed only when the audio rules a CD out.
     CHECK (disc_id_state <> 'not_cd_audio' OR rip = 'not_cd'),
     CHECK ((disc_id_state = 'computed') = (disc_id IS NOT NULL)),
@@ -1334,12 +1328,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     -- could be a CD, or a sample rate no CD holds where every row is a CD.
     -- Such a verdict is never Ready.
     medium_conflict TEXT CHECK (medium_conflict IS NULL OR medium_conflict IN ('cd_rip', 'not_cd_audio')),
-    medium_conflict_sample_rate_hz INTEGER CHECK (medium_conflict_sample_rate_hz IS NULL OR medium_conflict_sample_rate_hz > 0),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((kind = 'not_found') = (track_count IS NULL)),
     CHECK ((kind = 'failed') = (failures_json IS NOT NULL)),
-    CHECK (medium_conflict IS NULL OR kind IN ('found', 'failed')),
-    CHECK ((medium_conflict IS 'not_cd_audio') = (medium_conflict_sample_rate_hz IS NOT NULL))
+    CHECK (medium_conflict IS NULL OR kind IN ('found', 'failed'))
 ) STRICT;
 
 -- Every release a run's lookups returned, in listed order, with what the

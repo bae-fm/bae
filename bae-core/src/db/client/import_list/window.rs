@@ -477,10 +477,11 @@ pub(super) fn load_candidate_detail_on(
         _ => None,
     };
     Ok(Some(move || {
-        let durations = crate::import::probe::source_durations(&candidate.files)
+        let audio = crate::signals::AudioFacts::of_files(&candidate.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
+        let durations = &audio.durations;
         let audio_durations =
-            crate::import::track_slots::audio_durations(&candidate.files, &durations)
+            crate::import::track_slots::audio_durations(&candidate.files, durations)
                 .map_err(|error| DbError::Message(error.to_string()))?;
         let release = claimed
             .split_first()
@@ -524,12 +525,16 @@ pub(super) fn load_candidate_detail_on(
                             &lookup_choices.discounted_catalogs,
                         )
                     });
-            resumed_identify_state = identify.verdict.clone().resume_state(&status_of, text);
+            resumed_identify_state =
+                identify
+                    .verdict
+                    .clone()
+                    .resume_state(&status_of, text, audio.clone());
         }
         let pane = crate::import::pane::draft_pane(
             release,
             &candidate.files,
-            &durations,
+            durations,
             &pane_rows.draft,
             &crate::import::CandidateAsRead {
                 content_hash,

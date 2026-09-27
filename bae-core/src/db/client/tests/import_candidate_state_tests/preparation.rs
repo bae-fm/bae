@@ -137,10 +137,7 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
         store_verdict(
             &db,
             &hash,
-            signals_with(SourceDurations::new(vec![file_unit(
-                "01 Track.flac",
-                180_000
-            )])),
+            settled_signals(),
         )
         .await
     );
@@ -492,20 +489,14 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
     );
 }
 
-/// A file decision reshapes the folder, so the slice measurements, the
-/// extracted signals go with it. The caller's replacement mappings, metadata,
+/// A file decision reshapes the folder, so the extracted signals go with it. The caller's replacement mappings, metadata,
 /// and cover land with the file decision as one candidate state.
 #[tokio::test]
 async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     let (db, _tmp) = empty_db().await;
     fetched(&db, "rel-1").await;
     let (files, hash) = stored_pane_candidate(&db).await;
-    let durations = SourceDurations::new(vec![
-        file_unit("01 Track.flac", 180_000),
-        file_unit("CDImage.flac", 600_000),
-        slice_unit(0, 200_000),
-    ]);
-    assert!(store_verdict(&db, &hash, signals_with(durations)).await);
+    assert!(store_verdict(&db, &hash, settled_signals()).await);
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &hash,
@@ -790,7 +781,7 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
 file_edit_revision: 0,
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
-            signals: signals_with(SourceDurations::default()),
+            signals: settled_signals(),
             metadata: Some(crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("Different album", "Different Artist"),
                 source_discogs_artist_ids: Default::default(),
@@ -833,7 +824,7 @@ async fn a_verdict_after_a_metadata_edit_replaces_it() {
 file_edit_revision: 0,
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
-            signals: signals_with(SourceDurations::default()),
+            signals: settled_signals(),
             metadata: Some(crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("First album", "Artist"),
                 source_discogs_artist_ids: Default::default(),
@@ -855,7 +846,7 @@ file_edit_revision: 0,
 file_edit_revision: 0,
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
-            signals: signals_with(SourceDurations::default()),
+            signals: settled_signals(),
             metadata: Some(crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("Second album", "Different Artist"),
                 source_discogs_artist_ids: Default::default(),

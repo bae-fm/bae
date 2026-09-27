@@ -25,7 +25,7 @@ fn context() -> SignalsContext {
         providers: vec![MB, DG],
         artwork: ArtworkScan::Absent,
         disc: DiscIdEvidence {
-            signal: DiscIdSignal::Absent { track_count: 9 },
+            signal: DiscIdSignal::Absent,
             ..Default::default()
         },
         barcode: BarcodeEvidence {
@@ -34,7 +34,10 @@ fn context() -> SignalsContext {
             ..Default::default()
         },
         text_settled: true,
-        track_count: 9,
+        audio: crate::signals::AudioFacts {
+            track_count: 9,
+            ..Default::default()
+        },
         ..SignalsContext::default()
     }
 }
@@ -56,7 +59,7 @@ fn found(results: Vec<(MetadataResult, LibraryStatus)>) -> LookupState {
 
 fn in_flight(context: SignalsContext) -> IdentifyState {
     IdentifyState::Triangulating {
-        discid: DiscidProgress::Skipped { track_count: 9 },
+        discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::Lookups {
             codes: vec![code(
                 "A",
@@ -125,7 +128,7 @@ fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
     context.barcode.excluded = vec!["BOXSET".to_string()];
     context.providers = vec![MB];
     let state = IdentifyState::Triangulating {
-        discid: DiscidProgress::Skipped { track_count: 9 },
+        discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::Lookups {
             codes: vec![code("DISC", vec![(MB, found(vec![result(MB, "mb-1")]))])],
         },
@@ -164,7 +167,7 @@ fn every_code_left_out_lists_them_all_unasked() {
     ];
     context.barcode.excluded = vec!["BOXSET".to_string(), "DISC".to_string()];
     let state = IdentifyState::Triangulating {
-        discid: DiscidProgress::Skipped { track_count: 9 },
+        discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::NotAsked {
             codes: vec!["BOXSET".to_string(), "DISC".to_string()],
             reason: NotAskedReason::LeftOut,
@@ -195,14 +198,10 @@ fn a_disc_id_nobody_looked_up_says_why() {
         let mut context = context();
         context.disc.signal = DiscIdSignal::Computed {
             disc_id: "d".to_string(),
-            track_count: 9,
             source_file: Some("rip/Album.LOG".to_string()),
         };
         let step = run_of(IdentifyState::Triangulating {
-            discid: DiscidProgress::NotAsked {
-                track_count: 9,
-                reason,
-            },
+            discid: DiscidProgress::NotAsked { reason },
             barcode: BarcodeProgress::NoCodes,
             catalog: CatalogProgress::Skipped,
             search: SearchProgress::Pending,
@@ -229,7 +228,7 @@ fn each_code_fills_its_own_cells() {
         SourcedValue::new("C".to_string()),
     ];
     let state = IdentifyState::Triangulating {
-        discid: DiscidProgress::Skipped { track_count: 9 },
+        discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::Lookups {
             codes: vec![
                 code(
@@ -320,7 +319,7 @@ fn codes_read_so_far_wait_while_the_artwork_is_still_being_read() {
         total: 3,
     };
     let state = IdentifyState::Triangulating {
-        discid: DiscidProgress::Skipped { track_count: 9 },
+        discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::Scanning,
         catalog: CatalogProgress::Skipped,
         search: SearchProgress::Pending,
@@ -357,7 +356,7 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
         failures: Vec::new(),
     }];
     let state = IdentifyState::Triangulating {
-        discid: DiscidProgress::Skipped { track_count: 9 },
+        discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::NoCodes,
         catalog: CatalogProgress::Lookups {
             values: vec![ValueLookup {
@@ -414,7 +413,7 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
         SourcedValue::new("B".to_string()),
     ];
     let in_flight = IdentifyState::Triangulating {
-        discid: DiscidProgress::Skipped { track_count: 9 },
+        discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::Lookups {
             codes: vec![
                 code(
@@ -475,7 +474,7 @@ fn a_run_with_no_inputs_records_no_ledger() {
         ..context()
     };
     let settled = crate::identify::state::settle_for_tests(
-        DiscidProgress::Skipped { track_count: 9 },
+        DiscidProgress::Skipped,
         BarcodeProgress::Skipped,
         CatalogProgress::Skipped,
         SearchProgress::Skipped,
@@ -498,7 +497,7 @@ fn a_manual_only_folder_with_catalog_numbers_offers_them() {
     };
     context.catalog.numbers = vec!["LBL-1".to_string()];
     let settled = crate::identify::state::settle_for_tests(
-        DiscidProgress::Skipped { track_count: 9 },
+        DiscidProgress::Skipped,
         BarcodeProgress::Skipped,
         CatalogProgress::Skipped,
         SearchProgress::Skipped,
@@ -520,17 +519,9 @@ fn a_manual_only_folder_with_catalog_numbers_offers_them() {
 #[test]
 fn a_sheet_over_audio_no_cd_holds_says_why_it_was_not_read() {
     let mut context = context();
-    context.disc.signal = DiscIdSignal::NotCdAudio {
-        track_count: 9,
-        sample_rate_hz: 96_000,
-    };
+    context.disc.signal = DiscIdSignal::NotCdAudio;
     let run = run_of(in_flight(context));
-    assert_eq!(
-        run.disc_id,
-        DiscIdStepView::NotCdAudio {
-            sample_rate_hz: 96_000
-        }
-    );
+    assert_eq!(run.disc_id, DiscIdStepView::NotCdAudio);
 }
 
 /// A found lookup carries the album cards its count stands for.
@@ -539,13 +530,11 @@ fn a_found_lookup_names_its_releases() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
         disc_id: "d".to_string(),
-        track_count: 9,
         source_file: Some("rip/Album.LOG".to_string()),
     };
     let state = IdentifyState::Triangulating {
         discid: DiscidProgress::Done {
             results: vec![result(MB, "mb-1"), result(MB, "mb-2")],
-            track_count: 9,
         },
         barcode: BarcodeProgress::NoCodes,
         catalog: CatalogProgress::Skipped,
@@ -647,7 +636,7 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
         track_count: 9,
         ledger: Some(recorded_ledger()),
     };
-    let run = run_of(verdict.resume_state(&not_in_library, Default::default()));
+    let run = run_of(verdict.resume_state(&not_in_library, Default::default(), Default::default()));
     assert_eq!(run, recorded_ledger());
     assert_eq!(run.providers, vec![MB, DG]);
     assert!(matches!(
@@ -666,7 +655,11 @@ fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
         ledger: None,
     };
     assert!(matches!(
-        IdentifyStateView::from(verdict.resume_state(&not_in_library, Default::default())),
+        IdentifyStateView::from(verdict.resume_state(
+            &not_in_library,
+            Default::default(),
+            Default::default()
+        )),
         IdentifyStateView::Failed { run: None, .. }
     ));
 }
@@ -680,7 +673,6 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
         disc_id: "d".to_string(),
-        track_count: 9,
         source_file: None,
     };
     let other_album = (
@@ -749,7 +741,6 @@ fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
         disc_id: "d".to_string(),
-        track_count: 9,
         source_file: None,
     };
     context.disc.results = vec![result(MB, "mb-disc")];

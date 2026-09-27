@@ -69,9 +69,7 @@ pub enum DiscIdStepView {
     /// No LOG or CUE to read one off.
     Absent,
     /// The CUE lays out audio at a sample rate no CD has, so it was not read.
-    NotCdAudio {
-        sample_rate_hz: u32,
-    },
+    NotCdAudio,
     /// A LOG or CUE was there and no disc ID could be derived from it.
     ReadFailed {
         failure: LookupFailure,
@@ -342,7 +340,7 @@ fn live_findings(
         &context.text,
         super::medium::FolderAudio {
             rip: &context.rip,
-            mono: context.mono_audio,
+            mono: context.audio.mono,
         },
     )
 }

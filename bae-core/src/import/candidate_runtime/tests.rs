@@ -59,7 +59,7 @@ fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
         steps: crate::config::IdentificationSteps::default(),
         artwork: crate::signals::ArtworkScan::Absent,
         disc: crate::identify::state::DiscIdEvidence {
-            signal: crate::signals::DiscIdSignal::Absent { track_count },
+            signal: crate::signals::DiscIdSignal::Absent,
             ..Default::default()
         },
         barcode: Default::default(),
@@ -67,9 +67,11 @@ fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
         search: Default::default(),
         text: Default::default(),
         text_settled: true,
-        track_count,
+        audio: crate::signals::AudioFacts {
+            track_count,
+            ..Default::default()
+        },
         album_links: crate::identify::state::AlbumLinkReading::Pending,
-        mono_audio: false,
     }
 }
 
@@ -122,15 +124,13 @@ fn drain(changes: &mut broadcast::Receiver<CandidateRuntimeChange>) -> Vec<Candi
 fn extracted_signals() -> crate::signals::Signals {
     crate::signals::Signals {
         rip: crate::signals::RipEvidence::Unproven,
-        disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
+        disc_id: crate::signals::DiscIdSignal::Absent,
         barcode: crate::signals::BarcodeSignal::Settled { codes: Vec::new() },
         text: crate::signals::TextSignal::Settled {
             catalogs: Vec::new(),
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
-        durations: crate::import::probe::SourceDurations::totalling(1_000),
-        mono_audio: false,
     }
 }
 

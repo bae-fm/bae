@@ -305,9 +305,15 @@ async fn run_driver(
                 _ = token.cancelled() => IdentifyEvent::Cancelled,
                 changed = snapshots.changed(), if extracting => match changed {
                     Ok(()) => match snapshots.borrow_and_update().clone() {
-                        Some(SignalsSnapshot { signals, artwork }) => {
-                            IdentifyEvent::SignalsUpdated { signals, artwork }
-                        }
+                        Some(SignalsSnapshot {
+                            signals,
+                            audio,
+                            artwork,
+                        }) => IdentifyEvent::SignalsUpdated {
+                            signals,
+                            audio,
+                            artwork,
+                        },
                         None => continue,
                     },
                     Err(_) => {
@@ -384,31 +390,16 @@ fn dispatch_effect(
 ) {
     let runtime = inner.runtime_handle.clone();
     match effect {
-        Effect::LookupDiscid {
-            disc_id,
-            track_count,
-        } => {
+        Effect::LookupDiscid { disc_id } => {
             let library_manager = inner.library_manager.clone();
             spawn_until_cancelled(&runtime, &token, async move {
                 let outcome = lookup_and_resolve(&disc_id, &library_manager, priority).await;
                 match outcome {
                     Ok(results) => {
-                        emit_step(
-                            &event_tx,
-                            IdentifyEvent::DiscidLookupCompleted {
-                                results,
-                                track_count,
-                            },
-                        );
+                        emit_step(&event_tx, IdentifyEvent::DiscidLookupCompleted { results });
                     }
                     Err(failure) => {
-                        emit_step(
-                            &event_tx,
-                            IdentifyEvent::DiscidLookupFailed {
-                                failure,
-                                track_count,
-                            },
-                        );
+                        emit_step(&event_tx, IdentifyEvent::DiscidLookupFailed { failure });
                     }
                 }
             });
@@ -553,15 +544,13 @@ mod tests {
     fn absent_signals() -> Signals {
         Signals {
             rip: crate::signals::RipEvidence::Unproven,
-            disc_id: DiscIdSignal::Absent { track_count: 7 },
+            disc_id: DiscIdSignal::Absent,
             barcode: BarcodeSignal::Absent,
             text: TextSignal::Settled {
                 catalogs: vec![],
                 free_text: vec![],
             },
             text_pool: Vec::new(),
-            durations: crate::import::probe::SourceDurations::default(),
-            mono_audio: false,
         }
     }
 
@@ -636,6 +625,7 @@ mod tests {
     fn settled_snapshot() -> SignalsSnapshot {
         SignalsSnapshot {
             signals: absent_signals(),
+            audio: crate::signals::AudioFacts::default(),
             artwork: crate::signals::ArtworkScan::Absent,
         }
     }
@@ -652,6 +642,7 @@ mod tests {
                 },
                 ..absent_signals()
             },
+            audio: crate::signals::AudioFacts::default(),
             artwork: crate::signals::ArtworkScan::Reading {
                 current: None,
                 position: 1,

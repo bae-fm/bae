@@ -96,6 +96,11 @@ async fn settle_verdict(
     token: &CancellationToken,
 ) -> Settled {
     let text = state.candidate_text();
+    let durations = state
+        .audio()
+        .expect("a terminal state carries the audio it was identified over")
+        .durations
+        .clone();
     let mut verdict = TerminalVerdict::try_from(state)
         .expect("the queue settles only terminal identify states");
 
@@ -116,7 +121,7 @@ async fn settle_verdict(
         &mut verdict,
         &text,
         candidate,
-        &signals.durations,
+        &durations,
         priority,
         token,
     )
@@ -130,7 +135,7 @@ async fn settle_verdict(
     let metadata = metadata_or_failed_verdict(
         context,
         candidate,
-        &signals.durations,
+        &durations,
         settled_lead,
         &mut verdict,
     )

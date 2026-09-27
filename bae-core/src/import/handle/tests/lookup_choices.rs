@@ -202,7 +202,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
             },
             signals: crate::signals::Signals {
                 rip: crate::signals::RipEvidence::Unproven,
-                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+                disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
                     catalogs: vec![printed.to_string()],
@@ -212,8 +212,6 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
                     text: printed.to_string(),
                     origin: crate::signals::TextOrigin::FolderName,
                 }],
-                durations: crate::import::probe::SourceDurations::totalling(1_000),
-                mono_audio: false,
             },
             metadata: None,
         })

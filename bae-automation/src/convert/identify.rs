@@ -51,7 +51,7 @@ mirror_enum! {
     variants: {
         Reading,
         Absent,
-        NotCdAudio { sample_rate_hz },
+        NotCdAudio,
         ReadFailed { failure: (AutomationLookupFailure) },
         Read { disc_id, lookup: (AutomationLookupState) },
     },

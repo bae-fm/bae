@@ -21,7 +21,7 @@ async fn a_settled_pick_that_asks_nothing_opens_the_pane_on_the_draft() {
         .unwrap();
 
     fixture
-        .store_settled_verdict(&dir, "mb-settled-1", "rg-settled-1", probed)
+        .store_settled_verdict(&dir, "mb-settled-1", "rg-settled-1",)
         .await;
 
     assert_eq!(
@@ -61,7 +61,6 @@ async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
             &dir,
             "mb-settled-2",
             "rg-settled-2",
-            1_000,
             crate::import::search::SourceTracks::Listed { count: 3 },
         )
         .await;

@@ -81,7 +81,7 @@ fn resumed(
         track_count: 9,
         ledger,
     };
-    IdentifyStateView::from(verdict.resume_state(&not_in_library, text))
+    IdentifyStateView::from(verdict.resume_state(&not_in_library, text, Default::default()))
 }
 
 fn chips(view: &IdentifyStateView) -> Vec<(&str, bool)> {

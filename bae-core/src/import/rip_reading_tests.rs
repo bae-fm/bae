@@ -85,15 +85,11 @@ fn a_sheet_over_audio_at_another_rate_is_not_a_cd_and_is_not_hashed() {
     let reading = read_folder(&sheet(None), &lossless(96_000, 24, 1), &[]);
     assert_eq!(
         reading.evidence,
-        RipEvidence::NotCd {
-            sample_rate_hz: 96_000
-        }
+        RipEvidence::NotCd
     );
     assert_eq!(
         reading.disc_id,
-        DiscIdReading::NotCdAudio {
-            sample_rate_hz: 96_000
-        }
+        DiscIdReading::NotCdAudio
     );
 }
 
@@ -190,28 +186,7 @@ fn audio_off_a_cds_rate_with_no_sheet_is_absent() {
     });
     assert_eq!(
         reading.evidence,
-        RipEvidence::NotCd {
-            sample_rate_hz: 96_000
-        }
+        RipEvidence::NotCd
     );
     assert_eq!(reading.disc_id, DiscIdReading::Absent);
-}
-
-/// Audio of one channel in every file is mono; one file of two channels
-/// among them, or no audio at all, is not.
-#[test]
-fn every_file_of_one_channel_is_mono_audio() {
-    let mono = lossless(96_000, 24, 1);
-    let stereo = lossless(96_000, 24, 2);
-    let reading = |audio: Vec<&AudioFormat>| {
-        read(RipArtifacts {
-            documents: Vec::new(),
-            sheets: Vec::new(),
-            audio,
-        })
-        .mono
-    };
-    assert!(reading(vec![&mono, &mono]));
-    assert!(!reading(vec![&mono, &stereo]));
-    assert!(!reading(Vec::new()));
 }

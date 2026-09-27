@@ -317,25 +317,56 @@ impl crate::types::BridgeIdentificationStatus {
     }
 }
 
-mirror_enum! {
-    crate::types::BridgeFolderCheck = bae_core::identify::FolderCheck,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    variants: {
-        TrackCountDisagrees { local, source },
-        SourceTracksUnknown,
-        MediumDisagrees { folder: (crate::types::BridgeMediumConflict) },
-    },
-}
+// Not copies: audio no CD holds crosses with the rate its files state, which
+// only the pane has at hand.
+impl crate::types::BridgeFolderCheck {
+    /// A row's check, where the audio's files are not at hand.
+    pub(crate) fn from_core(check: bae_core::identify::FolderCheck) -> Self {
+        Self::with_rate(check, None)
+    }
 
-mirror_enum! {
-    crate::types::BridgeMediumConflict = bae_core::identify::MediumConflict,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    variants: {
-        CdRip,
-        NotCdAudio { sample_rate_hz },
-    },
+    /// A check with the rate of the audio's files.
+    fn with_rate(check: bae_core::identify::FolderCheck, rate: Option<u32>) -> Self {
+        use bae_core::identify::FolderCheck;
+        match check {
+            FolderCheck::TrackCountDisagrees { local, source } => {
+                Self::TrackCountDisagrees { local, source }
+            }
+            FolderCheck::SourceTracksUnknown => Self::SourceTracksUnknown,
+            FolderCheck::MediumDisagrees { folder } => Self::MediumDisagrees {
+                folder: match folder {
+                    bae_core::identify::MediumConflict::CdRip => {
+                        crate::types::BridgeMediumConflict::CdRip
+                    }
+                    bae_core::identify::MediumConflict::NotCdAudio => {
+                        crate::types::BridgeMediumConflict::NotCdAudio {
+                            sample_rate_hz: rate,
+                        }
+                    }
+                },
+            },
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::identify::FolderCheck {
+        use bae_core::identify::FolderCheck;
+        match self {
+            Self::TrackCountDisagrees { local, source } => {
+                FolderCheck::TrackCountDisagrees { local, source }
+            }
+            Self::SourceTracksUnknown => FolderCheck::SourceTracksUnknown,
+            Self::MediumDisagrees { folder } => FolderCheck::MediumDisagrees {
+                folder: match folder {
+                    crate::types::BridgeMediumConflict::CdRip => {
+                        bae_core::identify::MediumConflict::CdRip
+                    }
+                    crate::types::BridgeMediumConflict::NotCdAudio { sample_rate_hz: _ } => {
+                        bae_core::identify::MediumConflict::NotCdAudio
+                    }
+                },
+            },
+        }
+    }
 }
 
 mirror_struct! {
@@ -559,17 +590,33 @@ impl crate::types::BridgeImportListSnapshot {
     }
 }
 
-mirror_enum! {
-    crate::types::BridgeCandidatePanePlacement = bae_core::import::CandidatePanePlacement,
-    from_core: fn,
-    variants: {
-        Pending {
-            folder_check: (opt crate::types::BridgeFolderCheck),
-            records: (each crate::types::BridgeReleaseRecord),
-        },
-        Skipped { records: (each crate::types::BridgeReleaseRecord) },
-        Done,
-    },
+impl crate::types::BridgeCandidatePanePlacement {
+    /// Not a copy: the folder check crosses with `rate`, the rate of the
+    /// audio's files.
+    fn from_core(placement: bae_core::import::CandidatePanePlacement, rate: Option<u32>) -> Self {
+        let records = |records: Vec<bae_core::import::ReleaseRecord>| {
+            records
+                .into_iter()
+                .map(crate::types::BridgeReleaseRecord::from_core)
+                .collect()
+        };
+        match placement {
+            bae_core::import::CandidatePanePlacement::Pending {
+                folder_check,
+                records: pending,
+            } => Self::Pending {
+                folder_check: folder_check
+                    .map(|check| crate::types::BridgeFolderCheck::with_rate(check, rate)),
+                records: records(pending),
+            },
+            bae_core::import::CandidatePanePlacement::Skipped { records: skipped } => {
+                Self::Skipped {
+                    records: records(skipped),
+                }
+            }
+            bae_core::import::CandidatePanePlacement::Done => Self::Done,
+        }
+    }
 }
 
 impl crate::types::BridgeImportCandidateDetail {
@@ -601,13 +648,16 @@ impl crate::types::BridgeImportCandidateDetail {
             failure,
             session,
         } = detail;
+        let rate = resumed_identify_state
+            .audio()
+            .and_then(|audio| audio.rate_ruling_out_cd);
         Self {
             candidate: crate::types::BridgeFolderCandidate::from_core(candidate, skipped, is_added),
             actionable,
             resumed_identify_state: crate::types::BridgeIdentifyState::from_core(
                 resumed_identify_state,
             ),
-            placement: crate::types::BridgeCandidatePanePlacement::from_core(placement),
+            placement: crate::types::BridgeCandidatePanePlacement::from_core(placement, rate),
             live: crate::types::BridgeCandidateLiveState::from_core(live),
             import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
             release: release.map(crate::types::BridgeReleaseDetail::from_core),

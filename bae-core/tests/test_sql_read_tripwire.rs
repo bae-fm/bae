@@ -78,15 +78,13 @@ async fn pure_reads_use_the_read_connection() {
             verdict: bae_core::identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
             signals: bae_core::signals::Signals {
                 rip: bae_core::signals::RipEvidence::Unproven,
-                disc_id: bae_core::signals::DiscIdSignal::Absent { track_count: 0 },
+                disc_id: bae_core::signals::DiscIdSignal::Absent,
                 barcode: bae_core::signals::BarcodeSignal::Absent,
                 text: bae_core::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
                 text_pool: Vec::new(),
-                durations: bae_core::import::probe::SourceDurations::default(),
-                mono_audio: false,
             },
             metadata: Some(bae_core::import::CandidateMetadataDraft {
                 draft: bae_core::import::CandidateDraft {

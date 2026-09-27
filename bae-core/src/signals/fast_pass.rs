@@ -5,8 +5,7 @@ use super::candidate_text::{extract_folder_brackets, parse_filename_stem, Source
 use crate::barcode::Barcode;
 use crate::import::discid::read_rip_artifacts;
 use crate::import::folder_scanner::CategorizedFiles;
-use crate::import::probe::{source_durations, SourceDurations};
-use crate::signals::{DiscIdSignal, RipEvidence, SourcedValue};
+use crate::signals::{AudioFacts, DiscIdSignal, RipEvidence, SourcedValue};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::{debug, warn};
@@ -28,11 +27,9 @@ pub(super) struct FastPass {
     pub(super) bracket_catalogs: Vec<String>,
     pub(super) artwork: Vec<ArtworkImage>,
     pub(super) rip: RipEvidence,
-    pub(super) mono_audio: bool,
     pub(super) disc_id: DiscIdSignal,
     pub(super) cue_barcodes: Vec<SourcedValue>,
-    /// How long each audio unit plays.
-    pub(super) durations: SourceDurations,
+    pub(super) audio: AudioFacts,
 }
 
 impl FastPass {
@@ -43,10 +40,9 @@ impl FastPass {
             bracket_catalogs: Vec::new(),
             artwork: Vec::new(),
             rip: RipEvidence::Unproven,
-            mono_audio: false,
-            disc_id: DiscIdSignal::Absent { track_count: 0 },
+            disc_id: DiscIdSignal::Absent,
             cue_barcodes: Vec::new(),
-            durations: SourceDurations::default(),
+            audio: AudioFacts::default(),
         }
     }
 }
@@ -108,13 +104,12 @@ pub(super) fn gather_non_ocr_sources(
         }
     }
 
-    // Rip evidence, disc ID, CUE barcodes and durations all come off one scan.
-    let track_count = categorized.track_count();
-    pass.durations = source_durations(categorized)?;
+    // Rip evidence, disc ID, CUE barcodes and the audio facts all come off
+    // one scan.
+    pass.audio = AudioFacts::of_files(categorized)?;
     let rip = read_rip_artifacts(categorized);
     pass.rip = rip.evidence;
-    pass.mono_audio = rip.mono;
-    pass.disc_id = rip.disc_id.into_signal(track_count);
+    pass.disc_id = rip.disc_id.into_signal();
     pass.cue_barcodes = cue_barcodes(categorized);
 
     // Image + document filenames only; `enumerate_filename_inputs` explains why.

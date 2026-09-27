@@ -59,9 +59,7 @@ fn every_outcome() -> ImportQueueRows {
 /// against a CD.
 fn wrong_medium_state() -> CandidateStateListRow {
     with_verdict(ready_state("mb-cd"), |verdict| {
-        verdict.medium_conflict = Some(crate::identify::MediumConflict::NotCdAudio {
-            sample_rate_hz: 96_000,
-        });
+        verdict.medium_conflict = Some(crate::identify::MediumConflict::NotCdAudio);
     })
 }
 

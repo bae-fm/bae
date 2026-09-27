@@ -76,10 +76,12 @@ struct IdentifierBand: View {
         case .notCdAudio(let sampleRateHz):
             IdentifierChip(label: label) { IdentifierDash() }
                 .help(
-                    String(
-                        localized:
-                            "Not read: the audio is \(sampleRateText(hz: Double(sampleRateHz))), which no CD holds"
-                    )
+                    sampleRateHz.map { sampleRateHz in
+                        String(
+                            localized:
+                                "Not read: the audio is \(sampleRateText(hz: Double(sampleRateHz))), which no CD holds"
+                        )
+                    } ?? ""
                 )
         case .readFailed(let failure):
             IdentifierChip(label: label) { IdentifierWarning() }

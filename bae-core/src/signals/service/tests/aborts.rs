@@ -40,19 +40,20 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
         emit_signals(
             &inner,
             &extraction,
-            Signals {
-                rip: crate::signals::RipEvidence::Unproven,
-                disc_id: DiscIdSignal::Absent { track_count: 0 },
-                barcode: BarcodeSignal::Absent,
-                text: TextSignal::Settled {
-                    catalogs: Vec::new(),
-                    free_text: Vec::new(),
+            SignalsSnapshot {
+                signals: Signals {
+                    rip: crate::signals::RipEvidence::Unproven,
+                    disc_id: DiscIdSignal::Absent,
+                    barcode: BarcodeSignal::Absent,
+                    text: TextSignal::Settled {
+                        catalogs: Vec::new(),
+                        free_text: Vec::new(),
+                    },
+                    text_pool: Vec::new(),
                 },
-                text_pool: Vec::new(),
-                durations: crate::import::probe::SourceDurations::default(),
-                mono_audio: false,
+                audio: crate::signals::AudioFacts::default(),
+                artwork: ArtworkScan::Absent,
             },
-            ArtworkScan::Absent,
         );
     });
 
@@ -118,7 +119,6 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         &extraction,
         DiscIdSignal::Failed {
             failure: failure.clone(),
-            track_count: 0,
         },
         failure.clone(),
     );

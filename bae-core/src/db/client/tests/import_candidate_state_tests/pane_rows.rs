@@ -1,10 +1,8 @@
 mod preparation;
-// What the pane stores under a candidate: measured durations, the settled
-// signals, the failure an import left, the cover, and the metadata and track
+// What the pane stores under a candidate: the settled signals, the failure an import left, the cover, and the metadata and track
 // rows the user typed.
 
 use crate::import::folder_scanner::{CandidateFileEdits, FileRoleChoice};
-use crate::import::probe::{SourceDuration, SourceDurations};
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateEditField, CandidateTrackEdit, CoverSelection,
     ExistingArtist, ImportFailure, ArtistCredit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
@@ -25,38 +23,16 @@ fn pane_candidate_path() -> String {
         .into_owned()
 }
 
-fn file_unit(file_id: &str, duration_ms: u64) -> SourceDuration {
-    SourceDuration {
-        audio: AudioFile::Standalone {
-            file_id: file_id.to_string(),
-        },
-        duration_ms,
-    }
-}
-
-fn slice_unit(index: u32, duration_ms: u64) -> SourceDuration {
-    SourceDuration {
-        audio: AudioFile::SheetSlice {
-            file_id: "CDImage.flac".to_string(),
-            sheet_id: "CDImage.cue".to_string(),
-            index,
-        },
-        duration_ms,
-    }
-}
-
-fn signals_with(durations: SourceDurations) -> Signals {
+fn settled_signals() -> Signals {
     Signals {
         rip: crate::signals::RipEvidence::Unproven,
-        disc_id: DiscIdSignal::Absent { track_count: 2 },
+        disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled {
             catalogs: Vec::new(),
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
-        durations,
-        mono_audio: false,
     }
 }
 
@@ -196,34 +172,12 @@ async fn a_verdict_cannot_create_state_for_an_absent_candidate() {
     let (db, _tmp) = empty_db().await;
     let hash = pane_candidate().content_hash();
 
-    assert!(!store_verdict(&db, &hash, signals_with(SourceDurations::default())).await);
+    assert!(!store_verdict(&db, &hash, settled_signals()).await);
     assert!(db
         .load_import_candidate_state(&hash)
         .await
         .unwrap()
         .is_none());
-}
-
-/// The verdict does not duplicate the per-file durations the scan stored.
-#[tokio::test]
-async fn a_verdict_does_not_duplicate_the_scanned_durations() {
-    let (db, _tmp) = empty_db().await;
-    let (_, hash) = stored_pane_candidate(&db).await;
-    let durations = SourceDurations::new(vec![
-        file_unit("01 Track.flac", 180_000),
-        file_unit("CDImage.flac", 600_000),
-        slice_unit(0, 200_000),
-        slice_unit(1, 400_000),
-    ]);
-
-    assert!(store_verdict(&db, &hash, signals_with(durations.clone())).await);
-
-    let state = db
-        .load_import_candidate_state(&hash)
-        .await
-        .unwrap()
-        .expect("the verdict wrote a row");
-    assert!(state.signals.unwrap().durations.units.is_empty());
 }
 
 /// Every settled shape of every signal comes back as it went in, including
@@ -240,7 +194,6 @@ async fn every_settled_signal_shape_round_trips() {
             },
             DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
-                track_count: 11,
                 source_file: Some("rip.log".to_string()),
             },
             BarcodeSignal::Settled {
@@ -258,7 +211,7 @@ async fn every_settled_signal_shape_round_trips() {
         (
             "absent everywhere",
             RipEvidence::Unproven,
-            DiscIdSignal::Absent { track_count: 0 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Absent,
             TextSignal::Settled {
                 catalogs: Vec::new(),
@@ -273,7 +226,6 @@ async fn every_settled_signal_shape_round_trips() {
             },
             DiscIdSignal::Failed {
                 failure: LookupFailure::Network,
-                track_count: 3,
             },
             BarcodeSignal::Failed {
                 failure: LookupFailure::Provider { status: Some(503) },
@@ -291,7 +243,7 @@ async fn every_settled_signal_shape_round_trips() {
                 proof: CdProof::RipperSheet,
                 file: Some("Album.cue".to_string()),
             },
-            DiscIdSignal::Absent { track_count: 2 },
+            DiscIdSignal::Absent,
             BarcodeSignal::Absent,
             TextSignal::Settled {
                 catalogs: Vec::new(),
@@ -300,13 +252,8 @@ async fn every_settled_signal_shape_round_trips() {
         ),
         (
             "a sheet left unhashed over audio no CD holds",
-            RipEvidence::NotCd {
-                sample_rate_hz: 96_000,
-            },
-            DiscIdSignal::NotCdAudio {
-                track_count: 4,
-                sample_rate_hz: 96_000,
-            },
+            RipEvidence::NotCd,
+            DiscIdSignal::NotCdAudio,
             BarcodeSignal::Absent,
             TextSignal::Settled {
                 catalogs: Vec::new(),
@@ -320,7 +267,6 @@ async fn every_settled_signal_shape_round_trips() {
                 failure: LookupFailure::Diagnostic {
                     detail: "the release was not found".to_string(),
                 },
-                track_count: 1,
             },
             BarcodeSignal::Failed {
                 failure: LookupFailure::ArtworkAnalysis,
@@ -337,16 +283,12 @@ async fn every_settled_signal_shape_round_trips() {
     for (what, rip, disc_id, barcode, text) in cases {
         let (db, _tmp) = empty_db().await;
         let (_, hash) = stored_pane_candidate(&db).await;
-        // A record transfer is mono, so the one-channel fact round-trips too.
-        let mono_audio = matches!(rip, RipEvidence::NotCd { .. });
         let signals = Signals {
             rip,
-            mono_audio,
             disc_id,
             barcode,
             text,
             text_pool: Vec::new(),
-            durations: SourceDurations::new(vec![file_unit("01 Track.flac", 1_000)]),
         };
 
         assert!(store_verdict(&db, &hash, signals.clone()).await, "{what}");
@@ -362,7 +304,6 @@ async fn every_settled_signal_shape_round_trips() {
             stored,
             Signals {
                 text_pool: Vec::new(),
-                durations: SourceDurations::default(),
                 ..signals
             },
             "{what}"
@@ -377,27 +318,23 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
     for scanning in [
         Signals {
             rip: crate::signals::RipEvidence::Unproven,
-            disc_id: DiscIdSignal::Absent { track_count: 0 },
+            disc_id: DiscIdSignal::Absent,
             barcode: BarcodeSignal::Scanning { codes: Vec::new() },
             text: TextSignal::Settled {
                 catalogs: Vec::new(),
                 free_text: Vec::new(),
             },
             text_pool: Vec::new(),
-            durations: SourceDurations::default(),
-            mono_audio: false,
         },
         Signals {
             rip: crate::signals::RipEvidence::Unproven,
-            disc_id: DiscIdSignal::Absent { track_count: 0 },
+            disc_id: DiscIdSignal::Absent,
             barcode: BarcodeSignal::Absent,
             text: TextSignal::Scanning {
                 catalogs: Vec::new(),
                 free_text: Vec::new(),
             },
             text_pool: Vec::new(),
-            durations: SourceDurations::default(),
-            mono_audio: false,
         },
     ] {
         let (db, _tmp) = empty_db().await;

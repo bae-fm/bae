@@ -56,28 +56,11 @@ impl AutomationDiscIdSignal {
     pub(crate) fn from_core(signal: bae_core::signals::DiscIdSignal) -> Self {
         use bae_core::signals::DiscIdSignal;
         match signal {
-            DiscIdSignal::Computed {
-                disc_id,
-                track_count,
-                ..
-            } => Self::Computed {
-                disc_id,
-                track_count,
-            },
-            DiscIdSignal::Absent { track_count } => Self::Absent { track_count },
-            DiscIdSignal::NotCdAudio {
-                track_count,
-                sample_rate_hz,
-            } => Self::NotCdAudio {
-                track_count,
-                sample_rate_hz,
-            },
-            DiscIdSignal::Failed {
-                failure,
-                track_count,
-            } => Self::Failed {
+            DiscIdSignal::Computed { disc_id, .. } => Self::Computed { disc_id },
+            DiscIdSignal::Absent => Self::Absent,
+            DiscIdSignal::NotCdAudio => Self::NotCdAudio,
+            DiscIdSignal::Failed { failure } => Self::Failed {
                 failure: AutomationLookupFailure::from_core(failure),
-                track_count,
             },
         }
     }
@@ -96,13 +79,13 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Cd { proof: (AutomationCdProof), file },
-        NotCd { sample_rate_hz },
+        NotCd,
         Unproven,
     },
 }
 
 impl AutomationSignals {
-    /// Not a copy: the mono flag, durations and text pool do not cross.
+    /// Not a copy: the text pool does not cross.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn from_core(signals: bae_core::signals::Signals) -> Self {
         Self {

@@ -13,6 +13,7 @@ pub use origin::{SourcedValue, TextOrigin};
 desktop_only! {
     mod analyzer;
     pub mod artwork;
+    pub mod audio;
     pub mod barcode;
     mod cancellation;
     pub(crate) mod candidate_text;
@@ -26,6 +27,7 @@ desktop_only! {
 
     pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
     pub use artwork::ArtworkScan;
+    pub use audio::AudioFacts;
     pub use barcode::BarcodeSignal;
     pub use disc_id::DiscIdSignal;
     pub use rip::{CdProof, RipEvidence};
@@ -44,20 +46,10 @@ pub struct Signals {
     /// What the files say about the medium the audio was ripped from; it
     /// decides whether a sheet is hashed and sets aside rows it contradicts.
     pub rip: RipEvidence,
-    /// Whether every one of the candidate's audio files carries one channel.
-    /// Not a lookup input: a row stating mono agrees with it, which breaks a
-    /// tie between otherwise equal rows; a row stating stereo is not ruled
-    /// out by it. Two channels are no evidence — a mono
-    /// record is routinely ripped to two identical ones — so there is nothing
-    /// to record about them.
-    pub mono_audio: bool,
     pub disc_id: DiscIdSignal,
     pub barcode: BarcodeSignal,
     pub text: TextSignal,
     /// Every line of the candidate's own text, in reading order, which
     /// results are ranked against.
     pub text_pool: Vec<TextLine>,
-    /// How long each audio unit plays, which a lead's tracklist is fitted
-    /// to. Not stored with the verdict; empty for a library release.
-    pub durations: crate::import::probe::SourceDurations,
 }
