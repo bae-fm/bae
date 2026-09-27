@@ -181,8 +181,7 @@ pub struct ReleaseLabel {
 
 impl ReleaseLabel {
     /// `None` when neither half is stated. A blank name is unstated, and so
-    /// is a number [`catalog_key`](crate::util::text::catalog_key) reads as
-    /// none.
+    /// is a number `catalog_key` reads as none.
     pub fn new(name: Option<String>, catalog_number: Option<String>) -> Option<Self> {
         let name = name.filter(|name| !name.trim().is_empty());
         let catalog_number =
