@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import SwiftUI
 
@@ -287,17 +288,65 @@ struct PlaybackPreferenceMenuItem: View {
     }
 }
 
+/// Send a standard edit action up the responder chain from the key window's
+/// first responder, as the menu item AppKit would have built does.
+@MainActor
+private func sendToFirstResponder(_ action: Selector) {
+    NSApp.sendAction(action, to: nil, from: nil)
+}
+
+extension FocusedValues {
+    /// Select All for a focused list that holds only some of its rows: it
+    /// selects every row the list shows, loaded or not.
+    @Entry
+    var selectAllShownRows: (() -> Void)?
+}
+
 struct MainAppMenuCommands: Commands {
     @FocusedValue(\.mainAppMenuTarget)
     private var target
     @FocusedValue(\.focusSearch)
     var focusSearch
+    @FocusedValue(\.selectAllShownRows)
+    private var selectAllShownRows
     /// The "Restore on launch" preference, read from the same device-local
     /// default the Playback settings pane writes.
     @AppStorage("persistPlayback")
     private var persistPlayback = false
 
     var body: some Commands {
+        // The Edit menu's clipboard items, owned so Select All reaches a list
+        // whose table holds only its loaded rows. Each other item sends its
+        // standard action to the first responder, as AppKit's own does.
+        CommandGroup(replacing: .pasteboard) {
+            Button("Cut") { sendToFirstResponder(#selector(NSText.cut(_:))) }
+                .keyboardShortcut("x")
+            Button("Copy") { sendToFirstResponder(#selector(NSText.copy(_:))) }
+                .keyboardShortcut("c")
+            Button("Paste") {
+                sendToFirstResponder(#selector(NSText.paste(_:)))
+            }
+            .keyboardShortcut("v")
+            Button("Paste and Match Style") {
+                sendToFirstResponder(
+                    #selector(NSTextView.pasteAsPlainText(_:))
+                )
+            }
+            .keyboardShortcut("v", modifiers: [.command, .option, .shift])
+            Button("Delete") {
+                sendToFirstResponder(#selector(NSText.delete(_:)))
+            }
+            Button("Select All") {
+                if let selectAllShownRows {
+                    selectAllShownRows()
+                }
+                else {
+                    sendToFirstResponder(#selector(NSText.selectAll(_:)))
+                }
+            }
+            .keyboardShortcut("a")
+        }
+
         CommandGroup(before: .toolbar) {
             LibraryNavigationButton(target: target)
             ImportNavigationButton(target: target)

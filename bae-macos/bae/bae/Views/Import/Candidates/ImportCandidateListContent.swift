@@ -465,11 +465,9 @@ struct ImportCandidateListContent: View {
             entryList(list, proxy: proxy)
                 // Edit ▸ Select All and Command-A select every row the list
                 // shows, loaded or not, rather than the table's loaded rows.
-                .background {
-                    CandidateListSelectAll {
-                        cancelReveal()
-                        listSlot.selectAllShown()
-                    }
+                .focusedValue(\.selectAllShownRows) {
+                    cancelReveal()
+                    listSlot.selectAllShown()
                 }
         }
     }
