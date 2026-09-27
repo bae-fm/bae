@@ -209,6 +209,20 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
                 twin: MetadataRef::new(Catalog::Discogs, "44"),
             },
         },
+        AlbumLink {
+            album: MetadataRef::new(Catalog::Discogs, "10"),
+            stated: AlbumStatement::Barcode {
+                musicbrainz_release: "rel-1".to_string(),
+                release: MetadataRef::new(Catalog::Discogs, "45"),
+            },
+        },
+        AlbumLink {
+            album: MetadataRef::new(Catalog::Discogs, "11"),
+            stated: AlbumStatement::CatalogNumber {
+                musicbrainz_release: "rel-1".to_string(),
+                release: MetadataRef::new(Catalog::Discogs, "46"),
+            },
+        },
     ]);
     musicbrainz.album_links = album.clone();
     let mut discogs = sample_match();

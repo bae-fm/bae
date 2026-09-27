@@ -1522,26 +1522,31 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_link (
 -- (the Discogs masters a MusicBrainz release group is), for a match whose
 -- album_links is 'read'. `stated` says how: 'page', the group's page links it;
 -- 'wikidata', the Wikidata item the group's page links states it; 'release',
--- a release of the group (`musicbrainz_release`) links a twin release whose
--- own document files it under the album.
+-- a release of the group (`musicbrainz_release`) links a twin release
+-- (`release_catalog`, `release_key`) whose own document files it under the
+-- album. Where none of those names an album, the list the group was read with
+-- may: 'barcode', a release of the group on the list and a release of the
+-- album on the list (`release_catalog`, `release_key`) print one barcode;
+-- 'catalog_number', they print one catalog number under one label.
 CREATE TABLE IF NOT EXISTS import_candidate_match_album_link (
     content_hash        TEXT NOT NULL,
     position            INTEGER NOT NULL,
     ordinal             INTEGER NOT NULL CHECK (ordinal >= 0),
     catalog             TEXT NOT NULL CHECK (catalog <> ''),
     key                 TEXT NOT NULL CHECK (key <> ''),
-    stated              TEXT NOT NULL CHECK (stated IN ('page', 'wikidata', 'release')),
+    stated              TEXT NOT NULL
+        CHECK (stated IN ('page', 'wikidata', 'release', 'barcode', 'catalog_number')),
     wikidata_item       TEXT CHECK (wikidata_item IS NULL OR wikidata_item <> ''),
     musicbrainz_release TEXT CHECK (musicbrainz_release IS NULL OR musicbrainz_release <> ''),
-    twin_catalog        TEXT CHECK (twin_catalog IS NULL OR twin_catalog <> ''),
-    twin_key            TEXT CHECK (twin_key IS NULL OR twin_key <> ''),
+    release_catalog     TEXT CHECK (release_catalog IS NULL OR release_catalog <> ''),
+    release_key         TEXT CHECK (release_key IS NULL OR release_key <> ''),
     PRIMARY KEY (content_hash, position, ordinal),
     FOREIGN KEY (content_hash, position)
         REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE,
     CHECK ((stated = 'wikidata') = (wikidata_item IS NOT NULL)),
-    CHECK ((stated = 'release') = (musicbrainz_release IS NOT NULL)),
-    CHECK ((stated = 'release') = (twin_catalog IS NOT NULL)),
-    CHECK ((stated = 'release') = (twin_key IS NOT NULL))
+    CHECK ((stated IN ('release', 'barcode', 'catalog_number')) = (musicbrainz_release IS NOT NULL)),
+    CHECK ((stated IN ('release', 'barcode', 'catalog_number')) = (release_catalog IS NOT NULL)),
+    CHECK ((stated IN ('release', 'barcode', 'catalog_number')) = (release_key IS NOT NULL))
 ) STRICT;
 
 -- A matched record's media, one row per medium or format entry as the match's
@@ -1675,16 +1680,17 @@ CREATE TABLE IF NOT EXISTS release_group_album_link (
     release_group       TEXT NOT NULL CHECK (release_group <> ''),
     catalog             TEXT NOT NULL CHECK (catalog <> '' AND catalog <> 'musicbrainz'),
     key                 TEXT NOT NULL CHECK (key <> ''),
-    stated              TEXT NOT NULL CHECK (stated IN ('page', 'wikidata', 'release')),
+    stated              TEXT NOT NULL
+        CHECK (stated IN ('page', 'wikidata', 'release', 'barcode', 'catalog_number')),
     wikidata_item       TEXT CHECK (wikidata_item IS NULL OR wikidata_item <> ''),
     musicbrainz_release TEXT CHECK (musicbrainz_release IS NULL OR musicbrainz_release <> ''),
-    twin_catalog        TEXT CHECK (twin_catalog IS NULL OR twin_catalog <> ''),
-    twin_key            TEXT CHECK (twin_key IS NULL OR twin_key <> ''),
+    release_catalog     TEXT CHECK (release_catalog IS NULL OR release_catalog <> ''),
+    release_key         TEXT CHECK (release_key IS NULL OR release_key <> ''),
     PRIMARY KEY (release_group, catalog, key),
     CHECK ((stated = 'wikidata') = (wikidata_item IS NOT NULL)),
-    CHECK ((stated = 'release') = (musicbrainz_release IS NOT NULL)),
-    CHECK ((stated = 'release') = (twin_catalog IS NOT NULL)),
-    CHECK ((stated = 'release') = (twin_key IS NOT NULL))
+    CHECK ((stated IN ('release', 'barcode', 'catalog_number')) = (musicbrainz_release IS NOT NULL)),
+    CHECK ((stated IN ('release', 'barcode', 'catalog_number')) = (release_catalog IS NOT NULL)),
+    CHECK ((stated IN ('release', 'barcode', 'catalog_number')) = (release_key IS NOT NULL))
 ) STRICT;
 CREATE INDEX IF NOT EXISTS release_group_album_link_album
     ON release_group_album_link (catalog, key);

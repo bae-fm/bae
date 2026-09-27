@@ -497,7 +497,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
 /// release group among its records, from what the reading kept.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
-    use crate::import::album_links::{GroupToRead, ToRead};
+    use crate::import::album_links::{GroupToRead, Listed, ToRead};
     // The pick offers the joined group's album address, which the archive
     // holds no image at.
     let archive = crate::util::http::serve_not_found().await;
@@ -532,11 +532,19 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
             &ToRead {
                 groups: vec![GroupToRead {
                     group: group.to_string(),
-                    releases: vec![("chain-mb-release".to_string(), Vec::new())],
+                    releases: vec![Listed::for_test(
+                        crate::import::MetadataRef::new(
+                            crate::import::Catalog::MusicBrainz,
+                            "chain-mb-release",
+                        ),
+                        Some(group),
+                        Vec::new(),
+                    )],
                 }],
-                on_list: vec![(
+                on_list: vec![Listed::for_test(
                     crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000012"),
-                    Some("909".to_string()),
+                    Some("909"),
+                    Vec::new(),
                 )],
             },
             crate::util::rate_limiter::CallPriority::Interactive,

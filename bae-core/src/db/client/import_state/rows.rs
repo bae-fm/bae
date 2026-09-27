@@ -306,7 +306,7 @@ pub(crate) fn load_matches_rows_on(
     )?;
     let album_links = sql.query(
         "SELECT content_hash, position, catalog, key, stated, wikidata_item, \
-                musicbrainz_release, twin_catalog, twin_key \
+                musicbrainz_release, release_catalog, release_key \
          FROM import_candidate_match_album_link \
          WHERE :only IS NULL OR content_hash = :only \
          ORDER BY content_hash, position, ordinal",
@@ -321,8 +321,8 @@ pub(crate) fn load_matches_rows_on(
                     stated: row.get(4)?,
                     wikidata_item: row.get(5)?,
                     musicbrainz_release: row.get(6)?,
-                    twin_catalog: row.get(7)?,
-                    twin_key: row.get(8)?,
+                    release_catalog: row.get(7)?,
+                    release_key: row.get(8)?,
                 },
             ))
         },

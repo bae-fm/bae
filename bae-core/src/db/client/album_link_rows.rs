@@ -16,6 +16,8 @@ use crate::import::MetadataRef;
 const STATED_PAGE: &str = "page";
 const STATED_WIKIDATA: &str = "wikidata";
 const STATED_RELEASE: &str = "release";
+const STATED_BARCODE: &str = "barcode";
+const STATED_CATALOG_NUMBER: &str = "catalog_number";
 
 fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(stored).map_err(DbError::Message)
@@ -28,8 +30,8 @@ pub(super) struct AlbumLinkRow {
     pub(super) stated: String,
     pub(super) wikidata_item: Option<String>,
     pub(super) musicbrainz_release: Option<String>,
-    pub(super) twin_catalog: Option<String>,
-    pub(super) twin_key: Option<String>,
+    pub(super) release_catalog: Option<String>,
+    pub(super) release_key: Option<String>,
 }
 
 impl AlbumLinkRow {
@@ -40,15 +42,32 @@ impl AlbumLinkRow {
             self.stated.as_str(),
             self.wikidata_item,
             self.musicbrainz_release,
-            self.twin_catalog,
-            self.twin_key,
+            self.release_catalog,
+            self.release_key,
         ) {
             (STATED_PAGE, None, None, None, None) => AlbumStatement::Page,
             (STATED_WIKIDATA, Some(item), None, None, None) => AlbumStatement::Wikidata { item },
-            (STATED_RELEASE, None, Some(musicbrainz_release), Some(catalog), Some(key)) => {
-                AlbumStatement::Release {
-                    musicbrainz_release,
-                    twin: MetadataRef::new(catalog_of(&catalog)?, key),
+            (
+                stated @ (STATED_RELEASE | STATED_BARCODE | STATED_CATALOG_NUMBER),
+                None,
+                Some(musicbrainz_release),
+                Some(catalog),
+                Some(key),
+            ) => {
+                let release = MetadataRef::new(catalog_of(&catalog)?, key);
+                match stated {
+                    STATED_RELEASE => AlbumStatement::Release {
+                        musicbrainz_release,
+                        twin: release,
+                    },
+                    STATED_BARCODE => AlbumStatement::Barcode {
+                        musicbrainz_release,
+                        release,
+                    },
+                    _ => AlbumStatement::CatalogNumber {
+                        musicbrainz_release,
+                        release,
+                    },
                 }
             }
             (other, ..) => {
@@ -69,7 +88,9 @@ pub(super) struct StatementColumns<'a> {
     pub(super) stated: &'static str,
     pub(super) wikidata_item: Option<&'a str>,
     pub(super) musicbrainz_release: Option<&'a str>,
-    pub(super) twin: Option<&'a MetadataRef>,
+    /// The other catalog's release the statement pairs `musicbrainz_release`
+    /// with.
+    pub(super) release: Option<&'a MetadataRef>,
 }
 
 impl<'a> StatementColumns<'a> {
@@ -79,29 +100,45 @@ impl<'a> StatementColumns<'a> {
                 stated: STATED_PAGE,
                 wikidata_item: None,
                 musicbrainz_release: None,
-                twin: None,
+                release: None,
             },
             AlbumStatement::Wikidata { item } => Self {
                 stated: STATED_WIKIDATA,
                 wikidata_item: Some(item),
                 musicbrainz_release: None,
-                twin: None,
+                release: None,
             },
             AlbumStatement::Release {
                 musicbrainz_release,
                 twin,
-            } => Self {
-                stated: STATED_RELEASE,
-                wikidata_item: None,
-                musicbrainz_release: Some(musicbrainz_release),
-                twin: Some(twin),
-            },
+            } => Self::of_pair(STATED_RELEASE, musicbrainz_release, twin),
+            AlbumStatement::Barcode {
+                musicbrainz_release,
+                release,
+            } => Self::of_pair(STATED_BARCODE, musicbrainz_release, release),
+            AlbumStatement::CatalogNumber {
+                musicbrainz_release,
+                release,
+            } => Self::of_pair(STATED_CATALOG_NUMBER, musicbrainz_release, release),
+        }
+    }
+
+    fn of_pair(
+        stated: &'static str,
+        musicbrainz_release: &'a str,
+        release: &'a MetadataRef,
+    ) -> Self {
+        Self {
+            stated,
+            wikidata_item: None,
+            musicbrainz_release: Some(musicbrainz_release),
+            release: Some(release),
         }
     }
 }
 
 const GROUP_LINK_COLUMNS: &str = "release_group, catalog, key, stated, wikidata_item, \
-     musicbrainz_release, twin_catalog, twin_key";
+     musicbrainz_release, release_catalog, release_key";
 
 fn read_group_link(row: &Row<'_>) -> coven::rusqlite::Result<(String, AlbumLinkRow)> {
     Ok((
@@ -112,8 +149,8 @@ fn read_group_link(row: &Row<'_>) -> coven::rusqlite::Result<(String, AlbumLinkR
             stated: row.get(3)?,
             wikidata_item: row.get(4)?,
             musicbrainz_release: row.get(5)?,
-            twin_catalog: row.get(6)?,
-            twin_key: row.get(7)?,
+            release_catalog: row.get(6)?,
+            release_key: row.get(7)?,
         },
     ))
 }
@@ -217,8 +254,8 @@ impl Database {
                             columns.stated,
                             columns.wikidata_item,
                             columns.musicbrainz_release,
-                            columns.twin.map(|twin| twin.catalog.as_str()),
-                            columns.twin.map(|twin| twin.key.as_str()),
+                            columns.release.map(|release| release.catalog.as_str()),
+                            columns.release.map(|release| release.key.as_str()),
                         ],
                     )?;
                 }

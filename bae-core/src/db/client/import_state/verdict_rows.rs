@@ -324,12 +324,12 @@ fn insert_match(
             stated,
             wikidata_item,
             musicbrainz_release,
-            twin,
+            release,
         } = StatementColumns::of(&link.stated);
         sql.execute(
             "INSERT INTO import_candidate_match_album_link \
                  (content_hash, position, ordinal, catalog, key, stated, wikidata_item, \
-                  musicbrainz_release, twin_catalog, twin_key) \
+                  musicbrainz_release, release_catalog, release_key) \
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
@@ -340,8 +340,8 @@ fn insert_match(
                 stated,
                 wikidata_item,
                 musicbrainz_release,
-                twin.map(|twin| twin.catalog.as_str()),
-                twin.map(|twin| twin.key.as_str()),
+                release.map(|release| release.catalog.as_str()),
+                release.map(|release| release.key.as_str()),
             ],
         )?;
     }

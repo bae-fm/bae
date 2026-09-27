@@ -250,7 +250,7 @@ impl NormalizedLine {
 }
 
 /// The line's words, each squashed. A word is a run of letters and digits.
-pub(super) fn words(text: &str) -> Vec<String> {
+pub(crate) fn words(text: &str) -> Vec<String> {
     text.nfd()
         .filter(|c| !unicode_normalization::char::is_combining_mark(*c))
         .flat_map(char::to_lowercase)

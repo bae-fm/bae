@@ -13,6 +13,32 @@ fn discogs(key: &str) -> MetadataRef {
     MetadataRef::new(Catalog::Discogs, key)
 }
 
+/// A release of `GROUP` on the list, with the links its record states.
+fn listed_in_group(id: &str, links: &[MetadataRef]) -> Listed {
+    Listed::for_test(
+        MetadataRef::new(Catalog::MusicBrainz, id),
+        Some(GROUP),
+        links.to_vec(),
+    )
+}
+
+/// What the list says of each of `listed`: the release and its album.
+fn albums_of(listed: &[Listed]) -> Vec<(MetadataRef, Option<String>)> {
+    listed
+        .iter()
+        .map(|listed| (listed.release.clone(), listed.album.clone()))
+        .collect()
+}
+
+/// What the list says of each of a group's releases: its id and the links
+/// its record states.
+fn links_of(listed: &[Listed]) -> Vec<(String, Vec<MetadataRef>)> {
+    listed
+        .iter()
+        .map(|listed| (listed.release.key.clone(), listed.links.clone()))
+        .collect()
+}
+
 /// A local server standing in for MusicBrainz, Wikidata and Discogs: it
 /// answers by what each request asks for and counts the requests.
 struct Catalogs {
@@ -149,10 +175,10 @@ fn group(releases: &[(&str, &[MetadataRef])]) -> ToRead {
             group: GROUP.to_string(),
             releases: releases
                 .iter()
-                .map(|(id, links)| (id.to_string(), links.to_vec()))
+                .map(|(id, links)| listed_in_group(id, links))
                 .collect(),
         }],
-        on_list: vec![(discogs("800"), Some("510009".to_string()))],
+        on_list: vec![Listed::for_test(discogs("800"), Some("510009"), Vec::new())],
     }
 }
 
@@ -191,22 +217,26 @@ fn a_list_of_both_catalogs_reads_each_group_not_yet_asked_once() {
     ];
     let to_read = to_read(&results, |group| group == "group-asked");
     assert_eq!(
-        to_read.groups,
+        to_read
+            .groups
+            .iter()
+            .map(|group| (group.group.as_str(), links_of(&group.releases)))
+            .collect::<Vec<_>>(),
         vec![
-            GroupToRead {
-                group: "group-b".to_string(),
-                releases: vec![
+            (
+                "group-b",
+                vec![
                     ("mb-1".to_string(), Vec::new()),
                     ("mb-3".to_string(), vec![discogs("dg-2")]),
                 ],
-            },
-            GroupToRead {
-                group: "group-a".to_string(),
-                releases: vec![("mb-2".to_string(), Vec::new())],
-            },
+            ),
+            ("group-a", vec![("mb-2".to_string(), Vec::new())]),
         ]
     );
-    assert_eq!(to_read.on_list, vec![(discogs("dg-1"), Some("7".to_string()))]);
+    assert_eq!(
+        albums_of(&to_read.on_list),
+        vec![(discogs("dg-1"), Some("7".to_string()))]
+    );
 }
 
 /// What was read lands on every MusicBrainz record of the group, and on
@@ -582,5 +612,88 @@ async fn a_later_page_that_cannot_be_had_leaves_the_album_unread() {
     )]))
     .await;
     let read = catalogs.read(&group(&[("mb-1", &[])])).await;
+    assert_eq!(read[0].links, AlbumLinks::Unread);
+}
+
+/// A list of a release of `GROUP` and a Discogs release of master 510009,
+/// both titled "Album" and printing one barcode, pressed in different years
+/// so they are two pressings.
+fn one_barcode_on_the_list() -> Vec<MetadataResult> {
+    let mut ours = release(Catalog::MusicBrainz, "mb-1", Some(GROUP));
+    ours.barcodes = vec!["012345678905".to_string()];
+    ours.year = Some(1970);
+    let mut theirs = release(Catalog::Discogs, "800", Some("510009"));
+    theirs.title = "Album (Remastered)".to_string();
+    theirs.barcodes = vec!["0 12345 67890 5".to_string()];
+    theirs.year = Some(2005);
+    vec![ours, theirs]
+}
+
+/// A group whose documents link no album is joined by what its release on
+/// the list prints: the barcode a Discogs release on the list prints too puts
+/// the two albums on one card, and the two records, which disagree on the
+/// year, stay two rows of it.
+#[tokio::test]
+async fn a_barcode_on_the_list_joins_albums_no_document_links() {
+    let catalogs = Catalogs::start(HashMap::from([(
+        format!("browse:{GROUP}"),
+        browsed(&[], &[("mb-1", &[])]),
+    )]))
+    .await;
+    let mut results = one_barcode_on_the_list();
+    let read = catalogs.read(&to_read(&results, |_| false)).await;
+    assert_eq!(
+        read[0].links,
+        AlbumLinks::Read(vec![AlbumLink {
+            album: discogs("510009"),
+            stated: AlbumStatement::Barcode {
+                musicbrainz_release: "mb-1".to_string(),
+                release: discogs("800"),
+            },
+        }])
+    );
+    for result in &mut results {
+        apply(result, &read);
+    }
+    let cards = crate::import::release_group::group_results(
+        crate::import::release_group::unranked(results),
+    );
+    assert_eq!(cards.len(), 1, "one album");
+    assert_eq!(cards[0].pressings().count(), 2, "two pressings");
+}
+
+/// A document's link is read before anything the list prints: the album the
+/// group's page names is the one taken, and the barcode names nothing more.
+#[tokio::test]
+async fn a_document_s_link_is_taken_over_a_barcode_on_the_list() {
+    let catalogs = Catalogs::start(HashMap::from([(
+        format!("browse:{GROUP}"),
+        browsed(&["https://www.discogs.com/master/510001"], &[("mb-1", &[])]),
+    )]))
+    .await;
+    let read = catalogs
+        .read(&to_read(&one_barcode_on_the_list(), |_| false))
+        .await;
+    assert_eq!(
+        read[0].links,
+        AlbumLinks::Read(vec![AlbumLink {
+            album: discogs("510001"),
+            stated: AlbumStatement::Page,
+        }])
+    );
+}
+
+/// A group whose documents could not all be had may link an album they hold,
+/// which would come first, so what the list prints is not read for it.
+#[tokio::test]
+async fn a_group_not_read_whole_is_not_joined_by_the_list() {
+    let catalogs = Catalogs::start(HashMap::from([(
+        format!("browse:{GROUP}"),
+        (404, "{}".to_string()),
+    )]))
+    .await;
+    let read = catalogs
+        .read(&to_read(&one_barcode_on_the_list(), |_| false))
+        .await;
     assert_eq!(read[0].links, AlbumLinks::Unread);
 }

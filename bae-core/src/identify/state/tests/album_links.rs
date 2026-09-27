@@ -36,7 +36,11 @@ fn a_run_holding_both_catalogs_reads_album_links_before_it_settles() {
         vec!["g-linked", "g-gone"]
     );
     assert_eq!(
-        to_read.on_list,
+        to_read
+            .on_list
+            .iter()
+            .map(|listed| (listed.release.clone(), listed.album.clone()))
+            .collect::<Vec<_>>(),
         vec![(
             crate::import::MetadataRef::new(DG, "dg-1"),
             Some("7".to_string())
@@ -103,7 +107,11 @@ fn a_twin_joins_the_row_of_the_release_that_names_it() {
         panic!("expected one album links read, got {effects:?}");
     };
     assert_eq!(
-        to_read.groups[0].releases,
+        to_read.groups[0]
+            .releases
+            .iter()
+            .map(|listed| (listed.release.key.clone(), listed.links.clone()))
+            .collect::<Vec<_>>(),
         vec![(
             "mb-1".to_string(),
             vec![crate::import::MetadataRef::new(DG, "dg-twin")]

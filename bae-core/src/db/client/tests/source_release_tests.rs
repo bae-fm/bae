@@ -305,3 +305,48 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
         Some(discogs)
     );
 }
+
+/// What a list's releases print joins albums the way a document's link does:
+/// a group kept as the master by a shared barcode, or by a shared catalog
+/// number under one label, is named by a stored release of the master.
+#[tokio::test]
+async fn a_stored_release_carries_the_album_a_list_s_print_joined_it_to() {
+    use crate::import::album_links::{AlbumLink, AlbumStatement};
+    use crate::import::ReleaseRecord;
+
+    let release = MetadataRef::new(Catalog::Discogs, "4243");
+    for stated in [
+        AlbumStatement::Barcode {
+            musicbrainz_release: "mb-listed".to_string(),
+            release: release.clone(),
+        },
+        AlbumStatement::CatalogNumber {
+            musicbrainz_release: "mb-listed".to_string(),
+            release: release.clone(),
+        },
+    ] {
+        let (db, _tmp) = empty_db().await;
+        let discogs = discogs_documents().extract().unwrap();
+        db.save_source_release(&discogs).await.unwrap();
+        db.replace_group_album_links(vec![(
+            "mb-group-same".to_string(),
+            vec![AlbumLink {
+                album: MetadataRef::new(Catalog::Discogs, "909"),
+                stated,
+            }],
+        )])
+        .await
+        .unwrap();
+        let stored = db
+            .load_source_release(discogs.release())
+            .await
+            .unwrap()
+            .expect("the release was stored");
+        assert!(stored
+            .other_records
+            .contains(&ReleaseRecord::album(&MetadataRef::new(
+                Catalog::MusicBrainz,
+                "mb-group-same",
+            ))));
+    }
+}

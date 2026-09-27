@@ -13,8 +13,11 @@
 //! editors separated them. Groups become one card
 //! when a row joins them or when a statement links one to the other — what
 //! MusicBrainz's release group is on Discogs, read from the group's page, the
-//! Wikidata item it links, or the Discogs release one of its releases names
-//! (see [`crate::import::album_links`]). A row is then a pressing under
+//! Wikidata item it links, or the Discogs release one of its releases names,
+//! and failing those, from a barcode or a catalog number under one label that
+//! a release of each prints (see [`crate::import::album_links`]). A statement
+//! joins albums only: the two releases stay two rows unless the pressing
+//! evidence makes them one. A row is then a pressing under
 //! however many records name it, and picking it claims one record per
 //! catalog — [`Pressing::pick`] says exactly what.
 //!

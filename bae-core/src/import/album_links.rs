@@ -1,23 +1,29 @@
 //! What a MusicBrainz album is on Discogs, as the catalogs state it.
 //!
 //! A MusicBrainz release group and a Discogs master go on one card only when
-//! a document states they are the same album — never because the catalogs
-//! spell it alike. Three statements say so, read in this order, and the first
-//! that names a Discogs album is the one taken:
+//! a statement says they are the same album — never because the catalogs
+//! spell its title alike. Five statements say so, read in this order, and the
+//! first that names a Discogs album is the one taken:
 //!
 //! 1. The release group's own page links the master.
 //! 2. The group's page links a Wikidata item, and the item states the
 //!    master's id.
 //! 3. One of the group's releases links a Discogs release as the same
 //!    release, and that release's own document files it under the master.
+//! 4. One of the group's releases on the list and a release of the master on
+//!    the list print the same barcode, and their titles share a word.
+//! 5. They print the same catalog number under the same label, and their
+//!    titles share a word.
 //!
-//! The first two state the album itself and cost no Discogs request. The
-//! third goes through one pressing — MusicBrainz says its release is that
-//! Discogs release, and Discogs says that release is in the master — and
-//! costs one request, for the Discogs release. Where the MusicBrainz release
-//! is on the list, the Discogs release it names goes onto the list beside it
-//! as its twin, so the row carries both catalogs' records and picking it
-//! claims both. A twin was returned by no lookup; its record says which
+//! The first three are documents linking the catalogs; the last two are read
+//! off the list, and only once the documents are all read and link nothing
+//! (the `on_list` module says how). The first two state the album itself and
+//! cost no Discogs request. The third goes through one pressing — MusicBrainz
+//! says its release is that Discogs release, and Discogs says that release is
+//! in the master — and costs one request, for the Discogs release. Where the
+//! MusicBrainz release is on the list, the Discogs release it names goes onto
+//! the list beside it as its twin, so the row carries both catalogs' records
+//! and picking it claims both. A twin was returned by no lookup; its record says which
 //! release named it.
 //!
 //! One MusicBrainz request reads a group's own links and its releases' links
@@ -92,6 +98,18 @@ pub enum AlbumStatement {
         musicbrainz_release: String,
         twin: MetadataRef,
     },
+    /// `musicbrainz_release`, one of the group's releases on the list, and
+    /// `release`, a release of the album on the list, print one barcode.
+    Barcode {
+        musicbrainz_release: String,
+        release: MetadataRef,
+    },
+    /// `musicbrainz_release` and `release`, both on the list, print one
+    /// catalog number under one label.
+    CatalogNumber {
+        musicbrainz_release: String,
+        release: MetadataRef,
+    },
 }
 
 /// One statement read about a MusicBrainz release group, kept beyond the list
@@ -122,10 +140,10 @@ impl GroupStatement {
 pub struct ToRead {
     /// The MusicBrainz groups to read, in first-seen order.
     pub groups: Vec<GroupToRead>,
-    /// The other catalog's releases already on the list, each with the album
-    /// its catalog files it under. A release link naming one of them is read
-    /// off the list rather than asked for.
-    pub on_list: Vec<(MetadataRef, Option<String>)>,
+    /// The other catalog's releases already on the list. A release link
+    /// naming one of them is read off the list rather than asked for, and
+    /// where no link names an album, what they print may.
+    pub on_list: Vec<Listed>,
 }
 
 impl ToRead {
@@ -143,9 +161,8 @@ impl ToRead {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GroupToRead {
     pub group: String,
-    /// The group's releases on the list, in list order, each with the other
-    /// catalogs' releases its record names as the same release.
-    pub releases: Vec<(String, Vec<MetadataRef>)>,
+    /// The group's releases on the list, in list order.
+    pub releases: Vec<Listed>,
 }
 
 /// What reading one MusicBrainz group answered. `Status` is what the twin
@@ -173,6 +190,19 @@ pub struct Twin<Status = LibraryStatus> {
     /// The MusicBrainz release on the list whose own document names it.
     pub named_by: MetadataRef,
     pub status: Status,
+}
+
+#[cfg(test)]
+impl Listed {
+    /// A release on the list that prints nothing that joins albums.
+    pub(crate) fn for_test(release: MetadataRef, album: Option<&str>, links: Vec<MetadataRef>) -> Self {
+        Self {
+            release,
+            album: album.map(str::to_string),
+            links,
+            printed: Printed::default(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -223,12 +253,12 @@ pub(crate) fn to_read<'a>(
         return ToRead::default();
     }
     let mut groups: Vec<GroupToRead> = Vec::new();
-    let mut on_list: Vec<(MetadataRef, Option<String>)> = Vec::new();
+    let mut on_list: Vec<Listed> = Vec::new();
     for result in &results {
         if result.source != Catalog::MusicBrainz {
-            let release = MetadataRef::new(result.source, result.release_id.clone());
-            if !on_list.iter().any(|(listed, _)| *listed == release) {
-                on_list.push((release, result.source_group_id.clone()));
+            let listed = Listed::of(result);
+            if !on_list.iter().any(|other| other.release == listed.release) {
+                on_list.push(listed);
             }
             continue;
         }
@@ -252,8 +282,8 @@ pub(crate) fn to_read<'a>(
             }
         };
         let releases = &mut groups[at].releases;
-        if !releases.iter().any(|(id, _)| *id == result.release_id) {
-            releases.push((result.release_id.clone(), result.links.clone()));
+        if !releases.iter().any(|listed| listed.release.key == result.release_id) {
+            releases.push(Listed::of(result));
         }
     }
     ToRead { groups, on_list }
@@ -338,7 +368,10 @@ impl<'a> Readers<'a> {
     }
 }
 
-/// Read each group's links, one group after another.
+/// Read each group's links, one group after another. A group whose
+/// documents link no album is then read against what the list's releases
+/// print; one whose documents could not all be had is not, since a link they
+/// hold would come first.
 pub(crate) async fn read(
     readers: &Readers<'_>,
     to_read: &ToRead,
@@ -346,7 +379,11 @@ pub(crate) async fn read(
 ) -> Vec<GroupReading<()>> {
     let mut read = Vec::with_capacity(to_read.groups.len());
     for group in &to_read.groups {
-        read.push(read_group(readers, group, &to_read.on_list, priority).await);
+        let mut reading = read_group(readers, group, &to_read.on_list, priority).await;
+        if reading.links == AlbumLinks::Read(Vec::new()) {
+            reading.links = AlbumLinks::Read(on_list::albums(group, &to_read.on_list));
+        }
+        read.push(reading);
     }
     read
 }
@@ -380,7 +417,7 @@ impl Found {
 async fn read_group(
     readers: &Readers<'_>,
     group: &GroupToRead,
-    on_list: &[(MetadataRef, Option<String>)],
+    on_list: &[Listed],
     priority: CallPriority,
 ) -> GroupReading<()> {
     let unread = || GroupReading {
@@ -411,18 +448,18 @@ async fn read_group(
             group
                 .releases
                 .iter()
-                .all(|(release, _)| browsed.iter().any(|browsed| browsed.id == *release))
+                .all(|listed| browsed.iter().any(|browsed| browsed.id == listed.release.key))
         })
         .await;
     let release_links: Vec<(String, Vec<MetadataRef>)> = group
         .releases
         .iter()
-        .filter_map(|(release, _)| {
+        .filter_map(|listed| {
             browse
                 .releases
                 .iter()
-                .find(|browsed| browsed.id == *release)
-                .map(|browsed| (release.clone(), release_links_of(&browsed.relations)))
+                .find(|browsed| browsed.id == listed.release.key)
+                .map(|browsed| (listed.release.key.clone(), release_links_of(&browsed.relations)))
         })
         .collect();
     let reading = |links: AlbumLinks, twin: Option<Twin<()>>| GroupReading {
@@ -648,11 +685,11 @@ fn discogs_links(links: &[MetadataRef]) -> Vec<MetadataRef> {
 
 /// `on_list`'s record of `twin`, when the list holds it: the album its record
 /// files it under.
-fn listed_album(on_list: &[(MetadataRef, Option<String>)], twin: &MetadataRef) -> Option<Option<String>> {
+fn listed_album(on_list: &[Listed], twin: &MetadataRef) -> Option<Option<String>> {
     on_list
         .iter()
-        .find(|(listed, _)| listed == twin)
-        .map(|(_, album)| album.clone())
+        .find(|listed| listed.release == *twin)
+        .map(|listed| listed.album.clone())
 }
 
 /// Which listed release's Discogs link to follow: what it names can go beside
@@ -661,16 +698,17 @@ fn listed_album(on_list: &[(MetadataRef, Option<String>)], twin: &MetadataRef) -
 fn through_listed(
     group: &GroupToRead,
     read_links: &[(String, Vec<MetadataRef>)],
-    on_list: &[(MetadataRef, Option<String>)],
+    on_list: &[Listed],
 ) -> Option<Through> {
     let listed: Vec<(&str, Vec<MetadataRef>)> = group
         .releases
         .iter()
-        .map(|(release, own)| {
+        .map(|listed| {
+            let release = &listed.release.key;
             let links = read_links
                 .iter()
                 .find(|(read, _)| read == release)
-                .map_or(own.as_slice(), |(_, links)| links.as_slice());
+                .map_or(listed.links.as_slice(), |(_, links)| links.as_slice());
             (release.as_str(), discogs_links(links))
         })
         .collect();
@@ -699,7 +737,7 @@ fn through_listed(
 /// names one.
 fn through_browsed(
     browsed: &[musicbrainz::GroupRelease],
-    on_list: &[(MetadataRef, Option<String>)],
+    on_list: &[Listed],
 ) -> Option<Through> {
     browsed.iter().find_map(|release| {
         discogs_links(&release_links_of(&release.relations))
@@ -735,6 +773,10 @@ fn wikidata_items(pages: &[CatalogPage]) -> Vec<String> {
     }
     items
 }
+
+#[path = "album_links/on_list.rs"]
+mod on_list;
+pub use on_list::{Listed, Printed};
 
 #[cfg(test)]
 #[path = "album_links_tests.rs"]
