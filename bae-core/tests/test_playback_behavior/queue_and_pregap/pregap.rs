@@ -1,16 +1,6 @@
-// ============================================================================
-// Pregap behavior tests
-// ============================================================================
-// These exercise CD-like pregap behavior against the CUE/FLAC fixture, whose
-// track 2 carries a real 2s pregap (INDEX 00 at 8s, INDEX 01 at 10s):
-// - Direct selection (play / next): skip the pregap, start at INDEX 01, so the
-//   adjusted position climbs from 0 the moment audio flows.
-// - Natural transition (auto-advance): play the pregap from INDEX 00, so the
-//   track-relative position counts from -2s to 0 across the pregap, then climbs.
-// The distinguishing signal is *where the position sits partway in*: a skipped
-// pregap is already positive; a played pregap is still negative. (A no-pregap FLAC
-// can't tell these apart — both start at 0 — which is why these use the CUE
-// fixture, not the plain FLAC one.)
+// Pregap tests. The CUE/FLAC fixture's track 2 has a 2s pregap (INDEX 00 at
+// 8s, INDEX 01 at 10s). Play and Next skip it, so the position is positive
+// partway in; auto-advance plays it, so the position is still negative.
 
 #[tokio::test]
 async fn test_direct_play_skips_pregap() {
@@ -97,8 +87,7 @@ async fn test_auto_advance_plays_pregap() {
     .await
     .expect("the first track should start playing");
 
-    // Track 1 runs 0–8s; seek near its end so it completes and crosses into
-    // track 2's pregap within a second or so.
+    // Track 1 runs 0–8s; seek near its end so it crosses into track 2's pregap.
     fixture.playback_handle.seek(Duration::from_secs(7));
     wait_for_state_on(
         &mut fixture.progress_rx,
@@ -111,8 +100,7 @@ async fn test_auto_advance_plays_pregap() {
     .await
     .expect("playback should auto-advance into the pregapped track");
 
-    // ~1s into track 2 the 2s pregap is still playing: position is counting
-    // toward INDEX 01 from below zero.
+    // ~1s in, the pregap is still playing, so the position is below zero.
     let during_pregap = position_after(&mut fixture.progress_rx, Duration::from_millis(1000)).await;
     assert!(
         during_pregap < 0,
@@ -120,7 +108,6 @@ async fn test_auto_advance_plays_pregap() {
          got {during_pregap}ms ~1s in",
     );
 
-    // Past the 2s pregap, INDEX 01 content plays and position climbs.
     let after_pregap = position_after(&mut fixture.progress_rx, Duration::from_millis(2500)).await;
     assert!(
         after_pregap > 600,
@@ -128,18 +115,14 @@ async fn test_auto_advance_plays_pregap() {
     );
 }
 
-/// Seeking to 5s in CUE/FLAC track 2 must produce audio matching the reference at that position.
-///
-/// Track 2 starts mid-album, exposing bugs where the album's seektable offsets
-/// don't match the track's byte range. Compares captured post-seek samples against
-/// the XLD reference at the corresponding offset.
+/// Seeking within CUE/FLAC track 2, which starts mid-album, plays audio from the
+/// matching place in the XLD reference.
 #[tokio::test]
 async fn test_cue_flac_seek() {
     use bae_core::audio_codec::decode_audio;
 
-    // Real-time capture: a full-speed drain races the decoder past track 2 and
-    // gaplessly onto the next track before the seek below lands, leaving the
-    // post-seek stream empty (flaky under load — Linux CI hit it ~5%).
+    // Real-time capture: at full speed the decoder can finish track 2 and move
+    // to the next track before the seek lands, leaving nothing after the seek.
     let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
         .await
         .expect("set up CUE/FLAC realtime capture fixture");
@@ -147,10 +130,9 @@ async fn test_cue_flac_seek() {
     let track_id = fixture.track_ids[1].clone();
 
     fixture.playback_handle.play(track_id.clone());
-    // Drain the play stream; the seek below will mint a fresh one.
+    // The seek below starts a new capture stream.
     let _play_stream = fixture.next_capture_stream().await;
 
-    // Wait for playback to start
     let started =
         support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
             matches!(
@@ -164,13 +146,11 @@ async fn test_cue_flac_seek() {
         .await;
     assert!(started.is_some(), "Playback should start");
 
-    // Seek to 5s into track 2
     fixture.playback_handle.seek(Duration::from_secs(5));
     let captured = fixture.next_capture_stream().await;
 
     support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
-    // Decode XLD reference for track 2 (white noise)
     let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
@@ -181,7 +161,7 @@ async fn test_cue_flac_seek() {
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
 
-    // Wait for enough captured samples (1 second)
+    // One second of samples.
     let target_samples = sample_rate as usize * channels;
     let captured_snapshot =
         bae_core::playback::wait_for_samples(&captured, target_samples, Duration::from_secs(60))
@@ -192,10 +172,8 @@ async fn test_cue_flac_seek() {
         "No samples captured after seek",
     );
 
-    // The seek coordinate is relative to the track's pregap start (INDEX 00),
-    // not INDEX 01. For track 2 with pregap (INDEX 00 at 8s, INDEX 01 at 10s),
-    // seeking to 5s goes to 13s in the album = 3s into the reference (which starts
-    // at INDEX 01 = 10s). Search the entire reference to find the alignment.
+    // Seek positions count from INDEX 00, so 5s lands 3s into the reference,
+    // which starts at INDEX 01. Search the whole reference for the match.
     let snippet_len = 200 * channels;
     let step = 100 * channels;
 
@@ -220,17 +198,12 @@ async fn test_cue_flac_seek() {
     let ref_time_ms = best_ref_offset as f64 / channels as f64 / sample_rate as f64 * 1000.0;
     let avg_diff = best_sad / snippet_len as f64;
 
-    // The seek should land somewhere within the reference track (not at the very start)
     assert!(
         ref_time_ms > 0.0,
         "Seek appears to have gone to the beginning of the track instead of 5s in",
     );
 
-    // The streaming AVIO decoder produces f32 via FFmpeg's internal resampler,
-    // while the reference uses i32->f32 conversion. This causes per-sample noise
-    // of up to ~0.2 average for CUE/FLAC. The important thing is that the alignment
-    // found a position within the reference track, not that every sample matches exactly.
-    // (The decoder-level tests in test_cue_flac.rs verify exact sample correctness.)
+    // This only checks where the audio came from; test_cue_flac.rs checks exact samples.
     assert!(
         avg_diff < 0.5,
         "Post-seek audio average difference too high ({:.4}), audio may be from wrong position.\n\
@@ -245,11 +218,8 @@ async fn test_cue_flac_seek() {
     );
 }
 
-/// Direct play of CUE/FLAC track 2 must skip the pregap and start at INDEX 01.
-///
-/// Track 2 has a 2-second pregap (INDEX 00 at 8s, INDEX 01 at 10s).
-/// Direct play skips the pregap. The captured audio must match the XLD reference
-/// starting at INDEX 01 (not the pregap content at INDEX 00).
+/// Direct play of CUE/FLAC track 2 skips its 2s pregap: the captured audio
+/// matches the XLD reference from INDEX 01.
 #[tokio::test]
 async fn test_direct_play_skips_pregap_cue_flac() {
     use bae_core::audio_codec::decode_audio;
@@ -260,19 +230,13 @@ async fn test_direct_play_skips_pregap_cue_flac() {
 
     let track_id = fixture.track_ids[1].clone();
 
-    // Direct play track 2
-    fixture.playback_handle.play(track_id.clone());
+    // The capture device takes audio faster than real time, so the track can
+    // finish before its Playing state is reported; the audio it captures is
+    // what shows where playback started.
+    fixture.playback_handle.play(track_id);
     let captured = fixture.next_capture_stream().await;
 
-    // Wait for playback to start
-    let started =
-        support::wait_until_playing(&mut fixture.progress_rx, &track_id, Duration::from_secs(5))
-            .await;
-    assert!(started, "Track 2 should start playing");
-
-    // Decode XLD reference for track 2
-    // XLD splits at INDEX 01, so the reference already starts at INDEX 01 (no pregap).
-    // Direct play also starts at INDEX 01. Compare captured audio directly against reference.
+    // XLD splits at INDEX 01, so the reference has no pregap.
     let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
@@ -283,15 +247,14 @@ async fn test_direct_play_skips_pregap_cue_flac() {
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
 
-    // Wait for enough captured samples (2 seconds)
+    // Two seconds of samples.
     let target_samples = sample_rate as usize * channels * 2;
     let captured_snapshot =
         bae_core::playback::wait_for_samples(&captured, target_samples, Duration::from_secs(60))
             .await;
 
-    // Align captured audio against reference AFTER pregap
-    // If pregap was NOT skipped, alignment would fail or find a match offset
-    // that corresponds to the pregap content instead of INDEX 01.
+    // Had the pregap played, the start of the reference would not be found
+    // within the first tenth of a second.
     let snippet_len = 500 * channels;
     let max_alignment = sample_rate as usize * channels / 10;
 
@@ -347,7 +310,3 @@ async fn test_direct_play_skips_pregap_cue_flac() {
         compare_count, offset_ms,
     );
 }
-
-// ============================================================================
-// Sample rate handling tests
-// ============================================================================
