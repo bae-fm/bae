@@ -67,6 +67,9 @@ debug = "line-tables-only"
 # agent built. Local-variable inspection under lldb is what this gives up.
 [profile.dev]
 debug = "line-tables-only"
+# Many worktrees build into one shared target dir through sccache, which
+# cannot cache incremental compiles; incremental state only grew that dir.
+incremental = false
 
 # Keep dependency implementations optimized in Debug builds while bae's
 # workspace crates retain debug assertions. Several
