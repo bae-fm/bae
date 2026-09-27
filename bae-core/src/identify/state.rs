@@ -489,8 +489,10 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 mut context,
             },
             IdentifyEvent::ReleasesRead { read },
-        ) if context.documents == DocumentReading::Reading => {
-            context.documents = DocumentReading::Read(read);
+        ) if matches!(context.documents, DocumentReading::Reading(_)) => {
+            let mut documents = context.documents.read().to_vec();
+            documents.extend(read);
+            context.documents = DocumentReading::Read(documents);
             settle_if_ready(IdentifyState::Triangulating {
                 discid,
                 barcode,
@@ -676,32 +678,41 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         | AlbumLinkReading::NotAsked { .. } => {}
     }
 
-    // The albums are read: fetch every offered record's document, and rank
-    // once more with what they state.
-    match context.documents {
-        DocumentReading::Pending => {
-            let releases = offered_releases(&context);
-            if releases.is_empty() {
-                context.documents = DocumentReading::Read(Vec::new());
-            } else {
-                context.documents = DocumentReading::Reading;
-                let track_lengths_ms = context.audio.track_lengths_ms.clone();
-                return (
-                    IdentifyState::Triangulating {
-                        discid,
-                        barcode,
-                        catalog,
-                        search,
-                        context,
-                    },
-                    vec![Effect::ReadReleases {
-                        releases,
-                        track_lengths_ms,
-                    }],
-                );
-            }
-        }
-        DocumentReading::Reading => {
+    // The albums are read: fetch every offered record's document and rank
+    // once more with what they state, until every offered row's records are
+    // read — a row the documents raise to the top is read in turn — or more
+    // rows are offered than a run reads, which then leaves them to the
+    // person. Then read what the list's releases print for the albums no
+    // catalog's document links, once for the run, keep what each group was
+    // read to be, and read any row those joins raise.
+    let mut effects = Vec::new();
+    if matches!(context.documents, DocumentReading::Reading(_)) {
+        return (
+            IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                search,
+                context,
+            },
+            vec![],
+        );
+    }
+    loop {
+        let read = context.documents.read().to_vec();
+        let offered = offered_rows(&context);
+        let releases: Vec<crate::import::MetadataRef> = offered
+            .iter()
+            .flatten()
+            .filter(|release| !read.iter().any(|reading| reading.release == **release))
+            .cloned()
+            .collect();
+        if !releases.is_empty() && offered.len() <= super::documents::MOST_ROWS_READ {
+            context.documents = DocumentReading::Reading(read);
+            effects.push(Effect::ReadReleases {
+                releases,
+                track_lengths_ms: context.audio.track_lengths_ms.clone(),
+            });
             return (
                 IdentifyState::Triangulating {
                     discid,
@@ -710,17 +721,13 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                     search,
                     context,
                 },
-                vec![],
-            )
+                effects,
+            );
         }
-        DocumentReading::Read(_) => {}
-    }
-
-    // Every offered row's document is in: read what the list's releases print
-    // for the albums no catalog's document links, once for the run, and keep
-    // what each group was read to be.
-    let mut effects = Vec::new();
-    if let AlbumLinkReading::LinksRead(read) = &context.album_links {
+        context.documents = DocumentReading::Read(read);
+        let AlbumLinkReading::LinksRead(links) = &context.album_links else {
+            break;
+        };
         let found = context.lookup_results();
         let twins = context.twins();
         let list: Vec<&crate::import::search::MetadataResult> = found
@@ -729,11 +736,11 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
             .map(|(result, _)| result)
             .chain(twins.iter().map(|twin| &twin.result))
             .collect();
-        let read = album_links::read_the_list(read.clone(), &list);
+        let links = album_links::read_the_list(links.clone(), &list);
         effects.push(Effect::KeepAlbumLinks {
-            kept: album_links::to_keep(&read),
+            kept: album_links::to_keep(&links),
         });
-        context.album_links = AlbumLinkReading::Read(read);
+        context.album_links = AlbumLinkReading::Read(links);
     }
 
     // The only place a ledger is recorded; later readers show this one.
@@ -786,14 +793,18 @@ fn combined(context: &SignalsContext) -> (Findings, LibraryStatuses) {
     )
 }
 
-/// Every record of every row the run offers as its results stand.
-fn offered_releases(context: &SignalsContext) -> Vec<crate::import::MetadataRef> {
-    combined(context)
-        .0
-        .matches
-        .iter()
-        .map(|result| crate::import::MetadataRef::new(result.source, result.release_id.clone()))
-        .collect()
+/// The rows the run offers as its results stand, each as its records.
+fn offered_rows(context: &SignalsContext) -> Vec<Vec<crate::import::MetadataRef>> {
+    let findings = combined(context).0;
+    let mut rows: Vec<(u32, Vec<crate::import::MetadataRef>)> = Vec::new();
+    for (result, row) in findings.matches.iter().zip(&findings.pressings) {
+        let record = crate::import::MetadataRef::new(result.source, result.release_id.clone());
+        match rows.iter_mut().find(|(numbered, _)| numbered == row) {
+            Some((_, records)) => records.push(record),
+            None => rows.push((*row, vec![record])),
+        }
+    }
+    rows.into_iter().map(|(_, records)| records).collect()
 }
 
 /// Combine the recorded results into `Failed`, `NotFoundAnywhere` or `Found`.

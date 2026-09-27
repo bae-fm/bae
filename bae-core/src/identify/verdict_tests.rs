@@ -119,8 +119,17 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
             outcome: Ok(vec![(mk_result("rel-1"), LibraryStatus::absent("rel-1"))]),
         },
     );
-    // The offered record's document is read before the run settles.
-    let (settled, _) = step(settled, IdentifyEvent::ReleasesRead { read: Vec::new() });
+    // The offered record's document is read before the run settles; this
+    // one cannot be had, which leaves the record as its lookup stated it.
+    let (settled, _) = step(
+        settled,
+        IdentifyEvent::ReleasesRead {
+            read: vec![crate::identify::documents::ReleaseReading {
+                release: crate::import::MetadataRef::new(Catalog::MusicBrainz, "rel-1"),
+                document: Err(crate::signals::LookupFailure::Network),
+            }],
+        },
+    );
     let IdentifyStateView::Found {
         run: Some(shown), ..
     } = IdentifyStateView::from(settled.clone())

@@ -407,6 +407,31 @@ fn the_title_and_the_artist_are_read_out_of_the_text() {
     assert_eq!(judged.with(other), judged);
 }
 
+/// A title agrees when every word of it is in one line of the text, in any
+/// order, as the text spells it; a word the text lacks, or one only another
+/// line holds, keeps it from agreeing.
+#[test]
+fn a_title_agrees_in_any_order_of_its_words() {
+    let titled = |title: &str, lines: &[&str]| {
+        agreements_of(
+            &MetadataResult {
+                title: title.to_string(),
+                ..result()
+            },
+            &text(lines),
+            &NO_LOOKUP,
+        )
+        .title
+    };
+    assert!(titled("Words Album 1999", &["1999 Words Album"]));
+    assert!(titled(
+        "Words Album 1999",
+        &["Artist - 1999 words ALBUM (Label)"]
+    ));
+    assert!(!titled("Words Album 1999", &["1999 Album"]));
+    assert!(!titled("Words Album 1999", &["1999 Album", "Words"]));
+}
+
 /// A row is one physical object however many sources carry it, so what either
 /// source's record of it agrees with is what the row agrees with.
 #[test]

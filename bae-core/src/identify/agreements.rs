@@ -107,7 +107,7 @@ pub fn agreements_of(
             .year
             .is_some_and(|year| text.states(&year.to_string())),
         country: result.area.is_some_and(|area| text.states_area(area)),
-        title: text.states(&result.title),
+        title: text.states_title(&result.title),
         artist: result
             .artist
             .as_deref()
@@ -163,6 +163,15 @@ impl CandidateText {
     /// Whether the text states `value` — whole words of one of its lines.
     pub fn states(&self, value: &str) -> bool {
         self.states_run(&squash(value))
+    }
+
+    /// Whether the text states `title` as an album's title: every word of it
+    /// in one of its lines, in any order. A catalog writes an album's words
+    /// in the order its sleeve does, which one edition's sleeve may not —
+    /// "Album 1999" and "1999 Album" are one album.
+    pub fn states_title(&self, title: &str) -> bool {
+        let words = words(title);
+        !words.is_empty() && self.lines.iter().any(|line| line.holds_words(&words))
     }
 
     /// Whether the text states an already-normalized value.
@@ -238,6 +247,16 @@ impl NormalizedLine {
     /// Whether this line writes `code` as a whole word in capitals.
     fn writes_code(&self, code: &str) -> bool {
         self.capitals.iter().any(|word| word == code)
+    }
+
+    /// Whether every one of `words` — each squashed — is a word of this line.
+    fn holds_words(&self, words: &[String]) -> bool {
+        words.iter().all(|word| {
+            self.starts
+                .iter()
+                .zip(&self.ends)
+                .any(|(&start, &end)| &self.run[start..end] == word)
+        })
     }
 
     /// Whether `value` — already squashed — spans whole words of this line.

@@ -274,12 +274,15 @@ struct Support {
     /// They name the album, not the pressing, so they only tell apart a row
     /// returned for some other album.
     names_album: u32,
-    /// Whether a record of the row lists as many tracks as the folder holds,
-    /// as its full document reads against the folder's audio. Below the
-    /// album's names, so a row for some other album that happens to hold as
-    /// many tracks never passes the right album; above the channels and the
-    /// country, because a different tracklist is a different edition, where
-    /// those only say where or how one edition was cut.
+    /// Whether nothing read says the row holds other tracks than the folder:
+    /// a record of it lists as many tracks as the folder holds, as its full
+    /// document reads against the folder's audio, or a record's tracklist is
+    /// not read — a row whose document is not in, or could not be had, never
+    /// loses to one whose is. Below the album's names, so a row for some
+    /// other album that happens to hold as many tracks never passes the
+    /// right album; above the channels and the country, because a different
+    /// tracklist is a different edition, where those only say where or how
+    /// one edition was cut.
     fits_the_tracks: bool,
     /// Whether the row states mono and the folder's audio is one channel: a
     /// tiebreak only, since catalogs list mono pressings as stereo.
@@ -330,12 +333,16 @@ fn support_of(
         names_pressing: u32::from(agreements.catalog) + u32::from(returned.by_barcode && offered),
         shares_toc: returned.by_disc_id,
         names_album: agreements.names_album(),
-        fits_the_tracks: row.releases.iter().any(|release| {
-            release.source_tracks
-                == Some(crate::import::search::SourceTracks::Listed {
-                    count: folder.track_count,
-                })
-        }),
+        fits_the_tracks: row
+            .releases
+            .iter()
+            .any(|release| match release.source_tracks {
+                None => true,
+                Some(crate::import::search::SourceTracks::Listed { count }) => {
+                    count == folder.track_count
+                }
+                Some(crate::import::search::SourceTracks::Nothing) => false,
+            }),
         states_the_channels: agrees_with_mono(
             folder.mono,
             row.releases

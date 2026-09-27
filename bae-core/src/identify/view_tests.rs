@@ -447,8 +447,17 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
             outcome: Ok(vec![result(MB, "mb-1")]),
         },
     );
-    // The offered record's document is read before the run settles.
-    let (settled, _) = step(settled, IdentifyEvent::ReleasesRead { read: Vec::new() });
+    // The offered record's document is read before the run settles; this
+    // one cannot be had, which leaves the record as its lookup stated it.
+    let (settled, _) = step(
+        settled,
+        IdentifyEvent::ReleasesRead {
+            read: vec![crate::identify::documents::ReleaseReading {
+                release: crate::import::MetadataRef::new(MB, "mb-1"),
+                document: Err(crate::signals::LookupFailure::Network),
+            }],
+        },
+    );
     assert!(matches!(settled, IdentifyState::Failed { .. }));
     let ledger = run_of(settled);
 
