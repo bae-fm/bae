@@ -39,6 +39,15 @@ impl Fixture {
             .expect("the skip persists");
     }
 
+    /// Claim `key` for the import `importing` reports on, the way starting an
+    /// import does: the runtime takes an import's progress only from the import
+    /// that holds the key.
+    pub(super) async fn claim(&self, key: &str) {
+        self.services
+            .claim_candidate_for_import_for_test(key, IMPORT_ID)
+            .await;
+    }
+
     /// Record one import event the way the import service would.
     pub(super) fn record(&self, event: ImportEvent) {
         self.services.import_emit_event_for_test(event);
@@ -205,6 +214,9 @@ fn keys(candidates: &[AutomationCandidate]) -> Vec<&str> {
     candidates.iter().map(AutomationCandidate::key).collect()
 }
 
+/// The import the progress below reports on.
+const IMPORT_ID: &str = "import-1";
+
 fn importing(key: &str, percent: u8) -> ImportEvent {
     ImportEvent::ImportProgress {
         candidate_key: key.to_string(),
@@ -212,7 +224,7 @@ fn importing(key: &str, percent: u8) -> ImportEvent {
             id: "release-1".to_string(),
             percent: Some(percent),
             phase: bae_core::import::ImportPhase::MeasuringLoudness,
-            import_id: "import-1".to_string(),
+            import_id: IMPORT_ID.to_string(),
         },
     }
 }
@@ -224,6 +236,7 @@ fn importing(key: &str, percent: u8) -> ImportEvent {
 async fn runtime_only_entries_are_not_candidates() {
     let fixture = automation_over().await;
     let key = scan(&fixture, "A").await;
+    fixture.claim("reidentify:release-1").await;
     fixture.record(importing("reidentify:release-1", 1));
 
     assert_eq!(keys(&fixture.list_candidates().await), vec![key.as_str()]);
@@ -284,6 +297,7 @@ async fn the_tables_are_the_answer() {
 async fn a_candidate_carries_the_import_service_s_runtime() {
     let fixture = automation_over().await;
     let key = scan(&fixture, "A").await;
+    fixture.claim(&key).await;
     fixture.record_and_settle(importing(&key, 42)).await;
 
     let candidate = fixture.get_candidate(&key).await.expect("published");
