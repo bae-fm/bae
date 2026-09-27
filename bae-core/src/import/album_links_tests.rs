@@ -15,11 +15,11 @@ fn discogs(key: &str) -> MetadataRef {
 
 /// A release of `GROUP` on the list, with the links its record states.
 fn listed_in_group(id: &str, links: &[MetadataRef]) -> Listed {
-    Listed::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, id),
-        Some(GROUP),
-        links.to_vec(),
-    )
+    Listed {
+        release: MetadataRef::new(Catalog::MusicBrainz, id),
+        album: Some(GROUP.to_string()),
+        links: links.to_vec(),
+    }
 }
 
 /// What the list says of each of `listed`: the release and its album.
@@ -178,7 +178,11 @@ fn group(releases: &[(&str, &[MetadataRef])]) -> ToRead {
                 .map(|(id, links)| listed_in_group(id, links))
                 .collect(),
         }],
-        on_list: vec![Listed::for_test(discogs("800"), Some("510009"), Vec::new())],
+        on_list: vec![Listed {
+            release: discogs("800"),
+            album: Some("510009".to_string()),
+            links: Vec::new(),
+        }],
     }
 }
 
@@ -629,6 +633,13 @@ fn one_barcode_on_the_list() -> Vec<MetadataResult> {
     vec![ours, theirs]
 }
 
+/// What reading `results`' albums finds, the list then read for the groups
+/// no document links.
+async fn read_with_the_list(catalogs: &Catalogs, results: &[MetadataResult]) -> Vec<GroupReading<()>> {
+    let read = catalogs.read(&to_read(results, |_| false)).await;
+    read_the_list(read, &results.iter().collect::<Vec<_>>())
+}
+
 /// A group whose documents link no album is joined by what its release on
 /// the list prints: the barcode a Discogs release on the list prints too puts
 /// the two albums on one card, and the two records, which disagree on the
@@ -641,7 +652,7 @@ async fn a_barcode_on_the_list_joins_albums_no_document_links() {
     )]))
     .await;
     let mut results = one_barcode_on_the_list();
-    let read = catalogs.read(&to_read(&results, |_| false)).await;
+    let read = read_with_the_list(&catalogs, &results).await;
     assert_eq!(
         read[0].links,
         AlbumLinks::Read(vec![AlbumLink {
@@ -671,9 +682,7 @@ async fn a_document_s_link_is_taken_over_a_barcode_on_the_list() {
         browsed(&["https://www.discogs.com/master/510001"], &[("mb-1", &[])]),
     )]))
     .await;
-    let read = catalogs
-        .read(&to_read(&one_barcode_on_the_list(), |_| false))
-        .await;
+    let read = read_with_the_list(&catalogs, &one_barcode_on_the_list()).await;
     assert_eq!(
         read[0].links,
         AlbumLinks::Read(vec![AlbumLink {
@@ -692,8 +701,6 @@ async fn a_group_not_read_whole_is_not_joined_by_the_list() {
         (404, "{}".to_string()),
     )]))
     .await;
-    let read = catalogs
-        .read(&to_read(&one_barcode_on_the_list(), |_| false))
-        .await;
+    let read = read_with_the_list(&catalogs, &one_barcode_on_the_list()).await;
     assert_eq!(read[0].links, AlbumLinks::Unread);
 }

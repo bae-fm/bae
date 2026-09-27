@@ -12,7 +12,7 @@
 //! [`crate::import::ImportServiceHandle::start_candidate_search`].
 
 use crate::db::LibraryStatus;
-use crate::import::album_links::{self, GroupReading, ToRead};
+use crate::import::album_links::{self, AlbumLink, GroupReading, ToRead};
 use crate::import::release_group::{group_results, ReleaseGroup};
 use crate::import::search::{MetadataResult, SearchQuery};
 use crate::import::types::{Catalog, CatalogAvailability, SourceAvailability};
@@ -227,13 +227,33 @@ impl CandidateSearch {
         to_read
     }
 
-    /// Land what reading some groups' album links answered, and re-derive the
-    /// result area with them.
-    pub fn record_album_links(&mut self, read: Vec<GroupReading>) {
+    /// Land what reading some groups' album links answered, the list read
+    /// for the groups no document links, and re-derive the result area with
+    /// them. Answers what those groups were read to be, to keep.
+    ///
+    /// Nothing more is read about a typed search's rows, so the list is read
+    /// as it landed, with the twins these readings put beside it.
+    pub fn record_album_links(&mut self, read: Vec<GroupReading>) -> Vec<(String, Vec<AlbumLink>)> {
         self.album_links_reading
             .retain(|group| !read.iter().any(|read| read.group == *group));
+        let read = {
+            let landed: Vec<&MetadataResult> = self
+                .sources
+                .iter()
+                .flat_map(|(_, state)| state.results())
+                .map(|(result, _)| result)
+                .collect();
+            let twins: Vec<MetadataResult> = album_links::twins(&read, &landed)
+                .into_iter()
+                .map(|twin| twin.result.clone())
+                .collect();
+            let list: Vec<&MetadataResult> = landed.into_iter().chain(&twins).collect();
+            album_links::read_the_list(read, &list)
+        };
+        let kept = album_links::to_keep(&read);
         self.album_links_read.extend(read);
         self.regroup();
+        kept
     }
 
     /// The sources with a lookup to run — every asked source of a just-started
@@ -473,6 +493,41 @@ mod tests {
         )]);
         assert_eq!(search.groups.len(), 1);
         assert!(search.start_reading_album_links().is_empty());
+    }
+
+    /// A group whose documents link nothing is read against what the landed
+    /// list prints: one catalog number under one label joins the albums, and
+    /// that is what the group is kept as.
+    #[test]
+    fn a_group_no_document_links_is_joined_by_what_the_list_prints() {
+        let numbered = |source: Catalog, release_id: &str, group_id: &str| {
+            let mut found = result(source, release_id, group_id);
+            found.barcodes = Vec::new();
+            found.labels = vec![crate::pressing::ReleaseLabel::of(Some("Imprint"), Some("LB 100"))];
+            Ok(vec![(found, LibraryStatus::absent(release_id))])
+        };
+        let mut search = CandidateSearch::started(query(), &all_on());
+        search.record(
+            Catalog::MusicBrainz,
+            numbered(Catalog::MusicBrainz, "mb-1", "group-x"),
+        );
+        search.record(Catalog::Discogs, numbered(Catalog::Discogs, "dg-1", "master-7"));
+        assert_eq!(search.groups.len(), 2);
+        assert!(!search.start_reading_album_links().is_empty());
+
+        let kept = search.record_album_links(vec![GroupReading::of_links(
+            "group-x",
+            crate::import::album_links::AlbumLinks::Read(Vec::new()),
+        )]);
+        let joined = crate::import::album_links::AlbumLink {
+            album: crate::import::MetadataRef::new(Catalog::Discogs, "master-7"),
+            stated: crate::import::album_links::AlbumStatement::CatalogNumber {
+                musicbrainz_release: "mb-1".to_string(),
+                release: crate::import::MetadataRef::new(Catalog::Discogs, "dg-1"),
+            },
+        };
+        assert_eq!(kept, vec![("group-x".to_string(), vec![joined])]);
+        assert_eq!(search.groups.len(), 1);
     }
 
     #[test]

@@ -331,7 +331,11 @@ pub enum AlbumLinkReading {
     Pending,
     /// The links of these groups are being read.
     Reading,
-    /// Read, group by group; empty when there was nothing to join.
+    /// The catalogs' documents are read, group by group; what the list's
+    /// releases print is read once the offered rows' own documents are in.
+    LinksRead(Vec<GroupReading>),
+    /// Read, the list too, group by group; empty when there was nothing to
+    /// join.
     Read(Vec<GroupReading>),
     /// Not read, for `reason`.
     NotAsked { reason: NotAskedReason },
@@ -437,7 +441,7 @@ impl SignalsContext {
     /// What reading the run's albums answered, once it has.
     fn album_readings(&self) -> &[GroupReading] {
         match &self.album_links {
-            AlbumLinkReading::Read(read) => read,
+            AlbumLinkReading::LinksRead(read) | AlbumLinkReading::Read(read) => read,
             AlbumLinkReading::Pending
             | AlbumLinkReading::Reading
             | AlbumLinkReading::NotAsked { .. } => &[],

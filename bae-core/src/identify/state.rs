@@ -4,8 +4,10 @@
 //! The disc-ID, barcode and catalog lookups run in parallel, each provider
 //! answering for itself. When they name nothing, the run searches by the
 //! candidate's title. Once every lookup settles, the run reads its MusicBrainz
-//! albums' links to Discogs (see [`crate::import::album_links`]), combines the
-//! results into a terminal state, and records the ledger it showed.
+//! albums' links to Discogs (see [`crate::import::album_links`]), then the
+//! full documents of the rows it offers, then what the list's releases print
+//! for the albums no link joins; it combines the results into a terminal
+//! state, and records the ledger it showed.
 
 use super::combine::{combine_results, Findings, LibraryStatuses};
 use super::documents::{DocumentReading, ReleaseReading};
@@ -251,7 +253,8 @@ pub enum IdentifyEvent {
     },
 }
 
-/// The lookups the service runs, each answering with an `IdentifyEvent`.
+/// What the service does for a run: the lookups, each answering with an
+/// `IdentifyEvent`, and keeping what they found beyond it.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Effect {
     LookupDiscid {
@@ -279,6 +282,11 @@ pub enum Effect {
     ReadReleases {
         releases: Vec<crate::import::MetadataRef>,
         track_lengths_ms: Vec<u64>,
+    },
+    /// Keep what these release groups were read to be beyond the run. Nothing
+    /// answers it.
+    KeepAlbumLinks {
+        kept: Vec<(String, Vec<crate::import::album_links::AlbumLink>)>,
     },
 }
 
@@ -462,7 +470,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             },
             IdentifyEvent::AlbumLinksRead { read },
         ) if context.album_links == AlbumLinkReading::Reading => {
-            context.album_links = AlbumLinkReading::Read(read);
+            context.album_links = AlbumLinkReading::LinksRead(read);
             settle_if_ready(IdentifyState::Triangulating {
                 discid,
                 barcode,
@@ -663,7 +671,9 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                 vec![],
             )
         }
-        AlbumLinkReading::Read(_) | AlbumLinkReading::NotAsked { .. } => {}
+        AlbumLinkReading::LinksRead(_)
+        | AlbumLinkReading::Read(_)
+        | AlbumLinkReading::NotAsked { .. } => {}
     }
 
     // The albums are read: fetch every offered record's document, and rank
@@ -706,6 +716,26 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         DocumentReading::Read(_) => {}
     }
 
+    // Every offered row's document is in: read what the list's releases print
+    // for the albums no catalog's document links, once for the run, and keep
+    // what each group was read to be.
+    let mut effects = Vec::new();
+    if let AlbumLinkReading::LinksRead(read) = &context.album_links {
+        let found = context.lookup_results();
+        let twins = context.twins();
+        let list: Vec<&crate::import::search::MetadataResult> = found
+            .iter()
+            .flatten()
+            .map(|(result, _)| result)
+            .chain(twins.iter().map(|twin| &twin.result))
+            .collect();
+        let read = album_links::read_the_list(read.clone(), &list);
+        effects.push(Effect::KeepAlbumLinks {
+            kept: album_links::to_keep(&read),
+        });
+        context.album_links = AlbumLinkReading::Read(read);
+    }
+
     // The only place a ledger is recorded; later readers show this one.
     let ledger = context
         .has_inputs()
@@ -730,11 +760,11 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                 ledger,
                 context,
             },
-            vec![],
+            effects,
         );
     }
 
-    (re_derive(context, ledger), vec![])
+    (re_derive(context, ledger), effects)
 }
 
 /// The recorded results, combined: what the run offers and sets aside.

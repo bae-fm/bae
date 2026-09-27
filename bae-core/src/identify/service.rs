@@ -488,6 +488,15 @@ fn dispatch_effect(
             });
         }
 
+        // What was read stays true whether or not the run stays current, so
+        // cancelling the run does not stop it being kept.
+        Effect::KeepAlbumLinks { kept } => {
+            let library_manager = inner.library_manager.clone();
+            runtime.spawn(async move {
+                library_manager.keep_album_links(kept).await;
+            });
+        }
+
         Effect::ReadAlbumLinks { to_read } => {
             let library_manager = inner.library_manager.clone();
             spawn_until_cancelled(&runtime, &token, async move {

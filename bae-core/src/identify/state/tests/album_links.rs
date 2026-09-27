@@ -61,7 +61,14 @@ fn a_run_holding_both_catalogs_reads_album_links_before_it_settles() {
             ],
         },
     );
-    assert!(effects.is_empty());
+    // What each group was read to be is kept once the run settles — the
+    // group whose reading could not be had keeps what it had.
+    assert_eq!(
+        effects,
+        vec![Effect::KeepAlbumLinks {
+            kept: vec![("g-linked".to_string(), linked.read().to_vec())],
+        }]
+    );
     let IdentifyState::Found {
         findings: Findings { matches, .. },
         ..
@@ -184,4 +191,76 @@ fn a_twin_joins_the_row_of_the_release_that_names_it() {
     );
     assert!(!twin_lookup.by_barcode, "no lookup returned the twin");
     assert!(named_lookup.by_barcode && named_lookup.named_by.is_none());
+}
+
+/// A catalog number only the fetched documents state joins the albums no
+/// document links: the list is read once the offered rows' documents are in,
+/// and what the group was then read to be is kept.
+#[test]
+fn a_catalog_number_only_a_document_states_joins_the_albums() {
+    let (state, _) = update(
+        started_with(vec![MB, DG]),
+        signals(
+            DiscIdSignal::Absent,
+            BarcodeSignal::Settled {
+                codes: artwork_codes(&["A"]),
+            },
+            &[],
+        ),
+    );
+    let (state, _) = super::step(state, barcode_matched(MB, "A", vec![pair("mb-1", Some("g-1"))]));
+    let (state, effects) = super::step(
+        state,
+        barcode_matched(DG, "A", vec![discogs_pair("dg-1", Some("7"))]),
+    );
+    assert!(matches!(effects.as_slice(), [Effect::ReadAlbumLinks { .. }]));
+    let (state, effects) = super::step(
+        state,
+        IdentifyEvent::AlbumLinksRead {
+            read: vec![GroupReading::of_links("g-1", AlbumLinks::Read(Vec::new()))],
+        },
+    );
+    let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
+        panic!("the run reads its offered records' documents, got {effects:?}");
+    };
+    let document = crate::identify::documents::ReleaseDocument {
+        labels: vec![crate::pressing::ReleaseLabel::of(Some("Imprint"), Some("LB-100"))],
+        barcode: None,
+        source_tracks: crate::import::search::SourceTracks::Listed { count: 5 },
+    };
+    let (state, effects) = super::step(
+        state,
+        IdentifyEvent::ReleasesRead {
+            read: releases
+                .iter()
+                .map(|release| crate::identify::documents::ReleaseReading {
+                    release: release.clone(),
+                    document: Ok(document.clone()),
+                })
+                .collect(),
+        },
+    );
+    let joined = crate::import::album_links::AlbumLink {
+        album: crate::import::MetadataRef::new(DG, "7"),
+        stated: crate::import::album_links::AlbumStatement::CatalogNumber {
+            musicbrainz_release: "mb-1".to_string(),
+            release: crate::import::MetadataRef::new(DG, "dg-1"),
+        },
+    };
+    assert_eq!(
+        effects,
+        vec![Effect::KeepAlbumLinks {
+            kept: vec![("g-1".to_string(), vec![joined.clone()])],
+        }]
+    );
+    let IdentifyState::Found { findings, .. } = state else {
+        panic!("expected Found, got {state:?}");
+    };
+    let musicbrainz = findings
+        .matches
+        .iter()
+        .chain(&findings.narrowed_out.matches)
+        .find(|result| result.release_id == "mb-1")
+        .expect("mb-1 is on the list");
+    assert_eq!(musicbrainz.album_links, AlbumLinks::Read(vec![joined]));
 }

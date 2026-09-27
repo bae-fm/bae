@@ -532,20 +532,23 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
             &ToRead {
                 groups: vec![GroupToRead {
                     group: group.to_string(),
-                    releases: vec![Listed::for_test(
-                        crate::import::MetadataRef::new(
+                    releases: vec![Listed {
+                        release: crate::import::MetadataRef::new(
                             crate::import::Catalog::MusicBrainz,
                             "chain-mb-release",
                         ),
-                        Some(group),
-                        Vec::new(),
-                    )],
+                        album: Some(group.to_string()),
+                        links: Vec::new(),
+                    }],
                 }],
-                on_list: vec![Listed::for_test(
-                    crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000012"),
-                    Some("909"),
-                    Vec::new(),
-                )],
+                on_list: vec![Listed {
+                    release: crate::import::MetadataRef::new(
+                        crate::import::Catalog::Discogs,
+                        "70000012",
+                    ),
+                    album: Some("909".to_string()),
+                    links: Vec::new(),
+                }],
             },
             crate::util::rate_limiter::CallPriority::Interactive,
         )
@@ -554,6 +557,10 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         crate::import::Catalog::Discogs,
         "909"
     )));
+    handle
+        .library_manager
+        .keep_album_links(crate::import::album_links::to_keep(&read))
+        .await;
 
     let picked = crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000012");
     handle

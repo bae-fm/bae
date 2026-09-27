@@ -281,43 +281,30 @@ impl LibraryManager {
         }
     }
 
-    /// What each MusicBrainz release group to read is on Discogs, with each
-    /// twin the reading read checked against the library the way a lookup's
-    /// answers are.
+    /// Keep what release groups were read to be beyond the list that read
+    /// them, so a stored release of either album names the other among its
+    /// records. Keeping it failing leaves the list's answer standing, and is
+    /// logged.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn keep_album_links(
+        &self,
+        kept: Vec<(String, Vec<crate::import::album_links::AlbumLink>)>,
+    ) {
+        if let Err(error) = self.database.replace_group_album_links(kept).await {
+            tracing::error!("What the release groups were read to be was not kept: {error}");
+        }
+    }
+
+    /// What each MusicBrainz release group to read is on Discogs as the
+    /// catalogs' documents state it, with each twin the reading read checked
+    /// against the library the way a lookup's answers are.
     ///
     /// A library whose Discogs key cannot be read reads without Discogs: a
     /// release link is then followed only to a release already on the list.
     /// A twin whose library status cannot be read leaves its group unread
     /// rather than on the list with a status nothing checked.
-    ///
-    /// What each group was read to be is kept beyond the list that asked, so
-    /// a stored release of either album names the other among its records.
-    /// Keeping it failing leaves the list's answer standing, and is logged.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn read_album_links(
-        &self,
-        to_read: &crate::import::album_links::ToRead,
-        priority: CallPriority,
-    ) -> Vec<crate::import::album_links::GroupReading> {
-        let read = self.read_album_statements(to_read, priority).await;
-        let kept: Vec<(String, Vec<crate::import::album_links::AlbumLink>)> = read
-            .iter()
-            .filter_map(|reading| match &reading.links {
-                crate::import::album_links::AlbumLinks::Read(links) => {
-                    Some((reading.group.clone(), links.clone()))
-                }
-                crate::import::album_links::AlbumLinks::NotAsked
-                | crate::import::album_links::AlbumLinks::Unread => None,
-            })
-            .collect();
-        if let Err(error) = self.database.replace_group_album_links(kept).await {
-            tracing::error!("What the release groups were read to be was not kept: {error}");
-        }
-        read
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    async fn read_album_statements(
         &self,
         to_read: &crate::import::album_links::ToRead,
         priority: CallPriority,

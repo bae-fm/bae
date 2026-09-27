@@ -598,19 +598,17 @@ impl CandidateRuntime {
     }
 
     /// Land what reading album links answered on `key`'s search, if `run` is
-    /// still its run. `false` means the answer goes nowhere.
+    /// still its run, with what the groups were read to be once the list was
+    /// read too, to keep. `None` means the answer goes nowhere.
     pub(super) fn land_album_links(
         &self,
         key: &str,
         run: u64,
         read: Vec<crate::import::album_links::GroupReading>,
-    ) -> bool {
+    ) -> Option<Vec<(String, Vec<crate::import::album_links::AlbumLink>)>> {
         self.set(key, |_, runtime| match runtime.search.as_mut() {
-            Some(running) if running.run == run => {
-                running.search.record_album_links(read);
-                true
-            }
-            Some(_) | None => false,
+            Some(running) if running.run == run => Some(running.search.record_album_links(read)),
+            Some(_) | None => None,
         })
     }
 

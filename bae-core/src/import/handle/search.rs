@@ -113,11 +113,12 @@ impl ImportServiceHandle {
             let read = library_manager
                 .read_album_links(&to_read, CallPriority::Interactive)
                 .await;
-            if !runtime.land_album_links(&candidate_key, run, read) {
-                debug!(
+            match runtime.land_album_links(&candidate_key, run, read) {
+                Some(kept) => library_manager.keep_album_links(kept).await,
+                None => debug!(
                     "{}'s album links landed on no run; it was cleared or superseded",
                     candidate_key
-                );
+                ),
             }
         });
     }

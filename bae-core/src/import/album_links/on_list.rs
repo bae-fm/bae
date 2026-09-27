@@ -13,36 +13,13 @@
 //! pressing is what `pressing_evidence` weighs, and a year or country they
 //! disagree on keeps them two rows of the one album.
 
-use super::{names_other_album, AlbumLink, AlbumStatement, Found, GroupToRead};
+use super::{names_other_album, AlbumLink, AlbumStatement, Found};
 use crate::import::search::MetadataResult;
-use crate::import::types::MetadataRef;
-
-/// A release on the list, as reading albums reads it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Listed {
-    pub release: MetadataRef,
-    /// The album its catalog files it under.
-    pub album: Option<String>,
-    /// The other catalogs' releases its record names as the same release.
-    pub links: Vec<MetadataRef>,
-    pub printed: Printed,
-}
-
-impl Listed {
-    pub(crate) fn of(result: &MetadataResult) -> Self {
-        Self {
-            release: MetadataRef::new(result.source, result.release_id.clone()),
-            album: result.source_group_id.clone(),
-            links: result.links.clone(),
-            printed: Printed::of(result),
-        }
-    }
-}
+use crate::import::types::{Catalog, MetadataRef};
 
 /// What a release prints that can say which album it is, read into the form
 /// two releases' are compared in.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Printed {
+struct Printed {
     /// Its barcodes' comparison keys.
     barcodes: Vec<String>,
     /// Each label it states both halves of: the label as the trade-word rule
@@ -54,7 +31,7 @@ pub struct Printed {
 }
 
 impl Printed {
-    pub(crate) fn of(result: &MetadataResult) -> Self {
+    fn of(result: &MetadataResult) -> Self {
         Self {
             barcodes: result
                 .barcodes
@@ -90,12 +67,34 @@ impl Printed {
     }
 }
 
-/// The albums `group`'s releases on the list are, as what they print says,
-/// each with the release pair that says it: the other catalog's releases on
-/// the list printing a barcode one of the group's releases prints, and — where
-/// none does — printing one of its catalog numbers under the same label.
-pub(super) fn albums(group: &GroupToRead, on_list: &[Listed]) -> Vec<AlbumLink> {
-    let by_barcode = pairs(group, on_list, Printed::shares_barcode, |musicbrainz_release, release| {
+/// The albums `group`'s releases on `list` are, as what they print says,
+/// each with the release pair that says it: the other catalogs' releases on
+/// the list printing a barcode one of the group's releases prints, and —
+/// where none does — printing one of its catalog numbers under the same label.
+pub(super) fn albums(group: &str, list: &[&MetadataResult]) -> Vec<AlbumLink> {
+    let mut ours: Vec<(&MetadataResult, Printed)> = Vec::new();
+    let mut theirs: Vec<(&MetadataResult, Printed)> = Vec::new();
+    for &result in list {
+        let side = if result.source == Catalog::MusicBrainz {
+            if result.source_group_id.as_deref() != Some(group) {
+                continue;
+            }
+            &mut ours
+        } else if result.source_group_id.is_some() && names_other_album(result.source) {
+            &mut theirs
+        } else {
+            continue;
+        };
+        // A release the list holds twice — two lookups returning it — is read
+        // once.
+        let seen = side.iter().any(|(other, _)| {
+            other.source == result.source && other.release_id == result.release_id
+        });
+        if !seen {
+            side.push((result, Printed::of(result)));
+        }
+    }
+    let by_barcode = pairs(&ours, &theirs, Printed::shares_barcode, |musicbrainz_release, release| {
         AlbumStatement::Barcode {
             musicbrainz_release,
             release,
@@ -104,7 +103,7 @@ pub(super) fn albums(group: &GroupToRead, on_list: &[Listed]) -> Vec<AlbumLink> 
     if !by_barcode.is_empty() {
         return by_barcode;
     }
-    pairs(group, on_list, Printed::shares_catalog_number, |musicbrainz_release, release| {
+    pairs(&ours, &theirs, Printed::shares_catalog_number, |musicbrainz_release, release| {
         AlbumStatement::CatalogNumber {
             musicbrainz_release,
             release,
@@ -112,27 +111,27 @@ pub(super) fn albums(group: &GroupToRead, on_list: &[Listed]) -> Vec<AlbumLink> 
     })
 }
 
-/// The albums of the other catalogs' releases on the list that `shares`
-/// pairs with one of `group`'s releases, and whose titles share a word.
+/// The albums of `theirs` that `shares` pairs with one of `ours`, and whose
+/// titles share a word.
 fn pairs(
-    group: &GroupToRead,
-    on_list: &[Listed],
+    ours: &[(&MetadataResult, Printed)],
+    theirs: &[(&MetadataResult, Printed)],
     shares: fn(&Printed, &Printed) -> bool,
     stated: fn(String, MetadataRef) -> AlbumStatement,
 ) -> Vec<AlbumLink> {
     let mut found = Found::default();
-    for ours in &group.releases {
-        for theirs in on_list {
-            let Some(album) = &theirs.album else {
+    for (our, our_print) in ours {
+        for (their, their_print) in theirs {
+            let Some(album) = &their.source_group_id else {
                 continue;
             };
-            if names_other_album(theirs.release.catalog)
-                && shares(&ours.printed, &theirs.printed)
-                && ours.printed.shares_title_word(&theirs.printed)
-            {
+            if shares(our_print, their_print) && our_print.shares_title_word(their_print) {
                 found.push(
-                    MetadataRef::new(theirs.release.catalog, album.clone()),
-                    stated(ours.release.key.clone(), theirs.release.clone()),
+                    MetadataRef::new(their.source, album.clone()),
+                    stated(
+                        our.release_id.clone(),
+                        MetadataRef::new(their.source, their.release_id.clone()),
+                    ),
                 );
             }
         }

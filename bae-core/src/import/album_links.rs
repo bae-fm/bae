@@ -16,9 +16,11 @@
 //!    titles share a word.
 //!
 //! The first three are documents linking the catalogs; the last two are read
-//! off the list, and only once the documents are all read and link nothing
-//! (the `on_list` module says how). The first two state the album itself and
-//! cost no Discogs request. The third goes through one pressing — MusicBrainz
+//! off the list, once for a list and only for a group whose documents are all
+//! read and link nothing (the `on_list` module says how). An identify run
+//! reads the list once its offered rows' own documents are in, since a
+//! document may state a barcode or a catalog number its search result did
+//! not. The first two state the album itself and cost no Discogs request. The third goes through one pressing — MusicBrainz
 //! says its release is that Discogs release, and Discogs says that release is
 //! in the master — and costs one request, for the Discogs release. Where the
 //! MusicBrainz release is on the list, the Discogs release it names goes onto
@@ -141,8 +143,7 @@ pub struct ToRead {
     /// The MusicBrainz groups to read, in first-seen order.
     pub groups: Vec<GroupToRead>,
     /// The other catalog's releases already on the list. A release link
-    /// naming one of them is read off the list rather than asked for, and
-    /// where no link names an album, what they print may.
+    /// naming one of them is read off the list rather than asked for.
     pub on_list: Vec<Listed>,
 }
 
@@ -154,6 +155,26 @@ impl ToRead {
     /// The groups this reads.
     pub fn group_ids(&self) -> impl Iterator<Item = &str> {
         self.groups.iter().map(|group| group.group.as_str())
+    }
+}
+
+/// A release on the list, as reading albums reads it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Listed {
+    pub release: MetadataRef,
+    /// The album its catalog files it under.
+    pub album: Option<String>,
+    /// The other catalogs' releases its record names as the same release.
+    pub links: Vec<MetadataRef>,
+}
+
+impl Listed {
+    pub(crate) fn of(result: &MetadataResult) -> Self {
+        Self {
+            release: MetadataRef::new(result.source, result.release_id.clone()),
+            album: result.source_group_id.clone(),
+            links: result.links.clone(),
+        }
     }
 }
 
@@ -190,19 +211,6 @@ pub struct Twin<Status = LibraryStatus> {
     /// The MusicBrainz release on the list whose own document names it.
     pub named_by: MetadataRef,
     pub status: Status,
-}
-
-#[cfg(test)]
-impl Listed {
-    /// A release on the list that prints nothing that joins albums.
-    pub(crate) fn for_test(release: MetadataRef, album: Option<&str>, links: Vec<MetadataRef>) -> Self {
-        Self {
-            release,
-            album: album.map(str::to_string),
-            links,
-            printed: Printed::default(),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -368,10 +376,7 @@ impl<'a> Readers<'a> {
     }
 }
 
-/// Read each group's links, one group after another. A group whose
-/// documents link no album is then read against what the list's releases
-/// print; one whose documents could not all be had is not, since a link they
-/// hold would come first.
+/// Read each group's links, one group after another.
 pub(crate) async fn read(
     readers: &Readers<'_>,
     to_read: &ToRead,
@@ -379,13 +384,36 @@ pub(crate) async fn read(
 ) -> Vec<GroupReading<()>> {
     let mut read = Vec::with_capacity(to_read.groups.len());
     for group in &to_read.groups {
-        let mut reading = read_group(readers, group, &to_read.on_list, priority).await;
-        if reading.links == AlbumLinks::Read(Vec::new()) {
-            reading.links = AlbumLinks::Read(on_list::albums(group, &to_read.on_list));
-        }
-        read.push(reading);
+        read.push(read_group(readers, group, &to_read.on_list, priority).await);
     }
     read
+}
+
+/// These readings, each group whose documents were all read and link no album
+/// then read against what `list`'s releases print. A group whose documents
+/// could not all be had is not, since a link they hold would come first.
+pub(crate) fn read_the_list<Status>(
+    mut read: Vec<GroupReading<Status>>,
+    list: &[&MetadataResult],
+) -> Vec<GroupReading<Status>> {
+    for reading in &mut read {
+        if reading.links == AlbumLinks::Read(Vec::new()) {
+            reading.links = AlbumLinks::Read(on_list::albums(&reading.group, list));
+        }
+    }
+    read
+}
+
+/// What these readings found each group to be, to keep beyond the list: every
+/// group whose reading is known, with the albums it names — none, for a group
+/// found to name nothing, which takes away what an earlier reading kept.
+pub(crate) fn to_keep<Status>(read: &[GroupReading<Status>]) -> Vec<(String, Vec<AlbumLink>)> {
+    read.iter()
+        .filter_map(|reading| match &reading.links {
+            AlbumLinks::Read(links) => Some((reading.group.clone(), links.clone())),
+            AlbumLinks::NotAsked | AlbumLinks::Unread => None,
+        })
+        .collect()
 }
 
 /// The statements read so far, and whether one that was asked for could not
@@ -776,7 +804,6 @@ fn wikidata_items(pages: &[CatalogPage]) -> Vec<String> {
 
 #[path = "album_links/on_list.rs"]
 mod on_list;
-pub use on_list::{Listed, Printed};
 
 #[cfg(test)]
 #[path = "album_links_tests.rs"]

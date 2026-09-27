@@ -36,6 +36,7 @@ fn document(labels: &[(&str, &str)], tracks: u32) -> crate::identify::documents:
             .iter()
             .map(|(name, number)| crate::pressing::ReleaseLabel::of(Some(name), Some(number)))
             .collect(),
+        barcode: None,
         source_tracks: crate::import::search::SourceTracks::Listed { count: tracks },
     }
 }
@@ -151,4 +152,30 @@ fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
     assert_eq!(unread.labels, first_label_only("dg-unread").0.labels);
     assert_eq!(unread.source_tracks, None);
     assert_eq!(unread.document_failure, Some(LookupFailure::Network));
+}
+
+/// A document's barcode joins the ones its result lists: a code the result
+/// left out is added, and one it lists in another spelling is not listed twice.
+#[test]
+fn a_document_s_barcode_joins_its_result_s() {
+    let with_barcode = |barcode: &str| {
+        let mut document = document(&[("Label One", "AB-100")], 5);
+        document.barcode = Some(barcode.to_string());
+        document
+    };
+    let (mut result, _) = first_label_only("dg-1");
+    result.barcodes = vec!["0 12345 67890 5".to_string()];
+    let release = crate::import::MetadataRef::new(DG, "dg-1");
+    for (barcode, expected) in [
+        ("012345678905", vec!["0 12345 67890 5"]),
+        ("5051961234567", vec!["0 12345 67890 5", "5051961234567"]),
+    ] {
+        let mut read_back = result.clone();
+        crate::identify::documents::DocumentReading::Read(vec![read(
+            &release,
+            Ok(with_barcode(barcode)),
+        )])
+        .apply(&mut read_back);
+        assert_eq!(read_back.barcodes, expected, "{barcode}");
+    }
 }
