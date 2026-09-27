@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Release row content for one column. Reads the storage badge's `OutboxStore`
-/// and the cover's `ImageStore` at the leaf (injected on the hosted view).
+/// A release row's content for one column; needs `OutboxStore` and
+/// `ImageStore` in the environment.
 struct StorageReleaseCell: View {
     let release: ReleaseSummary
     let album: AlbumSummary
@@ -15,7 +15,9 @@ struct StorageReleaseCell: View {
                 HStack(spacing: 8) {
                     ImageView(imageRef: release.cover, pointSize: 24)
                         .frame(width: 24, height: 24)
-                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                        )
                     Text(album.title).lineLimit(1)
                 }
             case .artist:

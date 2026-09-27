@@ -9,12 +9,9 @@ struct ImportMappingSourceCell: View {
 
     let source: BridgeMappingSource
     let previewingTarget: BridgePreviewTarget?
-    /// Identifying signals extracted from this row's file. Empty for every
-    /// other row.
+    /// Identifying signals extracted from this row's file.
     var evidence: [BridgeFileEvidence]
-    /// Files rows say the file's size beside its name; track rows don't — a
-    /// track's row is about the release, and Length already carries its one
-    /// per-row measurement.
+    /// Files rows show the file size; track rows don't.
     let showsFileSize: Bool
     let actions: ImportMappingActions
 
@@ -37,7 +34,7 @@ struct ImportMappingSourceCell: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 5)
+                        RoundedRectangle(cornerRadius: ThemeRadius.chip)
                             .strokeBorder(
                                 style: StrokeStyle(lineWidth: 1, dash: [3, 3])
                             )
@@ -71,8 +68,7 @@ struct ImportMappingSourceCell: View {
         }
     }
 
-    /// The file's own name in mono. Opening it is the affordance where there is
-    /// something to open, which is a document in the viewer.
+    /// The file name in mono; a document's name opens it in the viewer.
     @ViewBuilder
     private func nameCell(_ file: BridgeMappingFile) -> some View {
         if let open = openAction(file) {
@@ -98,9 +94,8 @@ struct ImportMappingSourceCell: View {
         return { actions.openDocument(file.name, file.localPath) }
     }
 
-    /// One entry of a track sheet. Its number belongs to the table's dedicated
-    /// `#` column; Source carries only the sheet title and playback affordance.
-    /// The audio is the container's, which is the only file on disk to audition.
+    /// One track sheet entry's title and play button; its number is in the
+    /// `#` column.
     private func entryCell(_ entry: BridgeMappingEntry) -> some View {
         HStack(spacing: 6) {
             if let previewTarget = source.previewTarget {

@@ -126,7 +126,7 @@ struct FindOnlineSectionGlyphView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.warning)
             case .nothing:
-                RoundedRectangle(cornerRadius: 1)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.hairlineStrong)
                     .frame(width: 8, height: 1.5)
             }

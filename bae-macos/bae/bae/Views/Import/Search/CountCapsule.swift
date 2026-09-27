@@ -26,7 +26,7 @@ struct CountCapsule: View {
             .background(
                 matched
                     ? Theme.success.opacity(ThemeOpacity.tint) : Theme.hover,
-                in: RoundedRectangle(cornerRadius: 4)
+                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
             )
     }
 }

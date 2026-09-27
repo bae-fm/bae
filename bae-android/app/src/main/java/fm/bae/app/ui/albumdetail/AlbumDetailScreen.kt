@@ -60,6 +60,7 @@ import fm.bae.app.sideHeaderText
 import fm.bae.app.text
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.playback.NowPlayingBar
@@ -88,10 +89,8 @@ internal data class AlbumDetailCallbacks(
 )
 
 /**
- * Album detail: header, a release picker when the album has more than one
- * release, and the selected release's track list grouped by side. Tapping a
- * track plays the release starting at that track. A now-playing bar sits at
- * the bottom.
+ * Album detail: header, a release picker when the album has several releases,
+ * and the selected release's tracks grouped by side.
  */
 @Composable
 fun AlbumDetailScreen(
@@ -102,13 +101,8 @@ fun AlbumDetailScreen(
 ) {
     val query by session.libraryQueries.album.state
         .collectAsState()
-    // The album query is one shared slot: right after navigation it still
-    // holds the previous album's delivered value. Rendering that value — or
-    // seeding any state from it — put the previous album's release id into
-    // this screen's selection, which the newly delivered release list then
-    // never contained, leaving a header with no track list on every first
-    // visit. Only a value for this album exists as far as this screen is
-    // concerned.
+    // The album query is one shared slot that still holds the previous album
+    // right after navigation, so ignore any value for another album.
     val detail = query.value?.takeIf { it.album.id == albumId }
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
@@ -138,11 +132,8 @@ fun AlbumDetailScreen(
                         modifier = Modifier.align(Alignment.TopCenter).padding(8.dp),
                     )
                 }
-                // The user's explicit choice when it names one of this album's
-                // releases; the album's primary (falling back to first)
-                // otherwise. Derived rather than seeded into state, so a
-                // release list arriving after composition needs no correcting
-                // write-back.
+                // Derived rather than stored, so a release list that arrives
+                // later needs no correction.
                 val release =
                     loaded.releases.firstOrNull { it.id == selectedReleaseId }
                         ?: loaded.releases.firstOrNull { it.id == loaded.album.primaryReleaseId }
@@ -246,7 +237,6 @@ private fun buildAlbumDetailCallbacks(
     return AlbumDetailCallbacks(
         onSelectRelease = onSelectRelease,
         onTogglePlayPause = { session.playback.togglePlayPause() },
-        // play_release is a core transport command: ask core to play the release at a track index.
         onPlayTrackAt = { index ->
             runPlayReleaseCommand(
                 operation = { "playRelease ${it.id} track $index" },
@@ -357,7 +347,7 @@ private fun AlbumDetailHeader(
     Row(verticalAlignment = Alignment.Top) {
         CoverImage(
             cover = cover,
-            cornerRadius = 6.dp,
+            cornerRadius = ThemeRadius.cover,
             iconPadding = 32.dp,
             modifier =
                 Modifier
@@ -429,8 +419,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
     callbacks: AlbumDetailCallbacks,
     context: android.content.Context,
 ) {
-    // Flatten groups to a release-wide track index so taps map to the ordered
-    // list the player builds from the same flattening.
+    // Track indices run across all groups, the order the player plays them in.
     var runningIndex = 0
     release.trackGroups.forEach { group ->
         val header = group.sideHeaderText(context)
@@ -472,8 +461,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
             )
         }
         runningIndex += group.tracks.size
-        // The album's play time sits in the header; only a multi-side release
-        // needs each side's named here.
+        // The header shows the total, so only a multi-side release lists each
+        // side's play time.
         val groupDurationLabel = context.durationUnitsText(group.totalDuration)
         if (release.trackGroups.size > 1 && groupDurationLabel.isNotEmpty()) {
             item {

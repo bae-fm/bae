@@ -20,20 +20,23 @@ struct AlbumCardView: View {
     @State
     private var showMenu = false
 
+    /// How far the expanded ring sits outside the cover's edge.
+    private static let ringOutset: CGFloat = 4.5
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             albumArt
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
                 .shadow(color: Theme.shadow, radius: 14, y: 9)
-                // The ring floats outside the cover's edge rather than eating
-                // into it.
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .inset(by: -4.5)
-                        .stroke(
-                            isExpanded ? Theme.accent : .clear,
-                            lineWidth: 3
-                        )
+                    RoundedRectangle(
+                        cornerRadius: ThemeRadius.cover + Self.ringOutset
+                    )
+                    .inset(by: -Self.ringOutset)
+                    .stroke(
+                        isExpanded ? Theme.accent : .clear,
+                        lineWidth: 3
+                    )
                 )
                 .overlay(alignment: .topTrailing) {
                     CardMenuButton(menu: menu, showMenu: $showMenu)
@@ -59,7 +62,7 @@ struct AlbumCardView: View {
         }
         .padding(6)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: ThemeRadius.card)
                 .fill(Theme.accentSoft)
                 .opacity(isSelected ? 1 : 0)
         )

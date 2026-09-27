@@ -48,23 +48,15 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.components.CoverImage
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.bridgeNextRepeatMode
 
 /**
- * Full-screen now-playing player, presented as a [ModalBottomSheet] (swipe down
- * to dismiss) from the compact [NowPlayingBar] when its track area is tapped. The
- * player fills the first screen and the upcoming queue sits below it in the same
- * scroll, so a swipe up scrolls into the queue and a swipe down from the top
- * dismisses (the sheet and the list coordinate that handoff via nested scroll).
- * Renders the session's [fm.bae.app.playback.BaeCorePlayer] (a pure projection of
- * bae-core's playback) and sends transport/seek through that player and
- * volume/mute/repeat through the bridge (all non-throwing).
- *
- * Pure iterate-and-render: the seek labels and the software-decode flag are
- * pre-derived by core; this screen formats nothing.
+ * Full-screen player in a [ModalBottomSheet] opened from [NowPlayingBar], with
+ * the upcoming queue below it in the same scroll.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,11 +71,10 @@ fun ExpandedNowPlayingScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val listState = rememberLazyListState()
     val (order, reorderState) = rememberReorderableQueue(session, listState)
-    // The sheet handles the top inset; pad the scroll's bottom past the navigation
-    // bar so the last queue row clears it.
+    // Pad past the navigation bar so the last queue row clears it.
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    // A swipe dismisses via the sheet's own animation; the chevron animates the
-    // sheet out first, then tears it down — onDismiss alone would drop it abruptly.
+    // Lets the chevron animate the sheet out before dismissing; onDismiss alone
+    // drops it abruptly.
     val scope = rememberCoroutineScope()
 
     ModalBottomSheet(
@@ -106,9 +97,8 @@ fun ExpandedNowPlayingScreen(
                     },
                 )
             }
-            // The player above already shows the current track, so the embedded
-            // queue is just the up-next list; a row tap skips without closing the
-            // player (`onSkipped = null`).
+            // The player shows the current track, so the queue lists only what
+            // is next; tapping a row skips without closing the sheet.
             queueContent(
                 session = session,
                 order = order,
@@ -135,7 +125,7 @@ private fun ExpandedPlayer(
 
         CoverImage(
             cover = track.coverImage,
-            cornerRadius = 8.dp,
+            cornerRadius = ThemeRadius.cover,
             iconPadding = 64.dp,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
         )
@@ -240,9 +230,6 @@ private fun ExpandedSecondaryControls(session: OpenLibrary) {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // set_repeat_mode is non-throwing; the retained playback subscription
-        // updates the repeatMode flow. OFF is dimmed; CONTEXT and TRACK are accented
-        // (TRACK uses the repeat-one glyph). Same logic as the compact bar.
         IconButton(onClick = { session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode)) }) {
             Icon(
                 imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
@@ -262,10 +249,8 @@ private fun ExpandedSecondaryControls(session: OpenLibrary) {
 private fun ExpandedVolumeRow(session: OpenLibrary) {
     val volume by session.playback.volume.collectAsState()
     val isMuted by session.playback.isMuted.collectAsState()
-    // Mute toggle + level slider. While dragging, follow the finger from a local
-    // value (cleared on release); retained volume updates would otherwise snap the
-    // thumb back mid-drag, same as the seek slider above. Both bridge calls are
-    // non-throwing; retained playback values drive the flows.
+    // Follow the finger from a local value while dragging; incoming volume
+    // updates would otherwise snap the thumb back.
     var dragVolume by remember { mutableStateOf<Float?>(null) }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { session.appHandle.setMuted(!isMuted) }) {

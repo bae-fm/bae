@@ -318,7 +318,7 @@ private struct CatalogCandidatesDisclosure: View {
             .padding(.vertical, 3)
             .background(
                 Theme.hover,
-                in: RoundedRectangle(cornerRadius: 6)
+                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
             )
         }
         .buttonStyle(.plain)

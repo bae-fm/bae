@@ -64,7 +64,9 @@ struct NowPlayingBar: View {
                 Button(action: onNavigateToAlbum) {
                     albumArt
                         .frame(width: 54, height: 54)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                        )
                         .shadow(color: Theme.shadow, radius: 8, y: 4)
                         .accessibilityLabel("Album art")
                 }
@@ -166,7 +168,7 @@ struct NowPlayingBar: View {
         }
         .frame(width: 30, height: 30)
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: ThemeRadius.control)
                 .fill(active ? Theme.accentSoft : Color.clear),
         )
         .contentShape(Rectangle())
@@ -251,7 +253,7 @@ extension NowPlayingBar {
         .help("Queue")
         .accessibilityLabel("Queue")
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: ThemeRadius.control)
                 .fill(
                     queueButtonDropTargeted
                         ? Theme.accentStrong : Color.clear

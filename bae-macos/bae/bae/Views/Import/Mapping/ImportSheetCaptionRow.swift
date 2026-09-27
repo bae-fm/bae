@@ -122,7 +122,7 @@ struct ImportSheetCaptionRow: View {
                 .padding(.vertical, 2)
                 .background(
                     hoveringBound ? Theme.hover : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 4)
+                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
         }
         .menuStyle(.borderlessButton)
@@ -148,7 +148,10 @@ struct ImportSheetCaptionRow: View {
             .foregroundStyle(Theme.accent)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(Theme.accentSoft, in: RoundedRectangle(cornerRadius: 4))
+            .background(
+                Theme.accentSoft,
+                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
+            )
             .fixedSize()
     }
 
@@ -213,7 +216,7 @@ struct ImportSheetDiscMenu: View {
             .padding(.vertical, 3)
             .background(
                 hovering ? Theme.pressed : Theme.hover,
-                in: RoundedRectangle(cornerRadius: 6)
+                in: RoundedRectangle(cornerRadius: ThemeRadius.control)
             )
         }
         .menuStyle(.borderlessButton)

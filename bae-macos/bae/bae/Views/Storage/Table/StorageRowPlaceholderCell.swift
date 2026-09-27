@@ -9,7 +9,7 @@ struct StorageRowPlaceholderCell: View {
     var body: some View {
         Group {
             if column == .album {
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(height: 14)
             }

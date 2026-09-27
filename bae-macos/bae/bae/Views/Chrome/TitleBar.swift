@@ -124,7 +124,7 @@ private struct SectionSegmentedControl: View {
         }
         .padding(3)
         .background(
-            RoundedRectangle(cornerRadius: 9)
+            RoundedRectangle(cornerRadius: ThemeRadius.control)
                 .fill(Theme.well)
         )
         .accessibilityElement(children: .contain)
@@ -144,7 +144,7 @@ private struct SectionSegmentedControl: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 6)
                 .background(
-                    RoundedRectangle(cornerRadius: 6.5)
+                    RoundedRectangle(cornerRadius: ThemeRadius.control - 3)
                         .fill(Theme.tile)
                         .opacity(active ? 1 : 0)
                         .shadow(

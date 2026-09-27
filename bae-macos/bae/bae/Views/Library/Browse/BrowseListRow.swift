@@ -33,10 +33,10 @@ struct BrowseListRow<Summary: BrowseSummaryDisplay>: View {
             .padding(8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 7)
+                RoundedRectangle(cornerRadius: ThemeRadius.control)
                     .fill(rowFill)
             )
-            .contentShape(RoundedRectangle(cornerRadius: 7))
+            .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
         }
         .buttonStyle(.plain)
         .disabled(summary == nil)
@@ -59,7 +59,7 @@ private struct BrowseSummaryRow<Summary: BrowseSummaryDisplay>: View {
         HStack(spacing: 12) {
             ImageView(imageRef: summary?.image, pointSize: 40)
                 .frame(width: 40, height: 40)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 StableOptionalText(
                     text: summary?.name,
@@ -84,14 +84,14 @@ private struct BrowseSummaryRow<Summary: BrowseSummaryDisplay>: View {
 private struct SummaryRowPlaceholder: View {
     var body: some View {
         HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                 .fill(Theme.placeholder)
                 .frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: 5) {
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(width: 140, height: 11)
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(width: 80, height: 10)
             }

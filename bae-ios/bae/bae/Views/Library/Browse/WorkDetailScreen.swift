@@ -83,7 +83,7 @@ private struct WorkDetailContent: View {
                             HStack(spacing: 12) {
                                 ImageView(imageRef: release.cover, pointSize: 42)
                                     .frame(width: 42, height: 42)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                                 TwoLineRow(
                                     title: release.albumTitle,
                                     subtitle: workReleaseMetadata(release)
@@ -135,7 +135,7 @@ private struct WorkSummaryRow: View {
         HStack(spacing: 12) {
             ImageView(imageRef: summary.representativeCover, pointSize: 42)
                 .frame(width: 42, height: 42)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             TwoLineRow(title: summary.title, subtitle: summary.composerNames)
         }
         .padding(.vertical, 4)

@@ -46,7 +46,7 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
         .padding(.vertical, 7)
         .background(
             Theme.placeholder,
-            in: RoundedRectangle(cornerRadius: 9)
+            in: RoundedRectangle(cornerRadius: ThemeRadius.control)
         )
     }
 

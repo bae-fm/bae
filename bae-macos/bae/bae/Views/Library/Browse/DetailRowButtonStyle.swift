@@ -19,7 +19,7 @@ struct DetailRowButtonStyle: ButtonStyle {
                 .padding(.horizontal, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: ThemeRadius.control)
                         .fill(fill)
                 )
                 .contentShape(Rectangle())

@@ -84,6 +84,12 @@ pub fn swift(theme: &Theme) -> String {
     }
     out.push_str("}\n");
 
+    out.push_str("\n/// Corner radii.\npublic enum ThemeRadius {\n");
+    for (role, value) in &theme.radius {
+        let _ = writeln!(out, "    public static let {role}: CGFloat = {value}");
+    }
+    out.push_str("}\n");
+
     out.push_str(COLOR_INITIALIZERS);
     out
 }

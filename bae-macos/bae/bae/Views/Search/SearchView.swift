@@ -39,11 +39,12 @@ struct SearchView: View {
         }
         .frame(width: Self.width)
         .background(
-            RoundedRectangle(cornerRadius: 12).fill(Theme.surfaceElevated)
+            RoundedRectangle(cornerRadius: ThemeRadius.card)
+                .fill(Theme.surfaceElevated)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: ThemeRadius.card)
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         )
         .shadow(color: Theme.shadow, radius: 18, y: 8)
@@ -181,7 +182,9 @@ private struct SearchResultRow: View {
                 case .picture(let cover):
                     ImageView(imageRef: cover, pointSize: 46)
                         .frame(width: 46, height: 46)
-                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                        )
                 case .waveform:
                     Image(systemName: "waveform")
                         .font(.system(size: 18, weight: .regular))
@@ -218,7 +221,7 @@ private struct SearchResultRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .background(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: ThemeRadius.control)
                     .fill(hovering ? Theme.hover : Color.clear)
             )
         }

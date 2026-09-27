@@ -1,18 +1,11 @@
 import BaeKit
 import SwiftUI
 
-/// Horizontal strip of 56pt thumbnails over a `Cursor`, used by the lightbox
-/// and the import cover picker. Owns the scroll scaffolding (animated
-/// scroll-to-center when the current item changes) and the shared cell
-/// chrome (56×56 frame, 6pt rounded clip, stroke overlay, click-to-select);
-/// the caller supplies the per-item image view and the stroke for its
-/// selection states.
+/// A horizontal strip of thumbnails over a `Cursor` that keeps the current
+/// item centered; the caller supplies each item's image view and stroke.
 struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
     let cursor: Cursor<Item>
-    /// Lightbox presentation: stretch the row to at least the container
-    /// width so a short row centers, and scroll the current item to center
-    /// when the strip first appears. The cover picker leaves this off
-    /// (leading-aligned, no initial scroll).
+    /// Centers a short row and scrolls to the current item on appear.
     let centered: Bool
     let onSelect: (Item.ID) -> Void
     /// Stroke (color, line width) for an item given whether it is the
@@ -67,9 +60,9 @@ struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
         } label: {
             content(item)
                 .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         .stroke(color, lineWidth: lineWidth)
                 )
         }
@@ -78,8 +71,7 @@ struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
 }
 
 #if DEBUG
-    /// A minimal `Identifiable & Equatable` item for the strip preview, drawing a
-    /// flat color where a real caller would supply a thumbnail image view.
+    /// A flat-color item for the preview.
     private struct ThumbnailStripPreviewItem: Identifiable, Equatable {
         let id: String
         let color: Color

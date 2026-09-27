@@ -42,7 +42,9 @@ struct AlbumExpansionContent: View {
             HStack(alignment: .top, spacing: 36) {
                 albumArt
                     .frame(width: 340, height: 340)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: ThemeRadius.cover)
+                    )
                     .shadow(color: Theme.shadow, radius: 20, y: 12)
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onBrowseImages)
@@ -99,10 +101,10 @@ struct AlbumExpansionContent: View {
         .padding(32)
         .background(
             Theme.surfaceElevated,
-            in: RoundedRectangle(cornerRadius: 18)
+            in: RoundedRectangle(cornerRadius: ThemeRadius.panel)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 18)
+            RoundedRectangle(cornerRadius: ThemeRadius.panel)
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         )
         .shadow(color: Theme.shadow, radius: 28, y: 18)
@@ -156,7 +158,7 @@ struct AlbumExpansionContent: View {
                 .frame(width: 36, height: 36)
                 .background(
                     Theme.hover,
-                    in: RoundedRectangle(cornerRadius: 10)
+                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
         }
         .menuStyle(.borderlessButton)
@@ -248,7 +250,7 @@ private struct ReleaseFactsLine: View {
                 .padding(.horizontal, 5)
                 .padding(.vertical, 2)
                 .background(
-                    RoundedRectangle(cornerRadius: 5)
+                    RoundedRectangle(cornerRadius: ThemeRadius.chip)
                         .fill(isHovering ? Theme.hover : Color.clear)
                 )
                 // The fill bleeds outward without moving the text.
@@ -276,9 +278,12 @@ private struct ReleaseFactsLine: View {
 
     private var card: some View {
         ReleaseRecordsCard(records: records)
-            .background(Theme.tile, in: RoundedRectangle(cornerRadius: 9))
+            .background(
+                Theme.tile,
+                in: RoundedRectangle(cornerRadius: ThemeRadius.control)
+            )
             .overlay {
-                RoundedRectangle(cornerRadius: 9)
+                RoundedRectangle(cornerRadius: ThemeRadius.control)
                     .strokeBorder(Theme.hairline, lineWidth: 1)
             }
             .shadow(color: Theme.shadow, radius: 14, y: 8)

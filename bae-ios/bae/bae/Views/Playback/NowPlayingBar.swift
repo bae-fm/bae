@@ -1,11 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// Persistent now-playing bar. Reads transport state from the shared
-/// `PlaybackStore` and the high-frequency position from its Combine publisher,
-/// and sends transport commands through `Playback`. Hidden until a track is
-/// loaded. Tapping the cover / title area expands into the full-screen
-/// `ExpandedNowPlayingView`.
+/// Persistent now-playing bar, hidden until a track is loaded.
 struct NowPlayingBar: View {
     @Environment(PlaybackStore.self)
     private var playbackStore
@@ -31,8 +27,8 @@ struct NowPlayingBar: View {
                         playback.seekByRatio(ratio)
                     },
                     onToggleRemainingTime: {
-                        // Write-through: the config subscription re-renders the
-                        // bar, so nothing is flipped locally.
+                        // The config subscription re-renders the bar; nothing
+                        // flips locally.
                         let showRemaining = !configStore.config.showRemainingTime
                         Task {
                             do {
@@ -53,9 +49,7 @@ struct NowPlayingBar: View {
             .sheet(isPresented: $showQueue) {
                 QueueView()
             }
-            // A sheet (not a cover) so the player can be swiped down to dismiss
-            // and its embedded queue swiped up to scroll — the sheet and the
-            // list coordinate that handoff.
+            // A sheet, not a full-screen cover, so a swipe down closes it.
             .sheet(isPresented: $showExpanded) {
                 ExpandedNowPlayingView()
                     .presentationDetents([.large])
@@ -89,7 +83,7 @@ struct NowPlayingBar: View {
             HStack(spacing: 12) {
                 ImageView(imageRef: track.coverImage, pointSize: 48)
                     .frame(width: 48, height: 48)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(track.trackTitle)
                         .font(.subheadline.weight(.medium))
@@ -159,7 +153,6 @@ struct NowPlayingBar: View {
                 bridgeNextRepeatMode(mode: playbackStore.repeatMode)
             )
         } label: {
-            // Dimmed when off; accented when on (repeat-one glyph for track).
             Image(
                 systemName: playbackStore.repeatMode == .track
                     ? "repeat.1" : "repeat"

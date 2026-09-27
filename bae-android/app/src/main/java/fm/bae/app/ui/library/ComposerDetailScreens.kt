@@ -38,6 +38,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.metadataText
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.playback.NowPlayingBar
 import uniffi.bae_bridge.BridgeComposerDetail
@@ -247,7 +248,7 @@ private fun WorkDetailContent(
                 ) {
                     CoverImage(
                         cover = release.cover,
-                        cornerRadius = 6.dp,
+                        cornerRadius = ThemeRadius.artwork,
                         iconPadding = 12.dp,
                         modifier = Modifier.size(48.dp),
                         contentDescription = release.albumTitle,
@@ -281,7 +282,7 @@ private fun WorkSummaryRow(
     ) {
         CoverImage(
             cover = work.representativeCover,
-            cornerRadius = 6.dp,
+            cornerRadius = ThemeRadius.artwork,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
             contentDescription = work.title,

@@ -257,7 +257,9 @@ struct ImportingCandidatePane: View {
                 HStack(alignment: .top, spacing: 24) {
                     ImageView(content: coverContent, pointSize: 200)
                         .frame(width: 200, height: 200)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                        )
                     if let values = candidate.edit {
                         ImportReleaseSummaryView(
                             summary: ImportReleaseSummary(

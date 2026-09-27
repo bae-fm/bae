@@ -17,7 +17,7 @@ struct PanelCloseButton: View {
                 .frame(width: 30, height: 30)
                 .background(
                     Theme.hover,
-                    in: RoundedRectangle(cornerRadius: 9)
+                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
         }
         .buttonStyle(.plain)

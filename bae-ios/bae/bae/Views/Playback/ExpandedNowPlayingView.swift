@@ -1,17 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Full-screen now-playing player, presented as a `.sheet` (swipe down to
-/// dismiss) from the compact `NowPlayingBar` when its cover / title area is
-/// tapped. The player fills the first screen and the upcoming queue sits below it
-/// in the same scroll, so a swipe up scrolls into the queue and a swipe down from
-/// the top dismisses (the sheet and the list coordinate that handoff). Reads the
-/// shared `PlaybackStore` — driven by core's retained playback values — and sends
-/// transport / seek / repeat / volume / mute through `Playback` and queue
-/// mutations through `Queue` (all non-throwing fire-and-forget).
-///
-/// Pure iterate-and-render: the seek labels arrive pre-formatted on the position
-/// subject; this view formats nothing.
+/// Full-screen player in a sheet opened from `NowPlayingBar`, with the upcoming
+/// queue below it in the same scroll.
 struct ExpandedNowPlayingView: View {
     @Environment(PlaybackStore.self)
     private var playbackStore
@@ -24,15 +15,13 @@ struct ExpandedNowPlayingView: View {
     @Environment(\.dismiss)
     private var dismiss
 
-    /// While the user drags the volume slider, follow the finger from this local
-    /// value; the round-tripped `playbackStore.volume` would otherwise snap the
-    /// thumb back mid-drag. `nil` means "not dragging".
+    /// The volume while dragging, so incoming volume updates don't snap the
+    /// thumb back; `nil` when not dragging.
     @State
     private var dragVolume: Float?
 
     var body: some View {
-        // When the track clears (e.g. playback stops) the bar collapses and takes
-        // this sheet down with it; there's nothing to show.
+        // Without a track the bar hides and takes this sheet with it.
         if let track = playbackStore.nowPlaying.track {
             List {
                 Section {
@@ -67,7 +56,7 @@ struct ExpandedNowPlayingView: View {
             ImageView(imageRef: track.coverImage, pointSize: 320)
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(track.trackTitle)
@@ -88,8 +77,8 @@ struct ExpandedNowPlayingView: View {
                     playback.seekByRatio(ratio)
                 },
                 onToggleRemainingTime: {
-                    // Write-through: the config subscription re-renders the bar,
-                    // so nothing is flipped locally.
+                    // The config subscription re-renders the bar; nothing flips
+                    // locally.
                     let showRemaining = !configStore.config.showRemainingTime
                     Task {
                         do {
@@ -138,15 +127,12 @@ struct ExpandedNowPlayingView: View {
         }
     }
 
-    // Repeat-mode toggle. The queue is embedded below the player now, so there's
-    // no separate button to open it as a sheet.
     private var repeatControl: some View {
         Button {
             playback.setRepeatMode(
                 bridgeNextRepeatMode(mode: playbackStore.repeatMode)
             )
         } label: {
-            // Dimmed when off; accented when on (repeat-one glyph for track).
             Image(
                 systemName: playbackStore.repeatMode == .track
                     ? "repeat.1" : "repeat"
@@ -191,13 +177,8 @@ struct ExpandedNowPlayingView: View {
         }
     }
 
-    // The upcoming queue, embedded below the player so a swipe up scrolls into it.
-    // Tapping a row skips to it (without dismissing — the player follows the new
-    // track); swiping a row removes it; drag-to-reorder is always available too
-    // (`upNextRows` scopes edit mode to its own rows). Each lane's Clear rides in
-    // its own section header, shared with the queue sheet, so this surface has
-    // them too. The current track isn't in `queueItems` — it's the player above.
-    // The section is dropped when empty so no bare "Up Next" header shows.
+    // The upcoming queue; the current track is the player above, and tapping a
+    // row skips to it without closing the sheet.
     @ViewBuilder
     private var upNext: some View {
         if !playbackStore.manualQueue.isEmpty {

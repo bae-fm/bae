@@ -66,14 +66,14 @@ struct ReleaseMetadataEditorContent: View {
                 imageRef: session.cover,
                 pointSize: ReleaseMetadataLayout.coverSize
             )
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             .overlay(alignment: .topTrailing) {
                 Image(systemName: "pencil")
                     .font(.caption2)
                     .foregroundStyle(Theme.onFill)
                     .padding(3)
                     .background(Theme.scrim)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.chip))
                     .padding(4)
                     .opacity(onEditCover == nil ? 0 : 1)
                     .allowsHitTesting(false)

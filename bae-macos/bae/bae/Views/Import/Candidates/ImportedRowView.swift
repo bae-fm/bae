@@ -1,19 +1,11 @@
 import BaeKit
 import SwiftUI
 
-/// One Done row: the library release the candidate became — its cover, title,
-/// artist and year, and whether a catalog describes it — as the library has
-/// it now. Core reads all of it from the library inside the list's own query,
-/// so re-identifying, editing or re-covering the release reaches this row with
-/// no candidate state in between.
-///
-/// An import that just wrote the release can own the candidate for a moment
-/// longer; that comes from the row's own live-state subscription, as it does
-/// for every other row.
+/// One Done row: the library release the candidate became, as the library
+/// has it now.
 struct ImportedRowView: View {
     let row: BridgeImportedRow
-    /// The release's cloud transition, resolved by the list owner that
-    /// already observes the outbox.
+    /// The release's cloud upload state, from the list owner.
     let uploadObservation: UploadObservation?
     let onReveal: () -> Void
 
@@ -49,7 +41,7 @@ struct ImportedRowContent: View {
                 width: TriageRowView.coverPointSize,
                 height: TriageRowView.coverPointSize
             )
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             meta
             Spacer(minLength: 4)
             trailing
@@ -71,8 +63,7 @@ struct ImportedRowContent: View {
                 RecordArrow(readFromRecord: row.release.readFromRecord)
             }
             if importing {
-                // The one line that changes by the second, so it subscribes to
-                // the candidate-runtime signal at this leaf.
+                // Subscribes to progress here because it changes every second.
                 ImportProgressLine(key: row.candidateKey)
                     .font(.system(size: 11.5))
             }
@@ -86,9 +77,7 @@ struct ImportedRowContent: View {
         }
     }
 
-    /// Still going up to the cloud — the same arrow the storage queue marks
-    /// an active upload with, and nothing else: the release is in the library
-    /// either way.
+    /// The storage queue's upload arrow while the release is still uploading.
     @ViewBuilder
     private var trailing: some View {
         if !importing, case .active = uploadObservation {

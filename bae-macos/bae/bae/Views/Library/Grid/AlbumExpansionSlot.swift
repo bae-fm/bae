@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The full-width detail slot rendered under a grid row: it holds the album
-/// detail expansion when the row contains the currently-selected album, and an
-/// inert zero-height placeholder otherwise (so the row keeps its identity).
+/// The slot under a grid row: the album detail when the row holds the selected
+/// album, otherwise a zero-height placeholder that keeps the row's identity.
 struct AlbumExpansionSlot<ExpansionContent: View>: View {
     let selectedId: String?
     let expansionContent: (String) -> ExpansionContent
@@ -21,7 +20,7 @@ struct AlbumExpansionSlot<ExpansionContent: View>: View {
 
 #if DEBUG
     private func previewExpansion(_ id: String) -> some View {
-        RoundedRectangle(cornerRadius: 10)
+        RoundedRectangle(cornerRadius: ThemeRadius.card)
             .fill(Theme.surface)
             .frame(height: 120)
             .overlay(Text(verbatim: "Expansion for \(id)"))
@@ -30,12 +29,10 @@ struct AlbumExpansionSlot<ExpansionContent: View>: View {
 
     #Preview("Album Expansion Slot") {
         VStack(spacing: 0) {
-            // Selected: the slot holds its expansion content.
             AlbumExpansionSlot(
                 selectedId: "album-0",
                 expansionContent: previewExpansion
             )
-            // Unselected: an inert zero-height placeholder.
             AlbumExpansionSlot(
                 selectedId: nil,
                 expansionContent: previewExpansion

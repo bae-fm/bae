@@ -65,6 +65,8 @@ pub struct Theme {
     pub semantics: Modes,
     /// How opaque a colour is laid over what is behind it, by role.
     pub opacity: BTreeMap<String, f64>,
+    /// Corner radii, in points and dp, by role.
+    pub radius: BTreeMap<String, f64>,
 }
 
 #[derive(Deserialize)]
@@ -74,6 +76,7 @@ struct RawTheme {
     accents: Vec<RawAccent>,
     semantics: RawModes,
     opacity: BTreeMap<String, f64>,
+    radius: BTreeMap<String, f64>,
 }
 
 #[derive(Deserialize)]
@@ -186,6 +189,12 @@ impl Theme {
             }
         }
         check_role_names(raw.opacity.keys(), &mut problems);
+        for (name, value) in &raw.radius {
+            if *value < 0.0 {
+                problems.push(format!("radius {name}: {value} is negative"));
+            }
+        }
+        check_role_names(raw.radius.keys(), &mut problems);
 
         if problems.is_empty() {
             Ok(Self {
@@ -193,6 +202,7 @@ impl Theme {
                 accents,
                 semantics,
                 opacity: raw.opacity,
+                radius: raw.radius,
             })
         } else {
             Err(problems)

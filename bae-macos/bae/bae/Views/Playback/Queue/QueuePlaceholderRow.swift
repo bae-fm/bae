@@ -5,17 +5,17 @@ import SwiftUI
 struct QueuePlaceholderRow: View {
     var body: some View {
         HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                 .fill(Theme.placeholder)
                 .frame(width: 48, height: 48)
             VStack(alignment: .leading, spacing: 4) {
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(width: 140, height: 12)
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(width: 90, height: 10)
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(width: 120, height: 10)
             }

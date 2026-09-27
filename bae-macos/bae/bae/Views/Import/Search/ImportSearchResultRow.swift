@@ -104,13 +104,13 @@ struct ImportSearchResultRow: View {
     }
 
     private var rowBackground: some View {
-        RoundedRectangle(cornerRadius: 7)
+        RoundedRectangle(cornerRadius: ThemeRadius.control)
             .fill(
                 isSelected || rowFailure != nil
                     ? Theme.accentSoft : .clear
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 7)
+                RoundedRectangle(cornerRadius: ThemeRadius.control)
                     .strokeBorder(
                         isSelected || rowFailure != nil
                             ? Theme.accentStrong : .clear,
@@ -151,7 +151,7 @@ struct ImportSearchResultRow: View {
                         .padding(.vertical, 1)
                         .background(
                             Theme.hover,
-                            in: RoundedRectangle(cornerRadius: 4)
+                            in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
                         )
                         .lineLimit(1)
                         .truncationMode(.tail)

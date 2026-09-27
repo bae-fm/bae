@@ -11,7 +11,9 @@ struct ArtistAlbumCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 ImageView(imageRef: album.cover, pointSize: 140)
                     .aspectRatio(1, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                    )
                 Text(album.title)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.primary)

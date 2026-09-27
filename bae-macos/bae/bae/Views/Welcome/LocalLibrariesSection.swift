@@ -93,7 +93,7 @@ private struct LibraryRow: View {
             (library.error != nil ? Theme.warning : Color.secondary)
                 .opacity(ThemeOpacity.tint)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
         .disabled(disabled)
     }
 }

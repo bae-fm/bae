@@ -99,7 +99,7 @@ struct KeychainRestoreSection: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .background(Color.secondary.opacity(ThemeOpacity.tint))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
             }
         }
         .frame(maxWidth: WelcomeLayout.columnWidth)

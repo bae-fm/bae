@@ -40,10 +40,10 @@ struct LibrarySearchField: View {
         .frame(height: 36)
         // A sunken well like the section control's.
         .background(
-            RoundedRectangle(cornerRadius: 9)
+            RoundedRectangle(cornerRadius: ThemeRadius.control)
                 .fill(Theme.well)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 9)
+                    RoundedRectangle(cornerRadius: ThemeRadius.control)
                         .strokeBorder(
                             focused.wrappedValue ? Theme.accent : Color.clear,
                             lineWidth: 1

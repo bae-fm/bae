@@ -97,7 +97,7 @@ struct TriageRowContent: View {
             width: TriageRowView.coverPointSize,
             height: TriageRowView.coverPointSize
         )
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
     }
 
     // MARK: - Meta
@@ -274,7 +274,7 @@ extension TriageRowContent {
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(
-                RoundedRectangle(cornerRadius: 5)
+                RoundedRectangle(cornerRadius: ThemeRadius.chip)
                     .fill(tint.opacity(ThemeOpacity.tint))
             )
     }

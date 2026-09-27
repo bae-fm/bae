@@ -34,6 +34,7 @@ import fm.bae.app.data.ImageContent
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeRadius
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeImageRef
 
@@ -197,7 +198,7 @@ private fun CoverImagePreview() {
         CompositionLocalProvider(LocalImageStore provides ImageStore()) {
             CoverImage(
                 cover = null,
-                cornerRadius = 6.dp,
+                cornerRadius = ThemeRadius.cover,
                 iconPadding = 24.dp,
                 modifier = Modifier.size(120.dp),
             )

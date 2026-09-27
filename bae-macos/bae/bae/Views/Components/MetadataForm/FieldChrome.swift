@@ -70,8 +70,8 @@ struct FieldChrome: ViewModifier {
 
     private var cornerRadius: CGFloat {
         switch style {
-        case .boxed: 6
-        case .inline: 5
+        case .boxed: ThemeRadius.control
+        case .inline: ThemeRadius.chip
         }
     }
 

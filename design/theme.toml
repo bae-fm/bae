@@ -234,3 +234,15 @@ onFillSecondary = "#B3FFFFFF"
 [opacity]
 tint = 0.14
 tintStrong = 0.26
+
+# Corner radii, in points on Apple and dp on Android. `artwork` is cover art in
+# rows and lists, `cover` a release's cover shown large; `bar` rounds skeleton
+# and progress bars.
+[radius]
+bar = 3
+chip = 5
+control = 7
+card = 10
+panel = 20
+artwork = 6
+cover = 10

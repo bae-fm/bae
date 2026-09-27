@@ -112,7 +112,7 @@ private struct AlbumResultRow: View {
         HStack(spacing: 12) {
             ImageView(imageRef: album.cover, pointSize: 48)
                 .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(album.title)
                     .font(.body)
@@ -134,7 +134,7 @@ private struct ArtistResultRow: View {
         HStack(spacing: 12) {
             ImageView(imageRef: artist.image, pointSize: 48)
                 .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(artist.name)
                     .font(.body)
@@ -180,7 +180,7 @@ private struct ComposerResultRow: View {
         HStack(spacing: 12) {
             ImageView(imageRef: composer.image, pointSize: 48)
                 .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(composer.name)
                     .font(.body)
@@ -202,7 +202,7 @@ private struct WorkResultRow: View {
         HStack(spacing: 12) {
             ImageView(imageRef: work.representativeCover, pointSize: 48)
                 .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(work.title)
                     .font(.body)

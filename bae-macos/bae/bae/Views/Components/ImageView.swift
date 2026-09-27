@@ -248,7 +248,7 @@ extension ImageView {
         HStack(alignment: .top, spacing: 16) {
             ImageView(imageRef: nil, pointSize: 120)
                 .frame(width: 120, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
             ImageView(
                 imageRef: BridgeImageRef(
                     id: "preview-cover",
@@ -258,10 +258,10 @@ extension ImageView {
                 pointSize: 120
             )
             .frame(width: 120, height: 120)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
             ImageView(content: nil, pointSize: 44)
                 .frame(width: 44, height: 44)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
         }
         .padding(28)
         .background(Theme.background)

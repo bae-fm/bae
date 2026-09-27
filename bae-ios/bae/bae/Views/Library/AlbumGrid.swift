@@ -1,10 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The paged album grid. Renders one card per loaded slot, resolving each
-/// album's summary from the store and its cover from the primary release's
-/// on-disk file. Rows that aren't loaded yet kick off their page load via
-/// `.task(id:)` keyed on the list's `loadEpoch`.
+/// The paged album grid: one cell per slot, each loading its own page.
 struct AlbumGrid: View {
     let list: AlbumList
     let onSelect: (String) -> Void
@@ -45,9 +42,8 @@ struct AlbumGrid: View {
     }
 }
 
-/// One grid slot. Loads the page covering its position (keyed on `loadEpoch` so
-/// a list swap or subscription value reloads), then renders the album once its id
-/// resolves.
+/// One grid slot: loads its page again whenever `loadEpoch` changes, and shows
+/// the album once it resolves.
 private struct AlbumCell: View {
     let list: AlbumList
     let position: Int
@@ -69,7 +65,7 @@ private struct AlbumCell: View {
             else {
                 Rectangle().fill(Theme.placeholder)
                     .aspectRatio(1, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
             }
         }
         .task(id: list.loadEpoch) {
@@ -88,7 +84,7 @@ private struct AlbumCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 ImageView(imageRef: summary.cover, pointSize: 150)
                     .aspectRatio(1, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
                 Text(summary.title)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.primary)
@@ -100,9 +96,7 @@ private struct AlbumCard: View {
             }
         }
         .buttonStyle(.plain)
-        // One VoiceOver element per card: announce "Title by Artist" instead of
-        // the cover image + two separate text fragments. The cover is decorative
-        // (its info is in the text), so it's folded into the combined label.
+        // One VoiceOver element per card; the cover adds nothing to the text.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             summary.artistNames.isEmpty

@@ -17,7 +17,7 @@ struct IconHoverButtonStyle: ButtonStyle {
             configuration.label
                 .foregroundStyle(hovering ? Color.primary : Color.secondary)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: ThemeRadius.control)
                         .fill(hovering ? Theme.hover : Color.clear),
                 )
                 .opacity(configuration.isPressed ? 0.6 : 1)

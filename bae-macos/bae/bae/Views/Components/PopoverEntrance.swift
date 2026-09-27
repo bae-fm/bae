@@ -1,14 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Animates a popover's content in on mount — a short spring of scale+fade
-/// from `anchor` (the edge the popover grows from). Pairs with
-/// `PopoverBehavior`, which disables `NSPopover`'s own pop animation: that
-/// one runs window-frame updates on the main thread and stutters under any
-/// real content build, while this plays over content that is already built.
-/// Exit stays instant unless the presenter routes its dismissal through an
-/// animated hide first (the queue popover does; hover popovers vanish
-/// instantly, like tooltips).
+/// Springs a popover's content in from `anchor` on appear, in place of the
+/// `NSPopover` animation that `PopoverBehavior` turns off because it stutters.
 struct PopoverEntrance: ViewModifier {
     let anchor: UnitPoint
 
@@ -31,9 +25,8 @@ struct PopoverEntrance: ViewModifier {
 }
 
 extension View {
-    /// Spring the view in when it appears inside a popover whose own
-    /// animation `PopoverBehavior` disabled. `anchor` is the edge the
-    /// popover visually grows from (where its arrow sits).
+    /// Springs the view in from `anchor`, the edge where the popover's arrow
+    /// sits.
     func popoverEntrance(anchor: UnitPoint) -> some View {
         modifier(PopoverEntrance(anchor: anchor))
     }
@@ -41,8 +34,6 @@ extension View {
 }
 
 #if DEBUG
-    // Hosts a sample popover body with the entrance modifier — it springs from the
-    // top anchor on appear and rests at full scale/opacity.
     #Preview("Popover Entrance") {
         VStack(alignment: .leading, spacing: 6) {
             Text(verbatim: "Add to queue")
@@ -55,7 +46,10 @@ extension View {
         }
         .padding(16)
         .frame(width: 240)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10))
+        .background(
+            Theme.surface,
+            in: RoundedRectangle(cornerRadius: ThemeRadius.card)
+        )
         .popoverEntrance(anchor: .top)
         .padding(48)
         .background(Theme.background)

@@ -35,6 +35,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.durationClockLabel
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeComposerSummary
@@ -50,12 +51,7 @@ internal fun BridgeSearchResults.hasNoResults(): Boolean =
         works.isEmpty()
 
 /**
- * Library search results for a non-blank query. Debounces typing, runs the
- * bridge search, and renders one section per result kind — Albums, Artists,
- * Tracks, Composers, Works. Each row opens its subject's destination; the
- * parent routes the tap through the same navigation as the corresponding grid
- * card or list row. Iterates and renders only — the search call lives in
- * [OpenLibrary.library].
+ * Library search results for a non-blank query, one section per result kind.
  */
 @Composable
 fun SearchResultsScreen(
@@ -205,7 +201,7 @@ private fun AlbumResultRow(
     ) {
         CoverImage(
             cover = album.cover,
-            cornerRadius = 4.dp,
+            cornerRadius = ThemeRadius.artwork,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
             contentDescription = album.title,
@@ -281,7 +277,7 @@ private fun ComposerResultRow(
     ) {
         CoverImage(
             cover = composer.image,
-            cornerRadius = 4.dp,
+            cornerRadius = ThemeRadius.artwork,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
             contentDescription = composer.name,
@@ -319,7 +315,7 @@ private fun WorkResultRow(
     ) {
         CoverImage(
             cover = work.representativeCover,
-            cornerRadius = 4.dp,
+            cornerRadius = ThemeRadius.artwork,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
             contentDescription = work.title,

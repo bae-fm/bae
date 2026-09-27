@@ -2,12 +2,8 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// Header for a release group: the album's cover, its title and the artist and
-/// label beneath it, and on the right one outbound link per source carrying
-/// it. A source whose album could not be read to be one on the other catalog —
-/// its page, or a document a statement about it needed — says so under the
-/// title, since the album may then be listed twice.
-/// The group's pressing rows render beneath.
+/// A release group header: cover, title, artist and label, a note for each
+/// source whose album links couldn't be read, and one link per source.
 struct ReleaseGroupCard: View {
     let group: ReleaseGroup
 
@@ -15,9 +11,9 @@ struct ReleaseGroupCard: View {
         HStack(spacing: 12) {
             ImageView(content: group.coverImageContent, pointSize: 48)
                 .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 7))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 7)
+                    RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         .strokeBorder(Theme.hairline, lineWidth: 1)
                 )
 
@@ -61,8 +57,6 @@ struct ReleaseGroupCard: View {
         }
     }
 
-    /// Who made the album and who put it out — the two facts core names for
-    /// the card, joined only where both are there.
     private var attribution: String {
         [group.artist, group.label]
             .compactMap { $0 }

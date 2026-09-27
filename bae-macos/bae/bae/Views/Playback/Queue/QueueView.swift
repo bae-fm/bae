@@ -187,7 +187,7 @@ struct QueueView: View {
         HStack(alignment: .top, spacing: 12) {
             nowPlayingArt
                 .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 9))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 .shadow(color: Theme.shadow, radius: 8, y: 4)
                 .allowsHitTesting(false)
 
@@ -227,7 +227,7 @@ struct QueueView: View {
             .foregroundStyle(.secondary)
             .background(
                 Theme.hover,
-                in: RoundedRectangle(cornerRadius: 9)
+                in: RoundedRectangle(cornerRadius: ThemeRadius.control)
             )
         }
         .padding(12)
@@ -235,9 +235,11 @@ struct QueueView: View {
             Button {
                 onGoToNowPlaying?()
             } label: {
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: ThemeRadius.card)
                     .fill(Theme.surfaceElevated)
-                    .contentShape(RoundedRectangle(cornerRadius: 12))
+                    .contentShape(
+                        RoundedRectangle(cornerRadius: ThemeRadius.card)
+                    )
             }
             .buttonStyle(.plain)
             .disabled(onGoToNowPlaying == nil)
@@ -245,7 +247,7 @@ struct QueueView: View {
             .accessibilityLabel("Go to Now Playing")
         }
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: ThemeRadius.card)
                 .stroke(Theme.hairline, lineWidth: 1)
                 .allowsHitTesting(false)
         )

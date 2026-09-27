@@ -48,6 +48,7 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.components.CoverImage
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -179,7 +180,7 @@ internal fun ComposerSummaryRow(
     ) {
         CoverImage(
             cover = composer.image,
-            cornerRadius = 6.dp,
+            cornerRadius = ThemeRadius.artwork,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
             contentDescription = composer.name,

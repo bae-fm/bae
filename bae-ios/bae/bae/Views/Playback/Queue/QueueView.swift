@@ -1,15 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The play queue, presented as a sheet: the currently-playing track, then a
-/// reorderable "Up Next" list. Reads the authoritative now-playing and queue
-/// off the shared `PlaybackStore`; mutations go straight to the `Queue` service
-/// (`clearUpNext` / `clearPlayingFrom` / `removeEntry` / `reorderEntry` /
-/// `skipToEntry`) and reflect back through the retained queue value.
-///
-/// The view iterates and renders only — `durationLabel` is pre-formatted and the
-/// queue arrives pre-ordered. The current track is separate from the queued
-/// lanes and lives in `nowPlaying`.
+/// The play queue sheet: the playing track, then the Up Next and context
+/// lanes; edits go to `Queue` and come back through `PlaybackStore`.
 struct QueueView: View {
     @Environment(Queue.self)
     private var queue
@@ -35,8 +28,7 @@ struct QueueView: View {
             .navigationTitle("Queue")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // Each lane clears itself from its own section header, so the
-                // toolbar carries only Done.
+                // Each lane's Clear sits in its own section header.
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
@@ -47,9 +39,7 @@ struct QueueView: View {
     @ViewBuilder
     private var upNext: some View {
         if playbackStore.manualQueue.isEmpty {
-            // Only show the empty message when nothing follows at all — no manual
-            // lane and no context section below. With a context present, the
-            // "Playing From" section carries the queue, so no message is needed.
+            // A context section below stands in for the empty message.
             if playbackStore.queueContext == nil {
                 Section {
                     Text(
@@ -65,9 +55,7 @@ struct QueueView: View {
         }
         else {
             Section {
-                // Reorder handles are always on (see `upNextRows`); a tap always
-                // skips, and skipping dismisses the sheet. Always fully resolved,
-                // so no load hook.
+                // The manual lane is fully loaded, so it has no load hook.
                 let manual = playbackStore.manualQueue
                 upNextRows(
                     lane: QueueLane(
@@ -85,11 +73,7 @@ struct QueueView: View {
         }
     }
 
-    // The context (the release being played from): its not-yet-played tail, with
-    // a shuffle toggle in the header that flips its order while the current track
-    // keeps playing. The rows skip/remove/reorder by entry id, the same as the
-    // manual lane. The tail is library-scaled and only partly resolved; unloaded
-    // rows show a placeholder and trigger `loadUpcomingRange`.
+    // The not-yet-played rest of the context, loaded in ranges as rows appear.
     @ViewBuilder
     private var playingFrom: some View {
         if let context = playbackStore.queueContext, context.upcomingTotal > 0 {
@@ -121,10 +105,7 @@ struct QueueView: View {
     }
 }
 
-/// The manual lane's header — shared by the queue sheet and the expanded
-/// player's embedded queue so the control can't drift. Both surfaces render this
-/// section only while the lane has rows, which is exactly when its Clear should
-/// be present.
+/// The Up Next header, shared with the expanded player's embedded queue.
 @MainActor
 @ViewBuilder
 func upNextHeader(queue: Queue) -> some View {
@@ -135,12 +116,8 @@ func upNextHeader(queue: Queue) -> some View {
     }
 }
 
-/// The context-section header with its Clear and shuffle toggle — shared by the
-/// queue sheet and the expanded player's embedded queue so the controls can't
-/// drift. The title names what's playing — a release ("Playing From") vs the
-/// whole library — by `kind`. The toggle is tinted when on; tapping it flips the
-/// context's order while the current track keeps playing. Clearing drops the
-/// whole section; the playing track keeps playing.
+/// The context section header with its Clear and shuffle toggle, shared with
+/// the expanded player's embedded queue.
 @MainActor
 @ViewBuilder
 func playingFromHeader(
@@ -167,9 +144,7 @@ func playingFromHeader(
     }
 }
 
-/// A lane's Clear, as it sits in that lane's section header. The visible word
-/// stays "Clear" — the header beside it already names the lane — while `label`
-/// spells the lane out for VoiceOver, which reads the button on its own.
+/// A lane's Clear button; `label` names the lane for VoiceOver.
 @MainActor
 @ViewBuilder
 func clearLaneButton(
@@ -182,9 +157,7 @@ func clearLaneButton(
         .accessibilityLabel(label)
 }
 
-/// The context section's title, by what it plays from: a release keeps the
-/// "Playing From" label; the library names itself. Resolving a localized key by
-/// the source kind is the UI's locale-rendering job.
+/// The context section's title for what it plays from.
 func contextSectionTitle(_ kind: BridgePlaybackSourceKind) -> LocalizedStringKey {
     switch kind {
     case .release:
@@ -201,7 +174,7 @@ private struct NowPlayingRow: View {
         HStack(spacing: 12) {
             ImageView(imageRef: track.coverImage, pointSize: 44)
                 .frame(width: 44, height: 44)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.trackTitle)
                     .font(.body)

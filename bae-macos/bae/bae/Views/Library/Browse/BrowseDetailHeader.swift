@@ -1,8 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The 72 pt image + name + count header atop a composer's or artist's detail
-/// pane.
+/// The image, name and count header atop a composer's or artist's detail pane.
 struct BrowseDetailHeader<Summary: BrowseSummaryDisplay>: View {
     let summary: Summary
 
@@ -10,7 +9,7 @@ struct BrowseDetailHeader<Summary: BrowseSummaryDisplay>: View {
         HStack(spacing: 16) {
             ImageView(imageRef: summary.image, pointSize: 72)
                 .frame(width: 72, height: 72)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
             VStack(alignment: .leading, spacing: 5) {
                 Text(summary.name)
                     .font(.system(size: 22, weight: .bold))

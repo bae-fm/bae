@@ -136,9 +136,9 @@ private struct SidePausePromptCard: View {
             .frame(maxWidth: 500, alignment: .leading)
         #endif
         .background(Theme.surfaceElevated)
-        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.panel))
         .overlay {
-            RoundedRectangle(cornerRadius: 22)
+            RoundedRectangle(cornerRadius: ThemeRadius.panel)
                 .stroke(Theme.hairline, lineWidth: 1)
         }
         .shadow(radius: 20)

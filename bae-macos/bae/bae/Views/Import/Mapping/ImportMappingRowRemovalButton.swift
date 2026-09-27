@@ -33,7 +33,7 @@ struct ImportMappingRowRemovalButton: View {
                     height: ImportMappingColumns.action
                 )
                 .background(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: ThemeRadius.control)
                         .fill(hovering ? Theme.accentStrong : Color.clear)
                 )
                 .contentShape(Rectangle())

@@ -28,7 +28,7 @@ struct ImportSheetBindingMenu: View {
             .padding(.vertical, 2)
             .background(
                 hovering ? Theme.hover : Color.clear,
-                in: RoundedRectangle(cornerRadius: 4)
+                in: RoundedRectangle(cornerRadius: ThemeRadius.control)
             )
         }
         .menuStyle(.borderlessButton)

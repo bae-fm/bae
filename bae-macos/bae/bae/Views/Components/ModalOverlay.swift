@@ -14,7 +14,7 @@ struct ModalOverlay<Content: View>: View {
                 .ignoresSafeArea()
                 .onTapGesture { onDismiss() }
             content()
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
                 .shadow(radius: 20)
                 .focusable()
                 .focusEffectDisabled()

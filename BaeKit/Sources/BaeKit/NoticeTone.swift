@@ -24,11 +24,8 @@ public enum NoticeTone: Sendable {
 
 extension View {
     /// Fill and round a notice in its tone.
-    public func noticeBackground(
-        _ tone: NoticeTone,
-        cornerRadius: CGFloat = 6
-    ) -> some View {
+    public func noticeBackground(_ tone: NoticeTone) -> some View {
         background(tone.fill)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
     }
 }

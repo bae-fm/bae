@@ -37,6 +37,7 @@ import com.google.zxing.common.HybridBinarizer
 import fm.bae.app.BaeLogger
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeRadius
 import java.util.concurrent.ExecutorService
 
 private const val ANALYSIS_WIDTH = 1280
@@ -206,7 +207,10 @@ private fun QRScannerOverlay(
                 text = instructions,
                 style = MaterialTheme.typography.bodySmall,
                 color = BaeTheme.colors.onFill,
-                modifier = Modifier.background(BaeTheme.colors.scrim, RoundedCornerShape(8.dp)).padding(8.dp),
+                modifier =
+                    Modifier
+                        .background(BaeTheme.colors.scrim, RoundedCornerShape(ThemeRadius.control))
+                        .padding(8.dp),
             )
         }
         PrimaryButton(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) {

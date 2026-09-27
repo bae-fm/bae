@@ -1,10 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// The export filename pattern editor: the pattern's tokens as removable,
-/// drag-reorderable chips in a field, and an "Add:" row offering the tokens the
-/// pattern doesn't use yet. Every edit sends the whole new token list up —
-/// the caller writes it through and the change round-trips via `configChanged`.
+/// The export filename pattern editor: removable, reorderable token chips and
+/// an "Add:" row of unused tokens; each edit sends the whole list to
+/// `setTokens`.
 struct FilenameTokenEditor: View {
     let tokens: [BridgeSaveFilenameToken]
     let setTokens: ([BridgeSaveFilenameToken]) -> Void
@@ -33,9 +32,8 @@ struct FilenameTokenEditor: View {
         .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
         .padding(6)
         .background(
-            // The same fill a text field uses, so the pattern reads as an
-            // editable input next to the Name field, not a panel.
-            RoundedRectangle(cornerRadius: 6)
+            // A text field's fill, so the pattern reads as an input.
+            RoundedRectangle(cornerRadius: ThemeRadius.control)
                 .fill(Color(nsColor: .textBackgroundColor))
                 .stroke(.separator)
         )
@@ -59,7 +57,7 @@ struct FilenameTokenEditor: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 2)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 5)
+                    RoundedRectangle(cornerRadius: ThemeRadius.chip)
                         .stroke(
                             .tertiary,
                             style: StrokeStyle(lineWidth: 1, dash: [3, 2])
@@ -116,7 +114,7 @@ private struct TokenChip: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
         .background(
-            RoundedRectangle(cornerRadius: 5)
+            RoundedRectangle(cornerRadius: ThemeRadius.chip)
                 .fill(.quaternary)
         )
     }
@@ -140,9 +138,8 @@ extension BridgeSaveFilenameToken {
         }
     }
 
-    /// The sample value the settings preview line substitutes for this token.
-    /// The numeric samples stay literal — filenames aren't locale-formatted —
-    /// and the track number mirrors the exporter's two-digit padding.
+    /// This token's value in the settings preview; numbers stay unlocalized,
+    /// as in real filenames.
     var sampleValue: String {
         switch self {
         case .title: String(localized: "Track Title")
@@ -155,8 +152,7 @@ extension BridgeSaveFilenameToken {
         }
     }
 
-    /// Stable identity a chip drag carries; the token list itself crosses the
-    /// bridge as typed enums, this string never leaves the drag session.
+    /// The string a chip drag carries; it never leaves the drag session.
     var dragId: String {
         switch self {
         case .title: "title"
@@ -176,9 +172,8 @@ extension BridgeSaveFilenameToken {
         self = token
     }
 
-    /// The sample filename the settings preview lines show for a pattern: the
-    /// tokens' sample values joined with spaces (empty patterns fall back to
-    /// the title, mirroring the exporter) plus the given extension.
+    /// The settings preview filename for a pattern; an empty pattern falls back
+    /// to the title, as the exporter does.
     static func previewFilename(
         tokens: [Self],
         fileExtension: String

@@ -466,9 +466,9 @@ private struct WelcomeLoadErrorCallout: View {
         }
         .padding(12)
         .frame(maxWidth: WelcomeLayout.columnWidth, alignment: .leading)
-        .noticeBackground(.error, cornerRadius: 8)
+        .noticeBackground(.error)
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: ThemeRadius.control)
                 .strokeBorder(
                     NoticeTone.error.tint.opacity(ThemeOpacity.tintStrong)
                 )

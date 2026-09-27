@@ -27,6 +27,11 @@ image viewer's backdrop are semantic too, as are onFill and onFillSecondary for
 text on fills, artwork and the backdrop. A colour laid behind its own text,
 such as a status chip's fill, uses it at the `tint` opacity.
 
+Corner radii are roles too, the same on every platform: `artwork` for cover art
+in rows and lists, `cover` for a release's cover shown large, `chip`, `control`
+for fields, buttons, notices and row highlights, `card`, `panel` for floating
+panels and prompts, and `bar` for skeleton and progress bars.
+
 Apple views use `Theme`, `ThemeOpacity`, `PrimaryButtonStyle`, and
 `.appAppearance()` at every scene root; Apple's hierarchical label styles stay
 native. Native controls retain their platform geometry and interaction.

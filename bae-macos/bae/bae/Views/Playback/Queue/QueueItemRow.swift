@@ -53,7 +53,7 @@ struct QueueItemRow: View {
                         // A larger click target than the glyph.
                         .frame(width: 28, height: 28)
                         .background(
-                            RoundedRectangle(cornerRadius: 7)
+                            RoundedRectangle(cornerRadius: ThemeRadius.control)
                                 .fill(
                                     removeHovered
                                         ? Theme.accentStrong : Color.clear
@@ -74,7 +74,7 @@ struct QueueItemRow: View {
         // Hover toggles only the fill: the drag coordinator's slot math needs
         // every row at the same height.
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: ThemeRadius.control)
                 .fill(isHovered ? Theme.hover : Color.clear)
         )
         .contentShape(Rectangle())
@@ -94,9 +94,9 @@ struct QueueItemRow: View {
         ZStack {
             ImageView(imageRef: item.coverImage, pointSize: 48)
                 .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
 
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                 .fill(Theme.scrim)
                 .frame(width: 48, height: 48)
                 .opacity(isHovered ? 1 : 0)

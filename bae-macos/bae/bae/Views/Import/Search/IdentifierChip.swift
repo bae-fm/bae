@@ -39,14 +39,14 @@ struct IdentifierChip<Trailing: View>: View {
         .padding(.leading, 7)
         .padding(.trailing, 6)
         .padding(.vertical, 3)
-        .background(fill, in: RoundedRectangle(cornerRadius: 6))
+        .background(fill, in: RoundedRectangle(cornerRadius: ThemeRadius.chip))
         .overlay {
             if style == .outlined {
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: ThemeRadius.chip)
                     .strokeBorder(border, lineWidth: 1)
             }
         }
-        .contentShape(RoundedRectangle(cornerRadius: 6))
+        .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.chip))
         .onHover { isHovered = $0 }
     }
 
@@ -98,7 +98,7 @@ struct ProviderCapsule: View {
         .padding(.vertical, 1)
         .background(
             Theme.hover,
-            in: RoundedRectangle(cornerRadius: 4)
+            in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
         )
     }
 }
@@ -106,7 +106,7 @@ struct ProviderCapsule: View {
 /// The dash that says nothing ran here.
 struct IdentifierDash: View {
     var body: some View {
-        RoundedRectangle(cornerRadius: 1)
+        RoundedRectangle(cornerRadius: ThemeRadius.bar)
             .fill(Theme.hairlineStrong)
             .frame(width: 8, height: 1.5)
     }
@@ -149,7 +149,7 @@ struct ScanningChip: View {
             .padding(.vertical, 3)
             .background(
                 Theme.hover,
-                in: RoundedRectangle(cornerRadius: 6)
+                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
             )
     }
 }
@@ -240,7 +240,9 @@ struct LookupReleasesPopover: View {
                             pointSize: 16
                         )
                         .frame(width: 16, height: 16)
-                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                        )
                         Text(group.title)
                             .font(.system(size: 11, weight: .semibold))
                             .lineLimit(1)
@@ -298,7 +300,7 @@ struct LookupReleaseLine: View {
                         .padding(.horizontal, 4)
                         .background(
                             Theme.hover,
-                            in: RoundedRectangle(cornerRadius: 3)
+                            in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
                         )
                         .lineLimit(1)
                 }

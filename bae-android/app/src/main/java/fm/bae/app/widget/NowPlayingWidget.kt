@@ -35,14 +35,13 @@ import androidx.glance.text.TextStyle
 import fm.bae.app.R
 import fm.bae.app.mainActivityIntent
 import fm.bae.app.playback.ArtworkContentProvider
+import fm.bae.app.ui.appearance.ThemeRadius
 import uniffi.bae_bridge.BridgeImageRef
 
 /**
- * Home-screen widget showing the last now-playing state with play/pause and next
- * controls. It renders from the file-backed [WidgetSnapshot] (the launcher's
- * process can't host bae-core), so it shows the last known track even when the
- * app process is dead. Every tap either drives live playback (see
- * [NowPlayingWidgetTransportAction]) or opens the app.
+ * Home-screen now-playing widget with play/pause and next. It renders from the
+ * file-backed [WidgetSnapshot] because the launcher's process can't host
+ * bae-core, so it shows the last known track even when the app isn't running.
  */
 class NowPlayingWidget : GlanceAppWidget() {
     override suspend fun provideGlance(
@@ -120,7 +119,7 @@ private fun Cover(coverImage: BridgeImageRef?) {
             modifier =
                 GlanceModifier
                     .size(coverSize)
-                    .cornerRadius(8.dp)
+                    .cornerRadius(ThemeRadius.artwork)
                     .background(GlanceTheme.colors.secondaryContainer),
             contentAlignment = Alignment.Center,
         ) {
@@ -132,18 +131,20 @@ private fun Cover(coverImage: BridgeImageRef?) {
             )
         }
     } else {
-        // Glance has no Uri ImageProvider; wrap the artwork content:// URI in an
-        // Icon so the launcher resolves the bytes from ArtworkContentProvider
-        // (the same path the media browse clients read covers through).
+        // Glance has no Uri ImageProvider, so an Icon carries the artwork URI
+        // and the launcher reads the bytes from ArtworkContentProvider.
         val coverIcon = Icon.createWithContentUri(ArtworkContentProvider.uriFor(context, coverImage))
         Image(
             provider = ImageProvider(coverIcon),
             contentDescription = null,
-            modifier = GlanceModifier.size(coverSize).cornerRadius(8.dp),
+            modifier = GlanceModifier.size(coverSize).cornerRadius(ThemeRadius.artwork),
             contentScale = ContentScale.Crop,
         )
     }
 }
+
+/** A transport button is a circle this wide. */
+private val TRANSPORT_BUTTON_SIZE = 44.dp
 
 @Composable
 private fun TransportButton(
@@ -155,8 +156,8 @@ private fun TransportButton(
     Box(
         modifier =
             GlanceModifier
-                .size(44.dp)
-                .cornerRadius(22.dp)
+                .size(TRANSPORT_BUTTON_SIZE)
+                .cornerRadius(TRANSPORT_BUTTON_SIZE / 2)
                 .clickable(actionRunCallback<NowPlayingWidgetTransportAction>(widgetCommand(command))),
         contentAlignment = Alignment.Center,
     ) {

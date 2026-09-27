@@ -1,11 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Album detail: a header, a release picker when the album has more than one
-/// release, and the selected release's track list grouped by side. Tapping a
-/// track plays the release starting there. Reads the shared `LibraryStore`
-/// (`albumSummaries` + `releaseDetails`), loading any missing release detail
-/// on demand. The store stays live, so sync updates re-render in place.
+/// Album detail: a header, a release picker when the album has several
+/// releases, and the selected release's tracks grouped by side.
 struct AlbumDetailView: View {
     let albumId: String
     private let context: AlbumDetailContext?
@@ -92,9 +89,8 @@ struct AlbumDetailView: View {
         reader.show(albumId)
     }
 
-    /// The pre-content placeholder for a release whose detail hasn't loaded:
-    /// an error + Retry once its load has failed, otherwise a spinner. Retry
-    /// re-runs the on-demand load for that release.
+    /// The album's load error with Retry once loading has failed, otherwise a
+    /// spinner.
     @ViewBuilder
     private func detailPlaceholder() -> some View {
         if let error = libraryStore.albumDetailErrors[albumId] {
@@ -144,8 +140,7 @@ struct AlbumDetailView: View {
             GalleryView(
                 items: detail.galleryItems,
                 loadImage: { item in
-                    // The viewer names the slot and the store resolves it; the
-                    // read dispatches on the source in core, never here.
+                    // Core, not this view, decides how to read each source.
                     try await imageStore.decodeSource(
                         for: .releaseImage(
                             releaseId: releaseId,
@@ -179,7 +174,7 @@ struct AlbumDetailView: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
-                            RoundedRectangle(cornerRadius: 16)
+                            Capsule()
                                 .fill(
                                     id == activeReleaseId(summary: summary)
                                         ? AnyShapeStyle(Theme.accentSoft)
@@ -193,7 +188,7 @@ struct AlbumDetailView: View {
         }
     }
 
-    /// The active release: explicit selection, otherwise the album's primary release.
+    /// The selected release when it belongs to the album, else the primary one.
     private func activeReleaseId(summary: AlbumSummary) -> String {
         if let id = selectedReleaseId, summary.releaseIds.contains(id) {
             return id
@@ -266,11 +261,9 @@ enum TrackArtistDisplay {
     case album
     case workRelease
 
-    /// The artist to show on `track`'s row, or `nil` for none. On the album
-    /// screen this is core's decision (`displayArtist`, set only for a
-    /// compilation); a work-release view shows the performer regardless, because
-    /// its header is the work/composer — navigation context, decided here, not by
-    /// core, since the same track also serves the album screen.
+    /// The artist to show on `track`'s row, or `nil` for none: core's choice on
+    /// the album screen, always the performer on a work release, whose header
+    /// names the work instead.
     func artist(for track: Track) -> String? {
         switch self {
         case .album:

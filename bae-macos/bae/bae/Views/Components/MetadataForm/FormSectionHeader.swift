@@ -1,9 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The uppercase tracked label a metadata section or a table column leads with.
-/// Section headers render at 11pt; the denser column headers take the 10pt
-/// default.
+/// The uppercase label that leads a metadata section or a table column.
 struct FormEyebrow: View {
     let text: Text
     var size: CGFloat = 10
@@ -17,12 +15,10 @@ struct FormEyebrow: View {
     }
 }
 
-/// A section header: the eyebrow, and an optional right-aligned note stating
-/// what the section holds.
+/// A section header: the eyebrow and an optional right-aligned note.
 ///
-/// `ruled` runs a hairline from the eyebrow to the far edge. A header over a
-/// bordered card has the card's edge to divide it from what came before; a
-/// header over open content — a gallery, a borderless table — has the rule.
+/// `ruled` draws a hairline to the far edge, for headers over borderless
+/// content.
 struct FormSectionHeader: View {
     let title: String
     var trailing: String?
@@ -51,14 +47,13 @@ struct FormSectionHeader: View {
 }
 
 extension View {
-    /// The grouped inset card every metadata field group and table sits in —
-    /// the macOS System-Settings group idiom.
+    /// The bordered card that metadata field groups and tables sit in.
     func formGroupCard() -> some View {
         self
             .background(Theme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
             .overlay {
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: ThemeRadius.card)
                     .strokeBorder(Theme.hairline, lineWidth: 1)
             }
     }

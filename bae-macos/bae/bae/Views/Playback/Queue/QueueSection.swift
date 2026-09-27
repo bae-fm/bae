@@ -342,7 +342,7 @@ extension QueueSection {
                 // Same 28pt slot as the rows' remove button, so they line up.
                 .frame(width: 28, height: 28)
                 .background(
-                    RoundedRectangle(cornerRadius: 7)
+                    RoundedRectangle(cornerRadius: ThemeRadius.control)
                         .fill(shuffled ? Theme.accentSoft : .clear)
                 )
                 .contentShape(Rectangle())

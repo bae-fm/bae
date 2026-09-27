@@ -265,9 +265,9 @@ extension CoverGalleryView {
                 .frame(maxWidth: .infinity)
                 .padding(8)
                 .background(Theme.hover)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         .strokeBorder(
                             browser.cursor?.current.id == item.id
                                 ? Color.accentColor : .clear,
@@ -419,7 +419,7 @@ struct CoverPickerFrame<Content: View>: View {
                     width: min(1_100, max(0, geometry.size.width - 48)),
                     height: min(820, max(0, geometry.size.height - 48))
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }

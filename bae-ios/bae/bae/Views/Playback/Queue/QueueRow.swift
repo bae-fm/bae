@@ -9,7 +9,7 @@ struct QueueRow: View {
         HStack(spacing: 12) {
             ImageView(imageRef: item.coverImage, pointSize: 56)
                 .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(.body)
@@ -39,17 +39,17 @@ struct QueueRow: View {
 struct QueueRowPlaceholder: View {
     var body: some View {
         HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                 .fill(Theme.placeholder)
                 .frame(width: 56, height: 56)
             VStack(alignment: .leading, spacing: 6) {
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(width: 160, height: 12)
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(width: 100, height: 10)
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(width: 120, height: 10)
             }

@@ -99,7 +99,9 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
                         width: ReleaseMetadataLayout.coverSize,
                         height: ReleaseMetadataLayout.coverSize
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                    )
                 ReleaseAlbumIdentityEditor(
                     values: values,
                     writer: writer,
@@ -709,7 +711,7 @@ struct ArtistAssignmentsField: View {
                     imageRef: nil,
                     pointSize: ReleaseMetadataLayout.coverSize
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             },
             audioFacts: { EmptyView() }
         )
@@ -734,7 +736,7 @@ struct ArtistAssignmentsField: View {
                     imageRef: nil,
                     pointSize: ReleaseMetadataLayout.coverSize
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             },
             audioFacts: { EmptyView() }
         )

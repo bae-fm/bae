@@ -61,6 +61,7 @@ import fm.bae.app.performBridgeAction
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.Dispatchers
@@ -73,11 +74,7 @@ import uniffi.bae_bridge.bridgeNextRepeatMode
 
 private val logger = BaeLogger("bae.NowPlayingBar")
 
-/**
- * Persistent now-playing bar, hidden until something is loaded. It reads state
- * from and sends commands to the session's [fm.bae.app.playback.BaeCorePlayer],
- * and opens [QueueScreen] in a bottom sheet.
- */
+/** Persistent now-playing bar, hidden until something is loaded. */
 @OptIn(ExperimentalMaterial3Api::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
@@ -99,8 +96,8 @@ fun NowPlayingBar(session: OpenLibrary) {
         }
     }
 
-    // Tapping the track area (cover + title/artist, not the transport buttons)
-    // expands to the full-screen player.
+    // Tapping the track area, not the transport buttons, opens the full-screen
+    // player.
     var expanded by remember { mutableStateOf(false) }
     if (expanded) {
         ExpandedNowPlayingScreen(session = session, onDismiss = { expanded = false })
@@ -148,7 +145,7 @@ private fun RowScope.NowPlayingTrackInfo(
     ) {
         CoverImage(
             cover = track.coverImage,
-            cornerRadius = 4.dp,
+            cornerRadius = ThemeRadius.artwork,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
         )
@@ -171,10 +168,7 @@ private fun RowScope.NowPlayingTrackInfo(
     }
 }
 
-/**
- * [SidePauseAlert] wired to [session]: Play resumes through the player, Close
- * stops core's countdown, and an unchecked box writes the setting off.
- */
+/** [SidePauseAlert] wired to [session]. */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 private fun SidePauseAlert(
@@ -205,12 +199,9 @@ private fun SidePauseAlert(
 }
 
 /**
- * The prompt core raises when playback pauses at the end of a side or disc. The
- * checkbox starts checked because the prompt only appears while the setting is
- * on; answering with it unchecked calls [onTurnOffPauseBetweenSides]. Close or
- * dismissing stays paused and stops any countdown ([onClose]). The countdown
- * reads core's deadline against [nowMs]; core, not the dialog, starts the next
- * side.
+ * The prompt core raises when playback pauses at the end of a side or disc; the
+ * box starts checked because the prompt only appears while the setting is on.
+ * Core, not the dialog, starts the next side.
  */
 @Composable
 fun SidePauseAlert(
@@ -297,9 +288,8 @@ private fun KeepPausingCheckbox(
 }
 
 /**
- * The countdown line, redrawn as each whole second before core's deadline runs
- * out. A polite live region, so a screen reader hears the new count without
- * losing its place.
+ * The countdown line, redrawn each whole second until core's deadline; screen
+ * readers hear each new count without losing their place.
  */
 @Composable
 private fun SidePauseCountdownLine(

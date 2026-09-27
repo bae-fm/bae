@@ -1,15 +1,11 @@
 import BaeKit
 import SwiftUI
 
-/// The folder's images as a gallery of fixed thumbnails, each opening the
-/// lightbox at itself.
-///
-/// A picture is read by looking at it — a row per filename says nothing about
-/// what is in the file — so the images are shown rather than listed.
+/// The folder's images as a thumbnail gallery; each opens the lightbox at
+/// itself.
 struct ImportMappingGallery: View {
     let images: [BridgeMappingImage]
-    /// Extracted identifying signals by their source file. A tile whose image
-    /// supplied one says so, independently of the selected pressing.
+    /// Identifying signals extracted from the images, by source file.
     var evidence: [BridgeFileEvidence] = []
     let onOpen: ([BridgeMappingImage], String) -> Void
 
@@ -43,13 +39,11 @@ struct ImportMappingGallery: View {
     }
 }
 
-/// One image of the gallery: the picture, its filename under it, and an
-/// accent outline while the pointer says it can be opened. Dragging it onto
+/// One gallery image over its filename, outlined on hover; dragging it onto
 /// the cover well makes it the cover.
 struct ImportMappingGalleryTile: View {
     let image: BridgeMappingImage
-    /// Every image of the gallery — what the lightbox pages through from this
-    /// one.
+    /// Every gallery image, for the lightbox to page through.
     let images: [BridgeMappingImage]
     let evidence: [BridgeFileEvidence]
     let onOpen: ([BridgeMappingImage], String) -> Void
@@ -69,9 +63,9 @@ struct ImportMappingGalleryTile: View {
                     pointSize: tileSize
                 )
                 .frame(width: tileSize, height: tileSize)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         .strokeBorder(
                             Theme.accent,
                             lineWidth: hovering ? 2 : 0

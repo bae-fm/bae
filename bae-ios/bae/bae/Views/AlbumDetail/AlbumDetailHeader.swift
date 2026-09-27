@@ -28,7 +28,7 @@ struct AlbumDetailHeader: View {
         HStack(alignment: .top, spacing: 16) {
             ImageView(imageRef: detail.summary.cover, pointSize: 140)
                 .frame(width: 140, height: 140)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
                 .contentShape(Rectangle())
                 .onTapGesture {
                     if !detail.galleryItems.isEmpty { showGallery = true }

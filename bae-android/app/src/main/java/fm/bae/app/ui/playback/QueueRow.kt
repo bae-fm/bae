@@ -38,6 +38,7 @@ import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.QueueItem
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeDurationClock
 
@@ -54,7 +55,7 @@ internal fun NowPlayingRow(np: NowPlaying) {
     ) {
         CoverImage(
             cover = np.coverImage,
-            cornerRadius = 4.dp,
+            cornerRadius = ThemeRadius.artwork,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
         )
@@ -94,7 +95,7 @@ internal fun QueueRow(
     ) {
         CoverImage(
             cover = item.coverImage,
-            cornerRadius = 4.dp,
+            cornerRadius = ThemeRadius.artwork,
             iconPadding = 12.dp,
             modifier = Modifier.size(56.dp),
         )
@@ -139,7 +140,7 @@ internal fun QueueRowPlaceholder() {
             modifier =
                 Modifier
                     .size(56.dp)
-                    .clip(RoundedCornerShape(4.dp))
+                    .clip(RoundedCornerShape(ThemeRadius.artwork))
                     .background(placeholderColor),
         )
         Spacer(modifier = Modifier.width(12.dp))
@@ -148,7 +149,7 @@ internal fun QueueRowPlaceholder() {
                 modifier =
                     Modifier
                         .size(width = 160.dp, height = 12.dp)
-                        .clip(RoundedCornerShape(3.dp))
+                        .clip(RoundedCornerShape(ThemeRadius.bar))
                         .background(placeholderColor),
             )
             Spacer(modifier = Modifier.height(6.dp))
@@ -156,7 +157,7 @@ internal fun QueueRowPlaceholder() {
                 modifier =
                     Modifier
                         .size(width = 100.dp, height = 10.dp)
-                        .clip(RoundedCornerShape(3.dp))
+                        .clip(RoundedCornerShape(ThemeRadius.bar))
                         .background(placeholderColor),
             )
             Spacer(modifier = Modifier.height(6.dp))
@@ -164,7 +165,7 @@ internal fun QueueRowPlaceholder() {
                 modifier =
                     Modifier
                         .size(width = 120.dp, height = 10.dp)
-                        .clip(RoundedCornerShape(3.dp))
+                        .clip(RoundedCornerShape(ThemeRadius.bar))
                         .background(placeholderColor),
             )
         }

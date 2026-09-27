@@ -280,7 +280,7 @@ struct ImportCoverWell: View {
             }
         }
         .frame(width: Self.coverSize, height: Self.coverSize)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
         .overlay(alignment: .topTrailing) {
             if coverContent != nil, hasCoverOptions {
                 Image(systemName: "pencil")
@@ -288,7 +288,7 @@ struct ImportCoverWell: View {
                     .foregroundStyle(Theme.onFill)
                     .padding(3)
                     .background(Theme.scrim)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.chip))
                     .padding(4)
             }
         }
@@ -300,7 +300,7 @@ struct ImportCoverWell: View {
         }
         .onHover { hovering = $0 }
         .overlay {
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                 .stroke(
                     Theme.accent,
                     lineWidth: dropTargeted ? 3 : 0
@@ -341,7 +341,7 @@ struct ImportCoverWell: View {
             inviting ? Theme.accentSoft : Theme.hover
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                 .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
                 .foregroundStyle(
                     inviting

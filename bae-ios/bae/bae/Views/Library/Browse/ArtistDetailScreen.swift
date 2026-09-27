@@ -70,7 +70,7 @@ private struct ArtistDetailContent: View {
                             HStack(spacing: 12) {
                                 ImageView(imageRef: album.cover, pointSize: 48)
                                     .frame(width: 48, height: 48)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                                 TwoLineRow(
                                     title: album.title,
                                     subtitle: album.year.map(String.init)

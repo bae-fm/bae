@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A tappable image + title + secondary-line row shared by the works list and
-/// the selected work's releases. The image slot shows the placeholder when the
-/// entity has no art.
+/// An image, title and subtitle row shared by the works list and the selected
+/// work's releases.
 struct DetailMediaRow: View {
     let image: BridgeImageRef?
     let title: String
@@ -13,7 +12,7 @@ struct DetailMediaRow: View {
         HStack(spacing: 12) {
             ImageView(imageRef: image, pointSize: 42)
                 .frame(width: 42, height: 42)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.browseRowTitle)

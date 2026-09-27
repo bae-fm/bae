@@ -86,9 +86,9 @@ struct ImportCandidateBulkSelectionCard: View {
         .padding(Self.padding)
         .frame(width: Self.width)
         .background(Theme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: ThemeRadius.card)
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         }
     }
@@ -122,9 +122,9 @@ struct ImportCandidateBulkSelectionCard: View {
             }
         }
         .background(Theme.hover)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
         .overlay {
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: ThemeRadius.card)
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         }
     }

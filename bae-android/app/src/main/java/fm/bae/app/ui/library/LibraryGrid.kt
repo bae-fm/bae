@@ -31,11 +31,11 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeAlbum
 
-// How many fixture albums the library-grid screenshot scene renders — enough to
-// fill a couple of scrolled rows on a phone.
+// Enough fixture albums to fill several grid rows in the screenshot scene.
 private const val SCENE_ALBUM_COUNT = 9
 
 @Composable
@@ -60,11 +60,8 @@ internal fun LibraryGridContent(
 }
 
 /**
- * The album grid itself: adaptive columns of cover cards over a resolved album
- * list. Split out of [LibraryGridContent] so the `library-grid` screenshot scene
- * and the dev preview render the same grid the library shows, without a live
- * session — the caller supplies the albums, the cover-byte loader, and the
- * selection callback.
+ * The album grid, taking albums by index so the screenshot scene can render it
+ * without a live session.
  */
 @Composable
 private fun LibraryGridBacking(
@@ -93,9 +90,8 @@ private fun LibraryGridBacking(
 }
 
 /**
- * The `library-grid` screenshot scene: a full grid of fixture albums in the app
- * chrome. The store resolves nothing and the preview renderer runs no load
- * effect, so every card holds its empty cover tile — deterministic, no session.
+ * The `library-grid` screenshot scene: fixture albums with empty cover tiles in
+ * the app chrome, needing no session.
  */
 @Composable
 internal fun LibraryGridScene() {
@@ -125,7 +121,7 @@ private fun AlbumGridCard(
     Column(modifier = Modifier.clickable(onClick = onClick)) {
         CoverImage(
             cover = album.cover,
-            cornerRadius = 6.dp,
+            cornerRadius = ThemeRadius.cover,
             iconPadding = 40.dp,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
             contentDescription = album.title,

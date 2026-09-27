@@ -30,12 +30,15 @@ struct CatalogAgreementChip: View {
             .padding(.leading, 6)
             .padding(.trailing, 9)
             .padding(.vertical, 4)
-            .background(background, in: RoundedRectangle(cornerRadius: 6))
+            .background(
+                background,
+                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: ThemeRadius.chip)
                     .strokeBorder(border, lineWidth: 1)
             )
-            .contentShape(RoundedRectangle(cornerRadius: 6))
+            .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.chip))
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }

@@ -20,7 +20,7 @@ fn colours_read_with_and_without_alpha() {
 
 fn theme_with(tones: &str, semantics: &str) -> Result<Theme, Vec<String>> {
     Theme::from_toml(&format!(
-        "[opacity]\ntint = 0.14\n\n{tones}\n[[accents]]\nname = \"blue\"\nlight = \"#000000\"\ndark = \"#000000\"\nfill = \"#000000\"\n\n{semantics}"
+        "[opacity]\ntint = 0.14\n\n[radius]\nchip = 5\n\n{tones}\n[[accents]]\nname = \"blue\"\nlight = \"#000000\"\ndark = \"#000000\"\nfill = \"#000000\"\n\n{semantics}"
     ))
 }
 
@@ -107,6 +107,19 @@ fn both_platforms_carry_every_opacity() {
             "    public static let {role}: Double = {value:?}\n"
         )));
         assert!(kotlin.contains(&format!("    const val {role}: Float = {value:?}f\n")));
+    }
+}
+
+#[test]
+fn both_platforms_carry_every_radius() {
+    let theme = Theme::from_toml(THEME).unwrap();
+    let swift = apple::swift(&theme);
+    let kotlin = android::kotlin(&theme);
+    for (role, value) in &theme.radius {
+        assert!(swift.contains(&format!(
+            "    public static let {role}: CGFloat = {value}\n"
+        )));
+        assert!(kotlin.contains(&format!("    val {role} = {value}.dp\n")));
     }
 }
 

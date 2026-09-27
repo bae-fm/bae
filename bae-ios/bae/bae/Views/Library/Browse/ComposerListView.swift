@@ -76,7 +76,7 @@ struct ComposerSummaryRow: View {
         HStack(spacing: 12) {
             ImageView(imageRef: summary.image, pointSize: 48)
                 .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: 2) {
                 Text(summary.name)
                     .font(.body)

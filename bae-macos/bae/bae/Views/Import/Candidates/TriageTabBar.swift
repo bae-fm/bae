@@ -50,7 +50,7 @@ struct TriageTabBar: View {
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: ThemeRadius.control)
                     .fill(isActive ? Theme.accentSoft : Color.clear)
             )
             .contentShape(Rectangle())

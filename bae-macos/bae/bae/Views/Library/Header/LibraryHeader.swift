@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The library screen's collapsing header band: the mode heading at the
-/// leading edge and the mode-specific trailing controls, baseline-aligned.
-/// Metrics scrub between the full and compact states off `collapseProgress`
-/// (`HeaderCollapse.progress`).
+/// The library's collapsing header: the mode heading and the mode's controls,
+/// sized between full and compact by `collapseProgress`.
 struct LibraryHeader<Trailing: View>: View {
     let collapseProgress: Double
     /// Span the window instead of centering in the shared capped column
@@ -19,27 +17,22 @@ struct LibraryHeader<Trailing: View>: View {
             Spacer()
             trailing
         }
-        // Aligned to the album art's leading edge: the shared container padding
-        // plus the card's own 6pt inset.
+        // Lines up with the album art: container padding plus the card's inset.
         .padding(
             .horizontal,
             LibraryContentContainer.horizontalPadding + 6
         )
         .padding(.top, 66 - 52 * collapseProgress)
-        // The compact bottom inset shrinks so the heading sits low in the
-        // band, with enough breathing room off the content edge.
+        // Shrinks on collapse so the compact heading sits low in the band.
         .padding(.bottom, 32 - 20 * collapseProgress)
-        // The same container the content centers in, so the heading and sort
-        // controls line up with it at every window width.
+        // The content's container, so the header lines up with it at any width.
         .libraryContentContainer(fullWidth: fullWidth)
         .animation(.easeOut(duration: 0.15), value: collapseProgress)
     }
 }
 
 #if DEBUG
-    /// Scroll the dummy list to drive the collapse through the real
-    /// `HeaderCollapse` + `reportsHeaderScroll` pipeline — the same wiring
-    /// the app uses, minus the library behind it.
+    /// Scrolling the list drives the collapse through the app's real wiring.
     #Preview("Collapsing header") {
         @Previewable
         @State
@@ -61,7 +54,7 @@ struct LibraryHeader<Trailing: View>: View {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(0..<80, id: \.self) { index in
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: ThemeRadius.control)
                             .fill(Theme.surface)
                             .frame(height: 48)
                             .overlay(alignment: .leading) {

@@ -58,7 +58,9 @@ struct SortCriteriaRow<Criterion: SortCriterionRepresentable>: View {
                         .frame(width: 30, height: 30)
                         .background(
                             Theme.placeholder,
-                            in: RoundedRectangle(cornerRadius: 9)
+                            in: RoundedRectangle(
+                                cornerRadius: ThemeRadius.control
+                            )
                         )
                 }
                 .menuStyle(.borderlessButton)

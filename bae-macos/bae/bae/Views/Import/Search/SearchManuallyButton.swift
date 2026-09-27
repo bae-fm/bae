@@ -18,9 +18,11 @@ struct SearchManuallyButton: View {
                 .frame(height: 26)
                 .background(
                     isHovered ? Theme.pressed : Theme.hover,
-                    in: RoundedRectangle(cornerRadius: 6)
+                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
-                .contentShape(RoundedRectangle(cornerRadius: 6))
+                .contentShape(
+                    RoundedRectangle(cornerRadius: ThemeRadius.control)
+                )
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }

@@ -53,7 +53,7 @@ struct EditMetadataSheet: View {
             }
             .frame(width: size.width, height: size.height)
             .background(Theme.background)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .sheet(isPresented: $showingCoverPicker) {
                 CoverSheetView(
