@@ -112,3 +112,38 @@ fn written_digits_read_the_digits_out_of_the_spacing() {
     assert_eq!(written_digits("- -"), None);
     assert_eq!(written_digits("ABC 123"), None);
 }
+
+/// GS1 sets some prefixes aside for numbers a shop or company assigns itself —
+/// price stickers, in-store items — which name no product: EAN-13 prefixes 200
+/// to 299, and UPC-A number systems 2 and 4 (020 to 029 and 040 to 049 once
+/// widened). None is a code, however it arrives or compares.
+#[test]
+fn a_number_a_shop_assigns_itself_is_no_code() {
+    for code in [
+        with_check_digit("200123456789"),
+        with_check_digit("299876543210"),
+        with_check_digit("21234567890"),
+        with_check_digit("41234567890"),
+    ] {
+        assert_eq!(stated(&code), None, "{code} is a shop's own number");
+        assert_eq!(
+            comparison_key(&code),
+            Err(Unusable::StoreInternal),
+            "{code}"
+        );
+    }
+    let printed_sticker = with_check_digit("210000012345");
+    let (first, rest) = printed_sticker.split_at(1);
+    let (left, right) = rest.split_at(6);
+    assert_eq!(printed(&format!("{first} {left} {right}")), None);
+
+    for code in [
+        with_check_digit("300123456789"),
+        with_check_digit("199876543210"),
+        with_check_digit("01234567890"),
+        with_check_digit("51234567890"),
+    ] {
+        assert!(stated(&code).is_some(), "{code} is a product code");
+        assert!(comparison_key(&code).is_ok(), "{code}");
+    }
+}

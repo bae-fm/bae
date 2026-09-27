@@ -36,7 +36,7 @@ impl Barcode {
             .into_iter()
             .any(|symbology| symbology.admits(&digits))
             .then(|| Self::spelled(digits))
-            .filter(|code| !is_placeholder(&code.0))
+            .filter(|code| !is_placeholder(&code.0) && !is_store_internal(&code.0))
     }
 
     /// A code read off a printed line: the human-readable digits under the
@@ -76,7 +76,7 @@ impl Barcode {
                     && symbology.admits(&digits)
             })
             .then(|| Self::spelled(digits))
-            .filter(|code| !is_placeholder(&code.0))
+            .filter(|code| !is_placeholder(&code.0) && !is_store_internal(&code.0))
     }
 
     /// The code's digits in its one spelling — what a sighting records and a
@@ -123,6 +123,8 @@ pub enum Unusable {
     TooShort,
     /// A run of one digit — an unfilled field.
     Placeholder,
+    /// A number a shop or company assigns itself, which names no product.
+    StoreInternal,
 }
 
 /// The key a provider record's stated barcode is compared with another
@@ -139,7 +141,11 @@ pub fn comparison_key(stated: &str) -> Result<String, Unusable> {
     if is_placeholder(&digits) {
         return Err(Unusable::Placeholder);
     }
-    Ok(widened(digits))
+    let digits = widened(digits);
+    if is_store_internal(&digits) {
+        return Err(Unusable::StoreInternal);
+    }
+    Ok(digits)
 }
 
 /// The fewest digits any UPC or EAN has — EAN-8 and UPC-E.
@@ -162,6 +168,16 @@ fn widened(digits: String) -> String {
 fn is_placeholder(digits: &str) -> bool {
     let mut chars = digits.chars();
     chars.next().is_some_and(|first| chars.all(|c| c == first))
+}
+
+/// A number from a range GS1 leaves to shops and companies to assign
+/// themselves — price stickers, in-store items — rather than to products:
+/// EAN-13 prefixes 200 to 299, and UPC-A number systems 2 and 4, which widen
+/// to 020–029 and 040–049. Only the thirteen-digit spelling is read, since an
+/// eight-digit EAN-8 and UPC-E cannot be told apart by their first digit.
+fn is_store_internal(digits: &str) -> bool {
+    digits.len() == 13
+        && (digits.starts_with('2') || digits.starts_with("02") || digits.starts_with("04"))
 }
 
 fn is_digits(value: &str) -> bool {
