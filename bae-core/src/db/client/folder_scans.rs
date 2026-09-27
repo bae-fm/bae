@@ -49,7 +49,7 @@ pub enum ScanItemWrite {
     Stored {
         superseded_keys: Vec<String>,
         regrouped: super::release_groupings::GroupingChanges,
-        /// See [`EntryWrite::Stored`].
+        /// See `EntryWrite::Stored`.
         found: bool,
     },
 }

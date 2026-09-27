@@ -183,7 +183,7 @@ impl CandidateText {
     }
 
     /// Whether the text writes `area` any way it is written — see
-    /// [`ReleaseArea::names`].
+    /// `ReleaseArea::names`.
     pub fn states_area(&self, area: ReleaseArea) -> bool {
         area.names().iter().any(|name| self.states(name))
             || area

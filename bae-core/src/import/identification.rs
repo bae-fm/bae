@@ -4,7 +4,7 @@
 //!
 //! - **Automatic**, at [`CallPriority::Background`]: a release a scan finds for
 //!   the first time while identification runs on its own (see
-//!   [`AutomaticAdmissions`]). Nothing else admits a candidate on its own.
+//!   `AutomaticAdmissions`). Nothing else admits a candidate on its own.
 //! - **Requested**, at [`CallPriority::Interactive`] and ahead of automatic
 //!   jobs: a person asked for it.
 //!
