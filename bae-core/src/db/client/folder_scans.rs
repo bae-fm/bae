@@ -78,7 +78,8 @@ impl ScanItemWrite {
         }
     }
 
-    /// Whether this write stored a release for the first time.
+    /// Whether this write stored a release that is found: new to the library,
+    /// or listed anew by a person's decision about how its folder reads.
     pub fn found(&self) -> bool {
         matches!(self, Self::Stored { found: true, .. })
     }
@@ -318,6 +319,7 @@ impl Database {
                     folder_date,
                 },
                 observed_at,
+                Finding::FirstRead,
             )
             .map(Some)
         })
@@ -525,6 +527,7 @@ fn write_scan_item(
     generation: i64,
     to_write: &ScanItemToWrite,
     observed_at: i64,
+    finding: Finding,
 ) -> Result<ScanItemWrite, DbError> {
     if let ScanItem::Sidecar(folder_sidecar) = &to_write.item {
         return sidecar::write_sidecar(
@@ -550,7 +553,7 @@ fn write_scan_item(
         generation,
         to_write,
         observed_at,
-        EntrySource::Scanned,
+        EntrySource::Scanned(finding),
     )?
     else {
         return Ok(ScanItemWrite::Unchanged);
@@ -569,12 +572,25 @@ fn write_scan_item(
     })
 }
 
-/// Who writes an entry: a scan, which replaces every other reading of its
-/// files, or a grouping, which replaces only its own row.
+/// Who writes an entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum EntrySource {
-    Scanned,
+    /// A scan, which replaces every other reading of its files.
+    Scanned(Finding),
+    /// A grouping, which replaces only its own row. Its release is found when
+    /// it is combined.
     Grouping,
+}
+
+/// What makes a valid release a scan stores found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Finding {
+    /// Its folder had not been read as a release or as broken while a watched
+    /// folder covered it.
+    FirstRead,
+    /// A person decided how its folder reads, and it was not listed before:
+    /// the parts of a folder read apart again are found.
+    Decision,
 }
 
 /// What writing one entry did.
@@ -584,9 +600,8 @@ pub(super) enum EntryWrite {
     Stored {
         /// The keys of the entries it replaced.
         replaced: Vec<String>,
-        /// Whether a scan read a valid release in a folder no scan had read
-        /// as a release or as broken; new files in a known folder are not a
-        /// new release.
+        /// Whether it stored a valid release that is found, by the rule its
+        /// [`EntrySource`] names.
         found: bool,
     },
 }
@@ -611,7 +626,7 @@ pub(super) fn write_entry(
         ));
     };
     let sources = match source {
-        EntrySource::Scanned => RowSources::Scanned,
+        EntrySource::Scanned(_) => RowSources::Scanned,
         EntrySource::Grouping => RowSources::Any,
     };
     let folder = match item {
@@ -624,16 +639,14 @@ pub(super) fn write_entry(
         }
     };
     let discovery = dates::FolderDiscovery::observe(sql, folder, *folder_date, observed_at)?;
-    // A grouping's release is found when it is combined, not by the folder
-    // it is listed at.
-    let settles = source == EntrySource::Scanned && !matches!(item, ScanItem::Discovered(_));
+    let settles =
+        matches!(source, EntrySource::Scanned(_)) && !matches!(item, ScanItem::Discovered(_));
+    let listed_before = read::settled_entry_is_stored(sql, watched_folder_path, &entry_key)?;
     // A rescan reports every candidate tentative before it reports it settled.
     // A settled row keeps standing through that, taking only this
     // generation's stamp, so it does not swing out of the list; the settled
     // write that follows replaces it.
-    if matches!(item, ScanItem::Discovered(_))
-        && read::settled_entry_is_stored(sql, watched_folder_path, &entry_key)?
-    {
+    if matches!(item, ScanItem::Discovered(_)) && listed_before {
         write::touch_candidate(sql, watched_folder_path, &entry_key, generation)?;
         discovery.store(sql, settles)?;
         return Ok(EntryWrite::Unchanged);
@@ -655,7 +668,9 @@ pub(super) fn write_entry(
             .filter(|snapshot| item_was_read_for(item, snapshot)),
     };
     let removed_keys = match source {
-        EntrySource::Scanned => superseded_keys(&stored_entries(sql, watched_folder_path)?, item),
+        EntrySource::Scanned(_) => {
+            superseded_keys(&stored_entries(sql, watched_folder_path)?, item)
+        }
         EntrySource::Grouping => Vec::new(),
     };
     // An item replaces its own stored row whole.
@@ -681,7 +696,12 @@ pub(super) fn write_entry(
     discovery.store(sql, settles)?;
     Ok(EntryWrite::Stored {
         replaced: removed_keys,
-        found: settles && matches!(item, ScanItem::Valid(_)) && !discovery.settled(),
+        found: matches!(item, ScanItem::Valid(_))
+            && match source {
+                EntrySource::Scanned(Finding::FirstRead) => !discovery.settled(),
+                EntrySource::Scanned(Finding::Decision) => !listed_before,
+                EntrySource::Grouping => false,
+            },
     })
 }
 

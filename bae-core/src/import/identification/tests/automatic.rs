@@ -224,3 +224,110 @@ async fn a_takeover_queues_only_a_release_new_to_the_parent() {
         fixture.provider.requests()
     );
 }
+
+/// Two releases under `folder`, each with a file of its own, scanned with the
+/// setting off and read as one release by the person. Returns the parts and
+/// the combined release's key.
+async fn combined_parts(fixture: &Fixture, folder: &str) -> (Vec<PathBuf>, String) {
+    let parts: Vec<PathBuf> = ["Side A", "Side B"]
+        .iter()
+        .map(|side| {
+            let dir = fixture.disc_id_candidate(&format!("{folder}/{side}"));
+            std::fs::write(dir.join("notes.txt"), side).unwrap();
+            dir
+        })
+        .collect();
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.scan(2).await;
+    let combined = fixture
+        .import
+        .combine_candidates(
+            parts
+                .iter()
+                .map(|dir| dir.to_string_lossy().into_owned())
+                .collect(),
+        )
+        .await
+        .unwrap();
+    (parts, combined)
+}
+
+/// Separating a combined folder finds its parts again: with the setting on
+/// each is identified on its own, and with it off none is.
+#[tokio::test(flavor = "multi_thread")]
+async fn separating_a_folder_queues_its_parts_only_while_the_setting_is_on() {
+    for automatic in [true, false] {
+        let fixture = Fixture::new(&format!("separate-folder-{automatic}")).await;
+        let (parts, combined) = combined_parts(&fixture, "Box").await;
+        fixture.manager.set_identify_automatically(automatic).await.unwrap();
+
+        fixture.import.separate_candidate(&combined).await.unwrap();
+        fixture.drain_automatic().await;
+
+        for part in &parts {
+            assert_eq!(
+                fixture.identified_for(part).await.is_some(),
+                automatic,
+                "{} with the setting {}",
+                part.display(),
+                if automatic { "on" } else { "off" }
+            );
+        }
+        assert_eq!(
+            fixture.provider.count_containing("/discid/"),
+            if automatic { parts.len() } else { 0 },
+            "{:?}",
+            fixture.provider.requests()
+        );
+    }
+}
+
+/// Separating releases picked together returns each to the queue as found.
+#[tokio::test(flavor = "multi_thread")]
+async fn separating_picked_releases_queues_them_only_while_the_setting_is_on() {
+    for automatic in [true, false] {
+        let fixture = Fixture::new(&format!("separate-picked-{automatic}")).await;
+        // A third release beside them keeps the two from being every release
+        // in one folder, so they are picked rather than a folder read as one.
+        let other = fixture.disc_id_candidate("Other");
+        std::fs::write(other.join("notes.txt"), "other").unwrap();
+        let picked: Vec<PathBuf> = ["Album A", "Album B"]
+            .iter()
+            .map(|name| {
+                let dir = fixture.disc_id_candidate(name);
+                std::fs::write(dir.join("notes.txt"), name).unwrap();
+                dir
+            })
+            .collect();
+        fixture.provider.route("/discid/", 200, "{}");
+        fixture.manager.set_identify_automatically(false).await.unwrap();
+        fixture.scan(3).await;
+        let combined = fixture
+            .import
+            .combine_candidates(
+                picked
+                    .iter()
+                    .map(|dir| dir.to_string_lossy().into_owned())
+                    .collect(),
+            )
+            .await
+            .unwrap();
+        assert!(combined.starts_with("grouping:"), "{combined} is a picked grouping");
+        fixture.manager.set_identify_automatically(automatic).await.unwrap();
+
+        fixture.import.separate_candidate(&combined).await.unwrap();
+        fixture.drain_automatic().await;
+
+        for dir in &picked {
+            assert_eq!(fixture.identified_for(dir).await.is_some(), automatic);
+        }
+        assert!(fixture.identified_for(&other).await.is_none());
+        assert_eq!(
+            fixture.provider.count_containing("/discid/"),
+            if automatic { picked.len() } else { 0 },
+            "{:?}",
+            fixture.provider.requests()
+        );
+    }
+}

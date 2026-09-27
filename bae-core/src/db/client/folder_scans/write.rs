@@ -149,7 +149,7 @@ pub(super) fn insert_item(
     source: super::EntrySource,
 ) -> Result<(), DbError> {
     let source_kind = match source {
-        super::EntrySource::Scanned => "folder",
+        super::EntrySource::Scanned(_) => "folder",
         super::EntrySource::Grouping => "grouping",
     };
     match item {

@@ -1,11 +1,6 @@
-//! Reading one folder of a watched root again, as one write.
-//!
-//! A folder that changes how it reads — the person keeps its discs as
-//! separate releases, or combines them into one — trades the candidates of
-//! the old reading for the candidates of the new one. Both sets are stored in
-//! the transaction that stores the decision, so no reader ever sees the folder
-//! with neither: the reading is taken first, off the store, and this commits it
-//! whole or not at all.
+//! Reading one folder of a watched root again, stored in the one write that
+//! also stores the decision that changed how it reads, so no reader sees the
+//! folder with neither reading.
 
 use super::*;
 use crate::import::folder_scanner::{FolderReading, FolderReleaseDecisionKey};
@@ -14,33 +9,27 @@ use crate::import::folder_scanner::{FolderReading, FolderReleaseDecisionKey};
 /// generation that reading is stored under.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct FolderReadingStamp {
-    /// The root's generation when the reading began. The commit refuses a
-    /// root that has moved past it: something else wrote the root's entries
-    /// after this reading looked at the folder.
+    /// The root's generation when the reading began; the commit refuses a
+    /// root that has moved past it.
     pub(crate) read_under: u64,
-    /// The generation every entry of this reading is stamped with, and the
-    /// one the root stands at once it is stored.
+    /// The generation this reading's entries, and then the root, stand at.
     pub(crate) generation: u64,
 }
 
 /// One folder's new reading, ready to store.
 pub(crate) struct FolderReadingCommit {
     pub(crate) watched_folder_path: String,
-    /// The folder directly under the root that was read again, `/`-free —
-    /// everything below it is this reading's, and nothing outside it is.
+    /// The folder directly under the root that was read again.
     pub(crate) folder: String,
     pub(crate) stamp: FolderReadingStamp,
-    /// The person's answer for the folder whose reading changed, when that is
-    /// why the folder was read again.
+    /// The person's answer, when that is why the folder was read again.
     pub(crate) decision: Option<(FolderReleaseDecisionKey, FolderReading)>,
-    /// How the walk read folders nothing was stored for. Never replaces an
-    /// answer the person gave.
+    /// How the walk read folders nothing was stored for.
     pub(crate) scanned_decisions: Vec<(FolderReleaseDecisionKey, FolderReading)>,
     /// Every entry the folder yields, in the order the walk yielded them.
     pub(crate) items: Vec<ScanItemToWrite>,
-    /// Every directory in the folder with the mtime it had, replacing what
-    /// was recorded under it — or `None` when one could not be read, which
-    /// clears the root's record so the next cheap check walks.
+    /// Every directory in the folder with its mtime, or `None` when one could
+    /// not be read, which clears the root's record.
     pub(crate) directories: Option<Vec<(String, i64)>>,
 }
 
@@ -56,10 +45,8 @@ pub(crate) struct FolderReadingWrite {
 
 impl Database {
     /// Begin reading one folder of `watched_folder_path` again: the root's
-    /// generation now, and a fresh one for the reading to be stored under.
-    ///
-    /// A root with no scan generation has never been read, so it has no
-    /// reading of any folder to change.
+    /// generation now, and a fresh one to store the reading under. A root never
+    /// read has no reading to change.
     pub(crate) async fn begin_folder_reading(
         &self,
         watched_folder_path: &str,
@@ -88,12 +75,10 @@ impl Database {
         .await
     }
 
-    /// Store one folder's new reading in one transaction: the decision that
-    /// changed it, every entry the folder now yields, and the removal of every
-    /// entry under it that the new reading does not yield.
-    ///
-    /// Fails, writing nothing, when the root's entries were written since the
-    /// reading began — the reading describes a store that is no longer there.
+    /// Store one folder's new reading in one transaction: the decision, every
+    /// entry the folder now yields, and the removal of the ones it no longer
+    /// yields. Writes nothing when the root's entries were written since the
+    /// reading began.
     pub(crate) async fn commit_folder_reading(
         &self,
         commit: FolderReadingCommit,
@@ -170,10 +155,20 @@ impl Database {
                 "UPDATE folder_scan_roots SET generation = ? WHERE watched_folder_path = ?",
                 params![generation, watched_folder_path],
             )?;
+            let finding = match decision {
+                Some(_) => Finding::Decision,
+                None => Finding::FirstRead,
+            };
             let mut writes = Vec::with_capacity(items.len());
             for item in items {
-                let write =
-                    write_scan_item(sql, &watched_folder_path, generation, &item, observed_at)?;
+                let write = write_scan_item(
+                    sql,
+                    &watched_folder_path,
+                    generation,
+                    &item,
+                    observed_at,
+                    finding,
+                )?;
                 writes.push((item.item, write));
             }
             let mut pruned: Vec<String> = sql

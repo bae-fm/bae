@@ -1,9 +1,6 @@
-//! Reading releases together as one, and apart again.
-//!
-//! One pair of actions for every grouping. Combining the releases under one
-//! folder — all of them, and nothing else — reads that folder as one release,
-//! the way the scan reads a folder of disc parts; combining any other set of
-//! releases makes a grouping of exactly those. Separating undoes either.
+//! Reading releases together as one, and apart again. Combining every release
+//! under one folder reads that folder as one release; combining any other set
+//! makes a grouping of exactly those.
 
 use super::*;
 use crate::import::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey, ScanItem};
@@ -27,15 +24,10 @@ impl ImportServiceHandle {
             .collect())
     }
 
-    /// Read the releases at `keys` as one, and return the key of the release
-    /// they become. They play in key order — for siblings, the order their
-    /// names sort in — each folder a run of discs of its own, and the release
-    /// takes the first one's name.
-    ///
-    /// When the releases are every release below one folder, that folder is
-    /// read as one release, as though it held a release's disc parts: a
-    /// release that appears there later joins it. Otherwise the grouping
-    /// takes in exactly these, from wherever they are.
+    /// Read the releases at `keys` as one, in key order and named after the
+    /// first, and return the new release's key. When they are every release
+    /// below one folder, that folder is read as one release, so a release
+    /// appearing there later joins it.
     pub async fn combine_candidates(&self, keys: Vec<String>) -> Result<String, ImportError> {
         let this = self.clone();
         self.committed(async move { this.combine_candidates_write(keys).await })
@@ -58,8 +50,8 @@ impl ImportServiceHandle {
                 members.push(self.editable_candidate_for_commit(key).await?);
             }
         }
-        // A release picked together from others is not itself one to pick:
-        // it would be rebuilt from its own releases, not from the disk.
+        // A picked release is rebuilt from its members, not from disk, so it
+        // cannot itself be picked.
         for member in &members {
             if let Some(grouping) = &member.grouping {
                 if let Some(crate::db::GroupingFacts::Picked { .. }) =
@@ -91,9 +83,8 @@ impl ImportServiceHandle {
         Ok(key)
     }
 
-    /// The folder `members` are every release below, if there is one: the
-    /// deepest folder holding them all, under the watched folder they share,
-    /// with no other release stored below it.
+    /// The deepest folder under their shared watched folder holding exactly
+    /// `members`, if there is one.
     async fn folder_holding_exactly(
         &self,
         members: &[crate::import::FolderCandidate],
@@ -199,10 +190,14 @@ impl ImportServiceHandle {
                 }));
                 for item in returned {
                     let event = match item {
+                        // Each release a separation returns to the queue is
+                        // found, as combining finds the release it makes.
                         ScanItem::Valid(candidate) => {
                             let standing = self
                                 .candidate_standing(&candidate.key(), &candidate)
                                 .await?;
+                            self.automatic_admissions
+                                .found(&self.library_manager, candidate.key());
                             ScanEvent::FolderCandidate {
                                 candidate,
                                 skipped: standing.skipped,
