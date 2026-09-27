@@ -1,7 +1,5 @@
-/// What starting an import does to a candidate, in the order the import
-/// service does it: [`ImportServiceHandle::claim_candidate_for_import`] before
-/// the command is queued, and the worker's first `ImportProgress` after it
-/// dequeues the command.
+/// Stand in for starting an import: the claim, then the worker's first
+/// `ImportProgress`, in that order.
 async fn start_import_for(fixture: &Fixture, candidate: &Path) {
     let candidate_key = candidate.to_string_lossy().into_owned();
     fixture
@@ -51,8 +49,8 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
     ));
 }
 
-/// An import started while its candidate is queued takes it off the queue: it
-/// gains no result and stops counting towards the queue's total.
+/// An import started on a queued candidate takes it off the queue: it gets no
+/// result, and the progress count treats its identification as ended.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_import_start_takes_a_queued_candidate_out_of_work_and_progress() {
     let fixture = Fixture::new("import-mid-pass").await;
@@ -77,9 +75,6 @@ async fn an_import_start_takes_a_queued_candidate_out_of_work_and_progress() {
     let mut events = fixture.import.subscribe_events();
     let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
-    // Starting an import, in the order the import service really does it: the
-    // candidate is claimed before the command is queued, and the worker's
-    // first progress event comes back some time after that.
     start_import_for(&fixture, &importing).await;
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(15), pass)
@@ -112,17 +107,9 @@ async fn an_import_start_takes_a_queued_candidate_out_of_work_and_progress() {
     );
 }
 
-/// A re-scan lands while an import owns a candidate. The scan announces every
-/// candidate it walks, import or no import, and the pass must not queue one
-/// again that an import has taken away — the batch's total would climb past
-/// the identifications it holds and never come down, because nothing ends an
-/// identification that never started.
-///
-/// This is the same sequence CI hits on every non-macOS runner: the OS watcher
-/// delivers the folder's own change events late enough that the re-scan they
-/// trigger arrives inside the pass rather than after it. Driven here from the
-/// bus instead of the filesystem, so the ordering is the test's and not the
-/// watcher backend's.
+/// A re-scan announcing a candidate an import owns must not queue it again,
+/// or the batch total would never come back down. Driven from the bus rather
+/// than the filesystem so the event order does not depend on the watcher.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     let fixture = Fixture::new("import-rescan").await;
@@ -147,8 +134,7 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     start_import_for(&fixture, &importing).await;
-    // …and then the scan re-announces it, exactly as a watcher-triggered pass
-    // over the same folder does.
+    // The scan re-announces the claimed candidate, as a watcher re-scan does.
     let claimed = match fixture
         .import
         .get_candidate(&importing.to_string_lossy())
@@ -187,15 +173,10 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     assert_eq!(progress.last(), Some(&(0, 0)), "{progress:?}");
 }
 
-/// The same import start, one step later in the candidate's life — and the
-/// step where the pass's own bookkeeping can no longer help.
-///
-/// The verdict has settled and the pass is buying its tracklist, so the
-/// candidate is in neither `in_flight` nor `pending`: the `ImportProgress` the
-/// worker sends finds nothing to detach and cancels nothing, and the write is
-/// already on its way. What stops the row is the claim — the write takes the
-/// folder-state commit lock the claim was taken under, re-reads the candidate,
-/// and finds an import owns it.
+/// An import started while a settled verdict's release is being fetched stops
+/// its row. The queue does not cancel a settling answer; the write takes the
+/// commit lock the claim was taken under, re-reads the candidate, and finds an
+/// import owns it.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
     let fixture = Fixture::new("import-mid-write").await;
@@ -217,9 +198,8 @@ async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
         release_json("mb-mid-write", "rg-mid-write", &[1, 1]),
     );
     fixture.scan(1).await;
-    // A search result carries no tracklist, so the pass buys one before it can
-    // store anything. Holding that lookup puts the import start exactly inside
-    // the window between a settled verdict and its row.
+    // Holding the release fetch the settle makes before its write puts the
+    // import start between the settled verdict and its row.
     fixture.provider.hold("/release/mb-mid-write?");
 
     let pass = fixture.drain_automatic_task();
@@ -242,17 +222,13 @@ async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
     );
 }
 
-/// Progress crosses as an event carrying both numbers, so a view renders
-/// "n of m" without counting the rows it happens to be holding. The batch is
-/// what was found together: it opens at the whole of it, and ends at `(0, 0)`
-/// — which is what a surface draws nothing for — once every identification is
-/// over. A queue with nothing to identify says nothing at all.
+/// Progress events carry both counts: a batch admitted together opens at its
+/// full size and ends at `(0, 0)`. A pass with nothing to identify sends none.
 #[tokio::test(flavor = "multi_thread")]
 async fn progress_carries_both_counts() {
     let fixture = Fixture::new("progress").await;
     let first = fixture.disc_id_candidate("Album One");
-    // A second folder with a differing file makes a second content hash; the
-    // two would otherwise share one row.
+    // A differing file gives the second folder its own content hash and row.
     let second = fixture.disc_id_candidate("Album Two");
     std::fs::write(second.join("notes.txt"), "different bytes").unwrap();
     let probed = fixture.probed_total_ms(&first);
@@ -365,19 +341,13 @@ fn drain_events(events: &mut tokio::sync::broadcast::Receiver<ImportEvent>) -> V
     }
 }
 
-/// A candidate that vanishes while it is being identified must not wedge the
-/// queue. The signals service cancels extraction on `CandidateRemoved` and
-/// nothing cancels identify, so the driver would sit in `Triangulating`
-/// forever holding a slot, and nothing behind it would ever run.
+/// A candidate removed while it is being identified gives up its queue slot
+/// and stores nothing.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_candidate_removed_mid_flight_does_not_wedge_the_queue() {
     let fixture = Fixture::new("removed-mid-flight").await;
-    let analyzer_started = Arc::new(Barrier::new(2));
-    let analyzer_release = Arc::new(Barrier::new(2));
-    fixture.import.register_artwork_analyzer(Arc::new(GatedAnalyzer {
-        started: analyzer_started.clone(),
-        release: analyzer_release.clone(),
-    }));
+    let (analyzer, entered, gate) = GatedAnalyzer::new();
+    fixture.import.register_artwork_analyzer(Arc::new(analyzer));
     let dir = fixture.barcode_candidate("Vanishing");
     let hash = fixture.content_hash(&dir);
     fixture.scan(1).await;
@@ -385,37 +355,17 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_queue() {
     // Start the pass and hold extraction inside OCR, so the candidate is
     // genuinely mid-flight when the folder goes.
     let pass = fixture.drain_automatic_task();
-    tokio::task::spawn_blocking(move || {
-        analyzer_started.wait();
-    })
-    .await
-    .unwrap();
-    let mut events = fixture.import.subscribe_events();
+    tokio::task::spawn_blocking(move || entered.recv_timeout(Duration::from_secs(30)))
+        .await
+        .unwrap()
+        .expect("extraction reaches the artwork");
     std::fs::remove_dir_all(&dir).unwrap();
-    // What the folder watcher does when a candidate's directory goes: re-scan
-    // the root and reconcile, which emits `CandidateRemoved` for the one that
-    // is no longer there.
-    fixture.import.scan_watched_folders().unwrap();
-    tokio::time::timeout(Duration::from_secs(10), async {
-        loop {
-            if matches!(
-                events.recv().await,
-                Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }))
-                    if candidate_key == dir.to_string_lossy()
-            ) {
-                break;
-            }
-        }
-    })
-    .await
-    .expect("the rescan reports the removed candidate");
-    tokio::task::spawn_blocking(move || {
-        analyzer_release.wait();
-    })
-    .await
-    .unwrap();
+    // What the folder watcher does when a candidate's directory goes: read
+    // the root again, which removes the candidate that is no longer there.
+    fixture.rescan(&fixture.import, 0).await;
+    gate.open();
 
-    tokio::time::timeout(Duration::from_secs(10), pass)
+    tokio::time::timeout(Duration::from_secs(30), pass)
         .await
         .expect("the pass must finish rather than wait on a candidate that is gone")
         .unwrap();
@@ -429,17 +379,12 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_queue() {
         state.identify.is_none(),
         "a candidate that vanished mid-identification learned nothing"
     );
-    // And the queue is still alive: it answers a later drain.
+    // The queue still answers a later drain.
     fixture.drain_automatic().await;
 }
 
-/// A candidate the queue is done with leaves nothing of the queue's behind.
-///
-/// The driver ends at its own verdict, so nothing has to cancel it, and the
-/// queue gives the key up in the same breath. A driver left registered past its
-/// answer would park a task, a bus-relay task, and a live broadcast receiver
-/// that every later `IdentifyStateChanged` — a whole `IdentifyState`, result
-/// vectors and all — is deep-cloned into.
+/// A finished candidate leaves nothing behind: its driver deregisters at its
+/// verdict, and the queue holds no entry for it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_finished_candidate_leaves_no_driver_behind() {
     let fixture = Fixture::new("no-driver-left").await;
@@ -475,9 +420,8 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
     );
 }
 
-/// Teardown writes nothing. The token is re-checked immediately before the
-/// write, so a cancellation landing during the settle lookup that precedes it
-/// cannot leave a row behind.
+/// Shutdown writes nothing, and `save` checks the token right before writing
+/// so a cancel during the settle's release fetch leaves no row.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_cancelled_candidate_writes_no_row() {
     let fixture = Fixture::new("cancelled-writes-nothing").await;
@@ -494,9 +438,7 @@ async fn a_cancelled_candidate_writes_no_row() {
         release_json("mb-cancel-1", "rg-cancel-1", &[probed, 0]),
     );
     fixture.scan(1).await;
-    // Hold the disc-ID response, so the cancel lands while the candidate is
-    // genuinely mid-identification rather than racing a pass that already
-    // finished.
+    // Hold the disc-ID response so the shutdown lands mid-identification.
     fixture.provider.hold("/discid/");
 
     let pass = fixture.drain_automatic_task();
@@ -514,8 +456,7 @@ async fn a_cancelled_candidate_writes_no_row() {
         fixture.stored().await.keys().collect::<Vec<_>>()
     );
 
-    // `save` itself asks for no write under a cancelled token, whatever
-    // reached it.
+    // `save` itself writes nothing under a cancelled token.
     let verdict = TerminalVerdict::NotFoundAnywhere { ledger: None };
     let cancelled = CancellationToken::new();
     cancelled.cancel();

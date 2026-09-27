@@ -15,7 +15,7 @@ use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Barrier, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 use tempfile::TempDir;
 
@@ -231,10 +231,45 @@ impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
 }
 
 /// An analyzer held between entry and completion, so a test can act
-/// mid-extraction.
+/// mid-extraction. It reports entering on `started` and waits for `gate`.
 struct GatedAnalyzer {
-    started: Arc<Barrier>,
-    release: Arc<Barrier>,
+    started: std::sync::mpsc::Sender<()>,
+    gate: Arc<(Mutex<bool>, std::sync::Condvar)>,
+}
+
+/// What holds a [`GatedAnalyzer`] mid-extraction. Dropping it opens it too,
+/// so a test that fails before opening it still lets extraction end rather
+/// than leaving the test runtime waiting on it forever.
+struct AnalyzerGate(Arc<(Mutex<bool>, std::sync::Condvar)>);
+
+impl AnalyzerGate {
+    fn open(&self) {
+        let (open, opened) = &*self.0;
+        *open.lock().unwrap() = true;
+        opened.notify_all();
+    }
+}
+
+impl Drop for AnalyzerGate {
+    fn drop(&mut self) {
+        self.open();
+    }
+}
+
+impl GatedAnalyzer {
+    /// The analyzer, what reports its entering, and the gate holding it.
+    fn new() -> (Self, std::sync::mpsc::Receiver<()>, AnalyzerGate) {
+        let (started, entered) = std::sync::mpsc::channel();
+        let gate = Arc::new((Mutex::new(false), std::sync::Condvar::new()));
+        (
+            Self {
+                started,
+                gate: gate.clone(),
+            },
+            entered,
+            AnalyzerGate(gate),
+        )
+    }
 }
 
 struct CountingAnalyzer {
@@ -250,8 +285,11 @@ impl ArtworkAnalyzer for CountingAnalyzer {
 
 impl ArtworkAnalyzer for GatedAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
-        self.started.wait();
-        self.release.wait();
+        let _ = self.started.send(());
+        let (open, opened) = &*self.gate;
+        let _held = opened
+            .wait_while(open.lock().unwrap(), |open| !*open)
+            .unwrap();
         ArtworkAnalysis::empty()
     }
 }
@@ -427,34 +465,36 @@ impl Fixture {
         dir
     }
 
-    /// Watch the root and wait until the scan has surfaced every candidate and
-    /// finished, by which point every release it found has been handed over.
+    /// Watch the root and read it, returning once the read is over — by which
+    /// point every release it found has been handed to automatic
+    /// identification — and the list holds `expected` candidates.
     async fn scan(&self, expected: usize) {
-        let events = self.import.subscribe_events();
         let root = self.root.to_string_lossy().into_owned();
-        self.import.add_watched_folder(root.clone()).await.unwrap();
-        self.import.refresh_watched_folder(root).await.unwrap();
-        self.await_scanned(&self.import, events, expected).await;
+        self.import.add_watched_folder(root).await.unwrap();
+        self.rescan(&self.import, expected).await;
     }
 
-    /// Scan the watched root again through `import`, as a launch does, and wait
-    /// as [`Self::scan`] does.
+    /// Read the watched root again through `import`, as a launch does, and
+    /// wait as [`Self::scan`] does. A refresh answers once its read is over,
+    /// which is what makes the wait exact rather than a matter of time.
     async fn rescan(&self, import: &ImportServiceHandle, expected: usize) {
-        let events = import.subscribe_events();
-        import.scan_watched_folders().unwrap();
-        self.await_scanned(import, events, expected).await;
+        self.read_root(import, &self.root).await;
+        self.await_listed(import, expected).await;
     }
 
-    /// Wait for `import`'s list to hold `expected` candidates and for a scan
-    /// to finish on `events`, subscribed before the scan was asked for.
-    async fn await_scanned(
-        &self,
-        import: &ImportServiceHandle,
-        mut events: tokio::sync::broadcast::Receiver<ImportEvent>,
-        expected: usize,
-    ) {
+    /// Read the watched folder `root` through `import`, returning once the
+    /// read is over.
+    async fn read_root(&self, import: &ImportServiceHandle, root: &Path) {
+        import
+            .refresh_watched_folder(root.to_string_lossy().into_owned())
+            .await
+            .unwrap();
+    }
+
+    /// The list holds `expected` candidates, as the reads already over left it.
+    async fn await_listed(&self, import: &ImportServiceHandle, expected: usize) {
         tokio::time::timeout(
-            Duration::from_secs(10),
+            Duration::from_secs(30),
             import.wait_for_list(crate::import::ImportListView::default(), |projection| {
                 projection.summary.counts.pending as usize
                     + projection.summary.counts.done as usize
@@ -463,21 +503,7 @@ impl Fixture {
             }),
         )
         .await
-        .expect("the completed scan surfaces every fixture candidate");
-        // A scan finishes after handing over everything it found.
-        tokio::time::timeout(Duration::from_secs(10), async {
-            loop {
-                match events.recv().await {
-                    Ok(ImportEvent::Scan(ScanEvent::Finished)) => return,
-                    Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
-                        panic!("the import event bus closed before the scan finished")
-                    }
-                }
-            }
-        })
-        .await
-        .expect("the scan finishes");
+        .expect("the completed read lists every fixture candidate");
     }
 
     /// Ask to identify `dir`, as a person does.

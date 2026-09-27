@@ -191,22 +191,25 @@ async fn a_takeover_queues_only_a_release_new_to_the_parent() {
     let known = fixture.disc_id_candidate("Inner/Album");
     fixture.provider.route("/discid/", 200, "{}");
     fixture.manager.set_identify_automatically(false).await.unwrap();
-    let events = fixture.import.subscribe_events();
-    let inner_key = inner.to_string_lossy().into_owned();
-    fixture.import.add_watched_folder(inner_key.clone()).await.unwrap();
-    fixture.import.refresh_watched_folder(inner_key).await.unwrap();
-    fixture.await_scanned(&fixture.import, events, 1).await;
+    fixture
+        .import
+        .add_watched_folder(inner.to_string_lossy().into_owned())
+        .await
+        .unwrap();
+    fixture.read_root(&fixture.import, &inner).await;
+    fixture.await_listed(&fixture.import, 1).await;
     fixture.manager.set_identify_automatically(true).await.unwrap();
 
     let new = fixture.disc_id_candidate("New Album");
     std::fs::write(new.join("notes.txt"), "a candidate of its own").unwrap();
-    let events = fixture.import.subscribe_events();
     fixture
         .import
         .add_watched_folder(fixture.root.to_string_lossy().into_owned())
         .await
         .unwrap();
-    fixture.await_scanned(&fixture.import, events, 2).await;
+    // Answered once the parent's read, which follows the takeover, is over.
+    fixture.read_root(&fixture.import, &fixture.root).await;
+    fixture.await_listed(&fixture.import, 2).await;
     fixture.drain_automatic().await;
 
     assert!(
