@@ -4,11 +4,11 @@
 //! names only its first label, no search result lists a tracklist, and a
 //! result may leave out the barcode its document states. Every record of
 //! every offered row is fetched in full and stored where a pick reads it (see
-//! [`crate::import::service::prepare_release`]), and what the document states
+//! `crate::import::service::prepare_release`), and what the document states
 //! replaces what the result stated before the rows are ranked again. A row
 //! the documents raise to the top is read in turn, so the run settles once
 //! every offered row's records are read — or once more rows are offered than
-//! [`MOST_ROWS_READ`], which it leaves for the person to pick among. A document that cannot be read
+//! `MOST_ROWS_READ`, which it leaves for the person to pick among. A document that cannot be read
 //! leaves its record as the result stated it, with why it could not be read;
 //! the run settles on what it did read.
 
@@ -34,7 +34,7 @@ pub enum DocumentReading {
     /// before.
     Reading(Vec<ReleaseReading>),
     /// Fetched, record by record: every record of every row offered as they
-    /// rank with them, unless more rows are offered than [`MOST_ROWS_READ`].
+    /// rank with them, unless more rows are offered than `MOST_ROWS_READ`.
     /// Empty when nothing was offered, or too much was.
     Read(Vec<ReleaseReading>),
 }
