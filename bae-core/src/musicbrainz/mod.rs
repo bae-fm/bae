@@ -241,8 +241,8 @@ pub struct ReleaseSearchParams {
 impl ReleaseSearchParams {
     fn query_fields(&self) -> [(&Option<String>, &'static str, QueryValueFormat); 6] {
         [
-            (&self.artist, "artist", QueryValueFormat::Quoted),
-            (&self.album, "release", QueryValueFormat::Quoted),
+            (&self.artist, "artist", QueryValueFormat::EveryWord),
+            (&self.album, "release", QueryValueFormat::EveryWord),
             (&self.year, "date", QueryValueFormat::Bare),
             (&self.label, "label", QueryValueFormat::Quoted),
             (&self.catalog_number, "catno", QueryValueFormat::Quoted),
@@ -274,19 +274,43 @@ impl ReleaseSearchParams {
 #[derive(Copy, Clone)]
 enum QueryValueFormat {
     Bare,
+    /// The value as one phrase.
     Quoted,
+    /// Every word of the value required, in any order: a catalog may write a
+    /// title's or an artist's words in another order than the folder does —
+    /// "Album 1999" for "1999 Album", "Artist, The" for "The Artist". A word
+    /// is what whitespace separates, kept whole, since MusicBrainz reads
+    /// "1990-2000" as one word. Stop words are not asked for, unless they are
+    /// all the value has.
+    EveryWord,
 }
 
 impl QueryValueFormat {
     fn render(self, key: &str, value: &str) -> String {
         match self {
             Self::Bare => format!("{}:{}", key, value),
-            Self::Quoted => {
-                let escaped = value.replace('\\', "\\\\").replace('"', "\\\"");
-                format!("{}:\"{}\"", key, escaped)
+            Self::Quoted => format!("{}:{}", key, quoted(value)),
+            Self::EveryWord => {
+                let words: Vec<&str> = value.split_whitespace().collect();
+                let asked: Vec<&str> = words
+                    .iter()
+                    .copied()
+                    .filter(|word| !crate::util::text::is_stop_word(word))
+                    .collect();
+                let asked = if asked.is_empty() { words } else { asked };
+                let required: Vec<String> = asked
+                    .into_iter()
+                    .map(|word| format!("+{}", quoted(word)))
+                    .collect();
+                format!("{}:({})", key, required.join(" "))
             }
         }
     }
+}
+
+/// `value` as one Lucene phrase.
+fn quoted(value: &str) -> String {
+    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
 impl MusicBrainz {

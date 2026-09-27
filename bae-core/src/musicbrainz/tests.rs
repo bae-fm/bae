@@ -13,7 +13,7 @@ fn test_release_search_params_build_query() {
     };
     assert_eq!(
         params.build_query(),
-        "artist:\"Test Artist\" AND release:\"Test Album\" AND date:2000",
+        r#"artist:(+"Test" +"Artist") AND release:(+"Test" +"Album") AND date:2000"#,
     );
     let params2 = ReleaseSearchParams {
         artist: Some("Another Artist".to_string()),
@@ -22,7 +22,7 @@ fn test_release_search_params_build_query() {
     };
     assert_eq!(
         params2.build_query(),
-        "artist:\"Another Artist\" AND catno:\"TL-1234\""
+        r#"artist:(+"Another" +"Artist") AND catno:"TL-1234""#
     );
 }
 
@@ -42,7 +42,10 @@ fn release_search_params_ignore_blank_fields() {
         ..Default::default()
     };
     assert!(params.has_any_field());
-    assert_eq!(params.build_query(), "artist:\"Artist Name\" AND date:2000");
+    assert_eq!(
+        params.build_query(),
+        r#"artist:(+"Artist" +"Name") AND date:2000"#
+    );
 }
 
 #[test]
@@ -62,17 +65,60 @@ fn release_search_params_escape_quoted_lucene_values() {
 }
 
 #[test]
-fn release_search_params_build_query_with_escaped_phrase() {
+fn release_search_params_build_query_with_escaped_words() {
     let params = ReleaseSearchParams {
         artist: Some("Artist Name".to_string()),
-        album: Some(r#"Quoted "Middle" Phrase"#.to_string()),
+        album: Some(r#"Quoted "Middle" Phrase\"#.to_string()),
         ..Default::default()
     };
 
     assert_eq!(
         params.build_query(),
-        r#"artist:"Artist Name" AND release:"Quoted \"Middle\" Phrase""#,
+        r#"artist:(+"Artist" +"Name") AND release:(+"Quoted" +"\"Middle\"" +"Phrase\\")"#,
     );
+}
+
+/// A catalog may write an album's words in another order than the folder —
+/// "Album 1999" where the folder has "1999 Album" — and an artist's too, as
+/// its sort name does: every word is asked for, in any order.
+#[test]
+fn a_title_and_an_artist_are_asked_for_by_every_word_in_any_order() {
+    let params = ReleaseSearchParams {
+        artist: Some("Artist, The".to_string()),
+        album: Some("1999 Words Album".to_string()),
+        ..Default::default()
+    };
+    assert_eq!(
+        params.build_query(),
+        r#"artist:(+"Artist,") AND release:(+"1999" +"Words" +"Album")"#,
+    );
+}
+
+/// The words that say nothing about which album it is are not asked for,
+/// unless they are all the title has.
+#[test]
+fn stop_words_are_not_asked_for() {
+    let params = ReleaseSearchParams {
+        album: Some("The Words of the Album".to_string()),
+        ..Default::default()
+    };
+    assert_eq!(params.build_query(), r#"release:(+"Words" +"Album")"#);
+    let params = ReleaseSearchParams {
+        artist: Some("The The".to_string()),
+        ..Default::default()
+    };
+    assert_eq!(params.build_query(), r#"artist:(+"The" +"The")"#);
+}
+
+/// A hyphenated word is one word to MusicBrainz: "1990-2000" is asked for
+/// whole, not as 1990 and 2000.
+#[test]
+fn a_hyphenated_word_is_asked_for_whole() {
+    let params = ReleaseSearchParams {
+        album: Some("1990-2000 the Words".to_string()),
+        ..Default::default()
+    };
+    assert_eq!(params.build_query(), r#"release:(+"1990-2000" +"Words")"#);
 }
 
 #[test]

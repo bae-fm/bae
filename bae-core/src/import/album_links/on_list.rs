@@ -146,17 +146,9 @@ fn title_words(title: &str) -> Vec<String> {
     let bare = crate::signals::candidate_text::strip_trailing_brackets(title);
     crate::identify::agreements::words(&bare)
         .into_iter()
-        .filter(|word| !STOP_WORDS.contains(&word.as_str()))
+        .filter(|word| !crate::util::text::is_stop_word(word))
         .collect()
 }
-
-/// Articles, conjunctions and prepositions, in the languages record titles
-/// are most often in, compared the way a title's words are read.
-const STOP_WORDS: &[&str] = &[
-    "a", "an", "and", "at", "by", "for", "from", "in", "of", "on", "or", "the", "to", "with",
-    "das", "de", "del", "der", "des", "die", "du", "el", "et", "la", "le", "les", "los", "und",
-    "y",
-];
 
 #[cfg(test)]
 #[path = "on_list_tests.rs"]

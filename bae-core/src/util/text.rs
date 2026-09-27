@@ -17,6 +17,19 @@ pub(crate) fn squash(text: &str) -> String {
         .collect()
 }
 
+/// Whether `word` says nothing about which album or artist a name is: an
+/// article, conjunction or preposition, in the languages record titles are
+/// most often in. Compared squashed, so "The" and "the" are one word.
+pub(crate) fn is_stop_word(word: &str) -> bool {
+    STOP_WORDS.contains(&squash(word).as_str())
+}
+
+const STOP_WORDS: &[&str] = &[
+    "a", "an", "and", "at", "by", "for", "from", "in", "of", "on", "or", "the", "to", "with",
+    "das", "de", "del", "der", "des", "die", "du", "el", "et", "la", "le", "les", "los", "und",
+    "y",
+];
+
 /// A catalog number as two of them are compared: squashed, and `None` when
 /// that leaves no number. Both catalogs write a release's lack of one as a
 /// placeholder — `[none]` on MusicBrainz, `none` on Discogs, and in their
