@@ -636,8 +636,8 @@ pub enum CandidatePanePlacement {
     /// In Pending.
     Pending {
         /// The check against the folder the candidate's found release did
-        /// not pass, stated beside its Import: its placement's
-        /// [`crate::import::TriagePlacement::folder_check`].
+        /// not pass, stated beside its Import: the release's
+        /// [`crate::identify::VerdictSummary::folder_check`].
         folder_check: Option<crate::identify::FolderCheck>,
         /// Every catalog the draft was read from, in the order surfaces list
         /// catalogs. Empty for a draft read from the files' tags, typed in,
