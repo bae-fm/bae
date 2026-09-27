@@ -9,6 +9,7 @@ use super::{
 };
 use crate::config::IdentificationSteps;
 use crate::identify::agreements::CandidateText;
+use crate::identify::documents::DocumentReading;
 use crate::identify::{IdentifyFailure, NotAskedReason};
 use crate::import::album_links::{self, GroupReading, Twin};
 use crate::import::{Catalog, LookupChoices};
@@ -318,6 +319,9 @@ pub struct SignalsContext {
     /// What the run's MusicBrainz albums are on Discogs, read once every
     /// lookup has settled.
     pub album_links: AlbumLinkReading,
+    /// The full documents of the rows the run offers, read once the album
+    /// links are.
+    pub documents: DocumentReading,
 }
 
 /// Where a run is with the album links of what its lookups returned.
@@ -349,6 +353,7 @@ impl Default for SignalsContext {
             text: CandidateText::default(),
             text_settled: false,
             album_links: AlbumLinkReading::Pending,
+            documents: DocumentReading::Pending,
         }
     }
 }
@@ -439,8 +444,8 @@ impl SignalsContext {
         }
     }
 
-    /// Every lookup's results with their album links applied, in the order
-    /// combine takes them.
+    /// Every lookup's results with their album links and documents applied,
+    /// in the order combine takes them.
     pub(super) fn lookup_results(&self) -> [Vec<(MetadataResult, LibraryStatus)>; 4] {
         let read = self.album_readings();
         [
@@ -454,17 +459,23 @@ impl SignalsContext {
                 .into_iter()
                 .map(|(mut result, status)| {
                     album_links::apply(&mut result, read);
+                    self.documents.apply(&mut result);
                     (result, status)
                 })
                 .collect()
         })
     }
 
-    /// The releases reading the albums found that no lookup returned.
+    /// The releases reading the albums found that no lookup returned, with
+    /// their documents applied.
     pub(super) fn twins(&self) -> Vec<Twin> {
         self.album_readings()
             .iter()
             .filter_map(|reading| reading.twin.clone())
+            .map(|mut twin| {
+                self.documents.apply(&mut twin.result);
+                twin
+            })
             .collect()
     }
 
@@ -474,6 +485,12 @@ impl SignalsContext {
         self.barcode.active_failures(&mut failures);
         self.catalog.active_failures(&mut failures);
         self.search.active_failures(&mut failures);
+        failures.extend(
+            self.documents
+                .failures()
+                .cloned()
+                .map(IdentifyFailure::ReleaseDetails),
+        );
         failures
     }
 

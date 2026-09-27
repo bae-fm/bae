@@ -129,7 +129,7 @@ struct ImportSearchResultRow: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
             }
-            ForEach(Array(pressing.lead.labels.enumerated()), id: \.offset) {
+            ForEach(Array(pressing.labels.enumerated()), id: \.offset) {
                 _,
                 label in
                 if let name = label.name {
@@ -139,7 +139,7 @@ struct ImportSearchResultRow: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
-                if let catalogNumber = label.catalogNumber {
+                ForEach(label.catalogNumbers, id: \.self) { catalogNumber in
                     Text(catalogNumber)
                         .font(.system(size: 10.5, design: .monospaced))
                         .foregroundStyle(.secondary)

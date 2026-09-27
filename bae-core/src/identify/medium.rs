@@ -10,20 +10,24 @@ use crate::pressing::{CdAudio, DiscogsDetail, StatedMedia};
 use crate::signals::RipEvidence;
 
 /// What the folder's own files say about its audio, as combine reads it: the
-/// rip evidence, which speaks to its medium, and whether the audio is one
-/// channel, which only tells otherwise tied rows apart.
+/// rip evidence, which speaks to its medium; and whether the audio is one
+/// channel and how many tracks it holds, which only tell otherwise tied rows
+/// apart.
 #[derive(Debug, Clone, Copy)]
 pub struct FolderAudio<'a> {
     pub rip: &'a RipEvidence,
     /// Every audio file carries one channel.
     pub mono: bool,
+    pub track_count: u32,
 }
 
 impl FolderAudio<'static> {
-    /// Files that prove nothing about their medium.
+    /// Files that prove nothing about their medium, and hold no tracks a
+    /// tracklist could count.
     pub const UNPROVEN: Self = Self {
         rip: &RipEvidence::Unproven,
         mono: false,
+        track_count: 0,
     };
 }
 

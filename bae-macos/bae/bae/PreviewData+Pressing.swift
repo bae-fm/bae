@@ -38,10 +38,15 @@
     extension BridgePressing {
         /// A fixture's pressing row, stating what its lead record states —
         /// what core's own rows state where the other records add nothing.
-        init(releases: [BridgeMetadataResult], pick: BridgeMetadataProvenance) {
+        init(
+            releases: [BridgeMetadataResult],
+            labels: [BridgeLabelLine] = [],
+            pick: BridgeMetadataProvenance
+        ) {
             let facts = releases.first?.facts ?? PreviewData.pressingFacts()
             self.init(
                 releases: releases,
+                labels: labels,
                 pick: pick,
                 summary: bridgePressingSummary(facts: facts),
                 details: bridgePressingDetails(facts: facts)

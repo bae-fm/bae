@@ -203,7 +203,7 @@ pub fn combine_results(
         .flat_map(ReleaseGroup::into_pressings)
         .collect();
     let (offered, set_aside, medium_conflict) =
-        split_rows(rows, &judgements, &returned_by, ripped_from, folder.mono);
+        split_rows(rows, &judgements, &returned_by, ripped_from, folder);
 
     let statuses: HashMap<ReleaseKey, LibraryStatus> = all
         .into_iter()
@@ -274,6 +274,13 @@ struct Support {
     /// They name the album, not the pressing, so they only tell apart a row
     /// returned for some other album.
     names_album: u32,
+    /// Whether a record of the row lists as many tracks as the folder holds,
+    /// as its full document reads against the folder's audio. Below the
+    /// album's names, so a row for some other album that happens to hold as
+    /// many tracks never passes the right album; above the channels and the
+    /// country, because a different tracklist is a different edition, where
+    /// those only say where or how one edition was cut.
+    fits_the_tracks: bool,
     /// Whether the row states mono and the folder's audio is one channel: a
     /// tiebreak only, since catalogs list mono pressings as stereo.
     states_the_channels: bool,
@@ -294,7 +301,7 @@ fn support_of(
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
     ripped_from: RippedFrom,
-    mono: bool,
+    folder: FolderAudio<'_>,
 ) -> Support {
     let mut returned = LookupProvenance::CHOSEN;
     // A twin on the row states no lookup of its own: every field is false.
@@ -323,8 +330,14 @@ fn support_of(
         names_pressing: u32::from(agreements.catalog) + u32::from(returned.by_barcode && offered),
         shares_toc: returned.by_disc_id,
         names_album: agreements.names_album(),
+        fits_the_tracks: row.releases.iter().any(|release| {
+            release.source_tracks
+                == Some(crate::import::search::SourceTracks::Listed {
+                    count: folder.track_count,
+                })
+        }),
         states_the_channels: agrees_with_mono(
-            mono,
+            folder.mono,
             row.releases
                 .iter()
                 .flat_map(|release| &release.discogs_details),
@@ -341,11 +354,11 @@ fn split_rows(
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
     ripped_from: RippedFrom,
-    mono: bool,
+    folder: FolderAudio<'_>,
 ) -> (Vec<Pressing>, Vec<Pressing>, Option<super::MediumConflict>) {
     let support: Vec<Support> = rows
         .iter()
-        .map(|row| support_of(row, judgements, provenance, ripped_from, mono))
+        .map(|row| support_of(row, judgements, provenance, ripped_from, folder))
         .collect();
     let Some(best) = support.iter().copied().max() else {
         return (Vec::new(), Vec::new(), None);

@@ -341,6 +341,7 @@ fn live_findings(
         super::medium::FolderAudio {
             rip: &context.rip,
             mono: context.audio.mono,
+            track_count: context.audio.track_count,
         },
     )
 }

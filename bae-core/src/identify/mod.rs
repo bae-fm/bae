@@ -10,6 +10,7 @@
 pub mod agreements;
 pub mod combine;
 pub mod discid;
+pub mod documents;
 pub(crate) mod label;
 pub(crate) mod medium;
 mod not_asked;

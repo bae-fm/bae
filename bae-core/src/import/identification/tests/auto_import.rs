@@ -204,7 +204,14 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
         serde_json::from_str(&discid_json("mb-vinyl", "rg-vinyl", &[probed, 0]))
             .expect("the disc ID fixture parses");
     answer["releases"][0]["media"][0]["format"] = serde_json::json!("12\" Vinyl");
+    let mut document: serde_json::Value =
+        serde_json::from_str(&release_json("mb-vinyl", "rg-vinyl", &[probed, 0]))
+            .expect("the release fixture parses");
+    document["media"][0]["format"] = serde_json::json!("12\" Vinyl");
     fixture.provider.route("/discid/", 200, answer.to_string());
+    fixture
+        .provider
+        .route("/release/mb-vinyl?", 200, document.to_string());
     fixture.scan(1).await;
     let mut events = fixture.import.subscribe_events();
 
@@ -225,7 +232,11 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
         crate::import::MetadataAuthor::Identification,
         "the release the folder rules out was not applied to the draft"
     );
-    assert_eq!(fixture.count_release_lookups("mb-vinyl"), 0);
+    assert_eq!(
+        fixture.count_release_lookups("mb-vinyl"),
+        1,
+        "the offered row was read in full once, like any other"
+    );
     assert_no_import(&mut events, &key, "the folder ruled the release out").await;
 }
 

@@ -455,6 +455,39 @@ fn dispatch_effect(
             });
         }
 
+        // Each record is fetched through the one place a pick reads it from,
+        // so picking an offered row later asks for nothing again.
+        Effect::ReadReleases {
+            releases,
+            track_lengths_ms,
+        } => {
+            let library_manager = inner.library_manager.clone();
+            spawn_until_cancelled(&runtime, &token, async move {
+                let mut read = Vec::with_capacity(releases.len());
+                for release in releases {
+                    let document = crate::import::service::prepare_release(
+                        &library_manager,
+                        &release,
+                        priority,
+                    )
+                    .await
+                    .map(|stored| {
+                        crate::identify::documents::ReleaseDocument::of(&stored, &track_lengths_ms)
+                    })
+                    .map_err(|error| {
+                        debug!(
+                            "{} release {} could not be read in full: {error}",
+                            release.catalog.as_str(),
+                            release.key
+                        );
+                        crate::import::search::import_error_to_lookup_failure(&error)
+                    });
+                    read.push(crate::identify::documents::ReleaseReading { release, document });
+                }
+                emit_step(&event_tx, IdentifyEvent::ReleasesRead { read });
+            });
+        }
+
         Effect::ReadAlbumLinks { to_read } => {
             let library_manager = inner.library_manager.clone();
             spawn_until_cancelled(&runtime, &token, async move {

@@ -66,22 +66,13 @@ pub struct MetadataResult {
     /// record's album, each with the statement — what puts two catalogs'
     /// albums on one card.
     pub album_links: AlbumLinks,
-    /// What the source says about this release's own tracklist — the other half
-    /// of the auto-import check, which admits a single match only when the source's
-    /// track count agrees with the candidate's.
-    ///
-    /// **`None` means nobody has asked yet** — not that the source has
-    /// nothing. Search endpoints return results this way because they carry no
-    /// tracklist. A MusicBrainz DiscID result instead carries `Some` immediately
-    /// from the matching medium's tracks. Other results are filled when the
-    /// sweep settles the lead, from the release document that settling archives.
-    ///
-    /// Keeping "unasked" distinct from "asked, and there is nothing" is what
-    /// lets a stored verdict say whether its lead was settled: the two are
-    /// written together, so a `Some` here is also the readable marker that this
-    /// release's documents are stored. Collapsing them would either strand a
-    /// verdict at unverified forever or re-buy the same empty answer on every
-    /// launch.
+    /// What the source says about this release's own tracklist, read against
+    /// the folder's audio: what ranks a row that fits the folder above one
+    /// that does not, and the other half of the auto-import check. `None`
+    /// until the release's document is read — a search result lists no
+    /// tracklist — which the run does for every row it offers before it
+    /// settles (see [`crate::identify::documents`]); a disc-ID result carries
+    /// its matched medium's count from the start.
     pub source_tracks: Option<SourceTracks>,
 }
 

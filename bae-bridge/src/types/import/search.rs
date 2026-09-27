@@ -16,9 +16,6 @@ pub struct BridgeMetadataResult {
     pub source: BridgeCatalog,
     pub release_id: String,
     pub year: Option<i32>,
-    /// The labels the record states, each with its catalog number, in the
-    /// record's order.
-    pub labels: Vec<BridgeReleaseLabel>,
     /// What the record says the pressing is: where it was released, its
     /// media, status, packaging and Discogs details.
     pub facts: BridgePressingFacts,
@@ -28,6 +25,14 @@ pub struct BridgeMetadataResult {
     /// The group this release belongs to on its own source — the other half of
     /// the key a library-membership check takes.
     pub source_group_id: Option<String>,
+}
+
+/// One label as a row shows it: its name once, then every catalog number the
+/// row has under it. Mirrors `bae_core::import::release_group::LabelLine`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeLabelLine {
+    pub name: Option<String>,
+    pub catalog_numbers: Vec<String>,
 }
 
 /// Search query — one of the three search modes, independent of the chosen provider.
@@ -124,6 +129,9 @@ pub struct BridgeReleaseGroupSource {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePressing {
     pub releases: Vec<BridgeMetadataResult>,
+    /// Every label the records state, in the order of the record the row
+    /// leads with, each name once with its catalog numbers after it.
+    pub labels: Vec<BridgeLabelLine>,
     pub pick: crate::types::BridgeMetadataProvenance,
     /// Where the pressing was released and what it is made of, as its
     /// records together state it — the lead's facts, filled in where the lead

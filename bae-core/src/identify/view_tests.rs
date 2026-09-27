@@ -447,6 +447,8 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
             outcome: Ok(vec![result(MB, "mb-1")]),
         },
     );
+    // The offered record's document is read before the run settles.
+    let (settled, _) = step(settled, IdentifyEvent::ReleasesRead { read: Vec::new() });
     assert!(matches!(settled, IdentifyState::Failed { .. }));
     let ledger = run_of(settled);
 

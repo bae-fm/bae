@@ -7,9 +7,10 @@ impl BridgeMetadataResult {
             source,
             release_id,
             year,
-            labels,
             barcodes,
             source_group_id,
+            // The row shows its records' labels as one list.
+            labels: _,
             // The album card carries these.
             title: _,
             artist: _,
@@ -31,10 +32,6 @@ impl BridgeMetadataResult {
             source: BridgeCatalog::from_core(source),
             release_id,
             year,
-            labels: labels
-                .into_iter()
-                .map(BridgeReleaseLabel::from_core)
-                .collect(),
             facts,
             barcodes,
             source_group_id,
@@ -363,6 +360,12 @@ impl BridgePressingSection {
 }
 
 mirror_struct! {
+    BridgeLabelLine = bae_core::import::release_group::LabelLine,
+    from_core: fn,
+    fields: { name, catalog_numbers },
+}
+
+mirror_struct! {
     BridgeAlbumHeading = bae_core::import::release_group::AlbumHeading,
     from_core: fn,
     fields: { title, source: (BridgeReleaseGroupSource) },
@@ -372,6 +375,11 @@ impl BridgePressing {
     fn from_core(pressing: bae_core::import::release_group::Pressing) -> Self {
         let facts = BridgePressingFacts::from_core(pressing.facts());
         BridgePressing {
+            labels: pressing
+                .label_lines()
+                .into_iter()
+                .map(BridgeLabelLine::from_core)
+                .collect(),
             pick: crate::types::BridgeMetadataProvenance::from_core(pressing.pick()),
             summary: crate::types::bridge_pressing_summary(facts.clone()),
             details: crate::types::bridge_pressing_details(facts),
@@ -616,6 +624,7 @@ mod tests {
                     ..Default::default()
                 },
                 album_links: bae_core::identify::state::AlbumLinkReading::Pending,
+                documents: bae_core::identify::documents::DocumentReading::Pending,
             },
         }
     }

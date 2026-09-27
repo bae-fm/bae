@@ -14,6 +14,10 @@ pub struct AudioFacts {
     /// How long each audio unit plays, which a lead's tracklist is fitted to.
     /// Empty for a library release, which is not fitted.
     pub durations: SourceDurations,
+    /// The same lengths in the order the tracks are laid out, which a
+    /// release's tracklist is read against to count the tracks it holds for
+    /// this audio. Empty for a library release, whose tracklist is read whole.
+    pub track_lengths_ms: Vec<u64>,
     /// Every audio file carries one channel.
     pub mono: bool,
     /// The rate that rules a CD out, when the audio rules one out — see
@@ -24,9 +28,12 @@ pub struct AudioFacts {
 impl AudioFacts {
     /// A candidate's audio, from the facts its scan stored for each file.
     pub fn of_files(files: &CategorizedFiles) -> Result<Self, crate::import::ImportError> {
+        let durations = crate::import::probe::source_durations(files)?;
+        let track_lengths_ms = crate::import::track_slots::audio_durations(files, &durations)?;
         Ok(Self::of(
             files.track_count(),
-            crate::import::probe::source_durations(files)?,
+            durations,
+            track_lengths_ms,
             files
                 .audio()
                 .filter_map(|file| file.source_audio.as_ref())
@@ -39,18 +46,20 @@ impl AudioFacts {
         track_count: u32,
         formats: impl IntoIterator<Item = &'a AudioFormat>,
     ) -> Self {
-        Self::of(track_count, SourceDurations::default(), formats)
+        Self::of(track_count, SourceDurations::default(), Vec::new(), formats)
     }
 
     fn of<'a>(
         track_count: u32,
         durations: SourceDurations,
+        track_lengths_ms: Vec<u64>,
         formats: impl IntoIterator<Item = &'a AudioFormat>,
     ) -> Self {
         let formats: Vec<&AudioFormat> = formats.into_iter().collect();
         Self {
             track_count,
             durations,
+            track_lengths_ms,
             mono: !formats.is_empty() && formats.iter().all(|format| format.channels == 1),
             rate_ruling_out_cd: super::rip::rate_ruling_out_cd(formats.iter().copied()),
         }

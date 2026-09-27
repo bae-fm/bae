@@ -57,7 +57,10 @@ fn by_catalog(rows: Vec<Found>, rip: &RipEvidence) -> Outcome {
         Vec::new(),
         Vec::new(),
         &folder(),
-        FolderAudio { rip, mono: false },
+        FolderAudio {
+            rip,
+            ..FolderAudio::UNPROVEN
+        },
     )
 }
 
@@ -198,6 +201,7 @@ fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
         FolderAudio {
             rip: &CD_RIP,
             mono: false,
+            track_count: 0,
         },
     );
     assert_eq!(offered(&outcome), vec!["rel-named"]);
@@ -373,6 +377,7 @@ fn stated_stereo(release_id: &str, media: StatedMedia) -> Found {
 const MONO_FILES: FolderAudio<'static> = FolderAudio {
     rip: &RipEvidence::Unproven,
     mono: true,
+    track_count: 0,
 };
 
 /// Catalogs list mono pressings as stereo, so one-channel files rule no row

@@ -10,6 +10,9 @@ struct Pressing: Equatable, Identifiable {
     /// Every source's record of this pressing, `lead` first. The row is picked
     /// whole, so these are not separate picks.
     let releases: [BridgeMetadataResult]
+    /// Every label the records state, each name once with its catalog
+    /// numbers, in the order of the record the row leads with.
+    let labels: [BridgeLabelLine]
     /// What picking this row claims, as core settled it.
     let provenance: BridgeMetadataProvenance
     /// Where it was released and what it is made of: "Japan · 2×CD".
@@ -54,6 +57,7 @@ struct Pressing: Equatable, Identifiable {
         guard let lead = bridge.releases.first else { return nil }
         self.lead = lead
         releases = bridge.releases
+        labels = bridge.labels
         provenance = bridge.pick
         summaryText = PressingText.line(bridge.summary)
         detailsText = PressingText.line(bridge.details)

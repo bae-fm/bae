@@ -282,7 +282,7 @@ struct LookupReleaseLine: View {
                     .font(.system(size: 11.5, weight: .semibold))
                     .monospacedDigit()
             }
-            ForEach(Array(pressing.lead.labels.enumerated()), id: \.offset) {
+            ForEach(Array(pressing.labels.enumerated()), id: \.offset) {
                 _,
                 label in
                 if let name = label.name {
@@ -291,7 +291,7 @@ struct LookupReleaseLine: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                if let catalogNumber = label.catalogNumber {
+                ForEach(label.catalogNumbers, id: \.self) { catalogNumber in
                     Text(catalogNumber)
                         .font(.system(size: 9.5, design: .monospaced))
                         .foregroundStyle(.secondary)

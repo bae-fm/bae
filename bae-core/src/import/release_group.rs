@@ -929,6 +929,10 @@ fn ordered_rows(mut rows: Vec<Row>) -> Vec<Row> {
     rows
 }
 
+#[path = "release_group/labels.rs"]
+mod labels;
+pub use labels::LabelLine;
+
 #[cfg(test)]
 #[path = "release_group_tests.rs"]
 mod tests;

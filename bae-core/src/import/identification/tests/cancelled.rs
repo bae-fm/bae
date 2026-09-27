@@ -163,8 +163,8 @@ async fn cancelling_everything_empties_the_queue() {
     }
 }
 
-/// An answer that is being written when it is cancelled gives itself up
-/// before the write: the candidate stores nothing.
+/// A run cancelled while its offered release's document is being read, the
+/// last thing it waits on before its answer is written, stores nothing.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_cancelled_answer_is_not_written() {
     let fixture = Fixture::new("cancel-settling").await;
@@ -185,8 +185,8 @@ async fn a_cancelled_answer_is_not_written() {
     wait_for_request(&fixture.provider, "/release/mb-1?", 1).await;
     assert_eq!(
         fixture.identification_status(&key),
-        Some(crate::import::IdentificationStatus::Finalizing),
-        "the run answered and its answer is being written"
+        Some(crate::import::IdentificationStatus::Running),
+        "the run is reading its offered release's document"
     );
 
     fixture.identification().cancel(vec![key.clone()]).await.unwrap();

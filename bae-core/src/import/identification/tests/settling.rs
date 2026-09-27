@@ -589,10 +589,12 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
 }
 
 /// Two pressings are a question, not an answer: which one is on disk is the
-/// user's call, and buying every pressing's documents would settle nothing. The
-/// verdict stores with no pick and no release lookups behind it.
+/// user's call. Both offered pressings' documents are read before the run
+/// settles, so each row states its full tracklist and a pick later asks for
+/// nothing; with both fitting the folder they stay tied, and the verdict
+/// stores with no pick.
 #[tokio::test(flavor = "multi_thread")]
-async fn two_distinct_pressings_do_not_settle() {
+async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
     let fixture = Fixture::new("two-pressings").await;
     fixture
         .import
@@ -600,6 +602,14 @@ async fn two_distinct_pressings_do_not_settle() {
             barcode: PAIRED_BARCODE.to_string(),
         }));
     let dir = fixture.barcode_candidate("From Barcode");
+    let probed = fixture.probed_total_ms(&dir);
+    for id in ["mb-two-1", "mb-two-2"] {
+        fixture.provider.route(
+            &format!("/release/{id}?"),
+            200,
+            release_json(id, "rg-two-1", &[probed, 0]),
+        );
+    }
     fixture.provider.route(
         "/release?",
         200,
@@ -626,8 +636,9 @@ async fn two_distinct_pressings_do_not_settle() {
     };
     assert_eq!(matches.len(), 2);
     assert!(
-        matches.iter().all(|result| result.source_tracks.is_none()),
-        "nothing was settled: {matches:?}"
+        matches.iter().all(|result| result.source_tracks
+            == Some(SourceTracks::Listed { count: 2 })),
+        "every offered pressing states its full tracklist: {matches:?}"
     );
     assert_ne!(
         row.metadata_author,
@@ -635,15 +646,119 @@ async fn two_distinct_pressings_do_not_settle() {
         "a run that settled on no release wrote no draft, so the candidate's own stands"
     );
     assert_eq!(
-        fixture.count_release_lookups("mb-two-1") + fixture.count_release_lookups("mb-two-2"),
-        0,
-        "no pressing's documents were bought: {:?}",
+        (
+            fixture.count_release_lookups("mb-two-1"),
+            fixture.count_release_lookups("mb-two-2")
+        ),
+        (1, 1),
+        "each offered pressing's document was fetched once: {:?}",
         fixture.provider.requests()
     );
     assert_eq!(
         fixture.judgement_for(&dir).await,
         (false, None)
     );
+
+    // Picking an offered row reads the document the run stored.
+    let before_pick = fixture.provider.requests().len();
+    fixture
+        .import
+        .select_candidate_metadata_provenance(
+            dir.to_string_lossy().into_owned(),
+            crate::import::MetadataProvenance::ExternalRelease {
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::MusicBrainz,
+                    "mb-two-2".to_string(),
+                ),
+                partners: vec![],
+            },
+        )
+        .await
+        .expect("an offered row is picked from what the run stored");
+    assert_eq!(
+        fixture.provider.requests()[before_pick..]
+            .iter()
+            .filter(|request| request.contains("/release/"))
+            .count(),
+        0,
+        "picking asked for no document again: {:?}",
+        fixture.provider.requests()
+    );
+}
+
+/// The folder's track count breaks a tie the lookups leave: of two pressings
+/// a barcode names alike, the one whose tracklist holds as many tracks as the
+/// folder is offered, and the run settles on it.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_pressing_whose_tracklist_fits_the_folder_is_offered() {
+    let fixture = Fixture::new("fitting-pressing").await;
+    fixture
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+            barcode: PAIRED_BARCODE.to_string(),
+        }));
+    let dir = fixture.barcode_candidate("From Barcode");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/release/mb-long?",
+        200,
+        release_json("mb-long", "rg-fit", &[probed, 0, 1_000]),
+    );
+    fixture.provider.route(
+        "/release/mb-fits?",
+        200,
+        release_json("mb-fits", "rg-fit", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release?",
+        200,
+        barcode_search_json(&[
+            ("mb-long", "rg-fit", PAIRED_BARCODE),
+            ("mb-fits", "rg-fit", PAIRED_BARCODE),
+        ]),
+    );
+    fixture.scan(1).await;
+
+    fixture.drain_automatic().await;
+
+    let row = fixture
+        .stored_for(&dir)
+        .await
+        .expect("the candidate stores a row");
+    let verdict = identify_result(&row).verdict.clone();
+    let TerminalVerdict::Found {
+        findings:
+            crate::identify::Findings {
+                matches,
+                narrowed_out,
+                ..
+            },
+        ..
+    } = &verdict
+    else {
+        panic!("expected a Found verdict, got {verdict:?}");
+    };
+    assert_eq!(
+        matches
+            .iter()
+            .map(|result| result.release_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["mb-fits"]
+    );
+    assert_eq!(
+        narrowed_out
+            .matches
+            .iter()
+            .map(|result| result.release_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["mb-long"]
+    );
+    assert_eq!(
+        row.metadata_author,
+        crate::import::MetadataAuthor::Identification,
+        "the one fitting pressing settles the draft"
+    );
+    assert_eq!(fixture.count_release_lookups("mb-fits"), 1);
 }
 
 /// A settle writes the result, never what the next run asks: a disc-ID lead

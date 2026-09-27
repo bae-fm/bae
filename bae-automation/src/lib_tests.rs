@@ -305,6 +305,7 @@ mod identify_mirrors {
             text_settled: true,
             audio: Default::default(),
             album_links: bae_core::identify::state::AlbumLinkReading::Pending,
+            documents: bae_core::identify::documents::DocumentReading::Pending,
         }
     }
 

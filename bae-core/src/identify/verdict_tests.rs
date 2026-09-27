@@ -34,6 +34,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
             ..Default::default()
         },
         album_links: crate::identify::state::AlbumLinkReading::Pending,
+        documents: crate::identify::documents::DocumentReading::Pending,
     }
 }
 
@@ -118,6 +119,8 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
             outcome: Ok(vec![(mk_result("rel-1"), LibraryStatus::absent("rel-1"))]),
         },
     );
+    // The offered record's document is read before the run settles.
+    let (settled, _) = step(settled, IdentifyEvent::ReleasesRead { read: Vec::new() });
     let IdentifyStateView::Found {
         run: Some(shown), ..
     } = IdentifyStateView::from(settled.clone())

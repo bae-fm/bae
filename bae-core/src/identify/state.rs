@@ -8,6 +8,7 @@
 //! results into a terminal state, and records the ledger it showed.
 
 use super::combine::{combine_results, Findings, LibraryStatuses};
+use super::documents::{DocumentReading, ReleaseReading};
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
 use crate::config::IdentificationSteps;
@@ -243,6 +244,11 @@ pub enum IdentifyEvent {
     AlbumLinksRead {
         read: Vec<GroupReading>,
     },
+
+    /// The documents `Effect::ReadReleases` asked for, record by record.
+    ReleasesRead {
+        read: Vec<ReleaseReading>,
+    },
 }
 
 /// The lookups the service runs, each answering with an `IdentifyEvent`.
@@ -267,6 +273,12 @@ pub enum Effect {
     /// Read what these MusicBrainz release groups are on the other catalog.
     ReadAlbumLinks {
         to_read: ToRead,
+    },
+    /// Fetch and store these records' full documents, reading each one's
+    /// tracklist against `track_lengths_ms`.
+    ReadReleases {
+        releases: Vec<crate::import::MetadataRef>,
+        track_lengths_ms: Vec<u64>,
     },
 }
 
@@ -460,6 +472,26 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             })
         }
 
+        (
+            IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                search,
+                mut context,
+            },
+            IdentifyEvent::ReleasesRead { read },
+        ) if context.documents == DocumentReading::Reading => {
+            context.documents = DocumentReading::Read(read);
+            settle_if_ready(IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                search,
+                context,
+            })
+        }
+
         // A stale answer, or an event this state does not act on.
         (state @ IdentifyState::Triangulating { .. }, _) => (state, vec![]),
         (state, _) => (state, vec![]),
@@ -634,6 +666,46 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         AlbumLinkReading::Read(_) | AlbumLinkReading::NotAsked { .. } => {}
     }
 
+    // The albums are read: fetch every offered record's document, and rank
+    // once more with what they state.
+    match context.documents {
+        DocumentReading::Pending => {
+            let releases = offered_releases(&context);
+            if releases.is_empty() {
+                context.documents = DocumentReading::Read(Vec::new());
+            } else {
+                context.documents = DocumentReading::Reading;
+                let track_lengths_ms = context.audio.track_lengths_ms.clone();
+                return (
+                    IdentifyState::Triangulating {
+                        discid,
+                        barcode,
+                        catalog,
+                        search,
+                        context,
+                    },
+                    vec![Effect::ReadReleases {
+                        releases,
+                        track_lengths_ms,
+                    }],
+                );
+            }
+        }
+        DocumentReading::Reading => {
+            return (
+                IdentifyState::Triangulating {
+                    discid,
+                    barcode,
+                    catalog,
+                    search,
+                    context,
+                },
+                vec![],
+            )
+        }
+        DocumentReading::Read(_) => {}
+    }
+
     // The only place a ledger is recorded; later readers show this one.
     let ledger = context
         .has_inputs()
@@ -665,12 +737,11 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     (re_derive(context, ledger), vec![])
 }
 
-/// Combine the recorded results into `Failed`, `NotFoundAnywhere` or `Found`.
-fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> IdentifyState {
-    // Combine whatever failed: one provider failing leaves the others' matches.
+/// The recorded results, combined: what the run offers and sets aside.
+fn combined(context: &SignalsContext) -> (Findings, LibraryStatuses) {
     let [discid_results, barcode_results, catalog_results, search_results] =
         context.lookup_results();
-    let (findings, library_statuses) = combine_results(
+    combine_results(
         discid_results,
         barcode_results,
         catalog_results,
@@ -680,8 +751,25 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
         super::medium::FolderAudio {
             rip: &context.rip,
             mono: context.audio.mono,
+            track_count: context.audio.track_count,
         },
-    );
+    )
+}
+
+/// Every record of every row the run offers as its results stand.
+fn offered_releases(context: &SignalsContext) -> Vec<crate::import::MetadataRef> {
+    combined(context)
+        .0
+        .matches
+        .iter()
+        .map(|result| crate::import::MetadataRef::new(result.source, result.release_id.clone()))
+        .collect()
+}
+
+/// Combine the recorded results into `Failed`, `NotFoundAnywhere` or `Found`.
+fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> IdentifyState {
+    // Combine whatever failed: one provider failing leaves the others' matches.
+    let (findings, library_statuses) = combined(&context);
     let track_count = context.audio.track_count;
     let failures = context.active_failures();
     if !failures.is_empty() {

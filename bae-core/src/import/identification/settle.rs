@@ -32,10 +32,8 @@ pub(super) struct Finished {
     pub(super) settled: Settled,
 }
 
-enum FinalizationError {
-    Superseded,
-    Failed(String),
-}
+/// The answer was given up while its lead was being settled.
+struct Superseded;
 
 enum SettledLead {
     NoExternalRelease,
@@ -117,20 +115,8 @@ async fn settle_verdict(
             ),
         };
     };
-    let settled_lead = match settle_lead(
-        context,
-        &mut verdict,
-        &text,
-        candidate,
-        &durations,
-        priority,
-        token,
-    )
-    .await
-    {
-        Ok(settled) => settled,
-        Err(FinalizationError::Superseded) => return Settled::Abandoned,
-        Err(FinalizationError::Failed(error)) => return Settled::Unwritable { error },
+    let Ok(settled_lead) = settle_lead(context, &mut verdict, &text, priority, token).await else {
+        return Settled::Abandoned;
     };
 
     let metadata = metadata_or_failed_verdict(
@@ -263,22 +249,17 @@ fn sole_pressing(
     rows.next().is_none().then_some(only)
 }
 
-/// Settle a candidate's lead: fetch and store the releases of the one pressing
-/// it matched, primary and partners, and read the primary's tracklist.
-///
-/// The releases land before the verdict, so a stored lead opens with no
-/// network; a partner that cannot be fetched fails the lead like the primary.
-/// Only a `Found` that groups into one pressing has a lead. A release already
-/// stored is read back rather than fetched, and `priority` is the run's own.
+/// Settle a candidate's lead: the stored releases of the one pressing it
+/// matched, primary and partners. The run already fetched and stored every
+/// offered record, so these read back; one that did not store fails the lead.
+/// Only a `Found` that groups into one pressing has a lead.
 async fn settle_lead(
     context: &Context,
     verdict: &mut TerminalVerdict,
     text: &crate::identify::CandidateText,
-    candidate: &FolderCandidate,
-    durations: &crate::import::probe::SourceDurations,
     priority: CallPriority,
     token: &CancellationToken,
-) -> Result<SettledLead, FinalizationError> {
+) -> Result<SettledLead, Superseded> {
     let TerminalVerdict::Found { findings, .. } = verdict else {
         return Ok(SettledLead::NoExternalRelease);
     };
@@ -308,7 +289,7 @@ async fn settle_lead(
     let prepared = tokio::select! {
         biased;
         // Shutdown is not a provider answer and writes nothing.
-        _ = token.cancelled() => return Err(FinalizationError::Superseded),
+        _ = token.cancelled() => return Err(Superseded),
         prepared = settle => prepared,
     };
     let (release, prepared_partners) = match prepared {
@@ -324,21 +305,6 @@ async fn settle_lead(
             return Ok(SettledLead::NoExternalRelease);
         }
     };
-    let audio_durations =
-        match crate::import::track_slots::audio_durations(&candidate.files, durations) {
-            Ok(durations) => durations,
-            Err(error) => {
-                return Err(FinalizationError::Failed(error.to_string()));
-            }
-        };
-    // `SourceTracks::Nothing` is an answer: the release states no tracklist,
-    // which is not auto-importable. The primary's row carries it.
-    findings
-        .matches
-        .iter_mut()
-        .find(|result| result.source == primary.catalog && result.release_id == primary.key)
-        .expect("the pressing's primary is one of the verdict's matches")
-        .source_tracks = Some(release.source_tracks_for_audio(&audio_durations));
     Ok(SettledLead::ExternalRelease {
         provenance: pressing.pick(),
         release,

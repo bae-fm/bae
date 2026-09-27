@@ -16,18 +16,18 @@
                         source: .musicBrainz,
                         releaseId: "rel-123",
                         year: 1988,
-                        labels: [
-                            BridgeReleaseLabel(
-                                name: "Label Name",
-                                catalogNumber: "1871-2"
-                            )
-                        ],
                         facts: PreviewData.pressingFacts(
                             country: "US",
                             media: PreviewData.media(.cd)
                         ),
                         barcodes: [],
                         sourceGroupId: "group-preview"
+                    )
+                ],
+                labels: [
+                    BridgeLabelLine(
+                        name: "Label Name",
+                        catalogNumbers: ["1871-2"]
                     )
                 ],
                 pick: .externalRelease(
@@ -44,12 +44,6 @@
                         source: .musicBrainz,
                         releaseId: "rel-456",
                         year: 1996,
-                        labels: [
-                            BridgeReleaseLabel(
-                                name: "Label Name",
-                                catalogNumber: "6006-2"
-                            )
-                        ],
                         facts: PreviewData.pressingFacts(
                             country: "US",
                             media: PreviewData.media(.cd)
@@ -61,12 +55,6 @@
                         source: .discogs,
                         releaseId: "rel-456-d",
                         year: 1996,
-                        labels: [
-                            BridgeReleaseLabel(
-                                name: "Label Name",
-                                catalogNumber: "6006-2"
-                            )
-                        ],
                         facts: PreviewData.pressingFacts(
                             country: "US",
                             media: PreviewData.media(.cd),
@@ -76,6 +64,12 @@
                         barcodes: ["0123456789012"],
                         sourceGroupId: "master-6"
                     ),
+                ],
+                labels: [
+                    BridgeLabelLine(
+                        name: "Label Name",
+                        catalogNumbers: ["6006-2"]
+                    )
                 ],
                 pick: .externalRelease(
                     record: BridgeMetadataRef(
@@ -188,18 +182,18 @@
                                         source: .musicBrainz,
                                         releaseId: "rel-aaa",
                                         year: 1996,
-                                        labels: [
-                                            BridgeReleaseLabel(
-                                                name: "Label Name",
-                                                catalogNumber: "6006-2"
-                                            )
-                                        ],
                                         facts: PreviewData.pressingFacts(
                                             country: "US",
                                             media: PreviewData.media(.cd)
                                         ),
                                         barcodes: ["0123456789012"],
                                         sourceGroupId: "grp-1"
+                                    )
+                                ],
+                                labels: [
+                                    BridgeLabelLine(
+                                        name: "Label Name",
+                                        catalogNumbers: ["6006-2"]
                                     )
                                 ],
                                 pick: .externalRelease(
@@ -216,18 +210,18 @@
                                         source: .musicBrainz,
                                         releaseId: "rel-bbb",
                                         year: 1996,
-                                        labels: [
-                                            BridgeReleaseLabel(
-                                                name: "Another Label",
-                                                catalogNumber: "AL-1234"
-                                            )
-                                        ],
                                         facts: PreviewData.pressingFacts(
                                             country: "JP",
                                             media: PreviewData.media(.cd)
                                         ),
                                         barcodes: [],
                                         sourceGroupId: "grp-1"
+                                    )
+                                ],
+                                labels: [
+                                    BridgeLabelLine(
+                                        name: "Another Label",
+                                        catalogNumbers: ["AL-1234"]
                                     )
                                 ],
                                 pick: .externalRelease(
@@ -274,12 +268,6 @@
                                         source: .musicBrainz,
                                         releaseId: "rel-ccc",
                                         year: 2005,
-                                        labels: [
-                                            BridgeReleaseLabel(
-                                                name: "Reissue Records",
-                                                catalogNumber: "RR-500"
-                                            )
-                                        ],
                                         facts: PreviewData.pressingFacts(
                                             region: .europe,
                                             media: PreviewData.media(.cd)
@@ -291,12 +279,6 @@
                                         source: .discogs,
                                         releaseId: "rel-ddd",
                                         year: 2005,
-                                        labels: [
-                                            BridgeReleaseLabel(
-                                                name: "Reissue Records",
-                                                catalogNumber: "RR-500"
-                                            )
-                                        ],
                                         facts: PreviewData.pressingFacts(
                                             region: .europe,
                                             media: PreviewData.media(.cd),
@@ -307,6 +289,12 @@
                                         barcodes: ["0123456789029"],
                                         sourceGroupId: "master-7"
                                     ),
+                                ],
+                                labels: [
+                                    BridgeLabelLine(
+                                        name: "Reissue Records",
+                                        catalogNumbers: ["RR-500"]
+                                    )
                                 ],
                                 pick: .externalRelease(
                                     record: BridgeMetadataRef(
@@ -358,18 +346,18 @@
                                     source: .musicBrainz,
                                     releaseId: "rel-disc-1",
                                     year: 1996,
-                                    labels: [
-                                        BridgeReleaseLabel(
-                                            name: "Label A",
-                                            catalogNumber: "AAA-001"
-                                        )
-                                    ],
                                     facts: PreviewData.pressingFacts(
                                         country: "US",
                                         media: PreviewData.media(.cd)
                                     ),
                                     barcodes: [],
                                     sourceGroupId: "group-disc"
+                                )
+                            ],
+                            labels: [
+                                BridgeLabelLine(
+                                    name: "Label A",
+                                    catalogNumbers: ["AAA-001"]
                                 )
                             ],
                             pick: .externalRelease(
@@ -411,18 +399,18 @@
                                     source: .musicBrainz,
                                     releaseId: "rel-bar-1",
                                     year: 2001,
-                                    labels: [
-                                        BridgeReleaseLabel(
-                                            name: "Label B",
-                                            catalogNumber: "BBB-002"
-                                        )
-                                    ],
                                     facts: PreviewData.pressingFacts(
                                         country: "JP",
                                         media: PreviewData.media(.cd)
                                     ),
                                     barcodes: [],
                                     sourceGroupId: "group-bar"
+                                )
+                            ],
+                            labels: [
+                                BridgeLabelLine(
+                                    name: "Label B",
+                                    catalogNumbers: ["BBB-002"]
                                 )
                             ],
                             pick: .externalRelease(
