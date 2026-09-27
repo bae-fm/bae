@@ -95,6 +95,46 @@ impl LibraryManager {
             .await?)
     }
 
+    pub(crate) async fn change_candidate_selection(
+        &self,
+        request: crate::import::ImportListRequest,
+        change: crate::import::selection::SelectionChange,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .change_candidate_selection(request, change)
+            .await?)
+    }
+
+    pub(crate) async fn select_shown_candidates(
+        &self,
+        request: crate::import::ImportListRequest,
+    ) -> Result<(), LibraryError> {
+        Ok(self.database.select_shown_candidates(request).await?)
+    }
+
+    pub(crate) async fn keep_shown_candidate_selection(
+        &self,
+        request: crate::import::ImportListRequest,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .keep_shown_candidate_selection(request)
+            .await?)
+    }
+
+    pub(crate) fn subscribe_selected_candidates(
+        &self,
+    ) -> coven::LiveQuery<Vec<crate::import::selection::SelectedCandidate>> {
+        self.database.subscribe_selected_candidates()
+    }
+
+    pub(crate) async fn load_selected_candidates(
+        &self,
+    ) -> Result<Vec<crate::import::selection::SelectedCandidate>, LibraryError> {
+        Ok(self.database.load_selected_candidates().await?)
+    }
+
     pub(crate) async fn first_import_candidate_among(
         &self,
         request: crate::import::ImportListRequest,
@@ -162,6 +202,11 @@ impl LibraryManager {
         &self,
         runtime_handle: tokio::runtime::Handle,
     ) -> Result<crate::import::ImportServiceHandle, crate::import::ImportError> {
+        // The selection lasts one app session: the library opens on none.
+        self.database
+            .clear_candidate_selection()
+            .await
+            .map_err(LibraryError::from)?;
         crate::import::ImportService::start(
             runtime_handle,
             self.clone(),

@@ -108,6 +108,8 @@ pub struct ImportQueueRows {
     /// `None` when the view does not filter, so an unfiltered list neither
     /// reads nor reruns on it.
     pub imported_text: Option<HashMap<String, crate::import::ImportedReleaseText>>,
+    /// The candidate keys the person has selected.
+    pub selected: HashSet<String>,
 }
 
 /// Whether a queue read loads the Done rows' text: only when the view filters.
@@ -118,7 +120,7 @@ pub(super) enum DoneRowText {
 }
 
 impl DoneRowText {
-    fn of(view: &crate::import::list::ImportListView) -> Self {
+    pub(super) fn of(view: &crate::import::list::ImportListView) -> Self {
         if view.filters() {
             Self::Read
         } else {
@@ -232,6 +234,12 @@ pub(super) fn load_import_queue_on(
         .collect();
 
     let states = state_rows(sql)?;
+    let selected: HashSet<String> = sql
+        .query("SELECT candidate_key FROM candidate_selection", [], |row| {
+            row.get::<_, String>(0)
+        })?
+        .into_iter()
+        .collect();
     let imported_text = match done_row_text {
         DoneRowText::Read => Some(load_imported_release_text_on(sql, None)?),
         DoneRowText::Skip => None,
@@ -246,6 +254,7 @@ pub(super) fn load_import_queue_on(
         states,
         folder_readings,
         imported_text,
+        selected,
     })
 }
 

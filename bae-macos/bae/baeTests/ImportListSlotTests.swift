@@ -105,6 +105,7 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             importStatus: nil,
             metadataProvenance: nil,
             reading: .unidentified,
+            selected: false
         ),
         isGroupMember: false
     )
@@ -130,6 +131,7 @@ struct ImportListSlotTests {
             ImportListSlot(
                 importStore: ImportStore(),
                 uiStore: UiStore(),
+                selection: ImportSelection(),
                 defaults: defaults,
                 makeSource: { view in
                     requests.set(view)
@@ -169,6 +171,7 @@ struct ImportListSlotTests {
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: uiStore,
+            selection: ImportSelection(),
             makeSource: { _ in FailingPageSource().pages },
             locateCandidate: { _, _ in nil },
             firstIdentifyingCandidate: { _ in nil }
@@ -198,6 +201,7 @@ struct ImportListSlotTests {
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: uiStore,
+            selection: ImportSelection(),
             makeSource: { _ in
                 ImportListPages(
                     source: pageSource,
@@ -233,6 +237,7 @@ struct ImportListSlotTests {
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: uiStore,
+            selection: ImportSelection(),
             makeSource: { _ in
                 ImportListPreviewPageSource(
                     items: (0..<80).map(candidateItem)
@@ -251,6 +256,52 @@ struct ImportListSlotTests {
         #expect(try await slot.revealFirstIdentifying() == nil)
     }
 
+    /// Each selection write waits for the ones before it, so core applies
+    /// them in the order the person made them; a view change asks core to
+    /// keep only the rows the new view shows.
+    @Test("selection writes land in order, and a view change keeps shown rows")
+    func selectionWritesLandInOrder() async throws {
+        let writes = CallLog<String>()
+        let toggleEntered = AsyncStream<Void>.makeStream()
+        let releaseToggle = AsyncStream<Void>.makeStream()
+        let selection = ImportSelection(
+            operations: .stub(
+                change: { _, _ in
+                    toggleEntered.continuation.yield(())
+                    for await _ in releaseToggle.stream { break }
+                    writes.record("toggle")
+                },
+                selectAll: { _ in writes.record("select all") },
+                keepShown: { view in
+                    writes.record("keep shown in \(view.tab)")
+                }
+            )
+        )
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: UiStore(),
+            selection: selection,
+            makeSource: { _ in
+                ImportListPreviewPageSource(
+                    items: (0..<80).map(candidateItem)
+                )
+                .pages
+            },
+            locateCandidate: { _, _ in nil },
+            firstIdentifyingCandidate: { _ in nil }
+        )
+
+        slot.changeSelection(to: ["/music/Album"], from: [], by: .toggle)
+        var entered = toggleEntered.stream.makeAsyncIterator()
+        await entered.next()
+        slot.selectAllShown()
+        slot.setTab(.done)
+        releaseToggle.continuation.yield(())
+        try await Wait.until { writes.all.count == 3 }
+
+        #expect(writes.all == ["toggle", "select all", "keep shown in done"])
+    }
+
 }
 
 final class CandidatePlacementNavigationTests: XCTestCase {
@@ -266,6 +317,7 @@ final class CandidatePlacementNavigationTests: XCTestCase {
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: uiStore,
+            selection: ImportSelection(),
             makeSource: { _ in
                 ImportListPages(
                     source: pageSource,

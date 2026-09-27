@@ -156,6 +156,15 @@ impl AppServices {
         self.inner.identification.cancel_all().await
     }
 
+    /// What is running for every candidate the runtime holds, as the rows
+    /// read it.
+    pub(super) fn runtime_facts(&self) -> std::collections::HashMap<String, TriageRuntimeFacts> {
+        self.candidate_runtimes()
+            .iter()
+            .map(|(key, runtime)| (key.clone(), TriageRuntimeFacts::of(runtime)))
+            .collect()
+    }
+
     /// Every key with something in flight right now.
     pub fn candidate_runtimes(
         &self,
@@ -231,18 +240,16 @@ impl AppServices {
 
     /// The list request for one read of `view`: the upload standing and what
     /// is running, as they stand now.
-    fn import_list_request(
+    pub(super) fn import_list_request(
         &self,
         view: ImportListView,
         windows: crate::library::LibraryPageWindows,
     ) -> ImportListRequest {
-        let facts: std::collections::HashMap<String, TriageRuntimeFacts> = self
-            .candidate_runtimes()
-            .iter()
-            .map(|(key, runtime)| (key.clone(), TriageRuntimeFacts::of(runtime)))
-            .collect();
         ImportListRequest {
-            live_matches: crate::import::PendingFilter::live_matches(view.pending_filter, &facts),
+            live_matches: crate::import::PendingFilter::live_matches(
+                view.pending_filter,
+                &self.runtime_facts(),
+            ),
             view,
             windows,
             upload_standing: upload_standing_of(&self.subscribe_outbox_values()),

@@ -66,7 +66,8 @@
                 cover: cover,
                 importStatus: importStatus,
                 metadataProvenance: metadataProvenance,
-                reading: reading
+                reading: reading,
+                selected: false
             )
         }
 
@@ -539,7 +540,8 @@
                     year: year,
                     cover: nil,
                     records: records
-                )
+                ),
+                selected: false
             )
         }
 

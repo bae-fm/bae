@@ -203,7 +203,7 @@ struct ImportCandidateListContent: View {
     let onSeparate: (_ key: String) -> Void
     /// Show an imported row's folders.
     let onReveal: (_ key: String) -> Void
-    /// Run one action a row's menu offers, over the candidates it names.
+    /// Run one action a row's menu offers, for the row or the selection.
     let onPerform: (ImportCandidateActionOffer) -> Void
     /// Take every candidate off the identification queue.
     let onCancelAllIdentification: () -> Void
@@ -212,6 +212,8 @@ struct ImportCandidateListContent: View {
 
     @Environment(UiStore.self)
     private var uiStore
+    @Environment(ImportSelection.self)
+    private var importSelection
     @Environment(ImageStore.self)
     private var imageStore
     @Environment(OutboxStore.self)
@@ -430,12 +432,7 @@ struct ImportCandidateListContent: View {
                 // list's, and what the person does next cancels it.
                 uiStore.consumeImportCandidateReveal(seq: request.seq)
                 startReveal(using: proxy) {
-                    guard
-                        let position = try await listSlot.revealCandidate(
-                            request.candidateKey
-                        )
-                    else { return nil }
-                    return (request.selection, position)
+                    try await listSlot.revealCandidate(request.candidateKey)
                 }
             }
         }
@@ -466,6 +463,14 @@ struct ImportCandidateListContent: View {
     private func tabList(_ proxy: ScrollViewProxy) -> some View {
         if let list = listSlot.list {
             entryList(list, proxy: proxy)
+                // Edit ▸ Select All and Command-A select every row the list
+                // shows, loaded or not, rather than the table's loaded rows.
+                .background {
+                    CandidateListSelectAll {
+                        cancelReveal()
+                        listSlot.selectAllShown()
+                    }
+                }
         }
     }
 }
@@ -680,27 +685,19 @@ extension ImportCandidateListContent {
         for row: BridgeTriageRow,
         live: BridgeCandidateLiveState?
     ) -> CandidateActionMenu {
-        let selection = uiStore.selectedFolderCandidates
-        if selection.count > 1, selection.contains(row.candidateKey) {
+        if row.selected, importSelection.summary.count > 1 {
             return CandidateActionMenu(
-                offers: ImportCandidateSelection(
-                    importStore: importStore,
-                    uiStore: uiStore
-                )
-                .offers,
+                offers: ImportCandidateActionOffer.selection(
+                    importSelection.summary
+                ),
                 isSelection: true
             )
         }
         return CandidateActionMenu(
-            offers: ImportCandidateActionOffer.offers(for: [
-                (
-                    ImportCandidateActionTarget(
-                        key: row.candidateKey,
-                        displayName: row.folderName
-                    ),
-                    live?.actions ?? []
-                )
-            ]),
+            offers: ImportCandidateActionOffer.row(
+                row.candidateKey,
+                actions: live?.actions ?? []
+            ),
             isSelection: false
         )
     }
@@ -768,19 +765,14 @@ extension ImportCandidateListContent {
     ) -> () -> Void {
         {
             startReveal(using: proxy) {
-                try await listSlot.revealFirstIdentifying()
-                    .map {
-                        ([$0.candidateKey], $0.position)
-                    }
+                try await listSlot.revealFirstIdentifying()?.position
             }
         }
     }
 
     private func startReveal(
         using proxy: ScrollViewProxy,
-        locate:
-            @escaping @MainActor () async throws
-            -> (selection: Set<String>, position: Int)?
+        locate: @escaping @MainActor () async throws -> Int?
     ) {
         revealOperation?.cancel()
         let operation = ImportCandidateRevealOperation()
@@ -792,11 +784,11 @@ extension ImportCandidateListContent {
                 }
             }
             do {
-                guard let target = try await locate(), !Task.isCancelled else {
+                guard let position = try await locate(), !Task.isCancelled
+                else {
                     return
                 }
-                selectedKeys = target.selection
-                proxy.scrollTo(target.position, anchor: .center)
+                proxy.scrollTo(position, anchor: .center)
                 await Task.yield()
             }
             catch is CancellationError {}
@@ -830,6 +822,7 @@ extension ImportCandidateListContent {
             onCancelAllImports: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(ImportSelection())
         .environment(uiStore)
         .environment(PreviewData.artImageStore())
         .frame(width: 500, height: 900)
@@ -858,6 +851,7 @@ extension ImportCandidateListContent {
             onCancelAllImports: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(ImportSelection())
         .environment(uiStore)
         .environment(PreviewData.artImageStore())
         .frame(width: 280, height: 560)

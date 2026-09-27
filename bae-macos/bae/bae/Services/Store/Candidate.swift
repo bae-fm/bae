@@ -566,13 +566,4 @@ struct Candidate: Equatable, Identifiable {
         detail?.signals.map(Signals.init(bridge:))
     }
 
-    /// The watched folder this candidate was scanned from — the candidate-list
-    /// group it belongs to. `nil` for re-identify candidates (not grouped).
-    var watchedFolderPath: String? {
-        if case .folder(let watchedFolderPath) = source {
-            return watchedFolderPath
-        }
-        return nil
-    }
-
 }

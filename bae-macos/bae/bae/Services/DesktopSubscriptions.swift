@@ -34,19 +34,30 @@ private final class CandidateRuntimeSink: CandidateRuntimeCallback,
     }
 }
 
-/// The reads behind the selected import candidates: one read per selected
-/// key, each a read whose key moves in place. A selection that moves to other
-/// candidates moves the reads it has instead of closing them and opening new
-/// ones; only a selection that grows opens more, and one that shrinks closes
-/// what it no longer needs. Each candidate keeps a read of its own because
-/// each changes on its own. A read that says the folder is gone drops the key
-/// from the selection, which is what clears a row the scan removed.
+private final class ImportSelectionSink: ImportSelectionCallback,
+    @unchecked Sendable
+{
+    private let apply: @MainActor @Sendable (BridgeSelectionSummary) -> Void
+
+    init(apply: @escaping @MainActor @Sendable (BridgeSelectionSummary) -> Void)
+    {
+        self.apply = apply
+    }
+
+    func onValue(value: BridgeSelectionSummary) {
+        Task { @MainActor in apply(value) }
+    }
+}
+
+/// The read behind the one selected import candidate, whose key moves in place
+/// as the selection moves. Several selected candidates, or none, read nothing
+/// here: the pane several open reads core's selection summary instead.
 @MainActor
-final class ImportSelectionObservations {
+final class ImportSelectionObservation {
     private let open: () -> DetailQuery<BridgeImportCandidateDetail>
     private let importStore: ImportStore
     private let uiStore: UiStore
-    private var readers: [DetailReader<BridgeImportCandidateDetail>] = []
+    private var reader: DetailReader<BridgeImportCandidateDetail>?
 
     init(
         open: @escaping () -> DetailQuery<BridgeImportCandidateDetail>,
@@ -83,33 +94,20 @@ final class ImportSelectionObservations {
         )
     }
 
-    func selectionChanged(_ keys: Set<String>) {
-        var free: [DetailReader<BridgeImportCandidateDetail>] = []
-        var shown: Set<String> = []
-        for reader in readers {
-            if let key = reader.id, keys.contains(key) {
-                shown.insert(key)
-                continue
-            }
-            if let key = reader.id {
-                importStore.selectedCandidates.removeValue(forKey: key)
-            }
-            free.append(reader)
+    /// Read `single`, the one selected candidate, or nothing.
+    func selectionChanged(single: String?) {
+        guard single != reader?.id else { return }
+        if let previous = reader?.id {
+            importStore.selectedCandidates.removeValue(forKey: previous)
         }
-        for key in keys.subtracting(shown).sorted() {
-            if let reader = free.popLast() {
-                reader.show(key)
-            }
-            else {
-                let reader = makeReader()
-                readers.append(reader)
-                reader.show(key)
-            }
+        guard let single else {
+            reader?.close()
+            reader = nil
+            return
         }
-        for reader in free {
-            reader.close()
-            readers.removeAll { $0 === reader }
-        }
+        let reader = reader ?? makeReader()
+        self.reader = reader
+        reader.show(single)
     }
 
     private func makeReader() -> DetailReader<BridgeImportCandidateDetail> {
@@ -126,11 +124,10 @@ final class ImportSelectionObservations {
 
     private func deliver(_ detail: BridgeImportCandidateDetail?, key: String) {
         guard let detail else {
-            // The key names no scanned folder any more, so nothing can be done
-            // with it: a pick made on it has nothing left to claim, and the
-            // key leaves the selection, which frees this read.
+            // The key names no scanned folder any more: a pick made on it has
+            // nothing left to claim, and core took it out of the selection in
+            // the write that removed it.
             importStore.cancelMetadataApplication(forKey: key)
-            uiStore.removeFolderCandidateSelection([key])
             return
         }
         importStore.applyCandidateDetail(key: key, detail: detail)
@@ -145,8 +142,9 @@ final class DesktopSubscriptions {
     private let appHandle: AppHandle
     private let importStore: ImportStore
     private let outputStore: OutputStore
-    private let uiStore: UiStore
-    private let selection: ImportSelectionObservations
+    /// The import list's selection, installed in the view environment.
+    let importSelection: ImportSelection
+    private let selectionObservation: ImportSelectionObservation
     private var subscriptions: [LiveSubscription] = []
 
     init(
@@ -158,12 +156,15 @@ final class DesktopSubscriptions {
         self.appHandle = appHandle
         self.importStore = importStore
         self.outputStore = outputStore
-        self.uiStore = uiStore
-        selection = ImportSelectionObservations(
+        selectionObservation = ImportSelectionObservation(
             appHandle: appHandle,
             importStore: importStore,
             uiStore: uiStore
         )
+        let importSelection = ImportSelection(
+            operations: .live(handle: appHandle)
+        )
+        self.importSelection = importSelection
         // A watched folder that could not be read. Wired before anything can
         // deliver a summary, and fed from the list's live query rather than a
         // transient event, so a scan that failed while the app was still
@@ -188,6 +189,7 @@ final class DesktopSubscriptions {
         importList = ImportListSlot(
             importStore: importStore,
             uiStore: uiStore,
+            selection: importSelection,
             makeSource: { view in
                 ImportListPageSource(
                     subscription: appHandle.subscribeImportList(view: view),
@@ -222,10 +224,16 @@ final class DesktopSubscriptions {
                     importStore.candidateRuntimeSubject.send(change)
                 }
             ),
+            appHandle.subscribeImportSelection(
+                callback: ImportSelectionSink {
+                    [importSelection, selectionObservation] summary in
+                    importSelection.apply(summary)
+                    selectionObservation.selectionChanged(
+                        single: summary.single
+                    )
+                }
+            ),
         ]
-        uiStore.onFolderCandidateSelectionChanged = { [selection] keys in
-            selection.selectionChanged(keys)
-        }
         importList.startLoad()
     }
 }

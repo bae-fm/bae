@@ -66,4 +66,11 @@ callbacks! {
     /// it: the value on opening, then one call each time either changes.
     #[cfg(feature = "desktop")]
     CandidateLiveStateCallback: on_value(value: BridgeCandidateLiveState);
+    /// What the import list's selection holds and can be told to do: the
+    /// value on opening, then one call each time it changes.
+    #[cfg(feature = "desktop")]
+    ImportSelectionCallback: on_value(value: BridgeSelectionSummary);
+    /// How far a bulk action over the selection has got.
+    #[cfg(feature = "desktop")]
+    SelectionActionProgressCallback: on_progress(progress: BridgeSelectionActionProgress);
 }

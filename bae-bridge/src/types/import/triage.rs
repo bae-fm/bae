@@ -232,13 +232,53 @@ pub struct BridgeSelectionMember {
     pub actions: Vec<BridgeCandidateAction>,
 }
 
-/// One action a selection offers, the members it applies to, and whether it
-/// can run now.
+/// One action a selection offers, how many members it applies to, and whether
+/// it can run now.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSelectionOffer {
     pub action: BridgeCandidateAction,
-    pub candidate_keys: Vec<String>,
+    pub count: u64,
     pub enabled: bool,
+}
+
+/// What the import list's selection holds and can be told to do. Mirrors
+/// `bae_core::import::selection::SelectionSummary`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSelectionSummary {
+    pub count: u64,
+    /// The one selected candidate, when exactly one is.
+    pub single: Option<String>,
+    pub offers: Vec<BridgeSelectionOffer>,
+}
+
+/// How a person changed the selection by pointing at rows. Mirrors
+/// `bae_core::import::selection::SelectionChange`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSelectionChange {
+    /// Select exactly these rows, and nothing else.
+    Replace { keys: Vec<String> },
+    /// Add these rows and take those out, leaving the rest as it is.
+    Toggle {
+        add: Vec<String>,
+        remove: Vec<String>,
+    },
+    /// Add every row the list shows from `from` to `to`, both included.
+    Extend { from: String, to: String },
+}
+
+/// How many of the candidates a bulk action runs on it has finished.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSelectionActionProgress {
+    pub completed: u64,
+    pub total: u64,
+}
+
+/// One selected candidate a bulk action could not run on, and why.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeSelectionActionFailure {
+    pub candidate_key: String,
+    pub name: String,
+    pub error: BridgeError,
 }
 
 /// What a selection of candidates can be told to do, in display order.
@@ -259,12 +299,18 @@ pub fn bridge_candidate_selection_offers(
         .collect();
     bae_core::import::triage::selection_offers(&members)
         .into_iter()
-        .map(|offer| BridgeSelectionOffer {
-            action: BridgeCandidateAction::from_core(offer.action),
-            candidate_keys: offer.candidate_keys,
-            enabled: offer.enabled,
-        })
+        .map(BridgeSelectionOffer::from_core)
         .collect()
+}
+
+impl BridgeSelectionOffer {
+    pub(crate) fn from_core(offer: bae_core::import::triage::SelectionOffer) -> Self {
+        Self {
+            action: BridgeCandidateAction::from_core(offer.action),
+            count: offer.count,
+            enabled: offer.enabled,
+        }
+    }
 }
 
 /// What is running for one candidate right now, and the commands its row
@@ -477,6 +523,8 @@ pub struct BridgeTriageRow {
     pub import_status: Option<BridgeTriageImportStatus>,
     pub metadata_provenance: Option<BridgeMetadataProvenance>,
     pub reading: BridgeTriageReading,
+    /// Whether the person has selected the row.
+    pub selected: bool,
 }
 
 /// A Done row: the library release the candidate became, as the library has it
@@ -490,6 +538,8 @@ pub struct BridgeImportedRow {
     /// wrote the release can still own the candidate for a moment.
     pub action_basis: BridgeCandidateActionBasis,
     pub release: BridgeImportedReleaseSummary,
+    /// Whether the person has selected the row.
+    pub selected: bool,
 }
 
 /// The library release a Done row became.

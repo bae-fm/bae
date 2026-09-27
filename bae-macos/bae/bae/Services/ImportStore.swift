@@ -166,6 +166,24 @@ class ImportStore {
         }
     }
 
+    /// The keys of the loaded rows the person has selected, as core's rows
+    /// say — what the list's own selection handling reads. Rows past the
+    /// loaded pages may be selected too; core holds the whole selection.
+    var selectedLoadedKeys: Set<String> {
+        Set(
+            items.values.compactMap { item -> String? in
+                switch item {
+                case .candidate(_, let row, _):
+                    row.selected ? row.candidateKey : nil
+                case .imported(_, let row):
+                    row.selected ? row.candidateKey : nil
+                case .groupHeader, .invalid:
+                    nil
+                }
+            }
+        )
+    }
+
     /// Drop entries the list no longer holds a position for, so a page the
     /// list evicted stops occupying memory.
     func retainItems(_ loadedKeys: [String]) {

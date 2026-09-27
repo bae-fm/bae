@@ -4,10 +4,8 @@ import SwiftUI
 /// What a selection of several folders can be told to do: one card, centered in
 /// the pane, whose rows are the actions the selection offers.
 struct ImportCandidateBulkSelectionPane: View {
-    @Environment(ImportStore.self)
-    private var importStore
-    @Environment(UiStore.self)
-    private var uiStore
+    @Environment(ImportSelection.self)
+    private var selection
     @Environment(ConfigStore.self)
     private var configStore
     @Binding
@@ -26,20 +24,18 @@ struct ImportCandidateBulkSelectionPane: View {
         GeometryReader { pane in
             ScrollView {
                 VStack(spacing: 16) {
-                    let selection = ImportCandidateSelection(
-                        importStore: importStore,
-                        uiStore: uiStore
-                    )
                     ImportCandidateBulkSelectionCard(
-                        selectedCount: uiStore.selectedFolderCandidates.count,
-                        offers: selection.offers,
-                        isRunning: uiStore.candidateActionRun.isRunning,
+                        selectedCount: Int(selection.summary.count),
+                        offers: ImportCandidateActionOffer.selection(
+                            selection.summary
+                        ),
+                        isRunning: selection.isRunning,
                         showsStorageChoices: configStore.config.hasCloudHome,
                         storageCloud: $storageCloud,
                         storagePinned: $storagePinned,
                         onPerform: onPerform
                     )
-                    if let progress = uiStore.candidateActionRun.progress {
+                    if let progress = selection.progress {
                         ProgressView(
                             value: Double(progress.completed),
                             total: Double(progress.total)
@@ -47,8 +43,8 @@ struct ImportCandidateBulkSelectionPane: View {
                             Text(progress.action.label(count: progress.total))
                         }
                     }
-                    if uiStore.candidateActionRun.isRunning {
-                        Button("Cancel") { uiStore.candidateActionRun.cancel() }
+                    if selection.isRunning {
+                        Button("Cancel") { selection.cancel() }
                     }
                 }
                 .frame(width: ImportCandidateBulkSelectionCard.width)

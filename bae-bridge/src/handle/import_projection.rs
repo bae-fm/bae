@@ -183,6 +183,7 @@ impl crate::types::BridgeTriageRow {
             import_status,
             metadata_provenance,
             reading,
+            selected,
         } = row;
         crate::types::BridgeTriageRow {
             candidate_key,
@@ -200,6 +201,7 @@ impl crate::types::BridgeTriageRow {
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             reading: crate::types::BridgeTriageReading::from_core(reading),
+            selected,
         }
     }
 }
@@ -226,6 +228,7 @@ mirror_struct! {
         display_path,
         action_basis: (crate::types::BridgeCandidateActionBasis),
         release: (crate::types::BridgeImportedReleaseSummary),
+        selected,
     },
 }
 
@@ -666,4 +669,14 @@ impl crate::types::BridgeImportFailure {
             artist_identity_conflict,
         }
     }
+}
+
+mirror_enum! {
+    crate::types::BridgeSelectionChange = bae_core::import::selection::SelectionChange,
+    into_core: pub(super) fn,
+    variants: {
+        Replace { keys },
+        Toggle { add, remove },
+        Extend { from, to },
+    },
 }

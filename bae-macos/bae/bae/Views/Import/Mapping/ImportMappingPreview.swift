@@ -4,7 +4,8 @@
 
     /// The stores every import preview reads plus the app's window background,
     /// injected as one modifier: ImageStore + UiStore for the search pane and
-    /// the lightbox, Library for artist search, OutboxStore + ConfigStore for
+    /// the lightbox, ImportSelection for the list and the pane a selection
+    /// opens, Library for artist search, OutboxStore + ConfigStore for
     /// the commit bar, Importer for the Find online header's source
     /// checkboxes, and `windowBackground()` so the preview reproduces the shell
     /// the panes are transparent over.
@@ -13,6 +14,7 @@
             self
                 .environment(PreviewData.artImageStore())
                 .environment(UiStore())
+                .environment(ImportSelection())
                 .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
                 .environment(PreviewData.configStore())
                 .environment(Importer.stub())

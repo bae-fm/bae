@@ -36,14 +36,12 @@ private final class CandidateLiveStateSink: CandidateLiveStateCallback,
 
 private struct ImportOperations: Sendable {
     let candidateSourceFolders: @Sendable (String) async throws -> [String]
-    let combineCandidates: @Sendable ([String]) async throws -> String
     let combineFolder:
         @Sendable (BridgeFolderReleaseDecisionKey) async throws -> String
     let separateCandidate: @Sendable (String) async throws -> Void
     let addWatchedFolder: @Sendable (String) async throws -> Void
     let removeWatchedFolder: @Sendable (String) async throws -> Void
     let refreshWatchedFolder: @Sendable (String) async throws -> Void
-    let setCandidateSkipped: @Sendable (String, Bool) async throws -> Void
     let setSheetBinding:
         @Sendable (String, String, String, String?) async throws -> Void
     let applyCandidateExternalMetadata:
@@ -96,7 +94,6 @@ private struct ImportOperations: Sendable {
         ) -> any LiveSubscriptionProtocol
     let candidateSignals: @Sendable (String) -> Signals?
     let startImport: @Sendable (String) async throws -> Void
-    let importSelected: @Sendable (String) async throws -> Void
     let mergeCandidateArtistIdentityConflict:
         @Sendable (String, String) async throws -> Void
     let setIdentifyAutomatically:
@@ -122,9 +119,6 @@ extension ImportOperations {
             candidateSourceFolders: {
                 try await handle.candidateSourceFolders(key: $0)
             },
-            combineCandidates: {
-                try await handle.combineCandidates(keys: $0)
-            },
             combineFolder: {
                 try await handle.combineFolder(key: $0)
             },
@@ -139,9 +133,6 @@ extension ImportOperations {
             },
             refreshWatchedFolder: {
                 try await handle.refreshWatchedFolder(path: $0)
-            },
-            setCandidateSkipped: {
-                try await handle.setCandidateSkipped(path: $0, skipped: $1)
             },
             setSheetBinding: {
                 try await handle.setSheetBinding(
@@ -307,9 +298,6 @@ extension ImportOperations {
             startImport: {
                 try await handle.startImport(candidateKey: $0)
             },
-            importSelected: {
-                try await handle.importSelected(candidateKey: $0)
-            },
             mergeCandidateArtistIdentityConflict: {
                 try await handle.mergeCandidateArtistIdentityConflict(
                     candidateKey: $0,
@@ -364,10 +352,6 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String) async throws -> [String] = { _ in
                 throw StubError.notImplemented
             },
-        combineCandidates:
-            @escaping @Sendable ([String]) async throws -> String = { _ in
-                throw StubError.notImplemented
-            },
         combineFolder:
             @escaping @Sendable (BridgeFolderReleaseDecisionKey) async throws
             -> String = { _ in throw StubError.notImplemented },
@@ -382,9 +366,6 @@ final class Importer: Sendable, Observable {
             },
         refreshWatchedFolder:
             @escaping @Sendable (String) async throws -> Void = { _ in },
-        setCandidateSkipped:
-            @escaping @Sendable (String, Bool) async throws -> Void = { _, _ in
-            },
         setSheetBinding:
             @escaping @Sendable (String, String, String, String?) async throws
             -> Void =
@@ -494,9 +475,6 @@ final class Importer: Sendable, Observable {
         },
         startImport: @escaping @Sendable (String) async throws -> Void = { _ in
         },
-        importSelected: @escaping @Sendable (String) async throws -> Void = {
-            _ in
-        },
         setIdentifyAutomatically:
             @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
             },
@@ -523,13 +501,11 @@ final class Importer: Sendable, Observable {
     ) {
         operations = ImportOperations(
             candidateSourceFolders: candidateSourceFolders,
-            combineCandidates: combineCandidates,
             combineFolder: combineFolder,
             separateCandidate: separateCandidate,
             addWatchedFolder: addWatchedFolder,
             removeWatchedFolder: removeWatchedFolder,
             refreshWatchedFolder: refreshWatchedFolder,
-            setCandidateSkipped: setCandidateSkipped,
             setSheetBinding: setSheetBinding,
             applyCandidateExternalMetadata: applyCandidateExternalMetadata,
             applyCandidateFileMetadata: applyCandidateFileMetadata,
@@ -562,7 +538,6 @@ final class Importer: Sendable, Observable {
             subscribeCandidateLiveState: subscribeCandidateLiveState,
             candidateSignals: candidateSignals,
             startImport: startImport,
-            importSelected: importSelected,
             mergeCandidateArtistIdentityConflict: { _, _ in
                 throw StubError.notImplemented
             },
@@ -582,10 +557,6 @@ final class Importer: Sendable, Observable {
 }
 
 extension Importer {
-    func combineCandidates(_ keys: [String]) async throws -> String {
-        try await operations.combineCandidates(keys)
-    }
-
     func candidateSourceFolders(_ key: String) async throws -> [String] {
         try await operations.candidateSourceFolders(key)
     }
@@ -612,10 +583,6 @@ extension Importer {
 
     func refreshWatchedFolder(_ path: String) async throws {
         try await operations.refreshWatchedFolder(path)
-    }
-
-    func setCandidateSkipped(_ path: String, _ skipped: Bool) async throws {
-        try await operations.setCandidateSkipped(path, skipped)
     }
 
     func setSheetBinding(
@@ -847,13 +814,6 @@ extension Importer {
     /// Commit a candidate from what core stores for it.
     func startImport(_ candidateKey: String) async throws {
         try await operations.startImport(candidateKey)
-    }
-
-    /// Import one row of a bulk import of a selection. Core refuses a row an
-    /// import already owns or identification is still answering, and says
-    /// which.
-    func importSelected(_ candidateKey: String) async throws {
-        try await operations.importSelected(candidateKey)
     }
 
     func mergeCandidateArtistIdentityConflict(

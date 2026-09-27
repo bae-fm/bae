@@ -13,13 +13,23 @@ pub struct SelectionMember {
     pub actions: Vec<CandidateAction>,
 }
 
-/// One action a selection offers, the members it applies to, and whether it
-/// can run as the selection stands.
+/// One action a selection offers, how many members it applies to, and whether
+/// it can run as the selection stands.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SelectionOffer {
     pub action: CandidateAction,
-    pub candidate_keys: Vec<String>,
+    pub count: u64,
     pub enabled: bool,
+}
+
+/// The keys `action` runs on over `members`: those that offer it, or every
+/// member for combining, which acts on the whole selection.
+pub fn keys_for(members: &[SelectionMember], action: CandidateAction) -> Vec<String> {
+    members
+        .iter()
+        .filter(|member| action == CandidateAction::Combine || member.actions.contains(&action))
+        .map(|member| member.candidate_key.clone())
+        .collect()
 }
 
 /// The actions `members` offer, in the order every surface lists them.
@@ -34,23 +44,18 @@ pub fn selection_offers(members: &[SelectionMember]) -> Vec<SelectionOffer> {
     CandidateAction::ALL
         .into_iter()
         .filter_map(|action| {
-            let offering: Vec<String> = members
-                .iter()
-                .filter(|member| member.actions.contains(&action))
-                .map(|member| member.candidate_key.clone())
-                .collect();
+            let count = keys_for(members, action).len() as u64;
             match action {
                 CandidateAction::Combine => (members.len() >= 2).then(|| SelectionOffer {
                     action,
-                    enabled: offering.len() == members.len(),
-                    candidate_keys: members
+                    count,
+                    enabled: members
                         .iter()
-                        .map(|member| member.candidate_key.clone())
-                        .collect(),
+                        .all(|member| member.actions.contains(&CandidateAction::Combine)),
                 }),
-                _ => (!offering.is_empty()).then_some(SelectionOffer {
+                _ => (count > 0).then_some(SelectionOffer {
                     action,
-                    candidate_keys: offering,
+                    count,
                     enabled: true,
                 }),
             }
@@ -92,22 +97,21 @@ mod tests {
     /// Each action applies to the members that offer it.
     #[test]
     fn each_action_applies_to_the_members_that_offer_it() {
-        let offers = selection_offers(&[
+        let members = [
             member("Identified Album", &[A::Import, A::Identify, A::RevealFolder]),
             member("Other Album", &[A::Identify, A::RevealFolder]),
-        ]);
-        let keys = |action| {
+        ];
+        let offers = selection_offers(&members);
+        let count = |action| {
             offers
                 .iter()
                 .find(|offer| offer.action == action)
-                .map(|offer| offer.candidate_keys.clone())
+                .map(|offer| offer.count)
         };
-        assert_eq!(keys(A::Import), Some(vec!["Identified Album".to_string()]));
-        assert_eq!(
-            keys(A::Identify),
-            Some(vec!["Identified Album".to_string(), "Other Album".to_string()])
-        );
-        assert_eq!(keys(A::Skip), None);
+        assert_eq!(count(A::Import), Some(1));
+        assert_eq!(count(A::Identify), Some(2));
+        assert_eq!(count(A::Skip), None);
+        assert_eq!(keys_for(&members, A::Import), vec!["Identified Album".to_string()]);
     }
 
     /// Combining is the whole selection's: offered for two or more, runnable
@@ -122,7 +126,7 @@ mod tests {
             both,
             vec![SelectionOffer {
                 action: A::Combine,
-                candidate_keys: vec!["Disc 1".to_string(), "Disc 2".to_string()],
+                count: 2,
                 enabled: true,
             }]
         );

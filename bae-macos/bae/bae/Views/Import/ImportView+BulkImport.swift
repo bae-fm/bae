@@ -2,8 +2,8 @@ import BaeKit
 import SwiftUI
 
 extension ImportView {
-    /// Run one action a selection offers — from the pane a selection opens
-    /// or from the list's menu, which offer the same actions. One that
+    /// Run one action the selection or a row's menu offers — the pane a
+    /// selection opens and the list's menu offer the same actions. One that
     /// replaces what a person may have chosen is asked about first.
     func requestCandidateAction(_ offer: ImportCandidateActionOffer) {
         guard offer.enabled else { return }
@@ -14,66 +14,61 @@ extension ImportView {
         performCandidateAction(offer)
     }
 
+    /// Core runs every action over the selection it holds, so a row's own
+    /// action first makes that row the selection.
     func performCandidateAction(_ offer: ImportCandidateActionOffer) {
-        switch offer.action {
-        // One action over the whole selection rather than one per folder.
-        case .combine:
-            combineCandidates(offer.keys)
+        if offer.action == .revealFolder, let key = offer.rowKey {
+            revealCandidateSources(key)
             return
-        // Nothing to write and nothing to report: each folder is shown.
-        case .revealFolder:
-            offer.keys.forEach(revealCandidateSources)
-            return
-        case .import, .identify, .cancelIdentification, .cancelImport,
-            .retryIdentification, .resetToFileMetadata, .clearMetadata,
-            .separate, .skip, .restore:
-            break
         }
-        uiStore.candidateActionRun.start(
-            action: offer.action,
-            targets: offer.targets,
-            uiStore: uiStore,
-            before: commitAndEndEditing
-        ) { key in
-            try await runCandidateAction(offer.action, on: key)
+        // One run over the selection at a time; the pane shows it running.
+        guard !importSelection.isRunning else { return }
+        let taskKey = "selection-action"
+        candidateMutationTasks[taskKey]?.cancel()
+        candidateMutationTasks[taskKey] = Task {
+            defer { candidateMutationTasks[taskKey] = nil }
+            if let key = offer.rowKey {
+                do { try await listSlot.selectOnly(key) }
+                catch {
+                    uiStore.showError(error)
+                    return
+                }
+            }
+            switch offer.action {
+            case .combine:
+                await commitAndEndEditing()
+                await ImportCandidateCombineAction(
+                    selection: importSelection,
+                    uiStore: uiStore
+                )
+                .run()
+            case .revealFolder:
+                revealSelectionSources()
+            case .import, .identify, .cancelIdentification, .cancelImport,
+                .retryIdentification, .resetToFileMetadata, .clearMetadata,
+                .separate, .skip, .restore:
+                importSelection.start(
+                    offer.action,
+                    uiStore: uiStore,
+                    before: commitAndEndEditing
+                )
+            }
         }
     }
 
-    /// One folder's part of a run.
-    private func runCandidateAction(
-        _ action: BridgeCandidateAction,
-        on key: String
-    ) async throws {
-        switch action {
-        // A row being identified or already importing when the run
-        // reaches it is refused by core, and the refusal joins the run's
-        // report beside its name.
-        case .import:
-            try await importer.importSelected(key)
-        // Re-asking what failed is the same command as identifying
-        // again: the run reads the candidate's inputs afresh, and the
-        // response cache answers the lookups that had succeeded. The two
-        // actions differ in what the row offers, not in what core does.
-        case .identify, .retryIdentification:
-            importer.rerunIdentifyForCandidate(key)
-        case .cancelIdentification:
-            try await importer.cancelIdentification([key])
-        case .cancelImport:
-            try await importer.cancelImport(key)
-        case .resetToFileMetadata:
-            _ = try await importer.applyCandidateFileMetadata(key)
-        case .clearMetadata:
-            _ = try await importer.clearCandidateMetadata(key)
-        case .separate:
-            try await importer.separateCandidate(key)
-        case .skip:
-            try await importer.setCandidateSkipped(key, true)
-        case .restore:
-            try await importer.setCandidateSkipped(key, false)
-        case .combine, .revealFolder:
-            assertionFailure(
-                "\(action) does not run folder by folder"
-            )
+    /// Show every selected folder in Finder.
+    private func revealSelectionSources() {
+        let taskKey = "reveal-selection"
+        candidateMutationTasks[taskKey]?.cancel()
+        candidateMutationTasks[taskKey] = Task {
+            defer { candidateMutationTasks[taskKey] = nil }
+            do {
+                let paths = try await importSelection.sourceFolders()
+                try Task.checkCancellation()
+                for path in paths { SystemActions.revealInFinder(path: path) }
+            }
+            catch is CancellationError {}
+            catch { uiStore.showError(error) }
         }
     }
 }

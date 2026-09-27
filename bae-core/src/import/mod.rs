@@ -57,6 +57,7 @@ desktop_only! {
     pub mod release_candidate;
     pub mod release_group;
     pub mod search;
+    pub mod selection;
     pub(crate) mod service;
     pub mod source_release;
 }

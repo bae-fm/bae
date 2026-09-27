@@ -318,15 +318,6 @@ forward! {
                 .map_err(BridgeError::import)
         }
 
-        /// Mark the candidate at `path` skipped or unskipped. Persists the change;
-        /// the candidate subscription carries the new row to the import view.
-        fn set_candidate_skipped(path: String, skipped: bool) -> () {
-            this.services
-                .import_set_candidate_skipped(path, skipped)
-                .await
-                .map_err(BridgeError::import)
-        }
-
         /// Audio choices for each FILE reference in the candidate's track sheet.
         /// Each reference carries its current association and the files core
         /// offers or refuses with a reason. A reference remains present even
@@ -420,16 +411,6 @@ forward! {
         fn start_import(candidate_key: String) -> () {
             this.services
                 .import_start_import(&candidate_key)
-                .await
-                .map(|_| ())
-                .map_err(BridgeError::import)
-        }
-
-        /// Import one row of a bulk import of a selection, refused for a
-        /// candidate an import already owns or identification is answering.
-        fn import_selected(candidate_key: String) -> () {
-            this.services
-                .import_selected(&candidate_key)
                 .await
                 .map(|_| ())
                 .map_err(BridgeError::import)

@@ -12,7 +12,7 @@ extension ImportView {
                 // badges need on one line in English; wider locales get the
                 // labels' scale-down allowance on top.
                 .frame(minWidth: 410, idealWidth: 420, maxWidth: 460)
-            if uiStore.selectedFolderCandidates.count > 1 {
+            if importSelection.summary.count > 1 {
                 ImportCandidateBulkSelectionPane(
                     storageCloud: storageCloud,
                     storagePinned: storagePinned,
@@ -36,7 +36,7 @@ extension ImportView {
                         maxHeight: .infinity
                     )
             }
-            else if let key = uiStore.selectedFolderCandidates.first {
+            else if let key = importSelection.summary.single {
                 // A folder is chosen and its read has not landed yet. Blank,
                 // not the placeholder: "select a folder" would be false about
                 // a folder that is selected, and it was flashing on every

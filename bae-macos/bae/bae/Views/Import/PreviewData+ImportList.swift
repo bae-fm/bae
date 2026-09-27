@@ -110,5 +110,29 @@
                 pendingCovers: pendingCovers
             )
         }
+
+        /// A selection of `keys` as core would summarize it: what each
+        /// candidate in `store` offers now, joined into the selection's offers.
+        @MainActor
+        static func importSelection(
+            of keys: [String],
+            in store: ImportStore
+        ) -> ImportSelection {
+            let members = keys.map { key in
+                BridgeSelectionMember(
+                    candidateKey: key,
+                    actions: store.selectedCandidates[key]?.live?.actions ?? []
+                )
+            }
+            let selection = ImportSelection()
+            selection.apply(
+                BridgeSelectionSummary(
+                    count: UInt64(keys.count),
+                    single: keys.count == 1 ? keys.first : nil,
+                    offers: bridgeCandidateSelectionOffers(members: members)
+                )
+            )
+            return selection
+        }
     }
 #endif

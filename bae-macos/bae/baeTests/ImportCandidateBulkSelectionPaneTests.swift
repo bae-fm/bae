@@ -96,7 +96,7 @@ struct ImportCandidateBulkSelectionPaneTests {
                 #expect(row.count == nil)
                 continue
             }
-            #expect(row.count == row.targets.count)
+            #expect(row.count == row.applicable)
         }
     }
 
@@ -163,18 +163,16 @@ struct ImportCandidateBulkSelectionPaneTests {
     /// disagree.
     /// A row that applies to one of them is drawn beside rows that apply to
     /// both, which is what the card is for.
-    private static let selectedKeys: Set<String> = [
+    private static let selectedKeys = [
         PreviewData.importTabCandidate.key,
         PreviewData.importTabDisagreementCandidate.key,
     ]
 
-    /// What the two selected folders offer, read the way the pane reads it.
-    private static func selection() -> ImportCandidateSelection {
-        let uiStore = UiStore()
-        uiStore.setFolderCandidateSelection(selectedKeys)
-        return ImportCandidateSelection(
-            importStore: PreviewData.importTabScene().store,
-            uiStore: uiStore
+    /// What the two selected folders offer, as core would summarize it.
+    private static func selection() -> ImportSelection {
+        PreviewData.importSelection(
+            of: selectedKeys,
+            in: PreviewData.importTabScene().store
         )
     }
 
@@ -182,7 +180,7 @@ struct ImportCandidateBulkSelectionPaneTests {
         showsStorageChoices: Bool = false
     ) -> ImportCandidateBulkSelectionCard {
         card(
-            offers: selection().offers,
+            offers: ImportCandidateActionOffer.selection(selection().summary),
             showsStorageChoices: showsStorageChoices
         )
     }
@@ -208,17 +206,14 @@ struct ImportCandidateBulkSelectionPaneTests {
         configStore: ConfigStore,
         _ body: (NSWindow, NSHostingView<AnyView>) async throws -> Value
     ) async throws -> Value {
-        let uiStore = UiStore()
-        uiStore.setFolderCandidateSelection(selectedKeys)
-        return try await SnapshotTestSupport.withHostedWindow(
+        try await SnapshotTestSupport.withHostedWindow(
             AnyView(
                 ImportCandidateBulkSelectionPane(
                     storageCloud: .constant(true),
                     storagePinned: .constant(true),
                     onPerform: { _ in }
                 )
-                .environment(PreviewData.importTabScene().store)
-                .environment(uiStore)
+                .environment(selection())
                 .environment(configStore)
                 .background(Theme.background)
                 .frame(width: paneSize.width, height: paneSize.height)

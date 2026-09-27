@@ -9,6 +9,12 @@ import XCTest
 
 // MARK: - Import candidate viewport integration
 
+/// The rows the list draws selected, standing in for core's selection.
+@Observable
+private final class SelectedRows {
+    var keys: Set<String> = []
+}
+
 private final class MutableImportListPageSource: PageSource,
     @unchecked Sendable
 {
@@ -112,20 +118,20 @@ final class ImportCandidateViewportTests: XCTestCase {
         let source = MutableImportListPageSource(items: initial)
         let store = ImportStore()
         let uiStore = UiStore()
-        let slot = ImportListSlot(
-            importStore: store,
-            uiStore: uiStore,
-            makeSource: { _ in source.pages },
-            locateCandidate: { _, _ in nil },
-            firstIdentifyingCandidate: { _ in nil }
-        )
+        let slot = Self.slot(source: source, store: store, uiStore: uiStore)
         slot.startLoad()
         try await Wait.until { slot.list?.idAt(30) != nil }
         let geometry = GeometryObservation()
-        let root = candidateList(store: store, uiStore: uiStore, slot: slot)
-            .onPreferenceChange(ImportCandidateListGeometryKey.self) {
-                geometry.value = $0
-            }
+        let selected = SelectedRows()
+        let root = candidateList(
+            store: store,
+            uiStore: uiStore,
+            slot: slot,
+            selected: selected
+        )
+        .onPreferenceChange(ImportCandidateListGeometryKey.self) {
+            geometry.value = $0
+        }
         try await SnapshotTestSupport.withHostedWindow(
             root,
             size: NSSize(width: 460, height: 600)
@@ -154,7 +160,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             let viewport = try XCTUnwrap(geometry.value.viewport)
             XCTAssertEqual(anchor.bounds.minY, viewport.minY, accuracy: 1)
 
-            uiStore.setFolderCandidateSelection([viewportCandidateKey(35)])
+            selected.keys = [viewportCandidateKey(35)]
             let changed = (0..<80)
                 .map { index in
                     index < 20 ? groupHeaderItem(index) : candidateItem(index)
@@ -367,17 +373,34 @@ final class ImportCandidateViewportTests: XCTestCase {
 // MARK: - Fixtures and layout helpers
 
 extension ImportCandidateViewportTests {
+    @MainActor
+    private static func slot(
+        source: MutableImportListPageSource,
+        store: ImportStore,
+        uiStore: UiStore
+    ) -> ImportListSlot {
+        ImportListSlot(
+            importStore: store,
+            uiStore: uiStore,
+            selection: ImportSelection(),
+            makeSource: { _ in source.pages },
+            locateCandidate: { _, _ in nil },
+            firstIdentifyingCandidate: { _ in nil }
+        )
+    }
+
     private func candidateList(
         store: ImportStore,
         uiStore: UiStore,
-        slot: ImportListSlot
+        slot: ImportListSlot,
+        selected: SelectedRows
     ) -> some View {
         ImportCandidateListContent(
             importStore: store,
             listSlot: slot,
             selectedKeys: Binding(
-                get: { uiStore.selectedFolderCandidates },
-                set: { uiStore.setFolderCandidateSelection($0) }
+                get: { selected.keys },
+                set: { selected.keys = $0 }
             ),
             onAddFolder: {},
             onRemoveFolder: { _ in },
@@ -391,6 +414,7 @@ extension ImportCandidateViewportTests {
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)
+        .environment(ImportSelection())
         .environment(PreviewData.artImageStore())
         .frame(width: 460, height: 600)
     }
@@ -417,6 +441,7 @@ extension ImportCandidateViewportTests {
                 importStatus: nil,
                 metadataProvenance: nil,
                 reading: .unidentified,
+                selected: false
             )
         )
     }

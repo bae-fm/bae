@@ -241,6 +241,9 @@ mod import_candidate_state_tests;
 mod import_list_tests;
 
 #[cfg(test)]
+mod candidate_selection_tests;
+
+#[cfg(test)]
 mod release_grouping_tests;
 
 #[cfg(test)]

@@ -590,6 +590,8 @@ mod detail_reads;
 mod import;
 mod live_query_events;
 mod queue_reads;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod selection;
 mod shown_transfers;
 mod storage_reads;
 use live_query_events::reconfigurable_live_query_events;

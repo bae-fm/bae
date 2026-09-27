@@ -4,24 +4,6 @@ import Testing
 
 @testable import bae
 
-@Suite("Import selection")
-struct ImportSelectionTests {
-    @MainActor
-    @Test("a read that says the folder is gone drops it from the selection")
-    func aMissingCandidateClearsItsSelection() {
-        let uiStore = UiStore()
-        var reported: [Set<String>] = []
-        uiStore.onFolderCandidateSelectionChanged = { reported.append($0) }
-
-        uiStore.setFolderCandidateSelection(["/w/a", "/w/b"])
-        // What the per-key read does when it delivers no candidate.
-        uiStore.removeFolderCandidateSelection(["/w/a"])
-
-        #expect(uiStore.selectedFolderCandidates == ["/w/b"])
-        #expect(reported == [["/w/a", "/w/b"], ["/w/b"]])
-    }
-}
-
 @Suite("Watched folder scan failures")
 struct ImportStoreScanFailureTests {
     /// A summary carrying `statuses`, with everything else empty. The alert

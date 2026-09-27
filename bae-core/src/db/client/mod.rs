@@ -66,6 +66,7 @@ desktop_only! {
     mod release_groupings;
     pub use release_groupings::GroupingChanges;
     pub(crate) use release_groupings::GroupingFacts;
+    mod candidate_selection;
     mod import_content_hash;
     mod import_list;
     mod import_state;

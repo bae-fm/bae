@@ -180,6 +180,7 @@ private func identifiedRow(
                     url: "https://musicbrainz.org/release/rel-\(key)"
                 )
             ]),
+        selected: false
     )
 }
 
@@ -204,6 +205,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         importStatus: nil,
         metadataProvenance: nil,
         reading: .unidentified,
+        selected: false
     )
 }
 

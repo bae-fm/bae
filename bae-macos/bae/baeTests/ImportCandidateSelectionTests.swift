@@ -107,15 +107,52 @@ struct ImportCandidateSelectionTests {
     }
 
     @MainActor
-    @Test("native row selection is the bulk-action selection")
+    @Test("native row selection reaches core as the selection")
     func candidateCanBeSelected() async throws {
         try await assertCandidateCanBeSelected(isGroupMember: false)
     }
 
     @MainActor
-    @Test("native group-member selection is the bulk-action selection")
+    @Test("native group-member selection reaches core as the selection")
     func groupedCandidateCanBeSelected() async throws {
         try await assertCandidateCanBeSelected(isGroupMember: true)
+    }
+
+    /// The list with its rows' selection wired the way the import view wires
+    /// it: read from core's rows, and each change handed to the slot.
+    @MainActor
+    private static func selectableList(
+        store: ImportStore,
+        slot: ImportListSlot,
+        uiStore: UiStore
+    ) -> some View {
+        ImportCandidateListContent(
+            importStore: store,
+            listSlot: slot,
+            selectedKeys: Binding(
+                get: { store.selectedLoadedKeys },
+                set: {
+                    slot.changeSelection(
+                        to: $0,
+                        from: store.selectedLoadedKeys,
+                        by: .replace
+                    )
+                }
+            ),
+            onAddFolder: {},
+            onRemoveFolder: { _ in },
+            onRefreshFolder: { _ in },
+            onCombineFolder: { _ in },
+            onSeparate: { _ in },
+            onReveal: { _ in },
+            onPerform: { _ in },
+            onCancelAllIdentification: {},
+            onCancelAllImports: {}
+        )
+        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(uiStore)
+        .environment(ImportSelection())
+        .environment(ImageStore.stub())
     }
 
     @MainActor
@@ -125,6 +162,7 @@ struct ImportCandidateSelectionTests {
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
         let store = PreviewData.importTabScene().store
+        let changes = CallLog<BridgeSelectionChange>()
         let slot = ImportListSlot.preview(
             importStore: store,
             uiStore: uiStore,
@@ -135,31 +173,17 @@ struct ImportCandidateSelectionTests {
                     row: PreviewData.triageRowIdentified,
                     isGroupMember: isGroupMember
                 )
-            ]
+            ],
+            selection: ImportSelection(
+                operations: .stub(change: { _, change in
+                    changes.record(change)
+                })
+            )
         )
         let size = NSSize(width: 400, height: 320)
         try await SnapshotTestSupport.withHostedWindow(
-            ImportCandidateListContent(
-                importStore: store,
-                listSlot: slot,
-                selectedKeys: Binding(
-                    get: { uiStore.selectedFolderCandidates },
-                    set: { uiStore.setFolderCandidateSelection($0) }
-                ),
-                onAddFolder: {},
-                onRemoveFolder: { _ in },
-                onRefreshFolder: { _ in },
-                onCombineFolder: { _ in },
-                onSeparate: { _ in },
-                onReveal: { _ in },
-                onPerform: { _ in },
-                onCancelAllIdentification: {},
-                onCancelAllImports: {}
-            )
-            .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-            .environment(uiStore)
-            .environment(ImageStore.stub())
-            .frame(width: size.width, height: size.height),
+            Self.selectableList(store: store, slot: slot, uiStore: uiStore)
+                .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
@@ -176,10 +200,59 @@ struct ImportCandidateSelectionTests {
             )
             try await SnapshotTestSupport.settle(host)
 
+            try await Wait.until { !changes.all.isEmpty }
             #expect(
-                uiStore.selectedFolderCandidates
-                    == [PreviewData.triageRowIdentified.candidateKey]
+                changes.all == [
+                    .replace(keys: [
+                        PreviewData.triageRowIdentified.candidateKey
+                    ])
+                ]
             )
+        }
+    }
+
+    /// Edit ▸ Select All and Command-A send the list the same action, and it
+    /// asks core to select every row the view shows rather than letting the
+    /// table select the rows it has loaded.
+    @MainActor
+    @Test("Select All asks core for every shown row, not the loaded ones")
+    func selectAllAsksCoreForEveryShownRow() async throws {
+        let uiStore = UiStore()
+        let store = PreviewData.importTabScene().store
+        let selectAlls = CallLog<BridgeImportListView>()
+        let slot = ImportListSlot.preview(
+            importStore: store,
+            uiStore: uiStore,
+            items: [
+                PreviewData.candidateItem(PreviewData.triageRowIdentified)
+            ],
+            selection: ImportSelection(
+                operations: .stub(selectAll: { selectAlls.record($0) })
+            )
+        )
+        let size = NSSize(width: 400, height: 320)
+        try await SnapshotTestSupport.withHostedWindow(
+            Self.selectableList(store: store, slot: slot, uiStore: uiStore)
+                .frame(width: size.width, height: size.height),
+            size: size
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            let tableView = try #require(
+                SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? NSTableView }
+                    .first
+            )
+            #expect(window.makeFirstResponder(tableView))
+
+            // What the menu item and its key do: send the action up the
+            // responder chain from the first responder, the table.
+            let handled = try #require(window.firstResponder)
+                .tryToPerform(#selector(NSResponder.selectAll(_:)), with: nil)
+
+            #expect(handled)
+            try await Wait.until { !selectAlls.all.isEmpty }
+            #expect(selectAlls.all.count == 1)
+            #expect(tableView.selectedRowIndexes.isEmpty)
         }
     }
 

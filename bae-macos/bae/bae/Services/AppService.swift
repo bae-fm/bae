@@ -198,6 +198,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         installSharedEnvironment(content)
             .environment(importStore)
             .environment(desktopSubscriptions.importList)
+            .environment(desktopSubscriptions.importSelection)
             .environment(libraryBrowseSession)
             .environment(storageManagerStore)
             .environment(settingsNavigation)

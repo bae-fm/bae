@@ -140,6 +140,7 @@
                 onCancelAllImports: {}
             )
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+            .environment(ImportSelection())
             .environment(PreviewData.artImageStore())
             .environment(uiStore)
             .windowBackground()
@@ -149,18 +150,19 @@
         /// to import: every action the two offer, with how many folders each
         /// applies to.
         static func importBulkSelection() -> some View {
-            let uiStore = UiStore()
-            uiStore.setFolderCandidateSelection([
-                PreviewData.importTabCandidate.key,
-                PreviewData.importTabDisagreementCandidate.key,
-            ])
+            let selection = PreviewData.importSelection(
+                of: [
+                    PreviewData.importTabCandidate.key,
+                    PreviewData.importTabDisagreementCandidate.key,
+                ],
+                in: PreviewData.importTabScene().store
+            )
             return ImportCandidateBulkSelectionPane(
                 storageCloud: .constant(true),
                 storagePinned: .constant(true),
                 onPerform: { _ in }
             )
-            .environment(PreviewData.importTabScene().store)
-            .environment(uiStore)
+            .environment(selection)
             .environment(PreviewData.configStore())
             .windowBackground()
         }

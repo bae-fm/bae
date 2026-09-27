@@ -31,7 +31,7 @@ mod selection;
 
 pub use actions::{CandidateAction, CandidateActionBasis, CandidateLiveState};
 pub use model::*;
-pub use selection::{selection_offers, SelectionMember, SelectionOffer};
+pub use selection::{keys_for, selection_offers, SelectionMember, SelectionOffer};
 
 /// Which tab a candidate belongs to, checked in one order:
 ///

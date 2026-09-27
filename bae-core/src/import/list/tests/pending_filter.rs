@@ -1,7 +1,9 @@
 //! Filtering Pending's rows, and importing a selection of them.
 
 use super::*;
-use crate::import::triage::{selection_offers, CandidateAction, CandidateLiveState, SelectionMember};
+use crate::import::triage::{
+    keys_for, selection_offers, CandidateAction, CandidateLiveState, SelectionMember,
+};
 
 /// `state` with a draft to read: what identification or the tags wrote.
 fn drafted(state: CandidateStateListRow) -> CandidateStateListRow {
@@ -230,11 +232,7 @@ fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
             .filter(|member| member.candidate_key == key("Tagged")),
     );
 
-    let import = selection_offers(&members)
-        .into_iter()
-        .find(|offer| offer.action == CandidateAction::Import)
-        .expect("the selection offers to import");
-    let mut imported: Vec<String> = import.candidate_keys;
+    let mut imported = keys_for(&members, CandidateAction::Import);
     imported.sort();
     let mut expected: Vec<String> = [
         "Failed Import",
@@ -283,12 +281,7 @@ fn importing_all_identified_rows_takes_exactly_the_shown_ones() {
     let members = select_all(&identified, &TriageRuntimeFacts::default());
     let shown: Vec<String> = members.iter().map(|m| m.candidate_key.clone()).collect();
 
-    let import = selection_offers(&members)
-        .into_iter()
-        .find(|offer| offer.action == CandidateAction::Import)
-        .expect("the selection offers to import");
-    assert_eq!(import.candidate_keys, shown);
-    assert!(!import.candidate_keys.contains(&key("Tagged")));
+    assert_eq!(keys_for(&members, CandidateAction::Import), shown);
 }
 
 /// Rows being identified offer no import: selecting everything Identifying
@@ -321,7 +314,7 @@ fn selecting_all_identifying_rows_offers_their_cancel_and_no_import() {
         .iter()
         .find(|offer| offer.action == CandidateAction::CancelIdentification)
         .expect("the selection offers to cancel identifying");
-    assert_eq!(cancel.candidate_keys.len(), 2);
+    assert_eq!(cancel.count, 2);
 }
 
 /// What each filter's rows offer at rest is their own: Needs you imports
@@ -338,15 +331,9 @@ fn each_filter_s_rows_offer_what_their_drafts_and_lookups_allow() {
                 ..ImportListView::default()
             },
         );
-        selection_offers(&select_all(&flat, &TriageRuntimeFacts::default()))
+        select_all(&flat, &TriageRuntimeFacts::default())
     };
-    let keys = |offers: &[crate::import::triage::SelectionOffer], action| {
-        offers
-            .iter()
-            .find(|offer| offer.action == action)
-            .map(|offer| offer.candidate_keys.clone())
-            .unwrap_or_default()
-    };
+    let keys = |members: &[SelectionMember], action| keys_for(members, action);
 
     let needs_you = offers_of(PendingFilter::NeedsYou);
     assert_eq!(

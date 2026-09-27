@@ -77,14 +77,13 @@ struct ImportView: View {
     var uiStore
     @Environment(ImportListSlot.self)
     var listSlot
+    @Environment(ImportSelection.self)
+    var importSelection
 
     var selectedCandidate: Candidate? {
-        guard uiStore.selectedFolderCandidates.count == 1,
-            let key = uiStore.selectedFolderCandidates.first
-        else {
-            return nil
+        importSelection.summary.single.flatMap {
+            importStore.selectedCandidates[$0]
         }
-        return importStore.selectedCandidates[key]
     }
 
     func commitAndEndEditing() async {
@@ -106,7 +105,7 @@ struct ImportView: View {
                     splitContent
                 }
             }
-            .onChange(of: uiStore.selectedFolderCandidates) { _, _ in
+            .onChange(of: importSelection.summary.single) { _, _ in
                 uiStore.lightbox = nil
             }
             .onDisappear {
@@ -125,7 +124,7 @@ struct ImportView: View {
             presenting: candidateActionConfirmation
         ) { offer in
             Button(
-                offer.action.label(count: offer.targets.count),
+                offer.action.label(count: offer.applicable),
                 role: .destructive
             ) { performCandidateAction(offer) }
             Button("Cancel", role: .cancel) {}
@@ -181,20 +180,12 @@ struct ImportView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Stop watching `path`. If the selected candidate lived in that folder,
-    /// clear the selection — the import-candidate projection drops the
-    /// folder's candidates when the new watched-folder list arrives.
+    /// Stop watching `path`. Its candidates leave the selection in the same
+    /// write that removes them.
     func removeWatchedFolder(_ path: String) {
         Task {
             do {
                 try await importer.removeWatchedFolder(path)
-                let removed = Set(
-                    uiStore.selectedFolderCandidates.filter {
-                        importStore.selectedCandidates[$0]?.watchedFolderPath
-                            == path
-                    }
-                )
-                uiStore.removeFolderCandidateSelection(removed)
             }
             catch {
                 if let line = error.displayLine {
@@ -238,19 +229,25 @@ struct ImportView: View {
     /// row, a card or a column shows up in the canvas without a second
     /// rendering of the same screen to keep in step.
     ///
-    /// `importPreviewEnvironment` installs a `UiStore` of its own, so the one
-    /// carrying the tab and the selection goes on *before* it: the innermost
-    /// value of an environment key is the one the view under it reads.
-    private enum ImportTabPreview {
-        /// The sidebar tab and highlighted candidate for this preview.
-        static func uiStore(
-            tab: BridgeTriageTab,
-            selected: String? = nil
-        ) -> UiStore {
-            let store = UiStore()
-            store.setImportCandidateTab(tab)
-            store.setFolderCandidateSelection(selected.map { [$0] } ?? [])
-            return store
+    /// `importPreviewEnvironment` installs a `UiStore` and an
+    /// `ImportSelection` of its own, so the ones carrying the tab and the
+    /// selection go on *before* it: the innermost value of an environment key
+    /// is the one the view under it reads.
+    @MainActor
+    private struct ImportTabPreview {
+        let uiStore = UiStore()
+        let selection = ImportSelection()
+
+        /// The sidebar tab and selected candidate for this preview.
+        init(tab: BridgeTriageTab, selected: String? = nil) {
+            uiStore.setImportCandidateTab(tab)
+            selection.apply(
+                BridgeSelectionSummary(
+                    count: selected == nil ? 0 : 1,
+                    single: selected,
+                    offers: []
+                )
+            )
         }
     }
 
@@ -258,14 +255,15 @@ struct ImportView: View {
         @MainActor
         fileprivate func importTabPreviewEnvironment(
             scene: ImportPreviewFixture,
-            uiStore: UiStore
+            preview: ImportTabPreview
         )
             -> some View
         {
             self
                 .environment(scene.store)
-                .environment(scene.slot(uiStore: uiStore))
-                .environment(uiStore)
+                .environment(scene.slot(uiStore: preview.uiStore))
+                .environment(preview.uiStore)
+                .environment(preview.selection)
                 .importPreviewEnvironment()
                 .environment(Library.stub())
                 .environment(PreviewAudio.stub())
@@ -276,86 +274,86 @@ struct ImportView: View {
     }
 
     #Preview("Import tab — smoke test") {
-        let uiStore = ImportTabPreview.uiStore(
+        let preview = ImportTabPreview(
             tab: .pending,
             selected: PreviewData.importTabCandidate.key
         )
         let scene = PreviewData.importSmokeTestScene()
         ImportView(endEditing: {})
-            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, preview: preview)
     }
 
     #Preview("Import tab — a release settled") {
-        let uiStore = ImportTabPreview.uiStore(
+        let preview = ImportTabPreview(
             tab: .pending,
             selected: PreviewData.importTabCandidate.key
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
-            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, preview: preview)
     }
 
     #Preview("Import tab — multiple pressings") {
-        let uiStore = ImportTabPreview.uiStore(
+        let preview = ImportTabPreview(
             tab: .pending,
             selected: PreviewData.importTabSeveralMatchesCandidate.key
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
-            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, preview: preview)
     }
 
     #Preview("Import tab — identity signals disagree") {
-        let uiStore = ImportTabPreview.uiStore(
+        let preview = ImportTabPreview(
             tab: .pending,
             selected: PreviewData.importTabDisagreementCandidate.key
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
-            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, preview: preview)
     }
 
     #Preview("Import tab — track counts disagree") {
-        let uiStore = ImportTabPreview.uiStore(
+        let preview = ImportTabPreview(
             tab: .pending,
             selected: PreviewData.importTabTrackMismatchCandidate.key
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
-            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, preview: preview)
     }
 
     #Preview("Import tab — release already in library") {
-        let uiStore = ImportTabPreview.uiStore(
+        let preview = ImportTabPreview(
             tab: .pending,
             selected: PreviewData.importTabAlreadyInLibraryCandidate.key
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
-            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, preview: preview)
     }
 
     #Preview("Import tab — no release matched") {
-        let uiStore = ImportTabPreview.uiStore(
+        let preview = ImportTabPreview(
             tab: .pending,
             selected: PreviewData.importTabNoMatchCandidate.key
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
-            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, preview: preview)
     }
 
     #Preview("Import tab — completed imports") {
-        let uiStore = ImportTabPreview.uiStore(tab: .done)
+        let preview = ImportTabPreview(tab: .done)
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
-            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, preview: preview)
     }
 
     #Preview("Import tab — skipped and invalid folders") {
-        let uiStore = ImportTabPreview.uiStore(tab: .skipped)
+        let preview = ImportTabPreview(tab: .skipped)
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
-            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
+            .importTabPreviewEnvironment(scene: scene, preview: preview)
     }
 #endif

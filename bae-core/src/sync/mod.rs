@@ -439,6 +439,7 @@ mod tests {
         for table in [
             "watched_import_folders",
             "skipped_import_candidates",
+            "candidate_selection",
             "release_grouping",
             "release_grouping_member",
             "folder_scan_generation_sequence",

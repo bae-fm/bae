@@ -106,6 +106,43 @@ pub(crate) fn first_candidate_among(
     }))
 }
 
+/// The keys of the candidates the list shows under `request`, in its order.
+pub(crate) fn shown_candidate_keys(
+    rows: &ImportQueueRows,
+    request: &ImportListRequest,
+) -> Result<Vec<String>, LibraryError> {
+    let flat = flatten(rows, request)?;
+    Ok(flat
+        .items
+        .iter()
+        .filter_map(|item| match item {
+            ItemRef::Candidate { index, .. } => Some(flat.rows[*index].row.candidate_key.clone()),
+            ItemRef::Header(_) | ItemRef::Invalid { .. } => None,
+        })
+        .collect())
+}
+
+/// The selected candidates as the tables place them, in key order. A key the
+/// queue no longer lists as a valid release is not one.
+pub(crate) fn selected_candidates(
+    rows: &ImportQueueRows,
+) -> Result<Vec<crate::import::selection::SelectedCandidate>, LibraryError> {
+    let mut selected = Vec::new();
+    for row in &rows.candidates {
+        if row.kind != ScanCandidateKind::Valid || !rows.selected.contains(&row.path) {
+            continue;
+        }
+        let (placed, _) = place_row(rows, row)?;
+        selected.push(crate::import::selection::SelectedCandidate {
+            candidate_key: placed.candidate_key,
+            name: placed.folder_name,
+            basis: placed.action_basis,
+        });
+    }
+    selected.sort_by(|a, b| a.candidate_key.cmp(&b.candidate_key));
+    Ok(selected)
+}
+
 fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered, LibraryError> {
     let view = &request.view;
     let filter = TextFilter::of(view);
@@ -389,6 +426,7 @@ pub(super) fn place_row<'a>(
         placement,
         import_status,
         metadata_provenance,
+        selected: rows.selected.contains(&row.path),
     };
     Ok((triage_row, verdict))
 }

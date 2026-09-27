@@ -48,7 +48,10 @@ mod subscription;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use flatten::{first_candidate_among, flatten, locate_candidate, Flattened, ItemRef};
+pub(crate) use flatten::{
+    first_candidate_among, flatten, locate_candidate, selected_candidates, shown_candidate_keys,
+    Flattened, ItemRef,
+};
 pub use subscription::{ImportListSubscription, ImportListSubscriptionError};
 
 pub use super::triage::TriageTab;

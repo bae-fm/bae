@@ -22,21 +22,6 @@ struct UiStoreImportFolderPickerTests {
     }
 }
 
-@Suite("UiStore import candidate selection")
-struct UiStoreImportCandidateSelectionTests {
-    @Test("finishing an action removes its targets but preserves a newer pick")
-    func completedTargetsDoNotClearNewSelection() {
-        let store = UiStore()
-        store.setFolderCandidateSelection(["first", "second"])
-        let actionTargets = store.selectedFolderCandidates
-        store.setFolderCandidateSelection(["first", "second", "new"])
-
-        store.removeFolderCandidateSelection(actionTargets)
-
-        #expect(store.selectedFolderCandidates == ["new"])
-    }
-}
-
 @Suite("UiStore.libraryBrowserMode")
 struct UiStoreLibraryBrowserModeTests {
     @Test("setLibraryBrowserMode sets the given value (absolute, idempotent)")

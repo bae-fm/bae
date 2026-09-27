@@ -64,15 +64,14 @@ struct LibraryNavigationRequest {
     let seq: Int
 }
 
-/// A pending "show these import candidates" command, consumed exactly once by
+/// A pending "show this import candidate" command, consumed exactly once by
 /// the import candidate list. Durable for the same reason as
 /// `PendingAlbumReveal`: a producer outside the import tab — a folder chosen
 /// from the library — records it before the list that scrolls to it is
-/// mounted. `candidateKey` is the row scrolled to; `selection` is what is
-/// selected once it is there. `seq` lets a repeat request run again.
+/// mounted. `candidateKey` is the row scrolled to and selected alone once it
+/// is there. `seq` lets a repeat request run again.
 struct PendingImportCandidateReveal {
     let candidateKey: String
-    let selection: Set<String>
     let seq: Int
 }
 
@@ -123,12 +122,7 @@ class UiStore: @unchecked Sendable {
     /// deviates from the default (first release). Missing key == default.
     var selectedReleaseIdByAlbum: [String: String] = [:]
 
-    // ── Import candidate selection ──────────────────────────────────────
-
-    /// The selected rows in the import candidate list. UI-originated session
-    /// state — which folders the user is acting on, not anything core produces
-    /// — so it survives an import-tab remount.
-    private(set) var selectedFolderCandidates: Set<String> = []
+    // ── Import candidate list ───────────────────────────────────────────
 
     /// The pending candidate-list reveal, or `nil` before any or once the list
     /// has taken it. Durable until consumed — see
@@ -137,23 +131,16 @@ class UiStore: @unchecked Sendable {
     private var importCandidateRevealSeq = 0
 
     /// The candidate list sidebar's active tab and filters. UI-originated
-    /// session state, alongside `selectedFolderCandidates` — surviving a
-    /// remount so the sidebar doesn't reset to its defaults on every
-    /// import-tab switch, and gone at relaunch, where a filter still hiding
-    /// rows would read as rows gone missing.
+    /// session state — surviving a remount so the sidebar doesn't reset to its
+    /// defaults on every import-tab switch, and gone at relaunch, where a
+    /// filter still hiding rows would read as rows gone missing.
     var importCandidateTab: BridgeTriageTab = .pending
     var importCandidateFilterText: String = ""
     var importCandidatePendingFilter: BridgePendingFilter?
 
-    let candidateActionRun = ImportCandidateActionRun()
     private var releaseGroupDisclosureState: [ReleaseGroupDisclosureID: Bool] =
         [:]
 
-    /// Notified after the import candidate selection changes, so the app can
-    /// open and drop the per-candidate reads behind it. Installed once by the
-    /// app's subscription wiring.
-    @ObservationIgnored
-    var onFolderCandidateSelectionChanged: ((Set<String>) -> Void)?
     private(set) var refreshingWatchedFolders: Set<String> = []
 
     // ── Find online notices ─────────────────────────────────────────────
@@ -222,18 +209,13 @@ class UiStore: @unchecked Sendable {
         activeSection = .importing
     }
 
-    /// Go to the import tab with `selection` selected, scrolled to
-    /// `candidateKey` wherever the list places it.
-    func navigateToImportCandidate(
-        _ candidateKey: String,
-        selecting selection: Set<String>
-    ) {
+    /// Go to the import tab with `candidateKey` selected alone, scrolled to
+    /// wherever the list places it.
+    func navigateToImportCandidate(_ candidateKey: String) {
         activeSection = .importing
-        setFolderCandidateSelection(selection)
         importCandidateRevealSeq += 1
         pendingImportCandidateReveal = PendingImportCandidateReveal(
             candidateKey: candidateKey,
-            selection: selection,
             seq: importCandidateRevealSeq
         )
     }
@@ -323,18 +305,6 @@ class UiStore: @unchecked Sendable {
 
     func setQueuePresented(_ presented: Bool) {
         showQueue = presented
-    }
-
-    // MARK: - Import candidate selection methods
-
-    func setFolderCandidateSelection(_ keys: Set<String>) {
-        guard keys != selectedFolderCandidates else { return }
-        selectedFolderCandidates = keys
-        onFolderCandidateSelectionChanged?(keys)
-    }
-
-    func removeFolderCandidateSelection(_ keys: Set<String>) {
-        setFolderCandidateSelection(selectedFolderCandidates.subtracting(keys))
     }
 
     func setImportCandidateTab(_ tab: BridgeTriageTab) {

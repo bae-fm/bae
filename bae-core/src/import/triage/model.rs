@@ -269,6 +269,8 @@ pub struct TriageRow {
     /// Where the candidate's draft was read from, once a source was applied.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
     pub reading: TriageReading,
+    /// Whether the person has selected the row.
+    pub selected: bool,
 }
 
 impl TriageRow {
@@ -299,6 +301,8 @@ pub struct ImportedRow {
     /// release can still own the candidate for a moment.
     pub action_basis: CandidateActionBasis,
     pub release: ImportedReleaseSummary,
+    /// Whether the person has selected the row.
+    pub selected: bool,
 }
 
 /// The library release a Done row became.

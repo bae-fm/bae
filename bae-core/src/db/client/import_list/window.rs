@@ -171,6 +171,7 @@ fn imported_row(
         candidate_key: placed.candidate_key.clone(),
         display_path: placed.display_path.clone(),
         action_basis: placed.action_basis.clone(),
+        selected: placed.selected,
         release: crate::import::ImportedReleaseSummary {
             cover: cover_version.map(|version| crate::album_detail::ImageRef {
                 id: release.release_id.clone(),

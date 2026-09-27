@@ -673,7 +673,9 @@ pub(super) fn write_entry(
         }
         EntrySource::Grouping => Vec::new(),
     };
-    // An item replaces its own stored row whole.
+    // An item replaces its own stored row whole, and a selected release stays
+    // selected across its own rewrite.
+    let selected = super::candidate_selection::is_selected_on(sql, &entry_key)?;
     for key in std::iter::once(&entry_key).chain(removed_keys.iter()) {
         delete_entry(sql, watched_folder_path, key)?;
     }
@@ -685,6 +687,9 @@ pub(super) fn write_entry(
         file_metadata.as_ref(),
         source,
     )?;
+    if selected {
+        super::candidate_selection::select_on(sql, &entry_key)?;
+    }
     if let Some(snapshot) = carried {
         write::replace_candidate_file_tag_snapshot(
             sql,

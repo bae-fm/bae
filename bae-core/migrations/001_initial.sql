@@ -886,6 +886,50 @@ BEGIN
     DELETE FROM scan_candidate WHERE path = OLD.key;
 END;
 
+-- The candidates the person has selected in the import list, by candidate key.
+-- Its lifetime is one app session: emptied when the library opens. A key
+-- leaves in the same write that removes its release from the queue, imports
+-- its files, or moves it between Pending and Skipped.
+CREATE TABLE IF NOT EXISTS candidate_selection (
+    candidate_key TEXT PRIMARY KEY
+) STRICT, WITHOUT ROWID;
+
+CREATE TRIGGER IF NOT EXISTS deselect_removed_candidate AFTER DELETE ON scan_candidate
+WHEN NOT EXISTS (SELECT 1 FROM scan_candidate WHERE path = OLD.path)
+BEGIN
+    DELETE FROM candidate_selection WHERE candidate_key = OLD.path;
+END;
+
+CREATE TRIGGER IF NOT EXISTS deselect_imported_candidate AFTER INSERT ON releases
+WHEN NEW.content_hash IS NOT NULL
+BEGIN
+    DELETE FROM candidate_selection WHERE candidate_key IN
+        (SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash);
+END;
+
+CREATE TRIGGER IF NOT EXISTS deselect_reimported_candidate AFTER UPDATE OF content_hash ON releases
+WHEN NEW.content_hash IS NOT NULL
+BEGIN
+    DELETE FROM candidate_selection WHERE candidate_key IN
+        (SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash);
+END;
+
+CREATE TRIGGER IF NOT EXISTS deselect_skipped_candidate AFTER INSERT ON skipped_import_candidates
+BEGIN
+    DELETE FROM candidate_selection WHERE candidate_key = NEW.candidate_path;
+END;
+
+CREATE TRIGGER IF NOT EXISTS deselect_restored_candidate AFTER DELETE ON skipped_import_candidates
+BEGIN
+    DELETE FROM candidate_selection WHERE candidate_key = OLD.candidate_path;
+END;
+
+CREATE TRIGGER IF NOT EXISTS deselect_skipped_grouping AFTER UPDATE OF skipped ON release_grouping
+WHEN NEW.skipped != OLD.skipped
+BEGIN
+    DELETE FROM candidate_selection WHERE candidate_key = NEW.key;
+END;
+
 -- ── Import candidates ─────────────────────────────────────────────────────────
 
 -- One folder being imported, keyed by the hash of its file layout. The other

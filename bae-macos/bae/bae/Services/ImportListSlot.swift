@@ -43,6 +43,13 @@ final class ImportListSlot {
     private let importStore: ImportStore
     @ObservationIgnored
     private let uiStore: UiStore
+    /// Held to the rows the view shows: a view change drops the selected rows
+    /// it hides.
+    @ObservationIgnored
+    private let selection: ImportSelection
+    /// The last selection write asked for, which the next one waits on.
+    @ObservationIgnored
+    private var selectionTask: Task<Void, Never>?
     @ObservationIgnored
     private var reloadTask: Task<Void, Never>?
     /// Set when a page read failed. The subscription behind a failed read is
@@ -63,6 +70,7 @@ final class ImportListSlot {
     init(
         importStore: ImportStore,
         uiStore: UiStore,
+        selection: ImportSelection,
         defaults: UserDefaults = .standard,
         makeSource: @escaping (BridgeImportListView) -> ImportListPages,
         locateCandidate:
@@ -73,6 +81,7 @@ final class ImportListSlot {
     ) {
         self.importStore = importStore
         self.uiStore = uiStore
+        self.selection = selection
         self.makeSource = makeSource
         self.locateCandidate = locateCandidate
         self.firstIdentifyingCandidate = firstIdentifyingCandidate
@@ -146,7 +155,8 @@ final class ImportListSlot {
     }
 
     /// Navigate to the candidate's current authoritative placement, even when
-    /// that placement has moved it out of the list presently on screen.
+    /// that placement has moved it out of the list presently on screen, and
+    /// select it alone.
     func revealCandidate(_ candidateKey: String) async throws -> Int? {
         guard let location = try await locateCandidate(view, candidateKey)
         else {
@@ -167,6 +177,7 @@ final class ImportListSlot {
         next.pendingFilter = nil
         next.collapsedGroups = uiStore.collapsedReleaseGroupKeys
         view = next
+        try await selectOnly(candidateKey)
         guard let pages, let list else { return nil }
         try await pages.waitForView(next)
         await list.loadPage(containing: Int(location.visiblePosition))
@@ -212,6 +223,7 @@ final class ImportListSlot {
         change(&next)
         guard next != view else { return }
         view = next
+        keepShownSelection(next)
         // A failed read is not retried on its own: it is reported, the list
         // shows what it could not load, and the next thing the person does
         // with the list is what asks core again.
@@ -268,11 +280,13 @@ final class ImportListSlot {
         static func preview(
             importStore: ImportStore,
             uiStore: UiStore,
-            items: [BridgeImportListItem]
+            items: [BridgeImportListItem],
+            selection: ImportSelection = ImportSelection()
         ) -> ImportListSlot {
             let slot = ImportListSlot(
                 importStore: importStore,
                 uiStore: uiStore,
+                selection: selection,
                 makeSource: { _ in
                     ImportListPreviewPageSource(items: items).pages
                 },
@@ -300,4 +314,104 @@ final class ImportListSlot {
             return slot
         }
     #endif
+}
+
+// MARK: - Selection
+
+extension ImportListSlot {
+    /// Apply what a person did to the list's rows: `selected` is what the
+    /// list's own selection handling made of the loaded rows it knew as
+    /// `shown`, and `gesture` how they pointed. A plain click selects exactly
+    /// what it names; a Command-click adds and takes out; a Shift-click
+    /// selects the whole run it spans, past the loaded pages.
+    func changeSelection(
+        to selected: Set<String>,
+        from shown: Set<String>,
+        by gesture: SelectionGesture
+    ) {
+        let change: BridgeSelectionChange
+        switch gesture {
+        case .replace:
+            change = .replace(keys: selected.sorted())
+        case .toggle:
+            change = .toggle(
+                add: selected.subtracting(shown).sorted(),
+                remove: shown.subtracting(selected).sorted()
+            )
+        case .extend:
+            let added = selected.subtracting(shown)
+                .sorted {
+                    (list?.position(of: "candidate:\($0)") ?? 0)
+                        < (list?.position(of: "candidate:\($1)") ?? 0)
+                }
+            guard let from = added.first, let to = added.last else {
+                change = .toggle(
+                    add: [],
+                    remove: shown.subtracting(selected).sorted()
+                )
+                break
+            }
+            change = .extend(from: from, to: to)
+        }
+        let view = view
+        writeSelection { try await $0.change(in: view, change) }
+    }
+
+    /// Make `candidateKey` the whole selection, once the writes asked for
+    /// before it have landed.
+    func selectOnly(_ candidateKey: String) async throws {
+        let view = view
+        try await queueSelectionWrite {
+            try await $0.change(in: view, .replace(keys: [candidateKey]))
+        }
+        .value
+    }
+
+    /// Select every row the list shows under its view, loaded or not.
+    func selectAllShown() {
+        let view = view
+        writeSelection { try await $0.selectAll(in: view) }
+    }
+
+    /// Drop the selected rows `view` hides; rows it shows that were not
+    /// selected stay unselected.
+    private func keepShownSelection(_ view: BridgeImportListView) {
+        writeSelection { try await $0.keepShown(in: view) }
+    }
+
+    /// Run `write` once every selection write asked for before it has ended,
+    /// so the writes land in the order the person made them; a failure is
+    /// reported.
+    private func writeSelection(
+        _ write: @escaping @MainActor (ImportSelection) async throws -> Void
+    ) {
+        let task = queueSelectionWrite(write)
+        Task { [uiStore] in
+            if case .failure(let error) = await task.result {
+                uiStore.showError(error)
+            }
+        }
+    }
+
+    private func queueSelectionWrite(
+        _ write: @escaping @MainActor (ImportSelection) async throws -> Void
+    ) -> Task<Void, any Error> {
+        let previous = selectionTask
+        let task = Task { [selection] in
+            await previous?.value
+            try await write(selection)
+        }
+        selectionTask = Task { _ = await task.result }
+        return task
+    }
+}
+
+/// How a person pointed at rows of the list.
+enum SelectionGesture {
+    /// A plain click or arrow key: select exactly what it names.
+    case replace
+    /// Command held: add and take out, keeping the rest.
+    case toggle
+    /// Shift held: select the whole run from the anchor.
+    case extend
 }

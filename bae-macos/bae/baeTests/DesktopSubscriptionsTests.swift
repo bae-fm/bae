@@ -6,30 +6,23 @@ import Testing
 @MainActor
 @Suite("Import candidate selection")
 struct DesktopSubscriptionsTests {
-    @Test("moving the selection moves its reads, and only growth opens more")
-    func selectionMovesItsReads() async throws {
+    @Test("one read follows the one selected candidate, and ends without one")
+    func oneReadFollowsTheSingleSelection() async throws {
         let feed = DetailFeed<BridgeImportCandidateDetail>()
-        let observations = ImportSelectionObservations(
+        let observation = ImportSelectionObservation(
             open: { feed.query() },
             importStore: ImportStore(),
             uiStore: UiStore()
         )
 
-        observations.selectionChanged(["candidate-a"])
-        observations.selectionChanged(["candidate-b"])
+        observation.selectionChanged(single: "candidate-a")
+        observation.selectionChanged(single: "candidate-b")
         #expect(feed.opened == 1)
         #expect(feed.requested == ["candidate-a", "candidate-b"])
 
-        observations.selectionChanged(["candidate-b", "candidate-c"])
-        #expect(feed.opened == 2)
-
-        observations.selectionChanged(["candidate-c"])
+        observation.selectionChanged(single: nil)
         try await Wait.until { feed.isCancelled(read: 0) }
-        #expect(
-            feed.isCancelled(read: 0),
-            "the read a smaller selection frees ends"
-        )
-        #expect(!feed.isCancelled(read: 1))
+        #expect(feed.isCancelled(read: 0), "no single selection, no read")
     }
 
     /// A pick is about a folder. When the read says there is no such folder
@@ -39,13 +32,13 @@ struct DesktopSubscriptionsTests {
         let key = MappingFixtures.candidateKey
         let feed = DetailFeed<BridgeImportCandidateDetail>()
         let store = ImportStore()
-        let observations = ImportSelectionObservations(
+        let observation = ImportSelectionObservation(
             open: { feed.query() },
             importStore: store,
             uiStore: UiStore()
         )
 
-        observations.selectionChanged([key])
+        observation.selectionChanged(single: key)
         feed.emit(id: key, value: MappingFixtures.detail(mapping: nil))
         try await Wait.until { !store.selectedCandidates.isEmpty }
         _ = try #require(
