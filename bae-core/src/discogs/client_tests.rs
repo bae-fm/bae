@@ -289,6 +289,24 @@ fn blank_pressing_fields_are_absent_in_discogs_documents() {
     }
 }
 
+/// Discogs writes a label with no catalog number as `none`, and its data
+/// holds other spellings too: each keeps the label's name and no number.
+#[test]
+fn a_none_catalog_number_is_no_number() {
+    for placeholder in ["none", "None", "- none", "-none-"] {
+        let raw = serde_json::json!({
+            "id": 123, "title": "Album",
+            "labels": [{"name": "Label A", "catno": placeholder}, {"catno": placeholder}]
+        })
+        .to_string();
+        assert_eq!(
+            parse_discogs_release_json(&raw).unwrap().labels,
+            vec![crate::pressing::ReleaseLabel::of(Some("Label A"), None)],
+            "{placeholder}"
+        );
+    }
+}
+
 /// Every label is read with its own catalog number, and the pressing keeps
 /// them all.
 #[test]

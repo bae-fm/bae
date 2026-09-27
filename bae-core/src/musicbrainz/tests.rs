@@ -292,6 +292,20 @@ fn release_labels_keeps_every_label_info_in_order() {
     );
 }
 
+/// MusicBrainz writes a label with no catalog number as `[none]`, and its
+/// data holds other spellings too: each keeps the label's name and no number.
+#[test]
+fn release_labels_reads_a_none_placeholder_as_no_number() {
+    for placeholder in ["[none]", "none", "None", "[None]", "(none)", "[none"] {
+        assert_eq!(
+            release_labels(&[label_info(Some("Label A"), Some(placeholder))]),
+            vec![stated(Some("Label A"), None)],
+            "{placeholder}"
+        );
+        assert!(release_labels(&[label_info(None, Some(placeholder))]).is_empty());
+    }
+}
+
 #[test]
 fn release_labels_leaves_out_empty_and_repeated_entries() {
     assert!(release_labels(&[]).is_empty());

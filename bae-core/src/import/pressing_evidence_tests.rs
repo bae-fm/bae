@@ -79,8 +79,7 @@ fn labels_agree_by_name_and_never_disagree() {
     assert_eq!(evidence(&a, &b).label, Comparison::Unknown);
 }
 
-/// A catalog number is compared as its letters and digits; "none" states
-/// that there is none.
+/// A catalog number is compared as its letters and digits.
 #[test]
 fn catalog_numbers_compare_squashed_and_never_disagree() {
     let mut a = release(Catalog::MusicBrainz, "mb-1");
@@ -89,9 +88,6 @@ fn catalog_numbers_compare_squashed_and_never_disagree() {
     b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("wpcr 80001"))];
     assert_eq!(evidence(&a, &b).catalog, Comparison::Same);
     b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("WPCR-80002"))];
-    assert_eq!(evidence(&a, &b).catalog, Comparison::Unknown);
-    a.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("[none]"))];
-    b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("none"))];
     assert_eq!(evidence(&a, &b).catalog, Comparison::Unknown);
 }
 

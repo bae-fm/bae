@@ -169,7 +169,8 @@ pub enum PhysicalMedium {
 }
 
 /// One label a pressing is released on, with the catalog number that label
-/// gives it. Either half may be unstated, never both.
+/// gives it. Either half may be unstated, never both, and a catalog's
+/// placeholder for "no number" is no number.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 pub struct ReleaseLabel {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -179,10 +180,13 @@ pub struct ReleaseLabel {
 }
 
 impl ReleaseLabel {
-    /// `None` when neither half is stated; a blank half is unstated.
+    /// `None` when neither half is stated. A blank name is unstated, and so
+    /// is a number [`catalog_key`](crate::util::text::catalog_key) reads as
+    /// none.
     pub fn new(name: Option<String>, catalog_number: Option<String>) -> Option<Self> {
-        let stated = |value: Option<String>| value.filter(|value| !value.trim().is_empty());
-        let (name, catalog_number) = (stated(name), stated(catalog_number));
+        let name = name.filter(|name| !name.trim().is_empty());
+        let catalog_number =
+            catalog_number.filter(|number| crate::util::text::catalog_key(number).is_some());
         (name.is_some() || catalog_number.is_some()).then_some(Self {
             name,
             catalog_number,

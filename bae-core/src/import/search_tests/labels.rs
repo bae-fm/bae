@@ -104,3 +104,16 @@ fn a_discogs_search_result_reads_its_first_label() {
         vec![ReleaseLabel::of(Some("Label A"), Some("AB 100"))]
     );
 }
+
+/// A Discogs search result's `none` catalog number is no number: the first
+/// label keeps its name alone.
+#[test]
+fn a_discogs_search_results_none_catalog_number_is_no_number() {
+    let mut result = result_with_title("Artist - Album");
+    result.label = Some(vec!["Label A".to_string()]);
+    result.catno = Some("none".to_string());
+    assert_eq!(
+        discogs_search_result_to_metadata(result).labels,
+        vec![ReleaseLabel::of(Some("Label A"), None)]
+    );
+}
