@@ -66,13 +66,17 @@ struct InlineFieldHeightTests {
     /// made of many hostings rather than one.
     @Test("every field is as tall as its own font, hosting after hosting")
     func everyFieldIsAsTallAsItsOwnFont() async throws {
+        // Title, album year, year and barcode, and a name and a catalog
+        // number per label row.
+        let labelRows = PreviewData.releaseEditSeed(trackCount: 2).edit
+            .pressing.labels.count
         for _ in 0..<40 {
             try await withHostedHeader { _, host in
                 try await SnapshotTestSupport.settle(host)
                 let fields = SnapshotTestSupport.descendants(of: host)
                     .compactMap { $0 as? NSTextField }
                     .filter(\.isEditable)
-                #expect(fields.count == 6)
+                #expect(fields.count == 4 + 2 * labelRows)
                 for field in fields {
                     #expect(
                         field.frame.height == field.intrinsicContentSize.height,
