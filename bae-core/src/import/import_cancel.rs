@@ -52,13 +52,30 @@ pub(crate) enum CancelOutcome {
     Writing,
 }
 
+/// How an import's work stopped short of its end.
+#[derive(Debug)]
+pub(crate) enum ImportStop {
+    /// It was cancelled before it began writing its release.
+    Cancelled,
+    Failed(crate::import::ImportError),
+}
+
+impl<E> From<E> for ImportStop
+where
+    crate::import::ImportError: From<E>,
+{
+    fn from(error: E) -> Self {
+        Self::Failed(error.into())
+    }
+}
+
 /// How a run the worker took up ended.
 pub(crate) enum ImportRunEnd<T> {
-    /// The work ran to its end, whatever it returned.
-    Ran(T),
+    /// The work ran to its end or failed.
+    Ran(Result<T, crate::import::ImportError>),
     /// It was cancelled while it waited; whoever cancelled it said so.
     CancelledWaiting,
-    /// It was cancelled while it ran, and dropped before it wrote anything.
+    /// It was cancelled while it ran, before it wrote anything.
     CancelledRunning,
 }
 
@@ -111,7 +128,7 @@ impl ImportCancels {
         &self,
         candidate_key: &str,
         import_id: &str,
-        work: impl std::future::Future<Output = T>,
+        work: impl std::future::Future<Output = Result<T, ImportStop>>,
     ) -> ImportRunEnd<T> {
         let token = {
             let mut entries = self.entries.lock().unwrap();
@@ -136,7 +153,11 @@ impl ImportCancels {
         let end = tokio::select! {
             biased;
             _ = token.cancelled() => ImportRunEnd::CancelledRunning,
-            result = work => ImportRunEnd::Ran(result),
+            result = work => match result {
+                Ok(value) => ImportRunEnd::Ran(Ok(value)),
+                Err(ImportStop::Failed(error)) => ImportRunEnd::Ran(Err(error)),
+                Err(ImportStop::Cancelled) => ImportRunEnd::CancelledRunning,
+            },
         };
         self.forget(candidate_key, import_id);
         end
@@ -148,14 +169,14 @@ impl ImportCancels {
         &self,
         candidate_key: &str,
         import_id: &str,
-    ) -> Result<(), crate::import::ImportError> {
+    ) -> Result<(), ImportStop> {
         let mut entries = self.entries.lock().unwrap();
         match entries.get_mut(candidate_key) {
             Some(entry) if entry.import_id == import_id && !entry.token.is_cancelled() => {
                 entry.stage = Stage::Writing;
                 Ok(())
             }
-            _ => Err(crate::import::ImportError::ImportCancelled),
+            _ => Err(ImportStop::Cancelled),
         }
     }
 
@@ -246,7 +267,7 @@ mod tests {
                 cancels
                     .run("Album", "import-1", async {
                         started_tx.send(()).unwrap();
-                        std::future::pending::<()>().await
+                        std::future::pending::<Result<(), ImportStop>>().await
                     })
                     .await
             })
@@ -268,12 +289,12 @@ mod tests {
         let writing = cancels.clone();
         let end = cancels
             .run("Album", "import-1", async move {
-                writing.begin_writing("Album", "import-1").unwrap();
-                writing.cancel("Album")
+                writing.begin_writing("Album", "import-1")?;
+                Ok(writing.cancel("Album"))
             })
             .await;
 
-        assert!(matches!(end, ImportRunEnd::Ran(CancelOutcome::Writing)));
+        assert!(matches!(end, ImportRunEnd::Ran(Ok(CancelOutcome::Writing))));
     }
 
     #[test]
@@ -283,7 +304,27 @@ mod tests {
         cancels.entries.lock().unwrap().get_mut("Album").unwrap().stage = Stage::Running;
 
         assert_eq!(cancels.cancel("Album"), CancelOutcome::CancelledRunning);
-        assert!(cancels.begin_writing("Album", "import-1").is_err());
+        assert!(matches!(
+            cancels.begin_writing("Album", "import-1"),
+            Err(ImportStop::Cancelled)
+        ));
+    }
+
+    /// A cancel that lands between the work's last await and its write is
+    /// refused at the write, and the run ends cancelled, not failed.
+    #[tokio::test]
+    async fn a_run_refused_its_write_ends_cancelled() {
+        let cancels = ImportCancels::default();
+        cancels.register("Album", "import-1");
+        let writing = cancels.clone();
+        let end = cancels
+            .run("Album", "import-1", async move {
+                writing.cancel("Album");
+                writing.begin_writing("Album", "import-1")
+            })
+            .await;
+
+        assert!(matches!(end, ImportRunEnd::CancelledRunning));
     }
 
     #[test]
@@ -300,7 +341,10 @@ mod tests {
             vec![("Album 1".to_string(), "import-1".to_string())]
         );
         assert_eq!(cancels.cancel("Album 3"), CancelOutcome::Writing);
-        assert!(cancels.begin_writing("Album 2", "import-2").is_err());
+        assert!(matches!(
+            cancels.begin_writing("Album 2", "import-2"),
+            Err(ImportStop::Cancelled)
+        ));
     }
 
     /// A command cancelled while it waited finds the entry of the import that
@@ -319,10 +363,13 @@ mod tests {
             })
             .await;
         assert!(matches!(end, ImportRunEnd::<()>::CancelledWaiting));
-        assert!(cancels.begin_writing("Album", "import-1").is_err());
+        assert!(matches!(
+            cancels.begin_writing("Album", "import-1"),
+            Err(ImportStop::Cancelled)
+        ));
         cancels.forget("Album", "import-1");
 
-        let end = cancels.run("Album", "import-2", async { "ran" }).await;
-        assert!(matches!(end, ImportRunEnd::Ran("ran")));
+        let end = cancels.run("Album", "import-2", async { Ok("ran") }).await;
+        assert!(matches!(end, ImportRunEnd::Ran(Ok("ran"))));
     }
 }

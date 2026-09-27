@@ -1,6 +1,6 @@
 use super::*;
 use crate::import::types::TrackAudio;
-use crate::import::import_cancel::ImportRunEnd;
+use crate::import::import_cancel::{ImportRunEnd, ImportStop};
 use crate::util::worker_thread::WorkerThread;
 
 impl ImportService {
@@ -126,20 +126,17 @@ impl ImportService {
             ImportRunEnd::Ran(result) => result,
             // Whoever cancelled it while it waited already said it ended.
             ImportRunEnd::CancelledWaiting => return,
-            ImportRunEnd::CancelledRunning => Err(crate::import::ImportError::ImportCancelled),
+            // It wrote nothing and failed at nothing: no failure is recorded.
+            ImportRunEnd::CancelledRunning => {
+                info!("Import of {candidate_key} was cancelled");
+                self.event_tx
+                    .send(crate::import::handle::ImportEvent::ImportProgress {
+                        candidate_key,
+                        progress: ImportProgress::Cancelled { import_id },
+                    });
+                return;
+            }
         };
-
-        // A cancelled import wrote nothing and failed at nothing: it records
-        // no failure, and ends as the candidate stood before it was asked for.
-        if let Err(crate::import::ImportError::ImportCancelled) = result {
-            info!("Import of {candidate_key} was cancelled");
-            self.event_tx
-                .send(crate::import::handle::ImportEvent::ImportProgress {
-                    candidate_key,
-                    progress: ImportProgress::Cancelled { import_id },
-                });
-            return;
-        }
         if let Err(e) = result {
             error!("Import failed: {}", e);
             self.library_manager
@@ -200,7 +197,7 @@ impl ImportService {
         source: crate::import::release_candidate::CandidateSource,
         expectation: ImportExpectation,
         destination: ImportDestination,
-    ) -> Result<(), crate::import::ImportError> {
+    ) -> Result<(), ImportStop> {
         let library_manager = &self.library_manager;
         let expected_content_hash = expectation.candidate.content_hash.clone();
         let expected_edit_revision = expectation.candidate.file_edit_revision;
@@ -226,7 +223,8 @@ impl ImportService {
             _ => {
                 return Err(crate::import::ImportError::Internal {
                     detail: format!("{candidate_key} is no longer a valid stored import candidate"),
-                })
+                }
+                .into())
             }
         };
         if stored_candidate.source() != source
@@ -237,7 +235,8 @@ impl ImportService {
                 detail: format!(
                     "{candidate_key} changed after it was selected; refresh and identify it again"
                 ),
-            });
+            }
+            .into());
         }
         let identity_files = stored_candidate
             .files
@@ -267,7 +266,8 @@ impl ImportService {
                 detail: format!(
                     "{candidate_key}'s preparation changed after it was queued; import it again"
                 ),
-            });
+            }
+            .into());
         }
         let metadata_provenance = preparation.metadata_provenance;
         let selected_cover = preparation.cover;
@@ -286,7 +286,8 @@ impl ImportService {
                     detail: format!(
                         "{candidate_key}'s audio changed after its file tags were read"
                     ),
-                });
+                }
+                .into());
             }
         }
         if matches!(
@@ -296,14 +297,16 @@ impl ImportService {
         {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key}'s file-metadata import has no metadata snapshot"),
-            });
+            }
+            .into());
         }
         if matches!(selected_cover, Some(CoverSelection::Embedded(_)))
             && file_tag_snapshot.is_none()
         {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key}'s embedded cover has no prepared tag snapshot"),
-            });
+            }
+            .into());
         }
 
         // Overwrites a prior import of the same files (below), then gets stamped
@@ -400,13 +403,15 @@ impl ImportService {
             (Some(CoverSelection::Remote(_, _)), None) => {
                 return Err(crate::import::ImportError::Internal {
                     detail: "selected remote cover has no prepared bytes".into(),
-                });
+                }
+                .into());
             }
             (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, None) => None,
             (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) => {
                 return Err(crate::import::ImportError::Internal {
                     detail: "prepared remote-cover bytes have no remote cover selection".into(),
-                });
+                }
+                .into());
             }
         };
 
@@ -441,14 +446,16 @@ impl ImportService {
                             "Selected embedded cover {source_file_id} does not match snapshot source {}",
                             cover.source_relative_path
                         ),
-                    })
+                    }
+                    .into())
                 }
                 (Some(CoverSelection::Embedded(source_file_id)), None) => {
                     return Err(crate::import::ImportError::Internal {
                         detail: format!(
                             "Selected embedded cover {source_file_id} is absent from the file-tag snapshot"
                         ),
-                    })
+                    }
+                    .into())
                 }
                 _ => None,
             }
@@ -516,7 +523,7 @@ impl ImportService {
         prepared: &mut PreparedMetadata,
         files: ImportFiles<'_>,
         replacement_plans: &[crate::library::manager::ImportReplacementPlan],
-    ) -> Result<(), crate::import::ImportError> {
+    ) -> Result<(), ImportStop> {
         let library_manager = &self.library_manager;
         let ImportFiles {
             discovered: discovered_files,
@@ -584,7 +591,8 @@ impl ImportService {
                                 "{} is assigned both whole-file and CUE source layouts",
                                 file_path.display()
                             ),
-                        });
+                        }
+                        .into());
                     }
                 }
             }
@@ -596,7 +604,8 @@ impl ImportService {
         if total_bytes == 0 {
             return Err(crate::import::ImportError::Internal {
                 detail: "stored import candidate contains no bytes".to_string(),
-            });
+            }
+            .into());
         }
         self.emit_phase_progress(run, &db_release.id, Some(0), ImportPhase::ReadingFiles);
         let mut bytes_read = 0u128;
@@ -734,7 +743,8 @@ impl ImportService {
         {
             return Err(crate::import::ImportError::DecodeVerification {
                 broken: loudness.broken,
-            });
+            }
+            .into());
         }
 
         // The candidate's stored cover selection is what it commits with, and
@@ -748,7 +758,8 @@ impl ImportService {
                 None => {
                     return Err(crate::import::ImportError::Internal {
                         detail: "selected remote cover produced no downloaded image".to_string(),
-                    })
+                    }
+                    .into())
                 }
             },
             Some(CoverSelection::Local(path)) => {

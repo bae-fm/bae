@@ -176,8 +176,8 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
         if explicit {
             let error = result.unwrap_err();
             assert!(
-                matches!(&error, crate::import::ImportError::CoverArt { detail } if detail.contains("Bmp") && detail.contains("not supported")),
-                "{error}"
+                matches!(&error, ImportStop::Failed(crate::import::ImportError::CoverArt { detail }) if detail.contains("Bmp") && detail.contains("not supported")),
+                "{error:?}"
             );
         } else {
             result.expect("automatic artwork should skip unsupported snapshot data");
@@ -354,8 +354,8 @@ async fn selected_local_cover_path_must_match_discovered_file() {
 
     let err = result.unwrap_err();
     assert!(
-        matches!(&err, crate::import::ImportError::LocalCover { detail } if detail.contains("Selected cover cover.bmp not found")),
-        "got: {err}"
+        matches!(&err, ImportStop::Failed(crate::import::ImportError::LocalCover { detail }) if detail.contains("Selected cover cover.bmp not found")),
+        "got: {err:?}"
     );
     assert_eq!(
         crate::audio_codec::probe_opens_for(&audio_path),

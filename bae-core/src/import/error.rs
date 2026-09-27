@@ -156,12 +156,6 @@ pub enum ImportError {
     #[error("This release is still being identified; import it once identification finishes")]
     CandidateBeingIdentified,
 
-    /// A person cancelled the import before it wrote anything. The worker's
-    /// own signal to stop, never a failure it records.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    #[error("the import was cancelled")]
-    ImportCancelled,
-
     /// A cancel reached an import that is already writing its release, which
     /// is one transaction and completes.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

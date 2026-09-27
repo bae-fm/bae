@@ -1,6 +1,7 @@
 use super::*;
 use crate::config::{Config, ConfigHandle};
 use crate::db::Database;
+use crate::import::import_cancel::ImportStop;
 use crate::import::watched_folder::host_root;
 use coven::FixedClock;
 use coven::SequentialIdProvider;
