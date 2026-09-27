@@ -174,11 +174,4 @@ struct ImportCandidateSelection {
                 }
         )
     }
-
-    /// The selected candidates `action` runs on, as the selection offers it.
-    func candidates(
-        for action: BridgeCandidateAction
-    ) -> [ImportCandidateActionTarget] {
-        offers.first { $0.action == action }?.targets ?? []
-    }
 }

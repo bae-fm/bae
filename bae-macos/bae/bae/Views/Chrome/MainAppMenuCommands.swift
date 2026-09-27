@@ -8,30 +8,24 @@ final class MainAppMenuTarget {
     let playbackStore: PlaybackStore
     let configStore: ConfigStore
     let libraryStore: LibraryStore
-    let importStore: ImportStore
     let uiStore: UiStore
     let library: Library
     let playback: Playback
-    let importer: Importer
 
     init(
         playbackStore: PlaybackStore,
         configStore: ConfigStore,
         libraryStore: LibraryStore,
-        importStore: ImportStore,
         uiStore: UiStore,
         library: Library,
-        playback: Playback,
-        importer: Importer
+        playback: Playback
     ) {
         self.playbackStore = playbackStore
         self.configStore = configStore
         self.libraryStore = libraryStore
-        self.importStore = importStore
         self.uiStore = uiStore
         self.library = library
         self.playback = playback
-        self.importer = importer
     }
 }
 
@@ -304,24 +298,6 @@ struct MainAppMenuCommands: Commands {
     private var persistPlayback = false
 
     var body: some Commands {
-        CommandGroup(after: .pasteboard) {
-            Button(
-                target.map {
-                    ImportCandidateSkipAction(
-                        importer: $0.importer,
-                        importStore: $0.importStore,
-                        uiStore: $0.uiStore
-                    )
-                    .label
-                } ?? BridgeCandidateAction.skip.label(count: 0)
-            ) {
-                let action = requireImportCandidateSkipAction()
-                action.start()
-            }
-            .keyboardShortcut("e", modifiers: .command)
-            .disabled(!canSkipSelectedImportCandidates)
-        }
-
         CommandGroup(before: .toolbar) {
             LibraryNavigationButton(target: target)
             ImportNavigationButton(target: target)
@@ -468,29 +444,6 @@ struct MainAppMenuCommands: Commands {
             preconditionFailure("Library command invoked without its target")
         }
         return target
-    }
-
-    private func requireImportCandidateSkipAction()
-        -> ImportCandidateSkipAction
-    {
-        let target = requireTarget()
-        return ImportCandidateSkipAction(
-            importer: target.importer,
-            importStore: target.importStore,
-            uiStore: target.uiStore
-        )
-    }
-
-    private var canSkipSelectedImportCandidates: Bool {
-        guard let target, case .importing = target.uiStore.activeSection else {
-            return false
-        }
-        return ImportCandidateSkipAction(
-            importer: target.importer,
-            importStore: target.importStore,
-            uiStore: target.uiStore
-        )
-        .isEnabled
     }
 
     private var canShuffleLibrary: Bool {

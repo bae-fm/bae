@@ -137,11 +137,9 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             playbackStore: playbackStore,
             configStore: configStore,
             libraryStore: libraryStore,
-            importStore: importStore,
             uiStore: uiStore,
             library: library,
-            playback: playback,
-            importer: importer
+            playback: playback
         )
         let components = AppServiceComponents(
             playbackStore: playbackStore,

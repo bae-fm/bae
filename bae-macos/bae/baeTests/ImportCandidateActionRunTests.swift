@@ -162,11 +162,16 @@ struct ImportCandidateActionRunTests {
             importStore: scene.store,
             uiStore: uiStore
         )
-        #expect(selection.candidates(for: .importReady).count == 1)
-        #expect(selection.candidates(for: .skip).count == 2)
-        #expect(selection.candidates(for: .restore).isEmpty)
-        #expect(selection.candidates(for: .combine).count == 2)
-        #expect(selection.candidates(for: .revealFolder).count == 2)
+        let targetCounts = Dictionary(
+            uniqueKeysWithValues: selection.offers.map {
+                ($0.action, $0.targets.count)
+            }
+        )
+        #expect(targetCounts[.importReady] == 1)
+        #expect(targetCounts[.skip] == 2)
+        #expect(targetCounts[.restore] == nil)
+        #expect(targetCounts[.combine] == 2)
+        #expect(targetCounts[.revealFolder] == 2)
         let size = NSSize(width: 720, height: 580)
         try await SnapshotTestSupport.withHostedWindow(
             ImportCandidateBulkSelectionPane(

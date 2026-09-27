@@ -90,14 +90,13 @@ struct ImportCandidateBulkSelectionPaneTests {
     @Test("Combine carries no count where every action row carries one")
     func combineCarriesNoCount() {
         let card = Self.card()
-        let selection = Self.selection()
 
         for row in card.drawnGroups.flatMap(card.rows(in:)) {
             guard row.action != .combine else {
                 #expect(row.count == nil)
                 continue
             }
-            #expect(row.count == selection.candidates(for: row.action).count)
+            #expect(row.count == row.targets.count)
         }
     }
 
