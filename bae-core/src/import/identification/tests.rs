@@ -1,6 +1,5 @@
-//! Identification-queue tests. Each drives the real pipeline and fakes only
-//! the providers, at the wire: a local server per fixture answers the live
-//! services' URLs and counts what was asked for.
+//! Identification-queue tests. Only the providers are fake: a local server per
+//! fixture answers their URLs and records each request.
 
 use super::*;
 use crate::config::{Config, ConfigHandle};
@@ -285,7 +284,7 @@ impl Fixture {
         Self::with_ids(name, Arc::new(coven::SequentialIdProvider::new(name))).await
     }
 
-    /// A fixture minting canonical ids, which an import's release rows need.
+    /// A fixture that makes UUIDs, which an import's release rows need.
     async fn importing(name: &str) -> Self {
         Self::with_ids(name, Arc::new(coven::UuidProvider)).await
     }
@@ -383,7 +382,11 @@ impl Fixture {
     }
 
     fn candidate_dir(&self, folder: &str) -> PathBuf {
-        let dir = self.root.join(folder);
+        // Part by part, so a nested folder is spelled as the scan spells its
+        // key on every host.
+        let dir = folder
+            .split('/')
+            .fold(self.root.clone(), |dir, part| dir.join(part));
         std::fs::create_dir_all(&dir).unwrap();
         for name in FLAC_FIXTURES {
             copy_fixture(
