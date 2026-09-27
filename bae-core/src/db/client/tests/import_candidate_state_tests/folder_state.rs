@@ -188,10 +188,7 @@ async fn stored_keys(db: &Database, root: &str) -> Vec<String> {
 }
 
 async fn row_generation(db: &Database, root: &str, name: &str) -> i64 {
-    let path = std::path::Path::new(root)
-        .join(name)
-        .to_string_lossy()
-        .into_owned();
+    let path = key_of(root, name);
     db.read(move |sql| {
         Ok(sql.query_row(
             "SELECT generation FROM scan_candidate WHERE path = ?",
@@ -217,8 +214,7 @@ fn removed_by(write: &crate::db::FolderReadingWrite) -> Vec<String> {
 }
 
 fn key_of(root: &str, name: &str) -> String {
-    std::path::Path::new(root)
-        .join(name)
+    super::folder_below(root, name)
         .to_string_lossy()
         .into_owned()
 }
