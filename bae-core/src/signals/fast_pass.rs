@@ -1,33 +1,25 @@
-//! The fast pass: every non-OCR signal a folder yields, gathered in one blocking
-//! hop by [`gather_non_ocr_sources`] — the disc ID, CUE-CATALOG barcodes, and
-//! text source lines + brackets, plus the artwork paths for the later OCR phase.
-//! The service emits the result as its first `Signals` snapshot.
+//! The fast pass: every signal a folder yields without OCR, gathered in one
+//! blocking call, plus the artwork to read afterwards.
 
 use super::candidate_text::{extract_folder_brackets, parse_filename_stem, Source, SourcedLine};
 use crate::barcode::Barcode;
 use crate::import::discid::read_rip_artifacts;
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::probe::{source_durations, SourceDurations};
-use crate::signals::{DiscIdSignal, RipEvidence, SourcedValue, TextOrigin};
+use crate::signals::{DiscIdSignal, RipEvidence, SourcedValue};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::{debug, warn};
 
-/// Maximum size read from a single `.txt` file. Caps a pathological input (a
-/// 10 MB booklet transcription) without blowing memory.
+/// Maximum size read from a single `.txt` file.
 const MAX_TEXT_FILE_BYTES: u64 = 100 * 1024;
 
-/// One image the artwork pass will read, with the id the rest of the app
-/// addresses that file by.
-///
-/// Two forms of one file on purpose: the analyzer opens an absolute path, and
-/// anything a signal points at is named by its candidate-relative id, which is
-/// what a gallery tile and a file row are keyed by.
+/// One image the artwork pass will read: the path the analyzer opens, and the
+/// candidate-relative id a barcode read off it names.
 #[derive(Debug, Clone)]
 pub(super) struct ArtworkImage {
     pub(super) path: PathBuf,
-    /// `None` for an image that is not one of a scanned folder's files — a
-    /// library release's stored cover, resolved for a re-identify pass.
+    /// `None` for a library release's stored cover.
     pub(super) file_id: Option<String>,
 }
 
@@ -39,14 +31,12 @@ pub(super) struct FastPass {
     pub(super) mono_audio: bool,
     pub(super) disc_id: DiscIdSignal,
     pub(super) cue_barcodes: Vec<SourcedValue>,
-    /// What every one of the folder's audio units plays for, read off the same
-    /// scan the disc ID came from.
+    /// How long each audio unit plays.
     pub(super) durations: SourceDurations,
 }
 
 impl FastPass {
-    /// Nothing proven, no disc ID, no sources — what a failed folder scan
-    /// yields.
+    /// What a failed folder scan yields: nothing.
     pub(super) fn empty() -> Self {
         Self {
             lines: Vec::new(),
@@ -61,12 +51,8 @@ impl FastPass {
     }
 }
 
-/// CUE `CATALOG` codes (the disc's UPC/EAN) from the folder's parsed sheets,
-/// bound and unbound — one sighting per sheet that states a code, so a code
-/// two sheets state points at both. These are barcode-lookup inputs, not
-/// catalog-number filter values. A field that holds no code — one never
-/// filled in, a run of one digit, a number whose check digit fails — is
-/// left out (see [`Barcode::stated`]).
+/// CUE `CATALOG` barcodes from every parsed sheet, one per sheet that states
+/// a code; a field that holds no code is left out (see [`Barcode::stated`]).
 fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
     categorized
         .track_sheets()
@@ -81,16 +67,14 @@ fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
             };
             Some(SourcedValue::in_file(
                 code.into_string(),
-                TextOrigin::CueSheet,
                 sheet.file.relative_path.clone(),
             ))
         })
         .collect()
 }
 
-/// Enumerate and read every non-OCR source. Blocking; the service runs it via
-/// `spawn_blocking`. Missing text inputs are logged and skipped; invalid audio
-/// timing aborts extraction because every later track layout requires it.
+/// Read every non-OCR source. Blocking. A missing text input is skipped;
+/// invalid audio timing aborts, since every later track layout needs it.
 pub(super) fn gather_non_ocr_sources(
     folders: &[PathBuf],
     categorized: &CategorizedFiles,
@@ -111,9 +95,7 @@ pub(super) fn gather_non_ocr_sources(
             .unwrap_or_default()
             .to_string();
 
-        // The name goes in as it is written. What a catalog number was
-        // printed next to is part of what the folder says, and the classifier
-        // reduces the component to the name it carries on its own way in.
+        // The name goes in as written; the classifier reduces it itself.
         for raw in [&parent_name, &folder_name] {
             if raw.is_empty() {
                 continue;
@@ -126,9 +108,7 @@ pub(super) fn gather_non_ocr_sources(
         }
     }
 
-    // The rip evidence and disc ID, CUE-CATALOG barcodes, and the probed
-    // durations all come off the same parsed scan, no re-read and no second
-    // walk over the audio.
+    // Rip evidence, disc ID, CUE barcodes and durations all come off one scan.
     let track_count = categorized.track_count();
     pass.durations = source_durations(categorized)?;
     let rip = read_rip_artifacts(categorized);
@@ -138,20 +118,16 @@ pub(super) fn gather_non_ocr_sources(
     pass.cue_barcodes = cue_barcodes(categorized);
 
     // Image + document filenames only; `enumerate_filename_inputs` explains why.
-    for file in enumerate_filename_inputs(categorized) {
-        for part in parse_filename_stem(&file.path) {
+    for path in enumerate_filename_inputs(categorized) {
+        for part in parse_filename_stem(&path) {
             pass.lines.push(SourcedLine::new(
-                Source::FilenameGeneric {
-                    path: file.path.clone(),
-                    file_id: file.file_id.clone(),
-                },
+                Source::FilenameGeneric { path: path.clone() },
                 part,
             ));
         }
     }
 
-    // PERFORMER / TITLE from every sheet the scan already parsed, bound or not.
-    // No re-read, no second parser.
+    // PERFORMER / TITLE from every sheet the scan already parsed.
     for sheet in categorized.track_sheets() {
         for name in cue_sheet_names(sheet.sheet) {
             pass.lines.push(SourcedLine::new(
@@ -163,17 +139,14 @@ pub(super) fn gather_non_ocr_sources(
         }
     }
 
-    // Text files feed the pool one line at a time, like OCR output.
-    for doc in text_file_paths(categorized) {
-        if let Some(text) = read_capped_text(&doc.path) {
+    // Text files feed the pool one line at a time.
+    for path in text_file_paths(categorized) {
+        if let Some(text) = read_capped_text(&path) {
             for line in text.lines() {
                 let trimmed = line.trim();
                 if !trimmed.is_empty() {
                     pass.lines.push(SourcedLine::new(
-                        Source::TextFile {
-                            path: doc.path.clone(),
-                            file_id: doc.file_id.clone(),
-                        },
+                        Source::TextFile { path: path.clone() },
                         trimmed.to_string(),
                     ));
                 }
@@ -192,34 +165,17 @@ pub(super) fn gather_non_ocr_sources(
     Ok(pass)
 }
 
-/// One of the folder's files as a text source: where it is on disk, and the
-/// candidate-relative id a value read off it points back at.
-struct SourceFile {
-    path: PathBuf,
-    file_id: String,
-}
-
-/// The filenames the classifier should see: artwork and documents.
-///
-/// Audio filenames are excluded — their stems are almost always track titles,
-/// which belong in a track-title pool, not the Artist / Album autocomplete one.
-/// Track-sheet filenames are excluded because the sheet's `PERFORMER` / `TITLE`
-/// are already harvested as `CueField` lines, so the stem (`Album.cue` →
-/// `Album`) would only duplicate path-component signal at lower weight. Ignored
-/// files carry no release signal at all.
-fn enumerate_filename_inputs(categorized: &CategorizedFiles) -> Vec<SourceFile> {
+/// The filenames the classifier reads: artwork and documents. Audio stems are
+/// track titles, and a sheet's own names are already read from its fields.
+fn enumerate_filename_inputs(categorized: &CategorizedFiles) -> Vec<PathBuf> {
     categorized
         .artwork()
         .chain(categorized.documents())
-        .map(|f| SourceFile {
-            path: f.path.clone(),
-            file_id: f.relative_path.clone(),
-        })
+        .map(|f| f.path.clone())
         .collect()
 }
 
-/// Album- and track-level PERFORMER / TITLE values from an already-parsed CUE
-/// sheet, deduped — name tokens for the Artist / Album autocomplete pool.
+/// A sheet's album- and track-level PERFORMER / TITLE values, deduped.
 fn cue_sheet_names(sheet: &crate::cue_flac::CueSheet) -> Vec<String> {
     let mut out = Vec::new();
     let mut seen = HashSet::new();
@@ -240,16 +196,12 @@ fn cue_sheet_names(sheet: &crate::cue_flac::CueSheet) -> Vec<String> {
     out
 }
 
-/// `.txt` documents only. `.log` is rip-technical data with no artist/album
-/// content; `.cue` is harvested through its parsed sheet.
-fn text_file_paths(categorized: &CategorizedFiles) -> Vec<SourceFile> {
+/// `.txt` documents only; logs hold no names and sheets are read parsed.
+fn text_file_paths(categorized: &CategorizedFiles) -> Vec<PathBuf> {
     categorized
         .documents()
         .filter(|f| has_ext(&f.path, "txt"))
-        .map(|f| SourceFile {
-            path: f.path.clone(),
-            file_id: f.relative_path.clone(),
-        })
+        .map(|f| f.path.clone())
         .collect()
 }
 
@@ -260,9 +212,8 @@ fn has_ext(path: &Path, expected: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Read a text file, capped at `MAX_TEXT_FILE_BYTES` and decoded through
-/// `text_encoding` — so a non-UTF-8 file is decoded, not dropped. `None` only on
-/// an I/O error, which is logged so a skip is never silent.
+/// Read a text file, capped and decoded whatever its encoding; `None` only on
+/// an I/O error, which is logged.
 fn read_capped_text(path: &Path) -> Option<String> {
     use std::io::{ErrorKind, Read};
 
@@ -352,10 +303,7 @@ mod tests {
             parts: Vec::new(),
         };
 
-        let inputs: Vec<PathBuf> = enumerate_filename_inputs(&categorized)
-            .into_iter()
-            .map(|file| file.path)
-            .collect();
+        let inputs: Vec<PathBuf> = enumerate_filename_inputs(&categorized);
         assert!(
             !inputs.iter().any(|p| p == &cue.path),
             "CUE names come from the parsed sheet, not the filename pool; got {inputs:?}",

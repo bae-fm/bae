@@ -124,7 +124,7 @@ impl BarcodeEvidence {
 
     /// The codes the candidate carries, each once, in first-seen order.
     pub fn code_values(&self) -> Vec<String> {
-        unique_values(&self.codes)
+        SourcedValue::values(&self.codes)
     }
 
     /// `code_values` less the ones the person left out.
@@ -172,8 +172,8 @@ impl ChosenCatalog {
 /// chosen ones produced; a number is looked up only once the person chooses it.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CatalogEvidence {
-    /// Every sighting of a catalog number in the candidate's files.
-    pub numbers: Vec<SourcedValue>,
+    /// The numbers extracted, each once, in first-seen order.
+    pub numbers: Vec<String>,
     /// The numbers the run looks up, in the order they were chosen.
     pub chosen: Vec<ChosenCatalog>,
     /// The numbers the person struck out of the candidate's text, so a result
@@ -190,7 +190,7 @@ impl CatalogEvidence {
             return;
         }
         self.chosen
-            .retain(|chosen| self.numbers.iter().any(|c| c.value == chosen.value));
+            .retain(|chosen| self.numbers.contains(&chosen.value));
     }
 
     /// Record what the settled pipe found, number by number.
@@ -212,11 +212,6 @@ impl CatalogEvidence {
             .iter()
             .map(|chosen| chosen.value.clone())
             .collect()
-    }
-
-    /// The numbers offered, each once, in first-seen order.
-    pub fn number_values(&self) -> Vec<String> {
-        unique_values(&self.numbers)
     }
 
     /// Every chosen number's results, in chosen order.
@@ -295,17 +290,6 @@ impl SearchEvidence {
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
         into.extend(self.failures.iter().cloned().map(IdentifyFailure::Search));
     }
-}
-
-/// Each value among `sightings` once, in the order it was first seen.
-fn unique_values(sightings: &[SourcedValue]) -> Vec<String> {
-    let mut out: Vec<String> = Vec::new();
-    for sighting in sightings {
-        if !out.contains(&sighting.value) {
-            out.push(sighting.value.clone());
-        }
-    }
-    out
 }
 
 /// Everything a state needs to re-derive its outcome as answers land, carried

@@ -157,55 +157,6 @@ pub enum AutomationLookupFailure {
     Diagnostic { detail: String },
 }
 
-/// Mirrors bae-core's `signals::TextOrigin`.
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AutomationTextOrigin {
-    CueSheet,
-    Artwork,
-    FolderName,
-    Filename,
-    TextFile,
-}
-
-/// Mirrors bae-core's `signals::SignalOrigin`.
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationSignalOrigin {
-    Text { origin: AutomationTextOrigin },
-    ArtworkBarcode,
-}
-
-/// Mirrors bae-core's `identify::ToolbarOrigin`.
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationToolbarOrigin {
-    DiscToc,
-    Value { origin: AutomationSignalOrigin },
-}
-
-/// Mirrors bae-core's `signals::ImageRegion`: where on its image a value was
-/// read, as fractions of the image's size with the origin at the top-left.
-#[derive(Debug, Clone, Copy, Serialize)]
-pub struct AutomationImageRegion {
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-}
-
-/// Mirrors bae-core's `signals::SourcedValue` — one sighting of a value.
-#[derive(Debug, Clone, Serialize)]
-pub struct AutomationSourcedValue {
-    pub value: String,
-    pub origin: AutomationSignalOrigin,
-    /// The candidate-relative path of the file the value was read off, where
-    /// the origin is a file.
-    pub origin_path: Option<String>,
-    /// Where on that image it was read, where the detector said.
-    pub region: Option<AutomationImageRegion>,
-}
-
 /// Mirrors bae-core's `signals::DiscIdSignal`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
@@ -251,19 +202,19 @@ pub enum AutomationRipEvidence {
     Unproven,
 }
 
-/// Mirrors bae-core's `signals::BarcodeSignal`.
+/// Mirrors bae-core's `signals::BarcodeSignal`, each code once.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationBarcodeSignal {
     Scanning {
-        codes: Vec<AutomationSourcedValue>,
+        codes: Vec<String>,
     },
     Settled {
-        codes: Vec<AutomationSourcedValue>,
+        codes: Vec<String>,
     },
     Failed {
         failure: AutomationLookupFailure,
-        codes: Vec<AutomationSourcedValue>,
+        codes: Vec<String>,
     },
     Absent,
 }
@@ -273,16 +224,16 @@ pub enum AutomationBarcodeSignal {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationTextSignal {
     Scanning {
-        catalogs: Vec<AutomationSourcedValue>,
+        catalogs: Vec<String>,
         free_text: Vec<String>,
     },
     Settled {
-        catalogs: Vec<AutomationSourcedValue>,
+        catalogs: Vec<String>,
         free_text: Vec<String>,
     },
     Failed {
         failure: AutomationLookupFailure,
-        catalogs: Vec<AutomationSourcedValue>,
+        catalogs: Vec<String>,
         free_text: Vec<String>,
     },
 }
@@ -328,22 +279,14 @@ pub enum AutomationSignalState {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationSignalOption {
     pub value: String,
-    pub origin: AutomationSignalOrigin,
     pub chosen: bool,
-}
-
-/// Mirrors bae-core's `identify::ToolbarValue`.
-#[derive(Debug, Clone, Serialize)]
-pub struct AutomationToolbarValue {
-    pub value: String,
-    pub origin: AutomationToolbarOrigin,
 }
 
 /// Mirrors bae-core's `identify::ToolbarSignal`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationToolbarSignal {
     pub kind: AutomationSignalKind,
-    pub shown: Option<AutomationToolbarValue>,
+    pub shown: Option<String>,
     pub state: AutomationSignalState,
     pub excluded: bool,
     pub options: Vec<AutomationSignalOption>,

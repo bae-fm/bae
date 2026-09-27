@@ -11,8 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tempfile::TempDir;
 
-/// A real `AppServices` with the import trio behind it and nothing in its
-/// library — every test here drives the import event channel directly.
+/// A real `AppServices` over an empty library.
 async fn services() -> (AppServices, TempDir) {
     let temp_dir = TempDir::new().expect("a temp library dir");
     let database = Database::new_test(
@@ -55,10 +54,7 @@ fn extracted(catalog: &str) -> crate::signals::Signals {
         disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
         barcode: crate::signals::BarcodeSignal::Settled { codes: Vec::new() },
         text: crate::signals::TextSignal::Settled {
-            catalogs: vec![crate::signals::SourcedValue::new(
-                catalog.to_string(),
-                crate::signals::TextOrigin::Artwork,
-            )],
+            catalogs: vec![catalog.to_string()],
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
@@ -82,7 +78,7 @@ async fn recorded(services: &AppServices, key: &str) -> crate::signals::Signals 
 }
 
 fn catalog_of(signals: &crate::signals::Signals) -> &str {
-    &signals.text.catalogs()[0].value
+    &signals.text.catalogs()[0]
 }
 
 /// Wait for the bus to deliver a signals event for `key`, or give up.
@@ -108,10 +104,8 @@ async fn signals_for(
     deadline.await.expect("the signals event is delivered")
 }
 
-/// Extraction's snapshots reach the one form that reads them without going
-/// near the candidate's runtime — routed by key, the way a loudness tick is —
-/// and the key's latest snapshot is readable on its own, so a form that opens
-/// partway through a run starts with the pool the run has already built.
+/// Extraction's snapshots reach the bus by key, and each key's latest
+/// snapshot reads back on its own.
 #[tokio::test(flavor = "multi_thread")]
 async fn extracted_signals_reach_the_bus_by_key_and_read_back_for_that_key() {
     let (services, _temp) = services().await;
@@ -143,9 +137,7 @@ async fn extracted_signals_reach_the_bus_by_key_and_read_back_for_that_key() {
     let delivered = signals_for(&mut events, key).await;
     assert_eq!(catalog_of(&delivered), "CAT-1");
 
-    // The recorder reads the same channel on its own task, so its write lands
-    // independently of the relay's delivery — wait for it rather than assume
-    // the two are in step.
+    // The recorder runs on its own task, so wait for its write.
     assert_eq!(catalog_of(&recorded(&services, key).await), "CAT-1");
     assert_eq!(
         catalog_of(&recorded(&services, "/watch/other").await),

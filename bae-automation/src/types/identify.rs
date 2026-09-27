@@ -35,14 +35,6 @@ pub enum AutomationLookupState {
     },
 }
 
-/// Mirrors bae-core's `identify::ValueSource`.
-#[derive(Debug, Clone, Serialize)]
-pub struct AutomationValueSource {
-    pub origin: AutomationSignalOrigin,
-    pub file: Option<String>,
-    pub region: Option<AutomationImageRegion>,
-}
-
 /// Mirrors bae-core's `identify::ProviderCell`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationProviderCell {
@@ -54,25 +46,9 @@ pub struct AutomationProviderCell {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationSignalValueRow {
     pub value: String,
-    pub sources: Vec<AutomationValueSource>,
     /// Whether the person left this value out of the run.
     pub excluded: bool,
     pub cells: Vec<AutomationProviderCell>,
-}
-
-/// Mirrors bae-core's `identify::DiscIdFileKind`.
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AutomationDiscIdFileKind {
-    Log,
-    Cue,
-}
-
-/// Mirrors bae-core's `identify::DiscIdFile`.
-#[derive(Debug, Clone, Serialize)]
-pub struct AutomationDiscIdFile {
-    pub kind: AutomationDiscIdFileKind,
-    pub file: String,
 }
 
 /// Mirrors bae-core's `identify::DiscIdStepView`.
@@ -90,7 +66,6 @@ pub enum AutomationDiscIdStep {
     },
     Read {
         disc_id: String,
-        source: Option<AutomationDiscIdFile>,
         lookup: AutomationLookupState,
     },
 }
@@ -116,7 +91,6 @@ pub enum AutomationBarcodeStep {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationCatalogCandidate {
     pub value: String,
-    pub sources: Vec<AutomationValueSource>,
 }
 
 /// Mirrors bae-core's `identify::CatalogStepView`.

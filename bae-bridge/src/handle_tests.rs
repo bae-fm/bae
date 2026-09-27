@@ -144,9 +144,7 @@ fn queue_entry_precomputes_duration_clock() {
     assert!(absent.duration_clock.is_none());
 }
 
-/// A handle over a fresh, empty library, built the way the app builds one so
-/// whatever this bridge build carries — the desktop services, the cast
-/// controller — is behind it.
+/// A handle over a fresh, empty library, built the way the app builds one.
 pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::PathBuf) {
     let root = std::env::temp_dir().join(format!("bae-bridge-{test_name}"));
     match std::fs::remove_dir_all(&root) {
@@ -165,8 +163,7 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
         library_dir.clone(),
         "Test Library".to_string(),
     );
-    // One id source for the whole test app: the library owner mints every
-    // database and domain id from this provider.
+    // The library owner mints every id from this one provider.
     let ids: coven::IdRef = Arc::new(coven::SequentialIdProvider::new(test_name));
     let runtime = tokio::runtime::Runtime::new().expect("create test runtime");
     let config_handle = Arc::new(bae_core::config::ConfigHandle::new(config));
@@ -347,9 +344,8 @@ fn enqueue_export_missing_release_does_not_panic() {
 async fn pump_ui_events_keeps_delivering_after_broadcast_lag() {
     let (tx, rx) = tokio::sync::broadcast::channel(1);
 
-    // Two sends into a capacity-1 channel before the pump runs: the first
-    // is overwritten, so the pump's first recv returns Lagged with the
-    // second event still queued behind it.
+    // Two sends into a capacity-1 channel: the pump's first recv lags, with
+    // the second event still queued.
     tx.send(bae_core::ui::UiBusEvent::QueueItemsAdded { count: 1 })
         .unwrap();
     tx.send(bae_core::ui::UiBusEvent::QueueItemsAdded { count: 2 })
@@ -372,9 +368,7 @@ async fn pump_ui_events_keeps_delivering_after_broadcast_lag() {
     ));
 }
 
-/// Extraction's snapshots cross whole, keyed by candidate: the
-/// form on the other side reads the text pools off the same value the run
-/// produced.
+/// Extraction's text pools cross keyed by candidate, as the run produced them.
 #[cfg(feature = "desktop")]
 #[test]
 fn extracted_signals_cross_the_bus_with_their_key() {
@@ -384,10 +378,7 @@ fn extracted_signals_cross_the_bus_with_their_key() {
         disc_id: bae_core::signals::DiscIdSignal::Absent { track_count: 9 },
         barcode: bae_core::signals::BarcodeSignal::Settled { codes: Vec::new() },
         text: bae_core::signals::TextSignal::Settled {
-            catalogs: vec![bae_core::signals::SourcedValue::new(
-                "CAT-1".to_string(),
-                bae_core::signals::TextOrigin::Artwork,
-            )],
+            catalogs: vec!["CAT-1".to_string()],
             free_text: vec!["Album Title".to_string()],
         },
         text_pool: Vec::new(),
@@ -416,13 +407,7 @@ fn extracted_signals_cross_the_bus_with_their_key() {
         );
     };
     assert_eq!(free_text, vec!["Album Title".to_string()]);
-    assert_eq!(
-        catalogs
-            .iter()
-            .map(|catalog| catalog.value.clone())
-            .collect::<Vec<_>>(),
-        vec!["CAT-1".to_string()]
-    );
+    assert_eq!(catalogs, vec!["CAT-1".to_string()]);
 }
 
 /// The per-file converter keeps source size separate from the active phase's
@@ -499,9 +484,7 @@ fn upload_file_op_flattens_state_into_fields() {
     assert_eq!(uploaded.source_bytes_total, 1000);
 }
 
-/// The aggregate converter carries core's phase-scoped bar across unchanged,
-/// so the UI cannot fill a bar with one phase's bytes and label it with
-/// another's.
+/// The aggregate converter carries core's phase-scoped bar across unchanged.
 #[test]
 fn upload_progress_carries_the_phase_scoped_bar() {
     use crate::types::{BridgeUploadBar, BridgeUploadPhase};
@@ -716,10 +699,8 @@ fn work_detail_conversion_preserves_work_release_rows() {
     assert_eq!(release.media, two_cds);
 }
 
-/// A failing sync cycle's fault has to reach the front-ends, not just the log.
-/// Core records the whole chain as the sync-status error's diagnostic detail;
-/// the crossing keeps it beside the category the UI localizes, so a surface has
-/// something to render besides "Something went wrong."
+/// A failing sync cycle's diagnostic detail crosses beside the category the UI
+/// localizes.
 #[test]
 fn a_failed_sync_status_crosses_with_its_fault() {
     let fault = "sync cycle: pull Store commits: database: retained Merge replay \
@@ -768,10 +749,8 @@ fn a_healthy_sync_status_crosses_without_an_error() {
     );
 }
 
-/// The runtime stream, end to end through the bridge: a claim crosses as one
-/// key with an import in flight, the import ending takes the key out of the
-/// stream, and a subscriber that joins mid-import is told about it rather than
-/// left waiting for the next tick.
+/// The runtime stream end to end: a claim crosses as a key in flight, its
+/// import ending removes it, and a subscriber joining mid-import is told.
 #[cfg(feature = "desktop")]
 mod candidate_runtime {
     use super::*;
@@ -800,21 +779,13 @@ mod candidate_runtime {
         (subscription, receiver)
     }
 
-    /// What one change says about `key`.
-    ///
-    /// Three shapes say something, and which one arrives is timing rather than
-    /// meaning. `Updated` and `Removed` name the key. A `Reset` — the
-    /// subscription re-stating every key in flight after the broadcast dropped
-    /// deliveries under load — speaks about every key at once, including the
-    /// ones it leaves out: "a consumer holding a key this does not list treats
-    /// it as removed" is the type's own contract, and on a loaded runner it is
-    /// the *only* thing that ever says a key is gone, because the `Removed`
-    /// that would have said so is exactly what was dropped.
+    /// What one change says about `key`. A `Reset` lists every key in flight,
+    /// so a key it leaves out is removed — under load it is the only thing
+    /// that says so, the `Removed` having been dropped.
     enum SaysAbout {
         InFlight(Box<crate::types::BridgeCandidateRuntimeSnapshot>),
         Gone,
-        /// A change about some other key. An empty library has none, but a
-        /// shared test root should not be able to make this flaky.
+        /// A change about some other key.
         NothingOfTheSort,
     }
 
@@ -839,11 +810,7 @@ mod candidate_runtime {
     }
 
     /// Drain changes until the stream says `key` is in flight, and answer with
-    /// what it is running.
-    ///
-    /// A change saying the opposite on the way there is not a failure — it is
-    /// the answer not having arrived yet, so this keeps draining. Only the
-    /// timeout is a failure.
+    /// what it is running; only the timeout fails.
     fn wait_in_flight(
         handle: &Arc<super::super::AppHandle>,
         receiver: &mut tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
@@ -892,10 +859,8 @@ mod candidate_runtime {
             .ok()
     }
 
-    /// A lagged subscription never sends the `Removed` — it sends one `Reset`
-    /// standing for the whole map, and a key it leaves out is gone. A consumer
-    /// that waits for `Removed` alone waits for a message that is not coming,
-    /// which is what the loaded runner produced and the quiet machine did not.
+    /// A lagged subscription sends one `Reset` instead of the `Removed`, and a
+    /// key it leaves out is gone.
     #[test]
     fn a_reset_that_omits_the_key_says_the_key_is_gone() {
         let (handle, _root) = fresh_bridge_handle("candidate-runtime-reset");
@@ -915,8 +880,7 @@ mod candidate_runtime {
         );
 
         let (changes, mut receiver) = tokio::sync::mpsc::unbounded_channel();
-        // Another key's reset entry is not this key's answer, so the map's
-        // omission has to be read rather than its emptiness.
+        // A reset listing only another key still says this one is gone.
         changes
             .send(BridgeCandidateRuntimeChange::Reset {
                 runtimes: vec![crate::types::BridgeKeyedCandidateRuntime {
@@ -967,8 +931,7 @@ mod candidate_runtime {
             import.step
         );
 
-        // A subscriber that opens while the import is running is told what is
-        // running rather than left waiting for the next tick.
+        // A subscriber opening mid-import is told what is running.
         let (_joining, mut joining_changes) = subscribe(&handle);
         assert!(
             wait_in_flight(&handle, &mut joining_changes, &key)
@@ -987,8 +950,8 @@ mod candidate_runtime {
                 },
             });
 
-        // The failure is a row by the time it is announced, so the key stops
-        // being in flight rather than crossing as a status of its own.
+        // A failed import is a row by the time it is announced, so the key
+        // simply stops being in flight.
         wait_gone(&handle, &mut watching_changes, &key);
         assert!(
             handle.candidate_runtime(key).is_none(),

@@ -1,8 +1,5 @@
 use super::*;
-use crate::signals::{ArtworkScan, SignalOrigin, TextOrigin};
-use crate::signals::{
-    ArtworkAnalysis, ArtworkAnalyzer, DetectedBarcode, ImageRegion, RecognizedLine,
-};
+use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkScan, TextOrigin};
 use crate::util::rate_limiter::CallPriority;
 use std::collections::HashMap;
 use std::fs;
@@ -16,8 +13,8 @@ mod aborts;
 mod cancellation;
 mod cover_art_off;
 
-/// Returns canned text lines keyed by filename rather than full path, so a temp-dir
-/// path can't break it. The optional delay is what lets a test cancel mid-OCR.
+/// Canned text lines keyed by file name; the optional delay lets a test cancel
+/// mid-OCR.
 struct StubAnalyzer {
     responses: StdMutex<HashMap<String, Vec<String>>>,
     delay: Option<Duration>,
@@ -70,7 +67,10 @@ impl ArtworkAnalyzer for StubAnalyzer {
             .get(&filename)
             .cloned()
             .unwrap_or_default();
-        ArtworkAnalysis::of_text(text_lines)
+        ArtworkAnalysis {
+            barcodes: Vec::new(),
+            text_lines,
+        }
     }
 }
 
@@ -132,9 +132,7 @@ async fn collect_snapshots(
     out
 }
 
-/// A throwaway `LibraryManager` over a temp dir. The folder extraction path these
-/// tests drive never reads from the library, but `ExtractionService::start` requires
-/// one anyway. The returned `TempDir` must outlive it.
+/// A throwaway `LibraryManager` over a temp dir, which must outlive it.
 async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
     let tmp = TempDir::new().unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
@@ -143,8 +141,7 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
             .await
             .unwrap();
     let library_dir = coven::StoreDir::new(tmp.path());
-    // Unique id per test so keyring entries don't collide in the shared
-    // process-global mock store (see `install_test_keyring`).
+    // Unique per test so keyring entries don't collide in the shared mock store.
     let library_id = format!("test-{}", uuid::Uuid::new_v4());
     let config = crate::config::Config::with_defaults(
         library_id.clone(),
@@ -168,9 +165,7 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
     (manager, tmp)
 }
 
-/// Start a service, keeping the library's temp dir alive. The bus sender comes back
-/// too, so a test can inject an event the service listens for, like
-/// `CandidateRemoved`.
+/// Start a service; the bus sender comes back so a test can inject events.
 async fn make_service() -> (
     ExtractionServiceHandle,
     ImportEventBus,
@@ -188,10 +183,8 @@ async fn make_service() -> (
     (handle, tx, rx, lib_tmp)
 }
 
-/// Start a service with `analyzer` registered and an extraction already running
-/// over `folder` under candidate key `"cand-1"` — the arrange step most of these
-/// tests share. The `TempDir` holds the library the service was built over and
-/// must outlive it.
+/// Start a service with `analyzer` registered and an extraction running over
+/// `folder` as `"cand-1"`. The `TempDir` must outlive the service.
 async fn start_signals(
     folder: PathBuf,
     analyzer: Arc<dyn ArtworkAnalyzer>,
@@ -225,8 +218,7 @@ fn minimal_jpeg() -> Vec<u8> {
     vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00]
 }
 
-/// A release folder holding one FLAC plus whatever
-/// images and documents the caller passes.
+/// A release folder holding one FLAC plus the given images and documents.
 fn build_release(
     tmp: &TempDir,
     folder_name: &str,
@@ -269,8 +261,7 @@ fn folder_source(folder: PathBuf) -> ExtractionSource {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn emits_fast_pass_then_ocr_then_settled() {
-    // Folder name carries a catalog-shaped bracket (XX34b), parent
-    // carries an artist-shaped name. Images carry OCR lines.
+    // The folder name carries a catalog bracket, the parent an artist name.
     let tmp = TempDir::new().unwrap();
     let parent = tmp.path().join("Artist Name");
     fs::create_dir_all(&parent).unwrap();
@@ -287,9 +278,7 @@ async fn emits_fast_pass_then_ocr_then_settled() {
     );
     let (_handle, mut rx, _lib_tmp) = start_signals(folder.clone(), analyzer).await;
 
-    // Fast-pass snapshot + one per image read but the last + final settled
-    // = 3 snapshots: the last image's additions land in the settled one,
-    // which says where the pass is (finished) rather than repeating it.
+    // The fast pass, one per image but the last, then the settled snapshot.
     let snapshots = collect_snapshots(&mut rx, 3).await;
     assert_eq!(snapshots.len(), 3);
     let artwork: Vec<&ArtworkScan> = snapshots.iter().map(|(_, a)| a).collect();
@@ -311,8 +300,7 @@ async fn emits_fast_pass_then_ocr_then_settled() {
     );
     let signals: Vec<Signals> = snapshots.into_iter().map(|(s, _)| s).collect();
 
-    // The folder bracket `XX34b` lands in catalogs and the path components (score 3,
-    // above the cutoff) in free_text, while the text signal is still `Scanning`.
+    // While scanning, the bracket is a catalog and the path components are free text.
     assert!(
         matches!(signals[0].text, TextSignal::Scanning { .. }),
         "fast-pass text should be Scanning, got {:?}",
@@ -323,7 +311,7 @@ async fn emits_fast_pass_then_ocr_then_settled() {
             .text
             .catalogs()
             .iter()
-            .any(|c| c.value == "XX34b"),
+            .any(|c| c == "XX34b"),
         "expected folder-bracket catalog in fast pass, got {:?}",
         signals[0].text.catalogs(),
     );
@@ -342,7 +330,7 @@ async fn emits_fast_pass_then_ocr_then_settled() {
         .text
         .catalogs()
         .iter()
-        .any(|c| c.value == "XX34b"));
+        .any(|c| c == "XX34b"));
 
     assert!(
         matches!(signals[2].text, TextSignal::Settled { .. }),
@@ -353,25 +341,23 @@ async fn emits_fast_pass_then_ocr_then_settled() {
         .text
         .catalogs()
         .iter()
-        .any(|c| c.value == "XX34b"));
+        .any(|c| c == "XX34b"));
     assert!(signals[2]
         .text
         .catalogs()
         .iter()
-        .any(|c| c.value == "WPCR-80001"));
+        .any(|c| c == "WPCR-80001"));
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn no_artwork_emits_one_settled_snapshot() {
     let tmp = TempDir::new().unwrap();
-    // No images, just a folder name with signals.
     let folder = build_release(&tmp, "Artist Name - Album Title", &[], &[]);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
     let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
-    // Nothing is scanned, so nothing is reported as scanning: the settled
-    // snapshot is the first and only one.
+    // Nothing is scanned, so the settled snapshot is the only one.
     let signals = collect_signals(&mut rx, 1).await;
     assert_eq!(signals.len(), 1);
     assert!(matches!(signals[0].text, TextSignal::Settled { .. }));
@@ -406,7 +392,7 @@ FILE "audio.flac" WAVE
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
     let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
-    // Fast pass + final settled.
+    // No artwork, so the settled snapshot is the only one.
     let signals = collect_signals(&mut rx, 1).await;
     let fast = signals[0].text.free_text();
     assert!(
@@ -425,8 +411,7 @@ FILE "audio.flac" WAVE
 
 #[tokio::test(flavor = "multi_thread")]
 async fn cue_catalog_becomes_barcode() {
-    // A CUE `CATALOG` is the disc's UPC/EAN, so it must surface as a barcode, not as
-    // a catalog-number string.
+    // A CUE `CATALOG` is the disc's UPC/EAN: a barcode, not a catalog number.
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
@@ -443,7 +428,6 @@ FILE \"audio.flac\" WAVE\n  \
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
     let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
-    // Fast pass + final settled.
     let signals = collect_signals(&mut rx, 1).await;
     let final_signals = &signals[signals.len() - 1];
     assert!(
@@ -459,9 +443,7 @@ FILE \"audio.flac\" WAVE\n  \
 
 #[tokio::test(flavor = "multi_thread")]
 async fn an_all_zero_cue_catalog_is_not_a_barcode() {
-    // An unfilled `CATALOG` field holds a run of zeros. It is a placeholder,
-    // not the disc's UPC, so it must not reach the barcode signal — a lookup
-    // for it can only miss.
+    // An unfilled `CATALOG` of zeros is a placeholder, not a barcode.
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
@@ -487,8 +469,7 @@ FILE \"audio.flac\" WAVE\n  \
     );
 }
 
-/// A `CATALOG` field whose check digit fails is some other number written
-/// where the disc's code goes, not a code to look up.
+/// A `CATALOG` whose check digit fails is not a code to look up.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_cue_catalog_whose_check_digit_fails_is_not_a_barcode() {
     let tmp = TempDir::new().unwrap();
@@ -512,10 +493,9 @@ FILE \"audio.flac\" WAVE\n  \
     );
 }
 
-/// The digits printed under a back cover's bars are the same barcode signal
-/// as a decoded payload: a sighting of the code, read off that image, in the
-/// one spelling the CUE sheet's sighting of it has too. The image's other
-/// lines still reach the text pool.
+/// The digits printed under a back cover's bars are the code, read off that
+/// image and spelled as the CUE sheet's; the image's other lines still reach
+/// the text pool.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_barcode_printed_as_text_on_the_artwork_is_a_barcode_sighting() {
     let tmp = TempDir::new().unwrap();
@@ -546,16 +526,8 @@ FILE \"audio.flac\" WAVE\n  \
     assert_eq!(
         settled.barcode.codes(),
         [
-            SourcedValue::in_file(
-                "0012345678905".to_string(),
-                TextOrigin::CueSheet,
-                "Album.cue".to_string(),
-            ),
-            SourcedValue::in_file(
-                "0012345678905".to_string(),
-                TextOrigin::Artwork,
-                "Back.jpg".to_string(),
-            ),
+            SourcedValue::in_file("0012345678905".to_string(), "Album.cue".to_string()),
+            SourcedValue::in_file("0012345678905".to_string(), "Back.jpg".to_string()),
         ]
     );
     assert!(
@@ -569,22 +541,15 @@ FILE \"audio.flac\" WAVE\n  \
 }
 
 /// Where the detector decodes the bars and the recognizer reads the digits
-/// under them, the image holds one sighting of the code: the detector's, at
-/// the box it drew around the bars.
+/// under them, the image holds one sighting of the code.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_bars_and_their_printed_digits_are_one_sighting() {
     struct BarsAndDigits;
     impl ArtworkAnalyzer for BarsAndDigits {
         fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
             ArtworkAnalysis {
-                barcodes: vec![DetectedBarcode {
-                    payload: "5012345678900".to_string(),
-                    region: ImageRegion::new(0.6, 0.8, 0.3, 0.1),
-                }],
-                text_lines: vec![RecognizedLine {
-                    text: "5 012345 678900".to_string(),
-                    region: ImageRegion::new(0.6, 0.9, 0.3, 0.05),
-                }],
+                barcodes: vec!["5012345678900".to_string()],
+                text_lines: vec!["5 012345 678900".to_string()],
             }
         }
     }
@@ -602,18 +567,14 @@ async fn the_bars_and_their_printed_digits_are_one_sighting() {
         signals[1].barcode.codes(),
         [SourcedValue::in_file(
             "5012345678900".to_string(),
-            SignalOrigin::ArtworkBarcode,
-            "Back.jpg".to_string(),
-        )
-        .at(ImageRegion::new(0.6, 0.8, 0.3, 0.1))]
+            "Back.jpg".to_string()
+        )]
     );
 }
 
 #[test]
 fn non_utf8_cue_is_decoded_not_dropped() {
-    // A Windows-1252 CUE, with a curly apostrophe (byte 0x92) inside a track title.
-    // The scanner parses CUEs through `text_encoding`, so that byte is decoded rather
-    // than the whole sheet being dropped.
+    // A Windows-1252 CUE's curly apostrophe (0x92) is decoded, not the sheet dropped.
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
@@ -654,9 +615,8 @@ fn non_utf8_cue_is_decoded_not_dropped() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn text_files_feed_free_text() {
-    // A text-file line scores 1, which can't clear the cutoff alongside path
-    // components at 3. So make the text-file line match a path component: they cluster
-    // together, and the combined score proves the text file reached the pipeline.
+    // A text-file line matching a path component clusters with it, which shows
+    // the text file reached the pipeline.
     let tmp = TempDir::new().unwrap();
     let folder = build_release(
         &tmp,
@@ -671,7 +631,6 @@ async fn text_files_feed_free_text() {
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
     let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
-    // Fast pass + final settled. The cluster scores PathComponent(3) + TextFile(1).
     let signals = collect_signals(&mut rx, 1).await;
     let final_free_text = signals[signals.len() - 1].text.free_text();
     assert!(
@@ -682,11 +641,8 @@ async fn text_files_feed_free_text() {
     );
 }
 
-/// A platform with no artwork analyzer has no barcode source in a candidate's
-/// artwork, however many images it holds — nothing decodes them. The barcode
-/// signal must say `Absent`, not `Settled { codes: [] }`: identify reads the
-/// difference as "never scanned" vs "scanned and found none", and the second is a
-/// claim about a decode that never happened.
+/// Without an analyzer, artwork is no barcode source: the signal is `Absent`,
+/// not a scan that found none.
 #[tokio::test(flavor = "multi_thread")]
 async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
     let tmp = TempDir::new().unwrap();
@@ -703,8 +659,7 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
         crate::config::IdentificationSteps::default(),
     );
 
-    // One settled snapshot. No scanning one and no OCR snapshots: there is
-    // nothing to decode with, so nothing is reported as being read.
+    // One settled snapshot: nothing to decode with, so nothing is read.
     let signals = collect_signals(&mut rx, 1).await;
     assert!(matches!(signals[0].text, TextSignal::Settled { .. }));
     assert_eq!(
@@ -715,8 +670,7 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
     assert_no_more_snapshots(&mut rx, "a scan that never ran").await;
 }
 
-/// A CUE `CATALOG` barcode is a source in its own right — it needs no analyzer.
-/// It settles even on a platform that can't decode artwork.
+/// A CUE `CATALOG` barcode needs no analyzer and settles without one.
 #[tokio::test(flavor = "multi_thread")]
 async fn no_analyzer_still_settles_cue_catalog_barcodes() {
     let tmp = TempDir::new().unwrap();
@@ -755,11 +709,8 @@ FILE \"audio.flac\" WAVE\n  \
     );
 }
 
-/// Every surface a folder carries puts its lines in the pool as it read them —
-/// the OCR of an image, the folder's own name, a file name, a CUE field, a
-/// `.txt` line — each naming the file it came from where there is one. Nothing
-/// is classified out of it and nothing is stripped: what the folder says is
-/// what ranking looks a result's fields up in.
+/// Every surface a folder carries puts its lines in the pool as read, each with
+/// the surface it came from, and nothing stripped.
 #[tokio::test(flavor = "multi_thread")]
 async fn every_surface_lands_in_the_text_pool_as_it_was_read() {
     let tmp = TempDir::new().unwrap();
@@ -789,37 +740,25 @@ FILE "01 - Track.flac" WAVE
     let folder_line = found("Artist Alpha - Album Title [16033-2]")
         .unwrap_or_else(|| panic!("the folder's own name, as written; got {pool:?}"));
     assert_eq!(folder_line.origin, TextOrigin::FolderName);
-    assert_eq!(folder_line.file, None);
 
     let filename_line = found("Artist Alpha - Back Cover")
         .unwrap_or_else(|| panic!("the image's file name; got {pool:?}"));
     assert_eq!(filename_line.origin, TextOrigin::Filename);
-    assert_eq!(
-        filename_line.file.as_deref(),
-        Some("Artist Alpha - Back Cover.jpg")
-    );
 
     let cue_line =
         found("Artist Alpha").unwrap_or_else(|| panic!("the CUE PERFORMER; got {pool:?}"));
     assert_eq!(cue_line.origin, TextOrigin::CueSheet);
-    assert_eq!(cue_line.file.as_deref(), Some("Album.cue"));
 
     let text_file_line =
         found("Atlantic Records, Inc.").unwrap_or_else(|| panic!("the .txt line; got {pool:?}"));
     assert_eq!(text_file_line.origin, TextOrigin::TextFile);
-    assert_eq!(text_file_line.file.as_deref(), Some("info.txt"));
 
     let ocr_line =
         found("Made in US · 1976").unwrap_or_else(|| panic!("the OCR line; got {pool:?}"));
     assert_eq!(ocr_line.origin, TextOrigin::Artwork);
-    assert_eq!(
-        ocr_line.file.as_deref(),
-        Some("Artist Alpha - Back Cover.jpg")
-    );
 }
 
-/// One line read twice off one surface is one line: the pool is what the folder
-/// says, not how many times a pass happened to read it.
+/// One line read twice off one surface is pooled once.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_line_read_twice_off_one_surface_is_pooled_once() {
     let tmp = TempDir::new().unwrap();
@@ -844,10 +783,8 @@ async fn a_line_read_twice_off_one_surface_is_pooled_once() {
     );
 }
 
-/// A second run over a folder whose files have not changed takes the first
-/// run's settled reading: one settled snapshot, and no image read again. A
-/// person changing what a candidate looks up waits on the lookup, not on the
-/// artwork.
+/// A second run over an unchanged folder reuses the first run's settled
+/// reading and reads no image again.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_unchanged_folder_is_not_read_again() {
     let tmp = TempDir::new().unwrap();

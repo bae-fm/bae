@@ -28,17 +28,6 @@ mirror_enum! {
 
 mirror_struct! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationValueSource = bae_core::identify::ValueSource,
-    from_core: pub(crate) fn,
-    fields: {
-        origin: (AutomationSignalOrigin),
-        file,
-        region: (opt AutomationImageRegion),
-    },
-}
-
-mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationProviderCell = bae_core::identify::ProviderCell,
     from_core: pub(crate) fn,
     fields: { source: (into), lookup: (AutomationLookupState) },
@@ -50,24 +39,9 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         value,
-        sources: (each AutomationValueSource),
         excluded,
         cells: (each AutomationProviderCell),
     },
-}
-
-mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationDiscIdFileKind = bae_core::identify::DiscIdFileKind,
-    from_core: pub(crate) fn,
-    variants: { Log, Cue },
-}
-
-mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationDiscIdFile = bae_core::identify::DiscIdFile,
-    from_core: pub(crate) fn,
-    fields: { kind: (AutomationDiscIdFileKind), file },
 }
 
 mirror_enum! {
@@ -79,11 +53,7 @@ mirror_enum! {
         Absent,
         NotCdAudio { sample_rate_hz },
         ReadFailed { failure: (AutomationLookupFailure) },
-        Read {
-            disc_id,
-            source: (opt AutomationDiscIdFile),
-            lookup: (AutomationLookupState),
-        },
+        Read { disc_id, lookup: (AutomationLookupState) },
     },
 }
 
@@ -104,7 +74,7 @@ mirror_struct! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationCatalogCandidate = bae_core::identify::CatalogCandidateView,
     from_core: pub(crate) fn,
-    fields: { value, sources: (each AutomationValueSource) },
+    fields: { value },
 }
 
 mirror_enum! {

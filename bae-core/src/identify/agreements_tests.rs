@@ -6,8 +6,6 @@ fn line(text: &str) -> TextLine {
     TextLine {
         text: text.to_string(),
         origin: TextOrigin::FolderName,
-        file: None,
-        region: None,
     }
 }
 
@@ -123,9 +121,8 @@ fn the_disc_id_and_the_barcode_come_from_the_lookups_alone() {
     assert_eq!(judged.count(), 2);
 }
 
-/// The agreement is the number itself: a release a catalog lookup returned
-/// under some other number — Discogs matches a number inside longer ones —
-/// does not agree because a lookup returned it.
+/// A catalog lookup agrees only through the number itself, not because it
+/// returned the release.
 #[test]
 fn a_catalog_lookup_agrees_only_through_the_number() {
     let catalog_lookup = LookupProvenance {
@@ -219,9 +216,8 @@ fn a_struck_out_catalog_number_states_nothing() {
     assert!(!judged.catalog);
 }
 
-/// Striking out a value is striking it out as a catalog number. The same
-/// digits read as a year are the year the folder states, which is a different
-/// thing about the release and stands on its own.
+/// Striking out a value strikes it as a catalog number only; the same digits
+/// still state a year.
 #[test]
 fn striking_out_a_value_leaves_the_other_fields_alone() {
     let folder = CandidateText::of(&[line("Harbor 1976 US")], &["1976".to_string()]);
@@ -440,10 +436,8 @@ fn a_rows_agreements_are_its_records_together() {
     assert_eq!(musicbrainz.with(Agreements::NONE), musicbrainz);
 }
 
-/// The trade word a label trails its name with says what kind of business it
-/// is, not which one, so the two name one label however either of them writes
-/// it: a folder saying "North Star" states a result's "North Star Records",
-/// and a folder saying "Harbor Records" states a "Harbor".
+/// A label agrees whichever side trails its name with a trade word like
+/// "Records".
 #[test]
 fn a_label_agrees_without_the_trade_word_either_of_them_prints() {
     for (stated, folder) in [
@@ -470,8 +464,7 @@ fn a_label_agrees_without_the_trade_word_either_of_them_prints() {
     }
 }
 
-/// A name that is nothing but trade words names no label. Every folder that
-/// prints "Records" anywhere would otherwise agree with it.
+/// A name that is nothing but trade words names no label.
 #[test]
 fn a_label_that_is_only_trade_words_states_nothing() {
     for stated in ["Records", "Music", "Record Co.", "Music Entertainment"] {

@@ -1,21 +1,8 @@
 #![cfg(feature = "test-utils")]
-//! Regression corpus for the signal-extraction service.
-//!
-//! Each fixture declares the per-source inputs the classifier would
-//! receive for a realistic candidate shape — path components, folder
-//! brackets, filenames, CUE strings, text-file lines, and artwork OCR.
-//! The harness materializes those declarations into a temp release
-//! folder, drives the full `ExtractionService` end-to-end via a stub
-//! `ArtworkAnalyzer`, and asserts against the terminal settled `Signals`.
-//!
-//! Expected output is a loose shape check: "contains" / "not contains"
-//! for the free-text and catalog pools. The classifier's exact rank
-//! order is tunable starting-value territory, so fixtures only pin the
-//! "it did / didn't survive" contract.
-//!
-//! Fixtures live under `tests/fixtures/candidate_text/*.json`. Adding a
-//! new fixture just requires dropping another file in that directory —
-//! the loop below picks them up automatically.
+//! Regression corpus for the signal-extraction service: each fixture in
+//! `tests/fixtures/candidate_text/*.json` declares a candidate's sources, is
+//! built into a temp folder, run through `ExtractionService` with a stub
+//! analyzer, and checked for which catalog numbers and free text survive.
 
 use bae_core::import::{ImportEvent, ImportEventBus};
 use bae_core::signals::service::{ExtractionService, ExtractionServiceHandle, ExtractionSource};
@@ -84,14 +71,12 @@ fn load_fixture(path: &Path) -> Fixture {
 
 const PROBEABLE_MP3: &[u8] = include_bytes!("../test-fixtures/audio-format/placeholder-mp3.mp3");
 
-/// Minimal JPEG magic — `is_valid_image` dispatches by extension and
-/// checks the first three bytes.
+/// Just the JPEG magic, enough to pass as an image.
 fn minimal_jpeg() -> Vec<u8> {
     vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00]
 }
 
-/// Stub analyzer keyed by absolute path. Returns the fixture's declared
-/// OCR lines for that path; empty for any unknown path.
+/// Returns the fixture's OCR lines for an absolute path, none for others.
 struct FixtureAnalyzer {
     responses: Mutex<HashMap<PathBuf, Vec<String>>>,
 }
@@ -113,22 +98,17 @@ impl ArtworkAnalyzer for FixtureAnalyzer {
             .get(path)
             .cloned()
             .unwrap_or_default();
-        ArtworkAnalysis::of_text(text_lines)
+        ArtworkAnalysis {
+            barcodes: Vec::new(),
+            text_lines,
+        }
     }
 }
 
-/// Materialize a fixture into `tmp`: build a release folder whose path
-/// components reproduce the declared `path_components` and `folder_brackets`,
-/// and drop files inside for each declared source.
-///
-/// Returns `(release_folder, ocr_map)`. The OCR map is keyed by the
-/// materialized absolute artwork paths so the stub analyzer can look them
-/// up when the service fans out OCR calls.
+/// Build a fixture's release folder in `tmp`, returning it and the OCR lines
+/// keyed by each artwork file's absolute path.
 fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, Vec<String>>) {
-    // Folder layout: `{tmp}/{parent}/{release}`. If path_components has only
-    // one entry, it becomes the release folder name and the parent is tmp
-    // directly. Empty path_components just put the release at tmp with a
-    // generic name.
+    // `{tmp}/{parent}/{release}`, from the last two path components.
     let (parent_name, release_base) = match fixture.sources.path_components.as_slice() {
         [] => (None, "release".to_string()),
         [single] => (None, single.clone()),
@@ -141,9 +121,7 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
         }
     };
 
-    // Append folder-bracket tags so `extract_folder_brackets` can pick them
-    // up from the release folder name and `strip_path_component` can strip
-    // them back to the declared path component.
+    // Folder brackets go on the release folder's name.
     let mut release_folder_name = release_base.clone();
     for bracket in &fixture.sources.folder_brackets {
         release_folder_name.push_str(&format!(" [{bracket}]"));
@@ -157,23 +135,17 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
     let folder = parent_dir.join(&release_folder_name);
     fs::create_dir_all(&folder).unwrap();
 
-    // Sentinel audio file so `collect_release_candidate_files` always
-    // detects at least one track and runs the full categorization. Audio
-    // filenames don't feed the suggestion pool — their stems are track
-    // titles, the wrong bucket for Artist / Album autocomplete — so
-    // fixtures don't need to declare specific audio files.
+    // One audio file so the folder is a candidate; audio file names feed no
+    // pool.
     fs::write(folder.join("sentinel.mp3"), PROBEABLE_MP3).unwrap();
 
-    // Generic filenames land on image files so they're tagged as artwork
-    // by the categorizer and the service tags them FilenameGeneric(.jpg).
+    // File names land on images, whose names the pass reads.
     for stem in &fixture.sources.filenames_generic {
         let name = format!("{stem}.jpg");
         fs::write(folder.join(&name), minimal_jpeg()).unwrap();
     }
 
-    // CUE file: emit each declared field as a top-level PERFORMER or
-    // TITLE. `parse_cue_strings` accepts both unconditionally, so the
-    // choice of keyword doesn't matter for the extraction.
+    // Each CUE field becomes a top-level TITLE.
     if !fixture.sources.cue_fields.is_empty() {
         let cue_body: String = fixture
             .sources
@@ -184,9 +156,7 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
         fs::write(folder.join("fixture.cue"), cue_body).unwrap();
     }
 
-    // Text files: each entry becomes a `.txt` under the release folder.
-    // File name is derived from the last component of the declared path so
-    // tests can distinguish between multiple text files.
+    // Each text file becomes a `.txt` named after its declared path.
     for (idx, tf) in fixture.sources.text_files.iter().enumerate() {
         let basename = Path::new(&tf.path)
             .file_name()
@@ -200,9 +170,7 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
         fs::write(folder.join(&name), tf.lines.join("\n")).unwrap();
     }
 
-    // Artwork: materialize each declared path as an empty JPEG in the
-    // release folder. The stub analyzer is keyed by the materialized path,
-    // so the file's content doesn't matter — the OCR map carries the lines.
+    // Each artwork file is a stub JPEG; the OCR map carries its lines.
     let mut ocr_map: HashMap<PathBuf, Vec<String>> = HashMap::new();
     for art in &fixture.sources.artwork {
         let basename = Path::new(&art.path)
@@ -211,9 +179,7 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
             .unwrap_or_else(|| "Cover.jpg".to_string());
         let materialized = folder.join(&basename);
         fs::write(&materialized, minimal_jpeg()).unwrap();
-        // Use the canonicalized path because the folder scanner resolves
-        // symlinks / `.`/`..` while enumerating, and the analyzer receives
-        // the canonical form.
+        // The analyzer receives the canonical path.
         let canonical = materialized.canonicalize().unwrap_or(materialized.clone());
         ocr_map.insert(canonical, art.lines.clone());
     }
@@ -222,10 +188,7 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
     (canonical_folder, ocr_map)
 }
 
-/// Build a throwaway `LibraryManager` over a temp dir. The fixture's
-/// folder-extraction path doesn't read from the library, but
-/// `ExtractionService::start` requires one. The returned `TempDir` must
-/// outlive the manager.
+/// A throwaway `LibraryManager` over a temp dir, which must outlive it.
 async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) {
     let tmp = TempDir::new().expect("library temp dir");
     let (manager, _db) = support::open_test_library(tmp.path()).await;
@@ -272,9 +235,7 @@ async fn drive_fixture(
         bae_core::config::IdentificationSteps::default(),
     );
 
-    // Pull snapshots until the text signal settles. The fixture pipeline is
-    // synchronous under the hood — everything finishes in well under a
-    // second — so a 10s ceiling is just a safety net.
+    // Pull snapshots until the text signal settles.
     let deadline = Duration::from_secs(10);
     loop {
         let event = tokio::time::timeout(deadline, rx.recv())
@@ -284,15 +245,7 @@ async fn drive_fixture(
 
         if let ImportEvent::SignalsUpdated { signals, .. } = event {
             if let TextSignal::Settled { free_text, .. } = &signals.text {
-                // Catalogs carry their origin now; the fixtures assert on the
-                // values, so project to the value strings.
-                let catalog_values = signals
-                    .text
-                    .catalogs()
-                    .iter()
-                    .map(|c| c.value.clone())
-                    .collect();
-                return (catalog_values, free_text.clone());
+                return (signals.text.catalogs().to_vec(), free_text.clone());
             }
         }
     }

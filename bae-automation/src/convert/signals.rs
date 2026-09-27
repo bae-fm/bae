@@ -1,6 +1,6 @@
-//! What extraction read off a candidate — each signal, where each value was
-//! read, and what the files say about the medium the audio was ripped from —
-//! mirrored into the JSON shapes an MCP client reads.
+//! What extraction read off a candidate — each signal, and what the files say
+//! about the medium the audio was ripped from — mirrored into the JSON shapes
+//! an MCP client reads.
 
 use super::*;
 
@@ -17,59 +17,26 @@ mirror_enum! {
     },
 }
 
-mirror_enum! {
+impl AutomationBarcodeSignal {
+    /// Not a copy: core keeps a code once per file it was read off, and this
+    /// lists each code once.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationTextOrigin = bae_core::signals::TextOrigin,
-    from_core: pub(crate) fn,
-    variants: { CueSheet, Artwork, FolderName, Filename, TextFile },
-}
-
-mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationSignalOrigin = bae_core::signals::SignalOrigin,
-    from_core: pub(crate) fn,
-    variants: { Text(origin: (AutomationTextOrigin)), ArtworkBarcode },
-}
-
-mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationToolbarOrigin = bae_core::identify::ToolbarOrigin,
-    from_core: pub(crate) fn,
-    variants: { DiscToc, Value(origin: (AutomationSignalOrigin)) },
-}
-
-mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationImageRegion = bae_core::signals::ImageRegion,
-    from_core: pub(crate) fn,
-    fields: { x, y, width, height },
-}
-
-mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationSourcedValue = bae_core::signals::SourcedValue,
-    from_core: pub(crate) fn,
-    fields: {
-        value,
-        origin: (AutomationSignalOrigin),
-        origin_path,
-        region: (opt AutomationImageRegion),
-    },
-}
-
-mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationBarcodeSignal = bae_core::signals::BarcodeSignal,
-    from_core: pub(crate) fn,
-    variants: {
-        Scanning { codes: (each AutomationSourcedValue) },
-        Settled { codes: (each AutomationSourcedValue) },
-        Failed {
-            failure: (AutomationLookupFailure),
-            codes: (each AutomationSourcedValue),
-        },
-        Absent,
-    },
+    pub(crate) fn from_core(signal: bae_core::signals::BarcodeSignal) -> Self {
+        use bae_core::signals::{BarcodeSignal, SourcedValue};
+        match signal {
+            BarcodeSignal::Scanning { codes } => Self::Scanning {
+                codes: SourcedValue::values(&codes),
+            },
+            BarcodeSignal::Settled { codes } => Self::Settled {
+                codes: SourcedValue::values(&codes),
+            },
+            BarcodeSignal::Failed { failure, codes } => Self::Failed {
+                failure: AutomationLookupFailure::from_core(failure),
+                codes: SourcedValue::values(&codes),
+            },
+            BarcodeSignal::Absent => Self::Absent,
+        }
+    }
 }
 
 mirror_enum! {
@@ -77,19 +44,14 @@ mirror_enum! {
     AutomationTextSignal = bae_core::signals::TextSignal,
     from_core: pub(crate) fn,
     variants: {
-        Scanning { catalogs: (each AutomationSourcedValue), free_text },
-        Settled { catalogs: (each AutomationSourcedValue), free_text },
-        Failed {
-            failure: (AutomationLookupFailure),
-            catalogs: (each AutomationSourcedValue),
-            free_text,
-        },
+        Scanning { catalogs, free_text },
+        Settled { catalogs, free_text },
+        Failed { failure: (AutomationLookupFailure), catalogs, free_text },
     },
 }
 
 impl AutomationDiscIdSignal {
-    /// Not a copy: core's `Computed` names the LOG or CUE the disc ID came
-    /// from, which the automation shape does not carry.
+    /// Not a copy: the file a computed disc ID came from does not cross.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn from_core(signal: bae_core::signals::DiscIdSignal) -> Self {
         use bae_core::signals::DiscIdSignal;
@@ -140,8 +102,7 @@ mirror_enum! {
 }
 
 impl AutomationSignals {
-    /// Not a copy: core's `durations` are what the Ready rule narrows with, not
-    /// a lookup input a client reads.
+    /// Not a copy: the mono flag, durations and text pool do not cross.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn from_core(signals: bae_core::signals::Signals) -> Self {
         Self {

@@ -33,14 +33,12 @@ pub use state::{
     BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyEvent, IdentifyState, LookupOutcome,
     LookupResults, LookupState, ProviderLookup, SearchProgress, TitleSearch, ValueLookup,
 };
-pub use toolbar::{
-    SignalKind, SignalOption, SignalState, ToolbarOrigin, ToolbarSignal, ToolbarValue,
-};
+pub use toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use view::{
-    BarcodeStepView, CatalogAgreementView, CatalogCandidateView, CatalogStepView, DiscIdFile,
-    DiscIdFileKind, DiscIdStepView, IdentifyRunView, IdentifyStateView, LookupView,
-    NarrowedOutView, ProviderCell, SearchStepView, SignalValueRow, ValueSource,
+    BarcodeStepView, CatalogAgreementView, CatalogCandidateView, CatalogStepView, DiscIdStepView,
+    IdentifyRunView, IdentifyStateView, LookupView, NarrowedOutView, ProviderCell, SearchStepView,
+    SignalValueRow,
 };
 
 use crate::db::{LibraryCheck, LibraryStatus};

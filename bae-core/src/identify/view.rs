@@ -17,7 +17,7 @@ use crate::db::LibraryStatus;
 use crate::import::release_group::{group_formed_rows, group_results, Judgements, ReleaseGroup};
 use crate::import::Catalog;
 use crate::pressing::ReleaseLabel;
-use crate::signals::{ArtworkScan, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin};
+use crate::signals::{ArtworkScan, DiscIdSignal, LookupFailure};
 use crate::util::text::squash;
 use std::collections::HashSet;
 
@@ -43,15 +43,6 @@ pub enum LookupView {
     },
 }
 
-/// One place a value was read.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ValueSource {
-    pub origin: SignalOrigin,
-    /// The candidate-relative path, where the origin is a file.
-    pub file: Option<String>,
-    pub region: Option<ImageRegion>,
-}
-
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ProviderCell {
     pub source: Catalog,
@@ -62,26 +53,11 @@ pub struct ProviderCell {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SignalValueRow {
     pub value: String,
-    /// Every place the value was read.
-    pub sources: Vec<ValueSource>,
     /// Whether the person left the value out; always false for a catalog
     /// number, which has a row only while looked up.
     pub excluded: bool,
     /// One per provider in the run, in the run's provider order.
     pub cells: Vec<ProviderCell>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum DiscIdFileKind {
-    Log,
-    Cue,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct DiscIdFile {
-    pub kind: DiscIdFileKind,
-    /// The candidate-relative path.
-    pub file: String,
 }
 
 /// The disc ID, read off a LOG or CUE and looked up on
@@ -93,13 +69,15 @@ pub enum DiscIdStepView {
     /// No LOG or CUE to read one off.
     Absent,
     /// The CUE lays out audio at a sample rate no CD has, so it was not read.
-    NotCdAudio { sample_rate_hz: u32 },
+    NotCdAudio {
+        sample_rate_hz: u32,
+    },
     /// A LOG or CUE was there and no disc ID could be derived from it.
-    ReadFailed { failure: LookupFailure },
+    ReadFailed {
+        failure: LookupFailure,
+    },
     Read {
         disc_id: String,
-        /// `None` for a release re-identified from its stored tracks.
-        source: Option<DiscIdFile>,
         lookup: LookupView,
     },
 }
@@ -129,7 +107,6 @@ pub enum BarcodeStepView {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CatalogCandidateView {
     pub value: String,
-    pub sources: Vec<ValueSource>,
 }
 
 /// A catalog number the candidate's text states about an offered release: a

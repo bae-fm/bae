@@ -200,47 +200,22 @@ mirror_struct! {
     fields: { source: (BridgeCatalog), lookup: (BridgeLookupState) },
 }
 
-impl BridgeSignalValueRow {
-    fn from_core(row: bae_core::identify::SignalValueRow) -> Self {
-        let bae_core::identify::SignalValueRow {
-            value,
-            // No surface shows where the value was read.
-            sources: _,
-            excluded,
-            cells,
-        } = row;
-        Self {
-            value,
-            excluded,
-            cells: cells
-                .into_iter()
-                .map(BridgeProviderCell::from_core)
-                .collect(),
-        }
-    }
+mirror_struct! {
+    BridgeSignalValueRow = bae_core::identify::SignalValueRow,
+    from_core: fn,
+    fields: { value, excluded, cells: (each BridgeProviderCell) },
 }
 
-impl BridgeDiscIdStep {
-    // No surface shows the file a disc ID was read off.
-    fn from_core(step: bae_core::identify::DiscIdStepView) -> Self {
-        use bae_core::identify::DiscIdStepView;
-        match step {
-            DiscIdStepView::Reading => Self::Reading,
-            DiscIdStepView::Absent => Self::Absent,
-            DiscIdStepView::NotCdAudio { sample_rate_hz } => Self::NotCdAudio { sample_rate_hz },
-            DiscIdStepView::ReadFailed { failure } => Self::ReadFailed {
-                failure: BridgeLookupFailure::from_core(failure),
-            },
-            DiscIdStepView::Read {
-                disc_id,
-                source: _,
-                lookup,
-            } => Self::Read {
-                disc_id,
-                lookup: BridgeLookupState::from_core(lookup),
-            },
-        }
-    }
+mirror_enum! {
+    BridgeDiscIdStep = bae_core::identify::DiscIdStepView,
+    from_core: fn,
+    variants: {
+        Reading,
+        Absent,
+        NotCdAudio { sample_rate_hz },
+        ReadFailed { failure: (BridgeLookupFailure) },
+        Read { disc_id, lookup: (BridgeLookupState) },
+    },
 }
 
 mirror_enum! {
@@ -255,15 +230,10 @@ mirror_enum! {
     },
 }
 
-impl BridgeCatalogCandidate {
-    fn from_core(candidate: bae_core::identify::CatalogCandidateView) -> Self {
-        let bae_core::identify::CatalogCandidateView {
-            value,
-            // No surface shows where the number was read.
-            sources: _,
-        } = candidate;
-        Self { value }
-    }
+mirror_struct! {
+    BridgeCatalogCandidate = bae_core::identify::CatalogCandidateView,
+    from_core: fn,
+    fields: { value },
 }
 
 mirror_enum! {
@@ -393,61 +363,29 @@ impl BridgePressing {
 }
 
 mirror_enum! {
-    BridgeDiscIdSignal = bae_core::signals::DiscIdSignal,
-    from_core: fn,
-    variants: {
-        Computed { disc_id, track_count, source_file },
-        Absent { track_count },
-        NotCdAudio { track_count, sample_rate_hz },
-        Failed { failure: (BridgeLookupFailure), track_count },
-    },
-}
-
-mirror_enum! {
-    BridgeBarcodeSignal = bae_core::signals::BarcodeSignal,
-    from_core: fn,
-    variants: {
-        Scanning { codes: (each BridgeSourcedValue) },
-        Settled { codes: (each BridgeSourcedValue) },
-        Failed {
-            failure: (BridgeLookupFailure),
-            codes: (each BridgeSourcedValue),
-        },
-        Absent,
-    },
-}
-
-mirror_enum! {
     BridgeTextSignal = bae_core::signals::TextSignal,
     from_core: fn,
     variants: {
-        Scanning { catalogs: (each BridgeSourcedValue), free_text },
-        Settled { catalogs: (each BridgeSourcedValue), free_text },
-        Failed {
-            failure: (BridgeLookupFailure),
-            catalogs: (each BridgeSourcedValue),
-            free_text,
-        },
+        Scanning { catalogs, free_text },
+        Settled { catalogs, free_text },
+        Failed { failure: (BridgeLookupFailure), catalogs, free_text },
     },
 }
 
-/// Not a `mirror_struct`: the rip evidence, the mono flag, the durations and
-/// the text lines stay in core, which already shows what it concluded from
-/// them.
+/// Not a `mirror_struct`: only the text pools cross; what a surface needs from
+/// the rest reaches it through the run's ledger and the file evidence.
 impl BridgeSignals {
     pub(crate) fn from_core(s: bae_core::signals::Signals) -> Self {
         let bae_core::signals::Signals {
             rip: _,
             mono_audio: _,
-            disc_id,
-            barcode,
+            disc_id: _,
+            barcode: _,
             text,
             text_pool: _,
             durations: _,
         } = s;
         BridgeSignals {
-            disc_id: BridgeDiscIdSignal::from_core(disc_id),
-            barcode: BridgeBarcodeSignal::from_core(barcode),
             text: BridgeTextSignal::from_core(text),
         }
     }
@@ -623,7 +561,7 @@ mod tests {
         ProviderLookup, ValueLookup,
     };
     use bae_core::import::Catalog;
-    use bae_core::signals::{DiscIdSignal, LookupFailure, SourcedValue, TextOrigin};
+    use bae_core::signals::{DiscIdSignal, LookupFailure, SourcedValue};
 
     fn in_flight(barcode: BarcodeProgress) -> IdentifyState {
         IdentifyState::Triangulating {
@@ -644,7 +582,6 @@ mod tests {
                 barcode: BarcodeEvidence {
                     codes: vec![SourcedValue::in_file(
                         "0123456789012".to_string(),
-                        TextOrigin::Artwork,
                         "back.jpg".to_string(),
                     )],
                     had_source: true,

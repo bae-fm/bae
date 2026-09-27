@@ -7,22 +7,9 @@ import os.log
 private let logger = Logger.bae("VisionArtworkAnalyzer")
 
 /// Implements the core `ArtworkAnalyzerCallback` with Apple Vision: one
-/// `analyze` pass decodes the image once, prepares it for reading (below), and
-/// runs `VNDetectBarcodesRequest` (identify's barcode signal) and
-/// `VNRecognizeTextRequest` (the text signal) against it in a single
-/// `perform`. Synchronous — `perform` blocks until the completion handlers
-/// fire.
-///
-/// Every payload and line crosses with the box Vision drew around it, as
-/// fractions of the image, so a surface can show the printed value itself
-/// rather than the whole scan. The preparation below changes the image's
-/// pixel size only, so those fractions point at the same place on the stored
-/// file.
-///
-/// Rust calls this from `tokio::task::spawn_blocking`, so a slow Vision
-/// pass won't park the async runtime and never touches Swift's cooperative
-/// pool. No caching layer here: the extraction service makes one call per
-/// image and re-runs are rare.
+/// `analyze` pass decodes and prepares the image once, then runs barcode
+/// detection and text recognition against it in a single synchronous
+/// `perform`. Rust calls it from `spawn_blocking`, one call per image.
 final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
     /// An image whose long side is under this many pixels is enlarged to it
     /// before Vision reads it. A sweep of one Vision pass per setting over a
@@ -52,7 +39,7 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
             return BridgeArtworkAnalysis(barcodes: [], textLines: [])
         }
 
-        var barcodes: [BridgeDetectedBarcode] = []
+        var barcodes: [String] = []
         let barcodeRequest = VNDetectBarcodesRequest { request, _ in
             let observations =
                 (request.results as? [VNBarcodeObservation]) ?? []
@@ -63,7 +50,7 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
         // appear on music retail packaging and just add noise.
         barcodeRequest.symbologies = [.ean8, .ean13, .upce]
 
-        var textLines: [BridgeRecognizedLine] = []
+        var textLines: [String] = []
         let textRequest = VNRecognizeTextRequest { request, _ in
             let observations =
                 (request.results as? [VNRecognizedTextObservation]) ?? []
@@ -76,10 +63,7 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
                 guard trimmed.count >= 3, trimmed.count <= 80 else {
                     return nil
                 }
-                return BridgeRecognizedLine(
-                    text: trimmed,
-                    region: Self.region(of: observation.boundingBox)
-                )
+                return trimmed
             }
         }
         textRequest.recognitionLevel = .accurate
@@ -109,35 +93,11 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
         return BridgeArtworkAnalysis(barcodes: barcodes, textLines: textLines)
     }
 
-    /// Each payload once, at the box it was first seen in, in payload order
-    /// so two passes over one image read the same.
+    /// Each payload once, sorted, so two passes over one image read the same.
     private static func detectedBarcodes(
         _ observations: [VNBarcodeObservation]
-    ) -> [BridgeDetectedBarcode] {
-        var seen: Set<String> = []
-        return
-            observations
-            .compactMap { observation -> BridgeDetectedBarcode? in
-                guard let payload = observation.payloadStringValue,
-                    seen.insert(payload).inserted
-                else { return nil }
-                return BridgeDetectedBarcode(
-                    payload: payload,
-                    region: region(of: observation.boundingBox)
-                )
-            }
-            .sorted { $0.payload < $1.payload }
-    }
-
-    /// Vision's box, whose origin is the image's bottom-left corner, as core
-    /// takes it: fractions of the image from its top-left corner.
-    private static func region(of box: CGRect) -> BridgeImageRegion {
-        BridgeImageRegion(
-            x: Float(box.minX),
-            y: Float(1 - box.maxY),
-            width: Float(box.width),
-            height: Float(box.height)
-        )
+    ) -> [String] {
+        Set(observations.compactMap(\.payloadStringValue)).sorted()
     }
 
     /// The stored image as ImageIO decodes it, with the orientation its

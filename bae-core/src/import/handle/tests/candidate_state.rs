@@ -4,8 +4,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
 
-    // Local delayed OCR stub: counts `analyze` calls so the test can assert the
-    // pass stopped early, and sleeps each call so a cancel lands mid-pass.
+    // Counts calls and sleeps each one, so a cancel lands mid-pass.
     struct DelayedAnalyzer {
         calls: AtomicUsize,
         delay: Duration,
@@ -14,12 +13,14 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
             self.calls.fetch_add(1, Ordering::SeqCst);
             std::thread::sleep(self.delay);
-            ArtworkAnalysis::of_text(vec!["Line".to_string()])
+            ArtworkAnalysis {
+                barcodes: Vec::new(),
+                text_lines: vec!["Line".to_string()],
+            }
         }
     }
 
-    // On-disk release: one probeable FLAC and three
-    // JPEGs for the OCR pass to iterate.
+    // One FLAC and three JPEGs for the OCR pass.
     fn fixture_flac() -> Vec<u8> {
         std::fs::read(concat!(
             env!("CARGO_MANIFEST_DIR"),
@@ -57,8 +58,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         .await
         .unwrap();
 
-    // Wait for the scan to surface the release as a candidate. Take the key
-    // from the emitted candidate's path (robust to path canonicalization).
+    // Take the key from the scanned candidate's path, however it is canonicalized.
     let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
     let candidate_path = loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
@@ -92,10 +92,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         .expect("the candidate reads back")
         .expect("the accepted list holds the candidate");
 
-    // Extraction alone, without the run it normally feeds: this is about what
-    // a removed folder does to the OCR in flight, and a run would ask the
-    // providers. Reached through the owner's own field, which its tests are
-    // inside of.
+    // Extraction alone, without a run that would ask the providers.
     import_handle.extraction.start(
         import_handle.new_identification_run(),
         key.clone(),
@@ -146,7 +143,7 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
         .await
         .unwrap();
     // A row under `Collection`, so the decision the removal races is one the
-    // list really offers: a header over rows can be read as one release.
+    // list offers.
     let folder = root.join("Collection").join("Album");
     let generation = manager
         .begin_folder_scan(&root.to_string_lossy())
@@ -196,9 +193,8 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     .await
     .expect("queued decision and removal deadlocked");
 
-    // The decision either reads a folder that is not there or hears the
-    // root is being removed, depending on which the coordinator reaches
-    // first; what matters is that it is answered, and that it is no success.
+    // Whichever the coordinator reaches first, the decision is answered, and
+    // not with success.
     assert!(decision.unwrap().is_err());
     removal.unwrap();
     tokio::task::spawn_blocking(move || handle.stop_and_join())

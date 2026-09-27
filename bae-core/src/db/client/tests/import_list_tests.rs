@@ -422,10 +422,6 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         providers: vec![Catalog::MusicBrainz],
         disc_id: crate::identify::DiscIdStepView::Read {
             disc_id: "disc-1".to_string(),
-            source: Some(crate::identify::DiscIdFile {
-                kind: crate::identify::DiscIdFileKind::Log,
-                file: "rip/Album.LOG".to_string(),
-            }),
             lookup: crate::identify::LookupView::Found {
                 count: 1,
                 groups: crate::import::release_group::group_results(
@@ -456,22 +452,10 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
     };
     assert_eq!(run, ledger);
     assert_eq!(run.providers, vec![Catalog::MusicBrainz]);
-    let crate::identify::DiscIdStepView::Read {
-        disc_id,
-        source,
-        lookup,
-    } = run.disc_id
-    else {
+    let crate::identify::DiscIdStepView::Read { disc_id, lookup } = run.disc_id else {
         panic!("the disc ID the run read");
     };
     assert_eq!(disc_id, "disc-1");
-    assert_eq!(
-        source,
-        Some(crate::identify::DiscIdFile {
-            kind: crate::identify::DiscIdFileKind::Log,
-            file: "rip/Album.LOG".to_string(),
-        })
-    );
     assert!(matches!(
         lookup,
         crate::identify::LookupView::Found { count: 1, .. }

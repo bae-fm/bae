@@ -1,12 +1,6 @@
-//! Identification-queue tests.
-//!
-//! Every one of them drives the real pipeline — folder scan, extraction,
-//! identify reducer, the real MusicBrainz client — and fakes only the provider,
-//! at the wire. Each fixture's providers send MusicBrainz, Cover Art Archive and
-//! Discogs requests to its own local server, which answers the same URLs the
-//! live services do and counts what was asked for, so "did the queue re-fetch
-//! this?" is answered by request counts rather than by a stub the queue was
-//! handed. Nothing is shared between fixtures, so the tests run in parallel.
+//! Identification-queue tests. Each drives the real pipeline and fakes only
+//! the providers, at the wire: a local server per fixture answers the live
+//! services' URLs and counts what was asked for.
 
 use super::*;
 use crate::config::{Config, ConfigHandle};
@@ -17,7 +11,7 @@ use crate::identify::ready::{classify, FolderCheck, QueueClassification};
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::{FolderCandidate, ImportCandidateSnapshot};
 use crate::library::LibraryManager;
-use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, DetectedBarcode};
+use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -26,20 +20,13 @@ use std::sync::{Arc, Barrier, Mutex, OnceLock};
 use std::time::Duration;
 use tempfile::TempDir;
 
-/// Settled signals carrying `durations` and nothing found — what a verdict a
-/// test seeds stores beside itself.
-/// The disc ID `store_settled_verdict` seeds, and the candidate file it names
-/// — what the resumed pane's evidence points at.
+/// The disc ID `store_settled_verdict` seeds, and the file it names.
 const SEEDED_DISC_ID: &str = "XwqRcz4RhAqRTfhE5nRxRKF4iFY-";
 const SEEDED_DISC_ID_FILE: &str = "Album.log";
 const FIXTURE_DISC_ID: &str = "ayQ_jFizitCdB_btUSn6qV6ENaI-";
 
-/// The modification time every copied fixture file carries. A candidate's
-/// content hash covers each file's modification time, and two folders built
-/// from the same fixtures are the same candidate only when their copies agree
-/// on it. `std::fs::copy` keeps the source's time on macOS and stamps the
-/// current time on Linux, so the fixture sets it rather than inheriting
-/// whichever the platform gives.
+/// The modification time every copied fixture file carries, since the content
+/// hash covers it and `std::fs::copy` keeps it on macOS but not on Linux.
 fn fixture_modified_at() -> std::time::SystemTime {
     // 2020-01-01T00:00:00Z.
     std::time::UNIX_EPOCH + Duration::from_secs(1_577_836_800)
@@ -57,6 +44,7 @@ fn copy_fixture(source: &Path, target: &Path) {
         .unwrap();
 }
 
+/// Settled signals carrying `durations` and nothing found.
 fn settled_signals(durations: crate::import::probe::SourceDurations) -> Signals {
     Signals {
         rip: crate::signals::RipEvidence::Unproven,
@@ -74,10 +62,9 @@ fn settled_signals(durations: crate::import::probe::SourceDurations) -> Signals 
 
 // ── The fake provider ───────────────────────────────────────────────────────
 
-/// A local HTTP server standing in for MusicBrainz. Routes are matched by
-/// substring against the request target in the order they were added, so
-/// `"/discid/"` catches any disc ID and `"/release/mb-1?"` catches one release
-/// lookup. Every request is recorded, whether or not it matched.
+/// A local HTTP server standing in for the providers. Routes match by
+/// substring of the request target, in the order added; every request is
+/// recorded.
 struct FakeProvider {
     base_url: String,
     state: Arc<Mutex<FakeState>>,
@@ -87,9 +74,8 @@ struct FakeProvider {
 struct FakeState {
     routes: Vec<(String, u16, String)>,
     requests: Vec<String>,
-    /// While set, a request whose target contains the needle records itself
-    /// and then waits here, so a test acts on a lookup that is genuinely in
-    /// flight.
+    /// While set, a request containing the needle waits here after recording
+    /// itself.
     gate: Option<(String, Arc<tokio::sync::Semaphore>)>,
 }
 
@@ -113,9 +99,8 @@ impl FakeProvider {
         FakeProvider { base_url, state }
     }
 
-    /// Answer any request whose target contains `needle` with `status` + `body`.
-    /// A later route never shadows an earlier one, so a test can add a specific
-    /// route first and a catch-all after it.
+    /// Answer any request containing `needle` with `status` and `body`; an
+    /// earlier route wins over a later one.
     fn route(&self, needle: &str, status: u16, body: impl Into<String>) {
         self.state
             .lock()
@@ -134,9 +119,7 @@ impl FakeProvider {
     }
 
     /// Leave every request matching `needle` unanswered until
-    /// [`Self::release`], so a test can act on a lookup that is in flight. A
-    /// rendezvous rather than a delay: what the test does next never has to
-    /// beat a clock, which is the whole class of flake a loaded machine finds.
+    /// [`Self::release`], so a test can act on a lookup in flight.
     fn hold(&self, needle: &str) {
         self.state.lock().unwrap().gate =
             Some((needle.to_string(), Arc::new(tokio::sync::Semaphore::new(0))));
@@ -161,12 +144,8 @@ impl FakeProvider {
     }
 }
 
-/// The id of the next run of `key` whose broadcast state `accept` answers.
-///
-/// The rendezvous a restart needs: a run ends at its own verdict, so a test
-/// that releases a held lookup before the replacement run exists is racing the
-/// run it means to supersede. Waiting for the replacement's first state is
-/// waiting for the cancel that `IdentifyServiceHandle::start` does first.
+/// The id of the next run of `key` whose broadcast state `accept` answers —
+/// what a test waits on so a replacement run exists before it acts.
 async fn await_run_state(
     events: &mut tokio::sync::broadcast::Receiver<ImportEvent>,
     key: &str,
@@ -214,13 +193,11 @@ include!("tests/provider.rs");
 
 // ── The fixture ─────────────────────────────────────────────────────────────
 
-/// Where the candidate audio comes from. The two FLACs are real files with real
-/// durations, so the probe in the fast pass has something to measure.
+/// The candidate audio: two real FLACs, so the fast pass has durations to
+/// measure.
 const FLAC_FIXTURES: [&str; 2] = ["01 Test Track 1.flac", "02 Test Track 2.flac"];
 
-/// A barcode-only analyzer: the folder gets a barcode signal without a LOG or
-/// CUE, so the disc-ID pipe is skipped and identification goes through the
-/// search endpoint — the path that carries no lengths.
+/// Reads one barcode off every image, for a folder with no LOG or CUE.
 struct BarcodeAnalyzer {
     barcode: String,
 }
@@ -228,18 +205,14 @@ struct BarcodeAnalyzer {
 impl ArtworkAnalyzer for BarcodeAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
         ArtworkAnalysis {
-            barcodes: vec![DetectedBarcode {
-                payload: self.barcode.clone(),
-                region: None,
-            }],
+            barcodes: vec![self.barcode.clone()],
             text_lines: Vec::new(),
         }
     }
 }
 
-/// A different barcode per candidate folder, so a flood of candidates is a
-/// flood of distinct lookups. Candidates that ask the same question of the
-/// provider are answered once from the response cache and queue nothing.
+/// A different barcode per numbered candidate folder, so each asks its own
+/// lookup rather than hitting the response cache.
 struct PerFolderBarcodeAnalyzer;
 
 impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
@@ -252,17 +225,16 @@ impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
         let digits: String = folder.chars().filter(|c| c.is_ascii_digit()).collect();
         let ordinal: u32 = digits.parse().expect("a numbered candidate folder");
         ArtworkAnalysis {
-            barcodes: vec![DetectedBarcode {
-                payload: crate::barcode::with_check_digit(&format!("01234567{ordinal:04}")),
-                region: None,
-            }],
+            barcodes: vec![crate::barcode::with_check_digit(&format!(
+                "01234567{ordinal:04}"
+            ))],
             text_lines: Vec::new(),
         }
     }
 }
 
-/// An OCR stub held between entry and completion, so a test can act while a
-/// candidate is genuinely mid-extraction without depending on scheduling.
+/// An analyzer held between entry and completion, so a test can act
+/// mid-extraction.
 struct GatedAnalyzer {
     started: Arc<Barrier>,
     release: Arc<Barrier>,
@@ -303,8 +275,7 @@ struct Fixture {
     _temp: TempDir,
 }
 
-/// The fixed instant every stored row is stamped with. A deterministic clock
-/// rather than wall time, so `identified_at` is an assertable value.
+/// The fixed instant every stored row is stamped with.
 fn fixed_now() -> chrono::DateTime<chrono::Utc> {
     chrono::DateTime::parse_from_rfc3339("2024-03-01T12:00:00Z")
         .unwrap()
@@ -316,8 +287,7 @@ impl Fixture {
         Self::with_ids(name, Arc::new(coven::SequentialIdProvider::new(name))).await
     }
 
-    /// A fixture minting canonical ids, for a test whose import has to land:
-    /// the release rows an import writes refuse any other id.
+    /// A fixture minting canonical ids, which an import's release rows need.
     async fn importing(name: &str) -> Self {
         Self::with_ids(name, Arc::new(coven::UuidProvider)).await
     }
@@ -345,15 +315,13 @@ impl Fixture {
         );
         crate::config::install_test_keyring();
         let provider = FakeProvider::start().await;
-        // Discogs goes to the fake whether or not this test enables it, so no
-        // fixture can spend its fake key on the real API.
+        // Discogs goes to the fake too, so no test reaches the real API.
         let http = crate::util::http::Http::for_test()
             .serve("musicbrainz.org", &provider.base_url)
             .serve("coverartarchive.org", &provider.base_url)
             .serve("api.discogs.com", &provider.base_url);
-        // No Discogs key is seeded, so Discogs operations are unavailable and a
-        // lookup asks MusicBrainz alone. A test about a pressing both sources
-        // carry seeds one with `use_discogs`.
+        // No Discogs key, so lookups ask MusicBrainz alone unless a test calls
+        // `use_discogs`.
         let manager = LibraryManager::new(
             database,
             crate::config::AppDir::under_home(temp.path()),
@@ -363,8 +331,8 @@ impl Fixture {
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
             crate::import::cover_art::RemoteImageCache::for_test(http.clone()),
-            // The production request spacing: the queue's admission order is
-            // part of what these tests measure.
+            // Production request spacing: admission order is part of what these
+            // tests measure.
             crate::providers::Providers::new(http),
         );
 
@@ -398,8 +366,7 @@ impl Fixture {
             .get_or_init(|| super::start(self.import.clone(), self.manager.clone()))
     }
 
-    /// A candidate folder with two real FLACs, and a rip log so the disc ID
-    /// computes — the free path.
+    /// A candidate folder with two FLACs and a rip log, so the disc ID computes.
     fn disc_id_candidate(&self, folder: &str) -> PathBuf {
         let dir = self.candidate_dir(folder);
         copy_fixture(
@@ -409,9 +376,8 @@ impl Fixture {
         dir
     }
 
-    /// A candidate folder with two real FLACs and one image, and no LOG or CUE:
-    /// no disc ID, so identification runs through the artwork barcode and the
-    /// search endpoint.
+    /// A candidate folder with two FLACs and one image and no LOG or CUE, so
+    /// identification runs through the artwork barcode.
     fn barcode_candidate(&self, folder: &str) -> PathBuf {
         let dir = self.candidate_dir(folder);
         std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
@@ -430,8 +396,8 @@ impl Fixture {
         dir
     }
 
-    /// What every fixture FLAC in `dir` plays for, as the fast pass measures
-    /// it — the durations a stored verdict carries.
+    /// The durations of the fixture FLACs in `dir`, as the fast pass measures
+    /// them.
     fn probed_durations(&self, dir: &Path) -> crate::import::probe::SourceDurations {
         crate::import::probe::SourceDurations::new(
             FLAC_FIXTURES
@@ -464,8 +430,7 @@ impl Fixture {
             .sum()
     }
 
-    /// Copy the whole cue_flac fixture — the sheet, its container, and the two
-    /// loose reference tracks — into `<root>/<name>`, and return that folder.
+    /// Copy the whole cue_flac fixture into `<root>/<name>` and return it.
     fn seed_cue_album(&self, name: &str) -> PathBuf {
         let dir = self.root.join(name);
         std::fs::create_dir_all(&dir).unwrap();
@@ -536,16 +501,13 @@ impl Fixture {
         .expect("the scan finishes");
     }
 
-    /// Ask to identify `dir`, through the one entry point a person's request
-    /// reaches.
+    /// Ask to identify `dir`, as a person does.
     fn start_explicit_lookup(&self, dir: &Path) {
         self.identification()
             .rerun_identify(dir.to_string_lossy().into_owned());
     }
 
-    /// Open `dir` and wait until identify has registered the driver for it.
-    /// Registration happens on a spawned task, so a caller that needs the run
-    /// to exist before it acts waits for it rather than guessing a delay.
+    /// Ask to identify `dir` and wait until its run is registered.
     async fn start_explicit_lookup_and_await_run(&self, dir: &Path) {
         let key = dir.to_string_lossy().into_owned();
         self.start_explicit_lookup(dir);
@@ -558,11 +520,8 @@ impl Fixture {
         .expect("identify registers the driver for the opened candidate");
     }
 
-    /// Wait for identification to write an answer for `dir`, polling because
-    /// the writer is a detached task rather than something the caller awaits.
-    /// The candidate's row once a run has stored its verdict. Bounded: a run
-    /// that never stores is the failure, and a wait with no end hides it
-    /// behind the harness's silence until someone kills the job.
+    /// The candidate's row once a run has stored its verdict, waited for with
+    /// a bound.
     async fn await_identified_row(&self, dir: &Path) -> DbImportCandidateState {
         tokio::time::timeout(Duration::from_secs(30), async {
             loop {
@@ -610,8 +569,7 @@ impl Fixture {
         tokio::spawn(async move { identification.automatic_drained_for_test().await })
     }
 
-    /// Whether the queue holds `key` — what the runtime says about it, which is
-    /// the queue's published state and the only thing outside it can read.
+    /// Where the queue has `key`, as the runtime publishes it.
     fn identification_status(&self, key: &str) -> Option<crate::import::IdentificationStatus> {
         crate::import::TriageRuntimeFacts::of(&self.import.candidate_runtime(key)?).identification
     }
@@ -625,8 +583,7 @@ impl Fixture {
             .collect()
     }
 
-    /// A candidate folder's content hash, read off disk. Take it before a test
-    /// removes the folder — there is nothing to hash afterwards.
+    /// A candidate folder's content hash, read off disk.
     fn content_hash(&self, dir: &Path) -> String {
         crate::import::folder_scanner::collect_release_candidate_files_with_scope(
             dir,
@@ -685,9 +642,7 @@ impl Fixture {
             .unwrap()
     }
 
-    /// Configure the fake Discogs key, so lookups ask both providers rather
-    /// than MusicBrainz alone. The client is already pointed at this fixture's
-    /// fake provider.
+    /// Store a fake Discogs key, so lookups ask both providers.
     async fn use_discogs(&self) {
         self.manager
             .set_discogs_key(
@@ -698,8 +653,7 @@ impl Fixture {
             .expect("the fake Discogs key is stored");
     }
 
-    /// Store a release directly, as a settle step would have — for a test that
-    /// needs it present without anything having fetched it.
+    /// Store a release directly, as a settle step would have.
     async fn archive(&self, release_id: &str, group_id: &str, track_lengths: &[u64]) {
         self.manager
             .save_source_release(&stored_pressing(release_id, group_id, track_lengths))
@@ -707,9 +661,7 @@ impl Fixture {
             .unwrap();
     }
 
-    /// Store a release as a fetch whose request for the release's group
-    /// failed would have: the pressing's own facts, and the group named as
-    /// missing.
+    /// Store a release whose group failed to fetch.
     async fn archive_missing_its_group(
         &self,
         release_id: &str,
@@ -728,7 +680,6 @@ impl Fixture {
     }
 
     /// Store the verdict a settled lead produces, without running the pipeline.
-    /// The lead lists as many tracks as the fixture folder holds.
     async fn store_settled_verdict(
         &self,
         dir: &Path,
@@ -859,9 +810,7 @@ impl Fixture {
                     file_edit_revision: 0,
                     folder_path: dir.to_string_lossy().into_owned(),
                     verdict,
-                    // A computed disc ID that names the log it came from, so
-                    // what reads this row back has a file to put the evidence
-                    // chip on.
+                    // A disc ID naming its log, for the evidence chip.
                     signals: Signals {
                         disc_id: DiscIdSignal::Computed {
                             disc_id: SEEDED_DISC_ID.to_string(),
@@ -894,8 +843,7 @@ impl Fixture {
         assert!(wrote, "the seeded verdict lands");
     }
 
-    /// The classification a sidebar would derive from a stored row — the stored
-    /// verdict, never a stored classification.
+    /// The classification derived from a stored row's verdict.
     async fn classification_for(&self, dir: &Path) -> QueueClassification {
         let row = self.stored_for(dir).await.expect("a row was stored");
         classify(&identify_result(&row).verdict)
@@ -923,9 +871,7 @@ enum SettledDraft {
     Untouched,
 }
 
-/// The identify half of a stored row, which every assertion here is about. A
-/// row identification wrote always has one; a row with none was written by the
-/// binding editor, which these tests never invoke.
+/// The identify half of a stored row, which every row identification wrote has.
 fn identify_result(row: &DbImportCandidateState) -> &crate::db::DbCandidateIdentifyResult {
     row.identify
         .as_ref()

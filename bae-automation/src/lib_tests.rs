@@ -13,16 +13,8 @@ fn every_tool_input_schema_has_root_object_type() {
     }
 }
 
-/// A candidate key is resolved before anything is fetched for it, so a key
-/// that names nothing fails as `not_found` instead of being answered.
-///
-/// This matters most on `import_release_prefetch`, which reads the claim
-/// line's evidence off the named candidate. Core reads a key it has
-/// recorded nothing against as "the pipeline hasn't run" — correct for a
-/// scanned candidate awaiting identification, and indistinguishable from a
-/// typo. Answered rather than refused, a typo returns a claim line that
-/// reads as if the release had been found by searching: a wrong answer
-/// that looks like a right one.
+/// A candidate key that names nothing fails as `not_found` before anything is
+/// fetched, so a typo never reads as a candidate awaiting identification.
 mod candidate_lookup {
     use super::import_queue::{automation_over, scan};
     use super::*;
@@ -57,9 +49,7 @@ mod candidate_lookup {
         );
     }
 
-    /// A candidate whose identify pipeline hasn't run still resolves: idle is a
-    /// state a caller may legitimately prefetch against, distinct from a key
-    /// that names nothing.
+    /// A candidate whose identification hasn't run still resolves.
     #[tokio::test]
     async fn a_candidate_with_no_identify_evidence_still_resolves() {
         let fixture = automation_over().await;
@@ -75,9 +65,8 @@ mod candidate_lookup {
     }
 }
 
-/// The MCP tool hands its edit over field-for-field — no editor, no shaping.
-/// The rule the desktop's Save button enforces has to reach this path too, so
-/// `release_metadata_update` can't write what the editor would refuse.
+/// `release_metadata_update` enforces the same rule as the desktop editor's
+/// Save, so it can't write what the editor would refuse.
 mod release_metadata_update_input {
     use super::*;
 
@@ -124,8 +113,7 @@ mod release_metadata_update_input {
         );
     }
 
-    /// An untrimmed title is normalized, not refused — the desktop editor
-    /// trims the same input rather than erroring on it.
+    /// An untrimmed title is trimmed, as the desktop editor does, not refused.
     #[test]
     fn an_untrimmed_album_title_normalizes() {
         let wire = edit("  Album Alpha  ", &["  Artist Alpha  "])
@@ -173,8 +161,7 @@ mod release_metadata_update_input {
         );
     }
 
-    /// A refused edit reaches the client as `validation` — input it can fix —
-    /// not as an opaque `import` failure.
+    /// A refused edit reaches the client as `validation`, not `import`.
     #[test]
     fn a_refused_edit_crosses_as_a_validation_error() {
         let error = AutomationError::from(LibraryError::Edit(
@@ -185,8 +172,7 @@ mod release_metadata_update_input {
     }
 }
 
-/// The storage fields were open-world strings; they are now closed enums. The
-/// JSON a client reads must not have moved.
+/// The storage state and actions serialize as snake_case strings.
 #[test]
 fn release_storage_state_and_actions_serialize_snake_case() {
     let summary = AutomationReleaseSummary::from_core(bae_core::album_detail::ReleaseSummary {
@@ -216,7 +202,7 @@ fn release_storage_state_and_actions_serialize_snake_case() {
         json["storage_actions"],
         serde_json::json!(["unpin", "make_local", "make_remote", "pin"]),
     );
-    // The in-flight transition the desktop shows and MCP used to lose.
+    // The in-flight transition the desktop shows.
     assert_eq!(json["transfer_action"], "make_local");
 }
 
@@ -278,17 +264,14 @@ mod identify_mirrors {
     use bae_core::identify::state::{DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState,
-        ProviderLookup, SignalKind, SignalState, ToolbarOrigin, ToolbarSignal, ToolbarValue,
-        ValueLookup,
+        ProviderLookup, SignalKind, SignalState, ToolbarSignal, ValueLookup,
     };
     use bae_core::import::search::MetadataResult;
     use bae_core::import::Catalog;
     use bae_core::signals::{
-        BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextOrigin, TextSignal,
+        BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextSignal,
     };
-    /// The mirrors render every populated field, so this fills the ones the
-    /// placeholder leaves empty. `source_tracks` stays unasked: these fixtures
-    /// exercise provenance and pressing alignment, not the Ready rule.
+    /// A result with every field the mirrors render filled in.
     fn metadata_result(release_id: &str, group_id: &str) -> MetadataResult {
         MetadataResult {
             title: "Album Title".to_string(),
@@ -396,9 +379,8 @@ mod identify_mirrors {
         by_release("library_statuses", "rel-2");
     }
 
-    /// Signals that share no result still settle as one `Found`; the releases
-    /// they each named land in their own group cards, and every row keeps its
-    /// badges saying what stands behind it.
+    /// Signals that share no result settle as one `Found`, each release on its
+    /// own card with its badges.
     #[test]
     fn disagreeing_signals_become_one_found_over_several_groups() {
         let state = IdentifyState::Found {
@@ -458,9 +440,8 @@ mod identify_mirrors {
         assert_eq!(json["track_count"], 9);
     }
 
-    /// A run in flight crosses as its ledger: one row per code, each with one
-    /// cell per provider — MusicBrainz still asking about the second code while
-    /// Discogs has already matched the first and found nothing for the second.
+    /// A run in flight crosses as its ledger: one row per code, one cell per
+    /// provider.
     #[test]
     fn triangulating_lists_each_code_with_one_cell_per_provider() {
         let state = IdentifyState::Triangulating {
@@ -518,16 +499,8 @@ mod identify_mirrors {
                 },
                 barcode: bae_core::identify::state::BarcodeEvidence {
                     codes: vec![
-                        SourcedValue::in_file(
-                            "0123456789012".to_string(),
-                            TextOrigin::Artwork,
-                            "back.jpg".to_string(),
-                        ),
-                        SourcedValue::in_file(
-                            "9999999999999".to_string(),
-                            TextOrigin::Artwork,
-                            "inlay.jpg".to_string(),
-                        ),
+                        SourcedValue::in_file("0123456789012".to_string(), "back.jpg".to_string()),
+                        SourcedValue::in_file("9999999999999".to_string(), "inlay.jpg".to_string()),
                     ],
                     had_source: true,
                     ..Default::default()
@@ -545,16 +518,11 @@ mod identify_mirrors {
         );
         assert_eq!(run["disc_id"]["kind"], "read");
         assert_eq!(run["disc_id"]["disc_id"], "disc-hash");
-        assert_eq!(run["disc_id"]["source"]["kind"], "log");
-        assert_eq!(run["disc_id"]["source"]["file"], "rip.log");
         assert_eq!(run["disc_id"]["lookup"]["kind"], "looking_up");
         assert_eq!(run["barcode"]["kind"], "rows");
         assert_eq!(run["barcode"]["scanning"], false);
         let rows = run["barcode"]["rows"].as_array().unwrap();
         assert_eq!(rows[0]["value"], "0123456789012");
-        assert_eq!(rows[0]["sources"][0]["origin"]["kind"], "text");
-        assert_eq!(rows[0]["sources"][0]["origin"]["origin"], "artwork");
-        assert_eq!(rows[0]["sources"][0]["file"], "back.jpg");
         assert_eq!(rows[0]["cells"][0]["source"], "music_brainz");
         assert_eq!(rows[0]["cells"][0]["lookup"]["kind"], "no_match");
         assert_eq!(rows[0]["cells"][1]["source"], "discogs");
@@ -584,10 +552,7 @@ mod identify_mirrors {
     fn toolbar_signal_maps_snake_case_and_structured_failure() {
         let signal = ToolbarSignal {
             kind: SignalKind::DiscId,
-            shown: Some(ToolbarValue {
-                value: "disc-hash".to_string(),
-                origin: ToolbarOrigin::DiscToc,
-            }),
+            shown: Some("disc-hash".to_string()),
             state: SignalState::Failed {
                 failure: LookupFailure::Provider { status: Some(503) },
             },
@@ -597,8 +562,7 @@ mod identify_mirrors {
 
         let json = serde_json::to_value(AutomationToolbarSignal::from_core(signal)).unwrap();
         assert_eq!(json["kind"], "disc_id");
-        assert_eq!(json["shown"]["value"], "disc-hash");
-        assert_eq!(json["shown"]["origin"]["kind"], "disc_toc");
+        assert_eq!(json["shown"], "disc-hash");
         assert_eq!(json["state"]["kind"], "failed");
         assert_eq!(json["state"]["failure"]["kind"], "provider");
         assert_eq!(json["state"]["failure"]["status"], 503);
@@ -617,18 +581,14 @@ mod identify_mirrors {
                 source_file: None,
             },
             barcode: BarcodeSignal::Settled {
-                codes: vec![SourcedValue::new(
-                    "0123456789012".to_string(),
-                    TextOrigin::Artwork,
-                )],
+                codes: vec![SourcedValue::new("0123456789012".to_string())],
             },
             text: TextSignal::Settled {
-                catalogs: vec![SourcedValue::new("CAT-1".to_string(), TextOrigin::CueSheet)],
+                catalogs: vec!["CAT-1".to_string()],
                 free_text: vec!["Album Title".to_string()],
             },
-            // A plausible total for the ten tracks above. Not zero, which
-            // would claim the audio could not be probed.
             text_pool: Vec::new(),
+            // Not zero, which would claim the audio could not be probed.
             durations: bae_core::import::probe::SourceDurations::totalling(2_400_000),
             mono_audio: false,
         };
@@ -641,26 +601,19 @@ mod identify_mirrors {
         assert_eq!(json["disc_id"]["disc_id"], "disc-hash");
         assert_eq!(json["disc_id"]["track_count"], 10);
         assert_eq!(json["barcode"]["kind"], "settled");
-        assert_eq!(json["barcode"]["codes"][0]["value"], "0123456789012");
-        assert_eq!(json["barcode"]["codes"][0]["origin"]["origin"], "artwork");
+        assert_eq!(json["barcode"]["codes"][0], "0123456789012");
         assert_eq!(json["text"]["kind"], "settled");
-        assert_eq!(json["text"]["catalogs"][0]["value"], "CAT-1");
-        assert_eq!(json["text"]["catalogs"][0]["origin"]["origin"], "cue_sheet");
+        assert_eq!(json["text"]["catalogs"][0], "CAT-1");
         assert_eq!(json["text"]["free_text"][0], "Album Title");
     }
 }
-/// The automation surface reads the import tables by key on every call: there
-/// is no accumulated index behind it, so a key it has recorded nothing against
-/// is a key that names nothing, and every class of key that used to latch an
-/// index dead — candidates a boundary withdrew, `reidentify:` runs that name no
-/// candidate at all — is simply a read that finds no row.
+/// Every call reads the import tables by key, so a key with nothing recorded
+/// names nothing.
 #[path = "import_queue_tests.rs"]
 mod import_queue;
 
-/// The storage tool is the scripted equivalent of the Storage Manager's row
-/// menu, so what it accepts and what it refuses have to match that menu: the
-/// wire shapes a caller sends, and core's own answer about which transitions a
-/// release currently offers.
+/// The storage tool accepts and refuses what the Storage Manager's row menu
+/// does.
 mod release_storage_action {
     use super::*;
 
@@ -683,8 +636,7 @@ mod release_storage_action {
         from_value::<ReleaseStorageActionInput>(args).expect("the tool's own input shape")
     }
 
-    /// Every action a caller can ask for arrives as its Storage Manager name,
-    /// carrying whatever that transition needs — the pin choice, the folder.
+    /// Every action arrives under its Storage Manager name with what it needs.
     #[test]
     fn each_action_parses_from_its_wire_shape() {
         let moved = parse(serde_json::json!({
@@ -723,8 +675,8 @@ mod release_storage_action {
         }
     }
 
-    /// Moving to the cloud needs the pin choice and making local needs a folder;
-    /// neither has a default this tool is entitled to invent.
+    /// Moving to the cloud needs the pin choice and making local a folder; there
+    /// is no default for either.
     #[test]
     fn an_action_missing_what_it_needs_is_refused() {
         for args in [
@@ -743,8 +695,7 @@ mod release_storage_action {
         }
     }
 
-    /// The gate is core's list, not this tool's opinion: a transition core
-    /// offers runs, and one it doesn't is refused before any transfer starts.
+    /// A transition core doesn't offer is refused before any transfer starts.
     #[test]
     fn only_the_transitions_core_offers_are_run() {
         let pinnable = summary(vec![
@@ -765,8 +716,7 @@ mod release_storage_action {
         );
     }
 
-    /// A library with no cloud home offers no transitions at all. The refusal
-    /// says so rather than listing an empty set.
+    /// A library with no cloud home says so rather than listing no transitions.
     #[test]
     fn a_release_with_no_transitions_says_why() {
         let error = require_action(
@@ -782,8 +732,7 @@ mod release_storage_action {
         );
     }
 
-    /// A move to the cloud reports the durable revision its uploads were queued
-    /// at — the thing a caller waits on — not a bare acknowledgement.
+    /// A move to the cloud reports the revision its uploads were queued at.
     #[test]
     fn the_outcome_carries_what_the_transition_produced() {
         let json = serde_json::to_value(AutomationStorageActionOutcome::CloudUploadQueued {

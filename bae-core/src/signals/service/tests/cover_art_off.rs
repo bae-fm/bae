@@ -38,7 +38,7 @@ async fn a_run_that_leaves_the_cover_art_unread_reads_no_image() {
         signals.text
     );
     assert!(
-        signals.text.catalogs().iter().any(|c| c.value == "XX34b"),
+        signals.text.catalogs().iter().any(|c| c == "XX34b"),
         "the folder's own text is still read: {:?}",
         signals.text.catalogs()
     );

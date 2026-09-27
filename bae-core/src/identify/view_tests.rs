@@ -8,7 +8,7 @@ use crate::identify::{Findings, IdentifyFailure, LookupProvenance, NarrowedOut, 
 use crate::import::release_group::unranked;
 use crate::import::search::MetadataResult;
 use crate::import::Catalog;
-use crate::signals::{SourcedValue, TextOrigin};
+use crate::signals::SourcedValue;
 
 pub(super) const MB: Catalog = Catalog::MusicBrainz;
 const DG: Catalog = Catalog::Discogs;
@@ -29,7 +29,7 @@ fn context() -> SignalsContext {
             ..Default::default()
         },
         barcode: BarcodeEvidence {
-            codes: vec![SourcedValue::new("A".to_string(), TextOrigin::Artwork)],
+            codes: vec![SourcedValue::new("A".to_string())],
             had_source: true,
             ..Default::default()
         },
@@ -119,8 +119,8 @@ fn a_landed_provider_s_matches_show_before_the_other_answers() {
 fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
     let mut context = context();
     context.barcode.codes = vec![
-        SourcedValue::new("BOXSET".to_string(), TextOrigin::Artwork),
-        SourcedValue::new("DISC".to_string(), TextOrigin::CueSheet),
+        SourcedValue::new("BOXSET".to_string()),
+        SourcedValue::new("DISC".to_string()),
     ];
     context.barcode.excluded = vec!["BOXSET".to_string()];
     context.providers = vec![MB];
@@ -159,8 +159,8 @@ fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
 fn every_code_left_out_lists_them_all_unasked() {
     let mut context = context();
     context.barcode.codes = vec![
-        SourcedValue::new("BOXSET".to_string(), TextOrigin::Artwork),
-        SourcedValue::new("DISC".to_string(), TextOrigin::CueSheet),
+        SourcedValue::new("BOXSET".to_string()),
+        SourcedValue::new("DISC".to_string()),
     ];
     context.barcode.excluded = vec!["BOXSET".to_string(), "DISC".to_string()];
     let state = IdentifyState::Triangulating {
@@ -213,10 +213,6 @@ fn a_disc_id_nobody_looked_up_says_why() {
             step,
             DiscIdStepView::Read {
                 disc_id: "d".to_string(),
-                source: Some(DiscIdFile {
-                    kind: DiscIdFileKind::Log,
-                    file: "rip/Album.LOG".to_string(),
-                }),
                 lookup: LookupView::NotAsked { reason },
             }
         );
@@ -228,9 +224,9 @@ fn a_disc_id_nobody_looked_up_says_why() {
 fn each_code_fills_its_own_cells() {
     let mut context = context();
     context.barcode.codes = vec![
-        SourcedValue::new("A".to_string(), TextOrigin::Artwork),
-        SourcedValue::new("B".to_string(), TextOrigin::Artwork),
-        SourcedValue::new("C".to_string(), TextOrigin::Artwork),
+        SourcedValue::new("A".to_string()),
+        SourcedValue::new("B".to_string()),
+        SourcedValue::new("C".to_string()),
     ];
     let state = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped { track_count: 9 },
@@ -295,37 +291,21 @@ fn each_code_fills_its_own_cells() {
     );
 }
 
-/// The same code read off two files is one row with both places beside it.
+/// The same code read off two files is one row.
 #[test]
-fn a_code_seen_in_two_places_is_one_row_with_two_sources() {
+fn a_code_seen_in_two_places_is_one_row() {
     let mut context = context();
-    let region = ImageRegion::new(0.2, 0.7, 0.4, 0.1);
     context.barcode.codes = vec![
-        SourcedValue::in_file(
-            "A".to_string(),
-            TextOrigin::CueSheet,
-            "disc.cue".to_string(),
-        ),
-        SourcedValue::in_file("A".to_string(), TextOrigin::Artwork, "back.jpg".to_string())
-            .at(region),
+        SourcedValue::in_file("A".to_string(), "disc.cue".to_string()),
+        SourcedValue::in_file("A".to_string(), "back.jpg".to_string()),
     ];
     let run = run_of(in_flight(context));
     let rows = barcode_rows(&run);
-    assert_eq!(rows.len(), 1);
     assert_eq!(
-        rows[0].sources,
-        vec![
-            ValueSource {
-                origin: TextOrigin::CueSheet.into(),
-                file: Some("disc.cue".to_string()),
-                region: None,
-            },
-            ValueSource {
-                origin: TextOrigin::Artwork.into(),
-                file: Some("back.jpg".to_string()),
-                region,
-            },
-        ]
+        rows.iter()
+            .map(|row| row.value.as_str())
+            .collect::<Vec<_>>(),
+        vec!["A"]
     );
 }
 
@@ -367,18 +347,9 @@ fn codes_read_so_far_wait_while_the_artwork_is_still_being_read() {
 fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
     let mut context = context();
     context.catalog.numbers = vec![
-        SourcedValue::new("LBL-1".to_string(), TextOrigin::FolderName),
-        SourcedValue::in_file(
-            "LBL-2".to_string(),
-            TextOrigin::Artwork,
-            "back.jpg".to_string(),
-        ),
-        SourcedValue::in_file(
-            "LBL-2".to_string(),
-            TextOrigin::TextFile,
-            "info.txt".to_string(),
-        ),
-        SourcedValue::new("LBL-3".to_string(), TextOrigin::Filename),
+        "LBL-1".to_string(),
+        "LBL-2".to_string(),
+        "LBL-3".to_string(),
     ];
     context.catalog.chosen = vec![ChosenCatalog {
         value: "LBL-2".to_string(),
@@ -420,7 +391,6 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
     assert!(!scanning);
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].value, "LBL-2");
-    assert_eq!(rows[0].sources.len(), 2);
     assert!(matches!(
         cells(&rows[0]).as_slice(),
         [LookupView::Found { count: 1, .. }, LookupView::LookingUp]
@@ -440,8 +410,8 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
 fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
     let mut context = context();
     context.barcode.codes = vec![
-        SourcedValue::new("A".to_string(), TextOrigin::Artwork),
-        SourcedValue::new("B".to_string(), TextOrigin::Artwork),
+        SourcedValue::new("A".to_string()),
+        SourcedValue::new("B".to_string()),
     ];
     let in_flight = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped { track_count: 9 },
@@ -526,10 +496,7 @@ fn a_manual_only_folder_with_catalog_numbers_offers_them() {
         barcode: BarcodeEvidence::default(),
         ..context()
     };
-    context.catalog.numbers = vec![SourcedValue::new(
-        "LBL-1".to_string(),
-        TextOrigin::FolderName,
-    )];
+    context.catalog.numbers = vec!["LBL-1".to_string()];
     let settled = crate::identify::state::settle_for_tests(
         DiscidProgress::Skipped { track_count: 9 },
         BarcodeProgress::Skipped,
@@ -587,7 +554,6 @@ fn a_found_lookup_names_its_releases() {
     };
     let run = run_of(state);
     let DiscIdStepView::Read {
-        source,
         lookup: LookupView::Found { count, groups },
         ..
     } = run.disc_id
@@ -597,13 +563,6 @@ fn a_found_lookup_names_its_releases() {
     assert_eq!(count, 2);
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0].pressings().count(), 2);
-    assert_eq!(
-        source,
-        Some(DiscIdFile {
-            kind: DiscIdFileKind::Log,
-            file: "rip/Album.LOG".to_string(),
-        })
-    );
 }
 
 // ── Resuming a stored verdict ───────────────────────────────────────────────
@@ -615,10 +574,6 @@ fn recorded_ledger() -> IdentifyRunView {
         providers: vec![MB, DG],
         disc_id: DiscIdStepView::Read {
             disc_id: "disc-1".to_string(),
-            source: Some(DiscIdFile {
-                kind: DiscIdFileKind::Log,
-                file: "rip/Album.LOG".to_string(),
-            }),
             lookup: LookupView::Found {
                 count: 1,
                 groups: group_results(unranked(vec![MetadataResult::for_test(
@@ -632,11 +587,6 @@ fn recorded_ledger() -> IdentifyRunView {
             scanning: false,
             rows: vec![SignalValueRow {
                 value: "0123456789012".to_string(),
-                sources: vec![ValueSource {
-                    origin: TextOrigin::Artwork.into(),
-                    file: Some("back.jpg".to_string()),
-                    region: None,
-                }],
                 excluded: false,
                 cells: vec![
                     ProviderCell {

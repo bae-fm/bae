@@ -14,8 +14,6 @@ fn folder(lines: &[&str], struck_out: &[&str]) -> CandidateText {
         .map(|text| TextLine {
             text: (*text).to_string(),
             origin: TextOrigin::FolderName,
-            file: None,
-            region: None,
         })
         .collect();
     let struck_out: Vec<String> = struck_out
@@ -213,11 +211,9 @@ fn a_number_an_offered_release_carries_is_a_chip_rather_than_a_tile() {
             candidates: vec![
                 CatalogCandidateView {
                     value: "16033 2".to_string(),
-                    sources: Vec::new(),
                 },
                 CatalogCandidateView {
                     value: "SD-19".to_string(),
-                    sources: Vec::new(),
                 },
             ],
         },

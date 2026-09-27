@@ -1,44 +1,22 @@
 import BaeKit
 import Foundation
 
-/// The text pools extracted from a candidate's files, mirrored from
-/// `bae_core::signals::Signals` (via `BridgeSignals`). Carried per-candidate;
-/// `nil` until the first extraction snapshot arrives. The search form feeds
-/// these into the autocomplete fields. The disc-ID and barcode signals reach
-/// the UI through the run's ledger (`BridgeIdentifyRun`), not here, so only
-/// the `text` pools are mirrored.
+/// The text pools extracted from one candidate's files, which feed the search
+/// form's autocomplete.
+struct Signals: Equatable {
+    let text: BridgeTextSignal
 
-/// The classified-text signal. Mirrors `bae_core::signals::TextSignal`. Only
-/// the catalog / free-text *values* feed the autocomplete here; where each
-/// catalog number was read reaches the UI through the ledger's tiles.
-enum TextSignal: Equatable {
-    case scanning(catalogs: [String], freeText: [String])
-    case settled(catalogs: [String], freeText: [String])
-    case failed(
-        failure: BridgeLookupFailure,
-        catalogs: [String],
-        freeText: [String]
-    )
-
-    init(bridge: BridgeTextSignal) {
-        switch bridge {
-        case .scanning(let catalogs, let freeText):
-            self = .scanning(
-                catalogs: catalogs.map(\.value),
-                freeText: freeText
-            )
-        case .settled(let catalogs, let freeText):
-            self = .settled(catalogs: catalogs.map(\.value), freeText: freeText)
-        case .failed(let failure, let catalogs, let freeText):
-            self = .failed(
-                failure: failure,
-                catalogs: catalogs.map(\.value),
-                freeText: freeText
-            )
-        }
+    init(text: BridgeTextSignal) {
+        self.text = text
     }
 
-    /// The catalog-number strings — for the catalog-search autocomplete.
+    init(bridge: BridgeSignals) {
+        text = bridge.text
+    }
+}
+
+extension BridgeTextSignal {
+    /// The catalog numbers, for the catalog-search autocomplete.
     var catalogValues: [String] {
         switch self {
         case .scanning(let catalogs, _),
@@ -69,19 +47,5 @@ enum TextSignal: Equatable {
             return true
         }
         return false
-    }
-}
-
-/// The text pools extracted from one candidate's files. Mirrors the `text`
-/// slice of `bae_core::signals::Signals`.
-struct Signals: Equatable {
-    let text: TextSignal
-
-    init(text: TextSignal) {
-        self.text = text
-    }
-
-    init(bridge: BridgeSignals) {
-        text = TextSignal(bridge: bridge.text)
     }
 }

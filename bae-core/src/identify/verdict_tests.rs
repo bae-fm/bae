@@ -13,9 +13,7 @@ fn mk_result(release_id: &str) -> MetadataResult {
     MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("group-1"))
 }
 
-/// A bare context, standing in for whatever the reducer would have
-/// accumulated by this point — its contents don't matter to these tests,
-/// only that `Idle`/`Triangulating` carry one and still aren't terminal.
+/// A bare context for `track_count` tracks.
 fn mk_context(track_count: u32) -> SignalsContext {
     SignalsContext {
         rip: crate::signals::RipEvidence::Unproven,
@@ -37,8 +35,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
     }
 }
 
-/// `Idle` and `Triangulating` are not verdicts — the conversion must reject
-/// them (not silently invent an empty verdict), and hand the state back.
+/// `Idle` and `Triangulating` are not verdicts, and conversion rejects them.
 #[test]
 fn in_flight_states_have_no_terminal_verdict() {
     assert!(TerminalVerdict::try_from(IdentifyState::Idle).is_err());
@@ -75,10 +72,8 @@ fn found_state() -> IdentifyState {
     }
 }
 
-/// `Found` keeps its matches and provenance, and drops
-/// `library_statuses` — that's re-checked live, not stored. `mk_context`
-/// carries no recorded failure, so this also stands as the positive case:
-/// a `Found` reached with both lookups completing converts normally.
+/// `Found` keeps its matches and provenance and drops the library statuses,
+/// which are checked live.
 #[test]
 fn found_drops_library_status_and_keeps_the_rest() {
     let verdict = TerminalVerdict::try_from(found_state()).unwrap();
@@ -92,17 +87,12 @@ fn found_drops_library_status_and_keeps_the_rest() {
     );
 }
 
-/// The ledger the run showed is what the verdict carries away: the terminal
-/// state records it once, and conversion moves it rather than deriving
-/// anything of its own.
+/// The verdict carries away the ledger the run showed.
 #[test]
 fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
     let mut context = mk_context(9);
     context.barcode.had_source = true;
-    context.barcode.codes = vec![crate::signals::SourcedValue::new(
-        "012345".to_string(),
-        crate::signals::TextOrigin::Artwork,
-    )];
+    context.barcode.codes = vec![crate::signals::SourcedValue::new("012345".to_string())];
     context.providers = vec![Catalog::MusicBrainz];
     let (settled, _) = step(
         IdentifyState::Triangulating {
@@ -156,10 +146,8 @@ fn disc_id_only() -> LookupProvenance {
     }
 }
 
-/// The releases agreement narrowed out are part of what the run learned,
-/// so they store beside the matches instead of being dropped at the
-/// boundary — and the live library check covers them, because a surface
-/// offers them beside the matches.
+/// What agreement narrowed out stores beside the matches, and the live
+/// library check covers it too.
 #[test]
 fn a_stored_verdict_keeps_what_agreement_narrowed_out() {
     let mut state = found_state();
@@ -193,9 +181,8 @@ fn a_stored_verdict_keeps_what_agreement_narrowed_out() {
     );
 }
 
-/// A resumed verdict stands them back up with a live library status each,
-/// so the disclosure says the same thing after a relaunch as it did when
-/// the run settled.
+/// A resumed verdict stands its narrowed-out releases back up, each with a
+/// live library status.
 #[test]
 fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
     let verdict = TerminalVerdict::Found {
@@ -255,11 +242,8 @@ fn a_recorded_discid_failure_derives_and_stores_as_failed() {
     ));
 }
 
-/// Signals that share no result settle as one `Found`, so what stores is a
-/// single match list and not two sections. The disc ID's release is offered
-/// and the barcode's is stored beside it as narrowed out. Neither signal
-/// recorded a failure here, so this also stands as the positive case for a
-/// `Found` the two signals disagreed on.
+/// Signals that share no result store as one match list: the disc ID's
+/// release offered, the barcode's narrowed out beside it.
 #[test]
 fn signals_that_share_no_result_store_as_one_match_list() {
     let context = SignalsContext {
@@ -304,11 +288,8 @@ fn signals_that_share_no_result_store_as_one_match_list() {
     );
 }
 
-/// A union reached where the disc-ID lookup failed rather than genuinely
-/// disagreeing: had it succeeded with a release the barcode side also
-/// returned, the intersection would have narrowed to one release. A
-/// missing intersection partner is exactly what can manufacture a longer
-/// match list, so this stores as a failure rather than that partial list.
+/// A union reached because the disc-ID lookup failed stores as a failure,
+/// not as the longer list the missing lookup left.
 #[test]
 fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
     let context = SignalsContext {
@@ -339,8 +320,7 @@ fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
     ));
 }
 
-/// A genuinely empty search — both signals ran, neither failed, neither
-/// found anything — is a real answer and must convert.
+/// Lookups that ran, failed nothing and found nothing are a real answer.
 #[test]
 fn clean_not_found_anywhere_is_terminal() {
     let context = mk_context(7);
@@ -396,9 +376,8 @@ fn barcode_failure_derives_to_failed() {
     ));
 }
 
-/// One provider failing on the barcode while the other answered is still a
-/// failed verdict — but it keeps the answering provider's match, live and
-/// stored, so the pane shows it instead of blanking.
+/// One provider failing on the barcode is a failed verdict that keeps the
+/// other's match, live and stored.
 #[test]
 fn a_partial_barcode_answer_keeps_its_matches_on_a_failed_state() {
     let mut context = mk_context(7);
@@ -493,9 +472,8 @@ fn chosen_catalog_failure_derives_to_failed() {
     ));
 }
 
-/// A step after the lookups failing — fetching the settled release's details —
-/// turns the verdict into a failure that keeps what the lookups found and the
-/// ledger they recorded, and a failure that fails again names both failures.
+/// A later failure, such as fetching release details, keeps the findings,
+/// and a second one joins the first.
 #[test]
 fn a_later_failure_keeps_the_findings_and_joins_earlier_failures() {
     let details = |detail: &str| {
@@ -521,8 +499,8 @@ fn a_later_failure_keeps_the_findings_and_joins_earlier_failures() {
     assert_eq!(failures, &vec![details("first"), details("second")]);
 }
 
-/// A stored failure stands back up with its findings and a live library
-/// status for each, exactly as a stored `Found` does.
+/// A stored failure stands back up with its findings, each with a live
+/// library status.
 #[test]
 fn a_resumed_failure_stands_its_findings_back_up() {
     let verdict = TerminalVerdict::Failed {

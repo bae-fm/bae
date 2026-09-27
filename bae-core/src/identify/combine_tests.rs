@@ -1,12 +1,8 @@
 use super::*;
 
-/// Most of these are about how the sets intersect, which the candidate's
-/// own text takes no part in: a candidate that states nothing offers every
-/// answer, so nothing folds and the order is the one the signals gave.
-///
-/// The title search is not one of the sets here: it is asked only when the
-/// three identifiers came back empty, so every case about how they intersect
-/// is a case where it never ran.
+// Most of these are about how the sets intersect, with a candidate that states
+// nothing, so the order is the one the signals gave.
+
 /// What combine hands back: the findings, and each release's library status.
 type Outcome = (Findings, LibraryStatuses);
 
@@ -133,9 +129,8 @@ fn three_checked_signals_intersect() {
     assert!(provenance[0].by_catalog);
 }
 
-/// Signals that share no result are not a failure to identify: each saw a
-/// real release, so every answer is kept, and each row says which signal
-/// produced it.
+/// Signals that share no result each keep their answer, each row naming the
+/// signal that produced it.
 #[test]
 fn lookups_that_named_different_releases_each_keep_their_answer() {
     let discid = vec![pair("rel-a", Some("group-1"))];
@@ -153,10 +148,8 @@ fn lookups_that_named_different_releases_each_keep_their_answer() {
         FolderAudio::UNPROVEN,
     );
     let (matches, provenance, _) = found(outcome.clone());
-    // A chosen catalog number was read off the folder, and the release under
-    // it names one pressing, so its answer is offered. The disc ID names every pressing sharing its
-    // table of contents, and a barcode is read off a photograph with nothing
-    // else here standing behind its answer, so both are set aside.
+    // The folder states the chosen number, so its release is offered; the disc
+    // ID's and the barcode's answers have nothing behind them and are set aside.
     assert_eq!(ids(&matches), vec!["rel-c"]);
     assert!(provenance[0].by_catalog && !provenance[0].by_disc_id);
     let left_out = narrowed(outcome);
@@ -165,8 +158,7 @@ fn lookups_that_named_different_releases_each_keep_their_answer() {
     assert!(left_out.provenance[1].by_barcode);
 }
 
-/// The union names each release once even when two signals both saw it —
-/// which happens when a third signal is what emptied the intersection.
+/// The union names each release once even when two signals both saw it.
 #[test]
 fn the_union_names_each_release_once() {
     let discid = vec![pair("rel-a", None)];
@@ -174,15 +166,13 @@ fn the_union_names_each_release_once() {
     let catalog = vec![pair("rel-b", None)];
     let outcome = combine(discid, barcode, catalog);
     let (matches, provenance, _) = found(outcome.clone());
-    // Two lookups returned rel-a, one returned rel-b, so rel-a is offered and
-    // rel-b waits under the disclosure. Each is named once, on one list.
+    // Two lookups returned rel-a and one rel-b, so rel-a is offered.
     assert_eq!(ids(&matches), vec!["rel-a"]);
     assert!(provenance[0].by_disc_id && provenance[0].by_barcode);
     assert_eq!(ids(&narrowed(outcome).matches), vec!["rel-b"]);
 }
 
-/// A checked signal that found nothing takes no part: the rest still
-/// answer, rather than the empty set emptying everything.
+/// A checked signal that found nothing takes no part.
 #[test]
 fn a_signal_that_found_nothing_does_not_empty_the_set() {
     let barcode = vec![pair("rel-a", None)];
@@ -198,14 +188,12 @@ fn the_same_id_on_two_providers_is_two_releases() {
     let barcode = vec![pair_src(Catalog::Discogs, "rel-a", None)];
     let outcome = combine(discid, barcode, vec![]);
     let (matches, _, _) = found(outcome.clone());
-    // Two releases, never folded into one by their shared id. They are ranked
-    // against each other like any other pair, so they land on the two lists.
+    // Two releases, never folded into one by their shared id.
     assert_eq!(matches.len() + narrowed(outcome).matches.len(), 2);
 }
 
-/// What agreement left out comes back beside the matches: every release a
-/// signal named that the intersection does not hold, in signal order, each
-/// once, saying which signal named it.
+/// What the intersection left out comes back beside the matches, in signal
+/// order, each once, saying which signal named it.
 #[test]
 fn an_intersection_hands_back_what_it_narrowed_out() {
     let discid = vec![
@@ -238,8 +226,7 @@ fn a_narrowed_out_release_two_signals_named_is_named_once() {
     assert!(!narrowed.provenance[0].by_catalog);
 }
 
-/// Signals that share nothing already list everything they saw, and one
-/// signal answering alone is the whole answer: neither narrowed anything.
+/// One signal answering alone narrows nothing.
 #[test]
 fn a_lone_signal_narrows_nothing() {
     let alone = combine(
@@ -250,8 +237,7 @@ fn a_lone_signal_narrows_nothing() {
     assert!(narrowed(alone).is_empty());
 }
 
-/// A result the source returned without a group id is still a release the
-/// user can pick; it stands as its own single-pressing card.
+/// A result with no group id still stands, as its own card.
 #[test]
 fn a_result_with_no_group_id_stays_in_the_set() {
     let results = vec![pair("rel-a", Some("group-x")), pair("rel-b", None)];
@@ -267,15 +253,13 @@ fn folder(lines: &[&str]) -> CandidateText {
         .map(|text| crate::signals::TextLine {
             text: (*text).to_string(),
             origin: crate::signals::TextOrigin::FolderName,
-            file: None,
-            region: None,
         })
         .collect();
     CandidateText::of(&pool, &[])
 }
 
-/// One pressing of an album as MusicBrainz states it, with the folder's
-/// catalog number, label, year and country all matching it.
+/// A pressing of Album One whose catalog number, label and country the
+/// folder states.
 fn pressing_of_album_one(release_id: &str, year: i32) -> (MetadataResult, LibraryStatus) {
     (
         MetadataResult {
@@ -319,9 +303,7 @@ fn unrelated_record() -> (MetadataResult, LibraryStatus) {
     )
 }
 
-/// The folder's text is what orders the rows: the pressing it names the
-/// catalog number, label, year and country of leads, and the pressings the
-/// disc ID alone named follow.
+/// The pressing the folder's text describes leads the disc ID's others.
 #[test]
 fn the_pressing_the_folder_describes_leads_the_disc_id_s_others() {
     let text = folder(&["Artist One - Album One [L1-16033]", "Label One 1976 US"]);
@@ -344,9 +326,7 @@ fn the_pressing_the_folder_describes_leads_the_disc_id_s_others() {
     assert!(provenance.iter().all(|lookup| lookup.by_disc_id));
 }
 
-/// A barcode that came back naming somebody else's record read the wrong
-/// digits: the folder says nothing about it, and it is offered under the
-/// rest rather than beside them.
+/// A barcode naming a record the folder never mentions is set aside.
 #[test]
 fn a_barcode_naming_a_record_the_folder_never_mentions_folds() {
     let text = folder(&["Artist One - Album One [L1-16033]"]);
@@ -365,15 +345,8 @@ fn a_barcode_naming_a_record_the_folder_never_mentions_folds() {
     assert_eq!(ids(&left_out), vec!["rel-album-three"]);
 }
 
-/// Two pressings of one album that both identifiers name together: one disc
-/// layout, one barcode, one label, and a different catalog number printed on
-/// each. Nothing the lookups did tells them apart.
-///
-/// The folder states one of the two numbers, and a catalog number names a
-/// single pressing, so that row is the answer and the other one waits under
-/// the disclosure. This is the whole point of reading the number: without it
-/// the person is asked to choose between two rows that no identifier
-/// separates.
+/// Two pressings both identifiers name, told apart only by catalog number:
+/// the one the folder states is the answer and the other is set aside.
 #[test]
 fn the_pressing_whose_catalog_number_the_folder_states_folds_the_other() {
     let text = folder(&["1972 - Album One (Label One, L1-16033, Germany)"]);
@@ -394,8 +367,7 @@ fn the_pressing_whose_catalog_number_the_folder_states_folds_the_other() {
     assert_eq!(ids(&narrowed(outcome).matches), vec!["rel-other"]);
 }
 
-/// Two pressings the folder states neither number of stay side by side: the
-/// number folds a row only when it stands behind one of them.
+/// Two pressings the folder states neither number of stay side by side.
 #[test]
 fn two_pressings_the_folder_names_no_number_of_both_stay() {
     let text = folder(&["1972 - Album One (Label One, Germany)"]);
@@ -416,14 +388,8 @@ fn two_pressings_the_folder_names_no_number_of_both_stay() {
     assert!(narrowed(outcome).is_empty());
 }
 
-/// Three pressings of one album the disc ID named together, differing only
-/// by the year each was pressed. The folder states one of the three years,
-/// and a year names an album rather than a pressing, so all three stay on
-/// the list with the stated one first.
-///
-/// This is why the text is read as one value: counting matched fields would
-/// leave the other two pressings behind the disclosure, and a folder named
-/// after the album's year would fold away the pressing on the desk.
+/// Pressings differing only by year all stay, the stated year first: a year
+/// names an album, not a pressing.
 #[test]
 fn pressings_that_differ_only_by_year_all_stay_on_the_list() {
     let text = folder(&["Artist One - Album One [L1-16033]", "Label One 1976 US"]);
@@ -446,9 +412,8 @@ fn pressings_that_differ_only_by_year_all_stay_on_the_list() {
     assert!(narrowed(outcome).is_empty());
 }
 
-/// A pressing the disc ID named whose label the folder spells differently
-/// stays on the list beside the ones it matches: the disc ID is computed
-/// from the audio, so nothing the text says folds it away.
+/// A disc ID's pressing stays however the folder spells its label: the disc
+/// ID comes from the audio.
 #[test]
 fn a_disc_id_s_pressing_stays_however_the_folder_spells_its_label() {
     let text = folder(&["Artist One - Album One (Label One)"]);
@@ -469,9 +434,7 @@ fn a_disc_id_s_pressing_stays_however_the_folder_spells_its_label() {
     assert!(narrowed(outcome).is_empty());
 }
 
-/// Folding shortens the list; it never empties it. A barcode answering on
-/// its own is the whole of what there is to offer, whatever the folder
-/// says.
+/// Folding never empties the list: a barcode answering alone is offered.
 #[test]
 fn a_barcode_answering_alone_is_offered_however_little_the_folder_says() {
     let text = folder(&["CD1"]);
@@ -487,12 +450,9 @@ fn a_barcode_answering_alone_is_offered_however_little_the_folder_says() {
     assert_eq!(ids(&matches), vec!["rel-album-three"]);
 }
 
-/// A candidate carrying no text at all was never asked about its answers,
-/// so nothing it found is set aside for the text saying nothing.
+/// A candidate with no text sets nothing aside for it.
 #[test]
 fn a_candidate_with_no_text_narrows_nothing_on_it() {
-    // Both releases came back from the one lookup, so only the folder's text
-    // could tell them apart, and there is none to read.
     let outcome = combine_results(
         vec![],
         vec![pressing_of_album_one("rel-1976", 1976), unrelated_record()],
@@ -536,10 +496,8 @@ fn the_intersection_s_leftovers_and_the_folder_s_are_one_list() {
 
 // MARK: - The pressing is what is offered or set aside
 
-/// The rows a surface draws from a list of matches, with the badges it
-/// draws on them — judged as `combine` judged them and read off the rows
-/// the run recorded, which is what `identify::view` does with a stored
-/// verdict.
+/// The rows a surface draws from a list of matches, with their badges, read
+/// off the rows the run recorded.
 fn rows(
     matches: &[MetadataResult],
     provenance: &[LookupProvenance],
@@ -580,9 +538,7 @@ fn badges(agreements: &crate::identify::agreements::Agreements) -> Vec<&'static 
     .collect()
 }
 
-/// The Japanese pressing of an album as MusicBrainz has it, which is the
-/// one the disc ID names: the folder's catalog number and label, its country
-/// as a code, and the barcode the sleeve prints.
+/// MusicBrainz's record of the Japanese pressing the disc ID names.
 fn album_two_musicbrainz() -> (MetadataResult, LibraryStatus) {
     (
         MetadataResult {
@@ -607,8 +563,7 @@ fn album_two_musicbrainz() -> (MetadataResult, LibraryStatus) {
     )
 }
 
-/// One of the four Discogs records of that same catalog number, all of
-/// which the barcode lookup returned.
+/// One of the Discogs records of that catalog number the barcode returned.
 fn album_two_discogs(release_id: &str, year: Option<i32>) -> (MetadataResult, LibraryStatus) {
     (
         MetadataResult {
@@ -634,12 +589,8 @@ fn album_two_discogs(release_id: &str, year: Option<i32>) -> (MetadataResult, Li
     )
 }
 
-/// The disc ID answers on MusicBrainz alone, so the Discogs record of the
-/// pressing it names can only ever be the barcode's answer — never the
-/// intersection's. Pairing before the narrowing is what keeps the two
-/// together: the row the folder describes is offered carrying both
-/// sources, and the other Discogs records that print the same barcode go
-/// under the disclosure, one row each.
+/// The Discogs record of the pressing the disc ID names is offered on its
+/// row; the other Discogs records of the barcode are set aside, one row each.
 #[test]
 fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
     let text = folder(&["1979 - Album Two (Label Two, L2-2031, Japan)"]);
@@ -717,9 +668,7 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
     }
 }
 
-/// A row is offered whole or set aside whole, and each list records the
-/// rows the run built — which is what the sweep's settle step and the
-/// queue's pressing count both read.
+/// A row is offered whole or set aside whole.
 #[test]
 fn a_pressing_never_splits_across_the_two_lists() {
     let text = folder(&["1979 - Album Two (Label Two, L2-2031, Japan)"]);
@@ -744,10 +693,8 @@ fn a_pressing_never_splits_across_the_two_lists() {
     );
 }
 
-/// The sole-match rule and the Ready classification both ask how many
-/// pressings the matches make, and both read it off the rows this run
-/// recorded — so a lone pressing the folder describes settles even though
-/// a barcode came back naming somebody else.
+/// A lone pressing the folder describes is one row, even beside a barcode
+/// naming somebody else.
 #[test]
 fn a_lone_pressing_the_folder_describes_is_the_sole_match() {
     let text = folder(&["Artist One - Album One [L1-16033]"]);
@@ -764,9 +711,8 @@ fn a_lone_pressing_the_folder_describes_is_the_sole_match() {
     assert_eq!(crate::import::release_group::row_count(&pressings), 1);
 }
 
-/// The title search is the only set that ever answers alone, because it is
-/// asked only once the three identifiers have come back empty. What it found
-/// is offered whole, each row carrying the search as what produced it.
+/// The title search, asked only when the identifiers found nothing, is
+/// offered whole.
 #[test]
 fn a_search_that_answered_alone_is_offered_whole() {
     let outcome = combine_results(
@@ -790,10 +736,8 @@ fn a_search_that_answered_alone_is_offered_whole() {
     );
 }
 
-/// A twin read through a disc ID answer's link sits on that answer's row and
-/// counts for no lookup: the row ranks as the disc ID answer would alone, and
-/// the twin's provenance names the release that named it. A twin whose
-/// namer is not among the answers has nothing to sit beside and is left out.
+/// A twin sits on the row of the answer that named it and counts for no
+/// lookup; one whose namer is not among the answers is left out.
 #[test]
 fn a_twin_counts_for_no_lookup_and_sits_on_its_namer_s_row() {
     let mut named = pair("mb-1", Some("group-1"));
@@ -826,7 +770,6 @@ fn a_twin_counts_for_no_lookup_and_sits_on_its_namer_s_row() {
             ..LookupProvenance::CHOSEN
         }
     );
-    // The disc ID's row outranks the barcode's on the disc ID alone, as it
-    // would with no twin beside it.
+    // The disc ID's row outranks the barcode's as it would with no twin.
     assert_eq!(ids(&narrowed(outcome).matches), vec!["dg-barcode"]);
 }

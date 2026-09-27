@@ -1235,27 +1235,18 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     CHECK ((text_failure = 'diagnostic') = (text_failure_detail IS NOT NULL))
 ) STRICT;
 
--- The barcodes and catalog numbers read off a candidate, in reading order,
--- each with the surface it was read from.
+-- The barcodes, catalog numbers and free-text candidates read off a candidate,
+-- in reading order.
 CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
     content_hash TEXT NOT NULL,
     list         TEXT NOT NULL CHECK (list IN ('barcode', 'catalog', 'free_text')),
     position     INTEGER NOT NULL CHECK (position >= 0),
     value        TEXT NOT NULL,
-    origin       TEXT CHECK (origin IS NULL OR origin IN ('cue_sheet', 'artwork', 'artwork_barcode', 'folder_name', 'filename', 'text_file')),
-    -- The candidate-relative path of the file the value was read off. NULL for
-    -- the folder's name, and when re-identifying a library release, whose
-    -- images are stored blobs.
-    origin_path  TEXT,
-    -- The box around the value, as fractions of the image.
-    region_x REAL,
-    region_y REAL,
-    region_width REAL,
-    region_height REAL,
+    -- The candidate-relative path of the file a barcode was read off; NULL for
+    -- a library release's stored images.
+    origin_path  TEXT CHECK (origin_path IS NULL OR list = 'barcode'),
     PRIMARY KEY (content_hash, list, position),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE,
-    CHECK ((list = 'free_text') = (origin IS NULL)),
-    CHECK (origin_path IS NULL OR origin IS NOT NULL)
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE
 ) STRICT;
 
 -- Every line of text read off a candidate, from which ranking reads the
@@ -1266,22 +1257,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_text_line (
     text          TEXT NOT NULL,
     origin        TEXT NOT NULL
         CHECK (origin IN ('cue_sheet', 'artwork', 'folder_name', 'filename', 'text_file')),
-    -- The candidate-relative path of the file the line was read off. NULL for
-    -- the folder's name, and when re-identifying a library release, whose
-    -- images are stored blobs.
-    origin_path   TEXT,
-    -- Where on the image the line was read, as fractions of its size from the
-    -- top-left corner; set only for artwork lines whose recognizer reports
-    -- positions.
-    region_x      REAL,
-    region_y      REAL,
-    region_width  REAL,
-    region_height REAL,
     PRIMARY KEY (content_hash, position),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE,
-    CHECK ((region_x IS NULL) = (region_y IS NULL)
-       AND (region_x IS NULL) = (region_width IS NULL)
-       AND (region_x IS NULL) = (region_height IS NULL))
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE
 ) STRICT;
 
 -- Which values read off a candidate the user let the lookups use, and the

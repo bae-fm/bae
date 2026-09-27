@@ -10,9 +10,7 @@ use crate::import::{
     ExistingArtist, ImportFailure, ArtistCredit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
     TrackArtistAssignments,
 };
-use crate::signals::{
-    BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextOrigin, TextSignal,
-};
+use crate::signals::{BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextSignal};
 
 #[path = "pane_rows/artist_identity_conflicts.rs"]
 mod artist_identity_conflicts;
@@ -158,8 +156,7 @@ async fn store_candidate_state(
     hash
 }
 
-/// `metadata_draft` as a candidate stores it: one automatically bound row,
-/// named by its source, in the import.
+/// `metadata_draft` as a candidate stores it.
 fn candidate_draft(title: &str, artist: &str) -> crate::import::CandidateDraft {
     crate::import::pane::candidate_draft_from_edit(metadata_draft(title, artist))
         .unwrap()
@@ -237,7 +234,6 @@ async fn every_settled_signal_shape_round_trips() {
     let cases: Vec<(&str, RipEvidence, DiscIdSignal, BarcodeSignal, TextSignal)> = vec![
         (
             "computed disc ID, settled barcodes and text",
-            // The log that proves a CD rip rides with the proof.
             RipEvidence::Cd {
                 proof: CdProof::RipLog,
                 file: Some("rip.log".to_string()),
@@ -245,26 +241,17 @@ async fn every_settled_signal_shape_round_trips() {
             DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 track_count: 11,
-                // The rip log it was derived from rides with it.
                 source_file: Some("rip.log".to_string()),
             },
             BarcodeSignal::Settled {
                 codes: vec![
-                    // The image OCR read it off rides with it, so a surface can
-                    // put the barcode on that image.
-                    SourcedValue::in_file(
-                        "0123456789012".to_string(),
-                        TextOrigin::Artwork,
-                        "Scans/back.jpg".to_string(),
-                    ),
-                    SourcedValue::new("9876543210987".to_string(), TextOrigin::CueSheet),
+                    // One code carries the image it was read off; one carries none.
+                    SourcedValue::in_file("0123456789012".to_string(), "Scans/back.jpg".to_string()),
+                    SourcedValue::new("9876543210987".to_string()),
                 ],
             },
             TextSignal::Settled {
-                catalogs: vec![SourcedValue::new(
-                    "CAT-1".to_string(),
-                    TextOrigin::FolderName,
-                )],
+                catalogs: vec!["CAT-1".to_string()],
                 free_text: vec!["Album Title".to_string(), "Artist Name".to_string()],
             },
         ),
@@ -290,17 +277,11 @@ async fn every_settled_signal_shape_round_trips() {
             },
             BarcodeSignal::Failed {
                 failure: LookupFailure::Provider { status: Some(503) },
-                codes: vec![SourcedValue::new(
-                    "0123456789012".to_string(),
-                    TextOrigin::Filename,
-                )],
+                codes: vec![SourcedValue::new("0123456789012".to_string())],
             },
             TextSignal::Failed {
                 failure: LookupFailure::Timeout,
-                catalogs: vec![SourcedValue::new(
-                    "CAT-2".to_string(),
-                    TextOrigin::TextFile,
-                )],
+                catalogs: vec!["CAT-2".to_string()],
                 free_text: vec!["Some Line".to_string()],
             },
         ),
@@ -356,8 +337,7 @@ async fn every_settled_signal_shape_round_trips() {
     for (what, rip, disc_id, barcode, text) in cases {
         let (db, _tmp) = empty_db().await;
         let (_, hash) = stored_pane_candidate(&db).await;
-        // The rip whose audio is not a CD's is the mono transfer of a record,
-        // so the one-channel fact round-trips too.
+        // A record transfer is mono, so the one-channel fact round-trips too.
         let mono_audio = matches!(rip, RipEvidence::NotCd { .. });
         let signals = Signals {
             rip,
@@ -390,9 +370,8 @@ async fn every_settled_signal_shape_round_trips() {
     }
 }
 
-/// A signal still scanning is artwork OCR mid-flight, which no verdict can
-/// have reached. The write refuses it rather than storing a half-read
-/// extraction, and the whole transaction — verdict included — rolls back.
+/// A signal still scanning is refused, and the whole write, verdict included,
+/// rolls back.
 #[tokio::test]
 async fn a_scanning_signal_is_refused_and_writes_nothing() {
     for scanning in [
@@ -452,8 +431,8 @@ file_edit_revision: 0,
     }
 }
 
-/// A failed import is recorded on the candidate draft that was created during
-/// discovery. Queueing the next attempt clears it.
+/// A failed import is recorded on the discovered candidate, and a later one
+/// replaces it.
 #[tokio::test]
 async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
     let (db, _tmp) = empty_db().await;

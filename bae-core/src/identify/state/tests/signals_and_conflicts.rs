@@ -140,7 +140,7 @@ fn lookup_barcode(source: Catalog, barcode: &str) -> Effect {
 fn artwork_codes(values: &[&str]) -> Vec<SourcedValue> {
     values
         .iter()
-        .map(|v| SourcedValue::new(v.to_string(), TextOrigin::Artwork))
+        .map(|v| SourcedValue::new(v.to_string()))
         .collect()
 }
 
@@ -148,17 +148,14 @@ fn signals(disc_id: DiscIdSignal, barcode: BarcodeSignal, catalogs: &[&str]) -> 
     signals_with_catalogs(
         disc_id,
         barcode,
-        catalogs
-            .iter()
-            .map(|s| SourcedValue::new(s.to_string(), TextOrigin::FolderName))
-            .collect(),
+        catalogs.iter().map(|s| s.to_string()).collect(),
     )
 }
 
 fn signals_with_catalogs(
     disc_id: DiscIdSignal,
     barcode: BarcodeSignal,
-    catalogs: Vec<SourcedValue>,
+    catalogs: Vec<String>,
 ) -> Signals {
     Signals {
         rip: crate::signals::RipEvidence::Unproven,

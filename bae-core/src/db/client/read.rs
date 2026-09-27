@@ -286,34 +286,6 @@ pub(super) fn get_release_records_on(
     Ok(records)
 }
 
-/// The region a row stores, as the four columns every table that stores one
-/// uses: all present and inside the image, or all absent. Anything else is a
-/// row nothing here wrote.
-///
-/// Every table that stores one belongs to the import pipeline, which is
-/// desktop-only.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn stored_region(
-    value: &str,
-    columns: [Option<f64>; 4],
-) -> Result<Option<crate::signals::ImageRegion>, DbError> {
-    match columns {
-        [None, None, None, None] => Ok(None),
-        [Some(x), Some(y), Some(width), Some(height)] => {
-            crate::signals::ImageRegion::new(x as f32, y as f32, width as f32, height as f32)
-                .map(Some)
-                .ok_or_else(|| {
-                    DbError::Message(format!(
-                        "the stored value {value:?} states a region outside its image"
-                    ))
-                })
-        }
-        _ => Err(DbError::Message(format!(
-            "the stored value {value:?} states a partial region"
-        ))),
-    }
-}
-
 /// Build a column-conversion error for a named column whose stored text the
 /// mapper could not turn into its typed value, so a corrupt column surfaces like
 /// any other bad read instead of panicking or silently mis-defaulting.

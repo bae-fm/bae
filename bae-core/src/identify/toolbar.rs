@@ -2,7 +2,7 @@
 //! [`crate::identify::IdentifyState::toolbar`].
 
 use crate::identify::NotAskedReason;
-use crate::signals::{LookupFailure, SignalOrigin};
+use crate::signals::LookupFailure;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SignalKind {
@@ -36,24 +36,8 @@ pub enum SignalState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignalOption {
     pub value: String,
-    /// Where the value was first seen.
-    pub origin: SignalOrigin,
     /// Whether the run asks about this value; several can be chosen at once.
     pub chosen: bool,
-}
-
-/// Where the value a badge shows was read.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ToolbarOrigin {
-    /// The disc's table of contents (LOG/CUE).
-    DiscToc,
-    Value(SignalOrigin),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ToolbarValue {
-    pub value: String,
-    pub origin: ToolbarOrigin,
 }
 
 /// One badge; a badge whose values are all left out still appears.
@@ -61,7 +45,7 @@ pub struct ToolbarValue {
 pub struct ToolbarSignal {
     pub kind: SignalKind,
     /// The value the badge shows; `None` when the signal has none.
-    pub shown: Option<ToolbarValue>,
+    pub shown: Option<String>,
     pub state: SignalState,
     /// Whether the person left every value out; always `false` for the
     /// catalog, which stays out by having no number chosen.

@@ -17,8 +17,6 @@ fn folder() -> CandidateText {
         &[TextLine {
             text: "Artist One - Album One [L1-100]".to_string(),
             origin: TextOrigin::FolderName,
-            file: None,
-            region: None,
         }],
         &[],
     )
@@ -84,8 +82,7 @@ fn set_aside(outcome: &Outcome) -> Vec<&str> {
         .collect()
 }
 
-/// A folder its rip log proves is a CD rip was not copied from a record, so
-/// the vinyl pressing goes behind the disclosure and the CD stays.
+/// A folder its rip log proves is a CD rip sets the vinyl pressing aside.
 #[test]
 fn a_cd_rip_sets_aside_a_vinyl_pressing() {
     let outcome = by_catalog(
@@ -133,9 +130,8 @@ fn a_folder_that_proves_nothing_sets_nothing_aside() {
     assert!(set_aside(&outcome).is_empty());
 }
 
-/// Audio at a rate no CD plays at was not read off a CD, so a pressing made
-/// only of CDs goes behind the disclosure, while a record, a CD beside a DVD,
-/// and a pressing stating nothing stay.
+/// Audio at a rate no CD plays at sets aside a pressing made only of CDs; a
+/// record, a CD beside a DVD, and a pressing stating nothing stay.
 #[test]
 fn audio_no_cd_holds_sets_aside_a_cd_pressing() {
     let outcome = by_catalog(
@@ -154,9 +150,8 @@ fn audio_no_cd_holds_sets_aside_a_cd_pressing() {
     assert_eq!(set_aside(&outcome), vec!["rel-cd"]);
 }
 
-/// A disc ID a catalog knows matched the folder's layout to the frame, which
-/// proves a CD as surely as a rip log: the vinyl pressing the barcode and the
-/// catalog number both name goes behind the disclosure.
+/// A matched disc ID proves a CD as surely as a rip log, so the vinyl
+/// pressing is set aside.
 #[test]
 fn a_matched_disc_id_proves_a_cd() {
     let vinyl = pressing("rel-vinyl", made_of(&[Medium::Vinyl]));
@@ -188,11 +183,8 @@ fn rows_all_contradicted_all_stay() {
     assert!(set_aside(&outcome).is_empty());
 }
 
-/// The folder's barcode and its catalog number both name one pressing; the
-/// disc ID names another with the same table of contents. A barcode and a
-/// catalog number are each printed on one pressing, where every pressing cut
-/// from one master shares a disc ID, so the one they name is offered and the
-/// disc ID's goes behind the disclosure.
+/// A barcode and catalog number name one pressing where a disc ID names every
+/// pressing cut from one master, so theirs outranks the disc ID's.
 #[test]
 fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
     let named = pressing("rel-named", made_of(&[Medium::Cd]));
@@ -214,18 +206,13 @@ fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
     assert_eq!(set_aside(&outcome), vec!["rel-other"]);
 }
 
-/// Two pressings of one year the barcode names alike, one released in the US
-/// and one in Europe, and a sleeve that says where it was made — beside the
-/// label's address, which says nothing of it. The statement agrees with the
-/// European pressing's country, which is offered; the US one waits behind the
-/// disclosure, one click away should a European-made disc be the US release.
+/// A sleeve saying where it was made offers the pressing released there; a
+/// label's address beside it says nothing.
 #[test]
 fn a_sleeve_saying_where_it_was_made_offers_that_pressing() {
     let line = |text: &str, origin| TextLine {
         text: text.to_string(),
         origin,
-        file: None,
-        region: None,
     };
     let text = CandidateText::of(
         &[
@@ -266,16 +253,12 @@ fn a_sleeve_saying_where_it_was_made_offers_that_pressing() {
     assert_eq!(set_aside(&outcome), vec!["rel-us"]);
 }
 
-/// A folder that states no pressing's country leaves the two tied, and one
-/// that states both countries agrees with both alike: neither is a reason to
-/// set one aside.
+/// Stating no pressing's country, or both, leaves the two tied.
 #[test]
 fn stating_no_country_or_both_leaves_the_pressings_tied() {
     let line = |text: &str| TextLine {
         text: text.to_string(),
         origin: TextOrigin::Artwork,
-        file: None,
-        region: None,
     };
     let released_in = |release_id: &str, area: &str| {
         let (result, status) = pressing(release_id, made_of(&[Medium::Cd]));
@@ -310,8 +293,8 @@ fn stating_no_country_or_both_leaves_the_pressings_tied() {
     }
 }
 
-/// Every row ruled out by the folder is still every row the run found, and
-/// the verdict says what the folder proves, so nothing picks one unattended.
+/// Rows the folder rules out all stay when there is nothing else, and the
+/// verdict carries the conflict.
 #[test]
 fn rows_the_folder_rules_out_carry_the_conflict() {
     let every_cd = by_catalog(
@@ -335,8 +318,7 @@ fn rows_the_folder_rules_out_carry_the_conflict() {
     assert_eq!(every_vinyl.0.medium_conflict, Some(MediumConflict::CdRip));
 }
 
-/// A row the folder admits wins as it always has, and the verdict carries no
-/// conflict: what leads it is not ruled out.
+/// A row the folder admits leads, and the verdict carries no conflict.
 #[test]
 fn an_admitted_row_leads_with_no_conflict() {
     let mixed = by_catalog(
@@ -462,18 +444,14 @@ fn mono_audio_against_stereo_listings_can_still_be_ready() {
     );
 }
 
-/// A catalog number the folder prints, and two releases the lookups named
-/// that share the folder's label and country: the one whose album title and
-/// artist the folder states is offered, and the other album waits behind the
-/// disclosure.
+/// Of two releases on the folder's label and country, the one whose title and
+/// artist the folder states is offered.
 #[test]
 fn the_album_the_folder_names_outranks_another_on_the_same_label() {
     let text = CandidateText::of(
         &[TextLine {
             text: "Artist One - Album One (Label One, US)".to_string(),
             origin: TextOrigin::FolderName,
-            file: None,
-            region: None,
         }],
         &[],
     );

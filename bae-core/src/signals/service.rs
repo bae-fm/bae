@@ -557,31 +557,23 @@ async fn stream_extraction(
             }
 
             // One sighting per image a code was read off.
-            for reading in super::barcode::codes_in(&analysis) {
+            for code in super::barcode::codes_in(&analysis) {
                 let seen_here = gathered
                     .barcodes
                     .iter()
-                    .any(|b| b.value == reading.code.as_str() && &b.origin_path == file_id);
+                    .any(|b| b.value == code.as_str() && &b.origin_path == file_id);
                 if !seen_here {
-                    let value = reading.code.into_string();
-                    let sighting = match file_id {
-                        Some(file_id) => {
-                            SourcedValue::in_file(value, reading.origin, file_id.clone())
-                        }
-                        None => SourcedValue::new(value, reading.origin),
-                    };
-                    gathered.barcodes.push(sighting.at(reading.region));
+                    gathered.barcodes.push(SourcedValue {
+                        value: code.into_string(),
+                        origin_path: file_id.clone(),
+                    });
                 }
             }
-            for line in analysis.text_lines {
-                gathered.pool.push(SourcedLine {
-                    source: Source::Artwork {
-                        path: path.clone(),
-                        file_id: file_id.clone(),
-                    },
-                    text: line.text,
-                    region: line.region,
-                });
+            for text in analysis.text_lines {
+                gathered.pool.push(SourcedLine::new(
+                    Source::Artwork { path: path.clone() },
+                    text,
+                ));
             }
 
             // The last image's snapshot is the settled one below.
@@ -710,7 +702,7 @@ fn emit_aborted_signals(
 /// What has been read so far while the artwork pass is still going.
 fn scanning_signals(
     gathered: &Gathered,
-    catalogs: Vec<SourcedValue>,
+    catalogs: Vec<String>,
     free_text: Vec<String>,
 ) -> Signals {
     let text_pool = gathered.pool.text_lines();

@@ -1,7 +1,7 @@
 use super::super::*;
 use crate::identify::{
-    DiscIdFile, DiscIdFileKind, DiscIdStepView, Findings, IdentifyRunView, LookupProvenance,
-    LookupView, NarrowedOut, TerminalVerdict,
+    DiscIdStepView, Findings, IdentifyRunView, LookupProvenance, LookupView, NarrowedOut,
+    TerminalVerdict,
 };
 use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
 use crate::import::search::MetadataResult;
@@ -32,10 +32,6 @@ fn sample_ledger() -> IdentifyRunView {
         providers: vec![Catalog::MusicBrainz],
         disc_id: DiscIdStepView::Read {
             disc_id: "disc-1".to_string(),
-            source: Some(DiscIdFile {
-                kind: DiscIdFileKind::Log,
-                file: "rip/Album.LOG".to_string(),
-            }),
             lookup: LookupView::Found {
                 count: 1,
                 groups: crate::import::release_group::group_results(
@@ -336,8 +332,8 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     assert_eq!(crate::import::release_group::pressing_count(matches), 4);
 }
 
-/// The candidate's text reads back whole, line by line, in order and with where
-/// each was read.
+/// The candidate's text reads back whole, line by line, in order and with the
+/// surface each was read off.
 #[tokio::test]
 async fn the_candidate_s_text_round_trips_line_by_line() {
     let (db, _tmp) = empty_db().await;
@@ -348,14 +344,10 @@ async fn the_candidate_s_text_round_trips_line_by_line() {
         crate::signals::TextLine {
             text: "AC-DC - Dirty Deeds Done Dirt Cheap [16033-2]".to_string(),
             origin: crate::signals::TextOrigin::FolderName,
-            file: None,
-            region: None,
         },
         crate::signals::TextLine {
             text: "Atlantic Records, Inc.".to_string(),
             origin: crate::signals::TextOrigin::Artwork,
-            file: Some("back.jpg".to_string()),
-            region: crate::signals::ImageRegion::new(0.1, 0.2, 0.3, 0.4),
         },
     ];
     let mut row = new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict());

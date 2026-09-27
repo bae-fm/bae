@@ -8,16 +8,14 @@
 //! results into a terminal state, and records the ledger it showed.
 
 use super::combine::{combine_results, Findings, LibraryStatuses};
-use super::toolbar::{
-    SignalKind, SignalOption, SignalState, ToolbarOrigin, ToolbarSignal, ToolbarValue,
-};
+use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
 use crate::config::IdentificationSteps;
 use crate::db::LibraryStatus;
 use crate::import::album_links::{self, GroupReading, ToRead};
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::{Catalog, LookupChoices};
-use crate::signals::{ArtworkScan, BarcodeSignal, LookupFailure, Signals, SourcedValue};
+use crate::signals::{ArtworkScan, BarcodeSignal, LookupFailure, Signals};
 
 /// One candidate's identify state. Every settled state carries the ledger its
 /// run recorded as it ended, `None` when there was nothing to lay out.
@@ -119,14 +117,7 @@ impl IdentifyState {
         };
         ToolbarSignal {
             kind: SignalKind::DiscId,
-            shown: context
-                .disc
-                .signal
-                .discid_value()
-                .map(|value| ToolbarValue {
-                    value,
-                    origin: ToolbarOrigin::DiscToc,
-                }),
+            shown: context.disc.signal.discid_value(),
             state,
             excluded: context.disc.excluded,
             options: Vec::new(),
@@ -135,22 +126,22 @@ impl IdentifyState {
 
     /// Shows the matched code, else the first, with every code as an option.
     fn barcode_badge(&self, context: &SignalsContext) -> ToolbarSignal {
-        let code = context
+        let codes = context.barcode.code_values();
+        let shown = context
             .barcode
             .matched
-            .as_ref()
-            .and_then(|v| context.barcode.codes.iter().find(|c| &c.value == v))
-            .or_else(|| context.barcode.codes.first());
+            .clone()
+            .or_else(|| codes.first().cloned());
         let state = match self {
             IdentifyState::Triangulating { barcode, .. } => barcode_progress_state(barcode),
             _ => barcode_settled_state(context),
         };
         ToolbarSignal {
             kind: SignalKind::Barcode,
-            shown: code.map(shown_value),
+            shown,
             state,
             excluded: context.barcode.every_code_excluded(),
-            options: signal_options(&context.barcode.codes, |value| {
+            options: signal_options(&codes, |value| {
                 !context.barcode.excluded.iter().any(|left| left == value)
             }),
         }
@@ -158,20 +149,19 @@ impl IdentifyState {
 
     /// Shows the first chosen number, with every extracted number as an option.
     fn catalog_badge(&self, context: &SignalsContext) -> ToolbarSignal {
-        let first_chosen = context.catalog.chosen.first().and_then(|chosen| {
-            context
-                .catalog
-                .numbers
-                .iter()
-                .find(|c| c.value == chosen.value)
-        });
+        let first_chosen = context
+            .catalog
+            .chosen
+            .first()
+            .map(|chosen| chosen.value.clone())
+            .filter(|value| context.catalog.numbers.contains(value));
         let state = match self {
             IdentifyState::Triangulating { catalog, .. } => catalog_progress_state(catalog),
             _ => catalog_settled_state(context),
         };
         ToolbarSignal {
             kind: SignalKind::Catalog,
-            shown: first_chosen.map(shown_value),
+            shown: first_chosen,
             state,
             excluded: false,
             options: signal_options(&context.catalog.numbers, |value| {
@@ -181,28 +171,15 @@ impl IdentifyState {
     }
 }
 
-/// A sighting as the value its badge shows.
-fn shown_value(sighting: &SourcedValue) -> ToolbarValue {
-    ToolbarValue {
-        value: sighting.value.clone(),
-        origin: ToolbarOrigin::Value(sighting.origin),
-    }
-}
-
-/// The values one signal offers, each once, in first-seen order.
-fn signal_options(sightings: &[SourcedValue], chosen: impl Fn(&str) -> bool) -> Vec<SignalOption> {
-    let mut options: Vec<SignalOption> = Vec::new();
-    for sighting in sightings {
-        if options.iter().any(|option| option.value == sighting.value) {
-            continue;
-        }
-        options.push(SignalOption {
-            value: sighting.value.clone(),
-            origin: sighting.origin,
-            chosen: chosen(&sighting.value),
-        });
-    }
-    options
+/// The values one signal offers, in first-seen order, each marked when chosen.
+fn signal_options(values: &[String], chosen: impl Fn(&str) -> bool) -> Vec<SignalOption> {
+    values
+        .iter()
+        .map(|value| SignalOption {
+            value: value.clone(),
+            chosen: chosen(value),
+        })
+        .collect()
 }
 
 /// One provider's answer to one lookup.

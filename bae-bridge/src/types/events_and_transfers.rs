@@ -6,100 +6,52 @@ pub trait UiEventCallback: Send + Sync {
     fn on_event(&self, event: BridgeUiEvent);
 }
 
-/// Where on an image something was read: the detector's box around it, as
-/// fractions of the image's width and height with the origin at the top-left
-/// corner. Mirrors `bae_core::signals::ImageRegion`.
-#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
-pub struct BridgeImageRegion {
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-}
-
-/// One barcode the platform's detector found on an image. Mirrors
-/// `bae_core::signals::DetectedBarcode`.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct BridgeDetectedBarcode {
-    pub payload: String,
-    /// Where the code sits on the image; absent from a detector that reports
-    /// payloads alone.
-    pub region: Option<BridgeImageRegion>,
-}
-
-/// One visual line the platform's recognizer read off an image. Mirrors
-/// `bae_core::signals::RecognizedLine`.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct BridgeRecognizedLine {
-    pub text: String,
-    /// Where the line sits on the image; absent from a recognizer that
-    /// reports text alone.
-    pub region: Option<BridgeImageRegion>,
-}
-
-/// Everything one Vision pass over an image surfaces — barcode payloads and
-/// recognized text lines from a single image decode, each with where on the
-/// image it was read. Mirrors `bae_core::signals::ArtworkAnalysis`.
+/// What one analyzer pass over an image read. Mirrors
+/// `bae_core::signals::ArtworkAnalysis`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeArtworkAnalysis {
-    pub barcodes: Vec<BridgeDetectedBarcode>,
-    pub text_lines: Vec<BridgeRecognizedLine>,
+    /// The payloads of the barcodes the detector found.
+    pub barcodes: Vec<String>,
+    /// The recognized text, one entry per visual line.
+    pub text_lines: Vec<String>,
 }
 
-/// Platform-provided artwork analyzer. One `analyze` pass over an image yields
-/// both barcodes and text, so the signal-extraction pass decodes each image
-/// exactly once.
-///
-/// Sync by design: `VNImageRequestHandler.perform` is synchronous, and the Rust
-/// side calls this from `tokio::task::spawn_blocking` so the async runtime isn't
-/// parked while Vision churns.
-///
-/// Unlike `UiEventCallback` (fire-and-forget), this one returns a value.
+/// The platform's artwork analyzer: one synchronous pass per image reads both
+/// barcodes and text. Core calls it on a blocking task.
 #[uniffi::export(callback_interface)]
 pub trait ArtworkAnalyzerCallback: Send + Sync {
-    /// Detect barcodes and recognize text in one image decode. Empty
-    /// payloads/lines on failure or when absent.
+    /// Empty on failure, as when there is nothing to read.
     fn analyze(&self, path: String) -> BridgeArtworkAnalysis;
 }
 
-/// Top-level UI event. Every distinct state is a top-level variant with
-/// fields inlined. Database-backed state uses live-result subscriptions.
+/// A UI event; database-backed state arrives through live results instead.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeUiEvent {
-    /// Playback couldn't start or continue — e.g. a cloud-only track that isn't
-    /// downloaded yet, or an in-core decode failure. The UI renders `reason`
-    /// for its locale; playback itself falls back to stopped.
+    /// Playback couldn't start or continue, and has stopped.
     PlaybackError {
         reason: BridgePlaybackErrorReason,
     },
-    /// Tracks were appended/inserted into the queue. Carries the count for
-    /// a transient "+N" badge in the UI. Suppressed when count is zero.
+    /// Tracks were added to the queue; never sent for zero.
     QueueItemsAdded {
         count: u32,
     },
 
     // ── Import live progress ───────────────────────────────────────
-    /// A candidate's extracted signals, as extraction settles each one. The UI
-    /// routes it to the one form that reads them — the search pane's
-    /// autocomplete pools and its scanning indicator — rather than to the
-    /// candidate's runtime, which every row and both panes hold.
+    /// A candidate's extracted text pools as extraction settles them, for the
+    /// search pane's autocomplete and scanning indicator.
     #[cfg(feature = "desktop")]
     CandidateSignalsUpdated {
         key: String,
         signals: BridgeSignals,
     },
-    /// How far the identifications running right now have got: how many have
-    /// ended, out of how many there are, whoever started them — the sidebar
-    /// header's ring, line and bar. Both numbers are core's; a view must not
-    /// derive `total` from the rows it holds, which are filtered. `(0, 0)` is
-    /// none running.
+    /// How many running identifications have ended, out of how many; `(0, 0)`
+    /// is none. A view must not derive `total` from its filtered rows.
     #[cfg(feature = "desktop")]
     ImportIdentificationProgress {
         identified: u32,
         total: u32,
     },
-    /// How many imports are waiting or running, whoever started them — what
-    /// the sidebar header's import indicator shows and offers to cancel.
+    /// How many imports are waiting or running.
     #[cfg(feature = "desktop")]
     ImportsInFlight {
         count: u32,
@@ -111,10 +63,8 @@ pub enum BridgeUiEvent {
     },
 }
 
-/// The dominant activity of a slice of the upload queue (a release's uploads,
-/// or the whole queue), for the storage-row badge. Mirror of bae-core's
-/// `UploadActivity`. No terminal variant: `Uploaded` still awaits release
-/// publication, and the group leaves only after that transition finishes.
+/// The dominant activity of a slice of the upload queue. Mirrors bae-core's
+/// `UploadActivity`; `Uploaded` still awaits publication.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadActivity {
     Cancelling,
@@ -127,24 +77,21 @@ pub enum BridgeUploadActivity {
     Uploaded,
 }
 
-/// An actionable condition for a retrying upload. Ordinary transient failures
-/// have no issue and continue retrying without asking the person for input.
+/// What a retrying upload needs from the person; a transient failure has none.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadIssue {
     SourceUnavailable { paths: Vec<String> },
 }
 
-/// The durable queue handoff for releases admitted by one move-to-cloud
-/// command. The revision is the final canonical outbox value published before
-/// the command returned.
+/// The releases one move-to-cloud command queued, and the outbox revision
+/// published before it returned.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMakeRemoteReceipt {
     pub outbox_revision: u64,
     pub release_ids: Vec<String>,
 }
 
-/// The releases one move-to-cloud command refused, paired with the typed error
-/// the UI displays. Other releases from the same command may have a receipt.
+/// The releases one move-to-cloud command refused, and why.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMakeRemoteBatchFailure {
     pub release_ids: Vec<String>,
@@ -187,20 +134,16 @@ mirror_enum! {
     },
 }
 
-/// Which phase's bytes a progress bar counts. Mirror of bae-core's
-/// `UploadPhase`. Preparation reads plaintext source bytes; the provider write
-/// sends encrypted bytes of a different size.
+/// Which phase's bytes a progress bar counts: plaintext source bytes while
+/// preparing, encrypted bytes while uploading. Mirrors `UploadPhase`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadPhase {
     Preparing,
     Uploading,
 }
 
-/// One phase-scoped progress bar: bytes done and the exact total, both in
-/// `phase`'s own units. Mirror of bae-core's `UploadBar`. The UI fills the bar
-/// from these two numbers and writes its label from the same two, so fill and
-/// text always count the same thing; `bridge_upload_phase_bytes_key` gives the
-/// label its phase-naming catalog key.
+/// One phase's progress bar, both numbers in that phase's bytes, so its fill
+/// and label count the same thing. Mirrors `UploadBar`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadBar {
     pub phase: BridgeUploadPhase,
@@ -208,9 +151,7 @@ pub struct BridgeUploadBar {
     pub bytes_total: u64,
 }
 
-/// Localization key for a progress bar's label, which names the phase and
-/// counts its bytes ("Preparing 3 MB of 224.2 MB"). The UI resolves it against
-/// the `Core` table with the bar's own `bytes_done` and `bytes_total`.
+/// Localization key for a progress bar's label ("Preparing 3 MB of 224.2 MB").
 #[uniffi::export]
 pub fn bridge_upload_phase_bytes_key(phase: BridgeUploadPhase) -> String {
     match phase {
@@ -220,9 +161,8 @@ pub fn bridge_upload_phase_bytes_key(phase: BridgeUploadPhase) -> String {
     .to_string()
 }
 
-/// One file's state in the queue pane's per-file rows. A file inside an
-/// unfinished release transition can render as `Uploaded`, showing that its
-/// provider write finished while other files or publication remain.
+/// One file's state in the queue pane; `Uploaded` while the rest of its
+/// release is still going.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadFileState {
     Queued,
@@ -233,8 +173,8 @@ pub enum BridgeUploadFileState {
     Uploaded,
 }
 
-/// The label for one queued upload. Source filenames cross the bridge as data;
-/// image roles cross as typed cases so each platform localizes them.
+/// The label for one queued upload; image roles are typed so each platform
+/// localizes them.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadFileLabel {
     Filename {
@@ -242,18 +182,13 @@ pub enum BridgeUploadFileLabel {
     },
     Cover,
     ArtistImage,
-    /// A file whose row went with the release being removed from the cloud.
-    /// There is nothing left to name it and nothing to name: the release
-    /// leaving is what the group says.
+    /// A file of a release being removed from the cloud, which has no name
+    /// left.
     Unwinding,
 }
 
-/// Per-state counts, the phase-scoped progress `bar`, and a derived badge
-/// `activity`. Used per-release (the storage-row badge reads `activity`;
-/// storage-action gates read `can_cancel`) and as the overall total (queue
-/// counts, ETA, summary band). Provider-complete files remain counted until
-/// publication, so the slice stays whole over the full durable release
-/// transition and across restarts.
+/// A slice of the upload queue — one release's or the whole queue's — with its
+/// counts, bar and badge. Uploaded files count until publication.
 #[derive(Debug, Clone, Default, uniffi::Record)]
 pub struct BridgeUploadProgress {
     pub queued: u32,
@@ -264,15 +199,11 @@ pub struct BridgeUploadProgress {
     pub uploaded: u32,
     pub publishing: u32,
     pub cancelling: u32,
-    /// The bar this slice draws, counting one phase's bytes against that
-    /// phase's exact total. `None` while there are no bytes to count — a
-    /// release down to its make-Remote transition, or one being cancelled.
+    /// `None` while there are no bytes to count.
     pub bar: Option<BridgeUploadBar>,
-    /// The badge activity for this slice; `None` when idle. Per-release entries
-    /// always belong to an unfinished transition, so theirs is always set.
+    /// `None` when idle.
     pub activity: Option<BridgeUploadActivity>,
-    /// Whether coven can still unwind this transition. False after publication
-    /// begins and while cancellation is already in progress.
+    /// Whether the transition can still be unwound.
     pub can_cancel: bool,
     /// What the retry needs from the person, if anything.
     pub issue: Option<BridgeUploadIssue>,
@@ -290,8 +221,7 @@ pub enum BridgeDownloadState {
     },
 }
 
-/// Byte progress for the active download. Mirrors the payload emitted by the
-/// transfer reading the release's blobs.
+/// Byte progress for the active download.
 #[derive(Debug, Clone, Default, PartialEq, uniffi::Record)]
 pub struct BridgeDownloadTransferProgress {
     pub bytes_done: u64,
@@ -299,8 +229,7 @@ pub struct BridgeDownloadTransferProgress {
     pub fraction: f64,
 }
 
-/// One queued download — a whole release being pinned. Mirror of bae-core's
-/// `DownloadOp`; carries raw fields the UI renders directly.
+/// One queued download: a whole release being pinned. Mirrors `DownloadOp`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeDownloadOp {
     pub release_id: String,
@@ -337,8 +266,8 @@ impl BridgeDownloadOp {
     }
 }
 
-/// What the album-detail download control shows for one release. Mirror of
-/// bae-core's `ReleaseDownloadStatus`.
+/// What the album-detail download control shows. Mirrors
+/// `ReleaseDownloadStatus`.
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeReleaseDownloadStatus {
     Downloaded,
@@ -365,12 +294,7 @@ mirror_enum! {
 }
 
 /// The download control's state for one release, or `None` when there is no
-/// control to show (no cloud home, or a release whose audio is already local).
-///
-/// The whole join is core's — including finding this release's entry in the
-/// queue. A live entry outranks `pinned`, and `Available` means exactly "core
-/// offers Pin"; both are properties of core's own storage-action gate, so an app
-/// that re-derived either would drift from it.
+/// control to show. Core decides it, so no app re-derives it from its gates.
 #[uniffi::export]
 pub fn bridge_release_download_status(
     pinned: bool,
@@ -391,8 +315,7 @@ pub fn bridge_release_download_status(
         .map(BridgeReleaseDownloadStatus::from_core)
 }
 
-/// Per-state counts for the download queue. Used per-release (the storage-row
-/// "Downloading" badge) and as the overall total (the pane header).
+/// Per-state counts for the download queue, per release or overall.
 #[derive(Debug, Clone, Default, uniffi::Record)]
 pub struct BridgeDownloadProgress {
     pub queued: u32,
@@ -400,25 +323,19 @@ pub struct BridgeDownloadProgress {
     pub failed: u32,
 }
 
-/// The in-memory download (pin) queue snapshot the Storage Manager's Downloads
-/// pane renders. The rolled-up counts and the one-line `summary` are computed in
-/// bae-core; the UI renders them verbatim.
+/// The download queue as the Downloads pane renders it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeDownloadSnapshot {
     pub downloads: Vec<BridgeDownloadOp>,
     pub total: BridgeDownloadProgress,
-    /// The one-line queue summary's parts (downloading/failed/queued, each
-    /// dropped when zero), decided by core. The UI resolves each key with its
-    /// count and joins — it does not choose which counts appear or their order.
+    /// The summary line's parts, in core's order; the UI resolves and joins them.
     pub summary_parts: Vec<BridgeCountLabel>,
-    /// True when the user paused the download queue. Drives the pause/resume
-    /// toggle in the Downloads pane.
+    /// Whether the person paused the queue.
     pub paused: bool,
 }
 
-/// One part of a queue summary line — a catalog key and its count. Mirror of
-/// bae-core's `CountLabel`. Which parts appear, in what order, and that a zero
-/// drops out is core's decision; the UI resolves the key and joins the parts.
+/// One part of a queue summary line: a catalog key and its count. Mirrors
+/// `CountLabel`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCountLabel {
     pub key: String,
@@ -439,23 +356,19 @@ pub enum BridgeOutputState {
     Failed { error: String },
 }
 
-/// What a queued release-level output produces, for display in the queue row.
-/// Mirror of bae-core's `OutputKind`; a save carries its preset's display name
-/// (resolved at enqueue, not an id — the row never dereferences a preset).
+/// What a queued output produces; a save carries its preset's name as it was
+/// when queued. Mirrors `OutputKind`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeOutputKind {
     Export,
     Save { preset_name: String },
 }
 
-/// One queued release output — a whole release being written out to a folder,
-/// either a verbatim export or a preset save. Mirror of bae-core's `OutputOp`;
-/// carries raw fields the UI renders directly.
+/// One queued release output: an export or a preset save. Mirrors `OutputOp`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOutputOp {
     pub release_id: String,
-    /// The chosen destination directory; the release's source folder is
-    /// reconstructed under it.
+    /// The chosen destination; the release's folder is rebuilt under it.
     pub target_dir: String,
     /// Album title for display.
     pub title: String,
@@ -465,13 +378,10 @@ pub struct BridgeOutputOp {
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
     pub state: BridgeOutputState,
-    /// Whether this row is a verbatim export or a preset save; drives the row's
-    /// state text and (for saves) the preset name in the detail line.
     pub kind: BridgeOutputKind,
 }
 
-/// Per-state counts for the export queue, driving the pane header. No bytes:
-/// outputs track an overall percent per release, not aggregate bytes.
+/// Per-state counts for the export queue.
 #[derive(Debug, Clone, Default, uniffi::Record)]
 pub struct BridgeOutputProgress {
     pub queued: u32,
@@ -479,26 +389,19 @@ pub struct BridgeOutputProgress {
     pub failed: u32,
 }
 
-/// The in-memory export queue snapshot the Storage Manager's Exporting pane
-/// renders. Mirror of bae-core's `OutputSnapshot`; the UI renders it verbatim.
+/// The export queue as the Exporting pane renders it. Mirrors `OutputSnapshot`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOutputSnapshot {
     pub outputs: Vec<BridgeOutputOp>,
     pub total: BridgeOutputProgress,
-    /// The one-line queue summary's parts (exporting/failed/queued), decided by
-    /// core. The UI resolves each key and joins.
+    /// The summary line's parts, in core's order.
     pub summary_parts: Vec<BridgeCountLabel>,
-    /// True when the user paused the export queue. Drives the pause/resume
-    /// toggle in the Exporting pane.
+    /// Whether the person paused the queue.
     pub paused: bool,
 }
 
-/// One file in a release's upload group: what the queue pane's per-file rows
-/// render. Mirror of bae-core's `UploadFileOp`, with the state flattened into
-/// `state` + `bar` + `last_error` so the UI doesn't switch on associated data.
-/// `source_bytes_total` is the displayed local file size; `bar` is present only
-/// while this file is moving bytes, and then counts the phase it is moving them
-/// in.
+/// One file in a release's upload group. Mirrors `UploadFileOp` with its state
+/// flattened; `bar` is present only while the file is moving bytes.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadFileOp {
     pub file_id: String,
@@ -510,18 +413,14 @@ pub struct BridgeUploadFileOp {
     pub last_error: Option<String>,
 }
 
-/// A release's uploads, grouped for the queue pane's expandable per-release
-/// rows. Mirror of bae-core's `UploadReleaseGroup`. Core resolves the required
-/// release id and display title before the bridge value can exist. Files retain
-/// their durable queue order.
+/// A release's uploads, files in queue order. Mirrors `UploadReleaseGroup`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadReleaseGroup {
     pub release_id: String,
     pub display_title: String,
     pub files: Vec<BridgeUploadFileOp>,
     pub progress: BridgeUploadProgress,
-    /// Rolling-window preparation or provider-upload rate for this release's
-    /// active blobs.
+    /// The release's current transfer rate.
     pub throughput_bps: u64,
 }
 
@@ -539,30 +438,23 @@ pub enum BridgeOutboxPauseState {
     Paused,
 }
 
-/// The cloud-outbox processing snapshot the Storage Manager renders. The
-/// counts, per-release aggregates, one-line `summary`, throughput, and ETA
-/// are computed from bae-core's grouped snapshot; the UI renders them verbatim.
+/// The upload queue as the Storage Manager renders it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOutboxSnapshot {
-    /// Monotonic publication number from core. A cloud import carries the
-    /// revision that first represented its enqueue, allowing a subscriber that
-    /// coalesced intermediate values to recognize terminal completion.
+    /// Increases with each publication, so a subscriber that skipped values
+    /// can still tell an enqueue it was told about has finished.
     pub revision: u64,
-    /// Uploads grouped by release for the queue pane's rows. A group leaves
-    /// only after its durable make-Remote transition finishes publication.
+    /// A group leaves only once its release is published.
     pub upload_groups: Vec<BridgeUploadReleaseGroup>,
-    /// Per-release aggregate derived from `upload_groups`, keyed by release id.
-    /// Releases with no unfinished make-Remote transition are absent.
+    /// `upload_groups` per release id.
     pub per_release: std::collections::HashMap<String, BridgeReleaseUploadProgress>,
-    /// Sum across all uploads: the queue counts and the queue-wide progress
-    /// bar.
+    /// Across all uploads.
     pub total: BridgeUploadProgress,
-    /// The one-line queue summary's parts (uploading/failed/queued, each dropped
-    /// when zero), decided by core. The UI resolves each key and joins.
+    /// The summary line's parts, in core's order.
     pub summary_parts: Vec<BridgeCountLabel>,
     pub pause_state: BridgeOutboxPauseState,
-    /// Rolling-window transfer throughput in bytes per second. The UI formats it.
+    /// Bytes per second.
     pub throughput_bps: u64,
-    /// Estimated seconds remaining at the current rate. The UI formats it.
+    /// Seconds remaining at the current rate.
     pub eta_seconds: Option<u64>,
 }

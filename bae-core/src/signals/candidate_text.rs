@@ -1,27 +1,7 @@
-//! Classification of candidate text into per-field suggestion pools.
-//!
-//! Input is text lines harvested from one candidate's surfaces — artwork OCR is
-//! the noisiest, but path components, folder-name brackets, filenames, CUE
-//! sheets, and `.txt` content all feed in. Pure: no OCR, no I/O, just string
-//! transforms.
-//!
-//! Two pools feed the import search UI:
-//!
-//! * catalog numbers — regex-extracted substrings, via `catalog_numbers_sourced`.
-//! * free text — Artist / Album autocomplete lines, with whole-line barcodes and
-//!   catalog numbers dropped by `should_reject_line` before clustering.
-//!
-//! Extractors for non-OCR sources:
-//!
-//! * `extract_folder_brackets` — bracketed substrings from folder names, kept
-//!   only when catalog-shaped. Routes straight to the catalog pool, bypassing the
-//!   free-text catalog regex, which is too strict for real-world formats like
-//!   `Z1 12345` or `XYZ CD6`.
-//! * `strip_path_component` — strips year prefixes, track-number prefixes, and
-//!   trailing bracketed tails from a path segment.
-//! * `parse_filename_stem` — file stem, minus extension and leading track number.
+//! Classifying a candidate's text lines into catalog numbers and Artist /
+//! Album free text, plus the extractors for folder names and file names. Pure
+//! string work.
 
-use crate::signals::{ImageRegion, SourcedValue, TextOrigin};
 use regex::Regex;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -29,44 +9,23 @@ use std::sync::OnceLock;
 use strsim::jaro_winkler;
 use crate::util::text::normalize;
 
-/// Extract catalog-number-like substrings, each tagged with its line's
-/// [`SignalOrigin`] (the Refine badges show where a candidate came from). Two
-/// regexes cover most real-world formats:
-///
-/// * Letter prefix (`\b[A-Z]{2,6}[- ]?\d{3,7}\b`): `WPCR-80001`, `COCQ 84487`,
-///   `TOCP12345`, `RR-500`.
-/// * Single letter + digit (`\b[A-Z]\d[- ]?\d{4,7}\b`): `Z1 12345`, `T5 67890`.
-///   Its digit suffix must be ≥4 long so short incidentals don't match.
-///
-/// Inner separators are preserved verbatim: MusicBrainz indexes `WPCR-80001` and
-/// `WPCR 80001` as distinct tokens, so both forms survive when both appear. ZIP
-/// false positives are rejected.
-///
-/// One sighting per place a number was read: the same number on the back
-/// cover and in the folder name is two sightings, in first-seen order, and a
-/// number read twice off one file is one. A surface listing the numbers folds
-/// a number's sightings together and shows each place beside it.
-pub(crate) fn catalog_numbers_sourced(lines: &[SourcedLine]) -> Vec<SourcedValue> {
-    let mut out: Vec<SourcedValue> = Vec::new();
-    let mut seen: HashSet<(String, TextOrigin, Option<String>)> = HashSet::new();
+/// Catalog-number-like substrings (`WPCR-80001`, `Z1 12345`), each once in
+/// first-seen order. Separators are kept as written, since MusicBrainz indexes
+/// `WPCR-80001` and `WPCR 80001` apart.
+pub(crate) fn catalog_numbers(lines: &[SourcedLine]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
     for line in lines {
-        let origin = TextOrigin::of_source(&line.source);
-        let file_id = line.source.file_id();
         for s in find_catalogs_in_line(&line.text) {
-            if seen.insert((s.clone(), origin, file_id.clone())) {
-                let sighting = match &file_id {
-                    Some(file_id) => SourcedValue::in_file(s, origin, file_id.clone()),
-                    None => SourcedValue::new(s, origin),
-                };
-                out.push(sighting.at(line.region));
+            if seen.insert(s.clone()) {
+                out.push(s);
             }
         }
     }
     out
 }
 
-/// Catalog-number-like substrings in one line, ZIP false positives rejected. No
-/// dedup — [`catalog_numbers_sourced`] owns that, across lines.
+/// Catalog-number-like substrings in one line, ZIP codes rejected, not deduped.
 fn find_catalogs_in_line(line: &str) -> Vec<String> {
     static MULTI_LETTER: OnceLock<Regex> = OnceLock::new();
     static SINGLE_LETTER_DIGIT: OnceLock<Regex> = OnceLock::new();
@@ -368,71 +327,27 @@ pub(crate) fn parse_filename_stem(path: &Path) -> Vec<String> {
 
 // ── Sourced pipeline: filter → normalize → cluster → rank → cutoff ──────────
 
-/// Where a `SourcedLine` came from — the clustering pipeline scores members by
-/// this. Folder brackets have no variant: they bypass this pipeline entirely,
-/// riding `Pool::bracket_catalogs` straight to the catalog output.
-///
-/// A file source carries the file twice: `path` is where it is on this disk,
-/// which is what tells one image's lines from another's; `file_id` is the
-/// candidate-relative path every other surface addresses the file by, which
-/// is what a value read off it points back at. `None` for a file that is not
-/// one of a scanned folder's — a library release's stored cover.
-///
-/// A CUE field names only its sheet: the parser already read the sheet, so
-/// there is no second path to open — but the line still points back at the
-/// file it was read off, like every other origin that is one.
+/// Where a `SourcedLine` came from, which clustering weighs it by. A file
+/// source names its file, so one file's lines stay apart from another's.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Source {
-    Artwork {
-        path: PathBuf,
-        file_id: Option<String>,
-    },
+    Artwork { path: PathBuf },
     PathComponent,
-    FilenameGeneric {
-        path: PathBuf,
-        file_id: String,
-    },
-    CueField {
-        file_id: String,
-    },
-    TextFile {
-        path: PathBuf,
-        file_id: String,
-    },
+    FilenameGeneric { path: PathBuf },
+    CueField { file_id: String },
+    TextFile { path: PathBuf },
 }
 
-impl Source {
-    /// The candidate-relative id of the file this source is, where it is one.
-    pub(crate) fn file_id(&self) -> Option<String> {
-        match self {
-            Source::Artwork { file_id, .. } => file_id.clone(),
-            Source::FilenameGeneric { file_id, .. }
-            | Source::TextFile { file_id, .. }
-            | Source::CueField { file_id } => Some(file_id.clone()),
-            Source::PathComponent => None,
-        }
-    }
-}
-
-/// A candidate line tagged with its provenance. `text` stays verbatim for
-/// display; normalization is internal to clustering.
+/// A candidate line and where it came from, verbatim.
 #[derive(Debug, Clone)]
 pub(crate) struct SourcedLine {
     pub source: Source,
     pub text: String,
-    /// Where on its image the line was read, for an artwork line whose
-    /// recognizer reports positions. `None` for every other source.
-    pub region: Option<ImageRegion>,
 }
 
 impl SourcedLine {
-    /// A line from a source that has no place on an image to name.
     pub(crate) fn new(source: Source, text: String) -> Self {
-        Self {
-            source,
-            text,
-            region: None,
-        }
+        Self { source, text }
     }
 }
 

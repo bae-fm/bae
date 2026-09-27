@@ -1,8 +1,7 @@
 use super::*;
 
-/// Run the real catalog extractor over plain lines, projected to bare values
-/// — so these assertions exercise the regexes, ZIP rejection, and dedup
-/// through the same entry point production uses.
+/// Run the real catalog extractor over plain lines, through the same entry
+/// point production uses.
 fn cats(lines: &[String]) -> Vec<String> {
     let sourced: Vec<SourcedLine> = lines
         .iter()
@@ -15,10 +14,7 @@ fn cats(lines: &[String]) -> Vec<String> {
             )
         })
         .collect();
-    catalog_numbers_sourced(&sourced)
-        .into_iter()
-        .map(|c| c.value)
-        .collect()
+    catalog_numbers(&sourced)
 }
 
 /// Lines that survive `should_reject_line` — the same predicate production
@@ -74,11 +70,8 @@ fn catalogs_separator_variants_are_distinct() {
 
 // MARK: - catalog_numbers — multi-disc suffix behavior
 //
-// The regex's `\b` word boundaries end a match at the first non-word
-// character, so a multi-disc suffix after `/` or `~` falls outside it and
-// only the first disc's number comes back. A format with two internal
-// separators (`UDCD-1-702`) doesn't match at all — the regex permits one
-// separator between letters and digits.
+// A suffix after `/` or `~` falls outside the match, so only the first disc's
+// number comes back; two internal separators (`UDCD-1-702`) match nothing.
 
 #[test]
 fn catalogs_multi_disc_slash_suffix() {
@@ -96,8 +89,7 @@ fn catalogs_multi_disc_tilde_suffix() {
     );
 }
 
-/// A prefix that counts its discs — the digit sits before the separator and
-/// only three digits follow it.
+/// A prefix that counts its discs: a digit before the separator, three after.
 #[test]
 fn catalogs_counted_prefix() {
     assert_eq!(
@@ -116,64 +108,7 @@ fn catalogs_two_internal_separators_rejected() {
     assert_eq!(cats(&["MFSL UDCD-1-702".to_string()]), empty);
 }
 
-// MARK: - catalog_numbers_sourced — origins + parity with catalog_numbers
-
-#[test]
-fn sourced_catalogs_attribute_origin_per_line() {
-    // Folder brackets bypass this path, so a path component and an artwork
-    // line stand in. Each survivor carries its source's `SignalOrigin`.
-    let region = ImageRegion::new(0.1, 0.8, 0.3, 0.05);
-    let lines = vec![
-        SourcedLine::new(Source::PathComponent, "WPCR-80001".to_string()),
-        SourcedLine {
-            source: Source::Artwork {
-                path: PathBuf::from("/cover.jpg"),
-                file_id: Some("cover.jpg".to_string()),
-            },
-            text: "COCQ 84487".to_string(),
-            region,
-        },
-    ];
-    let out = catalog_numbers_sourced(&lines);
-    assert_eq!(
-        out,
-        vec![
-            SourcedValue::new("WPCR-80001".to_string(), TextOrigin::FolderName),
-            SourcedValue::in_file(
-                "COCQ 84487".to_string(),
-                TextOrigin::Artwork,
-                "cover.jpg".to_string()
-            )
-            .at(region),
-        ],
-    );
-}
-
-/// One number read off two files is two sightings, each pointing at its own
-/// file; read twice off one file, it is one.
-#[test]
-fn sourced_catalogs_keep_one_sighting_per_file() {
-    let on = |file: &str, text: &str| SourcedLine {
-        source: Source::Artwork {
-            path: PathBuf::from(format!("/{file}")),
-            file_id: Some(file.to_string()),
-        },
-        text: text.to_string(),
-        region: None,
-    };
-    let lines = vec![
-        on("back.jpg", "WPCR-80001"),
-        on("back.jpg", "Cat. WPCR-80001"),
-        on("inlay.jpg", "WPCR-80001"),
-    ];
-    assert_eq!(
-        catalog_numbers_sourced(&lines)
-            .iter()
-            .map(|c| c.origin_path.as_deref())
-            .collect::<Vec<_>>(),
-        vec![Some("back.jpg"), Some("inlay.jpg")]
-    );
-}
+// MARK: - catalog_numbers dedup
 
 #[test]
 fn sourced_catalogs_reject_zip_and_dedup() {
@@ -385,8 +320,7 @@ fn catalogs_substring_single_letter_digit() {
 
 #[test]
 fn catalogs_zip_in_po_box_rejected() {
-    // Classic mailing address: state+ZIP at end of line gets stripped,
-    // regardless of whether a PO Box marker is present.
+    // A state and ZIP at the end of the line is dropped, PO Box or not.
     let empty: Vec<String> = Vec::new();
     assert_eq!(cats(&["P.O. Box 123, City, ZZ 12345.".to_string()]), empty,);
     assert_eq!(
@@ -397,17 +331,14 @@ fn catalogs_zip_in_po_box_rejected() {
 
 #[test]
 fn catalogs_zip_tail_rejected() {
-    // State abbrev + 5 digits at end of line — mailing-address tail.
+    // A state and five digits ending the line is an address.
     let empty: Vec<String> = Vec::new();
     assert_eq!(cats(&["Some City, NY 10001".to_string()]), empty,);
 }
 
 #[test]
 fn catalogs_midline_catalog_on_mail_line_kept() {
-    // A line that contains a `P.O. Box` but whose catalog-shaped
-    // substring is mid-line (not at the trailing address position)
-    // must keep the catalog. Only the end-of-line state+ZIP capture
-    // gets dropped.
+    // Only a state and ZIP ending the line is dropped; one mid-line is kept.
     assert_eq!(
         cats(&["P.O. Box 123 — TX 45678 is the album code".to_string()]),
         vec!["TX 45678".to_string()],
@@ -416,8 +347,7 @@ fn catalogs_midline_catalog_on_mail_line_kept() {
 
 #[test]
 fn catalogs_real_catalog_beside_zip_kept() {
-    // Real catalog on the same line as a ZIP-shaped string should still
-    // survive. Only the ZIP-shaped candidate gets dropped.
+    // A real catalog number beside a ZIP survives; only the ZIP is dropped.
     assert_eq!(
         cats(&["WPCR-80001 / City, NY 10001".to_string()]),
         vec!["WPCR-80001".to_string()],
@@ -499,7 +429,6 @@ fn artwork_line(path: &str, text: &str) -> SourcedLine {
     SourcedLine::new(
         Source::Artwork {
             path: PathBuf::from(path),
-            file_id: None,
         },
         text.to_string(),
     )
@@ -642,8 +571,7 @@ fn pick_representative_enforces_min_length() {
 
 #[test]
 fn pick_representative_falls_back_to_first_when_all_below_floor() {
-    // Every member is under the 4-char floor, so the ranking loop skips them
-    // all; the fallback must return the first member, not an empty string.
+    // With every member under the 4-char floor, the first member is returned.
     let cluster = Cluster {
         normalized_centroid: "ab".to_string(),
         members: vec![cue_line("ab"), cue_line("xy")],
@@ -658,24 +586,20 @@ fn apply_free_text_cutoff_gates_on_min_score_then_falls_back() {
         members: vec![member],
     };
 
-    // A CUE line scores 5 (over FREE_TEXT_MIN_SCORE); a lone artwork line
-    // scores 1. Once anything clears the gate, the weak cluster is dropped.
+    // A CUE line (5) clears the gate, so the lone artwork line (1) is dropped.
     let gated = apply_free_text_cutoff(&[
         make("strong", cue_line("Strong Title")),
         make("weak", artwork_line("/a.jpg", "Weak Title")),
     ]);
     assert_eq!(gated, vec!["Strong Title".to_string()]);
 
-    // When nothing clears the gate, fall back to the ranked list rather
-    // than returning an empty dropdown.
+    // When nothing clears the gate, the ranked list is kept.
     let fallback = apply_free_text_cutoff(&[make("weak", artwork_line("/a.jpg", "Weak Title"))]);
     assert_eq!(fallback, vec!["Weak Title".to_string()]);
 }
 
-/// `ARTIST NAME/ALBUM TITLE` and `ALBUM TITLE` normalize to forms whose
-/// Jaro-Winkler similarity is under the 0.85 threshold, so they never share a
-/// cluster and `pick_representative`'s tie-break never has to choose between
-/// them. Pinned so a change to the threshold or to `normalize` surfaces here.
+/// `ARTIST NAME/ALBUM TITLE` and `ALBUM TITLE` fall under the similarity
+/// threshold, so they never share a cluster.
 #[test]
 fn representative_prefix_and_title_land_in_different_clusters() {
     let prefix = normalize("ARTIST NAME/ALBUM TITLE");
@@ -686,8 +610,6 @@ fn representative_prefix_and_title_land_in_different_clusters() {
         "normalized JW({prefix:?}, {plain:?}) = {sim}, expected < {JW_THRESHOLD}",
     );
 
-    // Verify via the full clustering pipeline: two separate clusters,
-    // each with exactly one member.
     let lines = vec![
         artwork_line("/a.jpg", "ARTIST NAME/ALBUM TITLE"),
         artwork_line("/b.jpg", "ALBUM TITLE"),

@@ -1,22 +1,13 @@
-//! The settled signals of one candidate, as one header row plus its list
-//! values.
-//!
-//! The three signal kinds each settle into a state plus, where they failed, a
-//! typed [`LookupFailure`]. That failure is three columns — kind, the
-//! provider's HTTP status, the diagnostic detail — and the same three columns
-//! appear once per kind, so both directions go through one helper.
-//!
-//! Only a settled value is storable. `Scanning` is artwork OCR still running,
-//! and a verdict is written only after the identify machine settled, which
-//! waits for OCR — so a scanning signal reaching here is a defect and the
-//! write says so rather than storing a half-read one.
+//! A candidate's settled signals, as one header row plus its list values and
+//! text lines. Each signal's [`LookupFailure`] is three columns (kind, status,
+//! detail). A still-scanning signal reaching here is a defect, and the write
+//! refuses it.
 
-use super::super::read::stored_region;
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::signals::{
-    BarcodeSignal, CdProof, DiscIdSignal, LookupFailure, RipEvidence, SignalOrigin, Signals,
-    SourcedValue, TextLine, TextSignal,
+    BarcodeSignal, CdProof, DiscIdSignal, LookupFailure, RipEvidence, Signals, SourcedValue,
+    TextLine, TextSignal,
 };
 
 const SIGNALS_COLUMNS: &str = "content_hash, rip, rip_proof, rip_file, rip_sample_rate_hz, \
@@ -27,11 +18,9 @@ const SIGNALS_COLUMNS: &str = "content_hash, rip, rip_proof, rip_file, rip_sampl
      barcode_state, barcode_failure, barcode_failure_status, barcode_failure_detail, \
      text_state, text_failure, text_failure_status, text_failure_detail";
 
-const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin, origin_path, \
-     region_x, region_y, region_width, region_height";
+const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin_path";
 
-const TEXT_LINE_COLUMNS: &str = "content_hash, position, text, origin, origin_path, \
-     region_x, region_y, region_width, region_height";
+const TEXT_LINE_COLUMNS: &str = "content_hash, position, text, origin";
 
 /// One failure as its three columns.
 struct FailureColumns {
@@ -103,13 +92,6 @@ fn failure_of(
         },
         other => return Err(unreadable("signal failure", other)),
     }))
-}
-
-/// A stored origin word read back as the origin type its row admits: a
-/// barcode's or catalog number's [`SignalOrigin`], or a text line's
-/// [`TextOrigin`].
-fn origin_of<O: std::str::FromStr<Err = String>>(stored: &str) -> Result<O, DbError> {
-    stored.parse().map_err(DbError::Message)
 }
 
 /// Every signal row under `content_hash`. The values cascade from the header.
@@ -202,79 +184,42 @@ pub(super) fn insert_signals(
         ],
     )?;
 
-    let sourced = |list: &'static str, values: &[SourcedValue]| {
-        values
-            .iter()
-            .enumerate()
-            .map(|(position, value)| {
-                (
-                    list,
-                    position as i64,
-                    value.value.clone(),
-                    Some(value.origin.as_str()),
-                    value.origin_path.clone(),
-                    value.region,
-                )
-            })
-            .collect::<Vec<_>>()
+    let unsourced = |values: &[String]| -> Vec<(String, Option<String>)> {
+        values.iter().map(|value| (value.clone(), None)).collect()
     };
-    let mut values = sourced("barcode", signals.barcode.codes());
-    values.extend(sourced("catalog", signals.text.catalogs()));
-    values.extend(
-        free_text(&signals.text)
-            .iter()
-            .enumerate()
-            .map(|(position, value)| {
-                (
-                    "free_text",
-                    position as i64,
-                    value.clone(),
-                    None,
-                    None,
-                    None,
-                )
-            }),
-    );
-    for (list, position, value, origin, origin_path, region) in values {
-        sql.execute(
-            &format!(
-                "INSERT INTO import_candidate_signal_value ({SIGNAL_VALUE_COLUMNS}) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            ),
-            params![
-                content_hash,
-                list,
-                position,
-                value,
-                origin,
-                origin_path,
-                region.map(|r| f64::from(r.x)),
-                region.map(|r| f64::from(r.y)),
-                region.map(|r| f64::from(r.width)),
-                region.map(|r| f64::from(r.height)),
-            ],
-        )?;
+    let lists = [
+        (
+            "barcode",
+            signals
+                .barcode
+                .codes()
+                .iter()
+                .map(|code| (code.value.clone(), code.origin_path.clone()))
+                .collect(),
+        ),
+        ("catalog", unsourced(signals.text.catalogs())),
+        ("free_text", unsourced(free_text(&signals.text))),
+    ];
+    for (list, values) in lists {
+        for (position, (value, origin_path)) in values.into_iter().enumerate() {
+            sql.execute(
+                &format!(
+                    "INSERT INTO import_candidate_signal_value ({SIGNAL_VALUE_COLUMNS}) \
+                     VALUES (?, ?, ?, ?, ?)"
+                ),
+                params![content_hash, list, position as i64, value, origin_path],
+            )?;
+        }
     }
 
-    // The candidate's own text, every line of it, in the order the pass read
-    // it. Beside the values, not among them: nothing was extracted from these.
+    // The candidate's own text, in reading order.
     for (position, line) in signals.text_pool.iter().enumerate() {
         sql.execute(
             &format!(
                 "INSERT INTO import_candidate_text_line ({TEXT_LINE_COLUMNS}) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                 VALUES (?, ?, ?, ?)"
             ),
-            params![
-                content_hash,
-                position as i64,
-                line.text,
-                line.origin.as_str(),
-                line.file,
-                line.region.map(|r| f64::from(r.x)),
-                line.region.map(|r| f64::from(r.y)),
-                line.region.map(|r| f64::from(r.width)),
-                line.region.map(|r| f64::from(r.height)),
-            ],
+            params![content_hash, position as i64, line.text, line.origin.as_str()],
         )?;
     }
     Ok(())
@@ -305,14 +250,7 @@ pub(super) fn load_signals_on(
                 row.get::<_, String>("content_hash")?,
                 row.get::<_, String>("list")?,
                 row.get::<_, String>("value")?,
-                row.get::<_, Option<String>>("origin")?,
                 row.get::<_, Option<String>>("origin_path")?,
-                [
-                    row.get::<_, Option<f64>>("region_x")?,
-                    row.get::<_, Option<f64>>("region_y")?,
-                    row.get::<_, Option<f64>>("region_width")?,
-                    row.get::<_, Option<f64>>("region_height")?,
-                ],
             ))
         },
     )?;
@@ -328,13 +266,6 @@ pub(super) fn load_signals_on(
                 row.get::<_, String>("content_hash")?,
                 row.get::<_, String>("text")?,
                 row.get::<_, String>("origin")?,
-                row.get::<_, Option<String>>("origin_path")?,
-                [
-                    row.get::<_, Option<f64>>("region_x")?,
-                    row.get::<_, Option<f64>>("region_y")?,
-                    row.get::<_, Option<f64>>("region_width")?,
-                    row.get::<_, Option<f64>>("region_height")?,
-                ],
             ))
         },
     )?;
@@ -375,29 +306,19 @@ pub(super) fn load_signals_on(
 
     Ok(move || {
         let mut lists: HashMap<String, SignalValues> = HashMap::new();
-        for (content_hash, list, value, origin, origin_path, region) in values {
+        for (content_hash, list, value, origin_path) in values {
             let entry = lists.entry(content_hash).or_default();
             match list.as_str() {
-                "barcode" => {
-                    entry
-                        .barcodes
-                        .push(sourced_value(value, origin, origin_path, region)?)
-                }
-                "catalog" => {
-                    entry
-                        .catalogs
-                        .push(sourced_value(value, origin, origin_path, region)?)
-                }
+                "barcode" => entry.barcodes.push(SourcedValue { value, origin_path }),
+                "catalog" => entry.catalogs.push(value),
                 "free_text" => entry.free_text.push(value),
                 other => return Err(unreadable("list", other)),
             }
         }
         let mut pools: HashMap<String, Vec<TextLine>> = HashMap::new();
-        for (content_hash, text, origin, origin_path, region) in text_lines {
+        for (content_hash, text, origin) in text_lines {
             pools.entry(content_hash).or_default().push(TextLine {
-                region: stored_region(&text, region)?,
-                origin: origin_of(&origin)?,
-                file: origin_path,
+                origin: origin.parse().map_err(DbError::Message)?,
                 text,
             });
         }
@@ -529,23 +450,6 @@ pub(super) fn load_signals_on(
 #[derive(Default)]
 struct SignalValues {
     barcodes: Vec<SourcedValue>,
-    catalogs: Vec<SourcedValue>,
+    catalogs: Vec<String>,
     free_text: Vec<String>,
-}
-
-fn sourced_value(
-    value: String,
-    origin: Option<String>,
-    origin_path: Option<String>,
-    region: [Option<f64>; 4],
-) -> Result<SourcedValue, DbError> {
-    let origin = origin
-        .ok_or_else(|| DbError::Message(format!("the stored value {value:?} states no origin")))?;
-    let origin: SignalOrigin = origin_of(&origin)?;
-    let region = stored_region(&value, region)?;
-    Ok(match origin_path {
-        Some(file_id) => SourcedValue::in_file(value, origin, file_id),
-        None => SourcedValue::new(value, origin),
-    }
-    .at(region))
 }

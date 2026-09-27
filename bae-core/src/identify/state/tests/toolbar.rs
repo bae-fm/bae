@@ -1,10 +1,8 @@
 // The toolbar projection: what each badge reads while a run is going and
 // once it has settled.
 
-/// The opener the catalog-number tests share: a run over `providers` given a
-/// computed disc id for five tracks, no barcode and one catalog number on
-/// offer, with the disc-id lookup already answered by two releases of one
-/// group. Leaves the state `Found`, with "LBL 001" offered but not chosen.
+/// A run whose disc ID found two releases of one group, settled `Found` with
+/// "LBL 001" offered but not chosen.
 fn state_with_catalog_offered(providers: Vec<Catalog>) -> IdentifyState {
     let (state, _) = update(
         started_with(providers),
@@ -20,8 +18,7 @@ fn state_with_catalog_offered(providers: Vec<Catalog>) -> IdentifyState {
     state
 }
 
-/// The same run, started with "LBL 001" chosen: its lookup goes out with the
-/// run, and the effects it dispatched come back with the state.
+/// The same run started with "LBL 001" chosen, with the effects it dispatched.
 fn run_with_catalog_chosen(providers: Vec<Catalog>) -> (IdentifyState, Vec<Effect>) {
     let (state, chosen_effects) = started_with_choices(providers, choosing(&["LBL 001"]));
     let (state, _) = update(
@@ -56,25 +53,18 @@ fn toolbar_while_triangulating_shows_spinners() {
 
     let disc = &toolbar[0];
     assert_eq!(disc.kind, SignalKind::DiscId);
-    assert_eq!(
-        disc.shown,
-        Some(ToolbarValue {
-            value: "disc-hash".to_string(),
-            origin: ToolbarOrigin::DiscToc,
-        })
-    );
+    assert_eq!(disc.shown.as_deref(), Some("disc-hash"));
     assert_eq!(disc.state, SignalState::LookingUp);
 
     let barcode = &toolbar[1];
     assert_eq!(barcode.kind, SignalKind::Barcode);
     assert_eq!(
-        barcode.shown.as_ref().map(|shown| shown.value.as_str()),
+        barcode.shown.as_deref(),
         Some("012345678905")
     );
     assert_eq!(barcode.state, SignalState::LookingUp);
 
-    // Nothing is chosen for the catalog until the user chooses, so it names no
-    // value and nothing ran for it — the extracted numbers are its list.
+    // No number is chosen, so the catalog shows none and ran nothing.
     let catalog = &toolbar[2];
     assert_eq!(catalog.kind, SignalKind::Catalog);
     assert_eq!(catalog.shown, None);
@@ -99,10 +89,7 @@ fn every_extracted_catalog_number_is_an_option_on_the_one_badge() {
         signals_with_catalogs(
             disc("disc-hash", 5),
             BarcodeSignal::Absent,
-            vec![
-                SourcedValue::new("LBL 001".to_string(), TextOrigin::FolderName),
-                SourcedValue::new("LBL 999".to_string(), TextOrigin::Artwork),
-            ],
+            vec!["LBL 001".to_string(), "LBL 999".to_string()],
         ),
     );
     let toolbar = state.toolbar();
@@ -115,17 +102,13 @@ fn every_extracted_catalog_number_is_an_option_on_the_one_badge() {
         catalogs[0]
             .options
             .iter()
-            .map(|o| (o.value.as_str(), o.origin))
+            .map(|o| o.value.as_str())
             .collect::<Vec<_>>(),
-        vec![
-            ("LBL 001", TextOrigin::FolderName.into()),
-            ("LBL 999", TextOrigin::Artwork.into()),
-        ]
+        vec!["LBL 001", "LBL 999"]
     );
 }
 
-/// A number the run was told to look up is asked about from the start, and its
-/// results join the intersection the other signals are already in.
+/// A chosen number is looked up from the start and joins the intersection.
 #[test]
 fn a_chosen_catalog_number_is_looked_up_from_the_start() {
     let (state, effects) = run_with_catalog_chosen(vec![MB]);
@@ -138,7 +121,7 @@ fn a_chosen_catalog_number_is_looked_up_from_the_start() {
     );
     let catalog_badge = badge(&state, SignalKind::Catalog);
     assert_eq!(
-        catalog_badge.shown.as_ref().map(|shown| shown.value.as_str()),
+        catalog_badge.shown.as_deref(),
         Some("LBL 001")
     );
     assert_eq!(catalog_badge.state, SignalState::LookingUp);
@@ -180,8 +163,7 @@ fn a_chosen_catalog_number_is_looked_up_from_the_start() {
         .any(|o| o.value == "LBL 001" && o.chosen));
 }
 
-/// A run nobody chose a number for asks about none of them: they are the list
-/// to choose from, and the catalog takes no part until one is on it.
+/// With no number chosen, none is asked about and the catalog takes no part.
 #[test]
 fn a_run_with_no_chosen_number_asks_about_none_of_them() {
     let state = state_with_catalog_offered(vec![MB]);
@@ -192,8 +174,7 @@ fn a_run_with_no_chosen_number_asks_about_none_of_them() {
     assert!(catalog_badge.options.iter().all(|option| !option.chosen));
 }
 
-/// A number the settled snapshot no longer offers is not one of the values on
-/// the list, so the run stops looking it up.
+/// A chosen number the settled snapshot no longer offers leaves the run.
 #[test]
 fn a_chosen_number_the_snapshot_does_not_offer_leaves_the_run() {
     let (state, effects) = started_with_choices(vec![MB], choosing(&["GONE 001"]));
@@ -212,8 +193,7 @@ fn a_chosen_number_the_snapshot_does_not_offer_leaves_the_run() {
             &["LBL 001"],
         ),
     );
-    // Nothing is left in flight, so the run settled without waiting on an
-    // answer about a number this candidate no longer carries.
+    // Nothing is left in flight to wait on.
     assert!(
         !matches!(state, IdentifyState::Triangulating { .. }),
         "got {state:?}"
@@ -223,9 +203,7 @@ fn a_chosen_number_the_snapshot_does_not_offer_leaves_the_run() {
     assert!(catalog_badge.options.iter().all(|option| !option.chosen));
 }
 
-/// The numbers stream out of the artwork pass, so a snapshot taken while it is
-/// still reading does not yet offer every number the last run found. A chosen
-/// number is not dropped against a half-read list.
+/// A chosen number is not dropped against a snapshot still being read.
 #[test]
 fn a_chosen_number_survives_a_snapshot_still_being_read() {
     let (state, _) = started_with_choices(vec![MB], choosing(&["LBL 001"]));
@@ -257,8 +235,7 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
 
 #[test]
 fn toolbar_shows_failed_disc_id_lookup() {
-    // The disc-ID lookup fails while the barcode is still in flight, so the badge
-    // must read Failed rather than keep spinning.
+    // The disc badge reads Failed while the barcode is still in flight.
     let (state, _) = update(started(), disc_and_codes("disc-hash", &["012345678905"]));
     let (state, _) = step(
         state,
@@ -334,14 +311,7 @@ fn toolbar_keeps_failed_barcode_lookup_after_settle() {
     assert_eq!(barcode.state, SignalState::Failed { failure });
 }
 
-/// Mirrors `toolbar_keeps_failed_barcode_lookup_after_settle` for the disc-ID
-/// side. Before the disc-ID evidence recorded a lookup `failure`, the settled
-/// badge read off `context.disc.signal` (still `Computed` — that only reports
-/// whether a disc ID could be derived, not whether its lookup succeeded) and
-/// the empty `results`, landing on `NoMatch` — indistinguishable from a lookup
-/// that ran cleanly and found nothing. This is the case `identify::verdict`
-/// depends on being distinguishable, since a `NotFoundAnywhere` masking a
-/// failure must not be persisted as a permanent verdict.
+/// A failed disc-ID lookup still reads Failed once settled, not as a no-match.
 #[test]
 fn toolbar_keeps_failed_disc_id_lookup_after_settle() {
     let (state, _) = update(
@@ -389,8 +359,7 @@ fn idle_has_empty_toolbar() {
     assert!(IdentifyState::Idle.toolbar().is_empty());
 }
 
-/// A pair whose `LibraryStatus` reports the release and its album already in the
-/// library — the flags every other fixture here leaves false.
+/// A pair whose release and album are already in the library.
 fn pair_in_library(release_id: &str, group_id: Option<&str>) -> (MetadataResult, LibraryStatus) {
     (
         mk_result(release_id, group_id),
@@ -404,8 +373,7 @@ fn pair_in_library(release_id: &str, group_id: Option<&str>) -> (MetadataResult,
     )
 }
 
-/// An in-library match keeps its flags through combine into `Found`, index-aligned
-/// with `matches`.
+/// An in-library match keeps its flags through combine into `Found`.
 #[test]
 fn found_carries_in_library_status_through() {
     let (state, _) = disc_only_started();
@@ -439,9 +407,8 @@ fn found_carries_in_library_status_through() {
     }
 }
 
-/// A barcode lookup can fail while the disc-ID lookup is still in flight. The
-/// pipeline stays `Triangulating` until the disc settles, then reports the
-/// failed automatic lookup instead of presenting the disc's partial answer.
+/// A barcode failure while the disc ID is still out waits for it, then settles
+/// as failed.
 #[test]
 fn barcode_failure_before_disc_settles_is_retained_through_combine() {
     let (state, _) = update(started(), disc_and_codes("d", &["BAR"]));
@@ -480,9 +447,7 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
     assert_eq!(barcode.state, SignalState::Failed { failure });
 }
 
-/// The chosen catalog number is asked of every provider, and each answers on
-/// its own: one failing leaves the other's results in the combine, named
-/// beside them.
+/// One provider failing a catalog lookup leaves the other's results standing.
 #[test]
 fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
     let (state, effects) = run_with_catalog_chosen(vec![MB, DG]);
@@ -556,8 +521,7 @@ fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
     assert_eq!(catalog_badge.state, SignalState::Found { count: 1 });
 }
 
-/// The barcode badge spins while any provider is still walking, and settles
-/// on the count once every provider has answered.
+/// The barcode badge spins until every provider has answered.
 #[test]
 fn toolbar_barcode_spins_until_every_provider_answers() {
     let (state, _) = update(

@@ -67,12 +67,8 @@ pub(super) fn search_step(
 
 /// The disc-ID step: the value from the context, its lookup from the pipe.
 pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) -> DiscIdStepView {
-    let (disc_id, source_file) = match &context.disc.signal {
-        DiscIdSignal::Computed {
-            disc_id,
-            source_file,
-            ..
-        } => (disc_id.clone(), source_file.clone()),
+    let disc_id = match &context.disc.signal {
+        DiscIdSignal::Computed { disc_id, .. } => disc_id.clone(),
         DiscIdSignal::Absent { .. } => {
             return match progress {
                 DiscidProgress::Computing => DiscIdStepView::Reading,
@@ -102,27 +98,7 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
             failure: failure.clone(),
         },
     };
-    DiscIdStepView::Read {
-        disc_id,
-        source: source_file.map(disc_id_file),
-        lookup,
-    }
-}
-
-/// The file a disc ID was read off; a file that is not a log is a cue sheet.
-fn disc_id_file(file: String) -> DiscIdFile {
-    let is_log = std::path::Path::new(&file)
-        .extension()
-        .and_then(|e| e.to_str())
-        .is_some_and(|e| e.eq_ignore_ascii_case("log"));
-    DiscIdFile {
-        kind: if is_log {
-            DiscIdFileKind::Log
-        } else {
-            DiscIdFileKind::Cue
-        },
-        file,
-    }
+    DiscIdStepView::Read { disc_id, lookup }
 }
 
 pub(super) fn barcode_step(
@@ -131,7 +107,6 @@ pub(super) fn barcode_step(
     scanning: bool,
 ) -> BarcodeStepView {
     let row = |code: String, excluded: bool, cells: Vec<ProviderCell>| SignalValueRow {
-        sources: sources_of(&context.barcode.codes, &code),
         value: code,
         excluded,
         cells,
@@ -212,7 +187,7 @@ pub(super) fn catalog_step(
     context: &SignalsContext,
     scanning: bool,
 ) -> CatalogStepView {
-    let numbers = context.catalog.number_values();
+    let numbers = &context.catalog.numbers;
     if numbers.is_empty() && !scanning {
         return if matches!(context.artwork, ArtworkScan::Off) {
             CatalogStepView::CoverArtOff
@@ -220,17 +195,12 @@ pub(super) fn catalog_step(
             CatalogStepView::NoneFound
         };
     }
-    let rows = progress
-        .lookups()
-        .iter()
-        .map(|lookup| catalog_row(lookup, context))
-        .collect();
+    let rows = progress.lookups().iter().map(catalog_row).collect();
     let candidates = numbers
-        .into_iter()
+        .iter()
         .filter(|value| !context.catalog.is_chosen(value))
         .map(|value| CatalogCandidateView {
-            sources: sources_of(&context.catalog.numbers, &value),
-            value,
+            value: value.clone(),
         })
         .collect();
     CatalogStepView::Numbers {
@@ -258,27 +228,13 @@ fn lookup_cells(lookup: &ValueLookup) -> Vec<ProviderCell> {
         .collect()
 }
 
-fn catalog_row(lookup: &ValueLookup, context: &SignalsContext) -> SignalValueRow {
+fn catalog_row(lookup: &ValueLookup) -> SignalValueRow {
     SignalValueRow {
         value: lookup.value.clone(),
-        sources: sources_of(&context.catalog.numbers, &lookup.value),
         // A catalog row exists only while its number is looked up.
         excluded: false,
         cells: lookup_cells(lookup),
     }
-}
-
-/// Every place `value` was read.
-fn sources_of(sightings: &[crate::signals::SourcedValue], value: &str) -> Vec<ValueSource> {
-    sightings
-        .iter()
-        .filter(|sighting| sighting.value == value)
-        .map(|sighting| ValueSource {
-            origin: sighting.origin,
-            file: sighting.origin_path.clone(),
-            region: sighting.region,
-        })
-        .collect()
 }
 
 /// A settled lookup's cell: its releases in album cards, in the lookup's own

@@ -52,38 +52,6 @@ mirror_struct! {
     },
 }
 
-/// A barcode or catalog number with where it was read. Mirrors
-/// `bae_core::signals::SourcedValue`.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct BridgeSourcedValue {
-    pub value: String,
-    pub origin: BridgeSignalOrigin,
-    /// The candidate-relative path of the file the value was read off, where
-    /// there is one.
-    pub origin_path: Option<String>,
-    /// Where on that image the value was read, where the detector says.
-    pub region: Option<BridgeImageRegion>,
-}
-
-mirror_struct! {
-    #[cfg(feature = "desktop")]
-    BridgeSourcedValue = bae_core::signals::SourcedValue,
-    from_core: pub(crate) fn,
-    fields: {
-        value,
-        origin: (BridgeSignalOrigin),
-        origin_path,
-        region: (opt BridgeImageRegion),
-    },
-}
-
-mirror_struct! {
-    #[cfg(feature = "desktop")]
-    BridgeImageRegion = bae_core::signals::ImageRegion,
-    from_core: pub(crate) fn,
-    fields: { x, y, width, height },
-}
-
 /// The three identifying signals, as the apps name them in a failure line or
 /// an evidence chip. Nothing crosses into it from core.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -208,7 +176,7 @@ pub struct BridgeProviderCell {
 }
 
 /// One value and every provider's lookup of it. Mirrors
-/// `bae_core::identify::SignalValueRow`, less where the value was read.
+/// `bae_core::identify::SignalValueRow`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSignalValueRow {
     pub value: String,
@@ -220,7 +188,7 @@ pub struct BridgeSignalValueRow {
 }
 
 /// The disc-ID step: one lookup, since only MusicBrainz answers disc IDs.
-/// Mirrors `bae_core::identify::DiscIdStepView`, less the file it was read off.
+/// Mirrors `bae_core::identify::DiscIdStepView`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeDiscIdStep {
     Reading,
@@ -259,7 +227,7 @@ pub enum BridgeBarcodeStep {
 }
 
 /// A catalog number the run is not looking up. Mirrors
-/// `bae_core::identify::CatalogCandidateView`, less where it was read.
+/// `bae_core::identify::CatalogCandidateView`.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgeCatalogCandidate {
     pub value: String,
@@ -322,69 +290,28 @@ pub struct BridgeIdentifyRun {
     pub search: BridgeSearchStep,
 }
 
-/// The disc-ID signal. Mirrors `bae_core::signals::DiscIdSignal`.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeDiscIdSignal {
-    Computed {
-        disc_id: String,
-        track_count: u32,
-        /// The candidate-relative path of the LOG or CUE it came from; `None`
-        /// for a library release.
-        source_file: Option<String>,
-    },
-    Absent {
-        track_count: u32,
-    },
-    /// A CUE over audio sampled at a rate no CD plays at.
-    NotCdAudio {
-        track_count: u32,
-        sample_rate_hz: u32,
-    },
-    Failed {
-        failure: BridgeLookupFailure,
-        track_count: u32,
-    },
-}
-
-/// Mirrors `bae_core::signals::BarcodeSignal`.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeBarcodeSignal {
-    Scanning {
-        codes: Vec<BridgeSourcedValue>,
-    },
-    Settled {
-        codes: Vec<BridgeSourcedValue>,
-    },
-    Failed {
-        failure: BridgeLookupFailure,
-        codes: Vec<BridgeSourcedValue>,
-    },
-    Absent,
-}
-
 /// Mirrors `bae_core::signals::TextSignal`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeTextSignal {
     Scanning {
-        catalogs: Vec<BridgeSourcedValue>,
+        catalogs: Vec<String>,
         free_text: Vec<String>,
     },
     Settled {
-        catalogs: Vec<BridgeSourcedValue>,
+        catalogs: Vec<String>,
         free_text: Vec<String>,
     },
     Failed {
         failure: BridgeLookupFailure,
-        catalogs: Vec<BridgeSourcedValue>,
+        catalogs: Vec<String>,
         free_text: Vec<String>,
     },
 }
 
-/// Mirrors `bae_core::signals::Signals`.
+/// The part of `bae_core::signals::Signals` a surface reads: the text pools
+/// that feed the search form's autocomplete.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSignals {
-    pub disc_id: BridgeDiscIdSignal,
-    pub barcode: BridgeBarcodeSignal,
     pub text: BridgeTextSignal,
 }
 

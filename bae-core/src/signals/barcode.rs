@@ -2,30 +2,23 @@
 //! from the bars or read from the digits printed under them — or in a CUE
 //! `CATALOG` field. What counts as a code is [`crate::barcode`]'s to say.
 
-use super::{ArtworkAnalysis, ImageRegion, LookupFailure, SignalOrigin, SourcedValue, TextOrigin};
+use super::{ArtworkAnalysis, LookupFailure, SourcedValue};
 use crate::barcode::Barcode;
 
-/// The codes found in a candidate's files, deduped, in discovery order, each with
-/// its [`SignalOrigin`]. A run looks up the ones the person left in, and those
-/// same codes are the barcodes the release keeps as marks.
-///
-/// [`SignalOrigin`]: super::SignalOrigin
+/// The codes found in a candidate's files, in discovery order, each once per
+/// file it was read off.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BarcodeSignal {
     /// Artwork OCR in flight; `codes` accumulates as images are analyzed.
     Scanning { codes: Vec<SourcedValue> },
-    /// Finished. Empty `codes` here means artwork *was* scanned and held none —
-    /// which is not the same as `Absent`.
+    /// Finished; empty `codes` means the sources were read and held none.
     Settled { codes: Vec<SourcedValue> },
     /// Artwork OCR failed before barcode extraction finished.
     Failed {
         failure: LookupFailure,
         codes: Vec<SourcedValue>,
     },
-    /// No barcode source was read — no CUE `CATALOG`, and no artwork read:
-    /// none there, none this platform can read, or a run that leaves the
-    /// cover art unread. Nothing was looked at, which is not the same as
-    /// looking and finding no code.
+    /// No barcode source was read: no CUE `CATALOG`, and no artwork read.
     Absent,
 }
 
@@ -40,39 +33,17 @@ impl BarcodeSignal {
     }
 }
 
-/// One code read off an image: the code, where on the image it was read,
-/// and how — [`SignalOrigin::ArtworkBarcode`] for bars the detector decoded,
-/// [`TextOrigin::Artwork`] for the digits the recognizer read under them.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct CodeReading {
-    pub(super) code: Barcode,
-    pub(super) region: Option<ImageRegion>,
-    pub(super) origin: SignalOrigin,
-}
-
-/// The codes one read of an image holds: every detector payload that is a
-/// code, then every recognized line that is a code printed under its bars.
-/// Both are read through [`Barcode`], so the bars and the digits printed
-/// under them spell one code the same way and the extraction pass keeps it
-/// once — the detector's sighting, the bars themselves, since it comes first.
-///
-/// The printed digits matter where the bars do not decode: a scan too coarse
-/// for the detector still reads as text.
-pub(super) fn codes_in(analysis: &ArtworkAnalysis) -> impl Iterator<Item = CodeReading> + '_ {
-    let detected = analysis.barcodes.iter().filter_map(|barcode| {
-        Some(CodeReading {
-            code: Barcode::stated(&barcode.payload)?,
-            region: barcode.region,
-            origin: SignalOrigin::ArtworkBarcode,
-        })
-    });
-    let printed = analysis.text_lines.iter().filter_map(|line| {
-        Some(CodeReading {
-            code: Barcode::printed(&line.text)?,
-            region: line.region,
-            origin: TextOrigin::Artwork.into(),
-        })
-    });
+/// The codes on one image: detector payloads first, then lines that are the
+/// digits printed under bars — which catch codes whose bars did not decode.
+pub(super) fn codes_in(analysis: &ArtworkAnalysis) -> impl Iterator<Item = Barcode> + '_ {
+    let detected = analysis
+        .barcodes
+        .iter()
+        .filter_map(|payload| Barcode::stated(payload));
+    let printed = analysis
+        .text_lines
+        .iter()
+        .filter_map(|line| Barcode::printed(line));
     detected.chain(printed)
 }
 

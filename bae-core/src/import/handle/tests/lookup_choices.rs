@@ -1,9 +1,7 @@
 use super::*;
 use crate::import::{ChoiceChange, LookupChoices};
 
-/// The choices a person makes about what a run asks come back with the
-/// candidate: the pane reads them off its own value rather than out of a run
-/// that may not be there.
+/// The person's lookup choices read back on the candidate's pane.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_candidate_s_lookup_choices_read_back_on_its_pane() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
@@ -40,10 +38,8 @@ async fn lookup_choices_for_an_unknown_key_are_refused() {
     shut_down(handle).await;
 }
 
-/// The two halves of the value are answered apart. Changing what the run
-/// looks up says so, because the answers in hand were produced by a question
-/// nobody is asking any more; striking a number out of the candidate's text
-/// says the answers stand and only their ranking changed.
+/// Changing what the run looks up asks for another run; striking a number out
+/// of the candidate's text only changes the ranking.
 #[tokio::test(flavor = "multi_thread")]
 async fn only_a_change_to_what_a_run_looks_up_asks_for_another_run() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
@@ -85,8 +81,8 @@ async fn only_a_change_to_what_a_run_looks_up_asks_for_another_run() {
     shut_down(handle).await;
 }
 
-/// Striking a number out and choosing it are separate choices: a number in
-/// both lists is written as both, however each list spells it.
+/// A number both chosen and struck out is written as both, however each list
+/// spells it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_struck_out_number_is_written_as_still_chosen() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
@@ -110,9 +106,7 @@ async fn a_struck_out_number_is_written_as_still_chosen() {
     assert_eq!(stored.discounted_catalogs, vec!["NJ-8255".to_string()]);
 }
 
-/// Striking a chosen number out, and counting it again, change only how the
-/// answers in hand rank: the number stays looked up, and neither write asks
-/// for another run.
+/// Striking a chosen number out and back changes only the ranking.
 #[tokio::test(flavor = "multi_thread")]
 async fn striking_a_chosen_number_out_and_back_asks_for_no_run() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
@@ -148,9 +142,8 @@ async fn striking_a_chosen_number_out_and_back_asks_for_no_run() {
     assert_eq!(stored, chosen);
 }
 
-/// A pick is an answer, not a question: picking a record whose number the
-/// folder prints writes nothing into what the next run looks up, so running
-/// again asks the same lookups and finds the same list.
+/// Picking a record whose number the folder prints chooses nothing for the
+/// next run.
 #[tokio::test(flavor = "multi_thread")]
 async fn picking_a_record_the_folder_prints_the_number_of_chooses_nothing() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
@@ -164,9 +157,7 @@ async fn picking_a_record_the_folder_prints_the_number_of_chooses_nothing() {
     assert_eq!(stored, LookupChoices::default());
 }
 
-/// The person's own choices come through a pick exactly as they left them —
-/// a struck-out number stays struck out and is not chosen, and what they did
-/// choose stays chosen.
+/// A pick leaves the person's own choices as they were.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_leaves_the_person_s_choices_as_they_were() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
@@ -190,9 +181,8 @@ async fn a_pick_leaves_the_person_s_choices_as_they_were() {
     assert_eq!(stored, choices);
 }
 
-/// Store the signals a run settled on for the fixture's candidate: its own
-/// text stating `printed` — the folder's name — classified as a catalog
-/// number sighting in that spelling.
+/// Store settled signals for the fixture's candidate whose folder name,
+/// `printed`, is also its one catalog number.
 async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &str) {
     let prep = handle
         .library_manager
@@ -215,17 +205,12 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
                 disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
-                    catalogs: vec![crate::signals::SourcedValue::new(
-                        printed.to_string(),
-                        crate::signals::TextOrigin::FolderName,
-                    )],
+                    catalogs: vec![printed.to_string()],
                     free_text: Vec::new(),
                 },
                 text_pool: vec![crate::signals::TextLine {
                     text: printed.to_string(),
                     origin: crate::signals::TextOrigin::FolderName,
-                    file: None,
-                    region: None,
                 }],
                 durations: crate::import::probe::SourceDurations::totalling(1_000),
                 mono_audio: false,
@@ -254,8 +239,7 @@ async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &str) {
 }
 
 /// A two-track MusicBrainz release carrying `catalog_number`, in no release
-/// group: a group would have the pick fetch its front cover from the archive,
-/// which no test serves.
+/// group so the pick fetches no cover.
 fn seed_mb_release_with_catalog(
     providers: &crate::providers::Providers,
     release_id: &str, catalog_number: &str) {

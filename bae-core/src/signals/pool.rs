@@ -1,27 +1,17 @@
-//! The accumulating text pool behind the classifier: it gathers source-tagged
-//! lines and folder-bracket catalogs, dedups them, and re-classifies
-//! incrementally as the extraction pass adds more lines.
-//!
-//! The lines are kept as they were read. Classification is a projection of
-//! them — a path component loses its year prefix and its bracketed tail before
-//! it can cluster — and the pool hands the unprojected lines out as the
-//! candidate's own text, which is what ranking looks a result's fields up in.
+//! The text pool behind the classifier: it gathers lines and folder-bracket
+//! catalog numbers, dedups them, and re-classifies incrementally. The lines
+//! also go out unchanged as the candidate's own text.
 
 use super::candidate_text::{
-    self, apply_free_text_cutoff, catalog_numbers_sourced, cluster_lines_incremental,
+    self, apply_free_text_cutoff, catalog_numbers, cluster_lines_incremental,
     rank_clusters_in_place, strip_path_component, Cluster, Source, SourcedLine,
 };
-use crate::signals::{SourcedValue, TextLine, TextOrigin};
+use crate::signals::{TextLine, TextOrigin};
 use std::collections::HashSet;
 
-/// `lines` is the source-tagged text that gets filtered / clustered / ranked.
-/// `bracket_catalogs` are folder-bracket extractions routed straight to the
-/// catalog output, bypassing the free-text catalog regex (too strict for
-/// real-world formats like `Z1 12345`).
-///
-/// Two caches ride alongside: `seen` keeps `push` dedup O(1) as the pool grows,
-/// and `clusters` + `clustered_through` let `classify` cluster only the lines
-/// added since the last call rather than the whole pool each emission.
+/// `bracket_catalogs` go straight to the catalog output, skipping the catalog
+/// regex, which is too strict for formats like `Z1 12345`. `clusters` and
+/// `clustered_through` let `classify` cluster only lines added since last time.
 #[derive(Default)]
 pub(super) struct Pool {
     pub(super) lines: Vec<SourcedLine>,
@@ -32,7 +22,7 @@ pub(super) struct Pool {
 }
 
 pub(super) struct Classification {
-    pub(super) catalogs: Vec<SourcedValue>,
+    pub(super) catalogs: Vec<String>,
     pub(super) free_text: Vec<String>,
 }
 
@@ -56,22 +46,19 @@ impl Pool {
         }
     }
 
-    /// Classify the pool's current contents. Catalog extraction re-runs the regex
-    /// over the whole pool (cheap); free-text clustering is incremental — only
-    /// lines added since the last call are matched against the existing clusters.
+    /// Classify the pool: catalog numbers over every line, free text over only
+    /// the lines added since the last call.
     pub(super) fn classify(&mut self) -> Classification {
-        let mut catalogs = catalog_numbers_sourced(&self.lines);
-        let mut seen_catalog: HashSet<String> = catalogs.iter().map(|c| c.value.clone()).collect();
+        let mut catalogs = catalog_numbers(&self.lines);
+        let mut seen_catalog: HashSet<String> = catalogs.iter().cloned().collect();
         for extra in &self.bracket_catalogs {
             if seen_catalog.insert(extra.clone()) {
-                catalogs.push(SourcedValue::new(extra.clone(), TextOrigin::FolderName));
+                catalogs.push(extra.clone());
             }
         }
 
-        // A line `should_reject_line` drops never feeds a cluster at all, and
-        // a path component clusters by what is left once its year prefix and
-        // bracketed tail are off — the bracket already rode
-        // `bracket_catalogs` to the catalog output.
+        // A rejected line never clusters; a path component clusters by what is
+        // left once its year prefix and bracketed tail are off.
         let new_slice = &self.lines[self.clustered_through..];
         let filtered: Vec<SourcedLine> = new_slice
             .iter()
@@ -93,24 +80,20 @@ impl Pool {
         }
     }
 
-    /// The candidate's own text, in gathering order — every line the pass
-    /// read, as it read it.
+    /// Every line the pass read, as read, in gathering order.
     pub(super) fn text_lines(&self) -> Vec<TextLine> {
         self.lines
             .iter()
             .map(|line| TextLine {
                 text: line.text.clone(),
                 origin: TextOrigin::of_source(&line.source),
-                file: line.source.file_id(),
-                region: line.region,
             })
             .collect()
     }
 }
 
-/// The line as clustering sees it: a path component reduced to the name it
-/// carries, everything else unchanged. `None` for a component that reduces to
-/// nothing worth a cluster.
+/// The line as clustering sees it: a path component reduced to its name,
+/// `None` when nothing is left; anything else unchanged.
 fn clustered_form(line: &SourcedLine) -> Option<SourcedLine> {
     match line.source {
         Source::PathComponent => strip_path_component(&line.text).map(|text| SourcedLine {
@@ -145,7 +128,6 @@ mod tests {
         SourcedLine::new(
             Source::Artwork {
                 path: PathBuf::from(path),
-                file_id: None,
             },
             text.to_string(),
         )
@@ -163,11 +145,7 @@ mod tests {
         }
         let classification = pool.classify();
         (
-            classification
-                .catalogs
-                .into_iter()
-                .map(|c| c.value)
-                .collect(),
+            classification.catalogs,
             classification.free_text,
         )
     }
