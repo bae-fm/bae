@@ -7,8 +7,7 @@ fn side_paused_slot(resumes_at: Option<chrono::DateTime<chrono::Utc>>) -> Playba
             track_id: "next".to_string(),
             boundary: SideBoundary {
                 id: "next:1:Vinyl".to_string(),
-                title_key: SIDE_PAUSE_TITLE_KEY,
-                countdown_key: SIDE_PAUSE_COUNTDOWN_KEY,
+                kind: PlaybackPauseBoundary::Side,
                 side_label: "A".to_string(),
             },
             resumes_at,
@@ -33,14 +32,46 @@ fn countdown_deadline() -> chrono::DateTime<chrono::Utc> {
     test_clock_start() + chrono::Duration::seconds(5)
 }
 
+/// Two tracks of one release, the first ending side or disc `number` of
+/// `medium` and the second starting the next.
+fn tracks_across(medium: PhysicalMedium, number: i32) -> (PlaybackTrackInfo, PlaybackTrackInfo) {
+    let on = |track_id: &str, number: i32| PlaybackTrackInfo {
+        side: Some(PlaybackTrackSide { medium, number }),
+        ..test_track_info(track_id)
+    };
+    (on("last", number), on("next", number + 1))
+}
+
+/// Records and cassettes end a side, labeled by letter, and CDs a disc, labeled
+/// by number; the prompt carries which kind ended.
 #[test]
-fn side_pause_prompt_carries_the_countdown_worded_for_its_medium() {
+fn a_pause_carries_the_kind_of_boundary_that_ended() {
+    for (medium, kind, side_label) in [
+        (PhysicalMedium::Record, PlaybackPauseBoundary::Side, "B"),
+        (PhysicalMedium::Cassette, PlaybackPauseBoundary::Side, "B"),
+        (PhysicalMedium::Cd, PlaybackPauseBoundary::Disc, "2"),
+    ] {
+        let (last, next) = tracks_across(medium, 2);
+        let boundary = side_boundary_between(&last, &next).expect("the side ends");
+        assert_eq!(boundary.kind, kind, "{medium:?}");
+        assert_eq!(boundary.side_label, side_label, "{medium:?}");
+        let prompt = SidePauseDecision {
+            track_id: "next".to_string(),
+            boundary,
+            resumes_at: None,
+        }
+        .prompt();
+        assert_eq!(prompt.boundary, kind, "{medium:?}");
+    }
+}
+
+#[test]
+fn side_pause_prompt_carries_its_countdown() {
     let decision = SidePauseDecision {
         track_id: "next".to_string(),
         boundary: SideBoundary {
             id: "next:1:Cd".to_string(),
-            title_key: DISC_PAUSE_TITLE_KEY,
-            countdown_key: DISC_PAUSE_COUNTDOWN_KEY,
+            kind: PlaybackPauseBoundary::Disc,
             side_label: "1".to_string(),
         },
         resumes_at: Some(countdown_deadline()),
@@ -50,11 +81,10 @@ fn side_pause_prompt_carries_the_countdown_worded_for_its_medium() {
         decision.prompt(),
         PlaybackSidePausePrompt {
             id: "next:1:Cd".to_string(),
-            title_key: DISC_PAUSE_TITLE_KEY,
+            boundary: PlaybackPauseBoundary::Disc,
             side_label: "1".to_string(),
             countdown: Some(PlaybackSideCountdown {
                 resumes_at: countdown_deadline(),
-                message_key: DISC_PAUSE_COUNTDOWN_KEY,
             }),
         }
     );

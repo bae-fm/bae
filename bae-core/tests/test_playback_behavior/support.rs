@@ -1,16 +1,13 @@
-// Fixture row ids. coven validates every synced row's primary key as a
-// canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
-// real ids are, so these fixtures carry UUIDs too. Each constant is named
-// for the moniker it replaced, so assertions still read by name.
-const RELEASE_THAT_WAS_DELETED: &str = "763072b0-643f-4469-8ac7-799c4550a769"; // was "release-that-was-deleted"
+// coven requires every synced row's primary key to be a v4 UUID.
+const RELEASE_THAT_WAS_DELETED: &str = "763072b0-643f-4469-8ac7-799c4550a769";
 
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_core::config::SidePauseCountdown;
 use bae_core::playback::{
-    PlaybackPauseReason, PlaybackProgress, PlaybackSideCountdown, PlaybackState, RepeatMode,
-    DISC_PAUSE_TITLE_KEY, SIDE_PAUSE_COUNTDOWN_KEY, SIDE_PAUSE_TITLE_KEY,
+    PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress, PlaybackSideCountdown,
+    PlaybackState, RepeatMode,
 };
 use bae_test_support as support;
 use coven::{IdProvider, SequentialIdProvider};
@@ -24,9 +21,8 @@ use support::{
 use tempfile::TempDir;
 use tracing::debug;
 
-/// Drain StateChanged events from a progress receiver until one satisfies
-/// `predicate` (returned) or the timeout elapses. Shared by the playback
-/// fixtures so they don't each carry a copy.
+/// Return the first `StateChanged` state that satisfies `predicate`, or `None`
+/// on timeout.
 async fn wait_for_state_on<F>(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     predicate: F,
@@ -78,15 +74,9 @@ async fn next_position(
     .await
 }
 
-/// Await the first position update (generous deadline — a fresh load or a seek
-/// rebuild only starts emitting once its ring fills, which can take seconds on
-/// a loaded machine), then drain progress for `settle` wall time from that
-/// anchor and return the most recent track-relative `position_ms` seen. With a
-/// real-time capture sink wall time tracks playback time, so this reads "where
-/// the position bar sits `settle` into audible playback" — the signal that
-/// distinguishes a skipped pregap (position climbs from 0 immediately) from a
-/// played pregap (position counts up from a negative value, then climbs).
-/// Panics if no position update ever arrives.
+/// Wait for the first position update, then return the last `position_ms` seen
+/// `settle` later. This tells a skipped pregap (position climbs from 0) from a
+/// played one (position counts up from a negative value).
 async fn position_after(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     settle: Duration,
@@ -94,8 +84,7 @@ async fn position_after(
     let mut latest = next_position(progress_rx, Duration::from_secs(30))
         .await
         .expect("no position update arrived within 30s of requesting one");
-    // Sample the whole settle window: the predicate never accepts, so this
-    // returns only once the window is spent, with the last position it saw.
+    // The predicate never accepts, so this samples the whole settle window.
     support::next_matching(progress_rx, settle, |event| {
         if let PlaybackProgress::PositionUpdate { position_ms, .. } = event {
             latest = position_ms;
@@ -106,18 +95,9 @@ async fn position_after(
     latest
 }
 
-/// Wait until the playing position demonstrably advances: anchor on the first
-/// position update, then return the first later `position_ms` strictly greater
-/// than that anchor. Early-exit counterpart to `position_after` for the "audio
-/// is flowing" assertions — once the position has moved there is nothing more
-/// to learn by sampling a fixed window, so this returns the instant it sees the
-/// advance instead of burning the whole settle window. Panics if no first
-/// update ever arrives (a broken fixture); returns `None` if the position never
-/// advances within the deadline (the failure the caller asserts on).
-///
-/// Use `position_after` instead — not this — when the elapsed real time is
-/// itself the measurement (a seek-target value, a pregap countdown, a periodic
-/// persist that must have time to fire).
+/// Return the first `position_ms` greater than the first position update seen,
+/// or `None` if the position does not advance. Use `position_after` when the
+/// elapsed time is itself what the test measures.
 async fn wait_for_position_advance(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
 ) -> Option<i64> {
@@ -133,20 +113,11 @@ async fn wait_for_position_advance(
     .await
 }
 
-/// How long a `play` may take to produce its first audio before the wait is
-/// treated as a hang.
-///
-/// A backstop, not a budget. Reaching `Playing` means the decoder filled its ring
-/// — over a sparse or cloud-backed file that involves real fetches, and how long
-/// they take is the machine's business, not the test's. Nothing here asserts that
-/// `Playing` arrives *quickly*, only that it arrives; a loaded machine is
-/// therefore slower and never redder. What the deadline catches is a decoder that
-/// will never produce audio (a fill task killed, a reader deadlocked on bytes
-/// that never come), and no length of wait rescues that.
+/// How long `play` may take to reach `Playing` before the wait counts as a
+/// hang. Tests assert only that `Playing` arrives, not how fast.
 const PLAY_START_BACKSTOP: Duration = Duration::from_secs(30);
 
-/// Play `track_id` and wait for it to reach `Playing`. Shared by the fixtures
-/// that drive a track from a raw progress receiver.
+/// Play `track_id` and wait for it to reach `Playing`.
 async fn play_and_wait_on(
     handle: &bae_core::playback::PlaybackHandle,
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
@@ -167,9 +138,8 @@ async fn play_and_wait_on(
     );
 }
 
-/// Wait for the next `Seeked` event and return its adjusted `position_ms`, or
-/// `None` on timeout. Shared by `PlaybackTestFixture::wait_for_seeked` and any
-/// fixture that only has a raw progress receiver (no wrapper method).
+/// Wait for the next `Seeked` event and return its `position_ms`, or `None` on
+/// timeout.
 async fn wait_for_seeked_on(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
@@ -184,12 +154,9 @@ async fn wait_for_seeked_on(
     .await
 }
 
-/// Drain progress events up to the Playing state, returning whether Playing
-/// arrived and the entries from the current queue value (each carrying a
-/// per-instance id). `play` rebuilds the queue with fresh ids, so a mutation
-/// must target those — captured here, after play settles. Shared by
-/// `PlaybackTestFixture::wait_for_playing_capturing_queue` and any fixture
-/// with only a raw progress receiver.
+/// Wait for `Playing` and return whether it arrived, plus the queue entries at
+/// that moment. `play` gives queue entries fresh ids, so a test that edits the
+/// queue must use these.
 async fn wait_for_playing_capturing_queue_on(
     playback_handle: &bae_core::playback::PlaybackHandle,
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
@@ -213,12 +180,8 @@ async fn wait_for_playing_capturing_queue_on(
     (entries.is_some(), entries.unwrap_or_default())
 }
 
-/// Assert that audio keeps flowing: the playing position advances past its
-/// anchor (via `wait_for_position_advance`). A regression that leaves the
-/// queue/context projection correct but silences the actual audio stream (an
-/// unrefreshed preload decoder, a promotion that never rebuilds the stream)
-/// would leave the position pinned rather than climbing, and this catches it
-/// where a projection-only assertion would not.
+/// Assert that the playing position advances. This catches a stalled audio
+/// stream that a queue-only assertion would miss.
 async fn assert_position_advances(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
@@ -227,11 +190,9 @@ async fn assert_position_advances(
         .expect("position must keep advancing while playing (the audio stream stalled)");
 }
 
-/// Return the first `PositionUpdate` seen for `track_id` (its adjusted
-/// position_ms), or `None` on timeout. Distinct from `wait_for_position_update`
-/// in that it ignores position ticks belonging to a different track — needed
-/// right after a track boundary, when a stale tick for the finishing track can
-/// still be in flight.
+/// Return the first `position_ms` reported for `track_id`, or `None` on
+/// timeout. Updates for other tracks are skipped, since one for the finishing
+/// track can still arrive right after a boundary.
 async fn wait_for_track_position(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: &str,
@@ -275,13 +236,9 @@ async fn wait_for_mute(
     .expect("no MuteChanged arrived within the timeout")
 }
 
-/// What a track boundary looked like on the wire. A *gapless* handoff crosses
-/// inside the running stream: `handle_track_crossed` reports the finishing
-/// track's `DecodeStats` but no `TrackCompleted` (that fires only when nothing
-/// is staged and the stream rebuilds), and the incoming track never surfaces a
-/// `Loading` state (the rebuild path's UI arc). So `completed_for_finishing ==
-/// false` with `decode_stats_for_finishing == true` and `loading_for_incoming ==
-/// false` is the gapless signature.
+/// The progress events a track boundary produced. A gapless handoff reports the
+/// finishing track's `DecodeStats` with no `TrackCompleted`, and no `Loading`
+/// state for the incoming track; a stream rebuild reports both.
 struct BoundaryOutcome {
     decode_stats_for_finishing: bool,
     completed_for_finishing: bool,
@@ -290,10 +247,8 @@ struct BoundaryOutcome {
     decode_errors: u32,
 }
 
-/// Drain progress until `incoming` reaches Playing (or timeout), recording
-/// whether `finishing`'s DecodeStats and/or TrackCompleted, any Loading state for
-/// `incoming`, and the total decode errors reported across the crossing — i.e.
-/// whether the boundary was gapless or a rebuild, and whether it decoded cleanly.
+/// Record what the boundary from `finishing` to `incoming` produced, until
+/// `incoming` reaches `Playing` or the timeout elapses.
 async fn observe_boundary(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     finishing: &str,
@@ -341,9 +296,9 @@ async fn observe_boundary(
     outcome
 }
 
-/// Start a playback service backed by a real-time capture sink, so a test runs
-/// with no audio device while the decoder is still paced to wall-clock like the
-/// real device. The returned receiver must be held for the service's lifetime.
+/// Start a playback service on a capture sink paced to wall-clock time, so no
+/// audio device is needed. Hold the returned receiver for the service's
+/// lifetime.
 #[must_use]
 fn start_capture_service(
     library_manager: LibraryManager,
@@ -371,17 +326,10 @@ fn start_capture_service_with_restore(
     (handle, capture_stream_rx)
 }
 
-/// The three-track local FLAC album every `PlaybackTestFixture` plays,
-/// imported once (decode-verify + DB writes) into a template library directory
-/// that outlives every test. Each `PlaybackTestFixture::new` clones the
-/// template's small DB/library files into its own `TempDir` rather than
-/// re-importing, so the import cost is paid once per process instead of once
-/// per test.
-///
-/// The FLAC files themselves are never cloned: `local_blob_refs` stores an
-/// absolute path, so a clone's DB rows — and `album_dir`, which one preview
-/// test reads a real file path from — resolve straight back to the template's
-/// stable `album/` directory, held alive for the process's lifetime.
+/// The three-track FLAC album every `PlaybackTestFixture` plays, imported once
+/// per process into a library that each fixture copies. The FLAC files are not
+/// copied: `local_blob_refs` stores absolute paths, so every copy reads the
+/// template's `album/` directory.
 struct PlaybackFixtureTemplate {
     dir: TempDir,
     album_dir: std::path::PathBuf,
@@ -390,11 +338,9 @@ struct PlaybackFixtureTemplate {
 
 static PLAYBACK_FIXTURE_TEMPLATE: std::sync::LazyLock<PlaybackFixtureTemplate> =
     std::sync::LazyLock::new(|| {
-        // A dedicated runtime, not a calling test's: the import must finish and
-        // every task/connection it spawned must be torn down (dropping the
-        // runtime blocks until they are) before the template directory is safe
-        // to copy — coven opens SQLite in WAL mode, so a copy taken while a
-        // connection is still live could catch an unmerged -wal file.
+        // Import on its own runtime and drop it before any copy, so no SQLite
+        // connection is still open with unmerged WAL data when the files are
+        // copied.
         let rt =
             tokio::runtime::Runtime::new().expect("build the playback template import's runtime");
         let template = rt.block_on(async {
@@ -423,12 +369,8 @@ static PLAYBACK_FIXTURE_TEMPLATE: std::sync::LazyLock<PlaybackFixtureTemplate> =
         template
     });
 
-/// Clone the playback fixture template into a fresh `TempDir`, returning it
-/// with the template's stable `album/` path and track ids. Dereferences the
-/// template (running its one-time import on init) so callers invoke this on a
-/// blocking thread — the template's initializer builds and blocks on its own
-/// runtime, which a test's async thread can't. Mirrors
-/// `clone_multi_window_library`.
+/// Copy the playback fixture template into a fresh `TempDir`. Call it on a
+/// blocking thread: the template's first use blocks on its own runtime.
 fn clone_playback_fixture_library() -> (TempDir, std::path::PathBuf, Vec<String>) {
     let template = &*PLAYBACK_FIXTURE_TEMPLATE;
     let fresh = clone_template_library(template.dir.path());
@@ -439,30 +381,20 @@ fn clone_playback_fixture_library() -> (TempDir, std::path::PathBuf, Vec<String>
     )
 }
 
-/// Test helper to set up playback service with imported test tracks
+/// A playback service over a copy of the three-track template album.
 struct PlaybackTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     album_dir: std::path::PathBuf,
-    /// Held so tests can read the device-local `playback_state` row directly,
-    /// without going through Shutdown/SaveState.
+    /// Lets tests read the device-local `playback_state` row directly.
     library_manager: LibraryManager,
-    /// Held so the capture sink's `create_stream` can hand off each stream's
-    /// buffer — dropping the receiver would fail stream creation. The fixture's
-    /// tests don't inspect the samples, only playback state.
+    /// Dropping this receiver would make stream creation fail.
     _capture_stream_rx: tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>,
     _temp_dir: TempDir,
 }
 impl PlaybackTestFixture {
     async fn new() -> Self {
-        // Clone the shared template's DB/library into this test's own TempDir
-        // rather than re-importing — the import runs once per process in
-        // PLAYBACK_FIXTURE_TEMPLATE. The cloned DB and album_dir both resolve to
-        // the template's stable album/ directory (absolute local_blob_refs).
-        // The template is dereferenced inside spawn_blocking: its lazy
-        // initializer builds and blocks on its own runtime, which a test's
-        // async thread can't do (no runtime-within-a-runtime).
         let (temp_dir, album_dir, track_ids) =
             tokio::task::spawn_blocking(clone_playback_fixture_library)
                 .await
@@ -471,9 +403,6 @@ impl PlaybackTestFixture {
         let (library_manager, _database) = open_test_library(temp_dir.path()).await;
         let runtime_handle = tokio::runtime::Handle::current();
 
-        // A real-time capture sink stands in for the audio device: no hardware
-        // required, and it paces the decoder to wall-clock like a real device so
-        // position/seek/auto-advance timing matches production.
         let (capture_device, capture_stream_rx) =
             bae_core::playback::RealtimeCaptureAudioDevice::new();
         let playback_handle = library_manager.start_playback_service_with_audio_device(
@@ -504,10 +433,7 @@ impl PlaybackTestFixture {
     {
         wait_for_state_on(&mut self.progress_rx, predicate, timeout_duration).await
     }
-    /// Drain progress events up to the Playing state, returning whether Playing
-    /// arrived and the entries from the current queue value (each carrying a
-    /// per-instance id). `play` rebuilds the queue with fresh ids, so a mutation
-    /// must target those — captured here, after play settles.
+    /// See `wait_for_playing_capturing_queue_on`.
     async fn wait_for_playing_capturing_queue(
         &mut self,
         timeout_duration: Duration,
@@ -534,12 +460,9 @@ impl PlaybackTestFixture {
         )
         .await
     }
-    /// Wait for the first position update whose `position_ms` is strictly past
-    /// `floor_ms`, or `None` on timeout. Blocks on the real "position has moved
-    /// beyond X" signal — the correct wait when a test resumes or seeks and then
-    /// asserts the position climbed past the seek target (the first raw update
-    /// can still report the seek anchor itself, so filtering on the floor is
-    /// what proves audio actually advanced).
+    /// Wait for the first position update past `floor_ms`, or `None` on
+    /// timeout. The first update after a seek can still report the seek target,
+    /// so only a position past it proves playback moved.
     async fn wait_for_position_past(
         &mut self,
         floor_ms: u64,

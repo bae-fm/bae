@@ -16,15 +16,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgePauseBoundary
 import uniffi.bae_bridge.BridgeSideCountdown
 import uniffi.bae_bridge.BridgeSidePausePrompt
 
-/**
- * The side-pause prompt's checkbox mirrors the pause-between-sides setting: it
- * starts checked, and only answering the prompt with it unchecked turns the
- * setting off. Play starts the next side; Close stops core's countdown. While a
- * countdown runs, the prompt shows the seconds left to core's deadline.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class SidePauseAlertTest {
@@ -32,7 +27,7 @@ class SidePauseAlertTest {
     val compose = createComposeRule()
 
     private val context = RuntimeEnvironment.getApplication()
-    private val checkboxLabel = context.getString(R.string.settings_pause_between_sides)
+    private val checkboxLabel = "Pause between sides"
     private val close = context.getString(R.string.close)
     private val play = context.getString(R.string.play)
 
@@ -117,15 +112,20 @@ class SidePauseAlertTest {
         val prompt =
             PreviewData.sidePausePrompt().copy(
                 countdown =
-                    BridgeSideCountdown(
-                        resumesAtMs = 15_000L,
-                        messageKey = "core.playback.pause.side_ended.countdown",
-                    ),
+                    BridgeSideCountdown(resumesAtMs = 15_000L),
             )
         show(prompt = prompt, nowMs = { 900L })
 
         compose.onNodeWithText("The next side starts in 15 seconds.").assertExists()
         compose.onNodeWithText(play).assertExists()
+    }
+
+    @Test
+    fun aDiscPauseNamesDiscsInItsCheckbox() {
+        show(prompt = PreviewData.sidePausePrompt().copy(boundary = BridgePauseBoundary.DISC))
+
+        compose.onNodeWithText("Pause between discs").assertIsOn()
+        compose.onNodeWithText(checkboxLabel).assertDoesNotExist()
     }
 
     @Test

@@ -5,7 +5,7 @@ async fn sided_vinyl_boundary_pauses_on_auto_advance() {
         ["A1", "A2", "B1"],
         1,
         "A",
-        SIDE_PAUSE_TITLE_KEY,
+        PlaybackPauseBoundary::Side,
     )
     .await;
 }
@@ -17,7 +17,7 @@ async fn sided_cassette_boundary_pauses_on_auto_advance() {
         ["A1", "B1", "B2"],
         0,
         "A",
-        SIDE_PAUSE_TITLE_KEY,
+        PlaybackPauseBoundary::Side,
     )
     .await;
 }
@@ -27,7 +27,7 @@ async fn assert_sided_boundary_pauses(
     positions: [&str; 3],
     start_track_index: usize,
     expected_side_label: &str,
-    expected_title_key: &str,
+    expected_boundary: PlaybackPauseBoundary,
 ) {
     let mut fixture = SidePauseTestFixture::new(format, positions, true)
         .await
@@ -39,7 +39,7 @@ async fn assert_sided_boundary_pauses(
             start_track_index,
             &side_track_id,
             expected_side_label,
-            expected_title_key,
+            expected_boundary,
         )
         .await;
 
@@ -79,7 +79,7 @@ async fn cd_multi_disc_boundary_pauses_on_auto_advance() {
         ["1-1", "2-1", "2-2"],
         0,
         "1",
-        DISC_PAUSE_TITLE_KEY,
+        PlaybackPauseBoundary::Disc,
     )
     .await;
 }
@@ -107,10 +107,8 @@ async fn setting_off_auto_advances_across_sided_boundary() {
 
 #[tokio::test]
 async fn enabling_setting_mid_track_pauses_at_the_imminent_boundary() {
-    // The setting starts OFF: A2 preloads B1 and stages it gapless into the
-    // live audio chain immediately after A2 starts. Turning the setting on
-    // while A2 is still playing must still catch that already-staged
-    // boundary — the natural way anyone would try the feature.
+    // With the setting off, B1 is already staged for a gapless handoff when
+    // the setting turns on; the pause must still apply at that boundary.
     let mut fixture = SidePauseTestFixture::new("Vinyl", ["A1", "A2", "B1"], false)
         .await
         .expect("side-pause fixture");
@@ -123,16 +121,14 @@ async fn enabling_setting_mid_track_pauses_at_the_imminent_boundary() {
     fixture.seek_to_auto_advance();
 
     fixture
-        .wait_for_side_pause("A", SIDE_PAUSE_TITLE_KEY)
+        .wait_for_side_pause("A", PlaybackPauseBoundary::Side)
         .await;
 }
 
 #[tokio::test]
 async fn disabling_setting_mid_track_keeps_playing_across_the_boundary() {
-    // Regression guard for the direction that already worked: the setting
-    // starts ON, so B1 is held (not staged) rather than gaplessly chained.
-    // Turning the setting off mid-track must let it play straight through —
-    // the drain-time gate re-reads the config before the boundary fires.
+    // With the setting on, B1 is held rather than staged; the boundary check
+    // re-reads the setting, so turning it off still plays straight through.
     let mut fixture = SidePauseTestFixture::new("Vinyl", ["A1", "A2", "B1"], true)
         .await
         .expect("side-pause fixture");
@@ -184,7 +180,7 @@ async fn resume_from_side_pause_starts_next_side() {
     let next_side_track_id = fixture.track_ids[2].clone();
 
     fixture
-        .play_to_side_pause(1, &side_a_track_id, "A", SIDE_PAUSE_TITLE_KEY)
+        .play_to_side_pause(1, &side_a_track_id, "A", PlaybackPauseBoundary::Side)
         .await;
 
     fixture.playback_handle.resume();
@@ -211,7 +207,7 @@ async fn side_boundary_pause_prevents_gapless_stream_handoff() {
 
     fixture.seek_to_auto_advance();
     fixture
-        .wait_for_side_pause("A", SIDE_PAUSE_TITLE_KEY)
+        .wait_for_side_pause("A", PlaybackPauseBoundary::Side)
         .await;
 
     fixture.playback_handle.resume();
@@ -240,17 +236,14 @@ impl SkipDirection {
     }
 }
 
-/// Next and Previous preserve the current play/pause state: pressing either
-/// while paused lands on the adjacent track still paused; while playing, still
-/// playing. (Fresh `play` always starts playing — that's the deliberate
-/// exception, pinned by `test_fresh_play_always_starts_playing`.)
+/// Next and Previous keep the current play/pause state, unlike a fresh `play`,
+/// which always starts playing.
 async fn assert_skip_preserves_play_state(direction: SkipDirection, start_paused: bool) {
     let mut fixture = PlaybackTestFixture::new().await;
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
 
-    // Previous needs a track behind the cursor, so start on the second track;
-    // Next starts on the first. The target is the adjacent track either way.
+    // Previous needs a track behind the current one.
     let (start_track_id, target_track_id) = match direction {
         SkipDirection::Next => (first_track_id, second_track_id),
         SkipDirection::Previous => (second_track_id, first_track_id),
@@ -279,8 +272,7 @@ async fn assert_skip_preserves_play_state(direction: SkipDirection, start_paused
             .expect("playback should pause");
     }
 
-    // Press promptly (well inside Previous's 3s window) so Previous steps back a
-    // track rather than restarting the current one.
+    // Within 3 s of the track start, Previous steps back instead of restarting.
     match direction {
         SkipDirection::Next => fixture.playback_handle.next(),
         SkipDirection::Previous => fixture.playback_handle.previous(),
@@ -327,15 +319,11 @@ async fn previous_while_playing_stays_playing() {
     assert_skip_preserves_play_state(SkipDirection::Previous, false).await;
 }
 
-/// Pause and seek interact correctly in both orderings, which exercise different
-/// code paths. Seek issued WHILE paused (the is_playing-not-set-after-seek-while-
-/// paused regression: seek clears is_playing, and if only Pause is re-sent it
-/// stays false so audio never resumes): the seek lands without auto-playing, and
-/// once resumed the position advances — audio actually flows. Seek issued while
-/// PLAYING, then paused: the position is preserved across the pause and resume.
+/// A seek while paused stays paused and plays from the target on resume; a seek
+/// while playing keeps its position across a pause and resume.
 #[tokio::test]
 async fn pause_and_seek_interact_in_both_orderings() {
-    // Ordering 1 — seek while paused, then resume: position advances.
+    // Seek while paused, then resume.
     let mut fixture = PlaybackTestFixture::new().await;
     let track_id = fixture.track_ids[0].clone();
     fixture.playback_handle.play(track_id.clone());
@@ -366,7 +354,6 @@ async fn pause_and_seek_interact_in_both_orderings() {
         "seek should land near 2s, got {seeked_ms}ms"
     );
 
-    // A seek while paused must not auto-play.
     assert!(
         fixture
             .wait_for_state(
@@ -396,7 +383,7 @@ async fn pause_and_seek_interact_in_both_orderings() {
         });
     assert!(advanced_ms > seeked_ms);
 
-    // Ordering 2 — seek while playing, then pause and resume: position maintained.
+    // Seek while playing, then pause and resume.
     let mut fixture = PlaybackTestFixture::new().await;
     let track_id = fixture.track_ids[0].clone();
     fixture.playback_handle.play(track_id.clone());
@@ -447,14 +434,11 @@ async fn pause_and_seek_interact_in_both_orderings() {
 
 #[tokio::test]
 async fn test_fresh_play_always_starts_playing() {
-    // Fresh play should always start playing, even if previously paused
-
     let mut fixture = PlaybackTestFixture::new().await;
 
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
 
-    // Start playing first track
     fixture.playback_handle.play(first_track_id.clone());
     let _playing_state = fixture
         .wait_for_state(
@@ -463,7 +447,6 @@ async fn test_fresh_play_always_starts_playing() {
         )
         .await;
 
-    // Pause
     fixture.playback_handle.pause();
     let paused_state = fixture
         .wait_for_state(
@@ -473,7 +456,6 @@ async fn test_fresh_play_always_starts_playing() {
         .await;
     assert!(paused_state.is_some(), "Should be paused");
 
-    // Fresh play of a different track should start Playing (not Paused)
     fixture.playback_handle.play(second_track_id.clone());
 
     let new_play_state = fixture
@@ -495,17 +477,12 @@ async fn test_fresh_play_always_starts_playing() {
     );
 }
 
-/// Test that seeking while playing continues playback and advances position.
-///
-/// This is the counterpart to test_pause_seek_resume_advances_position.
-/// When seeking while playing, playback should continue and position should advance.
 #[tokio::test]
 async fn test_seek_while_playing_advances_position() {
     let mut fixture = PlaybackTestFixture::new().await;
 
     let track_id = fixture.track_ids[0].clone();
 
-    // Start playing
     fixture.playback_handle.play(track_id.clone());
     let playing_state = fixture
         .wait_for_state(
@@ -515,11 +492,9 @@ async fn test_seek_while_playing_advances_position() {
         .await;
     assert!(playing_state.is_some(), "Should start playing");
 
-    // Seek while playing (to 2 seconds)
     let seek_target = Duration::from_secs(2);
     fixture.playback_handle.seek(seek_target);
 
-    // Wait for seek to complete
     let seeked_position = fixture.wait_for_seeked(Duration::from_secs(5)).await;
     assert!(
         seeked_position.is_some(),
@@ -532,8 +507,8 @@ async fn test_seek_while_playing_advances_position() {
         seeked_position_ms
     );
 
-    // Position must climb past the seek target — the signal that audio is
-    // actually playing, not just that the seek landed.
+    // Climbing past the target shows audio is playing, not only that the seek
+    // landed.
     let final_position_ms = fixture
         .wait_for_position_past(seeked_position_ms, Duration::from_secs(5))
         .await
@@ -545,12 +520,8 @@ async fn test_seek_while_playing_advances_position() {
     assert!(final_position_ms > seeked_position_ms);
 }
 
-/// The true gapless handoff: a track played to its natural end with the next
-/// track staged crosses the boundary inside the running stream
-/// (boundary_rx → handle_track_crossed → advance_to_preloaded), never rebuilding
-/// via the TrackCompleted → AutoAdvance path. The signature is that the
-/// finishing track emits its DecodeStats (reported by the boundary handler) but
-/// not TrackCompleted, and the incoming track's position resets to 0.
+/// A track that plays to its end with the next track staged hands off inside
+/// the running stream, without a rebuild, and the next track starts near 0.
 #[tokio::test]
 async fn gapless_boundary_hands_off_without_rebuild() {
     let mut fixture = PlaybackTestFixture::new().await;
@@ -566,9 +537,7 @@ async fn gapless_boundary_hands_off_without_rebuild() {
         .await
         .expect("the first track should play");
 
-    // Seek partway to bring the natural end sooner while leaving ample runway:
-    // the staged next is re-staged well before the decoder reaches EOF. (Seeking
-    // right up against the end instead is the not-ready-fallback case below.)
+    // Leaves enough time before the end for the next track to be staged again.
     fixture.playback_handle.seek(Duration::from_secs(3));
     fixture
         .wait_for_seeked(Duration::from_secs(5))
@@ -616,10 +585,8 @@ async fn gapless_boundary_hands_off_without_rebuild() {
     );
 }
 
-/// The boundary handler re-preloads the *following* track, so a chain of natural
-/// ends crosses gaplessly the whole way down. Play track 0 → track 1 (first
-/// crossing, which re-preloads track 2) → track 2: the second crossing is also
-/// gapless, which it can only be if track 2 was staged during the first.
+/// A gapless crossing preloads the track after the incoming one, so the next
+/// crossing is gapless too.
 #[tokio::test]
 async fn gapless_boundary_repreloads_following_track() {
     let mut fixture = PlaybackTestFixture::new().await;
@@ -653,8 +620,6 @@ async fn gapless_boundary_repreloads_following_track() {
         "playback should cross into the second track"
     );
 
-    // Shorten the second track too, then let it end. If the third track was
-    // re-preloaded and staged during the first crossing, this crosses gaplessly.
     fixture.playback_handle.seek(Duration::from_secs(3));
     fixture
         .wait_for_seeked(Duration::from_secs(5))
@@ -681,18 +646,9 @@ async fn gapless_boundary_repreloads_following_track() {
     );
 }
 
-/// The rebuild advance: seeking right up against the end leaves the post-seek
-/// decoder with ~no samples, so it hits EOF and completes rather than crossing
-/// the staged boundary — driving TrackCompleted → AutoAdvance →
-/// advance_and_play_preloaded, which recovers the preloaded next and plays it
-/// (advance.rs ~407, the has_preloaded_next branch). This is the non-gapless
-/// counterpart to the two handoff tests above: the next track still plays from
-/// its start via the preloaded decoder.
-///
-/// (The sibling not-ready fallback at ~413 — play_track when the staged source
-/// was already consumed — is a defensive race between a boundary crossing and a
-/// concurrent Next/AutoAdvance; the serial command loop keeps those from
-/// interleaving, so it isn't deterministically reachable from a black-box test.)
+/// A seek to just before the end completes the track instead of crossing
+/// gaplessly; the auto-advance still plays the preloaded next track from its
+/// start.
 #[tokio::test]
 async fn boundary_advances_to_next_track_after_late_seek() {
     let mut fixture = PlaybackTestFixture::new().await;
@@ -708,7 +664,7 @@ async fn boundary_advances_to_next_track_after_late_seek() {
         .await
         .expect("the first track should play");
 
-    // Tracks run ~5s; seek to 4.8s leaves ~0.2s before the end.
+    // 200 ms before the end of the 5 s track.
     fixture.playback_handle.seek(Duration::from_millis(4800));
     fixture
         .wait_for_seeked(Duration::from_secs(5))
@@ -732,11 +688,8 @@ async fn boundary_advances_to_next_track_after_late_seek() {
     );
 }
 
-/// A seek rebuilds the stream, but the staged gapless next must survive it
-/// (seek.rs take_next → re-stage_next): the subsequent natural end still crosses
-/// gaplessly. Seek twice to stress the take-out/re-stage across an
-/// already-re-staged source, then let the track end and assert the boundary is
-/// gapless (finishing track emits DecodeStats but not TrackCompleted).
+/// The staged next track survives seeks, so the track's end still crosses
+/// gaplessly.
 #[tokio::test]
 async fn seek_preserves_staged_next_for_a_gapless_advance() {
     let mut fixture = PlaybackTestFixture::new().await;
@@ -752,8 +705,8 @@ async fn seek_preserves_staged_next_for_a_gapless_advance() {
         .await
         .expect("the first track should play");
 
-    // Two seeks: each takes the staged next out of the old stream and re-stages
-    // it into the rebuilt one. Both land with runway to spare before the end.
+    // Two seeks, so the second replaces a source that already carried the
+    // staged track over once.
     fixture.playback_handle.seek(Duration::from_secs(1));
     fixture
         .wait_for_seeked(Duration::from_secs(5))
@@ -786,21 +739,14 @@ async fn seek_preserves_staged_next_for_a_gapless_advance() {
     );
 }
 
-/// A same-format seek swaps the persistent output's source in place
-/// (`PlaybackSource::replace`) — it never rebuilds the device stream, so it has
-/// no `create_stream` step that can fail. Dropping the capture sink's stream
-/// receiver (which under the old per-seek-rebuild model made the seek's
-/// `create_stream` error and stopped playback) now only fails the non-fatal,
-/// logged capture-buffer rotation: the seek still lands and playback continues.
-/// This pins that a dropped test observer can't tear playback down.
+/// A same-format seek swaps the source in place without creating a new device
+/// stream, so dropping the capture receiver cannot stop playback.
 #[tokio::test]
 async fn seek_with_dropped_capture_receiver_keeps_playing() {
     let lib = restore_test_library().await;
     let first = lib.track_ids[0].clone();
 
-    // Build a capture-backed service directly so the test owns the stream
-    // receiver and can drop it mid-session (real-time paced so the track doesn't
-    // race to its end before we seek).
+    // Built here so the test owns the receiver it drops.
     let (capture_device, capture_stream_rx) =
         bae_core::playback::RealtimeCaptureAudioDevice::new();
     let mut capture_stream_rx = Some(capture_stream_rx);
@@ -823,15 +769,11 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     .await
     .expect("the track should start playing (first stream created)");
 
-    // Drop the receiver: under the old per-seek rebuild this made create_stream
-    // fail; the persistent output uses replace, so the seek must still land.
     capture_stream_rx.take();
     handle.seek(Duration::from_secs(2));
 
-    // The seek lands (Seeked for the same track); no error, no stop.
     let mut saw_error = false;
-    // `Some(true)` is the seek landing, `Some(false)` a stop — either ends the
-    // wait, and an error along the way is recorded without ending it.
+    // `Some(true)` means the seek landed, `Some(false)` that playback stopped.
     let outcome =
         support::next_matching(
             &mut progress_rx,

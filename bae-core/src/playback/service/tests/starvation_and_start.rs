@@ -25,11 +25,8 @@ fn starvation_ended_event(track_id: &str) -> AudioEvent {
     }
 }
 
-/// A starvation episode with zero decode progress that persists past the fail
-/// threshold is a genuine stall — a decoder wedged for good on a byte buffer
-/// that will never produce, not a producer that's merely slow — and must
-/// surface a `PlaybackError` and tear playback down rather than log forever
-/// with a frozen position bar.
+/// Starvation with no decode progress past the fail threshold is a real stall,
+/// so it surfaces a `PlaybackError` and stops playback instead of freezing.
 #[tokio::test]
 async fn starvation_past_fail_threshold_with_no_progress_escalates_to_error_and_stops() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
@@ -59,9 +56,9 @@ async fn starvation_past_fail_threshold_with_no_progress_escalates_to_error_and_
     );
 }
 
-/// `samples_decoded` advancing between `Starved` events proves the producer is
-/// alive (e.g. a slow cloud fetch) even though the ring is still starved —
-/// this must never escalate, however long the starvation drags on.
+/// `samples_decoded` advancing between `Starved` events shows the producer is
+/// alive (a slow cloud fetch, say), so starvation never escalates however long
+/// it lasts.
 #[tokio::test]
 async fn starvation_with_advancing_samples_decoded_never_escalates() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
@@ -94,8 +91,7 @@ async fn starvation_with_advancing_samples_decoded_never_escalates() {
     );
 }
 
-/// `producer_finished == true` is the completion path — a drained track
-/// awaiting `AutoAdvance` — never the stall this watchdog targets.
+/// `producer_finished` means a drained track awaiting `AutoAdvance`, not a stall.
 #[tokio::test]
 async fn starvation_with_producer_finished_never_escalates() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
@@ -121,20 +117,16 @@ async fn starvation_with_producer_finished_never_escalates() {
     );
 }
 
-/// A `StarvationEnded` between episodes resets the watchdog clock: the next
-/// episode starts fresh rather than inheriting the ended episode's duration.
-/// Sabotage — drop the reset on `StarvationEnded` — and the single event below
-/// (whose own `starved_ms` already exceeds the threshold) would be read as a
-/// continuation of the first episode's stalled baseline and escalate
-/// immediately.
+/// A `StarvationEnded` resets the watchdog, so the next episode starts fresh.
+/// Without the reset, the second `Starved` below, already past the threshold,
+/// would continue the first episode and escalate.
 #[tokio::test]
 async fn starvation_ended_resets_the_episode_clock() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
 
-    // First episode starts, then ends (the producer resumed) before ever
-    // crossing the fail threshold.
+    // The first episode ends before reaching the fail threshold.
     service
         .handle_audio_event(starved_event("t", 500, 1_000, false))
         .await;
@@ -142,7 +134,7 @@ async fn starvation_ended_resets_the_episode_clock() {
         .handle_audio_event(starvation_ended_event("t"))
         .await;
 
-    // A second, independent episode begins at the same samples_decoded count.
+    // A second episode begins at the same samples_decoded count.
     service
         .handle_audio_event(starved_event("t", 30_000, 1_000, false))
         .await;
@@ -164,8 +156,7 @@ async fn starvation_ended_resets_the_episode_clock() {
     );
 }
 
-/// `halt_on_error` is a no-op when the slot is already Stopped, so a failure
-/// dispatched after a self-handled stop doesn't emit a duplicate Stopped.
+/// A failure reported after playback already stopped emits no second Stopped.
 #[tokio::test]
 async fn halt_on_error_noops_when_stopped() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
@@ -177,10 +168,8 @@ async fn halt_on_error_noops_when_stopped() {
     );
 }
 
-/// Natural preview completion (a `PreviewCompleted` command) tears the preview
-/// pipeline down and emits `PreviewState::Idle`. This pins the service-side
-/// contract the preview listener's Completion arm feeds into: PreviewCompleted →
-/// stop() → Idle, with the pipeline gone.
+/// A preview playing to its end tears the preview down and emits
+/// `PreviewState::Idle`.
 #[tokio::test]
 async fn preview_completed_tears_down_and_emits_idle() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
@@ -276,8 +265,7 @@ async fn playback_state_mapping() {
             track_id: "next".to_string(),
             boundary: SideBoundary {
                 id: "id".to_string(),
-                title_key: SIDE_PAUSE_TITLE_KEY,
-                countdown_key: SIDE_PAUSE_COUNTDOWN_KEY,
+                kind: PlaybackPauseBoundary::Side,
                 side_label: "B".to_string(),
             },
             resumes_at: None,
@@ -290,15 +278,11 @@ async fn playback_state_mapping() {
             ..
         }
     ));
-    // Completed is never emitted as a public state, so `playback_state` treats it
-    // as unreachable rather than mapping it — no arm to assert here.
+    // `playback_state` treats Completed as unreachable, so it has no case here.
 }
 
-/// `TrackStart::Direct` deriving its position from `pregap_seek_position` is
-/// exercised by its own two cases below (a positive pregap needs a seek to
-/// it, no pregap needs none) — the same two cases `pregap_seek_position`
-/// itself would need, so there's nothing left for a separate direct test of
-/// the free function to add.
+/// The two `Direct` cases also cover `pregap_seek_position`: a start seeks past
+/// a positive pregap, and starts at zero without one.
 #[test]
 fn track_start_position_cases() {
     use std::time::Duration;
@@ -339,9 +323,9 @@ fn resolved_audio_format_rejects_zero_sample_rate() {
         .contains("track track-id has unusable audio format"));
 }
 
-/// A track carrying both a generated pregap and an audio-pregap segment ahead
-/// of its main body, so the same track can be started either way. Returns it
-/// with its two buffers, which the assertions identify the chosen segment by.
+/// A track with both a generated pregap and an audio-pregap segment before its
+/// main body, returned with its two buffers so a test can tell which segment
+/// decoding starts from.
 fn prepared_track_with_pregap_segments(
 ) -> (PlaybackPreparedTrack, SharedSparseBuffer, SharedSparseBuffer) {
     let pregap_buffer = create_sparse_buffer(1_024);

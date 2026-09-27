@@ -5,15 +5,25 @@ import Testing
 @testable import bae
 
 /// The side-pause countdown in Settings and on the prompt card. Core owns the
-/// deadline and starts the next side; the UI only shows the choice and counts
-/// down to that deadline.
+/// deadline and starts the next side; the UI only counts down to it.
 @MainActor
 @Suite("Side-pause countdown")
 struct SidePauseCountdownTests {
     private static let resumesAtMs: Int64 = 1_767_225_605_000
 
-    private static func countdown(key: String) -> BridgeSideCountdown {
-        BridgeSideCountdown(resumesAtMs: resumesAtMs, messageKey: key)
+    private static let countdown = BridgeSideCountdown(
+        resumesAtMs: resumesAtMs
+    )
+
+    private static func prompt(
+        _ boundary: BridgePauseBoundary
+    ) -> BridgeSidePausePrompt {
+        BridgeSidePausePrompt(
+            id: "pause-1",
+            boundary: boundary,
+            sideLabel: "A",
+            countdown: countdown
+        )
     }
 
     /// `ms` milliseconds before the deadline.
@@ -59,9 +69,7 @@ struct SidePauseCountdownTests {
 
     @Test("seconds left round up and stop at zero")
     func secondsLeftRoundUp() {
-        let countdown = Self.countdown(
-            key: "core.playback.pause.side_ended.countdown"
-        )
+        let countdown = Self.countdown
         #expect(countdown.secondsLeft(at: Self.before(5_000)) == 5)
         #expect(countdown.secondsLeft(at: Self.before(4_001)) == 5)
         #expect(countdown.secondsLeft(at: Self.before(4_000)) == 4)
@@ -72,24 +80,26 @@ struct SidePauseCountdownTests {
 
     @Test("the card line names the medium and the seconds left")
     func cardLineCountsDown() {
-        let side = Self.countdown(
-            key: "core.playback.pause.side_ended.countdown"
-        )
-        let disc = Self.countdown(
-            key: "core.playback.pause.disc_ended.countdown"
-        )
+        let side = Self.prompt(.side)
+        let disc = Self.prompt(.disc)
         #expect(
-            side.line(at: Self.before(5_000))
+            side.countdownLine(Self.countdown, at: Self.before(5_000))
                 == "The next side starts in 5 seconds."
         )
         #expect(
-            side.line(at: Self.before(900))
+            side.countdownLine(Self.countdown, at: Self.before(900))
                 == "The next side starts in 1 second."
         )
         #expect(
-            disc.line(at: Self.before(15_000))
+            disc.countdownLine(Self.countdown, at: Self.before(15_000))
                 == "The next disc starts in 15 seconds."
         )
+    }
+
+    @Test("the card's checkbox names the kind of boundary that ended")
+    func checkboxNamesTheBoundary() {
+        #expect(Self.prompt(.side).keepPausingLabel() == "Pause between sides")
+        #expect(Self.prompt(.disc).keepPausingLabel() == "Pause between discs")
     }
 
     @Test("the countdown settings strings ship in every locale")

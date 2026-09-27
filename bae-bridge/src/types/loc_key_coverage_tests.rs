@@ -1,24 +1,15 @@
-//! Airtight cross-check that the `core.*` localization catalog stays in sync
-//! with the keys the `bridge_*_key` functions produce — in both directions:
+//! Checks that the `core.*` catalog matches the keys the `bridge_*_key`
+//! functions produce, in both directions, so a missing entry fails the tests
+//! instead of showing a raw key.
 //!
-//! - `every_produced_key_exists_in_catalog`: every key a key fn can emit (plus
-//!   every direct-reference key the UI uses) has a catalog entry. A renamed or
-//!   dropped catalog key fails the build instead of rendering a raw key.
-//! - `no_orphan_core_keys`: every `core.*` catalog entry is produced by a key
-//!   fn or listed in `DIRECT_KEYS`. A catalog key no producer references is
-//!   dead and must be deleted (or, if a real UI direct-reference, added to
-//!   `DIRECT_KEYS`).
-//!
-//! Each keyed enum is covered by an explicit array of every variant, whose
-//! keys the production fn is asked for. The mapping is never restated here, so
-//! there is no second copy to drift: a variant left off an array shows up as
-//! an orphan catalog key the moment its entry lands.
+//! Each keyed enum is walked by an array of its variants and the production
+//! function supplies each key, so the mapping is never copied here; a variant
+//! left off an array shows up as an orphan catalog key.
 
 use super::*;
 
-/// `core.*` keys the UI references directly with its own args — not emitted
-/// by any `bridge_*_key` fn. Kept in sync with the catalog by
-/// `no_orphan_core_keys`.
+/// `core.*` keys the UI names directly rather than through a `bridge_*_key`
+/// function.
 const DIRECT_KEYS: &[&str] = &[
     // The import summary names a draft read from the folder's own metadata.
     "core.import.metadata.file_metadata",
@@ -29,8 +20,7 @@ const DIRECT_KEYS: &[&str] = &[
     "core.queue.failed",
     "core.queue.queued",
     "core.download.bytes_progress",
-    // Eager-cache status records carry their localized title key directly;
-    // each platform renders that field without another key function.
+    // Status records carry these keys themselves.
     "core.artwork_cache.scanning",
     "core.artwork_cache.downloading",
     "core.artwork_cache.cancelled",
@@ -44,13 +34,12 @@ const DIRECT_KEYS: &[&str] = &[
     "core.outbox.source_unavailable",
     "core.outbox.throughput",
     "core.outbox.eta",
-    // Device-pairing cancellation has no phase enum because cancellation is
-    // the command currently being awaited, not pairing progress.
+    // Cancelling is the command being awaited, not a pairing phase, so no
+    // phase enum produces it.
     "core.pairing.cancelling",
-    // Upload rows localize typed image kinds; original filenames render
-    // verbatim. The cover label is one of them: no file role names a cover
-    // any more — which image leads a release is the cover choice, not a
-    // property of a file — so both desktops reach for this key directly.
+    // Upload rows word their non-filename labels with these. The cover uses
+    // the import role key directly because no file role names a cover: the
+    // cover is a release's choice, not a file's property.
     "core.outbox.file.artist_image",
     "core.outbox.file.unwinding",
     "core.import.role.cover",
@@ -75,12 +64,10 @@ const DIRECT_KEYS: &[&str] = &[
     // Generic lookup-failure line for the keyless `Diagnostic` variant:
     // `bridge_lookup_failure_key` returns `None`, the UI shows this line.
     "core.lookup.failure.diagnostic",
-    // The arrow's accessibility label on a row whose facts were read from a
-    // catalog record. One key, no variants to enumerate, and the word itself
-    // is never drawn.
+    // The accessibility label of the arrow on a row whose facts came from a
+    // catalog record.
     "core.identity.identified",
-    // The side/disc pause alert's body: one sentence for every medium, so the
-    // prompt carries only its title key and the UI names this one directly.
+    // The pause alert's body, the same sentence for a side or a disc.
     "core.playback.pause.message",
     // A `BridgeFactTerm::Counted` part: the UI words the count and the
     // medium's label through it.
@@ -89,8 +76,7 @@ const DIRECT_KEYS: &[&str] = &[
     "core.release.numbered",
 ];
 
-/// A stand-in cover choice for walking the file roles that carry one. The
-/// key a role reads under never looks at it.
+/// A stand-in cover choice; a role's key does not depend on it.
 fn loc_cover_choice() -> BridgeCoverChoice {
     BridgeCoverChoice {
         selection: BridgeCoverSelection::ReleaseImage {
@@ -102,13 +88,9 @@ fn loc_cover_choice() -> BridgeCoverChoice {
     }
 }
 
-/// Every key the `bridge_*_key` fns can emit. Each keyed enum is walked by an
-/// explicit array of all its variants and the production fn is asked for the
-/// key — the keys are never restated here, so this cannot drift into a second
-/// copy of the mapping. A variant left off an array surfaces as an orphan in
-/// `no_orphan_core_keys` as soon as its catalog entry lands. The assertions
-/// beside the loops carry only what neither catalog direction can see: that a
-/// value names no key, and that two values deliberately name the same one.
+/// Every key the `bridge_*_key` functions can emit. The assertions beside the
+/// loops check what neither catalog direction can see: that a value names no
+/// key, or that two values share one.
 fn produced_keys() -> Vec<String> {
     let mut keys = super::device_pairing_progress_tests::progress_keys();
 
@@ -436,10 +418,8 @@ fn produced_keys() -> Vec<String> {
     // bridge_entity_not_found_key — every variant carries a key.
     keys.push(bridge_entity_not_found_key(BridgeEntityKind::Library));
 
-    // bridge_error_line_key — Cancelled carries no line (None); the other two
-    // agree with the per-part key fns above, so an error has exactly one line
-    // and it is not re-derived anywhere. The keys themselves are already
-    // pushed by those loops, so nothing is added here.
+    // bridge_error_line_key — Cancelled has no line; the others must match
+    // the per-part key functions above, whose loops already pushed the keys.
     for e in [
         BridgeError::Cancelled,
         BridgeError::NotFound {
@@ -473,16 +453,11 @@ fn produced_keys() -> Vec<String> {
         .is_none()
     );
 
-    keys.extend(
-        [
-            bae_core::playback::DISC_PAUSE_TITLE_KEY,
-            bae_core::playback::SIDE_PAUSE_TITLE_KEY,
-            bae_core::playback::DISC_PAUSE_COUNTDOWN_KEY,
-            bae_core::playback::SIDE_PAUSE_COUNTDOWN_KEY,
-        ]
-        .into_iter()
-        .map(str::to_string),
-    );
+    for boundary in [BridgePauseBoundary::Side, BridgePauseBoundary::Disc] {
+        keys.push(bridge_pause_boundary_title_key(boundary));
+        keys.push(bridge_pause_boundary_countdown_key(boundary));
+        keys.push(bridge_pause_boundary_keep_pausing_key(boundary));
+    }
 
     // The pressing vocabularies — every region, status and packaging carries
     // a key; a medium or a Discogs detail carries one where it is a word, and

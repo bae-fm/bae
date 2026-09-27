@@ -1,15 +1,12 @@
 import SwiftUI
 
-/// Presents the prompt core raises when playback pauses at the end of a side or
-/// disc. A card, not a system alert: it carries the pause-between-sides
-/// checkbox, which an alert cannot hold. macOS draws it over the window; iOS
-/// presents it full screen over a clear background.
+/// The prompt core raises when playback pauses at the end of a side or disc,
+/// drawn as a card because a system alert cannot hold its checkbox.
 public struct SidePausePromptAlert: ViewModifier {
     @Environment(PlaybackStore.self)
     private var playbackStore
 
-    /// Where a failed pause-between-sides write is shown. Takes the error, not a
-    /// rendered line, like `PauseBetweenSidesToggle`.
+    /// Shows a failed write of the pause-between-sides setting.
     let showError: @MainActor (any Error) -> Void
 
     public func body(content: Content) -> some View {
@@ -100,14 +97,16 @@ private struct SidePausePromptCard: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if let countdown = prompt.countdown {
-                SidePauseCountdownLine(countdown: countdown)
+                SidePauseCountdownLine(prompt: prompt, countdown: countdown)
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Toggle("Pause between sides and discs", isOn: $keepPausing)
-                    #if os(macOS)
-                        .toggleStyle(.checkbox)
-                    #endif
+                Toggle(isOn: $keepPausing) {
+                    Text(verbatim: prompt.keepPausingLabel())
+                }
+                #if os(macOS)
+                    .toggleStyle(.checkbox)
+                #endif
                 // Unchecking turns the setting off, which also ends these
                 // prompts, so the card says where to turn it back on.
                 if !keepPausing {
@@ -174,16 +173,16 @@ private struct SidePausePromptCard: View {
     }
 }
 
-/// The line counting down to the next side, redrawn each second from core's
-/// deadline. The ticks are anchored to that deadline rather than to when the
-/// card appeared, so the number changes exactly as each whole second runs out.
-/// The line only shows the time; core starts the next side when it runs out.
+/// The countdown line, redrawn on ticks anchored to core's deadline so the
+/// number changes exactly as each second runs out. Core, not this view, starts
+/// the next side or disc.
 private struct SidePauseCountdownLine: View {
+    let prompt: BridgeSidePausePrompt
     let countdown: BridgeSideCountdown
 
     var body: some View {
         TimelineView(.periodic(from: tickAnchor, by: 1)) { context in
-            Text(verbatim: countdown.line(at: context.date))
+            Text(verbatim: prompt.countdownLine(countdown, at: context.date))
                 .font(.body.weight(.medium))
                 .monospacedDigit()
                 .fixedSize(horizontal: false, vertical: true)

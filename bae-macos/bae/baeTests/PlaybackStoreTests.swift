@@ -70,9 +70,9 @@ private final class UpcomingFeed: @unchecked Sendable {
 
     var openedCount: Int { lock.withLock { opened } }
     var requested: [[BridgeLibraryPageWindow]] { lock.withLock { requests } }
-    /// How many times the store has asked for a value. It takes one value at
-    /// a time and applies it before asking again, so an ask past a delivered
-    /// value means that value has been handled, shown or not.
+    /// How many times the store has asked for a value. It applies each value
+    /// before asking again, so an ask past a delivered value means that value
+    /// was handled, shown or not.
     var asks: Int { lock.withLock { askedCount } }
 
     func query() -> QueueUpcomingQuery {
@@ -202,9 +202,8 @@ struct PlaybackStoreUpcomingWindowTests {
         try await Wait.until { store.upcomingItem(at: 100) != nil }
         #expect(store.upcomingItem(at: 100)?.entryId == "first")
 
-        // The value for the next revision lands before the queue value does.
-        // One ask on opening, one past the first value; the third comes
-        // only after the store has handled this one.
+        // The next revision's value arrives before its queue value. The third
+        // ask comes only after the store has handled it.
         feed.deliver(revision: 2, offset: 100, entryId: "second")
         try await Wait.until { feed.asks >= 3 }
         #expect(
@@ -226,10 +225,8 @@ struct PlaybackStoreUpcomingWindowTests {
 
 @Suite("PlaybackStore loading transition")
 struct PlaybackStoreBeginLoadingTests {
-    /// Core's first `PlaybackLoading` carries only a track id. The now-playing
-    /// bar / expanded player read `nowPlaying.track`; if it went nil during the
-    /// gap the bar would tear down (dismissing the expanded cover) on every
-    /// transition. The prior track must stay until the target's metadata lands.
+    /// If `nowPlaying.track` went nil while loading, the now-playing bar would
+    /// close on every track change.
     @MainActor
     @Test("retains the playing track until the target metadata arrives")
     func retainsPlayingTrack() {
@@ -255,8 +252,6 @@ struct PlaybackStoreBeginLoadingTests {
         #expect(store.nowPlaying.loadingTrackId == "b")
     }
 
-    /// The second `PlaybackLoading` (metadata resolved) swaps the displayed
-    /// track from the prior one to the target while audio is still loading.
     @MainActor
     @Test("switches to the target once its metadata lands")
     func switchesToTarget() {
@@ -272,8 +267,6 @@ struct PlaybackStoreBeginLoadingTests {
         #expect(store.nowPlaying.isActive)
     }
 
-    /// A target event for a track that is no longer the loading target (a fast
-    /// switch moved on) is ignored — it must not overwrite the current loading.
     @MainActor
     @Test("ignores a target for a stale track id")
     func ignoresStaleTarget() {
@@ -299,10 +292,8 @@ struct PlaybackStoreBeginLoadingTests {
         #expect(store.nowPlaying.isActive)
     }
 
-    /// A seek emits a single resolved `PlaybackLoading` for the *current* track
-    /// while it is playing or paused — no bare loading first. Re-enter loading
-    /// so the transport shows the buffering spinner while core fills the seek
-    /// target, keeping the same track on screen.
+    /// A seek sends only a resolved loading state for the current track, with
+    /// no bare one first; the spinner shows and the track stays on screen.
     @MainActor
     @Test("a seek while playing re-enters loading for the current track")
     func seekWhilePlayingEntersLoading() {
@@ -328,8 +319,7 @@ struct PlaybackStoreBeginLoadingTests {
         #expect(store.nowPlaying.track?.trackId == "a")
     }
 
-    /// A resolved target for a track other than the one playing — with no bare
-    /// loading first — is stale: a faster switch owns the bar, so drop it.
+    /// Without a bare loading state first, a target for another track is stale.
     @MainActor
     @Test("ignores a resolved target for a track other than the one playing")
     func ignoresTargetForOtherPlayingTrack() {
@@ -376,7 +366,7 @@ struct NowPlayingStateTests {
 struct PlaybackStoreSidePausePromptTests {
     private static let prompt = BridgeSidePausePrompt(
         id: "side-pause-1",
-        titleKey: "core.playback.pause.side_ended.title",
+        boundary: .side,
         sideLabel: "A",
         countdown: nil
     )

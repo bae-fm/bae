@@ -24,6 +24,7 @@ import uniffi.bae_bridge.BridgeMedium
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
+import uniffi.bae_bridge.BridgePauseBoundary
 import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseArea
@@ -42,24 +43,18 @@ import uniffi.bae_bridge.BridgeTrackSide
 import uniffi.bae_bridge.BridgeWorkSummary
 
 /**
- * Plain `Bridge*` fixtures for `@Preview`s. Mirrors the shapes the test-only
- * `BridgeFixtures` builds, but lives in the main source set so previews can draw
- * on it without the native lib or an `AppHandle`. Every name is a generic
- * placeholder — never a real artist, album, or track — so previews carry no real
- * catalogue data. Previews stub the image loaders (`suspend (id) -> null`), so
- * these carry no cover bytes.
+ * `Bridge*` fixtures for `@Preview`s, in the main source set so previews need no
+ * native library or `AppHandle`. Names are generic placeholders, never real
+ * artists, albums or tracks.
  */
 object PreviewData {
-    // Placeholder 64-hex-char device public keys (kept out of expression bodies so
-    // the length literal reads as a named property, not an inline magic number).
+    // Placeholder 64-hex-character device public keys.
     private val placeholderPubkey = "0".repeat(64)
     private val placeholderPubkeyAlt = "1".repeat(64)
 
-    // Preview track length (3:34), and the same value as a pre-built clock. The
-    // clock is constructed in-process — never via the `bridgeClock` FFI — so the
-    // fixtures render under the Compose preview renderer (layoutlib), which can't
-    // call into the native bridge. Both are named so the literals aren't inline
-    // magic numbers in the fixture expression bodies below.
+    // Preview track length (3:34) and the same value as a clock, built here
+    // rather than through `bridgeClock` because the preview renderer cannot
+    // call the native bridge.
     private const val TRACK_DURATION_MS = 214_000L
     private val trackDurationClock =
         BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 34u)
@@ -135,8 +130,8 @@ object PreviewData {
                     packaging = null,
                     discogsDetails = emptyList(),
                 ),
-            // The lines core words from the facts above, written out: a
-            // preview renders with no call into the bridge.
+            // What core words from the facts above, written out because a
+            // preview cannot call the bridge.
             pressingSummary =
                 listOf(
                     BridgeFactTerm.Country("US"),
@@ -305,7 +300,7 @@ object PreviewData {
     fun sidePausePrompt(): BridgeSidePausePrompt =
         BridgeSidePausePrompt(
             id = "prompt-1",
-            titleKey = "core.playback.pause.side_ended.title",
+            boundary = BridgePauseBoundary.SIDE,
             sideLabel = "B",
             countdown = null,
         )

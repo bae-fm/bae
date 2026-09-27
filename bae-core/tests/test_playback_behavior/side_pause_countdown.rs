@@ -1,4 +1,4 @@
-/// The countdown a side-pause state carries, if it is one.
+/// The countdown a side-pause state carries. Panics on any other state.
 fn side_pause_countdown(state: &PlaybackState) -> Option<PlaybackSideCountdown> {
     match state {
         PlaybackState::Paused {
@@ -13,7 +13,7 @@ impl SidePauseTestFixture {
     /// Play side A's last track (A2) to its side pause and return that state.
     async fn pause_after_side_a(&mut self) -> PlaybackState {
         let side_a_track_id = self.track_ids[1].clone();
-        self.play_to_side_pause(1, &side_a_track_id, "A", SIDE_PAUSE_TITLE_KEY)
+        self.play_to_side_pause(1, &side_a_track_id, "A", PlaybackPauseBoundary::Side)
             .await
     }
 
@@ -65,7 +65,6 @@ async fn side_pause_countdown_starts_the_next_side_when_it_runs_out() {
         side_pause_countdown(&paused),
         Some(PlaybackSideCountdown {
             resumes_at: side_pause_clock_start() + chrono::Duration::seconds(5),
-            message_key: SIDE_PAUSE_COUNTDOWN_KEY,
         })
     );
 

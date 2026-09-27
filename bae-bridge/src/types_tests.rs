@@ -25,8 +25,6 @@ fn pairing_cancellation_crosses_the_bridge_as_cancellation() {
 mod triage_tests {
     use super::*;
 
-    /// A candidate with no identify driver and an import running crosses as
-    /// `Idle` with its import's progress.
     #[test]
     fn an_idle_candidate_crosses_with_its_running_import() {
         let idle =
@@ -49,11 +47,9 @@ mod triage_tests {
     }
 }
 
-/// Round-trips a fully-populated sample through `from_core` then `into_core` and
-/// asserts equality with the original. The one bug the exhaustive-destructure
-/// compile checks can't catch is a transposed same-typed field introduced during
-/// a rewrite; these catch it for both directions in one assertion (types without
-/// `PartialEq` compare their `Debug` forms). Placeholder names only.
+/// Conversions across the bridge. The round trips catch two same-typed fields
+/// swapped, which the conversions' exhaustive destructures cannot. Placeholder
+/// names only.
 #[cfg(test)]
 mod conversion_roundtrip {
     use super::*;
@@ -69,10 +65,8 @@ mod conversion_roundtrip {
         }
     }
 
-    /// Who wrote the candidate's draft crosses as itself: the pane and the
-    /// row read it to tell a person's answer from what the tags or a run
-    /// proposed, so a variant landing as another would misstate whose draft
-    /// it is.
+    /// The UI tells a person's answer from a proposed one by this value, so
+    /// each variant must cross as itself.
     #[cfg(feature = "desktop")]
     #[test]
     fn the_draft_s_author_crosses_the_bridge_as_itself() {
@@ -122,9 +116,7 @@ mod conversion_roundtrip {
         }
     }
 
-    /// Every step crosses as one switch, in the order a run takes them, each
-    /// saying whether runs take it; the storage choice and importing when
-    /// identified cross as they are stored.
+    /// Steps cross in the order a run takes them.
     #[test]
     fn config_exposes_every_identification_step_and_the_import_settings() {
         use bae_core::config::{Config, IdentificationStep};
@@ -197,32 +189,27 @@ mod conversion_roundtrip {
     }
 
     #[test]
-    fn side_pause_prompt_carries_its_countdown_deadline_in_epoch_millis() {
+    fn side_pause_prompt_carries_its_kind_and_countdown_deadline_in_epoch_millis() {
         use bae_core::playback::{
-            PlaybackSideCountdown, PlaybackSidePausePrompt, DISC_PAUSE_COUNTDOWN_KEY,
-            DISC_PAUSE_TITLE_KEY,
+            PlaybackPauseBoundary, PlaybackSideCountdown, PlaybackSidePausePrompt,
         };
 
         let resumes_at = "2026-01-01T00:00:05Z".parse().unwrap();
         let prompt = BridgeSidePausePrompt::from_core(PlaybackSidePausePrompt {
             id: "next:1:Cd".to_string(),
-            title_key: DISC_PAUSE_TITLE_KEY,
+            boundary: PlaybackPauseBoundary::Disc,
             side_label: "1".to_string(),
-            countdown: Some(PlaybackSideCountdown {
-                resumes_at,
-                message_key: DISC_PAUSE_COUNTDOWN_KEY,
-            }),
+            countdown: Some(PlaybackSideCountdown { resumes_at }),
         });
 
         assert_eq!(
             prompt,
             BridgeSidePausePrompt {
                 id: "next:1:Cd".to_string(),
-                title_key: DISC_PAUSE_TITLE_KEY.to_string(),
+                boundary: BridgePauseBoundary::Disc,
                 side_label: "1".to_string(),
                 countdown: Some(BridgeSideCountdown {
                     resumes_at_ms: 1_767_225_605_000,
-                    message_key: DISC_PAUSE_COUNTDOWN_KEY.to_string(),
                 }),
             }
         );
@@ -285,10 +272,9 @@ mod conversion_roundtrip {
         );
     }
 
-    /// A grouping's block reaches the UI as its own keyed line, whichever way
-    /// it arrives — refusing an action, or standing on the release — with the
-    /// names it carries only in the untranslated detail. The one no person can
-    /// act on reads as the generic import failure.
+    /// A grouping block crosses as its own translated line from either path,
+    /// with its names only in the untranslated detail; `Unbuildable`, which no
+    /// one can act on, crosses as the generic import failure.
     #[cfg(feature = "desktop")]
     #[test]
     fn grouping_blocks_carry_their_own_lines() {
@@ -331,8 +317,8 @@ mod conversion_roundtrip {
         ));
     }
 
-    /// A row hands its action basis back with its live-state subscription, so
-    /// it has to come back as the value core placed it with.
+    /// A row hands its action basis back to core when it subscribes to live
+    /// state, so it must round-trip unchanged.
     #[cfg(feature = "desktop")]
     #[test]
     fn candidate_action_basis_round_trips() {
@@ -492,9 +478,8 @@ mod conversion_roundtrip {
                 ]),
                 side: Some(1),
                 track_number: Some(1),
-                // The audio binding is not a form field, so it has to survive
-                // the editor's round trip untouched or a corrected pairing is
-                // lost between the slot table and the commit.
+                // Not a form field, so the round trip must keep it or a
+                // corrected file pairing is lost before the commit.
                 file: Some(bae_core::import::AudioFile::Standalone {
                     file_id: "01.flac".to_string(),
                 }),
@@ -562,9 +547,8 @@ mod conversion_roundtrip {
         }
     }
 
-    /// The detail crosses the bridge outbound only — it is the picker's display
-    /// shape, never a seed — so this pins the derived fields and the carried ones,
-    /// not a round trip.
+    /// The detail only goes from core to the UI, so this checks derived and
+    /// carried fields rather than a round trip.
     #[cfg(feature = "desktop")]
     #[test]
     fn release_detail_derives_default_cover() {
@@ -650,10 +634,8 @@ fn every_kind_of_fact() -> bae_core::pressing::PressingFacts {
     }
 }
 
-/// A database failure crosses two wrappers that each prefix themselves onto it,
-/// and the `DbError` inside prefixes itself too, so what a person was shown read
-/// "database error: database error: …". The category beside the detail is what
-/// names the kind of failure; the detail names the fault, once.
+/// Each wrapper around a database failure adds its own prefix; the category
+/// already names the kind of failure, so the detail carries only the fault.
 #[test]
 fn a_database_fault_is_not_prefixed_twice() {
     let inner =
@@ -695,9 +677,8 @@ fn a_non_database_coven_error_keeps_its_own_text() {
     );
 }
 
-/// A release read from several folders crosses as the folders it is made of,
-/// in play order, each with the name the source list shows. Its files and
-/// track rows reach the receiver as the release's own.
+/// A release read from several folders crosses as its folders, in play order,
+/// each with the name the source list shows.
 #[cfg(all(test, feature = "desktop"))]
 #[test]
 fn a_release_read_from_several_folders_crosses_as_its_folders() {

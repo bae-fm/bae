@@ -1,8 +1,7 @@
 use super::{BridgeImageRef, BridgeRepeatMode};
 
-/// One local source window to audition. Mirrors
-/// `bae_core::playback::PreviewTarget`; byte seek landings are unavailable for
-/// import candidates, so the bridge carries only exact sample bounds.
+/// One local file range to audition, by sample bounds only: an import
+/// candidate has no byte seek positions yet.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePreviewTarget {
     pub path: String,
@@ -29,17 +28,15 @@ impl BridgePreviewTarget {
     }
 }
 
-/// The target track's display metadata, carried by a loading state once core
-/// has resolved it. Mirror of `bae_core::playback::LoadingTrack` across the
-/// uniffi boundary.
+/// The target track's display metadata, once core has resolved it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeLoadingTrackInfo {
     pub track_title: String,
     pub artist_names: String,
     pub album_id: String,
     pub album_title: String,
-    /// The track's own release's cover, or `None` when it has none. Versioned,
-    /// so the UI's art cache key moves when the cover bytes change.
+    /// The track's release cover, versioned so the UI's art cache key changes
+    /// with the cover bytes.
     pub cover_image: Option<BridgeImageRef>,
     pub duration_ms: u64,
 }
@@ -47,7 +44,8 @@ pub struct BridgeLoadingTrackInfo {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSidePausePrompt {
     pub id: String,
-    pub title_key: String,
+    /// Whether a side or a disc ended, which every line of the prompt names.
+    pub boundary: BridgePauseBoundary,
     pub side_label: String,
     /// The countdown to the next side starting on its own, or `None` when the
     /// pause waits for Play.
@@ -58,39 +56,79 @@ impl BridgeSidePausePrompt {
     pub(crate) fn from_core(prompt: bae_core::playback::PlaybackSidePausePrompt) -> Self {
         let bae_core::playback::PlaybackSidePausePrompt {
             id,
-            title_key,
+            boundary,
             side_label,
             countdown,
         } = prompt;
         Self {
             id,
-            title_key: title_key.to_string(),
+            boundary: BridgePauseBoundary::from_core(boundary),
             side_label,
             countdown: countdown.map(BridgeSideCountdown::from_core),
         }
     }
 }
 
-/// A running side-pause countdown. Core starts the next side when it runs out;
-/// a UI only counts down to `resumes_at_ms`, so every one shows the same number.
+/// Whether a pause between sides stopped after a side or a disc.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgePauseBoundary {
+    Side,
+    Disc,
+}
+
+mirror_enum! {
+    BridgePauseBoundary = bae_core::playback::PlaybackPauseBoundary,
+    from_core: fn,
+    variants: {
+        Side,
+        Disc,
+    },
+}
+
+/// The prompt's title, which takes the side or disc that ended as `label`.
+#[uniffi::export]
+pub fn bridge_pause_boundary_title_key(boundary: BridgePauseBoundary) -> String {
+    match boundary {
+        BridgePauseBoundary::Side => "core.playback.pause.side_ended.title",
+        BridgePauseBoundary::Disc => "core.playback.pause.disc_ended.title",
+    }
+    .to_string()
+}
+
+/// The line counting down to the next side, which takes the whole seconds
+/// left, rounded up, as `seconds`.
+#[uniffi::export]
+pub fn bridge_pause_boundary_countdown_key(boundary: BridgePauseBoundary) -> String {
+    match boundary {
+        BridgePauseBoundary::Side => "core.playback.pause.side_ended.countdown",
+        BridgePauseBoundary::Disc => "core.playback.pause.disc_ended.countdown",
+    }
+    .to_string()
+}
+
+/// The prompt's checkbox that keeps pausing at boundaries of this kind.
+#[uniffi::export]
+pub fn bridge_pause_boundary_keep_pausing_key(boundary: BridgePauseBoundary) -> String {
+    match boundary {
+        BridgePauseBoundary::Side => "core.playback.pause.side_ended.keep_pausing",
+        BridgePauseBoundary::Disc => "core.playback.pause.disc_ended.keep_pausing",
+    }
+    .to_string()
+}
+
+/// A running side-pause countdown. Core starts the next side; UIs only count
+/// down to `resumes_at_ms`, so they all show the same number.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSideCountdown {
     /// When the next side starts, as Unix epoch milliseconds.
     pub resumes_at_ms: i64,
-    /// The `core.*` catalog key of the line counting it down, worded for a side
-    /// or a disc. Takes the whole seconds left, rounded up, as `seconds`.
-    pub message_key: String,
 }
 
 impl BridgeSideCountdown {
     fn from_core(countdown: bae_core::playback::PlaybackSideCountdown) -> Self {
-        let bae_core::playback::PlaybackSideCountdown {
-            resumes_at,
-            message_key,
-        } = countdown;
+        let bae_core::playback::PlaybackSideCountdown { resumes_at } = countdown;
         Self {
             resumes_at_ms: resumes_at.timestamp_millis(),
-            message_key: message_key.to_string(),
         }
     }
 }

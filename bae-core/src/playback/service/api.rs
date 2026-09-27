@@ -2,9 +2,8 @@ use super::*;
 
 use crate::util::worker_thread::WorkerThread;
 
-/// Track metadata resolved once at prepare time and held for the track's
-/// playback, so `PlaybackState` emissions carry it and the bridge needs no DB
-/// access.
+/// Track metadata resolved when the track is prepared, so `PlaybackState`
+/// carries it and the bridge needs no database access.
 #[derive(Debug, Clone)]
 pub struct PlaybackTrackInfo {
     pub track_id: String,
@@ -13,26 +12,22 @@ pub struct PlaybackTrackInfo {
     pub artist_id: String,
     pub album_id: String,
     pub album_title: String,
-    /// The track's own release's cover, versioned — `None` when that release has
-    /// no cover row. The UI keys its decoded copy on the whole reference, so new
-    /// bytes for the same release replace it.
+    /// The track's release cover, or `None` when it has none. Versioned, so new
+    /// bytes for the same release replace the copy a UI decoded.
     pub cover_image: Option<crate::album_detail::ImageRef>,
     pub release_id: String,
     pub side: Option<PlaybackTrackSide>,
 }
 
-/// Physical side or disc metadata used to decide playback boundaries.
+/// The side or disc a track is on, which decides where playback pauses.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaybackTrackSide {
     pub medium: PhysicalMedium,
     pub number: i32,
 }
 
-/// The track metadata a `Loading` state carries once `prepare_track_for_playback`
-/// has resolved it. Absent in the first `Loading` emission (before the DB lookup
-/// completes) and present in the second, so the bar can switch from the prior
-/// track to the target the moment its identity is known. The duration is
-/// pregap-adjusted — the same value `Playing`/`Paused` carry.
+/// The prepared track a `Loading` state carries, so the bar can show it before
+/// its audio starts. The duration is the one `Playing` and `Paused` carry.
 #[derive(Debug, Clone)]
 pub struct LoadingTrack {
     pub track_info: PlaybackTrackInfo,
@@ -53,28 +48,28 @@ impl LoadingTrack {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaybackSidePausePrompt {
     pub id: String,
-    pub title_key: &'static str,
+    /// Whether a side or a disc ended; the prompt's wording follows it.
+    pub boundary: PlaybackPauseBoundary,
     pub side_label: String,
     /// The countdown to the next side starting on its own, or `None` when the
     /// pause waits for Play.
     pub countdown: Option<PlaybackSideCountdown>,
 }
 
-/// A running side-pause countdown. Every UI counts down from `resumes_at`, so
-/// they all show the same number; core alone decides when the next side starts.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PlaybackSideCountdown {
-    /// When the next side starts.
-    pub resumes_at: chrono::DateTime<chrono::Utc>,
-    /// The catalog key of the line counting it down, worded for a side or a
-    /// disc like the prompt's title. Takes the whole seconds left as `seconds`.
-    pub message_key: &'static str,
+/// The kind of boundary a pause between sides stopped at: a record's or a
+/// cassette's side, or a CD.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlaybackPauseBoundary {
+    Side,
+    Disc,
 }
 
-pub const SIDE_PAUSE_TITLE_KEY: &str = "core.playback.pause.side_ended.title";
-pub const DISC_PAUSE_TITLE_KEY: &str = "core.playback.pause.disc_ended.title";
-pub const SIDE_PAUSE_COUNTDOWN_KEY: &str = "core.playback.pause.side_ended.countdown";
-pub const DISC_PAUSE_COUNTDOWN_KEY: &str = "core.playback.pause.disc_ended.countdown";
+/// A running side-pause countdown. Every UI counts down to `resumes_at`, so
+/// they all show the same number; core decides when the next side starts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlaybackSideCountdown {
+    pub resumes_at: chrono::DateTime<chrono::Utc>,
+}
 
 /// Why playback is paused.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -83,18 +78,16 @@ pub enum PlaybackPauseReason {
     SideEnded(PlaybackSidePausePrompt),
 }
 
-/// The side or disc boundary between two tracks, in the words the prompt uses
-/// for it: the side that ended, and the catalog keys worded for its medium.
+/// The side or disc boundary between two tracks.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SideBoundary {
     pub(super) id: String,
-    pub(super) title_key: &'static str,
-    pub(super) countdown_key: &'static str,
+    pub(super) kind: PlaybackPauseBoundary,
     pub(super) side_label: String,
 }
 
-/// A pause at a side boundary: the track it resumes into, the boundary the
-/// prompt names, and — when a countdown runs — when it resumes on its own.
+/// A pause at a side boundary, resuming into `track_id` on Play or, when set,
+/// on its own at `resumes_at`.
 #[derive(Debug, Clone)]
 pub(super) struct SidePauseDecision {
     pub(super) track_id: String,
@@ -106,18 +99,16 @@ impl SidePauseDecision {
     pub(super) fn prompt(&self) -> PlaybackSidePausePrompt {
         let SideBoundary {
             id,
-            title_key,
-            countdown_key,
+            kind,
             side_label,
         } = &self.boundary;
         PlaybackSidePausePrompt {
             id: id.clone(),
-            title_key,
+            boundary: *kind,
             side_label: side_label.clone(),
-            countdown: self.resumes_at.map(|resumes_at| PlaybackSideCountdown {
-                resumes_at,
-                message_key: countdown_key,
-            }),
+            countdown: self
+                .resumes_at
+                .map(|resumes_at| PlaybackSideCountdown { resumes_at }),
         }
     }
 }
@@ -130,66 +121,51 @@ pub(crate) enum PlaybackCommand {
         start_track_index: Option<usize>,
         shuffle: bool,
     },
-    /// Play several releases as one context, concatenated in the given order and
-    /// starting at the first track. Each release's tracks that fail to load are
-    /// skipped (logged); an all-empty result is a no-op. A single playable release
-    /// collapses to a `Release` context, identical to `PlayRelease`.
+    /// Play several releases in order as one context, from the first track.
+    /// Releases with no playable tracks are skipped, none left is a no-op, and a
+    /// single one left plays exactly like `PlayRelease`.
     PlayReleases(Vec<String>),
-    /// Play the whole library in a freshly seeded shuffle. An empty library is a
-    /// no-op (logged); the seed is minted in the handler.
+    /// Play the whole library in a new shuffle; an empty library is a no-op.
     PlayLibraryShuffled,
     Pause,
     Resume,
-    /// Stop a running side-pause countdown and keep playback paused at the
-    /// boundary: the prompt's Close. The pause still resumes into the next side
-    /// on Play. A no-op when no countdown runs.
+    /// The prompt's Close: stop a running side-pause countdown and stay paused
+    /// at the boundary until Play. A no-op when no countdown runs.
     CancelSidePauseCountdown,
     Stop,
     /// Manual next track (pregap skipped).
     Next,
-    /// Auto-advance from the natural completion of `track_id` (pregap played).
-    /// The id is validated when handled: a user Next/Seek that reached the command
-    /// loop first already moved on, so a stale advance for a no-longer-current or
-    /// no-longer-Completed track is dropped rather than double-advancing.
+    /// Advance after `track_id` played to its end, playing the next track's
+    /// pregap. Dropped unless that track is still current and Completed, since a
+    /// Next or Seek handled first has already moved on.
     AutoAdvance {
         track_id: String,
     },
-    /// A load's decoder filled its ring to the play threshold (or hit EOF). Sent
-    /// by a watcher task awaiting the decoder's ready signal; the handler resolves
-    /// the current track's phase to its target (Playing/Paused) only if this is
-    /// still the live load. Identity is the load `generation`, not the track id:
-    /// RepeatCurrent / RestartCurrent / re-Play replay the SAME id through a fresh
-    /// load, so an id match would accept a ready signal from an abandoned one. The
-    /// id is carried only to name the dropped track in the debug log.
+    /// A load's decoder buffered enough to play (or hit the end). Resolves the
+    /// track to its target phase only if `generation` is the live load: a repeat
+    /// or re-Play reloads the same track id, so the id can't tell loads apart. The
+    /// id is only for the log.
     TrackReady {
         track_id: String,
         generation: LoadGeneration,
     },
-    /// A mid-flight read failure (cloud or local) emitted a
-    /// `PlaybackProgress::PlaybackError`. Sent from the progress
-    /// self-subscription so the command loop tears playback down to Stopped
-    /// rather than leaving a frozen Playing state with a stalled position bar.
+    /// A read failure mid-track emitted a `PlaybackProgress::PlaybackError`; stop
+    /// playback rather than leave it frozen in Playing.
     HaltOnError,
-    /// A track buffer's byte fill failed. Which track that breaks depends on what
-    /// the buffer is serving right now, and only the command loop knows that —
-    /// the fill task reports the failure with the buffer's id and the loop
-    /// decides (see `handle_read_failed`).
+    /// A track buffer's byte fill failed. Only the command loop knows which track
+    /// the buffer serves right now, so it decides what breaks.
     ReadFailed {
         buffer_id: u64,
         error: Arc<PlaybackError>,
     },
-    /// The system default output device changed. Rebuilds the persistent output
-    /// stream over the same source so playback follows the new default (a no-op
-    /// when nothing is playing) — the stream is otherwise rebuilt only on stop or
-    /// a format change, so without this it would stay pinned to the old device.
-    /// macOS-only: only CoreAudio gives us a default-device listener; elsewhere a
-    /// switch takes effect at the next rebuild.
+    /// The system default output device changed: rebuild the output stream over
+    /// the same source so playback follows it. macOS-only, since only CoreAudio
+    /// reports the change; elsewhere the next stream rebuild picks up the device.
     #[cfg(target_os = "macos")]
     OutputDeviceChanged,
     Previous,
     Seek(std::time::Duration),
-    /// Seek by slider ratio (0.0–1.0). The service converts to position using
-    /// current duration and pregap.
+    /// Seek by slider ratio (0.0–1.0) of the current track's duration and pregap.
     SeekByRatio(f64),
     SetVolume(f32),
     AddToQueue(Vec<String>),
@@ -199,8 +175,7 @@ pub(crate) enum PlaybackCommand {
     InsertInQueue(Vec<String>, usize),
     /// Remove the queue entry with this per-instance id.
     RemoveFromQueue(QueueEntryId),
-    /// Move the entry `entry_id` to sit immediately before `before`.
-    /// `before = None` moves it to the end of the queue.
+    /// Move `entry_id` to just before `before`, or to the end when it's `None`.
     ReorderQueue {
         entry_id: QueueEntryId,
         before: Option<QueueEntryId>,
@@ -211,16 +186,13 @@ pub(crate) enum PlaybackCommand {
     /// Next drains and then playback stops.
     ClearPlayingFrom,
     SetRepeatMode(RepeatMode),
-    /// Set the context lane to shuffled or sequential order. `true` mints a fresh
-    /// seed and permutes the upcoming rows; `false` puts them back in the order
-    /// the lane had when shuffle turned on. The current track keeps playing.
+    /// Shuffle the context lane's upcoming rows with a new seed, or put them back
+    /// in the order they had when shuffle turned on. The current track keeps
+    /// playing.
     SetShuffle(bool),
-    /// Re-run the side-pause staging decision for the currently preloaded next
-    /// track. Sent after `pause_between_sides` is turned on: staging is decided
-    /// once, at preload time, so without this a boundary already staged into the
-    /// gapless chain would keep crossing gaplessly. A no-op when there's no active
-    /// track, no preloaded next, or the preload is already held (the drain-time
-    /// gate re-reads the config in that case).
+    /// Sent when `pause_between_sides` turns on: staging is decided at preload
+    /// time, so a next track already staged for gapless playback is held here if
+    /// its boundary needs a pause.
     ReevaluateSidePauseStaging,
     /// Skip to the queue entry with this per-instance id (manual, pregap skipped).
     SkipTo(QueueEntryId),
@@ -234,45 +206,34 @@ pub(crate) enum PlaybackCommand {
     PreviewSeekByRatio(f64),
     /// The preview file finished playing naturally.
     PreviewCompleted,
-    /// Set mute to an absolute state. Muting saves the pre-mute volume and
-    /// drives output to 0; unmuting restores it. Setting the current state
-    /// changes nothing (a repeated dispatch lands in the same place).
+    /// Muting saves the volume and drives output to 0; unmuting restores it.
+    /// Setting the current state changes nothing.
     SetMuted(bool),
-    /// Query current volume. Response sent via oneshot.
     GetVolume(oneshot::Sender<f32>),
-    /// Test-only command-loop barrier that returns the queue after every
-    /// preceding command has finished.
+    /// Test-only: replies with the queue once every earlier command has finished.
     #[cfg(any(test, feature = "test-utils"))]
     GetQueueProjection(oneshot::Sender<PlaybackQueueProjection>),
-    /// Graceful shutdown: save state to disk, reply, then stop.
+    /// Save state, reply, then stop the loop.
     Shutdown(oneshot::Sender<()>),
-    /// Persist the current playback state without tearing down playback. Mobile
-    /// calls this when backgrounded — it can't call `Shutdown` (that stops the
-    /// background audio), so this snapshots state for a later cold launch.
+    /// Save state without stopping playback, for a mobile app going to the
+    /// background, where `Shutdown` would stop its audio.
     SaveState(oneshot::Sender<()>),
-    /// Switch playback to a remote renderer: stop the local renderer (keeping the
-    /// queue) and reissue the current track to the device at its current
-    /// position. The connected channel and the device's view of this library's
-    /// media ride in the payload.
+    /// Stop local playback, keeping the queue, and send the current track to a
+    /// remote renderer at its current position.
     PlayOn(Box<RemoteConnect>),
-    /// Switch playback to an AirPlay receiver: keep decoding locally but swap the
-    /// output sink to push audio to the device. The sink, name, and latency ride
-    /// in the payload.
+    /// Keep decoding locally and send the output to an AirPlay receiver.
     PlayOnAirPlay(Box<renderer::AirPlayConnect>),
-    /// Stop remote or AirPlay playback: end the session and resume the local
-    /// renderer, paused at the last position.
+    /// End the remote or AirPlay session and return to local playback, paused at
+    /// the last position.
     StopRemote,
-    /// A status update from the active remote session's poll loop — drives the
-    /// progress feed, queue-advance on device end-of-track, and detection of a
-    /// device-side stop. Ignored when playing locally (a stale update from a
-    /// session that already ended).
+    /// A status update from the active remote session: drives progress, advances
+    /// the queue when the device finishes a track, and notices a stop on the
+    /// device. Ignored when playing locally (a late update from an ended session).
     RemoteStatus(crate::renderer::RendererSessionStatus),
 }
-/// Current playback state: track metadata and total duration only. Position
-/// (progress, elapsed, remaining) flows through `PlaybackProgress::PositionUpdate`
-/// (ticks) and `PlaybackProgress::Seeked` (seeks, restore, pause/resume refresh)
-/// instead — keeping it out of the state event means one event never has to drive
-/// both the SwiftUI store (slow) and the NSView (fast).
+/// Current playback state: the track and its duration. Position flows through
+/// `PlaybackProgress::PositionUpdate` and `PlaybackProgress::Seeked` instead, so
+/// the frequent position updates stay apart from this rarer event.
 #[derive(Debug, Clone)]
 pub enum PlaybackState {
     Stopped,
@@ -287,15 +248,12 @@ pub enum PlaybackState {
     },
     Loading {
         track_id: String,
-        /// The target track's metadata, once resolved. `None` in the first
-        /// emission (before the DB lookup), `Some` once `play_track` has the
-        /// prepared track in hand.
+        /// The target track once prepared; `None` until its lookup finishes.
         resolved: Option<LoadingTrack>,
     },
 }
-/// Send a command to the playback service. Logs at warn-level if the service
-/// has shut down (receiver dropped). Calls are otherwise fire-and-forget; the
-/// service processes commands serially on its own thread.
+/// Send a command to the playback service, warning if the service has shut
+/// down.
 pub(crate) fn dispatch_command(
     tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
     cmd: PlaybackCommand,
@@ -305,9 +263,8 @@ pub(crate) fn dispatch_command(
     }
 }
 
-/// Wait for the service to acknowledge a shutdown request. The acknowledgment
-/// is best-effort — if the service died before responding, surface that as a
-/// warning rather than blocking shutdown.
+/// Wait for the service to acknowledge shutdown, warning if it exited without
+/// replying.
 async fn await_shutdown_ack(rx: oneshot::Receiver<()>) {
     if let Err(err) = rx.await {
         warn!("playback service exited before acknowledging shutdown: {err}");
@@ -317,13 +274,10 @@ async fn await_shutdown_ack(rx: oneshot::Receiver<()>) {
 /// Handle for sending commands to the playback service.
 #[derive(Clone)]
 pub struct PlaybackHandle {
-    /// The service's dedicated OS thread and the command channel that feeds it.
-    /// The thread is joined on the first shutdown/stop so the `LibraryManager`
-    /// clone it holds — and through the shared coven handle, the store's
-    /// exclusive open lock — is released before teardown returns. The service
-    /// loop holds its own sender, so it only stops on an explicit `Shutdown`;
-    /// nothing else would ever join this thread. The join handle is shared
-    /// across clones behind a take-once slot, so teardown is idempotent.
+    /// The service thread and its command channel. Teardown joins the thread so
+    /// its `LibraryManager`, and with it the store's exclusive lock, is released
+    /// before teardown returns; the service holds its own sender, so only
+    /// `Shutdown` ends it. Clones share one take-once join handle.
     worker: WorkerThread<PlaybackCommand>,
     progress_handle: PlaybackProgressHandle,
     queue_values: tokio::sync::watch::Receiver<PlaybackQueueProjection>,
@@ -341,8 +295,7 @@ impl PlaybackHandle {
         }
     }
 
-    /// Send a command to the service. Fire-and-forget; the service processes
-    /// commands serially on its own thread.
+    /// Fire-and-forget; the service runs commands in order on its own thread.
     fn dispatch(&self, command: PlaybackCommand) {
         self.worker.dispatch(command);
     }
@@ -400,10 +353,8 @@ impl PlaybackHandle {
     pub fn set_muted(&self, muted: bool) {
         self.dispatch(PlaybackCommand::SetMuted(muted));
     }
-    /// Switch playback to a remote renderer over `channel`, minting each track's
-    /// media through `media_source` (the device's view of this library). The
-    /// channel is already connected (bae-desktop builds it off the service
-    /// thread).
+    /// Switch playback to a remote renderer over the already connected
+    /// `channel`, serving each track's media through `media_source`.
     pub fn play_on(
         &self,
         channel: Box<dyn crate::renderer::RendererChannel>,
@@ -416,9 +367,8 @@ impl PlaybackHandle {
             media_source,
         ))));
     }
-    /// Switch playback to an AirPlay receiver via `sink` (built off the service
-    /// thread by bae-desktop with the device's address, encryption, and reported
-    /// latency). Decode stays local; only the output sink is swapped.
+    /// Switch playback to an AirPlay receiver through `sink`; decoding stays
+    /// local.
     pub fn play_on_airplay(
         &self,
         sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
@@ -499,14 +449,11 @@ impl PlaybackHandle {
         })
     }
 
-    /// Graceful shutdown: persist playback state, stop the service loop, and join
-    /// its thread so the `LibraryManager` clone it holds — and coven's store lock —
-    /// is released before this returns. Awaits the state-save ack (the platform's
-    /// quit path relies on it being durable). Idempotent with [`Self::stop_and_join`]:
-    /// they share the take-once join handle, so a later teardown is a no-op.
+    /// Save playback state, stop the service, and join its thread so the store
+    /// lock is released before this returns. Waits for the save, which the
+    /// platform's quit path relies on. After this or [`Self::stop_and_join`], a
+    /// second teardown does nothing.
     pub async fn shutdown(&self) {
-        // The join lets the thread fully exit and drop its LibraryManager clone;
-        // `WorkerThread` runs it off-worker so it doesn't stall a runtime thread.
         self.worker
             .stop_and_join_async(|command_tx| {
                 let (tx, rx) = oneshot::channel();
@@ -516,11 +463,8 @@ impl PlaybackHandle {
             .await;
     }
 
-    /// Synchronous teardown for `Drop`: stop the service loop and join its thread,
-    /// releasing the `LibraryManager` clone (and the store lock) before returning.
-    /// The join subsumes the state save (the `Shutdown` handler persists before it
-    /// breaks). No runtime needed — the loop runs on its own — so this is safe from
-    /// `Drop`. Idempotent with [`Self::shutdown`] via the shared take-once join handle.
+    /// Teardown for `Drop`, needing no async runtime: stop the service and join
+    /// its thread, which saves state before it exits and releases the store lock.
     pub fn stop_and_join(&self) {
         self.worker.stop_and_join(|command_tx| {
             let (tx, _rx) = oneshot::channel();
@@ -528,11 +472,8 @@ impl PlaybackHandle {
         });
     }
 
-    /// Persist the current playback state without stopping playback. Mobile
-    /// calls this when backgrounded (it can't `shutdown` — that would kill the
-    /// background audio), so the queue, current track, and position survive a
-    /// later process death / cold launch. Awaits the write so the snapshot is
-    /// durable before the OS suspends the app.
+    /// Save playback state without stopping playback, for a mobile app going to
+    /// the background, and wait until it's written before the OS suspends it.
     pub async fn save_state(&self) {
         let (tx, rx) = oneshot::channel();
         self.dispatch(PlaybackCommand::SaveState(tx));
@@ -542,10 +483,8 @@ impl PlaybackHandle {
     pub fn skip_to_entry(&self, entry_id: QueueEntryId) {
         self.dispatch(PlaybackCommand::SkipTo(entry_id));
     }
-    /// Re-evaluate the side-pause staging decision for the currently preloaded
-    /// next track. Called after `pause_between_sides` turns on, so a track
-    /// already staged into the gapless chain is held instead if a pause is now
-    /// due at its boundary.
+    /// Called when `pause_between_sides` turns on, so a next track already staged
+    /// for gapless playback is held if its boundary needs a pause.
     pub fn reevaluate_side_pause_staging(&self) {
         self.dispatch(PlaybackCommand::ReevaluateSidePauseStaging);
     }
@@ -553,7 +492,7 @@ impl PlaybackHandle {
     pub fn preview_play(&self, target: crate::playback::PreviewTarget) {
         self.dispatch(PlaybackCommand::PreviewPlay(target));
     }
-    /// Stop any active preview playback.
+    /// Stop any active preview.
     pub fn preview_stop(&self) {
         self.dispatch(PlaybackCommand::PreviewStop);
     }

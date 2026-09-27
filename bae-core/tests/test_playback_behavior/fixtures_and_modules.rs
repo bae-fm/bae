@@ -1,10 +1,5 @@
-/// Playing a track emits Loading without metadata first (before the DB lookup),
-/// then Loading carrying the target's metadata (after prepare), then Playing
-/// once the decoder buffer is ready. The middle Loading lets the UI switch the
-/// now-playing bar to the target while audio fills; emitting Playing only at
-/// ready means the position bar never freezes against a not-yet-started stream.
-/// The sequence asserts `resolved: Some` on the second Loading — the metadata
-/// the UI swaps to before audio is flowing.
+/// Playing a track emits `Loading` without metadata, then `Loading` with the
+/// track's metadata so the UI can show it while audio fills, then `Playing`.
 #[tokio::test]
 async fn play_emits_bare_loading_then_loading_with_metadata_then_playing() {
     let mut fixture = PlaybackTestFixture::new().await;
@@ -67,12 +62,8 @@ async fn play_emits_bare_loading_then_loading_with_metadata_then_playing() {
     );
 }
 
-/// A seek well past the end of a track exercises the real end-of-stream
-/// handling in PlaybackService::seek() (which does no bounds check). Whatever it
-/// resolves to — clamp-via-EOF and a Seeked, or a surfaced error — it must
-/// SIGNAL: never leave the UI with no Seeked and no PlaybackError. This drives
-/// the real seek(), replacing the former test-only validate_seek_position
-/// reconstruction.
+/// `seek` does no bounds check, so a seek past the end of a track must still
+/// produce a `Seeked` or a `PlaybackError` rather than nothing.
 #[tokio::test]
 async fn seek_past_end_of_track_signals_rather_than_hanging() {
     let mut fixture = PlaybackTestFixture::new().await;
@@ -85,10 +76,9 @@ async fn seek_past_end_of_track_signals_rather_than_hanging() {
         .await
         .expect("track should start playing");
 
-    // Fixture tracks are ~10s; 600s is far past the end.
+    // Fixture tracks are 5 s long.
     fixture.playback_handle.seek(Duration::from_secs(600));
 
-    // seek()'s decoder-ready timeout is 5s; allow margin past it.
     let signaled =
         support::next_matching(&mut fixture.progress_rx, Duration::from_secs(8), |event| {
             matches!(
@@ -104,11 +94,8 @@ async fn seek_past_end_of_track_signals_rather_than_hanging() {
     );
 }
 
-/// SeekByRatio runs the real handler (position = pregap + ratio·(duration −
-/// pregap)) down through seek(). On this no-pregap track the ratio maps straight
-/// onto the duration: half-way lands well past the start and clearly before the
-/// full-length seek. (The pregap-offset case — ratio 0.0 landing at the post-
-/// pregap start — needs a CUE fixture with a known pregap; left to test_cue_*.)
+/// On a track with no pregap, `seek_by_ratio` maps the ratio straight onto the
+/// duration, so 0.5 lands well past the start and clearly before 1.0.
 #[tokio::test]
 async fn seek_by_ratio_maps_to_a_proportional_position() {
     let mut fixture = PlaybackTestFixture::new().await;
@@ -142,7 +129,7 @@ async fn seek_by_ratio_maps_to_a_proportional_position() {
     );
 }
 
-/// Create a test album with 2 short tracks
+/// The three-track album matching the `flac` fixtures.
 fn create_test_album() -> DiscogsRelease {
     DiscogsRelease {
         artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
@@ -158,8 +145,7 @@ fn create_test_album() -> DiscogsRelease {
         )
     }
 }
-/// Copy pre-generated FLAC fixtures to test directory
-/// Fixtures should be generated using scripts/generate_test_flac.sh
+/// Copy the `flac` fixtures into `dir` and return their bytes.
 fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
     use std::fs;
     let fixture_dir = bae_test_support::fixture_dir!("flac");
@@ -184,13 +170,11 @@ fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
     }
     file_data
 }
-/// Copy pre-generated CUE/FLAC fixtures to test directory
-/// Fixtures should be generated using scripts/generate_cue_flac_fixture.sh
+/// Copy the `cue_flac` fixture's FLAC and CUE files into `dir`.
 fn generate_cue_flac_files(dir: &std::path::Path) {
     use std::fs;
     let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
 
-    // Copy FLAC file
     let flac_src = fixture_dir.join("Test Album.flac");
     let flac_dst = dir.join("Test Album.flac");
     let flac_data = fs::read(&flac_src).unwrap_or_else(|_| {
@@ -202,7 +186,6 @@ fn generate_cue_flac_files(dir: &std::path::Path) {
     });
     fs::write(&flac_dst, &flac_data).expect("Failed to copy FLAC fixture");
 
-    // Copy CUE file
     let cue_src = fixture_dir.join("Test Album.cue");
     let cue_dst = dir.join("Test Album.cue");
     let cue_data = fs::read(&cue_src).unwrap_or_else(|_| {
@@ -215,7 +198,7 @@ fn generate_cue_flac_files(dir: &std::path::Path) {
     fs::write(&cue_dst, &cue_data).expect("Failed to copy CUE fixture");
 }
 
-/// Create a test album matching the CUE/FLAC fixture (3 tracks)
+/// The three-track album matching the `cue_flac` fixture.
 fn create_cue_flac_test_album() -> DiscogsRelease {
     DiscogsRelease {
         country: Some("Test Country".to_string()),
@@ -233,11 +216,8 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
     }
 }
 
-/// Test fixture for CUE/FLAC playback (single FLAC with CUE sheet)
-/// Test fixture for CUE/FLAC playback (single FLAC with CUE sheet). Full-speed
-/// capture pulls as fast as the decoder fills — fast, but a track can fully
-/// decode and gaplessly advance before a follow-up command lands, so seek and
-/// pause tests ask for `TestAudioDevice::RealtimeCapture` instead.
+/// Playback of the single-file CUE/FLAC album. Tests that seek or pause need
+/// `TestAudioDevice::RealtimeCapture`.
 struct CueFlacTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
@@ -248,7 +228,6 @@ struct CueFlacTestFixture {
 
 impl CueFlacTestFixture {
     async fn new(device: support::TestAudioDevice) -> Result<Self, Box<dyn std::error::Error>> {
-        // Import without storage (local CUE/FLAC playback).
         let (library_manager, imported) = imported_release_setup(
             create_cue_flac_test_album(),
             "test",
@@ -273,9 +252,7 @@ impl CueFlacTestFixture {
         })
     }
 
-    /// Awaits the next capture buffer minted by `create_stream`. Buffers are
-    /// yielded in creation order; tests that exercise auto-advance, seek, or
-    /// next call this once per stream they want to inspect.
+    /// The next stream's capture buffer, in the order streams were created.
     async fn next_capture_stream(&mut self) -> Arc<std::sync::Mutex<Vec<f32>>> {
         support::next_capture_stream(&mut self.capture_stream_rx).await
     }
@@ -335,8 +312,8 @@ impl SidePauseTestFixture {
             },
         )
         .await?;
-        // Settled before the playback service starts, so its first preload
-        // already reads them.
+        // Set before the playback service starts, so its first preload reads
+        // them.
         library_manager
             .set_pause_between_sides(pause_between_sides)
             .await?;
@@ -347,13 +324,8 @@ impl SidePauseTestFixture {
             "side-pause fixture imports 3 tracks"
         );
 
-        // Real-time-paced capture, not full-speed: every test here plays a track
-        // and then issues commands (the side-pause toggle, the seek) that must
-        // land *before* the track's boundary is crossed. An unpaced drain empties
-        // the remaining audio in milliseconds, so those commands would be racing
-        // the decoder rather than arriving during playback. Pacing the sink to
-        // wall-clock bounds how fast the boundary can arrive, and a loaded machine
-        // can only slow that sink down, never speed it up.
+        // Paced to wall-clock time so commands issued after play land before
+        // the track's boundary.
         let clock = Arc::new(bae_core::playback::ManualPlaybackClock::new(
             side_pause_clock_start(),
         ));
@@ -375,11 +347,8 @@ impl SidePauseTestFixture {
         })
     }
 
-    /// Toggle `pause_between_sides` mid-track through the same effective path
-    /// production uses (`AppServices::set_pause_between_sides`, not reachable
-    /// directly from this fixture since it drives `PlaybackService` without an
-    /// `AppServices`): write the config, then — turning it on — notify the
-    /// playback service to re-evaluate its already-staged preload.
+    /// Toggle `pause_between_sides` the way `AppServices::set_pause_between_sides`
+    /// does; this fixture has no `AppServices`.
     async fn set_pause_between_sides_mid_track(&self, enabled: bool) {
         self.library_manager
             .set_pause_between_sides(enabled).await
@@ -409,12 +378,8 @@ impl SidePauseTestFixture {
             .play_release(self.release_id.clone(), Some(start_track_index), false);
     }
 
-    /// Seek to 200 ms before the end of a 5 s fixture track, so the boundary
-    /// arrives after a short run of real-time audio rather than a whole track's
-    /// worth. Issued only after everything that must be in effect at the boundary
-    /// (the side-pause setting, the staging re-evaluation) has been dispatched:
-    /// those commands share the service's FIFO command channel with this seek, so
-    /// they are processed before it.
+    /// Seek to 200 ms before the end of the 5 s track. Commands run in order, so
+    /// anything that must apply at the boundary goes before this.
     fn seek_to_auto_advance(&self) {
         self.playback_handle
             .seek(Duration::from_secs(4) + Duration::from_millis(800));
@@ -447,7 +412,7 @@ impl SidePauseTestFixture {
     async fn wait_for_side_pause(
         &mut self,
         expected_side_label: &str,
-        expected_title_key: &str,
+        expected_boundary: PlaybackPauseBoundary,
     ) -> PlaybackState {
         self.wait_for_state(
             |s| {
@@ -457,7 +422,7 @@ impl SidePauseTestFixture {
                         reason: PlaybackPauseReason::SideEnded(prompt),
                         ..
                     } if prompt.side_label == expected_side_label
-                        && prompt.title_key == expected_title_key
+                        && prompt.boundary == expected_boundary
                 )
             },
             Duration::from_secs(10),
@@ -471,11 +436,11 @@ impl SidePauseTestFixture {
         start_track_index: usize,
         track_id: &str,
         expected_side_label: &str,
-        expected_title_key: &str,
+        expected_boundary: PlaybackPauseBoundary,
     ) -> PlaybackState {
         self.play_track_and_wait(start_track_index, track_id).await;
         self.seek_to_auto_advance();
-        self.wait_for_side_pause(expected_side_label, expected_title_key)
+        self.wait_for_side_pause(expected_side_label, expected_boundary)
             .await
     }
 }
@@ -504,12 +469,6 @@ fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRe
     }
     release
 }
-
-// ============================================================================
-// Pause state preservation tests
-// ============================================================================
-// These tests verify that Next/Previous preserve pause state while fresh Play
-// and AutoAdvance always start playing.
 
 include!("side_and_navigation.rs");
 include!("side_pause_countdown.rs");

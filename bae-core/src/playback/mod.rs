@@ -52,9 +52,9 @@ pub use queue::{
 };
 pub use repeat_mode::RepeatMode;
 pub use service::{
-    LoadingTrack, PlaybackHandle, PlaybackPauseReason, PlaybackService, PlaybackSideCountdown,
-    PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo, PlaybackTrackSide,
-    DISC_PAUSE_COUNTDOWN_KEY, DISC_PAUSE_TITLE_KEY, SIDE_PAUSE_COUNTDOWN_KEY, SIDE_PAUSE_TITLE_KEY,
+    LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackService,
+    PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo,
+    PlaybackTrackSide,
 };
 pub use source::{TrackCrossing, TrackFmt};
 pub use sparse_buffer::SharedSparseBuffer;

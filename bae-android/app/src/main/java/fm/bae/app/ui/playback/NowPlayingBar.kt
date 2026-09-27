@@ -67,18 +67,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import uniffi.bae_bridge.BridgePauseBoundary
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeSideCountdown
 import uniffi.bae_bridge.bridgeNextRepeatMode
+import uniffi.bae_bridge.bridgePauseBoundaryCountdownKey
+import uniffi.bae_bridge.bridgePauseBoundaryKeepPausingKey
+import uniffi.bae_bridge.bridgePauseBoundaryTitleKey
 
 private val logger = BaeLogger("bae.NowPlayingBar")
 
 /**
- * Persistent now-playing bar. Reads transport state from the session's
- * [fm.bae.app.playback.BaeCorePlayer] (a pure projection of bae-core's
- * playback), sends transport commands through the same player, and opens the
- * [QueueScreen] in a bottom sheet for queue management. Hidden until something
- * is loaded.
+ * Persistent now-playing bar, hidden until something is loaded. It reads state
+ * from and sends commands to the session's [fm.bae.app.playback.BaeCorePlayer],
+ * and opens [QueueScreen] in a bottom sheet.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -143,9 +145,8 @@ private fun RowScope.NowPlayingTrackInfo(
             Modifier
                 .weight(1f)
                 .clickable(onClick = onExpand)
-                // Announce the whole region as one TalkBack element named
-                // for the track (cover stays decorative; info is in the text),
-                // instead of an unnamed button plus loose text fragments.
+                // One TalkBack element named for the track, instead of an
+                // unnamed button and loose text.
                 .semantics(mergeDescendants = true) { contentDescription = nowPlayingDescription },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -208,17 +209,12 @@ private fun SidePauseAlert(
 }
 
 /**
- * The prompt core raises when playback pauses at the end of a side or disc. Its
- * checkbox mirrors the "Pause between sides and discs" setting and starts
- * checked — the prompt only appears while the setting is on. Answering it with
- * the box unchecked calls [onTurnOffPauseBetweenSides]; a checked box changes
- * nothing. Play starts the next side now ([onPlay]); Close, or dismissing the
- * dialog, stays paused and stops any countdown ([onClose]), so the next side
- * waits for Play.
- *
- * While core counts down to the next side, the dialog shows the seconds left,
- * read from core's deadline against [nowMs] — the dialog only shows the time;
- * core starts the side.
+ * The prompt core raises when playback pauses at the end of a side or disc. The
+ * checkbox starts checked because the prompt only appears while the setting is
+ * on; answering with it unchecked calls [onTurnOffPauseBetweenSides]. Close or
+ * dismissing stays paused and stops any countdown ([onClose]). The countdown
+ * reads core's deadline against [nowMs]; core, not the dialog, starts the next
+ * side.
  */
 @Composable
 fun SidePauseAlert(
@@ -243,7 +239,7 @@ fun SidePauseAlert(
             title = {
                 Text(
                     context.coreString(
-                        prompt.titleKey,
+                        bridgePauseBoundaryTitleKey(prompt.boundary),
                         mapOf("label" to prompt.sideLabel),
                     ),
                 )
@@ -252,23 +248,17 @@ fun SidePauseAlert(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(context.coreString("core.playback.pause.message"))
                     prompt.countdown?.let { countdown ->
-                        SidePauseCountdownLine(countdown = countdown, nowMs = nowMs)
+                        SidePauseCountdownLine(
+                            boundary = prompt.boundary,
+                            countdown = countdown,
+                            nowMs = nowMs,
+                        )
                     }
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .toggleable(
-                                    value = keepPausing,
-                                    role = Role.Checkbox,
-                                    onValueChange = { keepPausing = it },
-                                ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(checked = keepPausing, onCheckedChange = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.settings_pause_between_sides))
-                    }
+                    KeepPausingCheckbox(
+                        boundary = prompt.boundary,
+                        checked = keepPausing,
+                        onCheckedChange = { keepPausing = it },
+                    )
                 }
             },
             confirmButton = {
@@ -285,13 +275,38 @@ fun SidePauseAlert(
     }
 }
 
+/** The checkbox that keeps pausing at the kind of boundary that ended. */
+@Composable
+private fun KeepPausingCheckbox(
+    boundary: BridgePauseBoundary,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = checked,
+                    role = Role.Checkbox,
+                    onValueChange = onCheckedChange,
+                ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(LocalContext.current.coreString(bridgePauseBoundaryKeepPausingKey(boundary)))
+    }
+}
+
 /**
- * The line counting down to the next side, redrawn as each whole second before
- * core's deadline runs out. A polite live region, so a screen reader hears the
- * new count without losing its place.
+ * The countdown line, redrawn as each whole second before core's deadline runs
+ * out. A polite live region, so a screen reader hears the new count without
+ * losing its place.
  */
 @Composable
 private fun SidePauseCountdownLine(
+    boundary: BridgePauseBoundary,
     countdown: BridgeSideCountdown,
     nowMs: () -> Long,
 ) {
@@ -308,7 +323,7 @@ private fun SidePauseCountdownLine(
     Text(
         text =
             context.coreString(
-                countdown.messageKey,
+                bridgePauseBoundaryCountdownKey(boundary),
                 mapOf("seconds" to sideCountdownSecondsLeft(countdown.resumesAtMs, now)),
             ),
         style = MaterialTheme.typography.bodyLarge,
@@ -354,9 +369,8 @@ private fun NowPlayingTransportButtons(
     IconButton(onClick = onOpenQueue) {
         Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.queue))
     }
-    // set_repeat_mode is non-throwing; the retained playback subscription updates
-    // the repeatMode flow. OFF is dimmed; CONTEXT and TRACK are accented (TRACK uses
-    // the repeat-one glyph).
+    // `setRepeatMode` does not throw; the new mode arrives through the playback
+    // subscription.
     IconButton(onClick = { session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode)) }) {
         Icon(
             imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,

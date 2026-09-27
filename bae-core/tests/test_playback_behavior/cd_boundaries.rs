@@ -35,7 +35,7 @@ async fn cd_disc_pause_resumes_at_next_disc() {
             0,
             &first,
             "1",
-            bae_core::playback::DISC_PAUSE_TITLE_KEY,
+            PlaybackPauseBoundary::Disc,
         )
         .await;
     match paused {
@@ -45,7 +45,7 @@ async fn cd_disc_pause_resumes_at_next_disc() {
             ..
         } => {
             assert_eq!(track_info.track_id, first);
-            assert_eq!(prompt.title_key, bae_core::playback::DISC_PAUSE_TITLE_KEY);
+            assert_eq!(prompt.boundary, PlaybackPauseBoundary::Disc);
         }
         other => panic!("expected disc-ended pause, got {other:?}"),
     }
@@ -73,7 +73,7 @@ async fn cd_setting_changes_mid_track_apply_at_disc_boundary() {
         fixture.seek_to_auto_advance();
         if enabled {
             fixture
-                .wait_for_side_pause("1", bae_core::playback::DISC_PAUSE_TITLE_KEY)
+                .wait_for_side_pause("1", PlaybackPauseBoundary::Disc)
                 .await;
         } else {
             fixture

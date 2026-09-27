@@ -7,17 +7,12 @@ private let logger = Logger.bae("PlaybackStore")
 /// around the visible rows and the two nearest it.
 private let maximumUpcomingWindows = 3
 
-/// Mirror of core's playback state. Retained value subscriptions are the writer:
-/// `nowPlaying`, `volume`, `isMuted`, `repeatMode`, `manualQueue`, and
-/// `queueContext` are driven by retained playback and queue values. Views read
-/// fields at the leaf and never write back — they invoke `appHandle` actions
-/// instead, and the resulting values flow back through their stores.
+/// Mirror of core's playback state, written by the playback and queue
+/// subscriptions. Views read it and act through `appHandle`.
 ///
-/// Not `@MainActor` on the whole type: `MediaControlService.handleScrub` calls
-/// `projectSeek` from a nonisolated remote-command callback. Only
-/// `loadUpcomingRange`/its private helper are `@MainActor` (see their doc
-/// comments) since they spawn a `Task` capturing `self`, which Swift 6 only
-/// allows across a `Task` boundary when the capture is actor-isolated.
+/// Not `@MainActor` as a whole because `MediaControlService.handleScrub` calls
+/// `projectSeek` from a nonisolated callback; only the upcoming-read methods
+/// are, since the `Task` they start captures `self`.
 @Observable
 public class PlaybackStore {
     public private(set) var nowPlaying: NowPlaying = .stopped
@@ -28,11 +23,8 @@ public class PlaybackStore {
     public var repeatMode: BridgeRepeatMode = .off
     /// The manual lane ("Up Next") — explicitly enqueued tracks, drained first.
     public var manualQueue: [QueueItem] = []
-    /// The context (the release being played from), or `nil` when nothing plays
-    /// from a release. Rendered as a section distinct from `manualQueue`.
-    /// `context.upcoming` is only the initial window; further indices, once
-    /// fetched via `loadUpcomingRange`, live in `pagedUpcoming` — read either
-    /// through `upcomingItem(at:)`.
+    /// The release being played from, or `nil`. `context.upcoming` holds only
+    /// the first window; read any index through `upcomingItem(at:)`.
     public var queueContext: QueuePlaybackContext?
     /// Context-tail entries read past the initial window, keyed by their
     /// absolute index in the tail: the latest upcoming value whose revision
@@ -42,9 +34,8 @@ public class PlaybackStore {
     /// from. Upcoming values sliced from any other revision are not shown.
     @ObservationIgnored
     public private(set) var revision: UInt64 = 0
-    /// The one live read of the upcoming tail, opened by the first
-    /// `loadUpcomingRange`. Its windows move in place as the queue scrolls,
-    /// and the queue's revisions move it in core; neither opens another.
+    /// The live read of the upcoming tail, opened by the first
+    /// `loadUpcomingRange` and reused after.
     @ObservationIgnored
     private var upcomingQuery: QueueUpcomingQuery?
     @ObservationIgnored
@@ -54,25 +45,21 @@ public class PlaybackStore {
     /// from it.
     @ObservationIgnored
     private var upcomingWindows: [Range<Int>] = []
-    /// The newest upcoming value, kept until the queue value of its revision
-    /// arrives when it lands first.
+    /// The newest upcoming value, held in case it arrives before the queue
+    /// value of its revision.
     @ObservationIgnored
     private var latestUpcoming: BridgeQueueUpcomingSnapshot?
 
-    /// Current playback position. Updates at display rate during playback —
-    /// far too frequent for `@Observable`; published as a Combine signal so
-    /// only the progress-bar NSView re-renders.
+    /// Sent through Combine rather than `@Observable` because it changes at
+    /// display rate; only the progress bar re-renders.
     @ObservationIgnored
     private let playbackPositionSubject = CurrentValueSubject<
         PlaybackPositionEvent, Never
     >(.reset)
     private var playbackPosition: PlaybackPositionState?
 
-    /// Fires when tracks have been appended/inserted into the playback queue.
-    /// Payload is the count from a single add operation (release add, drag,
-    /// add-next, etc.). Drives the transient "+N" badge on the queue button.
-    /// One-shot signal — view-local state holds the displayed count and a
-    /// fade timer.
+    /// The count of tracks each add puts in the queue; drives the queue
+    /// button's "+N" badge.
     @ObservationIgnored
     private let queueItemsAddedSubject = PassthroughSubject<Int, Never>()
 
@@ -117,13 +104,10 @@ public class PlaybackStore {
         resetPlaybackPosition()
     }
 
-    /// Enter the loading transition for `trackId`, retaining the currently
-    /// displayed track. Core's first `PlaybackLoading` carries only a track id
-    /// (before it resolves metadata); without carrying the prior track forward,
-    /// `nowPlaying.track` would go nil on every transition and tear down the
-    /// now-playing bar — which on iOS also dismisses the expanded full-screen
-    /// player. The prior track stays on screen until the target's metadata
-    /// lands via `setLoadingTarget`.
+    /// Enter loading for `trackId`, keeping the displayed track until
+    /// `setLoadingTarget` brings the target's metadata; otherwise the
+    /// now-playing bar, and on iOS the full-screen player, would close on every
+    /// track change.
     public func beginLoading(trackId: String) {
         let previousTrackId = nowPlaying.track?.trackId
         setNowPlaying(
@@ -138,22 +122,10 @@ public class PlaybackStore {
         }
     }
 
-    /// A loading state carrying the target track's metadata arrived (core's
-    /// resolved `PlaybackLoading`). Two cases enter loading:
-    ///
-    /// - Already loading this track (the play path's second event): swap the
-    ///   displayed track from the prior one to the resolved target while audio
-    ///   still downloads.
-    /// - Playing or paused this same track (a seek): core re-enters loading
-    ///   while it buffers the seek target, so show the spinner and keep the
-    ///   current track on screen as the fallback.
-    ///
-    /// Any other state means a faster switch moved on to a different track; the
-    /// resolved target is stale and dropped.
+    /// The target's metadata arrived. It applies when already loading this
+    /// track, or when playing or paused on it (core re-enters loading to buffer
+    /// a seek); in any other state a newer load has moved on and it is dropped.
     public func setLoadingTarget(trackId: String, target: NowPlayingTrack) {
-        // The track to keep on screen behind the spinner: the prior loading's
-        // fallback when already loading this track, or the current track when a
-        // seek re-enters loading from playing/paused.
         let previous: NowPlayingTrack?
         switch nowPlaying {
         case .loading(trackId, _, let priorFallback):
@@ -162,9 +134,7 @@ public class PlaybackStore {
             .paused(let current, _) where current.trackId == trackId:
             previous = current
         default:
-            // A fast switch moved on: the resolved target is for a track that is
-            // no longer current. Dropping it is correct — the newer load owns
-            // the now-playing bar — but record it so a stuck bar is diagnosable.
+            // Logged so a stuck now-playing bar can be traced.
             logger.debug(
                 "dropping stale loading target for \(trackId); no longer the current track"
             )
@@ -325,9 +295,8 @@ extension PlaybackStore {
         }
     }
 
-    /// The context-tail item at absolute `index`, or `nil` if not yet loaded —
-    /// either still outside the initial window and not yet paged in, or past
-    /// `upcomingTotal` entirely.
+    /// The upcoming item at `index`, or `nil` when it is not loaded or past
+    /// the end.
     public func upcomingItem(at index: Int) -> QueueItem? {
         guard let context = queueContext else {
             return nil
@@ -338,11 +307,9 @@ extension PlaybackStore {
         return pagedUpcoming[index]
     }
 
-    /// Read `[offset, offset + limit)` of the context's upcoming tail through
-    /// the store's one upcoming read, opening it on first use. A no-op when a
-    /// window already read covers the range. Past `maximumUpcomingWindows`,
-    /// the window farthest from this one is dropped from the read. Errors are
-    /// logged because this is background prefetch with no separate error UI.
+    /// Read `[offset, offset + limit)` of the upcoming tail. Beyond
+    /// `maximumUpcomingWindows`, the window farthest from this one is dropped.
+    /// Errors are only logged: this is prefetch with no error UI.
     @MainActor
     public func loadUpcomingRange(offset: Int, limit: Int, queue: Queue) async {
         guard let context = queueContext else {
@@ -425,9 +392,8 @@ extension PlaybackStore {
         showLatestUpcoming()
     }
 
-    /// Show the newest upcoming value when it was sliced from the queue
-    /// revision on screen, and nothing past the initial window otherwise:
-    /// its offsets count from another queue's tail.
+    /// Show the newest upcoming value only when it matches the queue revision
+    /// on screen; otherwise its offsets count from another queue's tail.
     private func showLatestUpcoming() {
         guard let latestUpcoming, latestUpcoming.revision == revision else {
             pagedUpcoming = [:]
@@ -512,8 +478,32 @@ extension BridgePlaybackPauseReason {
 extension BridgeSidePausePrompt {
     public func title() -> String {
         String(
-            format: localizedCoreString(titleKey),
+            format: localizedCoreString(
+                bridgePauseBoundaryTitleKey(boundary: boundary)
+            ),
             sideLabel
+        )
+    }
+
+    /// The checkbox that keeps pausing at this kind of boundary.
+    public func keepPausingLabel() -> String {
+        localizedCoreString(
+            bridgePauseBoundaryKeepPausingKey(boundary: boundary)
+        )
+    }
+
+    /// The line counting down to the next side or disc at `now`, formatted
+    /// against the current locale so the seconds take its plural form.
+    public func countdownLine(
+        _ countdown: BridgeSideCountdown,
+        at now: Date
+    ) -> String {
+        String(
+            format: localizedCoreString(
+                bridgePauseBoundaryCountdownKey(boundary: boundary)
+            ),
+            locale: Locale.current,
+            countdown.secondsLeft(at: now)
         )
     }
 }
@@ -531,26 +521,13 @@ extension BridgeSideCountdown {
         let remainingMs = max(0, resumesAtMs - nowMs)
         return Int((remainingMs + 999) / 1000)
     }
-
-    /// The line counting down to the next side at `now`, worded by core for a
-    /// side or a disc. Formatted against the current locale so the seconds
-    /// take the locale's plural form.
-    public func line(at now: Date) -> String {
-        String(
-            format: localizedCoreString(messageKey),
-            locale: Locale.current,
-            secondsLeft(at: now)
-        )
-    }
 }
 
 public enum NowPlaying {
     case stopped
-    /// A track is being prepared. `target` is the loading track's own metadata
-    /// once core resolves it (`nil` until then); `previous` is whatever was on
-    /// screen when the transition began. `track` shows the target the moment it
-    /// lands and falls back to `previous` before that, so the now-playing UI
-    /// keeps rendering (rather than going blank / tearing down) across the gap.
+    /// A track is being prepared. `target` is its metadata once core resolves
+    /// it; until then `track` falls back to `previous`, what was on screen, so
+    /// the now-playing UI stays up.
     case loading(
         trackId: String,
         target: NowPlayingTrack?,
@@ -596,9 +573,7 @@ public enum NowPlaying {
         }
     }
 
-    /// The id of the track currently loading, or `nil` when not loading. Lets
-    /// track rows / the transport mark exactly the loading track without
-    /// confusing it with the displayed (possibly still-previous) track.
+    /// The loading track's id, which can differ from the displayed track's.
     public var loadingTrackId: String? {
         switch self {
         case .loading(let trackId, _, _): trackId
@@ -606,10 +581,8 @@ public enum NowPlaying {
         }
     }
 
-    /// True while a track is playing or being prepared to play. `.loading` is a
-    /// play-intent transition (auto-advance / skip / initial play all resolve
-    /// to `.playing`), so the transport shows the pause glyph through the gap
-    /// instead of flickering to the play glyph and back.
+    /// Loading counts as playing, so the transport keeps the pause glyph
+    /// through a track change instead of flickering.
     public var isPlaying: Bool {
         switch self {
         case .playing, .loading: true

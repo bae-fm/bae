@@ -4,29 +4,27 @@
 //!
 //! ## Audio state
 //!
-//! What the audio callback does each buffer is a shared atomic (`AudioState`:
-//! `Stopped`, `Playing`, `Paused`), written as a projection of the `PlaybackSlot`
-//! (`slot.rs`), which is the truth. The callback reads the atomic lock-free and
-//! outputs samples when `Playing`, silence otherwise.
+//! The audio callback reads a shared `AudioState` atomic (`Stopped`, `Playing`,
+//! `Paused`) without locking and outputs samples only when `Playing`. The atomic
+//! is written from the `PlaybackSlot` (`slot.rs`), which holds the real state.
 //!
 //! ## Seek flow (`seek.rs`)
 //!
-//! 1. The phase goes Loading and the atomic Stopped, so the callback goes silent
-//!    while the new decoder fills — no audio leaks from the old ring.
-//! 2. A fresh decoder is spawned over the SAME byte buffers (they stay cached)
-//!    and swapped into the persistent source (`PlaybackSource::replace`). It is
-//!    spawned before the old one is joined, to keep the silent window short; two
-//!    readers on one sparse buffer is supported.
-//! 3. Only then is the old decoder cancelled and joined
-//!    (`cancel_and_join_decoder`), so the reused buffers are free of it.
-//! 4. `Seeked` is emitted; the phase stays Loading until the ready-watcher's
-//!    `TrackReady` resolves it to the preserved Playing/Paused.
+//! 1. Playback goes Loading and the atomic Stopped, so the callback stays silent
+//!    while the new decoder fills.
+//! 2. A new decoder is spawned over the same byte buffers and swapped into the
+//!    persistent source (`PlaybackSource::replace`) before the old one is
+//!    joined, to keep the silence short; two readers on one sparse buffer is
+//!    supported.
+//! 3. The old decoder is then cancelled and joined (`cancel_and_join_decoder`).
+//! 4. `Seeked` is emitted, and playback stays Loading until `TrackReady`
+//!    resolves it to the Playing or Paused it had before.
 //!
 //! ## File buffers
 //!
-//! The byte buffers tracks stream their audio from are owned by `FileBuffers`
-//! (`file_buffers.rs`), which also holds the tracks awaiting buffer release and
-//! the fetch-priority arbiter shared into every reader.
+//! `FileBuffers` (`file_buffers.rs`) owns the byte buffers tracks stream from,
+//! the tracks waiting for their buffers' release, and the fetch-priority arbiter
+//! every reader shares.
 
 use super::RepeatMode;
 use super::{
@@ -47,13 +45,13 @@ use crate::playback::audio_output::{
 };
 use crate::playback::data_source::{create_audio_reader, FetchArbiter};
 use crate::playback::error::PlaybackError;
+use crate::playback::preview_player::PreviewPlayer;
 use crate::playback::progress::emit_progress;
 use crate::playback::progress::{
     PlaybackProgress, PlaybackProgressHandle, PlaybackQueueProjection,
 };
-// The `source` module is imported by path so the audio sample feed reads
-// `source::PlaybackSource` — distinct from the queue's `ContextSource`.
-use crate::playback::preview_player::PreviewPlayer;
+// Imported by path so the sample feed reads `source::PlaybackSource`, apart
+// from the queue's `ContextSource`.
 use crate::playback::source;
 use crate::playback::source::{TrackCrossing, TrackFmt};
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
@@ -86,9 +84,9 @@ use crate::playback::stream_pipeline::{
 };
 pub(crate) use api::{dispatch_command, PlaybackCommand};
 pub use api::{
-    LoadingTrack, PlaybackHandle, PlaybackPauseReason, PlaybackSideCountdown,
-    PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo, PlaybackTrackSide,
-    DISC_PAUSE_COUNTDOWN_KEY, DISC_PAUSE_TITLE_KEY, SIDE_PAUSE_COUNTDOWN_KEY, SIDE_PAUSE_TITLE_KEY,
+    LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason,
+    PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo,
+    PlaybackTrackSide,
 };
 use api::{SideBoundary, SidePauseDecision};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
@@ -125,9 +123,8 @@ pub(crate) fn log_streaming_decode_failure(context: &str, error: DecodeError) ->
             debug!("{context} stopped after input cancellation");
             None
         }
-        // The fill that failed the buffer already reported this read failure
-        // to the command loop (`ReadFailed`), which knows whether the buffer
-        // feeds the playing track or a preload and so whether playback halts.
+        // The failed fill already reported this to the command loop
+        // (`ReadFailed`), which decides whether playback halts.
         DecodeError::SourceRead(error) => {
             debug!("{context} stopped on a source read failure the fill reported: {error}");
             None
@@ -145,9 +142,8 @@ fn track_duration_ms(prepared: &PlaybackPreparedTrack) -> u64 {
 }
 
 impl PlaybackPreparedTrack {
-    /// Build the audio-callback formatting envelope for this track. The
-    /// position offset is the in-track time the stream is about to start at
-    /// (non-zero only on seek; zero for natural starts and gapless advances).
+    /// The audio callback's formatting for this track, with `position_offset`
+    /// the in-track time the stream starts at.
     fn track_fmt(&self, position_offset: std::time::Duration) -> TrackFmt {
         TrackFmt {
             track_id: self.track_info.track_id.clone(),
@@ -158,7 +154,7 @@ impl PlaybackPreparedTrack {
         }
     }
 
-    /// Decoder windows for this track beginning at the in-track sample offset.
+    /// Decoder windows for this track starting `offset` samples in.
     fn decode_params(&self, offset: u64, include_pregap: bool) -> StreamDecodeParams {
         use crate::util::content_type::ContentType;
         let mut remaining_offset = offset;
@@ -264,7 +260,7 @@ struct PreparedAudioSegment {
 struct PlaybackPreparedTrack {
     track_info: PlaybackTrackInfo,
     segments: Vec<PreparedAudioSegment>,
-    /// Hz — also the time-to-sample conversion factor.
+    /// In Hz.
     sample_rate: u32,
     channels: u32,
     /// Pregap the source audio already contains (a CUE/FLAC track).
@@ -274,22 +270,19 @@ struct PlaybackPreparedTrack {
     /// The same generated pregap in exact samples.
     generated_pregap_samples: Option<i64>,
     duration: std::time::Duration,
-    /// This track's audio codec. Selects the track-start seek: FLAC/lossless
-    /// byte-seek to `start_byte`; APE sample-seeks its index.
+    /// Picks how a track start seeks: by byte to `start_byte`, except APE, which
+    /// seeks by sample.
     content_type: crate::util::content_type::ContentType,
-    /// Linear playback gain folded into the audio callback's volume multiply.
-    /// Derived once here from the replay-gain mode and the stored loudness/peak
-    /// measurements; `1.0` = no change (Off, or no usable measurement).
+    /// Replay gain the audio callback multiplies into the volume; `1.0` when off
+    /// or unmeasured.
     replay_gain_linear: f32,
 }
 
 struct PreloadedNext {
     prepared: PlaybackPreparedTrack,
     decoder_handle: std::thread::JoinHandle<()>,
-    /// The preload decoder's AVIO cancel flag, minted where the decoder is
-    /// spawned. Carried into the installed `TrackDecoder` when the preload is
-    /// promoted to current (manual next or gapless crossing), so the current track
-    /// owns exactly one token.
+    /// The preload decoder's cancel flag, moved into its `TrackDecoder` when the
+    /// preload becomes current so that track owns one token.
     cancel_token: Arc<std::sync::atomic::AtomicBool>,
     source: PreloadedNextSource,
 }
@@ -334,15 +327,10 @@ impl PreloadedNext {
     }
 }
 
-/// Stop a preloaded (not-yet-promoted) decoder. Three mechanisms, one per place
-/// the decoder can be blocked:
-/// - cancel the output source: sets the sink's cancel flag and unparks the
-///   decoder, so one blocked writing a full ring exits;
-/// - set the per-decoder token: the decoder's read-side stop signal;
-/// - wake the byte buffers' readers: a decoder blocked reading one wakes and
-///   observes the token. The buffers themselves stay alive — releasing them is
-///   the caller's decision, since the pipeline may still play from the same
-///   files.
+/// Stop a preloaded decoder's reads: set its cancel token and wake any read
+/// blocked on its byte buffers so it sees the token. The caller cancels its
+/// output source (`discard_preloaded_source`) and decides whether to release
+/// the buffers, since the pipeline may still play from the same files.
 fn discard_preloaded_decoder(
     prepared: &PlaybackPreparedTrack,
     cancel_token: &Arc<std::sync::atomic::AtomicBool>,
@@ -418,66 +406,50 @@ pub struct PlaybackService {
     /// mutation goes through `apply`, which republishes.
     playback_queue: PublishedQueue,
     current_position_shared: Arc<std::sync::Mutex<Option<std::time::Duration>>>,
-    /// Where both players' outputs come from: `audio_output` below was opened
-    /// from it at startup, and the preview player opens its own second output
-    /// from it on its first play. Held so a preview follows whatever device the
-    /// service was started with — in a test, one that touches no hardware.
+    /// The device both players open their outputs from: `audio_output` at
+    /// startup, the preview's on its first play. Held so a preview uses the
+    /// device the service started with (in tests, one with no hardware).
     audio_device: Box<dyn AudioOutputDevice>,
     /// The main player's output. AirPlay swaps this for the receiver sink and
     /// puts the local one back when it ends.
     audio_output: Box<dyn AudioOutput>,
-    /// The persistent output stream, present whenever playback has attached a
-    /// track in some format and not yet stopped. Holds the device stream, the
-    /// `PlaybackSource` the callback pulls from, and the audio-events receiver the
-    /// command loop drains — all shared across track transitions in the same
-    /// format. Rebuilt only on a format change / stream error; dropped on `stop`.
+    /// The output stream, kept across tracks of the same format. Rebuilt when
+    /// the format or the default device changes; dropped when local playback is
+    /// torn down.
     output: Option<OutputStream>,
-    /// The single authority for what is current and in what phase. Owns the
-    /// current track's decoder and prepared track plus its phase as one consistent
-    /// whole; the `AudioState` atomic is written as a projection of it via
-    /// `sync_audio_state`. The stream/source/audio-events live in `output`.
+    /// The one authority for the current track and its phase, owning its
+    /// decoder; `sync_audio_state` writes the `AudioState` atomic from it.
     slot: PlaybackSlot,
-    /// Mints a fresh `LoadGeneration` per decoder load so a `TrackReady` from an
-    /// abandoned load can be told from the live one.
+    /// Numbers each decoder load so a `TrackReady` from an abandoned load can be
+    /// told from the live one.
     load_generation_counter: u64,
     /// Preloaded next track state, either staged into the current gapless source
     /// or held for a stream rebuild.
     preloaded_next: Option<PreloadedNext>,
-    /// The output level and mute for `audio_output`, as one owner: mute is core
-    /// state so no UI has to keep its own, and unmute restores the level the
-    /// user last set.
+    /// The output level and mute, kept in core so no UI keeps its own and unmute
+    /// restores the level the user last set.
     volume: OutputVolume,
-    /// The preview player — a self-contained second player for auditioning a
-    /// local file. The service only coordinates pause/resume of the main player
-    /// around it; the preview's own state, including whether it paused the main
-    /// player, lives entirely in `PreviewPlayer`.
+    /// A second player for auditioning a local file. It keeps its own state,
+    /// including whether it paused the main player.
     preview: PreviewPlayer,
     /// How often (ms) the audio callback sends position updates to the UI.
     position_update_interval_ms: u32,
-    /// The byte buffers tracks stream their audio from, the tracks whose buffers
-    /// are awaiting release, and the fetch priority between them.
+    /// The byte buffers tracks stream from and the fetch priority between them.
     file_buffers: FileBuffers,
-    /// The in-progress starvation-watchdog episode, if the current track is
-    /// mid-starvation with no decode progress yet observed. `None` whenever
-    /// the track is flowing normally — see `reset_starvation_episode`.
+    /// The starvation watchdog's episode while the current track is starved;
+    /// `None` while audio flows.
     starvation_episode: Option<StarvationEpisode>,
-    /// When `persist_playback_state` last ran. Throttles the per-tick persist in
-    /// `handle_position_event` to at most once a second. Every call refreshes it
-    /// — including the ones a track change triggers (play, gapless advance) — so
-    /// the periodic writer waits a full second from whichever discrete event last
-    /// wrote the row.
+    /// When `persist_playback_state` last ran, so the per-tick save in
+    /// `handle_position_event` waits a second after any save.
     last_position_persist: Option<std::time::Instant>,
-    /// The in-flight first-audio measurement for the live play-to-Playing load,
-    /// if one is pending. Set when `play_track` begins a Playing-target load,
-    /// cleared/overwritten by the next load; resolved into a `first_audio` event
-    /// when that load reaches Playing. `None` once emitted or for paused loads.
+    /// The time-to-first-audio measurement for a load headed for Playing,
+    /// recorded when it gets there; `None` once recorded or for a paused load.
     first_audio_pending: Option<FirstAudioMeasurement>,
-    /// Where the current track plays: the local decode pipeline, or a connected
-    /// Where the current track plays. `Local` by default; `play_on`/`stop_remote`
-    /// switch it to a connected remote renderer (Cast or DLNA).
+    /// Where the current track plays: locally, on a remote renderer, or through
+    /// an AirPlay receiver.
     renderer: Renderer,
-    /// When a side-pause countdown started and when it runs out. The countdown
-    /// itself lives in the side-pause phase; this only reads the time.
+    /// The time source for the side-pause countdown's deadline and the wait for
+    /// it.
     clock: crate::playback::PlaybackClockRef,
 }
 
@@ -503,40 +475,30 @@ fn side_boundary_between(
     if current_side.number == next_side.number {
         return None;
     }
-    let (title_key, countdown_key, side_label) = match current_side.medium {
+    let (kind, side_label) = match current_side.medium {
         PhysicalMedium::Record | PhysicalMedium::Cassette => (
-            SIDE_PAUSE_TITLE_KEY,
-            SIDE_PAUSE_COUNTDOWN_KEY,
+            PlaybackPauseBoundary::Side,
             crate::util::format::side_letter(current_side.number),
         ),
-        PhysicalMedium::Cd => (
-            DISC_PAUSE_TITLE_KEY,
-            DISC_PAUSE_COUNTDOWN_KEY,
-            current_side.number.to_string(),
-        ),
+        PhysicalMedium::Cd => (PlaybackPauseBoundary::Disc, current_side.number.to_string()),
     };
     Some(SideBoundary {
         id: format!(
             "{}:{}:{:?}",
             next.track_id, current_side.number, current_side.medium
         ),
-        title_key,
-        countdown_key,
+        kind,
         side_label,
     })
 }
 
-/// The system's audio output device: the platform sink (cpal on desktop, AAudio
-/// on Android) opened afresh for each output the service needs, plus — on macOS
-/// — the CoreAudio watch that dispatches `OutputDeviceChanged` when the system
-/// default output device changes, so the persistent stream rebuilds onto it.
-///
-/// Constructed on the service's dedicated thread, and every output opened from
-/// it likewise, so a sink owns any thread-bound device handle it opens there
-/// (cpal builds lazily per stream; AAudio binds its writer thread).
+/// The system's audio output device: the platform sink (cpal on desktop,
+/// AAudio on Android), opened afresh for each output, plus on macOS the watch
+/// that sends `OutputDeviceChanged` when the default device changes. Built on
+/// the service thread, as is every output opened from it, so thread-bound
+/// device handles live there.
 pub(crate) struct SystemAudioOutputDevice {
-    /// Held for its `Drop`, which unregisters the CoreAudio property listener
-    /// when the service ends.
+    /// Held for its `Drop`, which unregisters the CoreAudio listener.
     #[cfg(target_os = "macos")]
     _default_device_watch: crate::playback::cpal_output::device_listener::DefaultDeviceListener,
 }
@@ -578,10 +540,8 @@ impl AudioOutputDevice for SystemAudioOutputDevice {
     }
 }
 
-/// Open the device the service plays through, and the main player's output from
-/// it: the caller's device when one was supplied, otherwise the system's (which
-/// also registers the macOS default-device watch). `None` means the service
-/// cannot run — it has no output to play through — and its thread returns.
+/// Open the caller's device, or the system's, and the main player's output from
+/// it. `None` means there is no output, so the service thread returns.
 fn open_audio_device_and_output(
     custom_device: Option<Box<dyn AudioOutputDevice>>,
     command_tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
@@ -596,8 +556,6 @@ fn open_audio_device_and_output(
             }
         },
     };
-    // The main player's output. The preview player opens its own second output
-    // from the same device on its first play.
     match audio_device.open_output() {
         Ok(output) => Some((audio_device, output)),
         Err(e) => {
@@ -607,11 +565,9 @@ fn open_audio_device_and_output(
     }
 }
 
-/// Map a command to its telemetry kind, or `None` for commands that don't ship:
-/// internal/system (auto-advance, shutdown, track-ready), pure queries (get
-/// volume/queue), and continuous inputs (volume, position, mute). Track-level
-/// queue edits (add/insert/clear) are not user-intent milestones and ship
-/// nothing; only the release-level and transport commands do.
+/// Map a command to its telemetry kind, or `None` for one not recorded:
+/// internal commands, queries, volume, mute, previews, renderer switches, and
+/// track-level queue additions and clears.
 fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKind> {
     match command {
         PlaybackCommand::Play(_) => Some(PlaybackCommandKind::Play),
@@ -667,15 +623,11 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
     }
 }
 
-/// Whether a command stops a running side-pause countdown before it is
-/// handled. Every command a person uses to steer playback does: whatever they
-/// asked for, the next side must not then start on its own. Most of these also
-/// leave the side pause themselves (a new track, a manual pause, a stop); the
-/// rest keep it — a seek within the ended side, a queue edit that demotes it
-/// silently, a preview, a renderer switch — and without this the countdown would
-/// outlive the command. Resume is not here: it ends the pause by starting the
-/// next side, which is what the countdown was going to do. Internal commands,
-/// queries, and volume never touch it.
+/// Whether a command stops a running side-pause countdown before it is handled.
+/// Any command a person steers playback with does, so the next side never then
+/// starts on its own, including ones that keep the pause (a seek within the
+/// ended side, a queue edit, a preview, a renderer switch). Resume doesn't: it
+/// starts the next side, as the countdown would have.
 fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
     match command {
         PlaybackCommand::Play(_)
