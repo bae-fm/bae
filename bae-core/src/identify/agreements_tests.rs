@@ -241,9 +241,8 @@ fn striking_out_a_number_takes_its_agreement_away() {
     assert!(!judged.catalog);
 }
 
-/// A catalog states a country as a code or a name and a folder writes it
-/// either way, so the two have to meet: Japan is what a folder saying "Japan"
-/// or "JP" states, and a region is stated by any name a catalog writes it as.
+/// A folder states an area by its name or its code, whichever a catalog
+/// gave.
 #[test]
 fn an_area_agrees_whichever_way_the_folder_spells_it() {
     for (area, folder) in [
@@ -284,49 +283,61 @@ fn states_country(code: &str, lines: &[TextLine]) -> bool {
     .country
 }
 
-/// A two-letter code is a country only where a person tagged the folder with
-/// it, or where a sleeve says the product was made there. Printed prose is
-/// full of two-letter words — "for all of us" in reprinted liner notes — so
-/// elsewhere a sleeve, a CUE or a document states a country only by name.
-#[test]
-fn a_country_code_is_a_tag_in_a_name_and_a_word_everywhere_else() {
-    for origin in [
-        TextOrigin::Artwork,
-        TextOrigin::TextFile,
-        TextOrigin::CueSheet,
-    ] {
-        for printed in ["the band played for all of us.", "ALL OF US"] {
-            assert!(
-                !states_country("US", &[read_off(origin, printed)]),
-                "{origin:?}: {printed}"
-            );
-        }
-        assert!(
-            states_country("JP", &[read_off(origin, "Made in Japan")]),
-            "{origin:?}"
-        );
-        assert!(
-            states_country("US", &[read_off(origin, "MADE IN US")]),
-            "{origin:?}: a statement of where it was made names its code"
-        );
-        assert!(
-            states_country("XE", &[read_off(origin, "Made in the E.U.")]),
-            "{origin:?}: and its abbreviation"
-        );
-    }
-    assert!(states_country(
-        "US",
-        &[read_off(TextOrigin::Filename, "01 - Song (US).flac")]
-    ));
+/// Whether `lines` state the area MusicBrainz writes as `code`.
+fn states_area_of(code: &str, lines: &[&str]) -> bool {
+    states_country(
+        code,
+        &lines
+            .iter()
+            .map(|text| read_off(TextOrigin::Artwork, text))
+            .collect::<Vec<_>>(),
+    )
 }
 
-/// A code tags a folder written as a code is: in capitals. The same letters
-/// in lower case are a word in a title.
+/// A name counts in any case; a code or an abbreviation counts in capitals,
+/// with or without dots.
 #[test]
-fn a_country_code_in_a_name_is_written_in_capitals() {
-    assert!(!states_country("US", &[line("Artist - Songs For Us")]));
-    assert!(!states_country("IT", &[line("Artist - Make it Last")]));
-    assert!(states_country("IT", &[line("Artist - Album (IT)")]));
+fn an_area_is_stated_by_its_names_anywhere_and_its_codes_in_capitals() {
+    for (code, lines) in [
+        (
+            "XE",
+            &["Unauthorised copying prohibited. Made in the EU."][..],
+        ),
+        ("XE", &["Manufactured in the E.E.C."]),
+        ("GB", &["Album (England)"]),
+        ("GB", &["printed in england"]),
+        ("GB", &["Album [UK]"]),
+        ("US", &["Made in U.S.A."]),
+        ("US", &["Distributed in the United States"]),
+        ("NL", &["Made in Holland"]),
+        ("DE", &["Made in W. Germany"]),
+        ("JP", &["1979 - Album (JP)"]),
+    ] {
+        assert!(states_area_of(code, lines), "{code} in {lines:?}");
+    }
+}
+
+/// Lowercase codes and an address that writes no US name state no US
+/// release.
+#[test]
+fn prose_and_an_address_state_no_area_they_do_not_write() {
+    for lines in [
+        &["the band played for all of us."][..],
+        &["Artist - Songs For Us"],
+        &["Placeholder Records, 100 Placeholder Drive, Beverly Hills, CA 90210"],
+        &["made in usa"],
+    ] {
+        assert!(!states_area_of("US", lines), "{lines:?}");
+    }
+    assert!(!states_area_of("IT", &["Artist - Make it Last"]));
+}
+
+/// A capital code states its area even where it is a word: "LET IT BE"
+/// states Italy, which only matters for an Italian release.
+#[test]
+fn a_stray_capital_code_states_its_area() {
+    assert!(states_area_of("IT", &["LET IT BE"]));
+    assert!(!states_area_of("JP", &["LET IT BE"]));
 }
 
 /// The other spellings are one area's, not any area's: a folder that names a

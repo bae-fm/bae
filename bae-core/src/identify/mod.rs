@@ -1,39 +1,16 @@
-//! The identify pipeline. Consumes the [`crate::signals::Signals`] the extraction
-//! service produces for a candidate and drives a state machine that matches it
-//! against external metadata. The disc-ID and barcode signals are looked up in
-//! parallel — triangulation — and once they settle, `combine` intersects their
-//! results into a terminal `Found` or `NotFoundAnywhere` carrying per-result
-//! provenance. A catalog number the user picks out of the ones extracted is a
-//! third lookup, and joins the same intersection. When all three name nothing,
-//! the run asks every provider the candidate's own album title as a fourth
-//! step, so a release the catalogs hold under no code of its own is still
-//! found.
-//!
-//! The state machine is a pure reducer (`state::step`). The service
-//! (`service::IdentifyServiceHandle`) feeds it the snapshots its extraction
-//! hands out, runs the side effects it asks for (the MB/Discogs lookups), and
-//! feeds the results back.
-//! Scanning, OCR, and disc-ID derivation belong to `crate::signals`, not here.
-//!
-//! Every state transition goes out on the `ImportEvent` broadcast channel as one
-//! `ImportEvent::IdentifyStateChanged` carrying the full state.
-//!
-//! Surfaces don't read that state directly. [`view::IdentifyStateView`] shapes it
-//! for rendering — folding the matches into their group card, keying provenance by
-//! release id, dropping what must not cross — once, so every transport mirrors the
-//! same decisions instead of re-making them.
-//!
-//! [`verdict::TerminalVerdict`] is the third projection: what a *terminal*
-//! state (`Found`, `NotFoundAnywhere`, `ManualOnly`, `Failed`) persists so it
-//! need not be re-fetched on the next launch.
-//! [`ready`] reads that stored verdict back and says what the queue needs from
-//! the user for that candidate — derived on every read, never stored.
+//! The identify pipeline: matches a candidate's [`crate::signals::Signals`]
+//! against external metadata. A pure reducer (`state::step`) runs the lookups
+//! — disc ID, barcode, chosen catalog numbers, then the album title when those
+//! name nothing — and `combine` ranks what they return. The service feeds it
+//! extraction snapshots and lookup results and publishes each state as an
+//! `ImportEvent::IdentifyStateChanged`. [`view`] shapes a state for surfaces,
+//! [`verdict::TerminalVerdict`] is what a terminal state stores, and
+//! [`ready`] reads a stored verdict back as what the queue needs.
 
 pub mod agreements;
 pub mod combine;
 pub mod discid;
 pub(crate) mod label;
-mod made_in;
 pub(crate) mod medium;
 pub mod ready;
 pub mod service;

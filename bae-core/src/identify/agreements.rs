@@ -1,51 +1,16 @@
-//! How much of a candidate's own text agrees with one result.
-//!
-//! Nothing is extracted from the folder to judge a result with. The result
-//! arrives with its own fields — a catalog number, a label, a year, a country
-//! — and each of them is looked for in the text the folder carries: its name,
-//! its file names, its CUE fields, its `.txt` contents, and the OCR of its
-//! artwork. Every field the text states is one agreement, and the agreements
-//! are what order the rows and what each row's badges say.
-//!
-//! The disc ID and the barcode are not looked for: they are exact codes, and
-//! the lookup that returned the result is what states them.
-//!
-//! A country is one field the two write differently: a provider answers `JP`
-//! and a folder writes `Japan`. Both spellings are looked for, through the
-//! country table in [`crate::pressing::country`] — but a code only where a
-//! person tagged the folder with it: two capital letters in the folder's or a
-//! file's name. Anywhere else a two-letter code is far more often a word —
-//! "for all of us" in reprinted liner notes, "IT" on a sleeve — than a
-//! country, while a sleeve that means a country prints its name ("Made in
-//! Japan"). The exception is a sleeve's statement of where the product was
-//! made, where an abbreviation is no word of prose: "Made in the EU" states
-//! Europe (read by the identify module's `made_in` reader). A label is the
-//! other: a folder writes "Warner Bros." and a source writes "Warner Bros.
-//! Records", so the trade word a label's name trails is dropped from it
-//! first, through the label table.
-//!
-//! Not every number printed on a folder is a catalog number — a phone number
-//! on a sleeve, a serial on a label, the year twice — so a person can strike
-//! one out. A struck-out value is not read as a catalog number any more,
-//! however plainly the text prints it; it is still text, and still states
-//! whatever else it happens to be.
+//! Which of a result's fields the candidate's own text states. The disc ID and
+//! the barcode come from the lookups that returned the result, not the text.
 
 use super::combine::LookupProvenance;
 use crate::import::search::MetadataResult;
 use crate::pressing::ReleaseArea;
-use crate::signals::{TextLine, TextOrigin};
+use crate::signals::TextLine;
 use crate::util::text::squash;
 use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
 
-/// What the candidate's own text agrees with about one result — one badge per
-/// field, and the count is what orders the rows.
-///
-/// `disc_id` and `barcode` are the lookups that returned it. `catalog`,
-/// `label`, `year` and `country` are the text alone: its catalog number is
-/// printed in the folder's text — which a chosen number, read off that text,
-/// is — however a lookup came by it. A field the result does not state is no
-/// agreement.
+/// Which of one result's fields the folder confirms. A field the result does
+/// not state is no agreement.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Agreements {
     pub disc_id: bool,
@@ -57,8 +22,7 @@ pub struct Agreements {
 }
 
 impl Agreements {
-    /// Nothing agrees — what a result carries where there is nothing to rank
-    /// by, as in a typed search.
+    /// Nothing agrees, as for a typed search.
     pub const NONE: Self = Self {
         disc_id: false,
         barcode: false,
@@ -68,10 +32,8 @@ impl Agreements {
         country: false,
     };
 
-    /// Both together — what a pressing row agrees with, since a row is one
-    /// physical object however many sources carry it and is picked whole. A
-    /// catalog number only Discogs prints, and a disc ID only MusicBrainz
-    /// answers, are both true of the object.
+    /// Both together: a pressing row is one object, so what any of its records
+    /// agrees with is true of it.
     pub fn with(self, other: Self) -> Self {
         Self {
             disc_id: self.disc_id || other.disc_id,
@@ -83,7 +45,7 @@ impl Agreements {
         }
     }
 
-    /// How many badges the row carries. What the rows are ordered by.
+    /// How many fields agree, which orders a release group's cards.
     pub fn count(&self) -> u32 {
         [
             self.disc_id,
@@ -98,21 +60,9 @@ impl Agreements {
         .count() as u32
     }
 
-    /// Whether there is any reason to show this release on the list rather
-    /// than under "N more".
-    ///
-    /// Every agreement but the barcode says something about *which* release
-    /// this is: the disc ID is computed from the audio itself, the catalog
-    /// number was either looked up or is printed in the folder's own text,
-    /// and the label, year and country are printed there too. A barcode is
-    /// read off a photograph of a sleeve, so a barcode lookup that comes back
-    /// naming a release nothing else stands behind has read the wrong digits
-    /// — a real answer to the wrong question, which is what "N more" is for.
-    ///
-    /// Read as one value and never field by field, which is what keeps three
-    /// pressings of one album on the list together: a folder states one
-    /// pressing's year and not the other two's, and all three are still the
-    /// album on the desk.
+    /// Whether anything but the barcode agrees, which is what shows a release
+    /// on the list rather than under "N more": a barcode read off a photo can
+    /// be misread into some other release.
     pub fn offered(&self) -> bool {
         self.disc_id || self.catalog || self.label || self.year || self.country
     }
@@ -143,14 +93,9 @@ pub fn agreements_of(
     }
 }
 
-/// What the text agrees with about each of a verdict's matches, paired with
-/// the matches themselves — what [`crate::import::release_group::group_results`]
-/// ranks the rows and the records within a row by.
-///
-/// `provenance` is index-aligned with `matches`, as a verdict stores the two.
-/// One definition, because the pane and the sweep's settle step both ask it:
-/// the record a person sees leading a row has to be the record whose document
-/// fills the draft.
+/// Each match paired with its agreements, for
+/// [`crate::import::release_group::group_results`]. `provenance` is
+/// index-aligned with `matches`.
 pub fn judged_results(
     matches: Vec<MetadataResult>,
     provenance: &[LookupProvenance],
@@ -166,40 +111,24 @@ pub fn judged_results(
         .collect()
 }
 
-/// The candidate's own text as ranking reads it: its lines, normalized once
-/// so a result's fields can be looked up in them, and the catalog numbers the
-/// person has struck out of them.
-///
-/// A line is held as its words run together, with where each word begins and
-/// ends. A value is normalized the same way — folded to lowercase, diacritics
-/// dropped, and everything that is not a letter or a digit removed — and it is
-/// stated by the text when it spans whole words of a line. That is what lets
-/// `16033-2` in a folder name state a catalog number written `16033 2`, while
-/// keeping a country of `US` out of "blues" and a catalog of `531 2` out of a
-/// barcode's digits. A struck-out number is normalized the same way, so it is
-/// struck out however either of them is punctuated.
+/// The candidate's own text, normalized once, and the catalog numbers the
+/// person struck out. A value is stated when, lowercased and stripped of all
+/// but letters and digits, it spans whole words of a line: `16033-2` states
+/// `16033 2`, and "blues" does not state `US`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CandidateText {
     lines: Vec<NormalizedLine>,
-    /// The areas the text's manufacturing statements name, in reading order.
-    made_in: Vec<ReleaseArea>,
     /// Normalized, so the comparison is the one `states` makes.
     struck_out: HashSet<String>,
 }
 
 impl CandidateText {
-    /// The candidate's pooled lines, normalized for lookup, with the catalog
-    /// numbers the person struck out of them. Lines that carry no letter or
-    /// digit state nothing and are left out.
+    /// The pooled lines and the struck-out catalog numbers.
     pub fn of(pool: &[TextLine], struck_out: &[String]) -> Self {
         Self {
             lines: pool
                 .iter()
-                .filter_map(|line| NormalizedLine::of(&line.text, line.origin))
-                .collect(),
-            made_in: pool
-                .iter()
-                .flat_map(|line| super::made_in::stated_origins(&line.text))
+                .filter_map(|line| NormalizedLine::of(&line.text))
                 .collect(),
             struck_out: struck_out
                 .iter()
@@ -225,37 +154,19 @@ impl CandidateText {
         !self.is_struck_out(value) && self.states(value)
     }
 
-    /// Whether the text states `value` as a label name, whichever of them
-    /// trails it with a trade word: a folder saying "Warner Bros." states a
-    /// result's "Warner Bros. Records", and one saying "Atlantic Records"
-    /// states an "Atlantic". A name that is nothing but trade words names no
-    /// label and is stated by nothing.
-    ///
-    /// Only the name is stripped. A line keeps its own trade words, because
-    /// the question asked of it is whether the name spans whole words of it,
-    /// and a word the name never reaches cannot answer that either way.
+    /// Whether the text states `value` as a label name, without the trade
+    /// word it may trail: "Warner Bros." states "Warner Bros. Records".
     pub fn states_label(&self, value: &str) -> bool {
         super::label::stated(value).is_some_and(|name| self.states_run(&name))
     }
 
-    /// Whether the text states `area`, however it writes it. A country is
-    /// stated by any of its names wherever the text prints it, and by its
-    /// code where a name tags the folder with it — a folder called
-    /// "Album (JP)" states Japan, and so does a sleeve saying "Made in
-    /// Japan" — and a region by any name a catalog writes it as. A sleeve's
-    /// statement of where the product was made states its area however it
-    /// abbreviates it: "Made in the EU" states Europe.
+    /// Whether the text writes `area` any way it is written — see
+    /// [`ReleaseArea::names`].
     pub fn states_area(&self, area: ReleaseArea) -> bool {
-        if self.made_in.contains(&area) {
-            return true;
-        }
-        match area {
-            ReleaseArea::Country(country) => {
-                self.lines.iter().any(|line| line.tags_code(country.code()))
-                    || country.names().iter().any(|name| self.states(name))
-            }
-            ReleaseArea::Region(region) => region.written_names().any(|name| self.states(name)),
-        }
+        area.names().iter().any(|name| self.states(name))
+            || area
+                .codes()
+                .any(|code| self.lines.iter().any(|line| line.writes_code(code)))
     }
 
     /// Whether the person struck `value` out as a catalog number.
@@ -268,23 +179,19 @@ impl CandidateText {
     }
 }
 
-/// One line as it is looked up in: its words run together, and the byte
-/// offsets where words begin and end.
+/// One line: its words run together, where each begins and ends, and the
+/// words it writes in capitals.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct NormalizedLine {
     run: String,
-    /// Ascending, one per word.
     starts: Vec<usize>,
-    /// Ascending, one per word.
     ends: Vec<usize>,
-    /// The words written wholly in capitals, as written, where the line is
-    /// a name a person gave the folder or one of its files — the only text
-    /// a two-letter code is a tag in. Empty for every other line.
-    tags: Vec<String>,
+    /// Dots between letters dropped: "E.U." is `EU`.
+    capitals: Vec<String>,
 }
 
 impl NormalizedLine {
-    fn of(text: &str, origin: TextOrigin) -> Option<Self> {
+    fn of(text: &str) -> Option<Self> {
         let mut run = String::new();
         let mut starts = Vec::new();
         let mut ends = Vec::new();
@@ -293,26 +200,22 @@ impl NormalizedLine {
             run.push_str(&word);
             ends.push(run.len());
         }
-        let tags = match origin {
-            TextOrigin::FolderName | TextOrigin::Filename => text
-                .split(|c: char| !c.is_alphanumeric())
-                .filter(|word| !word.is_empty() && word.chars().all(|c| c.is_uppercase()))
-                .map(str::to_string)
-                .collect(),
-            TextOrigin::CueSheet | TextOrigin::Artwork | TextOrigin::TextFile => Vec::new(),
-        };
+        let capitals = text
+            .split(|c: char| !c.is_alphanumeric() && c != '.')
+            .map(|word| word.replace('.', ""))
+            .filter(|word| !word.is_empty() && word.chars().all(char::is_uppercase))
+            .collect();
         (!run.is_empty()).then_some(Self {
             run,
             starts,
             ends,
-            tags,
+            capitals,
         })
     }
 
-    /// Whether this line tags the folder with `code`: the code as a whole
-    /// word in capitals, in a name.
-    fn tags_code(&self, code: &str) -> bool {
-        self.tags.iter().any(|tag| tag == code)
+    /// Whether this line writes `code` as a whole word in capitals.
+    fn writes_code(&self, code: &str) -> bool {
+        self.capitals.iter().any(|word| word == code)
     }
 
     /// Whether `value` — already squashed — spans whole words of this line.

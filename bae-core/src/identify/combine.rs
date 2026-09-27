@@ -1,42 +1,11 @@
-//! Combine logic for the triangulation pipeline.
-//!
-//! Once the checked signals settle, the reducer hands their result sets to
-//! `combine_results`, which ranks them and offers the best-supported rows.
+//! Ranks what a run's lookups returned and offers the best-supported rows.
 //! Pure: no I/O, no state.
 //!
-//! **The pressing is what is offered or set aside, not the release.** Two
-//! sources' records of one physical object are one row a person picks whole,
-//! and the two rarely arrive by the same route: a disc ID answers on
-//! MusicBrainz alone, so the Discogs record of that pressing comes from a
-//! barcode or catalog number lookup — or from no lookup at all, read because
-//! the MusicBrainz release names it as itself (see
-//! [`crate::import::album_links`]). So every record the run holds is paired
-//! first — [`group_results`] — and the ranking then reads whole rows.
-//!
-//! **A record no lookup returned counts for no lookup.** A twin read through a
-//! MusicBrainz release's link is on the row because that release names it,
-//! not because a lookup of the folder's codes found it, so it raises no row's
-//! lookup count and says so in its provenance: [`LookupProvenance::named_by`].
-//! What the folder's text states about its fields is still what the text
-//! states about the row, which is one object whichever record says it.
-//!
-//! **Every row is scored, and the rows tied at the top are offered.** The
-//! score is `Support`: whether the row's media could have given the folder
-//! its audio, how many lookups returned the row, how many of the facts that
-//! name one pressing hold, whether the disc ID returned it, how much of the
-//! album's title and artist the folder states, whether the row states the
-//! folder's mono, whether the folder states its country, and whether the
-//! folder's text mentions the row at all. Every other row is set aside under
-//! "N more releases", which a person can open.
-//!
-//! Taking the highest score is what would otherwise be separate rules. A row
-//! made of vinyl beside a folder its rip log proves is a CD rip describes some
-//! other object. Two lookups naming one release outrank one lookup naming
-//! another, which is the intersection of the answering lookups. A barcode and
-//! a catalog number name one pressing, where a disc ID names every pressing
-//! cut from one master. A row the folder never mentions, beside rows it does,
-//! came from a misread barcode. And a score always has a highest value, so
-//! the list is shortened and never emptied.
+//! Every record is first paired into pressing rows — two sources' records of
+//! one object are one row, picked whole — and each row is scored by
+//! `Support`. The rows tied at the top are offered; the rest are set aside
+//! under "N more releases". A record read through another release's link
+//! rather than returned by a lookup counts for no lookup.
 
 use super::agreements::{agreements_of, CandidateText};
 use super::medium::{agrees_with_mono, FolderAudio, RippedFrom};
@@ -47,26 +16,17 @@ use crate::import::search::MetadataResult;
 use crate::import::Catalog;
 use std::collections::{HashMap, HashSet};
 
-/// Which lookup produced one result: the result came back from that signal's
-/// lookup. The other half of a row's badges — what the folder's own text says
-/// about the result — is derived from this and the text (see
-/// [`agreements_of`]), never stored.
-///
-/// `Serialize`/`Deserialize`: carried on the [`Findings`] a stored
-/// `identify::TerminalVerdict` holds, which `import_candidate_match` persists.
+/// Which lookups returned one result. Stored with the [`Findings`].
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct LookupProvenance {
     pub by_disc_id: bool,
     pub by_barcode: bool,
     pub by_catalog: bool,
-    /// The title search returned it. By construction the search runs only when
-    /// the three identifiers named nothing, so this is never true beside any
-    /// of the others.
+    /// Never true beside the others: the title search runs only when the
+    /// identifiers named nothing.
     pub by_search: bool,
-    /// Returned by no lookup: the MusicBrainz release whose own document
-    /// names this one as the same release, which the run read to learn its
-    /// album. `None` for a release a lookup returned or a person chose; never
-    /// set beside any of the four above.
+    /// The MusicBrainz release that names this one as itself, when no lookup
+    /// returned it.
     pub named_by: Option<crate::import::MetadataRef>,
 }
 
@@ -81,86 +41,46 @@ impl LookupProvenance {
     };
 }
 
-/// What a run's lookups found, once combined: the rows offered and the rows
-/// set aside, each release with the lookups that returned it and the pressing
-/// row it belongs to.
-///
-/// One shape for every state that holds answers. A run that settled on them
-/// carries it, and so does a run where some lookup failed: one provider not
-/// answering never invalidates what the others returned, so a failed run's
-/// findings are as real as a found one's and are stored the same way. A run
-/// that found nothing has none, which is why `NotFoundAnywhere` carries no
-/// findings at all rather than an empty one.
-///
-/// Whether each release is already in the library is not here: that is a
-/// live check a reader repeats, never a fact about the run — see
-/// [`LibraryStatuses`].
+/// What a run's lookups found once combined: the offered rows and the rows
+/// set aside, each release with its lookups and its pressing row. A failed
+/// run's findings are stored the same way as a found one's.
 #[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Findings {
     /// The offered rows' releases, most-agreed-with first.
     pub matches: Vec<MetadataResult>,
-    /// Index-aligned with `matches`: which signals named each one — the
-    /// sidebar's "matched on disc ID / barcode / text" evidence line.
+    /// Index-aligned with `matches`.
     pub provenance: Vec<LookupProvenance>,
-    /// Index-aligned with `matches`: which pressing row of this list each
-    /// release belongs to, numbered from zero in row order.
-    ///
-    /// The rows the run built, kept rather than re-formed on read: a record
-    /// the run settled as ambiguous because of a record in the other list
-    /// rolls up when this list is grouped without it, so a reader that
-    /// re-groups shows rows the run never offered.
+    /// Index-aligned with `matches`: each release's pressing row, numbered
+    /// from zero. Kept rather than re-formed, since grouping one list alone
+    /// can merge records the run kept apart.
     pub pressings: Vec<u32>,
     pub narrowed_out: NarrowedOut,
-    /// Set when the folder's own files rule out every row, offered ones
-    /// included: what they prove. The rows are still offered for a person to
-    /// pick, and nothing picks one for them.
+    /// What the folder's files prove when they rule out every row. The rows
+    /// are still offered, but nothing picks one unattended.
     pub medium_conflict: Option<super::MediumConflict>,
 }
 
 impl Findings {
-    /// Nothing came back from any lookup. Combine never empties the offered
-    /// list while anything was returned, so no offered match means no answer.
+    /// Nothing came back from any lookup.
     pub fn is_empty(&self) -> bool {
         self.matches.is_empty()
     }
 
-    /// Every release named, the offered ones first — what a reader checks
-    /// live library status for.
+    /// Every release named, the offered ones first.
     pub fn releases(&self) -> impl Iterator<Item = &MetadataResult> {
         self.matches.iter().chain(&self.narrowed_out.matches)
     }
 }
 
-/// The rows the ranking did not offer, as the releases they are made of.
-///
-/// A short list is what makes identification worth having: a disc ID that
-/// named three releases and a barcode that named two settle on the one they
-/// share, and the other four never reach the person. Each of those four is a
-/// real answer from a real lookup, and one of them may be the disc on the
-/// desk, so combine hands them back beside the matches instead of dropping
-/// them.
-///
-/// The rows the folder's own text never mentions are here too: a barcode
-/// lookup that comes back naming somebody else's record answered a question
-/// the folder never asked.
-///
-/// A row is here whole or not at all — every record of a set-aside pressing,
-/// and none of an offered one — and `pressings` says which row each release
-/// belongs to, so a reader reads the rows the run built rather than forming
-/// its own from a list that no longer holds what they were decided against.
-///
-/// Empty when every row tied at the highest score: one lookup answering alone
-/// with nothing to tell its answers apart, or a candidate carrying no text to
-/// read them against.
+/// The rows the ranking did not offer, whole, as the releases they are made
+/// of. Empty when every row tied.
 #[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NarrowedOut {
     /// In signal order, each release once.
     pub matches: Vec<MetadataResult>,
-    /// Index-aligned with `matches`: which signals named each one.
+    /// Index-aligned with `matches`.
     pub provenance: Vec<LookupProvenance>,
-    /// Index-aligned with `matches`: which row of this list each release
-    /// belongs to, numbered from zero in row order. Each list numbers its own
-    /// rows.
+    /// Index-aligned with `matches`: each release's row in this list.
     pub pressings: Vec<u32>,
 }
 
@@ -171,11 +91,7 @@ impl NarrowedOut {
 }
 
 /// Whether each release a [`Findings`] names is already in the library,
-/// index-aligned with its two lists.
-///
-/// Mutable local state — another import landing can flip it — so it rides
-/// beside the findings while a state is live and is never stored with them: a
-/// reader standing a stored verdict back up checks it again.
+/// index-aligned with its two lists. Checked live, never stored.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LibraryStatuses {
     /// Index-aligned with [`Findings::matches`].
@@ -202,36 +118,9 @@ impl LibraryStatuses {
 type Results = Vec<(MetadataResult, LibraryStatus)>;
 type ReleaseKey = (Catalog, String);
 
-/// Settle the checked signals' results into what the run found, with each
-/// release's library status as the lookups reported it.
-///
-/// A signal the user left unchecked arrives empty and takes no part. So does
-/// a checked signal whose lookup found nothing: it returned no row, so it
-/// raises no row's score.
-///
-/// The title search is a fourth set on the same footing. It never meets the
-/// other three: it is asked only when all of them came back empty, so a run
-/// that reaches it ranks what the search alone returned.
-///
-/// `twins` are the releases no lookup returned, each read because a release a
-/// lookup did return names it as itself. Each joins the list beside the
-/// release that names it, and raises no row's lookup count.
-///
-/// `rip` is what the folder's files say about the medium its audio was
-/// ripped from; with whether the disc ID returned anything, it is what a
-/// row's stated media are held against.
-///
-/// Every answer the run returned is paired into pressing rows first, then:
-///
-/// 1. **Nothing.** Every set empty: empty findings.
-/// 2. **Every row is scored** by `Support`, and the rows tied at the
-///    highest score are offered. Every other row is set aside, and a person
-///    can open the list it is on.
-///
-/// The offered rows come back most-agreed-with first, as records, each
-/// carrying the row of its list it belongs to: a row is offered whole or set
-/// aside whole, and which rows those are is this run's answer, stored with
-/// its releases rather than re-derived from either list alone.
+/// Combine each lookup's results into what the run found. An empty set takes
+/// no part. `twins` are releases no lookup returned, each placed beside the
+/// release that names it.
 pub fn combine_results(
     discid_results: Results,
     barcode_results: Results,
@@ -258,10 +147,7 @@ pub fn combine_results(
         return (Findings::default(), LibraryStatuses::default());
     }
 
-    // Every answer the run returned, each release once, in signal order, and
-    // then each twin beside the release that names it. Pairing runs over all
-    // of them, so two sources' records of one pressing are one row whichever
-    // way each of them came.
+    // Every release once, in signal order, then the twins.
     let mut all = union_all(&present);
     let answered: Vec<&MetadataResult> = all.iter().map(|(result, _)| result).collect();
     let twins: Vec<(MetadataResult, LibraryStatus, crate::import::MetadataRef)> =
@@ -329,10 +215,7 @@ pub fn combine_results(
         .into_iter()
         .map(|(result, status)| ((result.source, result.release_id), status))
         .collect();
-    // Each list's records in row order, each carrying the row of that list it
-    // belongs to. The rows are what this run decided, and they are carried
-    // rather than re-derived: neither list alone holds what the other said,
-    // and grouping one without the other rolls up records this kept apart.
+    // Each list's records in row order, with the row each belongs to.
     let records = |rows: Vec<Pressing>| -> (Results, Vec<u32>) {
         let mut records = Results::new();
         let mut pressings = Vec::new();
@@ -375,107 +258,43 @@ pub fn combine_results(
     )
 }
 
-/// How much of what the run found stands behind one row. Rows are compared
-/// field by field in declaration order, and the rows tied at the highest
-/// value are the ones offered.
-///
-/// Each field answers a different question, and a lower one is read only
-/// between rows the field above it cannot tell apart.
+/// What stands behind one row, compared field by field in declaration order.
+/// The rows tied at the highest value are offered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 struct Support {
-    /// Whether what the row's records say it is made of could have given
-    /// the folder its audio — see [`RippedFrom::admits`]. The carrier only:
-    /// what a row states about its channels is `states_the_channels`, a
-    /// tiebreak far below.
-    ///
-    /// Read first because it is the one field that speaks to the object
-    /// rather than to how well the lookups agree: a vinyl pressing every
-    /// lookup returned is still not the CD the folder's rip log was read
-    /// off. It leaves every row admitted when the folder proves nothing and
-    /// when every row states nothing.
+    /// Whether the row's carrier could have given the folder its audio — see
+    /// [`RippedFrom::admits`]. First: a vinyl pressing every lookup returned
+    /// is still not the CD the rip log was read off.
     medium: bool,
-    /// How many of the run's lookups returned this row: the disc ID, the
-    /// barcodes, the chosen catalog numbers, the title search. A lookup that
-    /// returned nothing counts for no row, so an unchecked lookup and one
-    /// that found nothing both change the ranking in no way.
-    ///
-    /// Two lookups returning one release outrank one lookup returning
-    /// another. Where no row was returned twice, every row ties here and the
-    /// fields below decide.
+    /// How many of the run's lookups returned this row.
     lookups: u32,
-    /// How many of the facts that name this one pressing hold: the folder
-    /// states the row's catalog number, and a barcode lookup returned the
-    /// row.
-    ///
-    /// A catalog number and a barcode are printed on one pressing's sleeve
-    /// and disc, and a later pressing is given its own. The barcode counts
-    /// only for a row the folder's text also describes (see `offered`): an
-    /// image's bars misread into another valid code name some other
-    /// record entirely, which the text then says nothing about.
+    /// How many facts that name one pressing hold: the folder states its
+    /// catalog number, and a barcode lookup returned it — the barcode only
+    /// for a row the text also describes, since misread bars name some other
+    /// record.
     names_pressing: u32,
-    /// Whether the disc ID returned this row.
-    ///
-    /// A disc ID is computed from the audio on disk, so it names the disc —
-    /// but every pressing cut from one master has the same table of
-    /// contents, so it names all of them alike. That is why it is read below
-    /// what names one pressing, and why it counts here as well as among the
-    /// lookups.
+    /// Whether the disc ID returned this row. Below what names one pressing,
+    /// since every pressing cut from one master shares a table of contents.
     shares_toc: bool,
-    /// How many of the album's title and its artist the folder's text states
-    /// — the name a person gave the folder, its files' tags, a CUE's `TITLE`
-    /// and `PERFORMER`, the sleeve.
-    ///
-    /// They name the album, not the pressing, which is why they are read
-    /// below everything that names one. What they tell apart is a row a
-    /// lookup returned for some other album: a catalog number another label
-    /// also used, a label and a country every release shares. A title the
-    /// folder writes in another language, or a compilation's "Various
-    /// Artists" it does not write at all, is only no agreement, never a
-    /// reason against the row.
+    /// How many of the album's title and artist the folder's text states.
+    /// They name the album, not the pressing, so they only tell apart a row
+    /// returned for some other album.
     names_album: u32,
-    /// Whether the row states mono and the folder's audio is one channel —
-    /// see [`agrees_with_mono`].
-    ///
-    /// A catalog tells a mono pressing from a stereo one of the same album
-    /// by this alone, often under catalog numbers a folder does not print,
-    /// so it separates rows nothing above tells apart. It never counts
-    /// against a row stating stereo beyond that: catalogs list mono
-    /// pressings as stereo, so a lookup's agreement outranks it.
+    /// Whether the row states mono and the folder's audio is one channel: a
+    /// tiebreak only, since catalogs list mono pressings as stereo.
     states_the_channels: bool,
-    /// Whether the folder's text states the country this pressing was
-    /// released in.
-    ///
-    /// Two pressings a barcode names alike — a US issue and a European one —
-    /// differ here and nowhere above, and a sleeve that says "Made in the EU"
-    /// is the object on the desk saying which it is. A folder that states no
-    /// country leaves every row as it was, and one that states both rows'
-    /// countries agrees with both alike.
-    ///
-    /// The year and the label count only toward `offered`. A folder is
-    /// usually named by the year the album came out rather than the year its
-    /// pressing was made, so the year would lift an original pressing over the
-    /// reissue on the desk; and a label is written many ways — an imprint, a
-    /// parent company, a distributor — so a row whose label the folder spells
-    /// otherwise would be set aside for the spelling. A country is read
-    /// through one table of its names and codes.
+    /// Whether the folder's text states the area this pressing was released
+    /// in, which tells apart pressings a barcode names alike. The year and
+    /// the label count only toward `offered`: a folder's year is usually the
+    /// album's, and a label is written too many ways.
     states_the_country: bool,
-    /// Whether there is any reason to show this row at all — see
-    /// [`super::agreements::Agreements::offered`].
-    ///
-    /// One value rather than a count of the fields behind it, and that is
-    /// what keeps three pressings of one album on the list together: the
-    /// folder states one pressing's year and not the other two's, and a
-    /// folder is usually named by the year the album came out rather than the
-    /// year the disc was pressed. A label covers every pressing of an album
-    /// and a country covers most of them, so none of the three may separate
-    /// one row from another. They separate a row the folder describes from a
-    /// row nothing stands behind.
+    /// Whether anything but a barcode stands behind the row — see
+    /// [`super::agreements::Agreements::offered`]. One value, so a year one
+    /// pressing states does not split it from its siblings.
     offered: bool,
 }
 
-/// What stands behind one row: whether its media fit the folder, its
-/// records' lookups taken together, and what the folder's text states about
-/// the row as a whole.
+/// What stands behind one row, over all its records.
 fn support_of(
     row: &Pressing,
     judgements: &Judgements,
@@ -535,11 +354,8 @@ fn support_of(
     }
 }
 
-/// Split the ranked rows into the ones offered and the ones set aside, each
-/// keeping the ranked order: the rows tied at the highest [`Support`] are
-/// offered, and every other row is set aside. The medium is read first, so
-/// the offered rows are ruled out only when every row is — which is the
-/// conflict returned beside them.
+/// Offer the rows tied at the highest [`Support`] and set the rest aside,
+/// each in ranked order, with the medium conflict when every row fails it.
 fn split_rows(
     rows: Vec<Pressing>,
     judgements: &Judgements,
@@ -555,8 +371,7 @@ fn split_rows(
     let Some(best) = support.iter().copied().max() else {
         return (Vec::new(), Vec::new(), None);
     };
-    // The best row failing the medium means every row does, by its carrier:
-    // the verdict names what the folder proves.
+    // The best row failing the medium means every row does.
     let medium_conflict = if best.medium {
         None
     } else {
@@ -580,9 +395,7 @@ fn release_keys(results: &Results) -> HashSet<ReleaseKey> {
         .collect()
 }
 
-/// Every release any set names, in signal order, each release once — every
-/// answer the run returned, which is what pairing runs over. A release two
-/// signals both named is kept as the earlier signal returned it.
+/// Every release any set names, once, in signal order.
 fn union_all(sets: &[&Results]) -> Results {
     let mut seen: HashSet<ReleaseKey> = HashSet::new();
     let mut out = Results::new();

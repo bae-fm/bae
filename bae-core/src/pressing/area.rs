@@ -125,37 +125,140 @@ desktop_only! {
         }
     }
 
-    impl Region {
-        /// The region a name Discogs gives one is `is`, by the first name
-        /// `is` accepts. Only Discogs's names, which are written out: a
-        /// MusicBrainz code is two letters, and text reading for a region
-        /// reads a name.
-        pub(crate) fn written_as(is: impl Fn(&str) -> bool) -> Option<Self> {
-            DISCOGS_COUNTRIES.iter().find_map(|(name, place)| match place {
-                Place::Region(region) if is(name) => Some(*region),
-                Place::Region(_) | Place::Code(_) => None,
-            })
+    impl ReleaseArea {
+        /// The names the area is written out as. A folder's text states the
+        /// area when it writes one of these as whole words in any case, or one
+        /// of [`Self::codes`] as a whole word in capitals, dots allowed
+        /// ("U.S.A."): a lowercase code is usually prose ("for all of us"),
+        /// and a stray capital one ("LET IT BE") only matters for a release
+        /// from that area.
+        pub(crate) fn names(self) -> &'static [&'static str] {
+            match self {
+                Self::Country(country) => country.names(),
+                Self::Region(region) => region.writings().0,
+            }
         }
 
-        /// Every name a catalog writes this region as: its MusicBrainz code,
-        /// and the country names Discogs gives it.
-        pub(crate) fn written_names(self) -> impl Iterator<Item = &'static str> {
-            MUSICBRAINZ_REGION_CODES
-                .iter()
-                .filter(move |(_, region)| *region == self)
-                .map(|(code, _)| *code)
-                .chain(
-                    DISCOGS_COUNTRIES
-                        .iter()
-                        .filter(move |(_, place)| matches!(place, Place::Region(r) if *r == self))
-                        .map(|(name, _)| *name),
-                )
+        /// The codes and abbreviations the area is written as.
+        pub(crate) fn codes(self) -> impl Iterator<Item = &'static str> {
+            let (code, abbreviations): (Option<Country>, &'static [&'static str]) = match self {
+                Self::Country(country) => (Some(country), &[]),
+                Self::Region(region) => (None, region.writings().1),
+            };
+            code.into_iter()
+                .flat_map(Country::codes)
+                .chain(abbreviations.iter().copied())
         }
     }
 
-    /// The codes MusicBrainz gives the areas it states releases in that ISO
-    /// 3166-1 does not assign, from the same page as the rest of its codes:
-    /// <https://musicbrainz.org/statistics/countries>, captured 2026-09-25.
+    impl Region {
+        /// The region's names and abbreviations.
+        fn writings(self) -> (&'static [&'static str], &'static [&'static str]) {
+            REGION_WRITINGS
+                .iter()
+                .find(|(region, _, _)| *region == self)
+                .map(|(_, names, codes)| (*names, *codes))
+                .expect("every region has a row of writings")
+        }
+    }
+
+    /// Each region's written names and abbreviations. Not the catalog tables
+    /// below: a catalog's own code (`XE`) is not something a folder writes.
+    const REGION_WRITINGS: &[(Region, &[&str], &[&str])] = &[
+        (Region::Europe, &["Europe"], &["EU", "EEC", "EC"]),
+        (Region::Worldwide, &["Worldwide"], &[]),
+        (Region::Africa, &["Africa"], &[]),
+        (Region::Asia, &["Asia"], &[]),
+        (Region::MiddleEast, &["Middle East"], &[]),
+        (Region::SouthEastAsia, &["South East Asia", "Southeast Asia"], &[]),
+        (Region::CentralAmerica, &["Central America"], &[]),
+        (Region::SouthAmerica, &["South America"], &[]),
+        (Region::NorthAmerica, &["North America"], &[]),
+        (
+            Region::NorthAndSouthAmerica,
+            &["North and South America", "North & South America"],
+            &[],
+        ),
+        (Region::Australasia, &["Australasia"], &[]),
+        (Region::SouthPacific, &["South Pacific"], &[]),
+        (Region::Scandinavia, &["Scandinavia"], &[]),
+        (Region::Benelux, &["Benelux"], &[]),
+        (Region::GulfCooperationCouncil, &["Gulf Cooperation Council"], &["GCC"]),
+        (Region::UkAndEurope, &["UK & Europe"], &[]),
+        (Region::UkAndIreland, &["UK & Ireland"], &[]),
+        (Region::UkAndUs, &["UK & US"], &[]),
+        (Region::UkAndFrance, &["UK & France"], &[]),
+        (Region::UkAndGermany, &["UK & Germany"], &[]),
+        (Region::UkEuropeAndUs, &["UK, Europe & US"], &[]),
+        (Region::UkEuropeAndJapan, &["UK, Europe & Japan"], &[]),
+        (Region::UkEuropeAndIsrael, &["UK, Europe & Israel"], &[]),
+        (Region::UsaAndCanada, &["USA & Canada"], &[]),
+        (Region::UsaAndEurope, &["USA & Europe"], &[]),
+        (Region::UsaCanadaAndEurope, &["USA, Canada & Europe"], &[]),
+        (Region::UsaCanadaAndUk, &["USA, Canada & UK"], &[]),
+        (Region::GermanyAndSwitzerland, &["Germany & Switzerland"], &[]),
+        (
+            Region::GermanyAustriaAndSwitzerland,
+            &["Germany, Austria & Switzerland"],
+            &[],
+        ),
+        (Region::FranceAndBenelux, &["France & Benelux"], &[]),
+        (Region::CzechRepublicAndSlovakia, &["Czech Republic & Slovakia"], &[]),
+        (Region::RussiaAndCis, &["Russia & CIS"], &[]),
+        (Region::AustraliaAndNewZealand, &["Australia & New Zealand"], &[]),
+        (Region::SingaporeAndMalaysia, &["Singapore & Malaysia"], &[]),
+        (
+            Region::SingaporeMalaysiaAndHongKong,
+            &["Singapore, Malaysia & Hong Kong"],
+            &[],
+        ),
+        (
+            Region::SingaporeMalaysiaHongKongAndThailand,
+            &["Singapore, Malaysia, Hong Kong & Thailand"],
+            &[],
+        ),
+        (Region::HongKongAndThailand, &["Hong Kong & Thailand"], &[]),
+        (Region::SovietUnion, &["Soviet Union"], &["USSR"]),
+        (Region::Yugoslavia, &["Yugoslavia"], &[]),
+        (
+            Region::Czechoslovakia,
+            &["Czechoslovakia", "Czech and Slovak Federative Republic"],
+            &[],
+        ),
+        (
+            Region::EastGermany,
+            &["East Germany", "German Democratic Republic"],
+            &["GDR", "DDR"],
+        ),
+        (Region::SerbiaAndMontenegro, &["Serbia and Montenegro"], &[]),
+        (Region::NetherlandsAntilles, &["Netherlands Antilles"], &[]),
+        (Region::Kosovo, &["Kosovo"], &[]),
+        (Region::Abkhazia, &["Abkhazia"], &[]),
+        (Region::AustriaHungary, &["Austria-Hungary"], &[]),
+        (Region::OttomanEmpire, &["Ottoman Empire"], &[]),
+        (Region::Bohemia, &["Bohemia"], &[]),
+        (
+            Region::ProtectorateOfBohemiaAndMoravia,
+            &["Protectorate of Bohemia and Moravia"],
+            &[],
+        ),
+        (Region::KoreaBefore1945, &["Korea (pre-1945)"], &[]),
+        (Region::SouthVietnam, &["South Vietnam"], &[]),
+        (Region::Indochina, &["Indochina", "French Indochina"], &[]),
+        (Region::DutchEastIndies, &["Dutch East Indies"], &[]),
+        (Region::BelgianCongo, &["Belgian Congo"], &[]),
+        (Region::Zaire, &["Zaire"], &[]),
+        (Region::Rhodesia, &["Rhodesia"], &[]),
+        (Region::SouthernRhodesia, &["Southern Rhodesia"], &[]),
+        (Region::SouthWestAfrica, &["South West Africa"], &[]),
+        (Region::Dahomey, &["Dahomey"], &[]),
+        (Region::UpperVolta, &["Upper Volta"], &[]),
+        (Region::Zanzibar, &["Zanzibar"], &[]),
+        (Region::ItalianEastAfrica, &["Italian East Africa"], &[]),
+    ];
+
+    /// MusicBrainz's codes for areas ISO 3166-1 does not assign, from
+    /// <https://musicbrainz.org/statistics/countries>.
     const MUSICBRAINZ_REGION_CODES: &[(&str, Region)] = &[
         ("AN", Region::NetherlandsAntilles),
         ("CS", Region::SerbiaAndMontenegro),
@@ -187,17 +290,10 @@ desktop_only! {
         }
     }
 
-    /// Every country name Discogs states a release in, and the area it
-    /// names. Source: every distinct `<country>` value of the Discogs
-    /// releases data dump `discogs_20260901_releases.xml.gz`
-    /// (<https://data.discogs.com/?prefix=data/2026/>), read 2026-09-25; the
-    /// download ended after 16,930,842 of its releases. Ordered
-    /// case-insensitively.
-    ///
-    /// A name for a country that no longer exists but whose territory one
-    /// current country is — "Zaire", "Upper Volta" — is kept as its own
-    /// region: the record states the name the sleeve prints, and a current
-    /// country's name would be a different fact.
+    /// Every country name Discogs states a release in, and the area it names,
+    /// from the `<country>` values of its `discogs_20260901_releases.xml.gz`
+    /// dump, ordered case-insensitively. A former country ("Zaire") stays its
+    /// own region, since the record states the name the sleeve prints.
     const DISCOGS_COUNTRIES: &[(&str, Place)] = &[
         ("Abkhazia", Place::Region(Region::Abkhazia)),
         ("Afghanistan", Place::Code("AF")),
@@ -553,6 +649,23 @@ mod tests {
                     .iter()
                     .any(|(_, place)| matches!(place, Place::Region(r) if r == region));
             assert!(named, "{region:?}");
+        }
+    }
+
+    /// Every region has one row of writings with a name, and capital
+    /// abbreviations.
+    #[test]
+    fn every_region_is_written_somehow() {
+        for region in Region::ALL {
+            let rows = REGION_WRITINGS
+                .iter()
+                .filter(|(r, _, _)| r == region)
+                .count();
+            assert_eq!(rows, 1, "{region:?}");
+            assert!(!region.writings().0.is_empty(), "{region:?}");
+            for code in region.writings().1 {
+                assert!(code.chars().all(|c| c.is_ascii_uppercase()), "{code}");
+            }
         }
     }
 

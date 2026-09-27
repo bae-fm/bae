@@ -1,10 +1,8 @@
-//! The countries of ISO 3166-1, and the names they are written out as.
+//! The countries of ISO 3166-1, each with the English names and
+//! abbreviations it is written as.
 //!
-//! MusicBrainz states where a pressing was released as the country's alpha-2
-//! code — `JP` — and Discogs and a folder write it out — `Japan`. A
-//! [`Country`] is one of the standard's officially assigned codes; the names
-//! beside each code are the English forms a folder is as likely to print,
-//! which ranking looks for in a folder's text.
+//! MusicBrainz states a country as its alpha-2 code — `JP` — and Discogs and a
+//! folder write it out — `Japan`.
 //!
 //! A value outside the standard — MusicBrainz's `XE` for a Europe-wide
 //! release, a state that no longer exists — is no country; it is a
@@ -31,10 +29,16 @@ impl Country {
         COUNTRIES[self.0 as usize].code
     }
 
-    /// The English names the country is written out as: the standard's own
-    /// first, then the forms in common use.
+    /// The English names the country is written out as, the standard's own
+    /// first.
     pub fn names(self) -> &'static [&'static str] {
         COUNTRIES[self.0 as usize].names
+    }
+
+    /// Its alpha-2 code, then the abbreviations in common use.
+    pub fn codes(self) -> impl Iterator<Item = &'static str> {
+        let row = &COUNTRIES[self.0 as usize];
+        std::iter::once(row.code).chain(row.abbreviations.iter().copied())
     }
 
     /// Every country, in code order.
@@ -64,21 +68,21 @@ impl<'de> serde::Deserialize<'de> for Country {
     }
 }
 
-/// One row of the table: a code and the English names it is written out as.
-/// The first name is the standard's own; any after it are forms in common use
-/// that a folder is as likely to print. Spacing and punctuation are not a
-/// form of their own — `Viet Nam` is looked up the same as `Vietnam`.
+/// One row of the table. Spacing and punctuation are not a form of their
+/// own: `Viet Nam` is looked up the same as `Vietnam`.
 struct CountryRow {
     code: &'static str,
     names: &'static [&'static str],
+    abbreviations: &'static [&'static str],
 }
 
-/// Shorthand for one row of the table.
+/// One row: the code, its names, and after a `;` any abbreviations.
 macro_rules! country {
-    ($code:literal, $($name:literal),+ $(,)?) => {
+    ($code:literal, $($name:literal),+ $(; $($abbreviation:literal),+)? $(,)?) => {
         CountryRow {
             code: $code,
             names: &[$($name),+],
+            abbreviations: &[$($($abbreviation),+)?],
         }
     };
 }
@@ -86,7 +90,7 @@ macro_rules! country {
 /// ISO 3166-1 alpha-2, in code order.
 static COUNTRIES: &[CountryRow] = &[
     country!("AD", "Andorra"),
-    country!("AE", "United Arab Emirates", "UAE"),
+    country!("AE", "United Arab Emirates"; "UAE"),
     country!("AF", "Afghanistan"),
     country!("AG", "Antigua and Barbuda"),
     country!("AI", "Anguilla"),
@@ -145,7 +149,13 @@ static COUNTRIES: &[CountryRow] = &[
     country!("CX", "Christmas Island"),
     country!("CY", "Cyprus"),
     country!("CZ", "Czechia", "Czech Republic"),
-    country!("DE", "Germany"),
+    country!(
+        "DE",
+        "Germany",
+        "West Germany",
+        "Western Germany",
+        "W. Germany"
+    ),
     country!("DJ", "Djibouti"),
     country!("DK", "Denmark"),
     country!("DM", "Dominica"),
@@ -165,7 +175,7 @@ static COUNTRIES: &[CountryRow] = &[
     country!("FO", "Faroe Islands"),
     country!("FR", "France"),
     country!("GA", "Gabon"),
-    country!("GB", "United Kingdom", "UK", "Great Britain"),
+    country!("GB", "United Kingdom", "Great Britain", "England"; "UK"),
     country!("GD", "Grenada"),
     country!("GE", "Georgia"),
     country!("GF", "French Guiana"),
@@ -254,7 +264,7 @@ static COUNTRIES: &[CountryRow] = &[
     country!("NF", "Norfolk Island"),
     country!("NG", "Nigeria"),
     country!("NI", "Nicaragua"),
-    country!("NL", "Netherlands"),
+    country!("NL", "Netherlands", "Holland"),
     country!("NO", "Norway"),
     country!("NP", "Nepal"),
     country!("NR", "Nauru"),
@@ -321,7 +331,7 @@ static COUNTRIES: &[CountryRow] = &[
     country!("UA", "Ukraine"),
     country!("UG", "Uganda"),
     country!("UM", "United States Minor Outlying Islands"),
-    country!("US", "United States", "USA", "United States of America"),
+    country!("US", "United States", "United States of America"; "USA"),
     country!("UY", "Uruguay"),
     country!("UZ", "Uzbekistan"),
     country!("VA", "Holy See", "Vatican City"),
@@ -352,7 +362,10 @@ mod tests {
     fn no_spelling_names_two_countries() {
         let mut seen: HashMap<String, &str> = HashMap::new();
         for country in COUNTRIES {
-            for spelling in std::iter::once(country.code).chain(country.names.iter().copied()) {
+            for spelling in std::iter::once(country.code)
+                .chain(country.names.iter().copied())
+                .chain(country.abbreviations.iter().copied())
+            {
                 let key = squash(spelling);
                 assert!(!key.is_empty(), "{spelling} squashes to nothing");
                 if let Some(other) = seen.insert(key, country.code) {
@@ -383,6 +396,19 @@ mod tests {
                 "../../test-fixtures/pressing-vocabulary/iso-3166-1-alpha-2.txt"
             ))
         );
+    }
+
+    /// Abbreviations are matched in capitals, so they are written in them.
+    #[test]
+    fn every_abbreviation_is_capital_letters() {
+        for country in COUNTRIES {
+            for abbreviation in country.abbreviations {
+                assert!(
+                    abbreviation.chars().all(|c| c.is_ascii_uppercase()),
+                    "{abbreviation}"
+                );
+            }
+        }
     }
 
     #[test]
