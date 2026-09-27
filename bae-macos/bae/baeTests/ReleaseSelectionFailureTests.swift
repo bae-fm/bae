@@ -271,7 +271,7 @@ extension ReleaseSelectionFailureTests {
         }
         #expect(observations.filter(carriesMessage).count == 1)
         let errorLine = try #require(observations.first(where: carriesMessage))
-        let catalog = try #require(pressing.lead.catalogNumber)
+        let catalog = try #require(pressing.lead.labels.first?.catalogNumber)
         let facts = try #require(
             observations.first { $0.text.contains(catalog) }
         )

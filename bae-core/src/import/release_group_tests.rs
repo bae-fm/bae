@@ -15,8 +15,7 @@ pub(super) fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) ->
         title: "Album Title".to_string(),
         artist: Some("Artist Name".to_string()),
         year,
-        label: None,
-        catalog_number: None,
+        labels: Vec::new(),
         area: None,
         status: None,
         packaging: None,
@@ -470,10 +469,10 @@ fn a_link_combines_the_album_without_pairing_pressings() {
 fn label_spelling_neither_blocks_nor_fabricates_identity() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.barcodes = vec!["012345678905".to_string()];
-    one.label = Some("Label Name Records".to_string());
+    one.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Name Records"), None)];
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
     other.barcodes = vec!["012345678905".to_string()];
-    other.label = Some("LN".to_string());
+    other.labels = vec![crate::pressing::ReleaseLabel::of(Some("LN"), None)];
 
     let groups = grouped(vec![one, other]);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
@@ -481,11 +480,9 @@ fn label_spelling_neither_blocks_nor_fabricates_identity() {
 
     // An agreeing label does not make a shared catalog number a pair.
     let mut one = mb("mb-2", Some("group-y"), None);
-    one.catalog_number = Some("CAT-7".to_string());
-    one.label = Some("Label Name Records".to_string());
+    one.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Name Records"), Some("CAT-7"))];
     let mut other = discogs("dg-2", Some("master-8"), None);
-    other.catalog_number = Some("CAT-7".to_string());
-    other.label = Some("Label Name".to_string());
+    other.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Name"), Some("CAT-7"))];
     let groups = grouped(vec![one, other]);
     assert_eq!(rows(&groups), vec![vec!["mb-2"], vec!["dg-2"]]);
 }
@@ -513,10 +510,10 @@ fn equivalent_representations_pair_and_distinct_identifiers_do_not() {
     // catalog number's letters and digits are its identity.
     let mut one = mb("mb-2", Some("group-y"), Some(1992));
     one.barcodes = vec!["5051961234567".to_string()];
-    one.catalog_number = Some("CAT-72".to_string());
+    one.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-72"))];
     let mut other = discogs("dg-2", Some("master-8"), Some(1992));
     other.barcodes = vec!["12345678".to_string()];
-    other.catalog_number = Some("CAT-7 2".to_string());
+    other.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7 2"))];
     let groups = grouped(vec![one, other]);
     assert_eq!(rows(&groups), vec![vec!["mb-2"], vec!["dg-2"]]);
 }
@@ -557,11 +554,11 @@ fn meaningful_conflicts_prevent_inferred_pairs() {
 #[test]
 fn a_file_release_is_not_the_cd_whose_catalog_number_it_carries() {
     let mut cd = mb("mb-1", Some("group-x"), Some(2013));
-    cd.catalog_number = Some("CAT-7".to_string());
+    cd.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     cd.area = Some(crate::pressing::area("JP"));
     cd.media = StatedMedia::PerMedium(vec![Some(Medium::Cd)]);
     let mut download = discogs("dg-1", Some("master-7"), Some(2013));
-    download.catalog_number = Some("CAT-7".to_string());
+    download.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     download.area = crate::pressing::ReleaseArea::discogs("Japan");
     download.media = StatedMedia::Formats(vec![StatedFormat {
         medium: Some(Medium::Digital),
@@ -614,13 +611,13 @@ fn reissues_pair_by_what_tells_them_apart_whatever_the_order() {
 fn an_ambiguous_member_settles_alone_but_its_rivals_stay_open() {
     let mut first = mb("mb-first", Some("group-x"), Some(1992));
     first.barcodes = vec!["012345678905".to_string()];
-    first.catalog_number = Some("CAT-7".to_string());
+    first.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     let mut second = mb("mb-second", Some("group-x"), Some(1993));
     second.barcodes = vec!["012345678905".to_string(), "5051961234567".to_string()];
-    second.catalog_number = Some("CAT-7".to_string());
+    second.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     let mut contested = discogs("dg-contested", Some("master-7"), None);
     contested.barcodes = vec!["012345678905".to_string()];
-    contested.catalog_number = Some("CAT-7".to_string());
+    contested.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     // Shares only the second's other barcode, and less else than the
     // contested record does, so its pair is taken at a level below.
     let mut below = discogs("dg-below", Some("master-7"), Some(1993));
@@ -711,13 +708,13 @@ fn releases_sharing_a_barcode_are_one_pressing() {
 #[test]
 fn releases_sharing_a_catalog_number_are_not_one_pressing() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
-    one.catalog_number = Some("CAT-7 ".to_string());
+    one.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7 "))];
     one.area = Some(crate::pressing::area("JP"));
-    one.label = Some("Label Name".to_string());
+    one.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Name"), None)];
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
-    other.catalog_number = Some("cat-7".to_string());
+    other.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("cat-7"))];
     other.area = crate::pressing::ReleaseArea::discogs("Japan");
-    other.label = Some("Label Name".to_string());
+    other.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Name"), None)];
 
     let groups = grouped(vec![one, other]);
     assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
@@ -727,9 +724,9 @@ fn releases_sharing_a_catalog_number_are_not_one_pressing() {
 #[test]
 fn a_catalog_number_alone_pairs_nothing() {
     let mut one = mb("mb-1", Some("group-x"), None);
-    one.catalog_number = Some("CAT-7".to_string());
+    one.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     let mut other = discogs("dg-1", Some("master-7"), None);
-    other.catalog_number = Some("CAT-7".to_string());
+    other.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
 
     let groups = grouped(vec![one, other]);
     assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
@@ -740,10 +737,10 @@ fn a_catalog_number_alone_pairs_nothing() {
 #[test]
 fn a_shared_catalog_number_cannot_bypass_incompatible_barcodes() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
-    one.catalog_number = Some("CAT-7".to_string());
+    one.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     one.barcodes = vec!["012345678905".to_string()];
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
-    other.catalog_number = Some("CAT-7".to_string());
+    other.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     other.barcodes = vec!["5051961234567".to_string()];
 
     let groups = grouped(vec![one, other]);
@@ -758,11 +755,11 @@ fn a_title_spelling_difference_does_not_block_a_barcode_pair() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.title = "Album Title: Subtitle".to_string();
     one.barcodes = vec!["012345678905".to_string()];
-    one.catalog_number = Some("CAT-7".to_string());
+    one.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
     other.title = "Album Title - Subtitle".to_string();
     other.barcodes = vec!["012345678905".to_string()];
-    other.catalog_number = Some("CAT-7".to_string());
+    other.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
 
     let groups = grouped(vec![one, other]);
     assert_eq!(groups.len(), 1);
@@ -794,13 +791,13 @@ fn a_title_spelling_difference_does_not_block_a_barcode_pair() {
 #[test]
 fn a_barcode_pair_outranks_a_catalog_pair_for_the_same_release() {
     let mut catalog_only = mb("mb-catalog", Some("group-x"), Some(1992));
-    catalog_only.catalog_number = Some("CAT-7".to_string());
+    catalog_only.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     let mut barcoded = mb("mb-barcode", Some("group-x"), Some(1994));
     barcoded.barcodes = vec!["012345678905".to_string()];
-    barcoded.catalog_number = Some("CAT-7".to_string());
+    barcoded.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     let mut other = discogs("dg-1", Some("master-7"), Some(1994));
     other.barcodes = vec!["012345678905".to_string()];
-    other.catalog_number = Some("CAT-7".to_string());
+    other.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
 
     let groups = grouped(vec![catalog_only, barcoded, other]);
     assert_eq!(
@@ -849,11 +846,11 @@ fn year_span_is_none_when_no_pressing_carries_a_year() {
 #[test]
 fn the_card_label_is_the_first_pressing_that_names_one() {
     let mut unlabelled = mb("rel-1", Some("group-x"), Some(1992));
-    unlabelled.label = None;
+    unlabelled.labels = Vec::new();
     let mut labelled = mb("rel-2", Some("group-x"), Some(1994));
-    labelled.label = Some("Label Name".to_string());
+    labelled.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Name"), None)];
     let mut later = mb("rel-3", Some("group-x"), Some(2012));
-    later.label = Some("Reissue Records".to_string());
+    later.labels = vec![crate::pressing::ReleaseLabel::of(Some("Reissue Records"), None)];
 
     let groups = grouped(vec![unlabelled, labelled, later]);
     assert_eq!(groups[0].label.as_deref(), Some("Label Name"));

@@ -63,6 +63,9 @@ final class ReleaseMetadataEditSession {
             setField: { [weak self] field, value in
                 self?.setField(field, value)
             },
+            setLabels: { [weak self] labels in
+                self?.setLabels(labels)
+            },
             setPressingFact: { [weak self] fact in
                 self?.setPressingFact(fact)
             },
@@ -183,10 +186,15 @@ final class ReleaseMetadataEditSession {
         case .albumTitle: form.albumTitle = value
         case .albumYear: form.albumYear = value
         case .pressingYear: form.pressing.year = value
-        case .label: form.pressing.label = value
-        case .catalogNumber: form.pressing.catalogNumber = value
         case .barcode: form.pressing.barcode = value
         }
+        formRevision += 1
+        hasChanges = true
+        failureMessage = nil
+    }
+
+    private func setLabels(_ labels: [BridgeRawLabelEdit]) {
+        form.pressing.labels = labels
         formRevision += 1
         hasChanges = true
         failureMessage = nil

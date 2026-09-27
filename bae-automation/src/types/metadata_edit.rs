@@ -13,8 +13,8 @@ pub struct AutomationReleaseUserEdit {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationPressingEdit {
     pub year: Option<i32>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
+    #[schemars(schema_with = "labels_schema")]
+    pub labels: Vec<bae_core::pressing::ReleaseLabel>,
     pub barcode: Option<String>,
     #[schemars(schema_with = "pressing_facts_schema")]
     pub facts: bae_core::pressing::PressingFacts,

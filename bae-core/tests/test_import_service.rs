@@ -17,6 +17,7 @@ use bae_core::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbRecording, MbRelation, MbReleaseResponse, MbTrack,
     MbUrlResource, MbWork,
 };
+use bae_core::pressing::ReleaseLabel;
 use bae_core::sync::CloudCipher;
 use coven::EncryptionService;
 use coven::InMemoryCloudHome;
@@ -288,7 +289,7 @@ fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
     let tracks: Vec<(&str, &str)> = tracks.iter().map(|title| (*title, "3:00")).collect();
     DiscogsRelease {
         country: None,
-        label: vec![],
+        labels: vec![],
         ..support::discogs_test_release(&synthetic_release_id(title), title, &tracks)
     }
 }

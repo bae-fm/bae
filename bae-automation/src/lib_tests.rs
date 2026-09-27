@@ -98,8 +98,7 @@ mod release_metadata_update_input {
             album_year: None,
             pressing: AutomationPressingEdit {
                 year: None,
-                label: None,
-                catalog_number: None,
+                labels: Vec::new(),
                 barcode: None,
                 facts: Default::default(),
             },
@@ -295,8 +294,10 @@ mod identify_mirrors {
             title: "Album Title".to_string(),
             artist: Some("Artist Name".to_string()),
             year: Some(1999),
-            label: Some("Label Name".to_string()),
-            catalog_number: Some("CAT-1".to_string()),
+            labels: vec![bae_core::pressing::ReleaseLabel::of(
+                Some("Label A"),
+                Some("AB 100"),
+            )],
             area: Some(bae_core::pressing::ReleaseArea::Country(
                 bae_core::pressing::Country::from_code("US").unwrap(),
             )),

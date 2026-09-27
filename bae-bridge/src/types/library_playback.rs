@@ -304,8 +304,8 @@ pub struct BridgeRelease {
     /// What a list of the album's releases calls this one.
     pub name: BridgeReleaseName,
     pub year: Option<i32>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
+    /// Every label the release is on, each with its catalog number.
+    pub labels: Vec<crate::types::BridgeReleaseLabel>,
     /// What the pressing is: where it was released, its media, status,
     /// packaging and Discogs details.
     pub facts: BridgePressingFacts,

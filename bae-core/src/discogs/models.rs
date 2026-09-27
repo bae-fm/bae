@@ -21,9 +21,9 @@ pub struct DiscogsRelease {
     pub year: Option<u32>,
     pub formats: Vec<DiscogsFormat>,
     pub country: Option<String>,
-    pub label: Vec<String>,
+    /// Every label with its catalog number, in Discogs's order.
+    pub labels: Vec<crate::pressing::ReleaseLabel>,
     pub covers: Vec<RemoteCover>,
-    pub catno: Option<String>,
     pub barcode: Option<String>,
     pub artists: Vec<DiscogsArtist>,
     pub extraartists: Option<Vec<DiscogsRoleArtist>>,

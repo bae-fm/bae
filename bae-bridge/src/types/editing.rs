@@ -2,8 +2,8 @@
 use super::*;
 use super::{
     BridgeDiscogsDetail, BridgeImageRef, BridgeMediaCount, BridgePackaging, BridgePressingFacts,
-    BridgeReleaseArea, BridgeReleaseStatus, BridgeSourceAudioLayout, BridgeSourceAudioSummary,
-    BridgeTrackSide,
+    BridgeReleaseArea, BridgeReleaseLabel, BridgeReleaseStatus, BridgeSourceAudioLayout,
+    BridgeSourceAudioSummary, BridgeTrackSide,
 };
 
 #[cfg(feature = "desktop")]
@@ -20,8 +20,8 @@ pub struct BridgeReleaseDetail {
     pub title: String,
     pub artist: Option<String>,
     pub year: Option<i32>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
+    /// Every label the release is on, each with its catalog number.
+    pub labels: Vec<BridgeReleaseLabel>,
     pub barcode: Option<String>,
     pub facts: BridgePressingFacts,
     pub track_count: u32,
@@ -100,12 +100,11 @@ pub struct BridgeReleaseUserEdit {
 
 /// Mirror of `bae_core::pressing::Pressing` as an edit claims it: a
 /// release's identifiers and year, and what it is. Per-field `None` means
-/// "this field isn't set".
+/// "this field isn't set"; no labels means none is.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePressingEdit {
     pub year: Option<i32>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
+    pub labels: Vec<BridgeReleaseLabel>,
     pub barcode: Option<String>,
     pub facts: BridgePressingFacts,
 }
@@ -638,8 +637,6 @@ pub enum BridgeCandidateEditField {
     AlbumTitle,
     AlbumYear,
     PressingYear,
-    Label,
-    CatalogNumber,
     Barcode,
 }
 
@@ -651,8 +648,6 @@ mirror_enum! {
         AlbumTitle,
         AlbumYear,
         PressingYear,
-        Label,
-        CatalogNumber,
         Barcode,
     },
 }
@@ -774,14 +769,21 @@ pub struct BridgeReleaseEditDisplayContext {
 /// Raw pressing fields as the editor holds them. Mirrors
 /// `bae_core::import::RawPressingEdit`: each text field is the text the user
 /// typed, empty meaning "not set"; `year` is text (parsed at shape time).
-/// `facts` is what the person chose with the form's pickers.
+/// `labels` is one row per label, blank rows included. `facts` is what the
+/// person chose with the form's pickers.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRawPressingEdit {
     pub year: String,
-    pub label: String,
-    pub catalog_number: String,
+    pub labels: Vec<BridgeRawLabelEdit>,
     pub barcode: String,
     pub facts: BridgePressingFacts,
+}
+
+/// One label row of the editor. Mirrors `bae_core::import::RawLabelEdit`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeRawLabelEdit {
+    pub name: String,
+    pub catalog_number: String,
 }
 
 /// One raw track row from the editor. Mirrors

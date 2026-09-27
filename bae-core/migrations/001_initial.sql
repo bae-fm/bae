@@ -192,8 +192,10 @@ CREATE TABLE IF NOT EXISTS releases (
     album_id TEXT NOT NULL,
     release_name TEXT,
     year INTEGER,
-    label TEXT,
-    catalog_number TEXT,
+    -- Every label the pressing is on, in its source's order: a JSON array of
+    -- {"name", "catalog_number"} objects, each stating one or both.
+    labels             TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(labels) AND json_type(labels) = 'array'),
     barcode TEXT,
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or
     -- one of the regions no current code names (`crate::pressing::Region`'s
@@ -982,8 +984,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit (
     album_title    TEXT NOT NULL,
     album_year     TEXT NOT NULL,
     year           TEXT NOT NULL,
-    label          TEXT NOT NULL,
-    catalog_number TEXT NOT NULL,
+    -- The label rows as the form holds them: a JSON array of
+    -- {"name", "catalog_number"} objects, each as typed, empty meaning unset.
+    labels         TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(labels) AND json_type(labels) = 'array'),
     barcode        TEXT NOT NULL,
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or
     -- one of the regions no current code names (`crate::pressing::Region`'s
@@ -1456,8 +1460,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     title               TEXT NOT NULL,
     artist              TEXT,
     year                INTEGER,
-    label               TEXT,
-    catalog_number      TEXT,
+    -- Every label the pressing is on, in its source's order: a JSON array of
+    -- {"name", "catalog_number"} objects, each stating one or both.
+    labels             TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(labels) AND json_type(labels) = 'array'),
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or
     -- one of the regions no current code names (`crate::pressing::Region`'s
     -- keys). Never both.
@@ -1626,8 +1632,10 @@ CREATE TABLE IF NOT EXISTS source_release (
     album_year         INTEGER,
     -- The pressing's facts, resolved the same way.
     year               INTEGER,
-    label              TEXT,
-    catalog_number     TEXT,
+    -- Every label the pressing is on, in its source's order: a JSON array of
+    -- {"name", "catalog_number"} objects, each stating one or both.
+    labels             TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(labels) AND json_type(labels) = 'array'),
     barcode            TEXT,
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or
     -- one of the regions no current code names (`crate::pressing::Region`'s

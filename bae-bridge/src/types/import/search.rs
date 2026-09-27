@@ -16,8 +16,9 @@ pub struct BridgeMetadataResult {
     pub source: BridgeCatalog,
     pub release_id: String,
     pub year: Option<i32>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
+    /// The labels the record states, each with its catalog number, in the
+    /// record's order.
+    pub labels: Vec<BridgeReleaseLabel>,
     /// What the record says the pressing is: where it was released, its
     /// media, status, packaging and Discogs details.
     pub facts: BridgePressingFacts,

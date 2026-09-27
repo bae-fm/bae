@@ -81,8 +81,7 @@ impl BridgeRelease {
             summary,
             name,
             year,
-            label,
-            catalog_number,
+            labels,
             facts,
             total_duration_ms,
             tracks,
@@ -118,8 +117,10 @@ impl BridgeRelease {
             album_id,
             name: crate::types::BridgeReleaseName::from_core(name),
             year,
-            label,
-            catalog_number,
+            labels: labels
+                .into_iter()
+                .map(crate::types::BridgeReleaseLabel::from_core)
+                .collect(),
             media_terms,
             pressing_summary: crate::types::bridge_pressing_summary(facts.clone()),
             pressing_details: crate::types::bridge_pressing_details(facts.clone()),

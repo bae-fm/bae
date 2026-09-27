@@ -598,8 +598,7 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
     let committed = parsed.release.pressing;
 
     assert_eq!(detail.year, committed.year);
-    assert_eq!(detail.label, committed.label);
-    assert_eq!(detail.catalog_number, committed.catalog_number);
+    assert_eq!(detail.labels, committed.labels);
     assert_eq!(detail.facts, committed.facts);
     assert_eq!(detail.barcode, committed.barcode);
     assert_eq!(detail.facts.status, Some(crate::pressing::ReleaseStatus::Promotion));
@@ -904,31 +903,5 @@ fn a_discogs_search_result_reads_its_format_entries() {
     );
 }
 
-/// A catalog-number lookup answers with the releases under that number and
-/// no other, however either writes its spacing, case or hyphens: the
-/// catalogs' own searches match the number inside longer ones.
-#[test]
-fn a_catalog_number_lookup_keeps_only_its_number() {
-    let numbered = |release_id: &str, number: Option<&str>| MetadataResult {
-        catalog_number: number.map(str::to_string),
-        ..MetadataResult::for_test(Catalog::Discogs, release_id, None)
-    };
-    let mut results = vec![
-        numbered("exact", Some("LBL 719")),
-        numbered("hyphenated", Some("lbl-719")),
-        numbered("longer", Some("LBL 1719")),
-        numbered("prefixed", Some("XLBL-719")),
-        numbered("unnumbered", None),
-    ];
-    SearchQuery::CatalogNumber {
-        catalog_number: "LBL 719".to_string(),
-    }
-    .keep_answers(&mut results);
-    assert_eq!(
-        results
-            .iter()
-            .map(|result| result.release_id.as_str())
-            .collect::<Vec<_>>(),
-        vec!["exact", "hyphenated"]
-    );
-}
+#[path = "search_tests/labels.rs"]
+mod labels;

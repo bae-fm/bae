@@ -238,7 +238,7 @@ pub use types::{
     ArtistCredit, ArtistStanding, ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField,
     CandidateTrack, Catalog, CatalogAvailability, CatalogPage, CreditResolution, DraftFieldEdit,
     EditValidationError, ExistingArtist, MetadataProvenance, MetadataRef, PressingFactEdit,
-    RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
+    RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
     ReleaseRecord, ReleaseUserEdit, ResolvedCredit, SourceAvailability, TrackArtistAssignments,
     TrackUserEdit,
 };

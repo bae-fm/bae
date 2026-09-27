@@ -234,10 +234,14 @@ mirror_enum! {
         AlbumTitle,
         AlbumYear,
         PressingYear,
-        Label,
-        CatalogNumber,
         Barcode,
     },
+}
+
+mirror_struct! {
+    AutomationLabelRow = bae_core::import::RawLabelEdit,
+    into_core: pub(crate) fn,
+    fields: { name, catalog_number },
 }
 
 mirror_enum! {
@@ -330,8 +334,7 @@ impl AutomationMetadataResult {
             title: result.title,
             artist: result.artist,
             year: result.year,
-            label: result.label,
-            catalog_number: result.catalog_number,
+            labels: result.labels,
             facts,
             barcodes: result.barcodes,
             cover_art: result.cover_art.map(AutomationRemoteCover::from_core),
@@ -400,8 +403,7 @@ impl AutomationReleaseDetail {
             title: detail.title,
             artist: detail.artist,
             year: detail.year,
-            label: detail.label,
-            catalog_number: detail.catalog_number,
+            labels: detail.labels,
             barcode: detail.barcode,
             facts: detail.facts,
             track_count: detail.track_count,
@@ -423,7 +425,7 @@ mirror_struct! {
     AutomationPressingEdit = bae_core::pressing::Pressing,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    fields: { year, label, catalog_number, barcode, facts },
+    fields: { year, labels, barcode, facts },
 }
 
 /// Converts editable values and their artist assignments across the automation boundary.
@@ -612,8 +614,7 @@ impl AutomationRelease {
             summary: AutomationReleaseSummary::from_core(release.summary),
             name: AutomationReleaseName::from_core(release.name),
             year: release.year,
-            label: release.label,
-            catalog_number: release.catalog_number,
+            labels: release.labels,
             facts: release.facts,
             total_duration_ms: release.total_duration_ms,
             tracks: release

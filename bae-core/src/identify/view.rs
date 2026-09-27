@@ -33,6 +33,7 @@ use super::state::{
 use crate::db::LibraryStatus;
 use crate::import::release_group::{group_formed_rows, group_results, Judgements, ReleaseGroup};
 use crate::import::Catalog;
+use crate::pressing::ReleaseLabel;
 use crate::signals::{ArtworkScan, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin};
 use crate::util::text::squash;
 use std::collections::HashSet;
@@ -597,7 +598,8 @@ fn catalog_agreements(findings: &Findings, text: &CandidateText) -> Vec<CatalogA
         .iter()
         .zip(&findings.provenance)
         .filter(|(_, lookup)| !lookup.by_catalog)
-        .filter_map(|(result, _)| result.catalog_number.as_deref())
+        .flat_map(|(result, _)| &result.labels)
+        .filter_map(ReleaseLabel::catalog_number)
         .filter(|value| text.states(value) && seen.insert(squash(value)))
         .map(|value| CatalogAgreementView {
             discounted: text.is_struck_out(value),

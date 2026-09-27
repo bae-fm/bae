@@ -50,17 +50,15 @@ public struct ReleaseDetail: Identifiable {
         pressingDetails = PressingText.line(bridge.pressingDetails)
         // The play time ends the line, in the words core chose for it
         // ("39 min" / "1 hr, 18 min"); absent when no track reports a length.
-        compactMetadata = [
-            bridge.year.map { String($0) },
-            pressingSummary,
-            bridge.label,
-            bridge.catalogNumber,
-            pressingDetails,
-            bridge.totalDuration?.text,
-        ]
-        .compactMap { $0 }
-        .filter { !$0.isEmpty }
-        .joined(separator: QueueSummary.message("core.audio.list_separator"))
+        compactMetadata =
+            ([bridge.year.map { String($0) }, pressingSummary]
+            + bridge.labels.flatMap { [$0.name, $0.catalogNumber] }
+            + [pressingDetails, bridge.totalDuration?.text])
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(
+                separator: QueueSummary.message("core.audio.list_separator")
+            )
         totalDuration = bridge.totalDuration
         tracks = bridge.tracks.map(Track.init(from:))
         trackGroups = bridge.trackGroups.map(TrackGroup.init(from:))

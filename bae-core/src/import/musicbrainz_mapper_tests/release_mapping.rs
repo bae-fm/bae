@@ -488,11 +488,9 @@ fn track_without_recording_or_track_title_returns_err() {
 }
 
 /// The one MB → pressing projection: the release's own year (not the release
-/// group's), the first label's name and catalog number, the barcode, and
-/// what it is — its country, every medium, its status and packaging. The
-/// mapper, the picker detail, and a search result all read it.
+/// group's), every label with its catalog number, the barcode, and what it is.
 #[test]
-fn pressing_reads_year_first_label_barcode_and_every_fact() {
+fn pressing_reads_year_every_label_barcode_and_every_fact() {
     let mut response = make_response(vec![
         MbMedium {
             discs: vec![],
@@ -518,15 +516,15 @@ fn pressing_reads_year_first_label_barcode_and_every_fact() {
     response.label_info = vec![
         crate::musicbrainz::MbLabelInfo {
             label: Some(crate::musicbrainz::MbLabel {
-                name: Some("Label".to_string()),
+                name: Some("Label A".to_string()),
             }),
-            catalog_number: Some("LBL 9145".to_string()),
+            catalog_number: Some("AB 100".to_string()),
         },
         crate::musicbrainz::MbLabelInfo {
             label: Some(crate::musicbrainz::MbLabel {
-                name: Some("Reissue Label".to_string()),
+                name: Some("Label B".to_string()),
             }),
-            catalog_number: Some("RE-2".to_string()),
+            catalog_number: Some("CL 719".to_string()),
         },
     ];
     // The release group's first release predates this pressing; the pressing
@@ -539,8 +537,10 @@ fn pressing_reads_year_first_label_barcode_and_every_fact() {
         pressing,
         Pressing {
             year: Some(1971),
-            label: Some("Label".to_string()),
-            catalog_number: Some("LBL 9145".to_string()),
+            labels: vec![
+                crate::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+                crate::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+            ],
             barcode: Some("012345678905".to_string()),
             facts: crate::pressing::PressingFacts {
                 area: Some(crate::pressing::area("GB")),

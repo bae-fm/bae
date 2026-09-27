@@ -201,7 +201,7 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
 const STATE_COLUMNS: &str = "content_hash, folder_path, edit_revision, metadata_revision";
 
 const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_id, title, artist, \
-     year, label, catalog_number, country, region, status, packaging, discogs_details, \
+     year, labels, country, region, status, packaging, discogs_details, \
      media_kind, cover_url, \
      cover_label, cover_source, cover_standing, source_group_id, album_links, source_tracks_kind, \
      source_tracks_count, \

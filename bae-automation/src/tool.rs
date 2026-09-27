@@ -13,6 +13,7 @@ pub enum AutomationTool {
     ImportSearch,
     ImportCandidateMetadataProvenanceSelect,
     ImportCandidateEditFieldSet,
+    ImportCandidateLabelsSet,
     ImportCandidatePressingFactSet,
     ImportCandidateCoverSet,
     ImportStart,
@@ -27,7 +28,7 @@ pub enum AutomationTool {
 }
 
 impl AutomationTool {
-    const DESCRIPTORS: [AutomationToolDescriptor; 22] = [
+    const DESCRIPTORS: [AutomationToolDescriptor; 23] = [
         AutomationToolDescriptor {
             tool: AutomationTool::ConfigGet,
             name: "config_get",
@@ -93,6 +94,12 @@ impl AutomationTool {
             name: "import_candidate_edit_field_set",
             description: "Type one album-level metadata field over what the candidate's pick seeds",
             schema: Some(schema_object::<CandidateEditFieldInput>),
+        },
+        AutomationToolDescriptor {
+            tool: AutomationTool::ImportCandidateLabelsSet,
+            name: "import_candidate_labels_set",
+            description: "Set a candidate's label rows, each a label name and its catalog number, in order",
+            schema: Some(schema_object::<CandidateLabelsInput>),
         },
         AutomationToolDescriptor {
             tool: AutomationTool::ImportCandidatePressingFactSet,

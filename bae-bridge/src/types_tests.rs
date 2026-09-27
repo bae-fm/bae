@@ -435,8 +435,10 @@ mod conversion_roundtrip {
             album_year: Some(1987),
             pressing: bae_core::pressing::Pressing {
                 year: Some(1990),
-                label: Some("Label Name".to_string()),
-                catalog_number: Some("CAT-1".to_string()),
+                labels: vec![
+                    bae_core::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+                    bae_core::pressing::ReleaseLabel::of(None, Some("CL 719")),
+                ],
                 barcode: Some("012345678905".to_string()),
                 facts: every_kind_of_fact(),
             },
@@ -472,8 +474,13 @@ mod conversion_roundtrip {
             album_year: "1987".to_string(),
             pressing: bae_core::import::RawPressingEdit {
                 year: "1990".to_string(),
-                label: "Label Name".to_string(),
-                catalog_number: "CAT-1".to_string(),
+                labels: vec![
+                    bae_core::import::RawLabelEdit {
+                        name: "Label A".to_string(),
+                        catalog_number: "AB 100".to_string(),
+                    },
+                    bae_core::import::RawLabelEdit::default(),
+                ],
                 barcode: "012345678905".to_string(),
                 facts: every_kind_of_fact(),
             },
@@ -510,8 +517,7 @@ mod conversion_roundtrip {
             album_year: String::new(),
             pressing: bae_core::import::RawPressingEdit {
                 year: String::new(),
-                label: String::new(),
-                catalog_number: String::new(),
+                labels: Vec::new(),
                 barcode: String::new(),
                 facts: bae_core::pressing::PressingFacts::default(),
             },
@@ -569,8 +575,10 @@ mod conversion_roundtrip {
             title: "Album Title".to_string(),
             artist: Some("Artist Name".to_string()),
             year: Some(1990),
-            label: Some("Label Name".to_string()),
-            catalog_number: Some("CAT-1".to_string()),
+            labels: vec![
+                bae_core::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+                bae_core::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+            ],
             barcode: Some("012345678905".to_string()),
             facts: every_kind_of_fact(),
             media: bae_core::pressing::StatedMedia::PerMedium(vec![Some(
@@ -611,6 +619,10 @@ mod conversion_roundtrip {
         assert_eq!(bridge.tracks[0].position, core.tracks[0].position);
         assert_eq!(bridge.cover_art.len(), core.cover_art.len());
         assert_eq!(bridge.barcode, core.barcode);
+        assert_eq!(
+            BridgeReleaseLabel::list_into_core(bridge.labels),
+            core.labels
+        );
         assert_eq!(bridge.facts.into_core(), core.facts);
     }
 }

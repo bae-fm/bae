@@ -423,8 +423,7 @@ pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
         release_name: row.get("release_name")?,
         pressing: crate::pressing::Pressing {
             year: row.get("year")?,
-            label: row.get("label")?,
-            catalog_number: row.get("catalog_number")?,
+            labels: super::pressing_columns::read_labels(row, "labels")?,
             barcode: row.get("barcode")?,
             facts: super::pressing_columns::read_facts(row, "")?,
         },

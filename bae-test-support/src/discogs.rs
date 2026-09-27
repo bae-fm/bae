@@ -68,9 +68,8 @@ pub fn discogs_test_release(
         year: Some(2024),
         formats: vec![],
         country: Some("US".to_string()),
-        label: vec!["Test Label".to_string()],
+        labels: bae_core::pressing::ReleaseLabel::list([(Some("Test Label".to_string()), None)]),
         covers: vec![],
-        catno: None,
         barcode: None,
         artists: vec![discogs_artist("discogs-artist-1", "Artist Name")],
         extraartists: Some(vec![]),
@@ -189,9 +188,9 @@ pub fn seed_discogs_test_release(
             "qty": format.qty,
             "descriptions": format.descriptions,
         })).collect::<Vec<_>>(),
-        "labels": release.label.iter().enumerate().map(|(index, name)| serde_json::json!({
-            "name": name,
-            "catno": if index == 0 { release.catno.clone() } else { None },
+        "labels": release.labels.iter().map(|label| serde_json::json!({
+            "name": label.name(),
+            "catno": label.catalog_number(),
         })).collect::<Vec<_>>(),
         "images": release.covers.iter().enumerate().map(|(index, cover)| serde_json::json!({
             "type": if index == 0 { "primary" } else { "secondary" },

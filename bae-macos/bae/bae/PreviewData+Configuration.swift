@@ -138,8 +138,16 @@
                 albumYear: "1983",
                 pressing: BridgeRawPressingEdit(
                     year: "1997",
-                    label: "Some Label",
-                    catalogNumber: "CAT-0001",
+                    labels: [
+                        BridgeRawLabelEdit(
+                            name: "Label A",
+                            catalogNumber: "AB 100"
+                        ),
+                        BridgeRawLabelEdit(
+                            name: "Label B",
+                            catalogNumber: "CL 719"
+                        ),
+                    ],
                     barcode: "000000000000",
                     facts: PreviewData.pressingFacts(
                         country: "US",

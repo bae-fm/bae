@@ -96,8 +96,7 @@ pub(crate) fn pressing(release: &DiscogsRelease) -> (Pressing, StatedMedia) {
     let formats = crate::pressing::discogs_formats::read(&release.id, &release.formats);
     let pressing = Pressing {
         year: release.year.map(|y| y as i32),
-        label: release.label.first().cloned(),
-        catalog_number: release.catno.clone(),
+        labels: release.labels.clone(),
         barcode: release.barcode.clone(),
         facts: PressingFacts {
             area: release

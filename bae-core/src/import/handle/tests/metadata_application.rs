@@ -49,10 +49,10 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
     handle
         .set_candidate_edit_field(
             &key,
-            crate::import::DraftFieldEdit::Text {
-                field: CandidateEditField::Label,
-                value: "Typed Label".to_string(),
-            },
+            crate::import::DraftFieldEdit::Labels(vec![crate::import::RawLabelEdit {
+                name: "Typed Label".to_string(),
+                catalog_number: String::new(),
+            }]),
         )
         .await
         .unwrap();
@@ -72,7 +72,7 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
         "the title the tags state replaces the one that was typed over it"
     );
     assert_eq!(
-        reset.metadata_draft.pressing.label, from_tags.pressing.label,
+        reset.metadata_draft.pressing.labels, from_tags.pressing.labels,
         "a field the tags leave blank goes back to blank"
     );
 }
@@ -116,7 +116,13 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
     let pane = pane(&handle, &key).await;
     shut_down(handle).await;
 
-    assert_eq!(pane.metadata_draft.pressing.label, "Label Name");
+    assert_eq!(
+        pane.metadata_draft.pressing.labels,
+        vec![crate::import::RawLabelEdit {
+            name: "Label Name".to_string(),
+            catalog_number: "CAT-1".to_string(),
+        }]
+    );
     assert_eq!(
         pane.metadata_draft.pressing.barcode, "",
         "explicit application replaces typed values, including with absent metadata"

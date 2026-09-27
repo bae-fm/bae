@@ -170,8 +170,12 @@
             title: moreTracksEditValues.albumTitle,
             artist: "Artist Name",
             year: 1997,
-            label: "Some Label",
-            catalogNumber: "CAT-0001",
+            labels: [
+                BridgeReleaseLabel(
+                    name: "Some Label",
+                    catalogNumber: "CAT-0001"
+                )
+            ],
             barcode: "000000000000",
             facts: PreviewData.pressingFacts(
                 country: "US",
@@ -677,8 +681,7 @@
             albumYear: "",
             pressing: BridgeRawPressingEdit(
                 year: "",
-                label: "",
-                catalogNumber: "",
+                labels: [],
                 barcode: "",
                 facts: PreviewData.pressingFacts()
             ),

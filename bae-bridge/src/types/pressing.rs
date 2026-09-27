@@ -60,6 +60,33 @@ mirror_struct! {
     fields: { medium: (BridgeMedium), count },
 }
 
+/// One label a release is on, with its catalog number. Mirrors
+/// `bae_core::pressing::ReleaseLabel`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeReleaseLabel {
+    pub name: Option<String>,
+    pub catalog_number: Option<String>,
+}
+
+impl BridgeReleaseLabel {
+    pub(crate) fn from_core(label: bae_core::pressing::ReleaseLabel) -> Self {
+        Self {
+            name: label.name().map(str::to_string),
+            catalog_number: label.catalog_number().map(str::to_string),
+        }
+    }
+
+    /// The core labels `labels` name; an entry naming neither half is none.
+    #[cfg(feature = "desktop")]
+    pub(crate) fn list_into_core(labels: Vec<Self>) -> Vec<bae_core::pressing::ReleaseLabel> {
+        bae_core::pressing::ReleaseLabel::list(
+            labels
+                .into_iter()
+                .map(|label| (label.name, label.catalog_number)),
+        )
+    }
+}
+
 /// What a pressing is. Mirrors `bae_core::pressing::PressingFacts`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePressingFacts {

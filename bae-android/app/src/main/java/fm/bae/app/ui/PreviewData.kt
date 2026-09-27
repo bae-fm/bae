@@ -27,6 +27,7 @@ import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseArea
+import uniffi.bae_bridge.BridgeReleaseLabel
 import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSearchResults
@@ -125,8 +126,7 @@ object PreviewData {
             albumId = albumId,
             name = BridgeReleaseName.Named("Release"),
             year = 2020,
-            label = "Label Name",
-            catalogNumber = "CAT-001",
+            labels = listOf(BridgeReleaseLabel(name = "Label A", catalogNumber = "AB 100")),
             facts =
                 BridgePressingFacts(
                     area = BridgeReleaseArea.Country("US"),

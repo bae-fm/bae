@@ -13,16 +13,18 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
                 "Promo".to_string(),
             ],
         }],
-        label: vec!["Label Name".to_string()],
-        catno: Some("CAT-001".to_string()),
+        labels: vec![
+            ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+            ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+        ],
         master_id: Some(master_id.to_string()),
         ..support::discogs_test_release(&synthetic_release_id(title), title, &tracks)
     }
 }
 
 /// A catalog-backed import: the record carries the catalog's key for the
-/// release, and the pressing fields (year, label, catalog number, and what the
-/// pressing is) seed from the picked release.
+/// release, and the pressing fields (year, every label with its catalog
+/// number, and what the pressing is) seed from the picked release.
 #[tokio::test]
 async fn a_picked_release_writes_its_id_and_pressing_fields() {
     support::tracing_init();
@@ -51,8 +53,13 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.year, Some(1996));
-    assert_eq!(release.pressing.label.as_deref(), Some("Label Name"));
-    assert_eq!(release.pressing.catalog_number.as_deref(), Some("CAT-001"));
+    assert_eq!(
+        release.pressing.labels,
+        vec![
+            ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+            ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+        ]
+    );
     assert_eq!(
         release.pressing.facts,
         bae_core::pressing::PressingFacts {

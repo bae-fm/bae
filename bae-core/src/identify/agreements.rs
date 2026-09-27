@@ -3,7 +3,7 @@
 
 use super::combine::LookupProvenance;
 use crate::import::search::MetadataResult;
-use crate::pressing::ReleaseArea;
+use crate::pressing::{ReleaseArea, ReleaseLabel};
 use crate::signals::TextLine;
 use crate::util::text::squash;
 use std::collections::HashSet;
@@ -94,13 +94,15 @@ pub fn agreements_of(
         disc_id: lookup.by_disc_id,
         barcode: lookup.by_barcode,
         catalog: result
-            .catalog_number
-            .as_deref()
-            .is_some_and(|value| text.states_catalog(value)),
+            .labels
+            .iter()
+            .filter_map(ReleaseLabel::catalog_number)
+            .any(|value| text.states_catalog(value)),
         label: result
-            .label
-            .as_deref()
-            .is_some_and(|value| text.states_label(value)),
+            .labels
+            .iter()
+            .filter_map(ReleaseLabel::name)
+            .any(|value| text.states_label(value)),
         year: result
             .year
             .is_some_and(|year| text.states(&year.to_string())),

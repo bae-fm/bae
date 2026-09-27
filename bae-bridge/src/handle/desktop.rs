@@ -510,6 +510,25 @@ forward! {
                 .await?)
         }
 
+        /// Record the candidate's label rows as the user left them.
+        fn set_candidate_labels(
+            candidate_key: String,
+            labels: Vec<crate::types::BridgeRawLabelEdit>,
+        ) -> () {
+            Ok(this
+                .services
+                .import_set_candidate_edit_field(
+                    &candidate_key,
+                    bae_core::import::DraftFieldEdit::Labels(
+                        labels
+                            .into_iter()
+                            .map(crate::types::BridgeRawLabelEdit::into_core)
+                            .collect(),
+                    ),
+                )
+                .await?)
+        }
+
         /// Record one choice of what the candidate's pressing is.
         fn set_candidate_pressing_fact(
             candidate_key: String,

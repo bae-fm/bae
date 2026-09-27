@@ -44,8 +44,8 @@ pub struct ReleaseGroup {
     pub id: String,
     pub title: String,
     pub artist: Option<String>,
-    /// The label the card names beside the artist — the first pressing that
-    /// states one, MusicBrainz first. `None` when no pressing names a label.
+    /// The label the card names beside the artist: the first label name of
+    /// the first pressing that states one, MusicBrainz first.
     /// Which of an album's pressings speaks for it is core's call, not a
     /// surface's.
     pub label: Option<String>,
@@ -751,7 +751,12 @@ fn build_group(
         .unwrap_or_else(|| lead.release_id.clone());
     let title = lead.title.clone();
     let artist = members.iter().find_map(|&at| read(at).artist.clone());
-    let label = members.iter().find_map(|&at| read(at).label.clone());
+    let label = members.iter().find_map(|&at| {
+        read(at)
+            .labels
+            .iter()
+            .find_map(|label| label.name().map(str::to_string))
+    });
     let cover_art = crate::import::cover_art::preferred_cover(
         members.iter().filter_map(|&at| read(at).cover_art.clone()),
     );

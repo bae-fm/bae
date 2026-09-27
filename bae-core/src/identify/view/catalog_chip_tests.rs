@@ -37,8 +37,10 @@ fn pressing(
     country: Option<&str>,
 ) -> MetadataResult {
     MetadataResult {
-        catalog_number: catalog.map(str::to_string),
-        label: label.map(str::to_string),
+        labels: (catalog.is_some() || label.is_some())
+            .then(|| crate::pressing::ReleaseLabel::of(label, catalog))
+            .into_iter()
+            .collect(),
         year,
         area: country.map(crate::pressing::area),
         status: None,
@@ -128,6 +130,26 @@ fn the_chips_are_the_numbers_the_offered_releases_carry() {
         folder(&["Dirty Deeds [16033-2]", "Atlantic SD-19"], &[]),
     );
     assert_eq!(chips(&view), vec![("16033-2", false)]);
+}
+
+/// A release on two labels carries both numbers, so the folder printing the
+/// second label's number is a chip for it.
+#[test]
+fn a_second_labels_number_is_a_chip() {
+    let release = MetadataResult {
+        labels: vec![
+            crate::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+            crate::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+        ],
+        ..pressing("rel-a", "rg-a", None, None, None, None)
+    };
+    let view = resumed(
+        vec![release],
+        Vec::new(),
+        None,
+        folder(&["Artist - Album [CL 719]"], &[]),
+    );
+    assert_eq!(chips(&view), vec![("CL 719", false)]);
 }
 
 /// A number the folder never states is no chip, however many releases carry

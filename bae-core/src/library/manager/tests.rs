@@ -183,8 +183,7 @@ fn create_test_release(album_id: &str) -> DbRelease {
         release_name: None,
         pressing: crate::pressing::Pressing {
             year: Some(2024),
-            label: None,
-            catalog_number: None,
+            labels: Vec::new(),
             facts: Default::default(),
             barcode: None,
         },

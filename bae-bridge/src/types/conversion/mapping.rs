@@ -142,11 +142,39 @@ impl BridgeCandidateFiles {
     }
 }
 
-mirror_struct! {
-    BridgePressingEdit = bae_core::pressing::Pressing,
-    from_core: pub(super) fn,
-    into_core: pub(super) fn,
-    fields: { year, label, catalog_number, barcode, facts: (BridgePressingFacts) },
+impl BridgePressingEdit {
+    pub(super) fn from_core(pressing: bae_core::pressing::Pressing) -> Self {
+        let bae_core::pressing::Pressing {
+            year,
+            labels,
+            barcode,
+            facts,
+        } = pressing;
+        Self {
+            year,
+            labels: labels
+                .into_iter()
+                .map(BridgeReleaseLabel::from_core)
+                .collect(),
+            barcode,
+            facts: BridgePressingFacts::from_core(facts),
+        }
+    }
+
+    pub(super) fn into_core(self) -> bae_core::pressing::Pressing {
+        let Self {
+            year,
+            labels,
+            barcode,
+            facts,
+        } = self;
+        bae_core::pressing::Pressing {
+            year,
+            labels: BridgeReleaseLabel::list_into_core(labels),
+            barcode,
+            facts: facts.into_core(),
+        }
+    }
 }
 
 mirror_enum! {

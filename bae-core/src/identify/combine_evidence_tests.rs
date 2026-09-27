@@ -31,7 +31,7 @@ fn pressing(release_id: &str, media: StatedMedia) -> Found {
         MetadataResult {
             title: "Album One".to_string(),
             artist: Some("Artist One".to_string()),
-            catalog_number: Some("L1-100".to_string()),
+            labels: vec![crate::pressing::ReleaseLabel::of(None, Some("L1-100"))],
             media,
             ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-one"))
         },
@@ -197,7 +197,7 @@ fn rows_all_contradicted_all_stay() {
 fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
     let named = pressing("rel-named", made_of(&[Medium::Cd]));
     let mut other = pressing("rel-other", made_of(&[Medium::Cd]));
-    other.0.catalog_number = Some("L1-999".to_string());
+    other.0.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("L1-999"))];
     let outcome = combine_results(
         vec![other],
         vec![named],
@@ -247,7 +247,7 @@ fn a_sleeve_saying_where_it_was_made_offers_that_pressing() {
             MetadataResult {
                 area: Some(crate::pressing::area(area)),
                 year: Some(2010),
-                catalog_number: None,
+                labels: Vec::new(),
                 ..result
             },
             status,
@@ -282,7 +282,7 @@ fn stating_no_country_or_both_leaves_the_pressings_tied() {
         (
             MetadataResult {
                 area: Some(crate::pressing::area(area)),
-                catalog_number: None,
+                labels: Vec::new(),
                 ..result
             },
             status,
@@ -409,7 +409,7 @@ fn mono_audio_does_not_outrank_what_the_lookups_agree_on() {
     let (mono_result, mono_status) = pressing("rel-mono", made_of(&[Medium::Vinyl]));
     let by_title = (
         MetadataResult {
-            catalog_number: None,
+            labels: Vec::new(),
             discogs_details: vec![DiscogsDetail::Mono],
             ..mono_result
         },
@@ -483,9 +483,8 @@ fn the_album_the_folder_names_outranks_another_on_the_same_label() {
             MetadataResult {
                 title: title.to_string(),
                 artist: Some(artist.to_string()),
-                label: Some("Label One".to_string()),
+                labels: vec![crate::pressing::ReleaseLabel::of(Some("Label One"), None)],
                 area: Some(crate::pressing::area("US")),
-                catalog_number: None,
                 ..result
             },
             status,

@@ -318,8 +318,13 @@ async fn reset_mb_returns_full_pressing_data_from_the_stored_release() {
             count: 1,
         }]
     );
-    assert_eq!(edit.pressing.label.as_deref(), Some("Test Label"));
-    assert_eq!(edit.pressing.catalog_number.as_deref(), Some("CAT-001"));
+    assert_eq!(
+        edit.pressing.labels,
+        vec![bae_core::pressing::ReleaseLabel::of(
+            Some("Test Label"),
+            Some("CAT-001")
+        )]
+    );
     assert_eq!(
         edit.pressing.facts.area,
         Some(bae_core::pressing::ReleaseArea::Country(
@@ -462,8 +467,13 @@ async fn reset_discogs_returns_full_pressing_data_from_the_stored_release() {
             count: 1,
         }]
     );
-    assert_eq!(edit.pressing.label.as_deref(), Some("Cached Label"));
-    assert_eq!(edit.pressing.catalog_number.as_deref(), Some("CACHE-1"));
+    assert_eq!(
+        edit.pressing.labels,
+        vec![bae_core::pressing::ReleaseLabel::of(
+            Some("Cached Label"),
+            Some("CACHE-1")
+        )]
+    );
     assert_eq!(
         edit.pressing.facts.area,
         Some(bae_core::pressing::ReleaseArea::Country(

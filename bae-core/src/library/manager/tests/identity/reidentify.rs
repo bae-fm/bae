@@ -573,7 +573,7 @@ async fn re_identify_with_file_metadata_replaces_previously_edited_fields() {
     let mut release = create_test_release(&album.id);
     release.remote = false;
     // A release read from MusicBrainz with one field a person typed over it.
-    release.pressing.label = Some("Typed Label".to_string());
+    release.pressing.labels = vec![crate::pressing::ReleaseLabel::of(Some("Typed Label"), None)];
 
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
@@ -620,8 +620,8 @@ async fn re_identify_with_file_metadata_replaces_previously_edited_fields() {
         .unwrap()
         .unwrap();
     assert_eq!(
-        updated.pressing.label.as_deref(),
-        None,
+        updated.pressing.labels,
+        Vec::new(),
         "applying file tags clears an edited field when the tags do not state it"
     );
 

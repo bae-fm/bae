@@ -230,12 +230,12 @@ fn insert_match(
     sql.execute(
         "INSERT INTO import_candidate_match \
              (content_hash, position, pressing, source, release_id, title, artist, year, \
-              label, catalog_number, country, region, status, packaging, discogs_details, \
+              labels, country, region, status, packaging, discogs_details, \
               media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, by_disc_id, by_barcode, by_catalog, by_search, \
               named_by_catalog, named_by_key, narrowed_out) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
                  ?, ?, ?, ?)",
         params![
             content_hash,
@@ -246,8 +246,7 @@ fn insert_match(
             result.title,
             result.artist,
             result.year,
-            result.label,
-            result.catalog_number,
+            super::super::pressing_columns::labels_column(&result.labels),
             facts.country,
             facts.region,
             facts.status,
@@ -581,8 +580,7 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
             title: row.get("title")?,
             artist: row.get("artist")?,
             year: row.get("year")?,
-            label: row.get("label")?,
-            catalog_number: row.get("catalog_number")?,
+            labels: super::super::pressing_columns::read_labels(row, "labels")?,
             area: facts.area,
             status: facts.status,
             packaging: facts.packaging,

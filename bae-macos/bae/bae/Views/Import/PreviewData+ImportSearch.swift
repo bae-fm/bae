@@ -17,8 +17,12 @@
                         source: .musicBrainz,
                         releaseId: "rel-123",
                         year: 1988,
-                        label: "Label Name",
-                        catalogNumber: "1871-2",
+                        labels: [
+                            BridgeReleaseLabel(
+                                name: "Label Name",
+                                catalogNumber: "1871-2"
+                            )
+                        ],
                         facts: PreviewData.pressingFacts(
                             country: "US",
                             media: PreviewData.media(.cd)
@@ -41,8 +45,12 @@
                         source: .musicBrainz,
                         releaseId: "rel-456",
                         year: 1996,
-                        label: "Label Name",
-                        catalogNumber: "6006-2",
+                        labels: [
+                            BridgeReleaseLabel(
+                                name: "Label Name",
+                                catalogNumber: "6006-2"
+                            )
+                        ],
                         facts: PreviewData.pressingFacts(
                             country: "US",
                             media: PreviewData.media(.cd)
@@ -54,8 +62,12 @@
                         source: .discogs,
                         releaseId: "rel-456-d",
                         year: 1996,
-                        label: "Label Name",
-                        catalogNumber: "6006-2",
+                        labels: [
+                            BridgeReleaseLabel(
+                                name: "Label Name",
+                                catalogNumber: "6006-2"
+                            )
+                        ],
                         facts: PreviewData.pressingFacts(
                             country: "US",
                             media: PreviewData.media(.cd),
@@ -180,8 +192,12 @@
                                         source: .musicBrainz,
                                         releaseId: "rel-aaa",
                                         year: 1996,
-                                        label: "Label Name",
-                                        catalogNumber: "6006-2",
+                                        labels: [
+                                            BridgeReleaseLabel(
+                                                name: "Label Name",
+                                                catalogNumber: "6006-2"
+                                            )
+                                        ],
                                         facts: PreviewData.pressingFacts(
                                             country: "US",
                                             media: PreviewData.media(.cd)
@@ -204,8 +220,12 @@
                                         source: .musicBrainz,
                                         releaseId: "rel-bbb",
                                         year: 1996,
-                                        label: "Another Label",
-                                        catalogNumber: "AL-1234",
+                                        labels: [
+                                            BridgeReleaseLabel(
+                                                name: "Another Label",
+                                                catalogNumber: "AL-1234"
+                                            )
+                                        ],
                                         facts: PreviewData.pressingFacts(
                                             country: "JP",
                                             media: PreviewData.media(.cd)
@@ -258,8 +278,12 @@
                                         source: .musicBrainz,
                                         releaseId: "rel-ccc",
                                         year: 2005,
-                                        label: "Reissue Records",
-                                        catalogNumber: "RR-500",
+                                        labels: [
+                                            BridgeReleaseLabel(
+                                                name: "Reissue Records",
+                                                catalogNumber: "RR-500"
+                                            )
+                                        ],
                                         facts: PreviewData.pressingFacts(
                                             region: .europe,
                                             media: PreviewData.media(.cd)
@@ -271,8 +295,12 @@
                                         source: .discogs,
                                         releaseId: "rel-ddd",
                                         year: 2005,
-                                        label: "Reissue Records",
-                                        catalogNumber: "RR-500",
+                                        labels: [
+                                            BridgeReleaseLabel(
+                                                name: "Reissue Records",
+                                                catalogNumber: "RR-500"
+                                            )
+                                        ],
                                         facts: PreviewData.pressingFacts(
                                             region: .europe,
                                             media: PreviewData.media(.cd),
@@ -335,8 +363,12 @@
                                     source: .musicBrainz,
                                     releaseId: "rel-disc-1",
                                     year: 1996,
-                                    label: "Label A",
-                                    catalogNumber: "AAA-001",
+                                    labels: [
+                                        BridgeReleaseLabel(
+                                            name: "Label A",
+                                            catalogNumber: "AAA-001"
+                                        )
+                                    ],
                                     facts: PreviewData.pressingFacts(
                                         country: "US",
                                         media: PreviewData.media(.cd)
@@ -384,8 +416,12 @@
                                     source: .musicBrainz,
                                     releaseId: "rel-bar-1",
                                     year: 2001,
-                                    label: "Label B",
-                                    catalogNumber: "BBB-002",
+                                    labels: [
+                                        BridgeReleaseLabel(
+                                            name: "Label B",
+                                            catalogNumber: "BBB-002"
+                                        )
+                                    ],
                                     facts: PreviewData.pressingFacts(
                                         country: "JP",
                                         media: PreviewData.media(.cd)

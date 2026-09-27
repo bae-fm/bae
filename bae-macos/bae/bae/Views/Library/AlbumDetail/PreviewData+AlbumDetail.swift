@@ -235,8 +235,12 @@
                     media: bridgeMediaTerms(media: PreviewData.media(.cd))
                 ),
                 year: 2019,
-                label: "Some Label",
-                catalogNumber: "CAT-0001",
+                labels: [
+                    BridgeReleaseLabel(
+                        name: "Some Label",
+                        catalogNumber: "CAT-0001"
+                    )
+                ],
                 facts: facts,
                 pressingSummary: bridgePressingSummary(facts: facts),
                 mediaTerms: bridgeMediaTerms(media: facts.media),

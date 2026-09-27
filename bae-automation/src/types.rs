@@ -529,8 +529,7 @@ pub struct AutomationMetadataResult {
     pub title: String,
     pub artist: Option<String>,
     pub year: Option<i32>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
+    pub labels: Vec<bae_core::pressing::ReleaseLabel>,
     /// What the record says the pressing is.
     pub facts: bae_core::pressing::PressingFacts,
     /// Every barcode this source prints for the pressing, in its order;
@@ -608,8 +607,8 @@ pub struct AutomationReleaseDetail {
     pub title: String,
     pub artist: Option<String>,
     pub year: Option<i32>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
+    #[schemars(schema_with = "labels_schema")]
+    pub labels: Vec<bae_core::pressing::ReleaseLabel>,
     pub barcode: Option<String>,
     #[schemars(schema_with = "pressing_facts_schema")]
     pub facts: bae_core::pressing::PressingFacts,
@@ -740,7 +739,8 @@ pub struct CandidateMetadataProvenanceInput {
 }
 
 /// One text field of a candidate's metadata form. Years are text because the
-/// form is text; the commit parses them. What the pressing is is chosen, with
+/// form is text; the commit parses them. The labels are set with
+/// `import_candidate_labels_set`, and what the pressing is is chosen with
 /// `import_candidate_pressing_fact_set`.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -748,9 +748,21 @@ pub enum AutomationCandidateEditField {
     AlbumTitle,
     AlbumYear,
     PressingYear,
-    Label,
-    CatalogNumber,
     Barcode,
+}
+
+/// One label row of a candidate's metadata form, as typed; empty is unset.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AutomationLabelRow {
+    pub name: String,
+    pub catalog_number: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CandidateLabelsInput {
+    pub candidate_key: String,
+    /// Every label row, in order.
+    pub labels: Vec<AutomationLabelRow>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

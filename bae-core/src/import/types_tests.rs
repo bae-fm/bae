@@ -41,8 +41,10 @@ mod edit_shaping_tests {
             album_year: "1987".to_string(),
             pressing: RawPressingEdit {
                 year: "1999".to_string(),
-                label: "Label Name".to_string(),
-                catalog_number: "CAT-123".to_string(),
+                labels: vec![RawLabelEdit {
+                    name: "Label Name".to_string(),
+                    catalog_number: "CAT-123".to_string(),
+                }],
                 facts: crate::pressing::PressingFacts {
                     area: Some(crate::pressing::area("US")),
                     ..crate::pressing::made_of(crate::pressing::Medium::Vinyl, 2)
@@ -169,8 +171,7 @@ mod edit_shaping_tests {
         let mut form = valid_form();
         form.pressing = RawPressingEdit {
             year: "".to_string(),
-            label: "".to_string(),
-            catalog_number: "".to_string(),
+            labels: vec![RawLabelEdit::default()],
             facts: Default::default(),
             barcode: "".to_string(),
         };
@@ -182,10 +183,36 @@ mod edit_shaping_tests {
     fn parses_year_and_trims_pressing_fields() {
         let mut form = valid_form();
         form.pressing.year = "  2001  ".to_string();
-        form.pressing.label = "  Label  ".to_string();
+        form.pressing.labels[0].name = "  Label  ".to_string();
         let pressing = form.shape().expect("shapes").pressing;
         assert_eq!(pressing.year, Some(2001));
-        assert_eq!(pressing.label.as_deref(), Some("Label"));
+        assert_eq!(pressing.labels[0].name(), Some("Label"));
+    }
+
+    /// Every label row shapes into a label, in order, with the number typed
+    /// beside it; a blank row and a repeated one are left out.
+    #[test]
+    fn every_label_row_shapes_with_its_own_number() {
+        let mut form = valid_form();
+        let row = |name: &str, catalog_number: &str| RawLabelEdit {
+            name: name.to_string(),
+            catalog_number: catalog_number.to_string(),
+        };
+        form.pressing.labels = vec![
+            row("Label A", "AB 100"),
+            row(" ", ""),
+            row("Label B", " CL 719 "),
+            row("", "XY 3"),
+            row("Label A", "AB 100"),
+        ];
+        assert_eq!(
+            form.shape().expect("shapes").pressing.labels,
+            vec![
+                crate::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+                crate::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+                crate::pressing::ReleaseLabel::of(None, Some("XY 3")),
+            ]
+        );
     }
 
     /// What the pressing is was chosen, not typed, and shapes as chosen.
@@ -237,8 +264,7 @@ mod edit_shaping_tests {
             album_year: Some(1987),
             pressing: crate::pressing::Pressing {
                 year: Some(1999),
-                label: None,
-                catalog_number: Some("CAT-123".to_string()),
+                labels: vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-123"))],
                 facts: Default::default(),
                 barcode: None,
             },
@@ -281,7 +307,13 @@ mod edit_shaping_tests {
         );
         assert_eq!(raw.pressing.year, "1999");
         assert_eq!(raw.album_year, "1987");
-        assert_eq!(raw.pressing.label, "");
+        assert_eq!(
+            raw.pressing.labels,
+            vec![RawLabelEdit {
+                name: String::new(),
+                catalog_number: "CAT-123".to_string(),
+            }]
+        );
 
         assert_eq!(raw.shape().expect("re-shapes"), original);
     }

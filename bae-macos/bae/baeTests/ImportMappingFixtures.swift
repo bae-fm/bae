@@ -350,8 +350,7 @@ extension MappingFixtures {
         albumYear: 1987,
         pressing: BridgePressingEdit(
             year: 1996,
-            label: nil,
-            catalogNumber: nil,
+            labels: [],
             barcode: nil,
             facts: PreviewData.pressingFacts(
                 country: nil,
@@ -367,8 +366,7 @@ extension MappingFixtures {
         albumYear: "1987",
         pressing: BridgeRawPressingEdit(
             year: "1996",
-            label: "",
-            catalogNumber: "",
+            labels: [],
             barcode: "",
             facts: PreviewData.pressingFacts(
                 country: nil,
@@ -384,8 +382,7 @@ extension MappingFixtures {
         albumYear: "",
         pressing: BridgeRawPressingEdit(
             year: "",
-            label: "",
-            catalogNumber: "",
+            labels: [],
             barcode: "",
             facts: PreviewData.pressingFacts()
         ),
@@ -401,8 +398,7 @@ extension MappingFixtures {
         title: "Album Title",
         artist: "Artist Name",
         year: 1996,
-        label: nil,
-        catalogNumber: nil,
+        labels: [],
         barcode: nil,
         facts: PreviewData.pressingFacts(
             country: nil,
@@ -418,8 +414,7 @@ extension MappingFixtures {
     /// claim about, and what an edit is read against.
     static let exactPressing = BridgeRawPressingEdit(
         year: "1996",
-        label: "",
-        catalogNumber: "",
+        labels: [],
         barcode: "",
         facts: PreviewData.pressingFacts(
             country: nil,

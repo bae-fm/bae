@@ -112,9 +112,8 @@ fn make_release(tracklist: Vec<DiscogsTrack>) -> DiscogsRelease {
         year: Some(2024),
         formats: vec![],
         country: None,
-        label: vec![],
+        labels: vec![],
         covers: vec![],
-        catno: None,
         barcode: None,
         artists: vec![DiscogsArtist {
             name: "Artist Name A".to_string(),

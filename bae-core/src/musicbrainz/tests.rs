@@ -257,37 +257,54 @@ fn only_transient_musicbrainz_failures_are_retried() {
     );
 }
 
-// ── label_and_catno ────────────────────────────────────────────────────────
+// ── release_labels ────────────────────────────────────────────────────────
+
+fn label_info(name: Option<&str>, catalog_number: Option<&str>) -> MbLabelInfo {
+    MbLabelInfo {
+        label: Some(MbLabel {
+            name: name.map(str::to_string),
+        }),
+        catalog_number: catalog_number.map(str::to_string),
+    }
+}
+
+fn stated(name: Option<&str>, catalog_number: Option<&str>) -> crate::pressing::ReleaseLabel {
+    crate::pressing::ReleaseLabel::new(name.map(str::to_string), catalog_number.map(str::to_string))
+        .expect("a stated label")
+}
 
 #[test]
-fn label_and_catno_reads_the_first_label_info() {
-    let label_info = vec![
-        MbLabelInfo {
-            label: Some(MbLabel {
-                name: Some("First Label".to_string()),
-            }),
-            catalog_number: Some("CAT-1".to_string()),
-        },
-        MbLabelInfo {
-            label: Some(MbLabel {
-                name: Some("Second Label".to_string()),
-            }),
-            catalog_number: Some("CAT-2".to_string()),
-        },
-    ];
+fn release_labels_keeps_every_label_info_in_order() {
+    let labels = release_labels(&[
+        label_info(Some("Label A"), Some("AB 100")),
+        label_info(Some("Label B"), Some("CL 719")),
+        label_info(None, Some("XY 3")),
+        label_info(Some("Label C"), None),
+    ]);
     assert_eq!(
-        label_and_catno(&label_info),
-        (Some("First Label".to_string()), Some("CAT-1".to_string()))
+        labels,
+        vec![
+            stated(Some("Label A"), Some("AB 100")),
+            stated(Some("Label B"), Some("CL 719")),
+            stated(None, Some("XY 3")),
+            stated(Some("Label C"), None),
+        ]
     );
+}
 
-    // No label info at all, and an entry with neither field, both read as unknown.
-    assert_eq!(label_and_catno(&[]), (None, None));
+#[test]
+fn release_labels_leaves_out_empty_and_repeated_entries() {
+    assert!(release_labels(&[]).is_empty());
     assert_eq!(
-        label_and_catno(&[MbLabelInfo {
-            label: None,
-            catalog_number: None,
-        }]),
-        (None, None)
+        release_labels(&[
+            MbLabelInfo {
+                label: None,
+                catalog_number: None,
+            },
+            label_info(Some("Label A"), Some("AB 100")),
+            label_info(Some("Label A"), Some("AB 100")),
+        ]),
+        vec![stated(Some("Label A"), Some("AB 100"))]
     );
 }
 
@@ -588,7 +605,7 @@ fn blank_pressing_fields_are_absent_in_musicbrainz_documents() {
         assert!(release.country.is_none());
         assert!(release.barcode.is_none());
         assert!(release.media[0].format.is_none());
-        assert_eq!(label_and_catno(&release.label_info), (None, None));
+        assert!(release_labels(&release.label_info).is_empty());
     }
 }
 

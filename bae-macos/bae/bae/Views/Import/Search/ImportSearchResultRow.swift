@@ -2,10 +2,8 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// One pressing row beneath a release-group card: the year, the label, the
-/// catalogue number, where it was released and what it is made of, what sets
-/// it apart (its status, packaging and Discogs details), which signals named
-/// it, and every source that lists it.
+/// One pressing row beneath a release-group card: its facts, which signals
+/// named it, and every source that lists it.
 ///
 /// The row is picked whole: it commits the pressing's lead release and carries
 /// every other source's record of the same pressing along with it. That opens
@@ -131,25 +129,29 @@ struct ImportSearchResultRow: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
             }
-            if let label = pressing.lead.label {
-                Text(label)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            if let catalogNumber = pressing.lead.catalogNumber {
-                Text(catalogNumber)
-                    .font(.system(size: 10.5, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 1)
-                    .background(
-                        Theme.hover,
-                        in: RoundedRectangle(cornerRadius: 4)
-                    )
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+            ForEach(Array(pressing.lead.labels.enumerated()), id: \.offset) {
+                _,
+                label in
+                if let name = label.name {
+                    Text(name)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                if let catalogNumber = label.catalogNumber {
+                    Text(catalogNumber)
+                        .font(.system(size: 10.5, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(
+                            Theme.hover,
+                            in: RoundedRectangle(cornerRadius: 4)
+                        )
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
             }
             let summary = pressing.summaryText
             if !summary.isEmpty {

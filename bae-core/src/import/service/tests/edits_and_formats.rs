@@ -68,8 +68,7 @@ fn make_seed_album_release_track() -> (
         release_name: None,
         pressing: crate::pressing::Pressing {
             year: Some(2020),
-            label: Some("Label Name".to_string()),
-            catalog_number: Some("CAT-001".to_string()),
+            labels: vec![crate::pressing::ReleaseLabel::of(Some("Label Name"), Some("CAT-001"))],
             facts: Default::default(),
             barcode: None,
         },
@@ -105,8 +104,7 @@ fn user_edit_overrides_album_year_and_pressing_fields() {
         album_year: Some(1981),
         pressing: crate::pressing::Pressing {
             year: Some(1995),
-            label: Some("Edited Label".to_string()),
-            catalog_number: Some("EDIT-1".to_string()),
+            labels: vec![crate::pressing::ReleaseLabel::of(Some("Edited Label"), Some("EDIT-1"))],
             facts: crate::pressing::PressingFacts {
                 area: Some(crate::pressing::area("JP")),
                 ..crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1)
@@ -133,10 +131,9 @@ fn user_edit_overrides_album_year_and_pressing_fields() {
     assert_eq!(seed.album.title, "Edited Title");
     assert_eq!(seed.album.year, Some(1981));
     assert_eq!(seed.release.pressing.year, Some(1995));
-    assert_eq!(seed.release.pressing.label.as_deref(), Some("Edited Label"));
     assert_eq!(
-        seed.release.pressing.catalog_number.as_deref(),
-        Some("EDIT-1")
+        seed.release.pressing.labels,
+        vec![crate::pressing::ReleaseLabel::of(Some("Edited Label"), Some("EDIT-1"))]
     );
     assert_eq!(
         seed.release.pressing.facts,
@@ -285,8 +282,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
         release_name: None,
         pressing: crate::pressing::Pressing {
             year: Some(2020),
-            label: None,
-            catalog_number: None,
+            labels: Vec::new(),
             facts: Default::default(),
             barcode: None,
         },

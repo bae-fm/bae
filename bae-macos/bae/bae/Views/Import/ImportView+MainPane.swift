@@ -181,6 +181,11 @@ extension ImportView {
                     try await importer.setCandidateEditField(key, field, value)
                 }
             },
+            setLabels: { labels in
+                await saveCandidateEdit {
+                    try await importer.setCandidateLabels(key, labels)
+                }
+            },
             setPressingFact: { fact in
                 await saveCandidateEdit {
                     try await importer.setCandidatePressingFact(key, fact)

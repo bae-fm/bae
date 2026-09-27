@@ -168,14 +168,87 @@ pub enum PhysicalMedium {
     Cd,
 }
 
+/// One label a pressing is released on, with the catalog number that label
+/// gives it. Either half may be unstated, never both.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
+pub struct ReleaseLabel {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    catalog_number: Option<String>,
+}
+
+impl ReleaseLabel {
+    /// `None` when neither half is stated; a blank half is unstated.
+    pub fn new(name: Option<String>, catalog_number: Option<String>) -> Option<Self> {
+        let stated = |value: Option<String>| value.filter(|value| !value.trim().is_empty());
+        let (name, catalog_number) = (stated(name), stated(catalog_number));
+        (name.is_some() || catalog_number.is_some()).then_some(Self {
+            name,
+            catalog_number,
+        })
+    }
+
+    /// The labels `entries` state, in order, each once.
+    pub fn list(entries: impl IntoIterator<Item = (Option<String>, Option<String>)>) -> Vec<Self> {
+        let mut labels: Vec<Self> = Vec::new();
+        for label in entries
+            .into_iter()
+            .filter_map(|(name, catalog_number)| Self::new(name, catalog_number))
+        {
+            if !labels.contains(&label) {
+                labels.push(label);
+            }
+        }
+        labels
+    }
+
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    pub fn catalog_number(&self) -> Option<&str> {
+        self.catalog_number.as_deref()
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl ReleaseLabel {
+    /// A label for a test; `name` and `catalog_number` are not both `None`.
+    pub fn of(name: Option<&str>, catalog_number: Option<&str>) -> Self {
+        Self::new(name.map(str::to_string), catalog_number.map(str::to_string))
+            .expect("a test's label states a name or a number")
+    }
+}
+
+/// Read through [`ReleaseLabel::new`], so an entry stating neither half fails.
+impl<'de> serde::Deserialize<'de> for ReleaseLabel {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Stated {
+            #[serde(default)]
+            name: Option<String>,
+            #[serde(default)]
+            catalog_number: Option<String>,
+        }
+        let Stated {
+            name,
+            catalog_number,
+        } = Stated::deserialize(deserializer)?;
+        Self::new(name, catalog_number)
+            .ok_or_else(|| serde::de::Error::custom("a label states neither a name nor a number"))
+    }
+}
+
 /// A release's pressing-level editorial metadata: its identifiers and year,
 /// and what it is. `Pressing::blank()` is "no pressing claim".
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pressing {
     /// Release-specific year (may differ from album year)
     pub year: Option<i32>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
+    /// Every label the pressing is on, in the order its source lists them.
+    pub labels: Vec<ReleaseLabel>,
     pub barcode: Option<String>,
     pub facts: PressingFacts,
 }
@@ -186,19 +259,20 @@ impl Pressing {
     pub fn blank() -> Self {
         Self {
             year: None,
-            label: None,
-            catalog_number: None,
+            labels: Vec::new(),
             barcode: None,
             facts: PressingFacts::default(),
         }
     }
 
     /// This pressing, with each field `self` leaves unstated taken from
-    /// `other`.
+    /// `other`. The labels are taken whole, so no name is paired with another
+    /// source's number.
     pub fn fill_missing(&mut self, other: Self) {
         self.year = self.year.or(other.year);
-        self.label = self.label.take().or(other.label);
-        self.catalog_number = self.catalog_number.take().or(other.catalog_number);
+        if self.labels.is_empty() {
+            self.labels = other.labels;
+        }
         self.barcode = self.barcode.take().or(other.barcode);
         self.facts.fill_missing(other.facts);
     }

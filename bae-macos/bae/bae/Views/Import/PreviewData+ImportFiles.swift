@@ -184,8 +184,12 @@
                 title: "Album Title One",
                 artist: "Artist Name",
                 year: 1996,
-                label: "Label Name",
-                catalogNumber: "6006-2",
+                labels: [
+                    BridgeReleaseLabel(
+                        name: "Label Name",
+                        catalogNumber: "6006-2"
+                    )
+                ],
                 barcode: nil,
                 facts: PreviewData.pressingFacts(
                     country: "US",

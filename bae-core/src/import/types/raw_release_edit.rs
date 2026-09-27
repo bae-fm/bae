@@ -125,8 +125,7 @@ impl RawReleaseEdit {
             && self.album_artist_assignments.is_empty()
             && self.album_year.trim().is_empty()
             && self.pressing.year.trim().is_empty()
-            && self.pressing.label.trim().is_empty()
-            && self.pressing.catalog_number.trim().is_empty()
+            && self.pressing.labels.iter().all(RawLabelEdit::is_blank)
             && self.pressing.barcode.trim().is_empty()
             && self.pressing.facts.is_empty()
             && self.tracks.iter().all(|track| {
@@ -196,10 +195,25 @@ impl AsRef<TrackArtistAssignments> for CandidateTrack {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RawPressingEdit {
     pub year: String,
-    pub label: String,
-    pub catalog_number: String,
+    /// One row per label; shaping leaves out a blank row.
+    pub labels: Vec<RawLabelEdit>,
     pub barcode: String,
     pub facts: crate::pressing::PressingFacts,
+}
+
+/// One label row of the form, each field as typed, empty meaning "not set".
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawLabelEdit {
+    pub name: String,
+    pub catalog_number: String,
+}
+
+impl RawLabelEdit {
+    /// Whether the row states nothing.
+    pub fn is_blank(&self) -> bool {
+        self.name.trim().is_empty() && self.catalog_number.trim().is_empty()
+    }
 }
 
 /// One raw track row from the editor. `id` is the editor's stable row
@@ -327,13 +341,17 @@ impl RawTrackEdit {
 
 impl RawPressingEdit {
     /// Parse and normalize raw pressing text into a wire
-    /// [`Pressing`](crate::pressing::Pressing): empty fields become `None`;
-    /// the year parses as an integer.
+    /// [`Pressing`](crate::pressing::Pressing): empty fields become `None`,
+    /// blank and repeated label rows are dropped, and the year parses.
     fn shape(&self) -> Result<crate::pressing::Pressing, EditValidationError> {
         Ok(crate::pressing::Pressing {
             year: parse_optional_year(&self.year)?,
-            label: trim_to_option(&self.label),
-            catalog_number: trim_to_option(&self.catalog_number),
+            labels: crate::pressing::ReleaseLabel::list(self.labels.iter().map(|label| {
+                (
+                    trim_to_option(&label.name),
+                    trim_to_option(&label.catalog_number),
+                )
+            })),
             barcode: trim_to_option(&self.barcode),
             facts: self.facts.clone(),
         })
@@ -344,8 +362,14 @@ impl RawPressingEdit {
     pub fn from_pressing(pressing: &crate::pressing::Pressing) -> Self {
         Self {
             year: pressing.year.map(|y| y.to_string()).unwrap_or_default(),
-            label: option_to_raw(&pressing.label),
-            catalog_number: option_to_raw(&pressing.catalog_number),
+            labels: pressing
+                .labels
+                .iter()
+                .map(|label| RawLabelEdit {
+                    name: label.name().unwrap_or_default().to_string(),
+                    catalog_number: label.catalog_number().unwrap_or_default().to_string(),
+                })
+                .collect(),
             barcode: option_to_raw(&pressing.barcode),
             facts: pressing.facts.clone(),
         }

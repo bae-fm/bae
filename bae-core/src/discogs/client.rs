@@ -255,7 +255,11 @@ pub struct DiscogsSearchResult {
     #[serde(default)]
     pub formats: Vec<crate::discogs::DiscogsFormat>,
     pub country: Option<String>,
+    /// The labels' names followed by the companies', with nothing marking
+    /// where the labels end.
     pub label: Option<Vec<String>>,
+    /// The first label's catalog number only, whichever label's number the
+    /// search matched.
     pub catno: Option<String>,
     /// Every barcode Discogs holds for the pressing, in the order it lists
     /// them. Absent from the response for a release with none.
@@ -501,12 +505,13 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
     });
     let covers = image_covers(release.images, "r", release.id);
     let master_id = release.master_id.map(|id| id.to_string());
-    let labels = release.labels.unwrap_or_default();
-    let label_names: Vec<String> = labels
-        .iter()
-        .filter_map(|label| label.name.clone())
-        .collect();
-    let catno = labels.first().and_then(|l| l.catno.clone());
+    let labels = crate::pressing::ReleaseLabel::list(
+        release
+            .labels
+            .into_iter()
+            .flatten()
+            .map(|label| (label.name, label.catno)),
+    );
     let formats = release.formats.unwrap_or_default();
     // The draft has one barcode field. Keep the first supplied Barcode value
     // in provider order, including its printed spaces and punctuation.
@@ -524,8 +529,7 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         year: release.year.filter(|year| *year != 0),
         formats,
         country: release.country,
-        label: label_names,
-        catno,
+        labels,
         barcode,
         covers,
         artists,

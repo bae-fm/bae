@@ -176,8 +176,7 @@ fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
         album_year: String::new(),
         pressing: RawPressingEdit {
             year: String::new(),
-            label: String::new(),
-            catalog_number: String::new(),
+            labels: Vec::new(),
             facts: Default::default(),
             barcode: String::new(),
         },

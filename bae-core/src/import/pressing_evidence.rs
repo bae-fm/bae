@@ -14,7 +14,7 @@ use crate::barcode::comparison_key;
 use crate::identify::label::stated;
 use crate::import::search::MetadataResult;
 use crate::import::types::{Catalog, MetadataRef};
-use crate::pressing::{Medium, ReleaseArea, StatedMedia};
+use crate::pressing::{Medium, ReleaseArea, ReleaseLabel, StatedMedia};
 use crate::util::text::catalog_key;
 use tracing::debug;
 
@@ -37,10 +37,10 @@ pub(crate) struct ComparedPressing<'a> {
     /// The usable barcodes' keys; a stated value that is not a code is left
     /// out here.
     barcodes: Vec<String>,
-    catalog: Option<String>,
+    catalogs: Vec<String>,
     year: Option<i32>,
     area: Option<ReleaseArea>,
-    label: Option<String>,
+    labels: Vec<String>,
     media: KnownMedia,
 }
 
@@ -54,10 +54,20 @@ impl<'a> ComparedPressing<'a> {
                 .iter()
                 .filter_map(|stated| barcode_key(release.source, &release.release_id, stated))
                 .collect(),
-            catalog: release.catalog_number.as_deref().and_then(catalog_key),
+            catalogs: release
+                .labels
+                .iter()
+                .filter_map(ReleaseLabel::catalog_number)
+                .filter_map(catalog_key)
+                .collect(),
             year: release.year,
             area: release.area,
-            label: release.label.as_deref().and_then(stated),
+            labels: release
+                .labels
+                .iter()
+                .filter_map(ReleaseLabel::name)
+                .filter_map(stated)
+                .collect(),
             media: KnownMedia::of(&release.media),
         }
     }
@@ -148,6 +158,15 @@ impl KnownMedia {
     }
 }
 
+/// `Same` when one value is on both sides, `Unknown` otherwise.
+fn shared(a: &[String], b: &[String]) -> Comparison {
+    if a.iter().any(|value| b.contains(value)) {
+        Comparison::Same
+    } else {
+        Comparison::Unknown
+    }
+}
+
 /// `Same` or `Different` when both sides state the fact, `Unknown` when
 /// either leaves it out.
 fn compare_stated<T: PartialEq>(a: Option<T>, b: Option<T>) -> Comparison {
@@ -186,11 +205,8 @@ impl PressingEvidence {
             Comparison::Unknown
         };
         // Never `Different`: the sources punctuate and abbreviate these
-        // freely, so two numbers that squash apart may still be one.
-        let catalog = match (&a.catalog, &b.catalog) {
-            (Some(a), Some(b)) if a == b => Comparison::Same,
-            _ => Comparison::Unknown,
-        };
+        // freely, and a record on two labels may state either label's number.
+        let catalog = shared(&a.catalogs, &b.catalogs);
         // Two countries are the same or different. A region overlaps the
         // countries and the other regions it spans — "UK & Europe" holds the
         // United Kingdom and Europe both — so only the same region is a
@@ -203,10 +219,7 @@ impl PressingEvidence {
             _ => Comparison::Unknown,
         };
         // Differently written names are inconclusive, not different labels.
-        let label = match (&a.label, &b.label) {
-            (Some(a), Some(b)) if a == b => Comparison::Same,
-            _ => Comparison::Unknown,
-        };
+        let label = shared(&a.labels, &b.labels);
         Self {
             same_catalog: a.record.catalog == b.record.catalog,
             link: a.links.contains(&b.record) || b.links.contains(&a.record),

@@ -34,8 +34,8 @@ pub use artist_assignment::{
 };
 mod raw_release_edit;
 pub use raw_release_edit::{
-    CandidateDraft, CandidateTrack, EditValidationError, RawPressingEdit, RawReleaseEdit,
-    RawReleaseEditOf, RawTrackEdit,
+    CandidateDraft, CandidateTrack, EditValidationError, RawLabelEdit, RawPressingEdit,
+    RawReleaseEdit, RawReleaseEditOf, RawTrackEdit,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::{path::PathBuf, sync::Arc};

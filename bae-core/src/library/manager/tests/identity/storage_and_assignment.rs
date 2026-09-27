@@ -327,8 +327,10 @@ async fn set_records_does_not_touch_metadata_columns() {
         discogs_details: vec![crate::pressing::DiscogsDetail::Remastered],
         ..crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1)
     };
-    release.pressing.label = Some("My Label".to_string());
-    release.pressing.catalog_number = Some("CAT-123".to_string());
+    release.pressing.labels = vec![
+        crate::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+        crate::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+    ];
     release.pressing.barcode = Some("1234567890".to_string());
     release.pressing.year = Some(1999);
     manager.database.insert_release(&release).await.unwrap();
@@ -368,8 +370,7 @@ async fn set_records_does_not_touch_metadata_columns() {
         .unwrap()
         .unwrap();
     assert_eq!(after.pressing.facts, release.pressing.facts);
-    assert_eq!(after.pressing.label.as_deref(), Some("My Label"));
-    assert_eq!(after.pressing.catalog_number.as_deref(), Some("CAT-123"));
+    assert_eq!(after.pressing.labels, release.pressing.labels);
     assert_eq!(after.pressing.barcode.as_deref(), Some("1234567890"));
     assert_eq!(after.pressing.year, Some(1999));
 

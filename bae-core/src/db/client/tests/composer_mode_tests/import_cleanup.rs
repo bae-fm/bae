@@ -65,8 +65,7 @@ fn test_release(id: &str, album_id: &str, now: chrono::DateTime<chrono::Utc>) ->
         release_name: None,
         pressing: crate::pressing::Pressing {
             year: Some(2026),
-            label: None,
-            catalog_number: None,
+            labels: Vec::new(),
             barcode: None,
             facts: crate::pressing::made_of(crate::pressing::Medium::Cd, 1),
         },
@@ -332,8 +331,8 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
             INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
             VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '85f70840-aba5-4eb9-8e1a-0d319e53b798', 2026, '0252dedb-ee39-4547-8803-438dbeb57a64', 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, release_name, year, label, catalog_number, barcode, media, discogs_details, remote, source_folder_name, content_hash, album_loudness_lufs, album_peak_linear, _updated_at, created_at)
-            VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', NULL, 2026, NULL, NULL, NULL, '[{\"medium\":\"cd\",\"count\":1}]', '[]', 1, NULL, NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+            INSERT INTO releases (id, album_id, release_name, year, labels, barcode, media, discogs_details, remote, source_folder_name, content_hash, album_loudness_lufs, album_peak_linear, _updated_at, created_at)
+            VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', NULL, 2026, '[]', NULL, '[{\"medium\":\"cd\",\"count\":1}]', '[]', 1, NULL, NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
             INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
             VALUES ('0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');

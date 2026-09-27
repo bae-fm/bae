@@ -265,8 +265,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
                 album_year: Some(1984),
                 pressing: crate::pressing::Pressing {
                     year: Some(1991),
-                    label: Some("Edited Label".to_string()),
-                    catalog_number: Some("CAT-1".to_string()),
+                    labels: vec![crate::pressing::ReleaseLabel::of(Some("Edited Label"), Some("CAT-1"))],
                     facts: crate::pressing::PressingFacts { area: Some(crate::pressing::area("US")), ..Default::default() },
                     barcode: Some("123456789".to_string()),
                 },

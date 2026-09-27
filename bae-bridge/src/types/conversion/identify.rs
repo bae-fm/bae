@@ -7,8 +7,7 @@ impl BridgeMetadataResult {
             source,
             release_id,
             year,
-            label,
-            catalog_number,
+            labels,
             barcodes,
             source_group_id,
             // Dropped: the card carries the album's title/artist/cover, so a
@@ -36,8 +35,10 @@ impl BridgeMetadataResult {
             source: BridgeCatalog::from_core(source),
             release_id,
             year,
-            label,
-            catalog_number,
+            labels: labels
+                .into_iter()
+                .map(BridgeReleaseLabel::from_core)
+                .collect(),
             facts,
             barcodes,
             source_group_id,
@@ -85,8 +86,7 @@ impl BridgeReleaseDetail {
             title,
             artist,
             year,
-            label,
-            catalog_number,
+            labels,
             barcode,
             facts,
             track_count,
@@ -104,8 +104,10 @@ impl BridgeReleaseDetail {
             title,
             artist,
             year,
-            label,
-            catalog_number,
+            labels: labels
+                .into_iter()
+                .map(BridgeReleaseLabel::from_core)
+                .collect(),
             barcode,
             facts: BridgePressingFacts::from_core(facts),
             track_count,

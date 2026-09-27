@@ -654,8 +654,7 @@ struct ImportSearchFlowLibraryStatusTests {
                                                 source: .musicBrainz,
                                                 releaseId: "rel-live",
                                                 year: 2000,
-                                                label: nil,
-                                                catalogNumber: nil,
+                                                labels: [],
                                                 facts: cdFacts,
                                                 barcodes: [],
                                                 sourceGroupId: "group-live"

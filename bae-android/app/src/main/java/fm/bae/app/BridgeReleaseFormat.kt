@@ -15,12 +15,12 @@ internal fun BridgeRelease.compactMetadataText(
     context: Context,
     audioChannelsKey: (Long) -> String?,
 ): String =
-    listOfNotNull(
-        year?.toString(),
-        factLine(context, pressingSummary).ifEmpty { null },
-        label,
-        catalogNumber,
-        factLine(context, pressingDetails).ifEmpty { null },
-        sourceAudio?.text(context, audioChannelsKey),
-        context.durationUnitsText(totalDuration).ifEmpty { null },
-    ).joinToString(context.coreString("core.audio.list_separator"))
+    (
+        listOf(year?.toString(), factLine(context, pressingSummary).ifEmpty { null }) +
+            labels.flatMap { listOf(it.name, it.catalogNumber) } +
+            listOf(
+                factLine(context, pressingDetails).ifEmpty { null },
+                sourceAudio?.text(context, audioChannelsKey),
+                context.durationUnitsText(totalDuration).ifEmpty { null },
+            )
+    ).filterNotNull().joinToString(context.coreString("core.audio.list_separator"))

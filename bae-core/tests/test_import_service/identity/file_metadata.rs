@@ -399,8 +399,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
         album_year: Some(1998),
         pressing: bae_core::pressing::Pressing {
             year: Some(2010),
-            label: Some("Edited Label".to_string()),
-            catalog_number: Some("EDIT-1".to_string()),
+            labels: vec![bae_core::pressing::ReleaseLabel::of(Some("Edited Label"), Some("EDIT-1"))],
             facts: bae_core::pressing::PressingFacts {
                 area: Some(bae_core::pressing::ReleaseArea::Country(
                     bae_core::pressing::Country::from_code("JP").unwrap(),
@@ -445,8 +444,10 @@ async fn file_metadata_import_with_user_edit_overlay() {
             count: 1,
         }]
     );
-    assert_eq!(release.pressing.label.as_deref(), Some("Edited Label"));
-    assert_eq!(release.pressing.catalog_number.as_deref(), Some("EDIT-1"));
+    assert_eq!(
+        release.pressing.labels,
+        vec![bae_core::pressing::ReleaseLabel::of(Some("Edited Label"), Some("EDIT-1"))]
+    );
     assert_eq!(
         release.pressing.facts.area,
         Some(bae_core::pressing::ReleaseArea::Country(

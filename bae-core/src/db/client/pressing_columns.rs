@@ -1,6 +1,7 @@
 //! A pressing's facts as the columns every table that stores them keeps them
 //! in: `country` or `region`, `media` (a JSON array of carriers and counts),
-//! `status`, `packaging`, and `discogs_details` (a JSON array of keys).
+//! `status`, `packaging`, and `discogs_details` (a JSON array of keys) — and
+//! its `labels`, a JSON array of each label's name and catalog number.
 //!
 //! One writer and one reader, so every table spells the facts the same way
 //! and a value no vocabulary names fails the read instead of turning into
@@ -9,7 +10,7 @@
 use super::read::column_conversion_error;
 use crate::pressing::{
     Country, DiscogsDetail, MediaCount, Packaging, PressingFacts, Region, ReleaseArea,
-    ReleaseStatus,
+    ReleaseLabel, ReleaseStatus,
 };
 use coven::rusqlite::Row;
 
@@ -40,6 +41,19 @@ impl FactColumns {
                 .expect("details serialize"),
         }
     }
+}
+
+/// A pressing's labels as their `labels` column holds them.
+pub(super) fn labels_column(labels: &[ReleaseLabel]) -> String {
+    serde_json::to_string(labels).expect("labels serialize")
+}
+
+/// Read a `labels` column: every label, each with its catalog number.
+pub(super) fn read_labels(row: &Row, column: &str) -> coven::rusqlite::Result<Vec<ReleaseLabel>> {
+    let labels: String = row.get(column)?;
+    serde_json::from_str::<Vec<ReleaseLabel>>(&labels).map_err(|error| {
+        column_conversion_error(row, column, format!("labels {labels:?}: {error}"))
+    })
 }
 
 /// Read the facts a row's columns hold. `prefix` is what a joined query puts

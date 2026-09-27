@@ -22,7 +22,7 @@ use crate::import::source_release::{
     ArtistCredit, EntryKind, PerformedWork, RoleCredit, SourceMedium, SourceRelease, SourceWork,
     SourceWorkEvent, TracklistEntry,
 };
-use crate::musicbrainz::{label_and_catno, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork};
+use crate::musicbrainz::{release_labels, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork};
 use coven::Clock;
 use coven::IdProvider;
 use std::collections::HashSet;
@@ -161,14 +161,13 @@ fn work_ref(work: &SourceWork, converted: &mut HashSet<String>) -> WorkGraphRef 
 }
 
 /// The pressing a MusicBrainz release describes — its own release date's
-/// year, its first label's name and catalog number, its barcode, and what it
+/// year, every label's name and catalog number, its barcode, and what it
 /// is: its country, every medium, its status and packaging — and its media
 /// in the document's own shape.
 ///
 /// The one MB → pressing projection. The committed release, the picker's detail,
 /// and a search result all read it, so a pressing shown is the pressing stored.
 pub(crate) fn pressing(response: &MbReleaseResponse) -> (Pressing, StatedMedia) {
-    let (label, catalog_number) = label_and_catno(&response.label_info);
     let (facts, media) = crate::pressing::musicbrainz::read(crate::pressing::musicbrainz::Stated {
         release_id: &response.id,
         country: response.country.as_deref(),
@@ -178,8 +177,7 @@ pub(crate) fn pressing(response: &MbReleaseResponse) -> (Pressing, StatedMedia) 
     });
     let pressing = Pressing {
         year: super::parse_year(response.date.as_deref()),
-        label,
-        catalog_number,
+        labels: release_labels(&response.label_info),
         barcode: response.barcode.clone(),
         facts,
     };

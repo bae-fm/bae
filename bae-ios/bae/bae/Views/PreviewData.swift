@@ -123,8 +123,7 @@ enum PreviewData {
                 media: bridgeMediaTerms(media: facts.media)
             ),
             year: 2018,
-            label: "Label Name",
-            catalogNumber: "CAT-001",
+            labels: [BridgeReleaseLabel(name: "Label Name", catalogNumber: "CAT-001")],
             facts: facts,
             pressingSummary: bridgePressingSummary(facts: facts),
             mediaTerms: bridgeMediaTerms(media: facts.media),

@@ -90,8 +90,7 @@
         }
 
         private struct ReleaseIdentifiers {
-            let label: String
-            let catalogNumber: String
+            let labels: [BridgeReleaseLabel]
             let area: BridgeReleaseArea
         }
 
@@ -179,8 +178,7 @@
                         media: bridgeMediaTerms(media: fixture.media)
                     ),
                 year: year,
-                label: fixture.identifiers?.label,
-                catalogNumber: fixture.identifiers?.catalogNumber,
+                labels: fixture.identifiers?.labels ?? [],
                 facts: facts,
                 pressingSummary: bridgePressingSummary(facts: facts),
                 mediaTerms: bridgeMediaTerms(media: facts.media),
@@ -263,8 +261,16 @@
                     media: media,
                     tracks: .twoPart(first: first, second: second),
                     identifiers: ReleaseIdentifiers(
-                        label: "Some Label",
-                        catalogNumber: "CAT-001",
+                        labels: [
+                            BridgeReleaseLabel(
+                                name: "Label A",
+                                catalogNumber: "AB 100"
+                            ),
+                            BridgeReleaseLabel(
+                                name: "Label B",
+                                catalogNumber: "CL 719"
+                            ),
+                        ],
                         area: .country(code: "US"),
                     ),
                 ),

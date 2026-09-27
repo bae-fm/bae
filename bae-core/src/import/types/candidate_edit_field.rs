@@ -13,8 +13,6 @@ pub enum CandidateEditField {
     AlbumTitle,
     AlbumYear,
     PressingYear,
-    Label,
-    CatalogNumber,
     Barcode,
 }
 
@@ -26,8 +24,6 @@ impl CandidateEditField {
             Self::AlbumTitle => &mut draft.album_title,
             Self::AlbumYear => &mut draft.album_year,
             Self::PressingYear => &mut draft.pressing.year,
-            Self::Label => &mut draft.pressing.label,
-            Self::CatalogNumber => &mut draft.pressing.catalog_number,
             Self::Barcode => &mut draft.pressing.barcode,
         };
         *slot = value.to_string();
@@ -46,13 +42,16 @@ pub enum PressingFactEdit {
 }
 
 /// One edit of the metadata form's album-level fields: text typed into a
-/// field, or a choice of what the pressing is.
+/// field, the label rows as the person left them, or a choice of what the
+/// pressing is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DraftFieldEdit {
     Text {
         field: CandidateEditField,
         value: String,
     },
+    /// Every label row, in order.
+    Labels(Vec<super::RawLabelEdit>),
     PressingFact(PressingFactEdit),
 }
 
@@ -62,6 +61,7 @@ impl DraftFieldEdit {
     pub(crate) fn apply<Track>(self, draft: &mut RawReleaseEditOf<Track>) {
         match self {
             Self::Text { field, value } => field.set(draft, &value),
+            Self::Labels(labels) => draft.pressing.labels = labels,
             Self::PressingFact(choice) => choice.apply(&mut draft.pressing.facts),
         }
     }

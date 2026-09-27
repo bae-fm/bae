@@ -283,10 +283,38 @@ fn blank_pressing_fields_are_absent_in_discogs_documents() {
         let (pressing, media) = crate::import::discogs_mapper::pressing(&release);
         assert!(pressing.facts.is_empty());
         assert_eq!(media, crate::pressing::StatedMedia::Undescribed);
-        assert!(release.label.is_empty());
-        assert!(release.catno.is_none());
+        assert!(release.labels.is_empty());
+        assert!(pressing.labels.is_empty());
         assert!(release.barcode.is_none());
     }
+}
+
+/// Every label is read with its own catalog number, and the pressing keeps
+/// them all.
+#[test]
+fn every_label_and_its_catalog_number_is_read() {
+    use crate::pressing::ReleaseLabel;
+    let raw = serde_json::json!({
+        "id": 123, "title": "Album",
+        "labels": [
+            {"name": "Label A", "catno": "AB 100"},
+            {"name": "Label B", "catno": "CL 719"},
+            {"name": "Label B", "catno": "CL 719"},
+            {"name": "Label C", "catno": ""}
+        ]
+    })
+    .to_string();
+    let release = parse_discogs_release_json(&raw).unwrap();
+    let expected = vec![
+        ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+        ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+        ReleaseLabel::of(Some("Label C"), None),
+    ];
+    assert_eq!(release.labels, expected);
+    assert_eq!(
+        crate::import::discogs_mapper::pressing(&release).0.labels,
+        expected
+    );
 }
 
 #[test]

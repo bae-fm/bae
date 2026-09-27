@@ -171,7 +171,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     // `parse_side_from_position` maps these to side=1 and side=2.
     let discogs_release = DiscogsRelease {
         country: None,
-        label: vec![],
+        labels: vec![],
         // Each position carries its disc, which the shared builder's flat 1..n
         // numbering cannot express, so this tracklist is built here.
         tracklist: (1..=2)

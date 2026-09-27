@@ -56,6 +56,23 @@ pub(crate) fn pressing_facts_schema(generator: &mut schemars::SchemaGenerator) -
     })
 }
 
+/// `Vec<bae_core::pressing::ReleaseLabel>` as it serializes: each label's
+/// name and catalog number, at least one of them.
+pub(crate) fn labels_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" },
+                "catalog_number": { "type": "string" },
+            },
+            "anyOf": [{ "required": ["name"] }, { "required": ["catalog_number"] }],
+            "additionalProperties": false,
+        },
+    })
+}
+
 /// Where a pressing was released: `{"Country": "<ISO 3166-1 code>"}`,
 /// `{"Region": "<region key>"}`, or null.
 fn area_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {

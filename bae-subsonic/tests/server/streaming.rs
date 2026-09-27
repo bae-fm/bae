@@ -323,7 +323,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
 
     let discogs_key = support::seed_discogs_test_release(manager.providers(), DiscogsRelease {
         country: None,
-        label: vec![],
+        labels: vec![],
         artists: vec![support::discogs_artist(
             "discogs-lossy-artist",
             "Lossy Artist",

@@ -285,9 +285,8 @@ struct LookupReleasesPopover: View {
     }
 }
 
-/// One pressing a lookup found: year, label, catalog number, where it was
-/// released and what it is made of — the facts that tell pressings of one
-/// album apart.
+/// One pressing a lookup found: the facts that tell pressings of one album
+/// apart.
 struct LookupReleaseLine: View {
     let pressing: Pressing
 
@@ -302,22 +301,26 @@ struct LookupReleaseLine: View {
                     .font(.system(size: 11.5, weight: .semibold))
                     .monospacedDigit()
             }
-            if let label = pressing.lead.label {
-                Text(label)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            if let catalogNumber = pressing.lead.catalogNumber {
-                Text(catalogNumber)
-                    .font(.system(size: 9.5, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
-                    .background(
-                        Theme.hover,
-                        in: RoundedRectangle(cornerRadius: 3)
-                    )
-                    .lineLimit(1)
+            ForEach(Array(pressing.lead.labels.enumerated()), id: \.offset) {
+                _,
+                label in
+                if let name = label.name {
+                    Text(name)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                if let catalogNumber = label.catalogNumber {
+                    Text(catalogNumber)
+                        .font(.system(size: 9.5, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                        .background(
+                            Theme.hover,
+                            in: RoundedRectangle(cornerRadius: 3)
+                        )
+                        .lineLimit(1)
+                }
             }
             if !pressed.isEmpty {
                 Text(pressed)

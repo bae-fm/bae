@@ -5,6 +5,8 @@ import SwiftUI
 /// field independently; persisted-release sessions update their working form.
 struct ReleaseFieldWriter {
     let setField: @MainActor (BridgeCandidateEditField, String) async -> Void
+    /// Every label row, after one is typed into, added or removed.
+    let setLabels: @MainActor ([BridgeRawLabelEdit]) async -> Void
     /// A choice of what the pressing is, from one of the form's pickers.
     let setPressingFact: @MainActor (BridgePressingFactEdit) async -> Void
     let setAlbumArtists: @MainActor ([BridgeArtistAssignment]) async -> Void
@@ -14,6 +16,10 @@ struct ReleaseFieldWriter {
             @escaping @MainActor (
                 BridgeCandidateEditField, String
             ) async -> Void,
+        setLabels:
+            @escaping @MainActor (
+                [BridgeRawLabelEdit]
+            ) async -> Void = { _ in },
         setPressingFact:
             @escaping @MainActor (
                 BridgePressingFactEdit
@@ -24,6 +30,7 @@ struct ReleaseFieldWriter {
             ) async -> Void = { _ in }
     ) {
         self.setField = setField
+        self.setLabels = setLabels
         self.setPressingFact = setPressingFact
         self.setAlbumArtists = setAlbumArtists
     }
@@ -35,11 +42,11 @@ struct ReleaseFieldWriter {
                 case .albumTitle: form.wrappedValue.albumTitle = value
                 case .albumYear: form.wrappedValue.albumYear = value
                 case .pressingYear: form.wrappedValue.pressing.year = value
-                case .label: form.wrappedValue.pressing.label = value
-                case .catalogNumber:
-                    form.wrappedValue.pressing.catalogNumber = value
                 case .barcode: form.wrappedValue.pressing.barcode = value
                 }
+            },
+            setLabels: { labels in
+                form.wrappedValue.pressing.labels = labels
             },
             setPressingFact: { fact in
                 form.wrappedValue.pressing.facts = bridgeApplyPressingFact(
@@ -210,26 +217,12 @@ struct ReleasePressingFieldsGrid: View {
                         write: writer.setPressingFact
                     )
                 }
-                GridRow {
-                    field(
-                        .label,
-                        label: String(localized: "Label"),
-                        text: values.pressing.label
-                    )
-                }
+                labelRows
                 GridRow {
                     rowLabel(String(localized: "Country"))
                     ReleaseAreaPicker(
                         area: values.pressing.facts.area,
                         write: writer.setPressingFact
-                    )
-                }
-                GridRow {
-                    field(
-                        .catalogNumber,
-                        label: String(localized: "Catalog"),
-                        text: values.pressing.catalogNumber,
-                        monospaced: true
                     )
                 }
                 GridRow {
@@ -265,6 +258,103 @@ struct ReleasePressingFieldsGrid: View {
         }
     }
 
+    /// One row per label, name beside number; a blank row when there is none.
+    @ViewBuilder
+    private var labelRows: some View {
+        let rows =
+            values.pressing.labels.isEmpty
+            ? [BridgeRawLabelEdit(name: "", catalogNumber: "")]
+            : values.pressing.labels
+        ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+            GridRow {
+                rowLabel(index == 0 ? String(localized: "Label") : "")
+                HStack(spacing: 6) {
+                    valueText(
+                        row.name,
+                        placeholder: "\u{2014}",
+                        role: .emptyMark,
+                        monospaced: false
+                    ) { name in
+                        var next = rows
+                        next[index].name = name
+                        await writer.setLabels(next)
+                    }
+                    valueText(
+                        row.catalogNumber,
+                        placeholder: String(localized: "Catalog #"),
+                        role: .hint,
+                        monospaced: true
+                    ) { number in
+                        var next = rows
+                        next[index].catalogNumber = number
+                        await writer.setLabels(next)
+                    }
+                    if rows.count > 1 || !row.name.isEmpty
+                        || !row.catalogNumber.isEmpty
+                    {
+                        let named =
+                            row.name.isEmpty ? row.catalogNumber : row.name
+                        Button {
+                            var next = rows
+                            next.remove(at: index)
+                            Task { await writer.setLabels(next) }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                        .help(String(localized: "Remove \(named)"))
+                        .accessibilityLabel(
+                            String(localized: "Remove \(named)")
+                        )
+                    }
+                    if index == rows.count - 1 {
+                        Button {
+                            let blank = BridgeRawLabelEdit(
+                                name: "",
+                                catalogNumber: ""
+                            )
+                            Task { await writer.setLabels(rows + [blank]) }
+                        } label: {
+                            Image(systemName: "plus")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help(String(localized: "Add label"))
+                        .accessibilityLabel(String(localized: "Add label"))
+                    }
+                }
+                .font(.system(size: 11))
+            }
+        }
+    }
+
+    /// A field as wide as its value, and wider when empty so there is
+    /// something to click into.
+    private func valueText(
+        _ text: String,
+        placeholder: String,
+        role: CommittedTextField.PlaceholderRole,
+        monospaced: Bool,
+        onCommit: @escaping @MainActor (String) async -> Void
+    ) -> some View {
+        CommittedTextField(
+            placeholder: placeholder,
+            value: text,
+            monospaced: monospaced,
+            chrome: .inline,
+            font: .systemFont(ofSize: 12.5),
+            placeholderRole: role,
+            editingCommands: editingCommands,
+            onCommit: onCommit,
+        )
+        .fixedSize(horizontal: true, vertical: false)
+        .frame(
+            minWidth: text.isEmpty ? Self.emptyValueWidth : nil,
+            alignment: .leading
+        )
+    }
+
     /// A row's label, right-aligned in its column.
     private func rowLabel(_ label: String) -> some View {
         Text(label)
@@ -274,9 +364,7 @@ struct ReleasePressingFieldsGrid: View {
             .frame(width: Self.labelWidth, alignment: .trailing)
     }
 
-    /// One row: the label right-aligned in its column, the field as wide as
-    /// its value. An empty field is drawn wider than its dash so there is
-    /// something to click into.
+    /// One row: the label right-aligned in its column, then the field.
     @ViewBuilder
     private func field(
         _ field: BridgeCandidateEditField,
@@ -285,21 +373,12 @@ struct ReleasePressingFieldsGrid: View {
         monospaced: Bool = false
     ) -> some View {
         rowLabel(label)
-        CommittedTextField(
+        valueText(
+            text,
             placeholder: "\u{2014}",
-            value: text,
-            monospaced: monospaced,
-            chrome: .inline,
-            font: .systemFont(ofSize: 12.5),
-            placeholderRole: .emptyMark,
-            editingCommands: editingCommands,
-            onCommit: { await writer.setField(field, $0) },
-        )
-        .fixedSize(horizontal: true, vertical: false)
-        .frame(
-            minWidth: text.isEmpty ? Self.emptyValueWidth : nil,
-            alignment: .leading
-        )
+            role: .emptyMark,
+            monospaced: monospaced
+        ) { await writer.setField(field, $0) }
     }
 }
 

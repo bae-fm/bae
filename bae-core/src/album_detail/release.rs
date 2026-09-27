@@ -91,8 +91,8 @@ pub struct ReleaseDetail {
     /// the index.
     pub name: ReleaseName,
     pub year: Option<i32>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
+    /// Every label the release is on, each with its catalog number.
+    pub labels: Vec<crate::pressing::ReleaseLabel>,
     /// What the pressing is: its area, media, status, packaging and details.
     pub facts: crate::pressing::PressingFacts,
     /// Summed across all tracks, in milliseconds. The UI formats it.
@@ -394,8 +394,7 @@ impl ReleaseDetail {
             summary,
             name,
             year: release.pressing.year,
-            label: release.pressing.label,
-            catalog_number: release.pressing.catalog_number,
+            labels: release.pressing.labels,
             facts: release.pressing.facts,
             total_duration_ms,
             tracks,

@@ -12,7 +12,8 @@ use crate::import::types::{parse_catalog_url, Catalog, CatalogPage, MetadataRef}
 use crate::import::ImportError;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use crate::pressing::{
-    DiscogsDetail, Packaging, PressingFacts, ReleaseArea, ReleaseStatus, StatedMedia,
+    DiscogsDetail, Packaging, PressingFacts, ReleaseArea, ReleaseLabel, ReleaseStatus,
+    StatedMedia,
 };
 use crate::signals::LookupFailure;
 use crate::util::rate_limiter::CallPriority;
@@ -32,8 +33,9 @@ pub struct MetadataResult {
     pub title: String,
     pub artist: Option<String>,
     pub year: Option<i32>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
+    /// Every label the record states, with its catalog number; a Discogs
+    /// search result states only the first.
+    pub labels: Vec<ReleaseLabel>,
     pub area: Option<ReleaseArea>,
     pub status: Option<ReleaseStatus>,
     pub packaging: Option<Packaging>,
@@ -106,8 +108,7 @@ impl MetadataResult {
             title: detail.title.clone(),
             artist: detail.artist.clone(),
             year: detail.year,
-            label: detail.label.clone(),
-            catalog_number: detail.catalog_number.clone(),
+            labels: detail.labels.clone(),
             area: detail.facts.area,
             status: detail.facts.status,
             packaging: detail.facts.packaging,
@@ -140,8 +141,7 @@ impl MetadataResult {
             title: "Album".to_string(),
             artist: None,
             year: None,
-            label: None,
-            catalog_number: None,
+            labels: Vec::new(),
             area: None,
             status: None,
             packaging: None,
@@ -195,8 +195,7 @@ pub struct ImportSearchReleaseDetail {
     pub title: String,
     pub artist: Option<String>,
     pub year: Option<i32>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
+    pub labels: Vec<ReleaseLabel>,
     pub barcode: Option<String>,
     /// What the pressing is, with what the linked documents supplied where
     /// the release states nothing.
@@ -229,6 +228,10 @@ pub struct ReleaseTrack {
 }
 
 /// Convert a Discogs search result to a MetadataResult.
+///
+/// Its labels are the first label alone, the only one the response pairs
+/// with a number, so a release found by a later label's number does not
+/// answer a catalog-number search.
 pub fn discogs_search_result_to_metadata(
     r: crate::discogs::client::DiscogsSearchResult,
 ) -> MetadataResult {
@@ -239,8 +242,11 @@ pub fn discogs_search_result_to_metadata(
         None => (None, r.title.clone()),
     };
     let year = r.year.as_ref().and_then(|y| y.parse::<i32>().ok());
-    let label = r.label.as_ref().and_then(|l| l.first().cloned());
     let cover_art = r.remote_cover();
+    let labels = ReleaseLabel::list([(
+        r.label.and_then(|names| names.into_iter().next()),
+        r.catno,
+    )]);
     let release_id = r.id.to_string();
     let formats = crate::pressing::discogs_formats::read(&release_id, &r.formats);
     let area = r
@@ -254,8 +260,7 @@ pub fn discogs_search_result_to_metadata(
         title: album,
         artist,
         year,
-        label,
-        catalog_number: r.catno,
+        labels,
         area,
         status: formats.status,
         packaging: formats.packaging,
@@ -287,8 +292,7 @@ pub(crate) fn discogs_release_to_metadata(release: &crate::discogs::DiscogsRelea
         title: metadata.album.title,
         artist: metadata.album.artists.first().map(|artist| artist.name.clone()),
         year: pressing.year,
-        label: pressing.label,
-        catalog_number: pressing.catalog_number,
+        labels: pressing.labels,
         area: pressing.facts.area,
         status: pressing.facts.status,
         packaging: pressing.facts.packaging,
@@ -352,8 +356,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         title: r.title,
         artist: r.artist_credit.first().map(|ac| ac.name.clone()),
         year: pressing.year,
-        label: pressing.label,
-        catalog_number: pressing.catalog_number,
+        labels: pressing.labels,
         area: pressing.facts.area,
         status: pressing.facts.status,
         packaging: pressing.facts.packaging,
@@ -396,7 +399,7 @@ fn mb_discid_releases_to_metadata(
 }
 
 fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) -> MetadataResult {
-    let (label, catalog_number) = musicbrainz::label_and_catno(&r.label_info);
+    let labels = musicbrainz::release_labels(&r.label_info);
     let (facts, media) = crate::pressing::musicbrainz::read(crate::pressing::musicbrainz::Stated {
         release_id: &r.id,
         country: r.country.as_deref(),
@@ -410,8 +413,7 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
         title: r.title,
         artist: r.artist_credit.first().map(|ac| ac.name.clone()),
         year: parse_year(r.date.as_deref()),
-        label,
-        catalog_number,
+        labels,
         area: facts.area,
         status: facts.status,
         packaging: facts.packaging,
@@ -536,12 +538,10 @@ pub enum SearchQuery {
 }
 
 impl SearchQuery {
-    /// Keep only what answers the query. A catalog number is one number: both
-    /// catalogs search by it loosely — Discogs's `catno` matches it inside
-    /// longer numbers, so asking for `CL 719` returns `CL 1719` and
-    /// `WPCL-719` — and a release under another number is not an answer to
-    /// it. The two numbers are compared as [`catalog_key`] compares them,
-    /// however either is spaced, cased or hyphenated.
+    /// Keep only what answers the query. Both catalogs match a catalog number
+    /// loosely — asking for `CL 719` returns `CL 1719` and `WPCL-719` — so a
+    /// release answers only when one of its labels' numbers is the asked one,
+    /// compared as [`catalog_key`] compares them.
     fn keep_answers(&self, results: &mut Vec<MetadataResult>) {
         let SearchQuery::CatalogNumber { catalog_number } = self else {
             return;
@@ -551,10 +551,11 @@ impl SearchQuery {
         };
         results.retain(|result| {
             result
-                .catalog_number
-                .as_deref()
-                .and_then(catalog_key)
-                .is_some_and(|stated| stated == asked)
+                .labels
+                .iter()
+                .filter_map(ReleaseLabel::catalog_number)
+                .filter_map(catalog_key)
+                .any(|stated| stated == asked)
         });
     }
 

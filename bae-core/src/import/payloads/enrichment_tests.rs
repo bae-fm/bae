@@ -152,7 +152,7 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
     assert_eq!(parsed.album.year, Some(1980));
     assert_eq!(parsed.release.pressing.year, Some(2005));
     assert_eq!(
-        parsed.release.pressing.label.as_deref(),
+        parsed.release.pressing.labels[0].name(),
         Some("Selected Label")
     );
     assert_eq!(
@@ -173,7 +173,7 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
     assert_eq!(parsed.tracks[1].title, "Second Track");
     assert_eq!(parsed.tracks[1].side, Some(2));
     let detail = payloads.extract().unwrap().detail_for_audio(&[], &[]).unwrap();
-    assert_eq!(detail.label, parsed.release.pressing.label);
+    assert_eq!(detail.labels, parsed.release.pressing.labels);
     assert_eq!(detail.facts, parsed.release.pressing.facts);
     assert_eq!(detail.year, parsed.release.pressing.year);
 }

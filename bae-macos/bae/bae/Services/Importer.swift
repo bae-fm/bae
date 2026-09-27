@@ -77,6 +77,8 @@ private struct ImportOperations: Sendable {
     let setCandidateEditField:
         @Sendable (String, BridgeCandidateEditField, String) async throws ->
             Void
+    let setCandidateLabels:
+        @Sendable (String, [BridgeRawLabelEdit]) async throws -> Void
     let setCandidatePressingFact:
         @Sendable (String, BridgePressingFactEdit) async throws -> Void
     let setCandidateAlbumArtists:
@@ -249,6 +251,12 @@ extension ImportOperations {
                     candidateKey: $0,
                     field: $1,
                     value: $2
+                )
+            },
+            setCandidateLabels: {
+                try await handle.setCandidateLabels(
+                    candidateKey: $0,
+                    labels: $1
                 )
             },
             setCandidatePressingFact: {
@@ -451,6 +459,9 @@ final class Importer: Sendable, Observable {
         setCandidateEditField:
             @escaping @Sendable (String, BridgeCandidateEditField, String)
             async throws -> Void = { _, _, _ in },
+        setCandidateLabels:
+            @escaping @Sendable (String, [BridgeRawLabelEdit]) async throws
+            -> Void = { _, _ in },
         setCandidatePressingFact:
             @escaping @Sendable (String, BridgePressingFactEdit) async throws
             -> Void = { _, _ in },
@@ -540,6 +551,7 @@ final class Importer: Sendable, Observable {
             setCandidatePaneError: setCandidatePaneError,
             setCandidateCover: setCandidateCover,
             setCandidateEditField: setCandidateEditField,
+            setCandidateLabels: setCandidateLabels,
             setCandidatePressingFact: setCandidatePressingFact,
             setCandidateAlbumArtists: setCandidateAlbumArtists,
             setCandidateTrackEdit: setCandidateTrackEdit,
@@ -780,6 +792,14 @@ extension Importer {
         _ value: String
     ) async throws {
         try await operations.setCandidateEditField(candidateKey, field, value)
+    }
+
+    /// Record this candidate's label rows as the user left them.
+    func setCandidateLabels(
+        _ candidateKey: String,
+        _ labels: [BridgeRawLabelEdit]
+    ) async throws {
+        try await operations.setCandidateLabels(candidateKey, labels)
     }
 
     /// Record one choice of what this candidate's pressing is.

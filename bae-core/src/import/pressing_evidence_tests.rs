@@ -70,12 +70,12 @@ fn countries_and_regions_compare_by_what_they_name() {
 fn labels_agree_by_name_and_never_disagree() {
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
-    a.label = Some("Label Name Records".to_string());
-    b.label = Some("Label Name".to_string());
+    a.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Name Records"), None)];
+    b.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Name"), None)];
     assert_eq!(evidence(&a, &b).label, Comparison::Same);
-    b.label = Some("LN".to_string());
+    b.labels = vec![crate::pressing::ReleaseLabel::of(Some("LN"), None)];
     assert_eq!(evidence(&a, &b).label, Comparison::Unknown);
-    b.label = None;
+    b.labels = Vec::new();
     assert_eq!(evidence(&a, &b).label, Comparison::Unknown);
 }
 
@@ -85,14 +85,31 @@ fn labels_agree_by_name_and_never_disagree() {
 fn catalog_numbers_compare_squashed_and_never_disagree() {
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
-    a.catalog_number = Some("WPCR-80001".to_string());
-    b.catalog_number = Some("wpcr 80001".to_string());
+    a.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("WPCR-80001"))];
+    b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("wpcr 80001"))];
     assert_eq!(evidence(&a, &b).catalog, Comparison::Same);
-    b.catalog_number = Some("WPCR-80002".to_string());
+    b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("WPCR-80002"))];
     assert_eq!(evidence(&a, &b).catalog, Comparison::Unknown);
-    a.catalog_number = Some("[none]".to_string());
-    b.catalog_number = Some("none".to_string());
+    a.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("[none]"))];
+    b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("none"))];
     assert_eq!(evidence(&a, &b).catalog, Comparison::Unknown);
+}
+
+/// A record on two labels carries both labels' numbers, so a record stating
+/// either label's is the same number — and the same label.
+#[test]
+fn a_number_or_a_name_on_any_label_is_shared() {
+    use crate::pressing::ReleaseLabel;
+    let mut a = release(Catalog::MusicBrainz, "mb-1");
+    let mut b = release(Catalog::Discogs, "dg-1");
+    a.labels = vec![
+        ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+        ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+    ];
+    b.labels = vec![ReleaseLabel::of(Some("Label B"), Some("CL-719"))];
+    assert_eq!(evidence(&a, &b).catalog, Comparison::Same);
+    assert_eq!(evidence(&a, &b).label, Comparison::Same);
+    assert_eq!(evidence(&b, &a).catalog, Comparison::Same);
 }
 
 /// A MusicBrainz record's media, one format name per medium, read in
@@ -255,8 +272,8 @@ fn a_medium_left_unstated_is_weighed_against_a_complete_account() {
 fn support_needs_identity_evidence_and_no_contradiction() {
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
-    a.catalog_number = Some("CAT-7".to_string());
-    b.catalog_number = Some("CAT-7".to_string());
+    a.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
+    b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     a.year = Some(1992);
     b.year = Some(1992);
     assert_eq!(evidence(&a, &b).support(), None);
@@ -283,7 +300,7 @@ fn two_records_of_one_catalog_are_never_one_pressing() {
     let mut b = release(Catalog::Discogs, "dg-2");
     a.barcodes = vec!["012345678905".to_string()];
     b.barcodes = vec!["012345678905".to_string()];
-    a.catalog_number = Some("CAT-7".to_string());
-    b.catalog_number = Some("CAT-7".to_string());
+    a.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
+    b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     assert_eq!(evidence(&a, &b).support(), None);
 }

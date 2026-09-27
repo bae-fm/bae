@@ -32,7 +32,7 @@ fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsReleas
     let tracks: Vec<(&str, &str)> = tracks.iter().map(|title| (*title, "0:02")).collect();
     DiscogsRelease {
         country: None,
-        label: vec![],
+        labels: vec![],
         ..support::discogs_test_release(id, title, &tracks)
     }
 }
