@@ -1459,6 +1459,12 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     named_by_catalog    TEXT CHECK (named_by_catalog IS NULL OR named_by_catalog <> ''),
     named_by_key        TEXT CHECK (named_by_key IS NULL OR named_by_key <> ''),
     narrowed_out        INTEGER NOT NULL DEFAULT 0 CHECK (narrowed_out IN (0, 1)),
+    -- Why the release's full document could not be read when the run offered
+    -- its row, which then holds what the lookup returned. NULL when it was
+    -- read or never asked for.
+    document_failure        TEXT CHECK (document_failure IS NULL OR document_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
+    document_failure_status INTEGER,
+    document_failure_detail TEXT,
     PRIMARY KEY (content_hash, position),
     -- Referenced by the medium rows with the media kind, so a medium row always
     -- belongs to a match of its kind.
@@ -1471,7 +1477,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     CHECK ((named_by_catalog IS NULL) = (named_by_key IS NULL)),
     CHECK (named_by_catalog IS NULL
            OR (by_disc_id = 0 AND by_barcode = 0 AND by_catalog = 0 AND by_search = 0)),
-    CHECK (country IS NULL OR region IS NULL)
+    CHECK (country IS NULL OR region IS NULL),
+    CHECK (document_failure_status IS NULL OR document_failure = 'provider'),
+    CHECK ((document_failure = 'diagnostic') = (document_failure_detail IS NOT NULL))
 ) STRICT;
 
 -- Every barcode a matched record states.

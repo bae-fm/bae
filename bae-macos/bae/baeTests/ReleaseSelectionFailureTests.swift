@@ -321,3 +321,65 @@ extension ReleaseSelectionFailureTests {
         try body(clipboard)
     }
 }
+
+/// A row whose document identification could not read shows the same
+/// failure line a failed pick does, with a Retry that identifies again.
+extension ReleaseSelectionFailureTests {
+    @MainActor
+    @Test(
+        "a row whose document could not be read says so, and Retry identifies again"
+    )
+    func unreadRowSaysSoAndRetriesTheRun() async throws {
+        let offered = try #require(
+            PreviewData.searchStateFoundExact.identifiedGroups.first?.pressings
+                .first
+        )
+        let pressing = try #require(
+            Pressing(
+                bridge: BridgePressing(
+                    releases: offered.releases,
+                    labels: offered.labels,
+                    documentFailure: .timeout,
+                    pick: offered.provenance
+                )
+            )
+        )
+        let message = BridgeIdentifyFailure.releaseDetails(failure: .timeout)
+            .badgeLine
+        var retried = false
+        var selected: Pressing?
+        let size = NSSize(width: 900, height: 240)
+        try await SnapshotTestSupport.withHostedWindow(
+            ImportSearchResultRow(
+                pressing: pressing,
+                isImporting: false,
+                libraryStatus: nil,
+                isSelected: false,
+                onRetryUnread: { retried = true },
+                onSelect: { selected = $0 }
+            )
+            .importPreviewEnvironment()
+            .background(Theme.background)
+            .frame(width: size.width, height: size.height),
+            size: size
+        ) { window, host in
+            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+            let observations = try await SnapshotTestSupport.recognizedText(
+                in: png
+            )
+            try verifyFailure(
+                observations,
+                message: message,
+                pressing: pressing
+            )
+            try clickControl(
+                String(localized: "Retry"),
+                observations: observations,
+                window: window,
+                size: size
+            )
+            #expect(retried)
+            #expect(selected == nil)
+        }
+    }
+}

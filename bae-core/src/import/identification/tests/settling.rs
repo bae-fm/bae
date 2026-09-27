@@ -64,16 +64,14 @@ async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
     );
 }
 
-/// A failed lead fetch stores the failure without storing partial release
-/// documents.
+/// A lead whose document cannot be read is stored as its lookup returned it,
+/// saying why, with no pick applied and no partial documents left behind.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_failed_settle_is_stored_without_partial_documents() {
+async fn an_unreadable_lead_is_stored_unsettled_without_partial_documents() {
     let fixture = Fixture::new("settle-ordering").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    // The disc-ID lookup answers; the release lookup that settles the lead does
-    // not. The failed terminal answer must be stored without pretending the
-    // release itself was settled.
+    // The disc-ID lookup answers; the release document does not.
     fixture.provider.route(
         "/discid/",
         200,
@@ -84,10 +82,20 @@ async fn a_failed_settle_is_stored_without_partial_documents() {
 
     fixture.drain_automatic().await;
 
-    assert!(matches!(
-        fixture.identified_for(&dir).await.map(|row| row.verdict),
-        Some(TerminalVerdict::Failed { .. })
-    ));
+    let row = fixture
+        .stored_for(&dir)
+        .await
+        .expect("the candidate stores a row");
+    let verdict = identify_result(&row).verdict.clone();
+    let TerminalVerdict::Found { findings, .. } = &verdict else {
+        panic!("an unreadable document does not fail the run, got {verdict:?}");
+    };
+    assert!(findings.matches[0].document_failure.is_some());
+    assert_ne!(
+        row.metadata_author,
+        crate::import::MetadataAuthor::Identification,
+        "no document, so no pick was applied"
+    );
     assert!(
         fixture.stored_release("mb-order-1").await.is_none(),
         "and nothing half-written is left behind"
@@ -683,6 +691,64 @@ async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
         0,
         "picking asked for no document again: {:?}",
         fixture.provider.requests()
+    );
+}
+
+/// A document that cannot be read does not fail the run: its row keeps what
+/// the lookup returned and stores why it could not be read, and the run
+/// settles on the documents it did read.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
+    let fixture = Fixture::new("unread-pressing").await;
+    fixture
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+            barcode: PAIRED_BARCODE.to_string(),
+        }));
+    let dir = fixture.barcode_candidate("From Barcode");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/release/mb-read?",
+        200,
+        release_json("mb-read", "rg-read", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release?",
+        200,
+        barcode_search_json(&[
+            ("mb-read", "rg-read", PAIRED_BARCODE),
+            ("mb-unread", "rg-read", "9876543210987"),
+        ]),
+    );
+    fixture.scan(1).await;
+
+    fixture.drain_automatic().await;
+
+    let row = fixture
+        .stored_for(&dir)
+        .await
+        .expect("the candidate stores a row");
+    let verdict = identify_result(&row).verdict.clone();
+    let TerminalVerdict::Found { findings, .. } = &verdict else {
+        panic!("the run settles on what it read, got {verdict:?}");
+    };
+    let stored = |id: &str| {
+        findings
+            .matches
+            .iter()
+            .chain(&findings.narrowed_out.matches)
+            .find(|result| result.release_id == id)
+            .unwrap_or_else(|| panic!("{id} is stored"))
+            .clone()
+    };
+    let read = stored("mb-read");
+    assert_eq!(read.source_tracks, Some(SourceTracks::Listed { count: 2 }));
+    assert_eq!(read.document_failure, None);
+    let unread = stored("mb-unread");
+    assert_eq!(unread.source_tracks, None, "it keeps what the lookup returned");
+    assert!(
+        unread.document_failure.is_some(),
+        "it says its document could not be read"
     );
 }
 

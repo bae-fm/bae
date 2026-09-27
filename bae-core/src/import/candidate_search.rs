@@ -378,6 +378,7 @@ mod tests {
             source_group_id: Some(group_id.to_string()),
             album_links: crate::import::album_links::AlbumLinks::NotAsked,
             source_tracks: None,
+            document_failure: None,
         }
     }
 

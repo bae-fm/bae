@@ -5,7 +5,9 @@
 //! record of every offered row is fetched in full and stored where a pick
 //! reads it (see [`crate::import::service::prepare_release`]), and what the
 //! document states replaces what the result stated before the rows are ranked
-//! for the last time.
+//! for the last time. A document that cannot be read leaves its record as the
+//! result stated it, with why it could not be read; the run settles on what
+//! it did read.
 
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::MetadataRef;
@@ -62,23 +64,18 @@ impl DocumentReading {
     }
 
     /// `result` with what its document states in place of what the result
-    /// stated, where its document was read.
+    /// stated, or with why its document could not be read.
     pub(crate) fn apply(&self, result: &mut MetadataResult) {
-        let document = self.read().iter().find_map(|reading| {
-            (reading.release.catalog == result.source && reading.release.key == result.release_id)
-                .then_some(reading.document.as_ref().ok())
-                .flatten()
+        let reading = self.read().iter().find(|reading| {
+            reading.release.catalog == result.source && reading.release.key == result.release_id
         });
-        if let Some(document) = document {
-            result.labels = document.labels.clone();
-            result.source_tracks = Some(document.source_tracks.clone());
+        match reading.map(|reading| &reading.document) {
+            Some(Ok(document)) => {
+                result.labels = document.labels.clone();
+                result.source_tracks = Some(document.source_tracks.clone());
+            }
+            Some(Err(failure)) => result.document_failure = Some(failure.clone()),
+            None => {}
         }
-    }
-
-    /// Why each document that could not be fetched was not.
-    pub(crate) fn failures(&self) -> impl Iterator<Item = &LookupFailure> {
-        self.read()
-            .iter()
-            .filter_map(|reading| reading.document.as_ref().err())
     }
 }

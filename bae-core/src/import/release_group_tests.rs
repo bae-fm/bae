@@ -27,6 +27,7 @@ pub(super) fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) ->
         source_group_id: group_id.map(str::to_string),
         album_links: crate::import::album_links::AlbumLinks::NotAsked,
         source_tracks: None,
+        document_failure: None,
     }
 }
 

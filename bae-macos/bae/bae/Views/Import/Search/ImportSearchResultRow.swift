@@ -25,6 +25,9 @@ struct ImportSearchResultRow: View {
     /// carries the spinner, so the list stays put while the release loads.
     var isLoading: Bool = false
     var failure: ReleaseSelectionFailure?
+    /// Identify the candidate again, reading once more the documents a run
+    /// could not; `nil` where no run read any, as for a typed search.
+    var onRetryUnread: (() -> Void)?
     let onSelect: (Pressing) -> Void
 
     private var isInLibrary: Bool {
@@ -76,8 +79,19 @@ struct ImportSearchResultRow: View {
         .padding(.horizontal, 10)
     }
 
-    private var rowFailure: ReleaseSelectionFailure? {
-        failure.flatMap { $0.matches(pressing) ? $0 : nil }
+    /// What the row failed at, with the retry that asks for it again: picking
+    /// it, when reading the pick failed; identifying again, when the run could
+    /// not read one of its documents.
+    private var rowFailure: (error: DisplayError, retry: () -> Void)? {
+        if let failure, failure.matches(pressing) {
+            return (failure.error, { onSelect(pressing) })
+        }
+        if let unread = pressing.documentFailure, let onRetryUnread {
+            let line = BridgeIdentifyFailure.releaseDetails(failure: unread)
+                .badgeLine
+            return (DisplayError(line: line), onRetryUnread)
+        }
+        return nil
     }
 
     private var failureLine: some View {
@@ -85,7 +99,7 @@ struct ImportSearchResultRow: View {
             ErrorDetailDisclosure(error: rowFailure?.error)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
-            Button("Retry") { onSelect(pressing) }
+            Button("Retry") { rowFailure?.retry() }
                 .buttonStyle(.link)
                 .disabled(!isPickable)
         }

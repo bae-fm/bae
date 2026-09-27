@@ -331,6 +331,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
                 source_group_id: Some("rg-1".to_string()),
                 album_links: crate::import::album_links::AlbumLinks::NotAsked,
                 source_tracks: source,
+                document_failure: None,
             }],
             provenance: vec![crate::identify::LookupProvenance {
                 by_disc_id: true,

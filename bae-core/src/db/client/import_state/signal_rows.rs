@@ -1,12 +1,13 @@
 //! A candidate's settled signals, as one header row plus its list values and
-//! text lines. Each signal's [`LookupFailure`] is three columns (kind, status,
+//! text lines. Each signal's [`crate::signals::LookupFailure`] is three columns (kind, status,
 //! detail). A still-scanning signal reaching here is a defect, and the write
 //! refuses it.
 
+use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::signals::{
-    BarcodeSignal, CdProof, DiscIdSignal, LookupFailure, RipEvidence, Signals, SourcedValue,
+    BarcodeSignal, CdProof, DiscIdSignal, RipEvidence, Signals, SourcedValue,
     TextLine, TextSignal,
 };
 
@@ -19,78 +20,6 @@ const SIGNALS_COLUMNS: &str = "content_hash, rip, rip_proof, rip_file, \
 const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin_path";
 
 const TEXT_LINE_COLUMNS: &str = "content_hash, position, text, origin";
-
-/// One failure as its three columns.
-struct FailureColumns {
-    kind: Option<&'static str>,
-    status: Option<i64>,
-    detail: Option<String>,
-}
-
-impl FailureColumns {
-    const NONE: Self = Self {
-        kind: None,
-        status: None,
-        detail: None,
-    };
-}
-
-fn failure_columns(failure: Option<&LookupFailure>) -> FailureColumns {
-    match failure {
-        None => FailureColumns::NONE,
-        Some(LookupFailure::Network) => FailureColumns {
-            kind: Some("network"),
-            ..FailureColumns::NONE
-        },
-        Some(LookupFailure::Timeout) => FailureColumns {
-            kind: Some("timeout"),
-            ..FailureColumns::NONE
-        },
-        Some(LookupFailure::ArtworkAnalysis) => FailureColumns {
-            kind: Some("artwork_analysis"),
-            ..FailureColumns::NONE
-        },
-        Some(LookupFailure::Provider { status }) => FailureColumns {
-            kind: Some("provider"),
-            status: status.map(i64::from),
-            detail: None,
-        },
-        Some(LookupFailure::Diagnostic { detail }) => FailureColumns {
-            kind: Some("diagnostic"),
-            status: None,
-            detail: Some(detail.clone()),
-        },
-    }
-}
-
-fn failure_of(
-    kind: Option<String>,
-    status: Option<i64>,
-    detail: Option<String>,
-) -> Result<Option<LookupFailure>, DbError> {
-    let Some(kind) = kind else {
-        return Ok(None);
-    };
-    Ok(Some(match kind.as_str() {
-        "network" => LookupFailure::Network,
-        "timeout" => LookupFailure::Timeout,
-        "artwork_analysis" => LookupFailure::ArtworkAnalysis,
-        "provider" => LookupFailure::Provider {
-            status: status
-                .map(|status| {
-                    u16::try_from(status).map_err(|_| {
-                        DbError::Message(format!("a stored provider status is {status}"))
-                    })
-                })
-                .transpose()?,
-        },
-        "diagnostic" => LookupFailure::Diagnostic {
-            detail: detail
-                .ok_or_else(|| DbError::Message("a stored diagnostic states no detail".into()))?,
-        },
-        other => return Err(unreadable("signal failure", other)),
-    }))
-}
 
 /// Every signal row under `content_hash`. The values cascade from the header.
 pub(super) fn delete_signals(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {

@@ -4,6 +4,7 @@ mod edit_rows;
 mod failure_rows;
 mod import_commit;
 mod lookup_choice_rows;
+mod lookup_failure_columns;
 mod pane_rows;
 mod preparation_rows;
 mod prepared_asset_rows;

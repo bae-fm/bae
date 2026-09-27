@@ -52,6 +52,7 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
                 source_group_id: Some("group-1".to_string()),
                 album_links: crate::import::album_links::AlbumLinks::NotAsked,
                 source_tracks: Some(SourceTracks::Listed { count: 1 }),
+                document_failure: None,
             }],
             provenance: vec![LookupProvenance {
                 by_disc_id: true,

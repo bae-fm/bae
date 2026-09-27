@@ -74,6 +74,10 @@ pub struct MetadataResult {
     /// settles (see [`crate::identify::documents`]); a disc-ID result carries
     /// its matched medium's count from the start.
     pub source_tracks: Option<SourceTracks>,
+    /// Why this record's full document could not be read when the run offered
+    /// its row, which then states what the result said. `None` when it was
+    /// read, or never asked for.
+    pub document_failure: Option<LookupFailure>,
 }
 
 impl MetadataResult {
@@ -115,6 +119,7 @@ impl MetadataResult {
             source_tracks: Some(SourceTracks::Listed {
                 count: detail.track_count,
             }),
+            document_failure: None,
         }
     }
 }
@@ -144,6 +149,7 @@ impl MetadataResult {
             source_group_id: source_group_id.map(str::to_string),
             album_links: AlbumLinks::NotAsked,
             source_tracks: None,
+            document_failure: None,
         }
     }
 }
@@ -267,6 +273,7 @@ pub fn discogs_search_result_to_metadata(
         // The Discogs search response describes no tracklist; a Discogs result
         // gets one only from a paid `get_release`.
         source_tracks: None,
+        document_failure: None,
     }
 }
 
@@ -298,6 +305,7 @@ pub(crate) fn discogs_release_to_metadata(release: &crate::discogs::DiscogsRelea
         album_links: AlbumLinks::NotAsked,
         // Its documents are not stored, and a `Some` here says they are.
         source_tracks: None,
+        document_failure: None,
     }
 }
 
@@ -361,6 +369,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         // the other catalog's releases too.
         album_links: AlbumLinks::NotAsked,
         source_tracks,
+        document_failure: None,
     })
 }
 
@@ -420,6 +429,7 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
         // the other catalog's releases too.
         album_links: AlbumLinks::NotAsked,
         source_tracks: None,
+        document_failure: None,
     }
 }
 

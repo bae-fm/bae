@@ -109,29 +109,46 @@ fn the_row_whose_tracklist_fits_the_folder_ranks_first() {
     assert_eq!(ids(&findings.narrowed_out.matches), vec!["dg-long"]);
 }
 
-/// A document that cannot be fetched fails the run like any lookup, beside
-/// what the lookups found.
+/// A row whose document cannot be read keeps what its search result said and
+/// says why; the run settles on the documents it did read, with no failure of
+/// its own.
 #[test]
-fn a_document_that_cannot_be_read_fails_the_run() {
-    let (state, releases) = reading_documents(vec![first_label_only("dg-1")]);
+fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
+    let (state, releases) =
+        reading_documents(vec![first_label_only("dg-read"), first_label_only("dg-unread")]);
+    let full = document(&[("Label One", "AB-100"), ("Label One", "CD-200")], 5);
     let (state, _) = super::step(
         state,
         IdentifyEvent::ReleasesRead {
             read: releases
                 .iter()
-                .map(|release| read(release, Err(LookupFailure::Network)))
+                .map(|release| {
+                    let document = if release.key == "dg-read" {
+                        Ok(full.clone())
+                    } else {
+                        Err(LookupFailure::Network)
+                    };
+                    read(release, document)
+                })
                 .collect(),
         },
     );
-    let IdentifyState::Failed {
-        failures, findings, ..
-    } = state
-    else {
-        panic!("expected Failed, got {state:?}");
+    let IdentifyState::Found { findings, .. } = state else {
+        panic!("the run settles on what it read, got {state:?}");
     };
-    assert_eq!(
-        failures,
-        vec![IdentifyFailure::ReleaseDetails(LookupFailure::Network)]
-    );
-    assert_eq!(findings.matches.len(), 1);
+    let row = |id: &str| {
+        findings
+            .matches
+            .iter()
+            .chain(&findings.narrowed_out.matches)
+            .find(|result| result.release_id == id)
+            .unwrap_or_else(|| panic!("{id} is on the list"))
+    };
+    let complete = row("dg-read");
+    assert_eq!(complete.labels, full.labels);
+    assert_eq!(complete.document_failure, None);
+    let unread = row("dg-unread");
+    assert_eq!(unread.labels, first_label_only("dg-unread").0.labels);
+    assert_eq!(unread.source_tracks, None);
+    assert_eq!(unread.document_failure, Some(LookupFailure::Network));
 }

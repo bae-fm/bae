@@ -142,6 +142,7 @@ struct FindOnlineAutomaticSection: View {
                 selectedReleaseId: state.selectedReleaseId,
                 loadingReleaseId: state.loadingReleaseId,
                 releaseSelectionFailure: state.releaseSelectionFailure,
+                onRetryUnread: onRetryFailed,
                 onSelect: onSelect,
             )
         }
@@ -161,6 +162,7 @@ struct FindOnlineAutomaticSection: View {
             loadingReleaseId: state.loadingReleaseId
                 ?? state.finalizingPressing?.lead.releaseId,
             releaseSelectionFailure: state.releaseSelectionFailure,
+            onRetryUnread: onRetryFailed,
             onSelect: onSelect,
             trailing: trailing,
         )

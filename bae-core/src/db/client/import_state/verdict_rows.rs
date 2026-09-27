@@ -225,6 +225,8 @@ fn insert_match(
         ),
     };
     let facts = super::super::pressing_columns::FactColumns::of(&result.facts());
+    let document_failure =
+        super::lookup_failure_columns::failure_columns(result.document_failure.as_ref());
     sql.execute(
         "INSERT INTO import_candidate_match \
              (content_hash, position, pressing, source, release_id, title, artist, year, \
@@ -232,9 +234,10 @@ fn insert_match(
               media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, by_disc_id, by_barcode, by_catalog, by_search, \
-              named_by_catalog, named_by_key, narrowed_out) \
+              named_by_catalog, named_by_key, narrowed_out, document_failure, \
+              document_failure_status, document_failure_detail) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?)",
+                 ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -266,6 +269,9 @@ fn insert_match(
             provenance.named_by.as_ref().map(|by| by.catalog.as_str()),
             provenance.named_by.as_ref().map(|by| by.key.as_str()),
             narrowed_out,
+            document_failure.kind,
+            document_failure.status,
+            document_failure.detail,
         ],
     )?;
     if let Some(cover) = cover {
@@ -590,6 +596,11 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
             source_group_id: row.get("source_group_id")?,
             album_links: AlbumLinks::NotAsked,
             source_tracks,
+            document_failure: super::lookup_failure_columns::failure_of(
+                row.get("document_failure")?,
+                row.get("document_failure_status")?,
+                row.get("document_failure_detail")?,
+            )?,
         },
         provenance: LookupProvenance {
             by_disc_id: row.get("by_disc_id")?,

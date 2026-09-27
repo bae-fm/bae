@@ -13,6 +13,9 @@ struct Pressing: Equatable, Identifiable {
     /// Every label the records state, each name once with its catalog
     /// numbers, in the order of the record the row leads with.
     let labels: [BridgeLabelLine]
+    /// Why identification could not read a record's full document, which the
+    /// row then shows as its search result stated it.
+    let documentFailure: BridgeLookupFailure?
     /// What picking this row claims, as core settled it.
     let provenance: BridgeMetadataProvenance
     /// Where it was released and what it is made of: "Japan · 2×CD".
@@ -58,6 +61,7 @@ struct Pressing: Equatable, Identifiable {
         self.lead = lead
         releases = bridge.releases
         labels = bridge.labels
+        documentFailure = bridge.documentFailure
         provenance = bridge.pick
         summaryText = PressingText.line(bridge.summary)
         detailsText = PressingText.line(bridge.details)

@@ -41,12 +41,14 @@
         init(
             releases: [BridgeMetadataResult],
             labels: [BridgeLabelLine] = [],
+            documentFailure: BridgeLookupFailure? = nil,
             pick: BridgeMetadataProvenance
         ) {
             let facts = releases.first?.facts ?? PreviewData.pressingFacts()
             self.init(
                 releases: releases,
                 labels: labels,
+                documentFailure: documentFailure,
                 pick: pick,
                 summary: bridgePressingSummary(facts: facts),
                 details: bridgePressingDetails(facts: facts)

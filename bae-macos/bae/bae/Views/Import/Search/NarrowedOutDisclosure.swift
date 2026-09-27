@@ -24,6 +24,9 @@ struct NarrowedOutDisclosure: View {
     let selectedReleaseId: String?
     let loadingReleaseId: String?
     var releaseSelectionFailure: ReleaseSelectionFailure?
+    /// Identify the candidate again, reading once more the documents a run
+    /// could not; `nil` where no run read any, as for a typed search.
+    var onRetryUnread: (() -> Void)?
     let onSelect: (Pressing) -> Void
 
     var body: some View {
@@ -53,6 +56,7 @@ struct NarrowedOutDisclosure: View {
                         selectedReleaseId: selectedReleaseId,
                         loadingReleaseId: loadingReleaseId,
                         releaseSelectionFailure: releaseSelectionFailure,
+                        onRetryUnread: onRetryUnread,
                         onSelect: onSelect,
                     )
                 }

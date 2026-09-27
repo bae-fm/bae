@@ -250,9 +250,9 @@ fn sole_pressing(
 }
 
 /// Settle a candidate's lead: the stored releases of the one pressing it
-/// matched, primary and partners. The run already fetched and stored every
-/// offered record, so these read back; one that did not store fails the lead.
-/// Only a `Found` that groups into one pressing has a lead.
+/// matched, primary and partners, which the run already fetched and stored.
+/// Only a `Found` that groups into one pressing whose documents were all read
+/// has a lead.
 async fn settle_lead(
     context: &Context,
     verdict: &mut TerminalVerdict,
@@ -271,6 +271,11 @@ async fn settle_lead(
     let Some(pressing) = sole_pressing(findings, text) else {
         return Ok(SettledLead::NoExternalRelease);
     };
+    // A document the run could not read is not applied: the row stands as
+    // its search result stated it, for the person to pick or retry.
+    if pressing.document_failure().is_some() {
+        return Ok(SettledLead::NoExternalRelease);
+    }
     let (primary, partners) = pressing.claims();
 
     let settle = async {

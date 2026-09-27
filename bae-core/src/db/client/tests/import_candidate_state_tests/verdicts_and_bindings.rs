@@ -64,6 +64,7 @@ fn sample_match() -> MetadataResult {
         source_group_id: Some("group-1".to_string()),
         album_links: crate::import::album_links::AlbumLinks::NotAsked,
         source_tracks: None,
+        document_failure: None,
     }
 }
 

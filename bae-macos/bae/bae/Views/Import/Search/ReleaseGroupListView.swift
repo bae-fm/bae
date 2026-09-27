@@ -55,6 +55,9 @@ struct ReleaseGroupListContent<Trailing: View>: View {
     let selectedReleaseId: String?
     let loadingReleaseId: String?
     var releaseSelectionFailure: ReleaseSelectionFailure?
+    /// Identify the candidate again, reading once more the documents a run
+    /// could not; `nil` where no run read any, as for a typed search.
+    var onRetryUnread: (() -> Void)?
     let onSelect: (Pressing) -> Void
     @ViewBuilder
     let trailing: () -> Trailing
@@ -71,6 +74,7 @@ struct ReleaseGroupListContent<Trailing: View>: View {
                     selectedReleaseId: selectedReleaseId,
                     loadingReleaseId: loadingReleaseId,
                     releaseSelectionFailure: releaseSelectionFailure,
+                    onRetryUnread: onRetryUnread,
                     onSelect: onSelect,
                 )
             }
@@ -128,6 +132,9 @@ struct ReleaseGroupSection: View {
     /// spinner while the list stays put.
     var loadingReleaseId: String?
     var releaseSelectionFailure: ReleaseSelectionFailure?
+    /// Identify the candidate again, reading once more the documents a run
+    /// could not; `nil` where no run read any, as for a typed search.
+    var onRetryUnread: (() -> Void)?
     let onSelect: (Pressing) -> Void
 
     var body: some View {
@@ -166,6 +173,7 @@ struct ReleaseGroupSection: View {
                             isSelected: isSelected(pressing),
                             isLoading: isLoading(pressing),
                             failure: releaseSelectionFailure,
+                            onRetryUnread: onRetryUnread,
                             onSelect: onSelect,
                         )
                     }

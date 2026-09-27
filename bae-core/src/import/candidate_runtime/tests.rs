@@ -718,6 +718,7 @@ fn search_result(
             source_group_id: None,
             album_links: crate::import::album_links::AlbumLinks::NotAsked,
             source_tracks: None,
+            document_failure: None,
         },
         LibraryStatus::absent(release_id),
     )

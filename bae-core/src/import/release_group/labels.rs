@@ -19,6 +19,14 @@ fn same_label(a: &crate::pressing::ReleaseLabel, b: &crate::pressing::ReleaseLab
 }
 
 impl Pressing {
+    /// Why a record of the row's document could not be read, where one could
+    /// not: the row then states what its search result said.
+    pub fn document_failure(&self) -> Option<&crate::signals::LookupFailure> {
+        self.releases
+            .iter()
+            .find_map(|release| release.document_failure.as_ref())
+    }
+
     /// Every label the row's records state, as one list in the order of the
     /// record the row leads with: the lead's labels, then each label another
     /// record states that the lead does not, in that record's order.

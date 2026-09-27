@@ -485,12 +485,6 @@ impl SignalsContext {
         self.barcode.active_failures(&mut failures);
         self.catalog.active_failures(&mut failures);
         self.search.active_failures(&mut failures);
-        failures.extend(
-            self.documents
-                .failures()
-                .cloned()
-                .map(IdentifyFailure::ReleaseDetails),
-        );
         failures
     }
 

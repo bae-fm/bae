@@ -9,8 +9,10 @@ impl BridgeMetadataResult {
             year,
             barcodes,
             source_group_id,
-            // The row shows its records' labels as one list.
+            // The row shows its records' labels as one list, and whether a
+            // document could not be read.
             labels: _,
+            document_failure: _,
             // The album card carries these.
             title: _,
             artist: _,
@@ -375,6 +377,10 @@ impl BridgePressing {
     fn from_core(pressing: bae_core::import::release_group::Pressing) -> Self {
         let facts = BridgePressingFacts::from_core(pressing.facts());
         BridgePressing {
+            document_failure: pressing
+                .document_failure()
+                .cloned()
+                .map(BridgeLookupFailure::from_core),
             labels: pressing
                 .label_lines()
                 .into_iter()
