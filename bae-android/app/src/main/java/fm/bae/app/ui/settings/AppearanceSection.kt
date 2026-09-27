@@ -37,11 +37,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
-import fm.bae.app.ui.LocalAppearancePalette
 import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.LocalAppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
+import fm.bae.app.ui.appearance.colors
 import kotlinx.coroutines.launch
 import java.io.IOException
 
@@ -96,7 +96,6 @@ private fun AccentPicker(
     selectedAccent: AccentChoice,
     onSelect: (AccentChoice) -> Unit,
 ) {
-    val palette = LocalAppearancePalette.current
     Row(modifier = Modifier.fillMaxWidth().selectableGroup()) {
         AccentChoice.entries.forEach { accent ->
             val label = stringResource(accent.label)
@@ -111,7 +110,7 @@ private fun AccentPicker(
                 contentAlignment = Alignment.Center,
             ) {
                 Box(
-                    modifier = Modifier.size(24.dp).background(palette.accentFill(accent), CircleShape),
+                    modifier = Modifier.size(24.dp).background(accent.colors.fill, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(

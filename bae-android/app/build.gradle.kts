@@ -5,11 +5,7 @@ plugins {
     id("com.android.compose.screenshot")
 }
 
-// Release builds (CI) inject these; local dev builds fall back to dev markers.
-// versionName is the app's own `0.N` release line, versionCode the monotonic
-// store build number. BAE_GIT_COMMIT / BAE_COVEN_REV stamp the exact bae and
-// coven (sync library) commits the binary carries, for crash triage and
-// sync-compat debugging.
+// CI injects these for release builds; local builds get dev markers.
 val baeVersionName = System.getenv("BAE_VERSION") ?: "0.0-dev"
 val baeVersionCode = (System.getenv("BAE_VERSION_CODE") ?: "1").toInt()
 val baeGitCommit = System.getenv("BAE_GIT_COMMIT") ?: "dev"
@@ -23,41 +19,11 @@ val releaseKeystore = System.getenv("ANDROID_KEYSTORE_FILE")
 fun buildConfigString(value: String?): String =
     value?.let { "\"${it.replace("\\", "\\\\").replace("\"", "\\\"")}\"" } ?: "null"
 
-// The same source supplies Compose colors and the native launch background.
-val appearancePaletteFile = file("../../BaeKit/Sources/BaeKit/Resources/AppearancePalette.json")
-val appearanceResourceDirectory = layout.buildDirectory.dir("generated/appearanceResources")
-val appearanceResources by tasks.registering {
-    inputs.file(appearancePaletteFile)
-    outputs.dir(appearanceResourceDirectory)
-    doLast {
-        val directory = appearanceResourceDirectory.get().asFile
-        val raw = directory.resolve("raw")
-        raw.mkdirs()
-        appearancePaletteFile.copyTo(raw.resolve("appearance_palette.json"), overwrite = true)
-        val palette = groovy.json.JsonSlurper().parse(appearancePaletteFile) as Map<*, *>
-        val tones = palette["tones"] as Map<*, *>
-        val neutral = tones["neutral"] as Map<*, *>
-        for ((mode, qualifier) in listOf("light" to "values", "dark" to "values-night")) {
-            val surfaces = neutral[mode] as Map<*, *>
-            val background = surfaces["background"] as String
-            val values = directory.resolve(qualifier)
-            values.mkdirs()
-            values.resolve("appearance_colors.xml").writeText(
-                "<resources><color name=\"appearance_launch_background\">$background</color></resources>\n",
-            )
-        }
-    }
-}
-
-tasks.named("preBuild") { dependsOn(appearanceResources) }
-
 android {
     namespace = "fm.bae.app"
     compileSdk = 35
 
-    // Turns on the Compose Preview Screenshot Testing source set (screenshotTest)
-    // and its render tasks. scripts/shots/android.sh runs
-    // updateFullDebugScreenshotTest to capture the scenes; nothing else uses it.
+    // The screenshotTest source set, which scripts/shots/android.sh renders.
     experimentalProperties["android.experimental.enableScreenshotTest"] = true
 
     defaultConfig {
@@ -74,21 +40,15 @@ android {
         buildConfigField("String", "BAE_DATADOG_CLIENT_TOKEN", buildConfigString(baeDatadogClientToken))
         buildConfigField("String", "BAE_SENTRY_DSN", buildConfigString(baeSentryDsn))
 
-        // The launcher label. The baeium flavor overrides it to "baeium" so the two
-        // editions are distinguishable once both are installed.
+        // The launcher label; baeium overrides it.
         manifestPlaceholders["appLabel"] = "bae"
 
-        // The launcher-shortcut intents (res/xml/shortcuts.xml) target this
-        // applicationId. res/xml can't read the manifest ${applicationId}
-        // placeholder, so surface it as a string resource; the baeium flavor
-        // overrides it to match its suffixed id.
+        // The applicationId res/xml/shortcuts.xml targets, as a string resource since
+        // res/xml can't read the manifest placeholder.
         resValue("string", "shortcut_target_package", "fm.bae.app")
 
-        // Package native libs for one ABI only when run.sh passes
-        // -Pbae.abi=<abi> for the connected device. This filters every native
-        // source — our libbae_bridge.so plus AAR libs like JNA's
-        // libjnidispatch.so — so the APK carries no other-ABI dead weight. With no
-        // property set (CI, Android Studio, release bundles) all ABIs are kept.
+        // run.sh passes -Pbae.abi to package only the connected device's ABI;
+        // otherwise every ABI is kept.
         (project.findProperty("bae.abi") as String?)?.let { requestedAbi ->
             ndk { abiFilters += requestedAbi }
         }
@@ -96,13 +56,8 @@ android {
 
     flavorDimensions += "edition"
     productFlavors {
-        // full: the complete bae app. Its bridge bindings are built with the
-        // oauth-providers feature, so the OAuth functions exist and the OAuth
-        // sign-in flow (src/full) compiles. The redirect scheme for the
-        // system-browser callback is read from the gitignored
-        // src/full/assets/oauth-creds.json (the scheme of the first provider's
-        // redirect_uri); absent → an inert placeholder, so the build works
-        // without credentials. OAuthRedirectActivity binds it in the manifest.
+        // The complete app. Its OAuth redirect scheme is read from the gitignored
+        // src/full/assets/oauth-creds.json, with an inert placeholder when it's absent.
         create("full") {
             dimension = "edition"
             buildConfigField("String", "BAE_EDITION", "\"bae\"")
@@ -119,19 +74,13 @@ android {
             manifestPlaceholders["oauthRedirectScheme"] =
                 redirectScheme ?: "fm.bae.oauth.unconfigured"
         }
-        // baeium: S3-only. Its bridge bindings are built with no
-        // features, so the OAuth functions are absent — src/full is excluded and
-        // src/baeium supplies an always-null OAuthLinker. No OAuthRedirectActivity
-        // and no scheme intent-filter ship (that manifest is src/full only), and
-        // no credentials are read. The placeholder is set to the inert value so
-        // the build never depends on an oauth-creds.json.
+        // S3-only: its bindings lack the OAuth functions, src/baeium supplies a null
+        // OAuthLinker, and no credentials are read.
         create("baeium") {
             dimension = "edition"
             buildConfigField("String", "BAE_EDITION", "\"baeium\"")
             manifestPlaceholders["oauthRedirectScheme"] = "fm.bae.oauth.unconfigured"
-            // baeium installs alongside the full bae build as a distinct app:
-            // applicationId fm.bae.app.baeium (the namespace / R package stays
-            // fm.bae.app), labelled "baeium" on the launcher.
+            // Installs beside the full build as its own app.
             applicationIdSuffix = ".baeium"
             manifestPlaceholders["appLabel"] = "baeium"
             resValue("string", "shortcut_target_package", "fm.bae.app.baeium")
@@ -139,9 +88,7 @@ android {
     }
 
     signingConfigs {
-        // Only wire the release signing config when CI supplies the keystore;
-        // local `assembleRelease` then produces an unsigned APK rather than
-        // failing, and debug installs are unaffected.
+        // Signs a release only when CI supplies the keystore.
         if (releaseKeystore != null) {
             create("release") {
                 storeFile = file(releaseKeystore)
@@ -176,32 +123,27 @@ android {
     }
 
     testOptions {
-        // The data-layer unit tests exercise code paths that call android.util.Log
-        // (e.g. the dropped-release skip log). Return defaults instead of throwing
-        // so the JVM tests don't need Robolectric just to no-op a log line.
+        // android.util.Log returns defaults so JVM tests don't need Robolectric.
         unitTests.isReturnDefaultValues = true
-        // Robolectric needs the merged manifest and real resources. That also
-        // makes it instantiate the manifest's Application, which off-device
-        // cannot boot — src/test/resources/robolectric.properties substitutes a
-        // plain Application and explains why.
+        // Robolectric needs the merged manifest and resources;
+        // src/test/resources/robolectric.properties replaces the Application.
         unitTests.isIncludeAndroidResources = true
     }
 
     lint {
         abortOnError = true
-        // Only errors fail the build; warnings are visible in the report but
-        // don't block CI. Avoids noise from rules that don't apply (missing
-        // translations, etc.).
+        // Only errors fail the build.
         warningsAsErrors = false
     }
 
     sourceSets {
-        getByName("main").res.srcDir(layout.buildDirectory.dir("generated/appearanceResources"))
-        // Each edition compiles against its own uniffi bindings: the full
-        // bindings (built --features oauth-providers) carry the OAuth functions;
-        // the baeium bindings (built with no features) lack them, so any stray
-        // OAuth reference in shared code fails to compile. build-android.sh
-        // writes each set under its own dir keyed by the feature set.
+        // The theme build-android.sh generates from design/theme.toml.
+        getByName("main") {
+            java.srcDir("generated/theme/kotlin")
+            res.srcDir("generated/theme/res")
+        }
+        // Each edition compiles against its own bindings, so a stray OAuth reference
+        // fails baeium's build.
         getByName("full") {
             java.srcDir("../../bae-bridge/kotlin-bindings-full")
         }
@@ -224,23 +166,18 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     implementation("net.java.dev.jna:jna:5.15.0@aar")
-    // JVM half of the Rust TLS verifier. settings.gradle locates the Maven
-    // directory through Cargo metadata, so both halves come from one resolved
-    // crate graph.
+    // The JVM half of the Rust TLS verifier, located through Cargo metadata by
+    // settings.gradle.
     implementation(nativeDeps.rustls.platform.verifier)
     implementation("androidx.camera:camera-camera2:1.4.2")
     implementation("androidx.camera:camera-lifecycle:1.4.2")
     implementation("androidx.camera:camera-view:1.4.2")
     implementation("com.google.zxing:core:3.5.3")
     implementation("androidx.media3:media3-session:1.7.1")
-    // Glance builds the now-playing home-screen widget. 1.1.1 is the current
-    // stable line; it resolves Compose runtime / DataStore / lifecycle within
-    // the ranges the compose-bom (2025.01.01), lifecycle 2.8.7, and Kotlin
-    // 2.0.21 already bring, so no other pins move.
+    // The now-playing home-screen widget.
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")
-    // Image decodes read the source's orientation tag: cover scans and booklet
-    // photos are real-world JPEGs whose pixels are often stored sideways.
+    // Reads the orientation tag of cover and booklet photos.
     implementation("androidx.exifinterface:exifinterface:1.4.2")
     implementation("sh.calvin.reorderable:reorderable:2.4.0")
     implementation("androidx.browser:browser:1.8.0")
@@ -250,9 +187,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.15.1")
     testImplementation("androidx.compose.ui:ui-test-junit4")
-    // The screenshotTest source set renders @Preview scenes via layoutlib; it
-    // needs the tooling on its own classpath (the BOM keeps it on the same
-    // Compose version as the app).
+    // The screenshotTest source set renders previews with the tooling.
     screenshotTestImplementation(composeBom)
     screenshotTestImplementation("androidx.compose.ui:ui-tooling")
 }

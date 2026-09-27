@@ -1,15 +1,17 @@
 # Appearance
 
-The three apps bundle `BaeKit/Sources/BaeKit/Resources/AppearancePalette.json`.
-BaeKit reads it for macOS and iOS; Android copies it into generated raw
-resources during its build. Change color
+Every colour the apps draw with is defined once, in `design/theme.toml`. The
+`theme-gen` tool (`bae-theme`) turns it into typed Swift for BaeKit and Kotlin
+for Android; `build-macos.sh`, `build-ios.sh` and `build-android.sh` run it, and
+its output is not checked in. Both platforms get the same roles, so change
 values there rather than adding a platform palette.
 
 Appearance settings have three independent choices: System/Light/Dark mode,
 Blue/Indigo/Purple/Pink/Red/Amber/Green/Teal accent, and
 Neutral/Slate/Plum/Midnight/Forest/Sand background tone. Defaults are System,
-Blue, and Neutral. Each tone defines both light and dark surfaces. Preferences belong to the app installation rather than
-a library, so switching libraries preserves the selection.
+Blue, and Neutral. Each tone defines both light and dark surfaces. Preferences
+belong to the app installation rather than a library, so switching libraries
+preserves the selection.
 
 Surface roles describe their use: background is the window or screen; surface
 and elevated hold content; field and fieldHover hold inputs; placeholder holds

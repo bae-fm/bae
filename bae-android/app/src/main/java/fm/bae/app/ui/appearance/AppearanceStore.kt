@@ -16,10 +16,6 @@ import java.nio.file.StandardCopyOption
 
 enum class AppearanceMode { SYSTEM, LIGHT, DARK }
 
-enum class AccentChoice { BLUE, INDIGO, PURPLE, PINK, RED, AMBER, GREEN, TEAL }
-
-enum class SurfaceTone { NEUTRAL, SLATE, PLUM, MIDNIGHT, FOREST, SAND }
-
 data class AppearancePreferences(
     val mode: AppearanceMode = AppearanceMode.SYSTEM,
     val accent: AccentChoice = AccentChoice.BLUE,

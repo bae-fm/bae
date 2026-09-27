@@ -3,13 +3,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# This script compiles the bridge and then reads the resulting staticlib back
-# out of the target dir to generate bindings from it, so it has to own the
-# directory it reads from. An inherited CARGO_TARGET_DIR can be shared with
-# other checkouts, and a concurrent build there rewrites the same artifact from
-# different sources between the build and the read — the generators then emit
-# bindings for a bridge nobody asked for, and it surfaces later as a Swift or
-# C# compile error nowhere near its cause. Local and unconditional on purpose.
+# This script reads the staticlib it builds back out of the target dir, so it
+# owns that dir: a shared one can be rewritten by another checkout in between.
 export CARGO_TARGET_DIR="target-macos"
 
 RUST_HOST="$(rustc -vV | sed -n 's/^host: //p')"
@@ -40,15 +35,11 @@ else
     CARGO_ARTIFACT_DIR="$CARGO_TARGET_DIR/$MACOS_TARGET/$CARGO_PROFILE"
 fi
 
-# The cargo feature set the bridge compiles with. The Swift bindings only
-# export the bridge functions whose features are on, so the app's #if guards
-# must match exactly. Both the bindings and the guards derive from this one
-# variable — there's no second place to keep in sync.
+# The bridge's cargo features, from which the Swift #if conditions are derived.
 BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,desktop}"
 export BAE_BRIDGE_FEATURES
 
-# Map each Rust feature to its Swift compilation condition. A build compiled
-# with `oauth-providers` defines BAE_OAUTH_PROVIDERS; one without it must not.
+# Each Rust feature's Swift compilation condition.
 SWIFT_CONDITIONS=""
 case ",$BAE_BRIDGE_FEATURES," in
     *,oauth-providers,*) SWIFT_CONDITIONS="$SWIFT_CONDITIONS BAE_OAUTH_PROVIDERS" ;;
@@ -58,10 +49,8 @@ case ",$BAE_BRIDGE_FEATURES," in
 esac
 SWIFT_CONDITIONS="$(echo "$SWIFT_CONDITIONS" | xargs)"
 
-# A build without cloudkit signs with the baeium entitlements, which drop the
-# iCloud-container keys (a paid account with the iCloud capability is required to
-# sign them) but keep keychain access for the cloud keychain. The full build
-# leaves CODE_SIGN_ENTITLEMENTS at the default Signing.xcconfig sets.
+# Without cloudkit the app signs with the baeium entitlements, which drop the
+# iCloud keys that need a paid account to sign.
 ENTITLEMENTS_OVERRIDE=""
 case ",$BAE_BRIDGE_FEATURES," in
     *,cloudkit,*) ;;
@@ -82,10 +71,8 @@ else
 fi
 cargo build $CARGO_FLAGS -p bae-uniffi-bindgen
 
-# Write the Swift compilation conditions derived from the feature set. The
-# Xcode project includes this file (via Signing.xcconfig) so the #if guards in
-# the app track whatever the bridge was built with. DEBUG is preserved via
-# $(inherited) so debug-only Swift keeps compiling.
+# The Swift compilation conditions for the feature set, which Signing.xcconfig
+# includes.
 FEATURES_XCCONFIG="bae-macos/bae/Features.xcconfig"
 echo "Writing Swift compilation conditions: ${SWIFT_CONDITIONS:-(none)}"
 FEATURES_XCCONFIG_TMP="${FEATURES_XCCONFIG}.tmp.$$"
@@ -156,8 +143,7 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
     ./bae-bridge/install-swift-bindings.sh macos
 
     rm -rf "$XCFRAMEWORK"
-    # Nothing under BaeKit/Frameworks/ is tracked, so a fresh checkout (a new
-    # worktree, CI) has no parent dir for the mv.
+    # Nothing under BaeKit/Frameworks/ is tracked, so a fresh checkout lacks it.
     mkdir -p "$(dirname "$XCFRAMEWORK")"
     mv "$GENERATED_XCFRAMEWORK" "$XCFRAMEWORK"
 
@@ -174,6 +160,10 @@ cargo run -q $CARGO_FLAGS -p bae-loc --bin loc-gen -- \
     emit --target apple --out-dir bae-macos/bae/bae
 cargo run -q $CARGO_FLAGS -p bae-loc --bin loc-gen -- \
     emit --target apple --out-dir BaeKit/Sources/BaeKit/Resources
+
+echo "Generating the theme (Apple)..."
+cargo run -q $CARGO_FLAGS -p bae-theme --bin theme-gen -- \
+    emit --target apple --out-dir BaeKit/Sources/BaeKit/Generated
 
 echo ""
 echo "Done ($CARGO_PROFILE). Outputs:"

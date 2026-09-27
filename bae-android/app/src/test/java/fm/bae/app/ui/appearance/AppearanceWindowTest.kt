@@ -5,7 +5,6 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.core.view.WindowCompat
-import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -30,8 +29,7 @@ class AppearanceWindowTest {
         compose.setContent { BaeTheme(store) { Text("Appearance") } }
         compose.runOnIdle {
             val window = compose.activity.window
-            val palette = AppearancePalette(compose.activity.resources.openRawResource(R.raw.appearance_palette))
-            val expected = palette.colors(initial, dark = true).background.toArgb()
+            val expected = appearanceColorScheme(initial, dark = true).background.toArgb()
             assertEquals(expected, window.statusBarColor)
             assertEquals(expected, window.navigationBarColor)
             assertFalse(WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars)
@@ -39,8 +37,7 @@ class AppearanceWindowTest {
         compose.runOnIdle { runBlocking { store.setMode(AppearanceMode.LIGHT) } }
         compose.runOnIdle {
             val window = compose.activity.window
-            val palette = AppearancePalette(compose.activity.resources.openRawResource(R.raw.appearance_palette))
-            val expected = palette.colors(store.preferences.value, dark = false).background.toArgb()
+            val expected = appearanceColorScheme(store.preferences.value, dark = false).background.toArgb()
             assertEquals(expected, window.statusBarColor)
             assertEquals(expected, window.navigationBarColor)
             assertTrue(WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars)

@@ -4,13 +4,11 @@ set -e
 
 source "$(git rev-parse --show-toplevel)/scripts/hooks/lib/file-list.sh"
 
-# In a linked worktree, git exports GIT_DIR/GIT_INDEX_FILE to hooks. Child git
-# processes inherit them — SwiftPM's package clones then run `git checkout`
-# against *this* repo's object store and die with "unable to read tree". The
-# hook's own git commands rediscover the repo from cwd, so drop the overrides.
+# Git exports GIT_DIR/GIT_INDEX_FILE to hooks in a linked worktree, which breaks
+# SwiftPM's package clones; the hook's own git commands don't need them.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
-# Use target-macos to avoid busting iOS/Android caches
+# target-macos keeps the iOS and Android caches intact.
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target-macos}"
 
 WORKSPACE_CRATES=(
@@ -23,6 +21,7 @@ WORKSPACE_CRATES=(
     bae-mcp
     bae-subsonic
     bae-test-support
+    bae-theme
     bae-uniffi-bindgen
 )
 
@@ -34,7 +33,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Get changed files (staged for commit)
+# The files staged for commit.
 CHANGED_FILES=$(git --no-pager diff --cached --name-only)
 
 run_check() {
@@ -60,8 +59,8 @@ require_command() {
     fi
 }
 
-# Re-stage files the formatter modified (within optional path scope) and
-# fail the commit so the dev sees what changed and re-runs `git commit`.
+# Re-stages what a formatter changed (within the optional path scope) and fails
+# the commit so the change is reviewed.
 restage_and_fail_if_changed() {
     local tool_name="$1"
     local state_file="$2"
@@ -89,8 +88,7 @@ run_check "pre-commit staged path matching" bash scripts/hooks/tests/file-list-t
     exit 1
 }
 
-# Auto-format all packages. If anything changes, re-stage and fail so the
-# dev can review the new diff before committing.
+# Formats every package; a change fails the commit for review.
 record_staged_worktree_state "$FORMAT_STATE"
 run_check "cargo fmt" cargo fmt --all || {
     echo "cargo fmt failed"

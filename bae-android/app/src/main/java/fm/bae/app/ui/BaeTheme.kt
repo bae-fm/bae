@@ -18,17 +18,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import fm.bae.app.R
 import fm.bae.app.ui.appearance.AppearanceMode
-import fm.bae.app.ui.appearance.AppearancePalette
 import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.LocalAppearanceStore
+import fm.bae.app.ui.appearance.appearanceColorScheme
+import fm.bae.app.ui.appearance.colors
 import kotlinx.coroutines.Dispatchers
 import java.io.File
 
 val LocalPrimaryFill = staticCompositionLocalOf<Color> { error("BaeTheme provides primary button colors") }
-val LocalAppearancePalette = staticCompositionLocalOf<AppearancePalette> { error("BaeTheme provides the palette") }
 
 @Composable
 private fun rememberAppearanceStore(): AppearanceStore {
@@ -48,16 +47,14 @@ fun BaeTheme(
     appearance: AppearanceStore = rememberAppearanceStore(),
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
     val preferences by appearance.preferences.collectAsState()
-    val palette = remember(context) { AppearancePalette(context.resources.openRawResource(R.raw.appearance_palette)) }
     val isDark =
         when (preferences.mode) {
             AppearanceMode.SYSTEM -> isSystemInDarkTheme()
             AppearanceMode.LIGHT -> false
             AppearanceMode.DARK -> true
         }
-    val colorScheme = remember(preferences, isDark, palette) { palette.colors(preferences, isDark) }
+    val colorScheme = remember(preferences, isDark) { appearanceColorScheme(preferences, isDark) }
     val view = LocalView.current
     if (!view.isInEditMode) {
         val activity = view.context as Activity
@@ -75,8 +72,7 @@ fun BaeTheme(
     }
     CompositionLocalProvider(
         LocalAppearanceStore provides appearance,
-        LocalAppearancePalette provides palette,
-        LocalPrimaryFill provides palette.accentFill(preferences.accent),
+        LocalPrimaryFill provides preferences.accent.colors.fill,
         LocalTonalElevationEnabled provides false,
     ) {
         MaterialTheme(colorScheme = colorScheme, content = content)

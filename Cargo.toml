@@ -10,6 +10,7 @@ members = [
     "bae-mirror",
     "bae-subsonic",
     "bae-test-support",
+    "bae-theme",
     "bae-uniffi-bindgen",
 ]
 resolver = "2"

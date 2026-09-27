@@ -4,8 +4,10 @@ schemes:
 targets:
   - bae
 index_exclude:
-  # The generated uniffi bindings, now in the BaeBridge target of the BaeKit package.
+  # The generated uniffi bindings.
   - "**/BaeKit/Sources/BaeBridge/**"
+  # The generated theme, which holds roles only another platform draws with.
+  - "**/BaeKit/Sources/BaeKit/Generated/**"
 retain_assign_only_property_types:
   - SPUStandardUpdaterController
 disable_update_check: true

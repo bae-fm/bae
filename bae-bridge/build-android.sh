@@ -2,13 +2,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# This script compiles the bridge and then reads the resulting staticlib back
-# out of the target dir to generate bindings from it, so it has to own the
-# directory it reads from. An inherited CARGO_TARGET_DIR can be shared with
-# other checkouts, and a concurrent build there rewrites the same artifact from
-# different sources between the build and the read — the generators then emit
-# bindings for a bridge nobody asked for, and it surfaces later as a Swift or
-# C# compile error nowhere near its cause. Local and unconditional on purpose.
+# This script reads the staticlib it builds back out of the target dir, so it
+# owns that dir: a shared one can be rewritten by another checkout in between.
 export CARGO_TARGET_DIR="target-android"
 
 usage() {
@@ -38,24 +33,18 @@ while [[ $# -gt 0 ]]; do
 done
 [[ ${#ABIS[@]} -eq 0 ]] && ABIS=(arm64-v8a x86_64)
 
-# The cargo feature set the bridge compiles with. The Kotlin bindings only
-# export the bridge functions whose features are on, so each Gradle edition
-# compiles against the bindings built for it. The feature set picks the edition:
-# oauth-providers → the 'full' edition; no oauth-providers → 'baeium' (S3-only).
-# Both the bindings dir and the edition derive from this one variable. `cast`
-# ships in every edition, so a baeium build is `BAE_BRIDGE_FEATURES=cast`.
+# The bridge's cargo features, which pick the Gradle edition: oauth-providers
+# is 'full', without it 'baeium'. `cast` ships in every edition.
 BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers,cast}"
 
-# Map the feature set to its Gradle edition's bindings dir (the srcDir each
-# flavor's sourceSets points at in bae-android/app/build.gradle.kts).
+# The edition's bindings dir, which its flavor's sourceSet reads.
 case ",$BAE_BRIDGE_FEATURES," in
     *,oauth-providers,*) BINDINGS_DIR="bae-bridge/kotlin-bindings-full" ;;
     *) BINDINGS_DIR="bae-bridge/kotlin-bindings-baeium" ;;
 esac
 
 NDK_HOME="${ANDROID_NDK_HOME:-/Users/dima/Library/Android/sdk/ndk/29.0.14206865}"
-# NDK prebuilt toolchains are named by host: darwin-x86_64 on macOS (incl Apple
-# Silicon via Rosetta), linux-x86_64 on the x86_64 Linux CI runner.
+# NDK toolchains are named by host.
 case "$(uname -s)" in
     Darwin) NDK_HOST_TAG="darwin-x86_64" ;;
     Linux) NDK_HOST_TAG="linux-x86_64" ;;
@@ -65,8 +54,8 @@ TOOLCHAIN="$NDK_HOME/toolchains/llvm/prebuilt/$NDK_HOST_TAG"
 OBJCOPY="$TOOLCHAIN/bin/llvm-objcopy"
 STRIP="$TOOLCHAIN/bin/llvm-strip"
 
-# Android ABI -> Rust target triple / FFmpeg arch dir. Only arm64-v8a and x86_64
-# are supported (the FFmpeg cross-build covers just those).
+# Android ABI -> Rust target triple / FFmpeg arch dir; the FFmpeg build covers
+# only these two.
 rust_target() { case "$1" in
     arm64-v8a) echo aarch64-linux-android;;
     x86_64)    echo x86_64-linux-android;;
@@ -87,11 +76,9 @@ export AR_aarch64_linux_android="$TOOLCHAIN/bin/llvm-ar"
 export CC_x86_64_linux_android="$TOOLCHAIN/bin/x86_64-linux-android35-clang"
 export AR_x86_64_linux_android="$TOOLCHAIN/bin/llvm-ar"
 
-# FFmpeg for in-core audio decode. ffmpeg-sys-next locates the libs/headers via
-# FFMPEG_DIR (set per-target on each build below). In the FFMPEG_DIR path it does
-# NOT forward --target/--sysroot to bindgen, so without these per-triple clang
-# args bindgen emits HOST-ABI structs that compile but corrupt every FFmpeg
-# struct layout at runtime. Build the libs first: scripts/build-ffmpeg-android.sh
+# ffmpeg-sys-next finds FFmpeg through FFMPEG_DIR and then does not pass the
+# target to bindgen, so these per-triple clang args are what keep its struct
+# layouts from being the host's. Build the libs first: scripts/build-ffmpeg-android.sh
 FFMPEG_PREFIX="$(pwd)/bae-ffmpeg/android"
 export BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--target=aarch64-linux-android35 --sysroot=$TOOLCHAIN/sysroot -I$FFMPEG_PREFIX/aarch64/include"
 export BINDGEN_EXTRA_CLANG_ARGS_x86_64_linux_android="--target=x86_64-linux-android35 --sysroot=$TOOLCHAIN/sysroot -I$FFMPEG_PREFIX/x86_64/include"
@@ -108,22 +95,15 @@ for ABI in "${ABIS[@]}"; do
     FFMPEG_DIR="$FFMPEG_PREFIX/$FA" RUSTC_WRAPPER="" cargo build $CARGO_FLAGS --target "$TARGET" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
 done
 
-# Generate bindings from the built static lib, not a host build, so the Kotlin
-# API matches the target exactly — mobile-only exports are
-# present and target-gated desktop ones are absent. Read the .a, not the cdylib
-# .so: the release profile strips the .so (strip = true), which removes the
-# uniffi metadata uniffi-bindgen needs, so the .so yields empty bindings in
-# release. The .a is never stripped. uniffi metadata is arch-independent, so any
-# selected target works; uniffi-bindgen reads it statically without loading the
-# object. (Mirrors build-ios.sh, which reads the iOS .a.)
+# Bindings come from the built .a: the release .so is stripped of the uniffi
+# metadata the generator reads.
 FIRST_TARGET=$(rust_target "${ABIS[0]}")
 echo "Generating Kotlin bindings into $BINDINGS_DIR ..."
-# Wipe and regenerate so a stale function set from a previous feature set can't
-# linger (e.g. an OAuth function left in the baeium bindings).
+# Regenerated from scratch so another feature set's functions can't linger.
 rm -rf "$BINDINGS_DIR"
 mkdir -p "$BINDINGS_DIR"
-# The generator is a host-only package. Keeping it outside bae-bridge prevents
-# this native build from compiling bae-core again after the Android targets.
+# The generator is its own host-only package so this build doesn't compile
+# bae-core again.
 cargo build -p bae-uniffi-bindgen
 BINDGEN="$CARGO_TARGET_DIR/debug/uniffi-bindgen"
 "$BINDGEN" generate \
@@ -132,13 +112,8 @@ BINDGEN="$CARGO_TARGET_DIR/debug/uniffi-bindgen"
     --out-dir "$BINDINGS_DIR/" \
     --no-format
 
-# Generate the localization string resources (Android). loc-gen emits the
-# English source `values/core_strings.xml` plus a `values-<locale>/` directory
-# per shipping locale (English-valued until translated) so each locale registers
-# as supported. The generated files are gitignored; emit into a staging dir,
-# drop any previously-generated core_strings.xml so a dropped locale can't
-# linger, then copy the fresh set into the app's res tree next to the
-# hand-authored values/strings.xml chrome.
+# loc-gen emits core_strings.xml per locale; the old set is deleted first so a
+# dropped locale can't linger.
 echo "Generating localization string resources (Android)..."
 RES_DIR=bae-android/app/src/main/res
 LOC_STAGING="$(mktemp -d)"
@@ -151,8 +126,10 @@ find "$RES_DIR" -name core_strings.xml -delete
     cp "$LOC_STAGING/${rel#./}" "$dest"
 done
 
-# Install the .so files. Wipe both managed ABI dirs first so a stale other-ABI
-# build can't ride along in the APK, then repopulate only the selected ABIs.
+echo "Generating the theme (Android)..."
+cargo run -q -p bae-theme --bin theme-gen -- emit --target android --out-dir bae-android/app/generated/theme
+
+# Both managed ABI dirs are wiped so only the selected ABIs ship.
 echo "Installing .so files (stripped; debug symbols split out)..."
 JNILIBS=bae-android/app/src/main/jniLibs
 rm -rf "$JNILIBS/arm64-v8a" "$JNILIBS/x86_64"
@@ -163,17 +140,12 @@ for ABI in "${ABIS[@]}"; do
     SYMDIR="bae-android/debug-symbols/$ABI"
     mkdir -p "$DEST" "$SYMDIR"
     SRC="$CARGO_TARGET_DIR/$TARGET/$CARGO_PROFILE/libbae_bridge.so"
-    # Split debug info: keep full DWARF in a host-side sidecar and ship a
-    # stripped .so (~44 MB vs ~380 MB unstripped). Native (Rust) crashes stay
-    # symbolicatable via the sidecar:
-    #   ndk-stack --sym bae-android/debug-symbols/<abi> --dump <logcat>
-    # Runs for both debug and release — release ships stripped the same way.
+    # Ship a stripped .so and keep the debug info beside it for symbolicating
+    # native crashes: ndk-stack --sym bae-android/debug-symbols/<abi> --dump <logcat>
     "$OBJCOPY" --only-keep-debug "$SRC" "$SYMDIR/libbae_bridge.so.debug"
     "$STRIP" --strip-all -o "$DEST/libbae_bridge.so" "$SRC"
     "$OBJCOPY" --add-gnu-debuglink="$SYMDIR/libbae_bridge.so.debug" "$DEST/libbae_bridge.so"
-    # FFmpeg shared libs libbae_bridge.so links against — must ship in jniLibs
-    # next to it (unversioned sonames). libswscale is built but not linked (no
-    # video), so it's not copied.
+    # The FFmpeg libraries libbae_bridge.so links against ship beside it.
     for so in libavcodec libavformat libavutil libswresample; do
         cp "$FFMPEG_PREFIX/$FA/lib/$so.so" "$DEST/"
     done

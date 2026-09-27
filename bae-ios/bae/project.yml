@@ -2,35 +2,25 @@ name: bae
 options:
   bundleIdPrefix: fm.bae
   deploymentTarget:
-    # 17.0: the shared macOS data layer is built on the Observation framework
-    # (`@Observable`), which requires iOS 17. The bridge static libs are minos
-    # 16.0 (the FFmpeg link floor), which a 17.0 app target satisfies.
+    # Observation (`@Observable`) needs iOS 17.
     iOS: "17.0"
   xcodeVersion: "26.0"
 packages:
-  # The shared data/service/domain layer plus the generated bridge bindings and
-  # the platform-conditional BaeBridgeFFI xcframework. BaeKit re-exports the
-  # bridge types and depends on Sentry, so both come in transitively.
+  # The shared layer, the bridge bindings and the BaeBridgeFFI xcframework.
   BaeKit:
     path: ../../BaeKit
 targets:
   bae:
     type: application
     platform: iOS
-    # Config.xcconfig optionally pulls in the gitignored Features.xcconfig that
-    # bae-bridge/build-ios.sh generates, so the app's #if guards
-    # (BAE_OAUTH_PROVIDERS / BAE_CLOUDKIT) match the cargo feature set the bridge
-    # was built with (see Config.xcconfig).
+    # Config.xcconfig pulls in the Features.xcconfig build-ios.sh generates, so the
+    # #if conditions match the bridge's feature set.
     configFiles:
       Debug: Config.xcconfig
       Release: Config.xcconfig
     sources:
-      # iOS app sources. The shared data/service/domain layer and the generated
-      # bridge bindings now live in the BaeKit package (see packages/BaeKit),
-      # imported as a module rather than pulled in as cross-tree file references.
-      # A tree that built before the package move still has the old gitignored
-      # bae/bae_bridge.swift on disk; excluding it keeps xcodegen from sweeping
-      # it in and colliding with the BaeBridge module.
+      # A stale gitignored bae/bae_bridge.swift from before BaeKit existed would
+      # collide with the BaeBridge module.
       - path: bae
         excludes:
           - bae_bridge.swift
@@ -61,14 +51,12 @@ targets:
             echo "Bridge sources changed, rebuilding..."
             ./bae-bridge/build-ios.sh
           fi
-          # Always ensure the iOS-flavored bindings are installed into the
-          # BaeBridge target. Without this, a fresh worktree (xcframework cached,
-          # bindings file absent) skips the install and the build fails to find
-          # generated types.
+          # A fresh worktree can have the xcframework cached but no bindings file.
           if [ ! -f "$BINDINGS" ] || [ "$BINDINGS_SOURCE" -nt "$BINDINGS" ]; then
             ./bae-bridge/install-swift-bindings.sh ios
           fi
           cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-ios/bae/bae
+          cargo run -q -p bae-theme --bin theme-gen -- emit --target apple --out-dir BaeKit/Sources/BaeKit/Generated
     dependencies:
       - package: BaeKit
     settings:
@@ -79,11 +67,8 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         INFOPLIST_FILE: bae/Info.plist
         SWIFT_VERSION: "6.2"
-        # The compiler writes each file's localizable strings to .stringsdata
-        # during compilation; scripts/check_localizable_strings.py --platform
-        # ios compares that ground truth against Localizable.xcstrings.
-        # (Xcode's parser-based catalog sync misses strings in some closure
-        # shapes — only the compile-emitted data is trustworthy.)
+        # The compiler writes each file's localizable strings to .stringsdata, which
+        # scripts/check_localizable_strings.py --platform ios checks the catalog against.
         SWIFT_EMIT_LOC_STRINGS: YES
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         BAE_DATADOG_SITE: $(BAE_DATADOG_SITE)
@@ -91,12 +76,8 @@ targets:
         BAE_ENVIRONMENT: $(BAE_ENVIRONMENT)
         BAE_GIT_COMMIT: $(BAE_GIT_COMMIT)
         BAE_SENTRY_DSN: $(BAE_SENTRY_DSN)
-        # CODE_SIGN_ENTITLEMENTS is set in Config.xcconfig (full) and overridden
-        # by the generated Features.xcconfig (baeium), not here — a setting in this
-        # block lands in the pbxproj and would override the xcconfig layer the
-        # feature set drives.
-        # No bundled app icon yet — drop xcodegen's default `AppIcon` lookup so
-        # the asset catalog compiles without one.
+        # CODE_SIGN_ENTITLEMENTS comes from the xcconfig layer the feature set drives;
+        # a setting here would override it. There is no bundled app icon.
         ASSETCATALOG_COMPILER_APPICON_NAME: ""
         OTHER_LDFLAGS:
           - -lz
@@ -115,10 +96,7 @@ targets:
       - baeTests
     dependencies:
       - target: bae
-    # Same config layer as the app so the test target's `#if BAE_OAUTH_PROVIDERS`
-    # guards match the feature set the bridge (and the app it links) was built
-    # with — otherwise the OAuth tests would compile out on a full build or fail
-    # to compile on a baeium (S3-only) one.
+    # The app's config layer, so the tests' #if conditions match the bridge.
     configFiles:
       Debug: Config.xcconfig
       Release: Config.xcconfig
@@ -128,12 +106,8 @@ targets:
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: fm.bae.baeTests
-  # Screenshot-capture bundle for the cross-platform gallery. Hosted in the app
-  # (like baeTests) so it can `@testable import bae` and reach the DEBUG
-  # PreviewScenes builders + fixtures. Kept out of the `bae` scheme's test
-  # action — it runs only via its own `baeShots` scheme, which
-  # scripts/shots/ios.sh drives; the test writes PNGs into the app container and
-  # the script copies them out.
+  # Screenshot capture, hosted in the app to reach PreviewScenes; only its own
+  # `baeShots` scheme runs it, driven by scripts/shots/ios.sh.
   baeShots:
     type: bundle.unit-test
     platform: iOS
@@ -150,8 +124,7 @@ targets:
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: fm.bae.baeShots
-# Explicit scheme so `xcodebuild -scheme bae test` runs the unit-test bundle;
-# xcodegen's autogenerated per-target schemes carry no test action.
+# An explicit scheme so `xcodebuild -scheme bae test` runs the unit tests.
 schemes:
   bae:
     build:
@@ -169,8 +142,7 @@ schemes:
       config: Debug
     archive:
       config: Release
-  # Screenshot capture only. `scripts/shots/ios.sh` runs
-  # `xcodebuild -scheme baeShots test`; the test writes one PNG per scene.
+  # Screenshot capture only, run by scripts/shots/ios.sh.
   baeShots:
     build:
       targets:

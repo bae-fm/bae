@@ -1,0 +1,20 @@
+[package]
+name = "bae-theme"
+version = "0.1.0"
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+
+[lib]
+name = "bae_theme"
+
+[[bin]]
+name = "theme-gen"
+path = "src/bin/theme-gen.rs"
+
+[dependencies]
+serde = { version = "1.0.228", features = ["derive"] }
+toml = "1.1.2"
+
+[lints]
+workspace = true

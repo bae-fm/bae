@@ -1091,6 +1091,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bae-theme"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "bae-uniffi-bindgen"
 version = "0.1.0"
 dependencies = [

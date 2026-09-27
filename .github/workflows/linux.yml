@@ -1,10 +1,7 @@
 name: Linux
 
-# Cross-platform Rust lint + test suite on a Linux runner. The Rust core is
-# portable; running it here (instead of on a scarce macOS runner) is cheaper and
-# faster, and leaves the macOS runners for the Xcode-only work. macOS still
-# builds the macOS app; the test job owns the Rust gates and tests, and the
-# avalonia job builds and smoke-tests the Avalonia skeleton on Linux.
+# The Rust lint and test suite, on Linux runners, and the Avalonia skeleton's
+# build and smoke test.
 
 on:
   workflow_call:
@@ -31,8 +28,7 @@ jobs:
         ref: ${{ inputs.ref || github.sha }}
 
     - name: Free disk space
-      # Workspace lint, documentation, debug tests, and the release CPU test
-      # retain multiple Rust build profiles on the GitHub-hosted Ubuntu image.
+      # Several Rust build profiles don't fit the default disk.
       uses: ./.github/actions/free-ubuntu-runner-disk
 
     - name: Setup Linux environment
@@ -76,29 +72,12 @@ jobs:
         cargo clippy -p bae-bridge -- -D warnings
 
     - name: Dead-code (bae-core lib only)
-      # Default features, no --tests, no --all-targets, no test-utils: the one
-      # config that compiles bae-core's production code without also compiling
-      # the #[cfg(test)] unit tests that keep some pub(crate) items looking
-      # used. A production item reached only by those tests is dead weight in
-      # the shipping library.
+      # bae-core's production code alone, so an item only its tests use fails as
+      # dead code.
       run: RUSTFLAGS="-D warnings" cargo check -p bae-core
 
     - name: Check for new #[allow(dead_code)]
-      # Banned everywhere, with no carve-out. The shared integration-test
-      # helpers used to need one: as a `tests/support/mod.rs` include they were
-      # recompiled into each of bae-core's test binaries, so helpers a given
-      # binary didn't call read as dead. They are the bae-test-support crate
-      # now -- compiled once, helpers are its public API -- so that false
-      # positive is gone rather than tolerated. dead_code is denied in
-      # [workspace.lints]; an allow here is the way back around that deny.
-      #
-      # Scoped by exclusion, not by a crate list: the list this gate used to
-      # carry had drifted off the workspace twice over -- it still named
-      # `third-party`, deleted with libdiscid, and had never picked up
-      # bae-cast, bae-mirror, bae-subsonic or bae-uniffi-bindgen, so an allow
-      # in any of them passed. Every .rs file in the repo belongs to a
-      # workspace member, so "the tree minus the build dirs" is the whole
-      # workspace and a new crate is covered the day it lands.
+      # New #[allow(dead_code)] is banned in every .rs file of the workspace.
       run: |
         offenders=$(grep -rn --include='*.rs' --exclude-dir='target*' \
           'allow(dead_code)' . \
@@ -109,26 +88,22 @@ jobs:
           exit 1
         fi
 
-    - name: Run localization + bridge tests
+    - name: Run localization, theme and bridge tests
       run: |
         cargo nextest run -p bae-loc
-        # Both editions' surfaces. Default features are what the baeium build
-        # compiles; `desktop` is what the full build compiles, and the conversions
-        # behind it (the metadata-edit round trips, the identify-progress mirror)
-        # have no other test run.
+        cargo nextest run -p bae-theme
+        # Both editions: default features are baeium's, `desktop` the full build's.
         cargo nextest run -p bae-bridge --lib
         cargo nextest run -p bae-bridge --lib --features desktop
         cargo nextest run -p bae-automation
         cargo nextest run -p bae-subsonic
         cargo nextest run -p bae-cast
         cargo nextest run -p bae-desktop
-        # chrome-string orphan gate (core.* keys are covered by the bae-bridge
-        # loc_key_coverage test above); fails on unreferenced, un-allowlisted keys.
+        # Chrome strings no code references; core.* keys are covered by the bridge
+        # test above.
         python3 scripts/loc-chrome-orphans.py
-        # English-skeleton gate: an it/tr/vi/nl value still carrying the English
-        # sentence, glued morphology ("Sincronizzazioneing"), or a placeholder
-        # multiset that doesn't match its source. Covers all three catalogs
-        # (macOS/iOS xcstrings, Android strings.xml).
+        # Translations still carrying the English, glued morphology, or mismatched
+        # placeholders, in all three catalogs.
         python3 scripts/loc-english-skeleton.py
 
     - name: Check Rust documentation
@@ -140,30 +115,15 @@ jobs:
 
     - name: Run bae-core tests
       run: |
-        # The CPU test reads process-wide getrusage, so it runs as its own
-        # invocation after the rest of the suite. Everything else runs at
-        # default parallelism; tests that share process-global state (the
-        # import integration suite's metadata caches) serialize themselves
-        # with #[serial]. The CPU test's probe sink pulls and discards at
-        # real time with no audio device, so it runs here too.
-        #
-        # --release, matching scripts/check.sh: the CPU test measures the cost of
-        # real playback, which is the optimized build. An unoptimized decode is a
-        # different workload, so measuring it here and the optimized one locally
-        # would mean the gate never guards the code that ships.
+        # The CPU test reads process-wide getrusage, so it runs alone, in release: it
+        # measures the playback that ships.
         cargo nextest run -p bae-core --features bae-core/test-utils -- --skip test_playback_cpu
-        # The release build is the last thing this job compiles, and the runner's
-        # disk has run out under it (two debug trees plus a release one). Nothing
-        # after this point reads the debug artifacts, so drop them first.
+        # The runner's disk can't hold the debug and release trees at once.
         rm -rf target/debug
         cargo nextest run -p bae-core --release --features bae-core/test-utils --test test_playback_cpu -j 1
 
   avalonia:
-    # The Avalonia skeleton on Linux, the platform its net8.0 build ships on:
-    # the Linux bridge, the C# bindings generated from it, the app build, and
-    # the smoke test that loads libuniffi_bae_bridge.so through those bindings.
-    # Its own job, so the bridge's cdylib build does not share the Rust suite's
-    # disk.
+    # The Avalonia skeleton on Linux, in its own job for the disk.
     name: Avalonia skeleton
     runs-on: ubuntu-latest
 
@@ -194,8 +154,8 @@ jobs:
       run: dotnet build bae-avalonia/bae-avalonia.csproj -c Debug -p:EnforceCodeStyleInBuild=true
 
     - name: Smoke-test the Avalonia skeleton
-      # The bridge .so sits in build-linux.sh's own target dir; the FFmpeg libs
-      # it links are already on LD_LIBRARY_PATH from the Linux setup.
+      # The bridge .so is in build-linux.sh's target dir; FFmpeg is already on
+      # LD_LIBRARY_PATH.
       run: |
         export LD_LIBRARY_PATH="$PWD/target-linux/x86_64-unknown-linux-gnu/debug:$LD_LIBRARY_PATH"
         dotnet test bae-avalonia/bae-avalonia.Tests -c Debug
